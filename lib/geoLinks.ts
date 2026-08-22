@@ -77,17 +77,58 @@ export function extractPlusCodeCoords(url: string): { lat: number; lng: number }
   }
 }
 
-// Best-effort human-readable address for display when no coordinates could be
-// extracted -- pulled from a Google "/maps/place/<address>/data=..." URL. Purely
-// cosmetic (the "+" in a Plus Code embedded in this text may get flattened to a
-// space along with the real word-separator "+"s), never used for geocoding.
+// Human-readable address pulled from a Google "/maps/place/<address>/data=..." URL --
+// shown as the subtitle of an imported location, and the source the venue's own name is
+// recovered from (see placeNameFromAddress) when the paste it came from had no name.
 const PLACE_SEGMENT_RE = /\/maps\/place\/([^/]+)/;
 
 export function extractPlaceAddress(url: string): string | null {
-  const m = safeDecodeURIComponent(url).match(PLACE_SEGMENT_RE);
+  const m = url.match(PLACE_SEGMENT_RE);
   if (!m) return null;
-  const cleaned = m[1].replace(/\+/g, " ").replace(/‬|‭/g, "").trim();
+  // The slug's word separator is a literal "+", while a Plus Code's own "+" arrives
+  // percent-encoded -- so separators are flattened to spaces *before* decoding, which
+  // leaves "PGVQ%2B42F" as a readable "PGVQ+42F" instead of blurring the two "+"
+  // meanings together into "PGVQ 42F".
+  const cleaned = safeDecodeURIComponent(m[1].replace(/\+/g, " "))
+    .replace(/[‬‭]/g, "") // bidi marks Google embeds around Persian names
+    .trim();
   return cleaned || null;
+}
+
+// Segments that show up in nearly every Tehran address slug and are never the venue's
+// own name -- the city, the province, the country, a bare administrative district.
+const GENERIC_SEGMENT_RE =
+  /^(iran|ایران|tehran|تهران|tehran province|استان تهران|district \d+|منطقه [\d۰-۹]+)$/i;
+
+const PLUS_CODE_TOKEN_RE = /\b[23456789CFGHJMPQRVWX]{4,8}\+[23456789CFGHJMPQRVWX]{2,7}\b/i;
+
+// Recovers the venue's name from a Google place address -- what an imported location is
+// called when the paste it came from was a bare link with no name attached to it.
+//
+// Google writes these slugs in one of two shapes, and which one it picks is readable off
+// the first segment: when the place has a name of its own it leads ("تالار میلاد, PHRX+7F5,
+// Tehran, ..."), and when the first segment is instead the city or province, the name
+// trails the Plus Code inside its own segment ("Tehran, 3rd Square Tehranpars, PGVQ+42F
+// Marina palace, Iran"). With no Plus Code to key off, the last non-generic segment (the
+// one just before the country) is the name.
+export function placeNameFromAddress(address: string): string | null {
+  const segments = address
+    .split(/[,،]/)
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (segments.length === 0) return null;
+  if (!GENERIC_SEGMENT_RE.test(segments[0])) return segments[0];
+
+  const codeSegment = segments.find((s) => PLUS_CODE_TOKEN_RE.test(s));
+  if (codeSegment) {
+    const afterCode = codeSegment.replace(PLUS_CODE_TOKEN_RE, "").trim();
+    if (afterCode && !GENERIC_SEGMENT_RE.test(afterCode)) return afterCode;
+  }
+
+  const rest = segments
+    .slice(1)
+    .filter((s) => !GENERIC_SEGMENT_RE.test(s) && !PLUS_CODE_TOKEN_RE.test(s));
+  return rest.length > 0 ? rest[rest.length - 1] : null;
 }
 
 function safeDecodeURIComponent(s: string): string {

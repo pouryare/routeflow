@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { parsePastedChat } from "@/lib/pasteImport";
 import { resolveMapsLinks } from "@/lib/resolveMapsLink";
+import { placeNameFromAddress } from "@/lib/geoLinks";
 import { distanceKm } from "@/lib/geo";
+
+// Shown for a link that resolved to no address at all, so it still appears in the
+// preview to be pinned and renamed by hand instead of vanishing from the import.
+const UNNAMED_LOCATION = "مکان بدون نام";
 
 // Within this radius, two pins are treated as "the same physical venue" regardless of
 // name spelling -- generous enough to survive GPS/geocoding noise on a single building,
@@ -73,16 +78,20 @@ export async function POST(req: NextRequest) {
 
   const preview = items.map((it, i) => {
     const r = resolved[i];
+    // A link pasted with no name of its own (a bare list of links, the shape a coworker's
+    // "here are the venues" message usually arrives in) is named from the venue name Google
+    // itself carries in the resolved place address.
+    const name = it.name || (r.address ? placeNameFromAddress(r.address) : null) || UNNAMED_LOCATION;
     const alreadySaved = !!existing.get(it.mapsUrl);
     const duplicateOf = alreadySaved
       ? null
-      : findDuplicate(it.name, r.lat, r.lng, [
+      : findDuplicate(name, r.lat, r.lng, [
           { kind: "location", rows: savedLocationPool },
           { kind: "customer", rows: customerPool },
         ]);
     return {
       key: it.mapsUrl,
-      name: it.name,
+      name,
       mapsUrl: it.mapsUrl,
       resolvedUrl: r.resolvedUrl,
       lat: r.lat,

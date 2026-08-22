@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { extractLatLng, extractPlaceAddress, extractPlusCodeCoords, isAllowedLinkHost, isPrivateOrLocalHost } from "@/lib/geoLinks";
+import {
+  extractLatLng,
+  extractPlaceAddress,
+  extractPlusCodeCoords,
+  isAllowedLinkHost,
+  isPrivateOrLocalHost,
+  placeNameFromAddress,
+} from "@/lib/geoLinks";
 
 describe("extractLatLng", () => {
   it("parses Google's ?q=lat,lng format -- the exact format used in this business's own workbook", () => {
@@ -73,6 +80,57 @@ describe("extractPlaceAddress", () => {
 
   it("returns null when the URL isn't a /maps/place/ URL", () => {
     expect(extractPlaceAddress("https://maps.app.goo.gl/kt9VH4nCrXUfKkm96")).toBeNull();
+  });
+
+  it("keeps a Plus Code's own '+' while flattening the slug's word separators", () => {
+    const url =
+      "https://www.google.com/maps/place/Tehran,+3rd+Square+Tehranpars,+PGVQ%2B42F+Marina+palace,+Iran/data=!4m2";
+    expect(extractPlaceAddress(url)).toBe("Tehran, 3rd Square Tehranpars, PGVQ+42F Marina palace, Iran");
+  });
+});
+
+// The names a link pasted with no name of its own ends up saved under, so these are the
+// real address strings the 25 links of one coworker's venue list resolved to.
+describe("placeNameFromAddress", () => {
+  it("takes the venue name that trails the Plus Code when the address leads with the city", () => {
+    expect(placeNameFromAddress("Tehran, 3rd Square Tehranpars, PGVQ+42F Marina palace, Iran")).toBe("Marina palace");
+    expect(placeNameFromAddress("Tehran Province, Tehran, Shahed Blvd, PGGM+MM9 Dariush Hall, Iran")).toBe(
+      "Dariush Hall"
+    );
+    expect(placeNameFromAddress("Tehran Province, Tehran, Farah Abad, Baharestan, MFRH+HPQ تالار کوثر, Iran")).toBe(
+      "تالار کوثر"
+    );
+  });
+
+  it("takes the leading segment when the venue names itself first", () => {
+    expect(placeNameFromAddress("talare erfan, PGJW+VF2, Tehran, Tehran Province, Iran")).toBe("talare erfan");
+    expect(placeNameFromAddress("باغ تالار کلاسیک، PJF3+367 Sorkheh Hesar, Tehran, Iran")).toBe("باغ تالار کلاسیک");
+    expect(placeNameFromAddress("District 14 Farhangian Hall, MFFQ+6C7 Farah Abad, Tehran, Tehran Province, Iran")).toBe(
+      "District 14 Farhangian Hall"
+    );
+  });
+
+  it("ignores a district that trails the Plus Code in place of a name", () => {
+    expect(placeNameFromAddress("تالار دنیای امید، PGJC+JCV District 8, Tehran, Tehran Province, Iran")).toBe(
+      "تالار دنیای امید"
+    );
+  });
+
+  it("falls back to the last segment before the country when there is no Plus Code", () => {
+    expect(
+      placeNameFromAddress("استان تهران، تهران، بلوار شاهد، نبش،، جوادیان فرد, Parisa Banquet Hall, Iran")
+    ).toBe("Parisa Banquet Hall");
+    expect(placeNameFromAddress("Tehran, Tehran, پیروزی, بلوار ابوذر ,هفتم شرقی, ارجمندی, Binates Hall, تالار پذیرایی بیناتس, Iran")).toBe(
+      "تالار پذیرایی بیناتس"
+    );
+  });
+
+  it("handles an address that is nothing but the venue name", () => {
+    expect(placeNameFromAddress("Fanoos Hall & Restaurant")).toBe("Fanoos Hall & Restaurant");
+  });
+
+  it("returns null when the address is only generic location segments", () => {
+    expect(placeNameFromAddress("Tehran, Tehran Province, Iran")).toBeNull();
   });
 });
 

@@ -62,6 +62,13 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
     }
   }
 
+  // A name derived from the resolved Google address (what a link pasted without one gets)
+  // is a good guess, not a certainty -- and saved locations have no rename anywhere else,
+  // so the preview is the only chance to correct it.
+  function rename(key: string, name: string) {
+    setItems((prev) => (prev ? prev.map((it) => (it.key === key ? { ...it, name } : it)) : prev));
+  }
+
   function toggle(key: string) {
     setSelected((prev) => {
       const next = new Set(prev);
@@ -75,6 +82,12 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
     if (!items) return;
     const chosen = items.filter((it) => selected.has(it.key));
     if (chosen.length === 0) return;
+    // A location saved with no name can't be found or matched later, and the API drops it
+    // silently -- so an emptied name field is caught here rather than lost on submit.
+    if (chosen.some((it) => !it.name.trim())) {
+      toast("نام مکان نمی‌تواند خالی باشد", "error");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/locations", {
@@ -164,7 +177,12 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
                 />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="truncate text-[length:var(--text-sm)] text-text">{it.name}</span>
+                    <input
+                      value={it.name}
+                      onChange={(e) => rename(it.key, e.target.value)}
+                      aria-label="نام مکان"
+                      className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-transparent bg-transparent px-1 py-0.5 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-border focus:border-accent"
+                    />
                     <span
                       className="shrink-0 font-mono text-[length:var(--text-xs)]"
                       style={{ color: RESOLUTION_META[it.resolution].color }}

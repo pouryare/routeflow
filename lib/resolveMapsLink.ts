@@ -115,7 +115,10 @@ function addressSegmentCandidates(address: string): string[] {
 
 async function resolveViaNominatim(address: string | null, fallbackName: string): Promise<{ lat: number; lng: number } | null> {
   const candidates = address ? addressSegmentCandidates(address) : [];
-  if (candidates.length === 0) candidates.push(fallbackName);
+  // A bare pasted link has no name to fall back to -- better no geocode attempt at all
+  // than spending the 1/sec Nominatim budget on an empty query.
+  if (candidates.length === 0 && fallbackName.trim()) candidates.push(fallbackName.trim());
+  if (candidates.length === 0) return null;
 
   for (const candidate of candidates) {
     const hit = await nominatimSearch(candidate);
