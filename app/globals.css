@@ -1,0 +1,369 @@
+@import "tailwindcss";
+
+/*
+  MASTER.md is the source of truth for every value below.
+  Single-world dark commitment -- no light theme, no prefers-color-scheme branch.
+  See /MASTER.md at project root.
+*/
+:root {
+  /* color */
+  --bg: #0a0e14;
+  --surface: #121a24;
+  --surface-raised: #182230;
+  --border: #1e2a38;
+  --border-strong: #2a3a4c;
+  --accent: #2de0e6;
+  --accent-dim: #1b8a8f;
+  --text: #e7eef5;
+  --text-muted: #8697a8;
+  --text-faint: #546271;
+  --good: #3ddc84;
+  --warn: #f5a623;
+  --crit: #f0475b;
+  --neutral: #5b6b7c;
+
+  /* type scale */
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.25rem;
+  --text-xl: 1.5rem;
+
+  /* spacing (4px base) */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* radii */
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 10px;
+
+  /* motion */
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 300ms;
+  --pulse-duration: 2400ms;
+  --pulse-stagger: 800ms;
+  --sweep-duration: 4000ms;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-accent: var(--accent);
+  --color-accent-dim: var(--accent-dim);
+  --color-text: var(--text);
+  --color-text-muted: var(--text-muted);
+  --color-text-faint: var(--text-faint);
+  --color-good: var(--good);
+  --color-warn: var(--warn);
+  --color-crit: var(--crit);
+  --color-neutral: var(--neutral);
+  --font-sans: var(--font-vazirmatn);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+}
+
+/* MASTER.md Button spec: "Focus: 2px --accent outline, 2px offset" -- applied once,
+   app-wide, so every button/link gets it without repeating it per component. Inputs
+   carry their own focus treatment (border + glow) and are intentionally excluded. */
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+/* Elevation is glow, never a drop shadow -- a dark console has no light source above. */
+.elevate-good { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--good); }
+.elevate-warn { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--warn); }
+.elevate-crit { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--crit); }
+.elevate-accent { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .customer-marker__ping,
+  .me-marker__ping {
+    display: none;
+  }
+}
+
+/* ---- Customer marker: diamond, status-colored, idle radar-ping (MASTER.md "Map marker"). ---- */
+.customer-marker {
+  position: relative;
+  width: 14px;
+  height: 14px;
+}
+.customer-marker__diamond {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--marker-color);
+  border: 2px solid var(--bg);
+  transform: rotate(45deg);
+  box-shadow: 0 0 8px -1px var(--marker-color);
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+.customer-marker__ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 2px;
+  background: var(--marker-color);
+  transform: rotate(45deg) scale(1);
+  opacity: 0.55;
+  animation: marker-ping var(--pulse-duration) var(--ease-out) infinite;
+}
+@keyframes marker-ping {
+  0% { transform: rotate(45deg) scale(1); opacity: 0.5; }
+  100% { transform: rotate(45deg) scale(2.6); opacity: 0; }
+}
+.customer-marker--selected .customer-marker__diamond {
+  transform: rotate(45deg) scale(1.15);
+  box-shadow: 0 0 0 2px var(--accent), 0 0 10px -1px var(--marker-color);
+}
+.leaflet-marker-icon:hover .customer-marker__diamond {
+  transform: rotate(45deg) scale(1.15);
+}
+
+/* ---- "Me" marker: round accent dot, distinct from the diamond customer marker. ---- */
+.me-marker {
+  position: relative;
+  width: 16px;
+  height: 16px;
+}
+.me-marker__dot {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 10px -1px var(--accent);
+}
+.me-marker__ping {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  opacity: 0.5;
+  animation: marker-ping var(--pulse-duration) var(--ease-out) infinite;
+}
+.locate-control a {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  text-decoration: none;
+}
+.locate-control a.locate-control--active {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+
+/* leaflet.fullscreen ships its icon as a hardcoded dark-grey (#333) SVG, meant for
+   Leaflet's default white control background -- invisible against this app's dark
+   surface. Same artwork, re-encoded with the app's --text color, overriding by
+   selector (not by redefining the plugin's own CSS var) so it wins regardless of
+   which stylesheet Turbopack happens to bundle last. */
+.leaflet-fullscreen-icon {
+  background-image: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M5 10.3V5.9c0-.5.4-.9.9-.9h4.4c.2 0 .4.2.4.4V7c0 .2-.2.4-.4.4h-3v3c0 .2-.2.4-.4.4H5.4a.4.4 0 0 1-.4-.4zm10.3-4.9V7c0 .2.2.4.4.4h3v3c0 .2.2.4.4.4h1.5c.2 0 .4-.2.4-.4V5.9c0-.5-.4-.9-.9-.9h-4.4c-.2 0-.4.2-.4.4zm5.3 9.9H19c-.2 0-.4.2-.4.4v3h-3c-.2 0-.4.2-.4.4v1.5c0 .2.2.4.4.4h4.4c.5 0 .9-.4.9-.9v-4.4c0-.2-.2-.4-.4-.4zm-9.9 5.3V19c0-.2-.2-.4-.4-.4h-3v-3c0-.2-.2-.4-.4-.4H5.4c-.2 0-.4.2-.4.4v4.4c0 .5.4.9.9.9h4.4c.2 0 .4-.2.4-.4z" fill="%23E7EEF5"/></svg>') !important;
+  background-size: 26px 26px;
+}
+.leaflet-fullscreen-icon.leaflet-fullscreen-on {
+  background-image: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M20.6 10.7H16a.9.9 0 0 1-.8-.8v-4.5c0-.2.2-.4.4-.4h1.4c.3 0 .5.2.5.4v3h3c.2 0 .4.2.4.5v1.4c0 .2-.2.4-.4.4zm-9.9-.8V5.4c0-.2-.2-.4-.4-.4H8.9c-.3 0-.5.2-.5.4v3h-3c-.2 0-.4.2-.4.5v1.4c0 .2.2.4.4.4H9.9c.4 0 .8-.4.8-.8zm0 10.7V16c0-.4-.4-.8-.8-.8H5.4c-.2 0-.4.2-.4.4v1.4c0 .3.2.5.4.5h3v3c0 .2.2.4.5.4h1.4c.2 0 .4-.2.4-.4zm6.9 0v-3h3c.2 0 .4-.2.4-.5v-1.4c0-.2-.2-.4-.4-.4H16c-.4 0-.8.4-.8.8v4.5c0 .2.2.4.4.4h1.5c.3 0 .5-.2.5-.4z" fill="%23E7EEF5"/></svg>') !important;
+}
+.found-location-marker {
+  font-size: 24px;
+  line-height: 1;
+  filter: drop-shadow(0 0 6px var(--accent));
+}
+.basemap-toggle-control a {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  line-height: 1;
+  text-decoration: none;
+}
+
+/* ---- Marker cluster bubble: identity-neutral (accent hue), matches the me-marker/
+   locate-control cyan rather than any reserved status color, since a cluster always
+   mixes multiple statuses underneath it. ---- */
+.cluster-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--accent) 22%, var(--surface-raised));
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-weight: 700;
+  font-size: 12px;
+  box-shadow: 0 0 12px -2px var(--accent);
+}
+
+/* ---- Route planner map (Leaflet Routing Machine): numbered stop markers, and the
+   plugin's default turn-by-turn itinerary panel suppressed -- the app renders its own
+   compact distance/time summary bar below the map instead. ---- */
+.leaflet-routing-container {
+  display: none !important;
+}
+.route-stop-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--surface-raised);
+  border: 2px solid var(--accent);
+  color: var(--accent);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  font-weight: 700;
+  box-shadow: 0 0 8px -1px var(--accent);
+}
+.route-stop-marker--start {
+  background: var(--accent);
+  color: #04191c;
+}
+.route-stop-marker--end {
+  border-color: var(--crit);
+  color: var(--crit);
+  box-shadow: 0 0 8px -1px var(--crit);
+}
+
+/* ---- Customer detail panel entrance (MASTER.md motion tokens: dur-slow / ease-out). ---- */
+@keyframes customer-panel-in {
+  from { opacity: 0; transform: translateX(-12px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+.customer-panel-enter {
+  animation: customer-panel-in var(--dur-slow) var(--ease-out) both;
+}
+
+/* ---- Modal (district editor): backdrop fade + card fade/scale. ---- */
+@keyframes modal-backdrop-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes modal-card-in {
+  from { opacity: 0; transform: scale(0.97); }
+  to { opacity: 1; transform: scale(1); }
+}
+.modal-backdrop-enter {
+  animation: modal-backdrop-in var(--dur-base) var(--ease-out) both;
+}
+.modal-card-enter {
+  animation: modal-card-in var(--dur-slow) var(--ease-out) both;
+}
+
+/* ---- Toasts: slide+fade in from the top, quick fade out on dismiss. ---- */
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(-8px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+@keyframes toast-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.98); }
+}
+.toast-enter {
+  animation: toast-in var(--dur-base) var(--ease-out) both;
+}
+.toast-exit {
+  animation: toast-out 180ms var(--ease-out) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .toast-enter,
+  .toast-exit {
+    animation-duration: 1ms;
+  }
+}
+
+/* ---- Leaflet overrides: popups/tooltips must carry the site's own type system,
+   not the browser default Leaflet ships with. ---- */
+.leaflet-container {
+  background: var(--bg);
+  font-family: var(--font-vazirmatn), sans-serif;
+}
+.leaflet-popup-content-wrapper,
+.leaflet-tooltip {
+  background: var(--surface-raised);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  font-family: var(--font-vazirmatn), sans-serif;
+  font-size: var(--text-sm);
+  box-shadow: 0 0 0 1px var(--border), 0 8px 24px -8px rgba(0, 0, 0, 0.6);
+}
+.leaflet-popup-tip {
+  background: var(--surface-raised);
+  border: 1px solid var(--border);
+  box-shadow: none;
+}
+.leaflet-tooltip-top:before,
+.leaflet-tooltip-bottom:before {
+  border-top-color: var(--border);
+  border-bottom-color: var(--border);
+}
+.leaflet-popup-close-button {
+  color: var(--text-muted) !important;
+  font-size: var(--text-lg) !important;
+}
+.leaflet-popup-close-button:hover {
+  color: var(--text) !important;
+}
+.leaflet-bar a {
+  background: var(--surface) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+}
+.leaflet-bar a:hover {
+  color: var(--accent) !important;
+  border-color: var(--accent) !important;
+}
+.leaflet-control-attribution {
+  background: color-mix(in srgb, var(--surface) 85%, transparent) !important;
+  color: var(--text-faint) !important;
+}
+.leaflet-control-attribution a {
+  color: var(--text-muted) !important;
+}
+
+/* ---- Print media: the one deliberate exception to the single-dark-world commitment.
+   Paper is a different rendering context -- a dark page wastes ink and prints poorly. ---- */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-report {
+    background: #ffffff !important;
+  }
+  .print-report * {
+    background: transparent !important;
+    color: #111111 !important;
+    box-shadow: none !important;
+    border-color: #cccccc !important;
+  }
+}

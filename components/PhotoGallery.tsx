@@ -1,0 +1,153 @@
+"use client";
+
+import { useEffect, useRef, useState } from "react";
+import { useToast } from "./ToastProvider";
+
+interface PhotoItem {
+  id: number;
+  file_stem: string;
+  caption: string | null;
+  taken_at: string;
+}
+
+export default function PhotoGallery({
+  entityType,
+  entityId,
+}: {
+  entityType: "district" | "customer";
+  entityId: number;
+}) {
+  const [photos, setPhotos] = useState<PhotoItem[] | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [lightbox, setLightbox] = useState<PhotoItem | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
+
+  async function load() {
+    const res = await fetch(`/api/photos?entity_type=${entityType}&entity_id=${entityId}`);
+    const data = await res.json();
+    setPhotos(data.photos ?? []);
+  }
+
+  useEffect(() => {
+    load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [entityType, entityId]);
+
+  async function handleFile(file: File) {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("entity_type", entityType);
+      fd.append("entity_id", String(entityId));
+      const res = await fetch("/api/photos", { method: "POST", body: fd });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        throw new Error(data?.error || "خطا در آپلود عکس");
+      }
+      toast("عکس اضافه شد.", "success");
+      load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "خطا در آپلود عکس", "error");
+    } finally {
+      setUploading(false);
+      if (inputRef.current) inputRef.current.value = "";
+    }
+  }
+
+  async function remove(id: number) {
+    try {
+      const res = await fetch(`/api/photos/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error();
+      toast("عکس حذف شد.", "info");
+      setLightbox(null);
+      load();
+    } catch {
+      toast("خطا در حذف عکس", "error");
+    }
+  }
+
+  return (
+    <div className="mt-4 border-t border-border pt-3">
+      <div className="mb-2 flex items-center justify-between">
+        <h3 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          گالری تصاویر{photos && photos.length > 0 ? ` (${photos.length})` : ""}
+        </h3>
+        <label className="cursor-pointer rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent">
+          {uploading ? "در حال بارگذاری…" : "+ عکس"}
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            className="hidden"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) handleFile(f);
+            }}
+          />
+        </label>
+      </div>
+
+      {photos === null ? (
+        <p className="text-[length:var(--text-xs)] text-text-faint">در حال بارگذاری…</p>
+      ) : photos.length === 0 ? (
+        <p className="text-[length:var(--text-xs)] text-text-faint">هنوز عکسی ثبت نشده</p>
+      ) : (
+        <div className="grid grid-cols-4 gap-1.5">
+          {photos.map((p) => (
+            <button
+              key={p.id}
+              onClick={() => setLightbox(p)}
+              className="aspect-square overflow-hidden rounded-[var(--radius-sm)] border border-border transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
+            >
+              <picture>
+                <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />
+                <img
+                  src={`/api/photos/${p.id}/file?format=webp`}
+                  alt={p.caption ?? ""}
+                  loading="lazy"
+                  decoding="async"
+                  className="h-full w-full object-cover"
+                />
+              </picture>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {lightbox && (
+        <div
+          className="fixed inset-0 z-[1200] flex items-center justify-center bg-black/80 p-4"
+          onClick={() => setLightbox(null)}
+        >
+          <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
+            <picture>
+              <source srcSet={`/api/photos/${lightbox.id}/file?format=avif`} type="image/avif" />
+              <img
+                src={`/api/photos/${lightbox.id}/file?format=webp`}
+                alt={lightbox.caption ?? ""}
+                className="max-h-[85vh] max-w-full rounded-[var(--radius-md)]"
+              />
+            </picture>
+            <div className="mt-2 flex items-center justify-between">
+              <button
+                onClick={() => setLightbox(null)}
+                className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-1.5 text-[length:var(--text-sm)] text-text"
+              >
+                بستن
+              </button>
+              <button
+                onClick={() => remove(lightbox.id)}
+                className="rounded-[var(--radius-sm)] border border-crit px-3 py-1.5 text-[length:var(--text-sm)] text-crit"
+              >
+                حذف عکس
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

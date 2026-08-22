@@ -1,0 +1,9 @@
+Add this block to /etc/caddy/Caddyfile (alongside the existing ll.pouryarezaee.com
+block — do not remove that one, it serves the unrelated Light Lines site), then run:
+  systemctl reload caddy
+
+Replace YOUR-SUBDOMAIN with whatever you choose, e.g. map.pouryarezaee.com:
+
+YOUR-SUBDOMAIN.pouryarezaee.com {
+	reverse_proxy 127.0.0.1:3003
+}
