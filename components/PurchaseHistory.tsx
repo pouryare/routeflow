@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { faNum } from "@/lib/format";
 
 interface SaleOrder {
   order_no: string | null;
@@ -38,7 +39,7 @@ export default function PurchaseHistory({ businessName }: { businessName: string
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
       >
-        <span>تاریخچه خرید{orders && orders.length > 0 ? ` (${orders.length})` : ""}</span>
+        <span>تاریخچه خرید{orders && orders.length > 0 ? ` (${faNum(orders.length)})` : ""}</span>
         <span
           className="transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
@@ -60,7 +61,7 @@ export default function PurchaseHistory({ businessName }: { businessName: string
                     key={p.product_name}
                     className="rounded-full border border-border bg-surface px-2 py-0.5 text-[length:var(--text-xs)] text-text-muted"
                   >
-                    {p.product_name} <span className="text-text-faint">({p.line_count.toLocaleString("fa-IR")})</span>
+                    {p.product_name} <span className="text-text-faint">({faNum(p.line_count)})</span>
                   </span>
                 ))}
               </div>
@@ -74,7 +75,7 @@ export default function PurchaseHistory({ businessName }: { businessName: string
                     </span>{" "}
                     <span className="text-text-muted">{o.product_name ?? "—"}</span>
                   </div>
-                  <span className="shrink-0 font-mono tabular-nums text-text">{o.amount.toLocaleString("fa-IR")}</span>
+                  <span className="shrink-0 font-mono tabular-nums text-text">{faNum(o.amount)}</span>
                 </li>
               ))}
             </ul>

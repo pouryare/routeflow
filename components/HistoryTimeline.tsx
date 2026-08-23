@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { faNum } from "@/lib/format";
 
 interface ActivityEntry {
   id: number;
@@ -48,7 +49,7 @@ export default function HistoryTimeline({
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
       >
-        <span>تاریخچه{items && items.length > 0 ? ` (${items.length})` : ""}</span>
+        <span>تاریخچه{items && items.length > 0 ? ` (${faNum(items.length)})` : ""}</span>
         <span
           className="transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}

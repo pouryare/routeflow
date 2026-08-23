@@ -4,6 +4,7 @@ import { STATUS_LABEL, STATUS_COLOR, daysSinceLastPurchase } from "@/lib/types";
 import { readFacilities } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
 import CostToServePanel, { type CostToServeRow } from "@/components/CostToServePanel";
+import { faNum } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -195,7 +196,7 @@ export default function AnalyticsPage() {
 
         <section>
           <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            وضعیت مناطق ({districts.length})
+            وضعیت مناطق ({faNum(districts.length)})
           </h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
@@ -235,19 +236,19 @@ export default function AnalyticsPage() {
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
               <div className="font-mono text-[length:var(--text-md)] font-bold tabular-nums text-good">
-                {totalDebt.d0_7.toLocaleString("fa-IR")}
+                {faNum(totalDebt.d0_7)}
               </div>
               <div className="text-[length:var(--text-xs)] text-text-muted">زیر ۸ روز (تومان)</div>
             </div>
             <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
               <div className="font-mono text-[length:var(--text-md)] font-bold tabular-nums text-warn">
-                {totalDebt.d8_30.toLocaleString("fa-IR")}
+                {faNum(totalDebt.d8_30)}
               </div>
               <div className="text-[length:var(--text-xs)] text-text-muted">۸ تا ۳۰ روز (تومان)</div>
             </div>
             <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
               <div className="font-mono text-[length:var(--text-md)] font-bold tabular-nums text-crit">
-                {totalDebt.d30.toLocaleString("fa-IR")}
+                {faNum(totalDebt.d30)}
               </div>
               <div className="text-[length:var(--text-xs)] text-text-muted">بیش از ۳۰ روز (تومان)</div>
             </div>
@@ -304,8 +305,8 @@ export default function AnalyticsPage() {
                           ? "—"
                           : `${Math.floor(d.minutes / 60)} ساعت و ${d.minutes % 60} دقیقه`}
                       </td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{d.stops.toLocaleString("fa-IR")}</td>
-                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{d.done.toLocaleString("fa-IR")}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{faNum(d.stops)}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{faNum(d.done)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -340,7 +341,7 @@ export default function AnalyticsPage() {
                     />
                   </div>
                   <span className="w-20 shrink-0 text-left font-mono text-[length:var(--text-xs)] tabular-nums text-text-muted">
-                    {c.total.toLocaleString("fa-IR")}
+                    {faNum(c.total)}
                   </span>
                 </div>
               ))}

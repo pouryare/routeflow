@@ -9,6 +9,7 @@ import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import FullscreenControl from "./FullscreenControl";
 import { facilityIcon } from "./facilityIcon";
 import type { FacilityRow } from "@/lib/facilityTypes";
+import { faFixed, faNum } from "@/lib/format";
 
 export interface RouteStop {
   lat: number;
@@ -111,8 +112,8 @@ export default function PlannerRouteMap({
       {summary && (
         <div className="flex items-center justify-between border-t border-border bg-surface px-3 py-2 font-mono text-[length:var(--text-xs)] text-text-muted">
           <span>مسیر پیشنهادی روی جاده (OSRM)</span>
-          <span dir="ltr" className="text-text">
-            {summary.distanceKm.toFixed(1)} km · {summary.minutes} min
+          <span className="text-text">
+            {faFixed(summary.distanceKm, 1)} کیلومتر · {faNum(summary.minutes)} دقیقه
           </span>
         </div>
       )}

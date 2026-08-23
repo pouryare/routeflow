@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import type { ResolvedStop } from "@/lib/deliveryTypes";
 import { useToast } from "./ToastProvider";
+import { faNum } from "@/lib/format";
 
 export default function DeliveryImportPanel({
   selectedDate,
@@ -191,7 +192,7 @@ export default function DeliveryImportPanel({
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate text-[length:var(--text-sm)] text-text">{s.customerName}</span>
                     <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-accent">
-                      {s.totalAmount.toLocaleString("fa-IR")} ت
+                      {faNum(s.totalAmount)} ت
                     </span>
                   </div>
                   <p className="truncate text-[length:var(--text-xs)] text-text-faint">

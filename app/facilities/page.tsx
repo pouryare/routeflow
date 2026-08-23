@@ -7,6 +7,7 @@ import { FACILITY_KINDS, FACILITY_LABEL, FacilityKind, FacilityRow } from "@/lib
 import { facilityMarkerHtml } from "@/components/facilityArt";
 import { distanceKm } from "@/lib/geo";
 import { useToast } from "@/components/ToastProvider";
+import { faFixed } from "@/lib/format";
 
 // Leaflet touches window on import, so the picker can't be server-rendered.
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -215,7 +216,7 @@ export default function FacilitiesPage() {
                     </p>
                     {nearest && (
                       <p className="mt-1 font-mono text-[length:var(--text-xs)] text-text-faint">
-                        {nearest.km.toFixed(1)} کیلومتر تا {nearest.other.name} — خط مستقیم
+                        {faFixed(nearest.km, 1)} کیلومتر تا {nearest.other.name} — خط مستقیم
                       </p>
                     )}
                   </div>

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { faNum } from "@/lib/format";
 
 interface PhotoItem {
   id: number;
@@ -47,7 +48,7 @@ export default function GalleryPage() {
               Gallery
             </div>
             <h1 className="text-[length:var(--text-xl)] font-bold text-text">
-              گالری تصاویر{photos && photos.length > 0 ? ` (${photos.length})` : ""}
+              گالری تصاویر{photos && photos.length > 0 ? ` (${faNum(photos.length)})` : ""}
             </h1>
           </div>
           <Link

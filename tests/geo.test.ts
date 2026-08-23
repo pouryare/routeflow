@@ -66,13 +66,20 @@ describe("nearestNeighborOrder", () => {
 
 describe("formatDistanceKm", () => {
   it("switches to metres below one kilometre, where a decimal km reads as false precision", () => {
-    expect(formatDistanceKm(0.42)).toBe("420 متر");
-    expect(formatDistanceKm(0.999)).toBe("999 متر");
+    expect(formatDistanceKm(0.42)).toBe("۴۲۰ متر");
+    expect(formatDistanceKm(0.999)).toBe("۹۹۹ متر");
   });
 
-  it("uses one decimal kilometre above that", () => {
-    expect(formatDistanceKm(1)).toBe("1.0 کیلومتر");
-    expect(formatDistanceKm(28.14)).toBe("28.1 کیلومتر");
+  it("uses one decimal kilometre above that, with the Persian decimal separator", () => {
+    expect(formatDistanceKm(1)).toBe("۱٫۰ کیلومتر");
+    expect(formatDistanceKm(28.14)).toBe("۲۸٫۱ کیلومتر");
+  });
+
+  it("groups a four-digit metre reading like every other number in the app", () => {
+    // Not reachable through the km branch, but formatDistanceKm is called with raw
+    // haversine output and nothing stops a caller passing a sub-km figure that rounds
+    // to four digits of metres.
+    expect(formatDistanceKm(0.9999)).toBe("۱٬۰۰۰ متر");
   });
 })
 

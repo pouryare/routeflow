@@ -7,6 +7,7 @@ import { nearestNeighborOrder } from "@/lib/geo";
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import LeadImportPanel from "@/components/LeadImportPanel";
 import { useToast } from "@/components/ToastProvider";
+import { faNum } from "@/lib/format";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -231,7 +232,7 @@ export default function LeadsPage() {
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex items-center justify-between gap-2">
             <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-              لیست ذخیره‌شده ({locations.length})
+              لیست ذخیره‌شده ({faNum(locations.length)})
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -248,7 +249,7 @@ export default function LeadsPage() {
                   rel="noreferrer"
                   className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
                 >
-                  شروع مسیر با {orderedStops.length} توقف ↗
+                  شروع مسیر با {faNum(orderedStops.length)} توقف ↗
                 </a>
               )}
             </div>
@@ -285,7 +286,7 @@ export default function LeadsPage() {
                       activeDay === null ? "border-accent text-accent" : "border-border text-text-muted hover:border-accent hover:text-accent"
                     }`}
                   >
-                    همه ({allOrdered.length})
+                    همه ({faNum(allOrdered.length)})
                   </button>
                   {dayChunks.map((d, i) => (
                     <button
@@ -295,7 +296,7 @@ export default function LeadsPage() {
                         activeDay === i ? "border-accent text-accent" : "border-border text-text-muted hover:border-accent hover:text-accent"
                       }`}
                     >
-                      روز {i + 1} ({d.length})
+                      روز {faNum(i + 1)} ({faNum(d.length)})
                     </button>
                   ))}
                 </div>

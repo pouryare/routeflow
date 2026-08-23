@@ -48,6 +48,7 @@ import { useToast } from "./ToastProvider";
 import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } from "@/lib/geo";
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
+import { faNum } from "@/lib/format";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
@@ -163,7 +164,7 @@ function clusterIcon(cluster: { getChildCount: () => number }) {
   const size = count < 10 ? 30 : count < 50 ? 36 : 44;
   return divIcon({
     className: "",
-    html: `<div class="cluster-marker" style="width:${size}px;height:${size}px;">${count}</div>`,
+    html: `<div class="cluster-marker" style="width:${size}px;height:${size}px;">${faNum(count)}</div>`,
     iconSize: [size, size],
   });
 }
@@ -527,7 +528,7 @@ export default function CoverageMap({
         body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error();
-      toast(`${count} منطقه به‌روزرسانی شد.`, "success");
+      toast(`${faNum(count)} منطقه به‌روزرسانی شد.`, "success");
     } catch {
       toast("خطا در به‌روزرسانی گروهی مناطق", "error");
     } finally {
@@ -639,7 +640,7 @@ export default function CoverageMap({
         {sidebarOpen ? "✕" : "☰"}
         {!sidebarOpen && dueReminders.length > 0 && (
           <span className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-crit px-1 font-mono text-[10px] font-bold text-white">
-            {dueReminders.length}
+            {faNum(dueReminders.length)}
           </span>
         )}
       </button>
@@ -838,7 +839,7 @@ export default function CoverageMap({
                     className="shrink-0 font-mono text-[length:var(--text-xs)]"
                     style={{ color: days > 60 ? "var(--crit)" : "var(--warn)" }}
                   >
-                    {days.toLocaleString("fa-IR")} روز
+                    {faNum(days)} روز
                   </span>
                 </button>
               ))}
@@ -949,7 +950,7 @@ export default function CoverageMap({
                     <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
                       مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} ({formatDistanceKm(corridorEnds.km)}، خط مستقیم).
                       {corridorUncovered > 0
-                        ? ` ${corridorUncovered.toLocaleString("fa-IR")} منطقه نیازمند پوشش سر این راه است.`
+                        ? ` ${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
                         : " منطقه نیازمند پوششی سر این راه نیست."}
                     </p>
                   </>
@@ -1105,7 +1106,7 @@ export default function CoverageMap({
               </div>
               <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
                 {precisionMode === "auto"
-                  ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${PRECISION_AUTO_ZOOM.toLocaleString("fa-IR")} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
+                  ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${faNum(PRECISION_AUTO_ZOOM)} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
                   : precisionMode === "low"
                     ? "همیشه مرزهای ساده‌شده — سبک‌ترین حالت برای اینترنت ضعیف."
                     : "همیشه مرزهای کامل — دقیق‌تر ولی سنگین‌تر."}

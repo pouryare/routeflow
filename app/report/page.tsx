@@ -6,6 +6,7 @@ import { distanceKm } from "@/lib/geo";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import PrintButton from "@/components/PrintButton";
 import CsvExportButton from "@/components/CsvExportButton";
+import { faFixed, faNum } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -139,7 +140,7 @@ export default async function ReportPage({
 
         <section>
           <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            خلاصه وضعیت مناطق ({districts.length} منطقه)
+            خلاصه وضعیت مناطق ({faNum(districts.length)} منطقه)
           </h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
@@ -160,19 +161,19 @@ export default async function ReportPage({
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
               <div className="font-mono text-[length:var(--text-md)] font-bold tabular-nums text-good">
-                {totalDebt.d0_7.toLocaleString("fa-IR")}
+                {faNum(totalDebt.d0_7)}
               </div>
               <div className="text-[length:var(--text-xs)] text-text-muted">زیر ۸ روز (تومان)</div>
             </div>
             <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
               <div className="font-mono text-[length:var(--text-md)] font-bold tabular-nums text-warn">
-                {totalDebt.d8_30.toLocaleString("fa-IR")}
+                {faNum(totalDebt.d8_30)}
               </div>
               <div className="text-[length:var(--text-xs)] text-text-muted">۸ تا ۳۰ روز (تومان)</div>
             </div>
             <div className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
               <div className="font-mono text-[length:var(--text-md)] font-bold tabular-nums text-crit">
-                {totalDebt.d30.toLocaleString("fa-IR")}
+                {faNum(totalDebt.d30)}
               </div>
               <div className="text-[length:var(--text-xs)] text-text-muted">بیش از ۳۰ روز (تومان)</div>
             </div>
@@ -183,7 +184,7 @@ export default async function ReportPage({
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
               <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-                مناطق نیازمند توجه ({attention.length})
+                مناطق نیازمند توجه ({faNum(attention.length)})
               </h2>
               {origin && (
                 <div className="no-print flex items-center gap-1.5 text-[length:var(--text-xs)]">
@@ -229,7 +230,7 @@ export default async function ReportPage({
                       <td className="px-3 py-2 text-text-muted">{d.assigned_to ?? "—"}</td>
                       {origin && (
                         <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
-                          {km === null ? "—" : `${km.toFixed(1)} کیلومتر`}
+                          {km === null ? "—" : `${faFixed(km, 1)} کیلومتر`}
                         </td>
                       )}
                     </tr>
@@ -242,7 +243,7 @@ export default async function ReportPage({
 
         <section>
           <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            فهرست مشتریان ({customers.length})
+            فهرست مشتریان ({faNum(customers.length)})
           </h2>
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
             <table className="w-full border-collapse text-[length:var(--text-sm)]">
@@ -269,7 +270,7 @@ export default async function ReportPage({
                       className="px-3 py-2 text-right font-mono tabular-nums"
                       style={{ color: c.debt_30_plus > 0 ? STATUS_COLOR.not_allowed : "inherit" }}
                     >
-                      {c.debt_30_plus > 0 ? c.debt_30_plus.toLocaleString("fa-IR") : "—"}
+                      {c.debt_30_plus > 0 ? faNum(c.debt_30_plus) : "—"}
                     </td>
                   </tr>
                 ))}

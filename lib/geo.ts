@@ -1,3 +1,5 @@
+import { faFixed, faNum } from "./format";
+
 export interface LatLng {
   lat: number;
   lng: number;
@@ -57,8 +59,8 @@ export function nearestNeighborOrder<T extends LatLng>(stops: T[], start: LatLng
  *  magnitude, and a magnitude the reader mistakes for drive time is worse than no
  *  figure at all -- in Tehran the two differ by roughly a factor of two. */
 export function formatDistanceKm(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} متر`;
-  return `${km.toFixed(1)} کیلومتر`;
+  if (km < 1) return `${faNum(Math.round(km * 1000))} متر`;
+  return `${faFixed(km, 1)} کیلومتر`;
 }
 
 /** Total straight-line length of a day: origin -> each stop in order -> optionally back

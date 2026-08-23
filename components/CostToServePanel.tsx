@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from "react";
 import { toCsv } from "@/lib/csv";
 import { useToast } from "./ToastProvider";
+import { faFixed, faNum } from "@/lib/format";
 
 export interface CostToServeRow {
   business_name: string;
@@ -23,10 +24,6 @@ export interface MatchQuality {
 }
 
 const COST_PER_KM_KEY = "coverage_cost_per_km";
-
-function fmtToman(n: number): string {
-  return n.toLocaleString("fa-IR");
-}
 
 export default function CostToServePanel({
   rows,
@@ -99,7 +96,7 @@ export default function CostToServePanel({
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
-    toast(`CSV با ${analysed.length} ردیف دانلود شد.`, "success");
+    toast(`CSV با ${faNum(analysed.length)} ردیف دانلود شد.`, "success");
   }
 
   return (
@@ -124,7 +121,7 @@ export default function CostToServePanel({
         <div className="rounded-[var(--radius-md)] border border-border bg-surface p-4">
           <p className="text-[length:var(--text-sm)] leading-6 text-text-muted">
             هنوز فروشی ثبت نشده که بتوان آن را با مشتری‌ها تطبیق داد
-            {match.totalRows > 0 && ` (${fmtToman(match.totalRows)} ردیف فروش موجود است، اما هیچ‌کدام با نام مشتری‌های نقشه مطابقت ندارد)`}
+            {match.totalRows > 0 && ` (${faNum(match.totalRows)} ردیف فروش موجود است، اما هیچ‌کدام با نام مشتری‌های نقشه مطابقت ندارد)`}
             . پس از ثبت سفارش‌ها در برگه «فروش» و به‌روزرسانی از اکسل، این بخش نسبت فروش هر
             مشتری به فاصله‌اش را نشان می‌دهد.
           </p>
@@ -178,8 +175,8 @@ export default function CostToServePanel({
 
           {match.unmatchedRows > 0 && (
             <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-warn">
-              {fmtToman(match.unmatchedRows)} ردیف فروش با هیچ مشتری تطبیق نشد
-              {match.unmatchedRevenue > 0 && ` (${fmtToman(Math.round(match.unmatchedRevenue))} تومان)`} — نام آن‌ها در
+              {faNum(match.unmatchedRows)} ردیف فروش با هیچ مشتری تطبیق نشد
+              {match.unmatchedRevenue > 0 && ` (${faNum(Math.round(match.unmatchedRevenue))} تومان)`} — نام آن‌ها در
               برگه «فروش» با برگه «مخاطبین» یکسان نیست و در ارقام زیر دیده نمی‌شود.
             </p>
           )}
@@ -200,18 +197,18 @@ export default function CostToServePanel({
                   <tr key={r.customer_code} className="border-b border-border last:border-b-0">
                     <td className="px-3 py-2 text-text">{r.business_name}</td>
                     <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
-                      {r.km === null ? "—" : `${r.km.toFixed(1)} کیلومتر`}
+                      {r.km === null ? "—" : `${faFixed(r.km, 1)} کیلومتر`}
                     </td>
-                    <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{fmtToman(r.revenue)}</td>
+                    <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{faNum(r.revenue)}</td>
                     <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
-                      {r.ratio === null ? "—" : fmtToman(Math.round(r.ratio))}
+                      {r.ratio === null ? "—" : faNum(Math.round(r.ratio))}
                     </td>
                     {hasCost && (
                       <td
                         className="px-3 py-2 font-mono tabular-nums"
                         style={{ color: r.margin !== null && r.margin < 0 ? "var(--crit)" : "var(--text-muted)" }}
                       >
-                        {r.margin === null ? "—" : fmtToman(Math.round(r.margin))}
+                        {r.margin === null ? "—" : faNum(Math.round(r.margin))}
                       </td>
                     )}
                   </tr>

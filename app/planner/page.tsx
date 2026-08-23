@@ -16,6 +16,7 @@ import {
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import DeliveryImportPanel from "@/components/DeliveryImportPanel";
 import { useToast } from "@/components/ToastProvider";
+import { faFixed, faNum } from "@/lib/format";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
@@ -480,7 +481,7 @@ export default function PlannerPage() {
           })
         )
       );
-      toast(`ترتیب بهینه اعمال شد — ${optimisation.savedPct.toFixed(0)}٪ کوتاه‌تر`, "success");
+      toast(`ترتیب بهینه اعمال شد — ${faFixed(optimisation.savedPct, 0)}٪ کوتاه‌تر`, "success");
       await loadWeek();
     } catch {
       toast("خطا در اعمال ترتیب بهینه", "error");
@@ -577,7 +578,7 @@ export default function PlannerPage() {
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-              برنامه {dayLabel(new Date(selectedDate))} ({dayPlans.length})
+              برنامه {dayLabel(new Date(selectedDate))} ({faNum(dayPlans.length)})
             </h2>
             <div className="flex items-center gap-2">
               <button
@@ -614,7 +615,7 @@ export default function PlannerPage() {
                 {Math.floor(dayLog.minutes / 60)} ساعت و {dayLog.minutes % 60} دقیقه
                 {dayLog.stillOpen && " (در جریان)"}
               </span>
-              <span>{dayLog.doneCount.toLocaleString("fa-IR")} توقف انجام‌شده</span>
+              <span>{faNum(dayLog.doneCount)} توقف انجام‌شده</span>
               {dayLog.drivenKm !== null && <span>{formatDistanceKm(dayLog.drivenKm)} — خط مستقیم</span>}
             </div>
           )}
@@ -722,7 +723,7 @@ export default function PlannerPage() {
                 >
                   {optimising
                     ? "در حال اعمال…"
-                    : `مرتب‌سازی خودکار — ${optimisation.savedPct.toFixed(0)}٪ کوتاه‌تر (${formatDistanceKm(optimisation.savedKm)})`}
+                    : `مرتب‌سازی خودکار — ${faFixed(optimisation.savedPct, 0)}٪ کوتاه‌تر (${formatDistanceKm(optimisation.savedKm)})`}
                 </button>
               )}
             </div>

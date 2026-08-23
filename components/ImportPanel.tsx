@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "./ToastProvider";
 import CollapsibleSection from "./CollapsibleSection";
+import { faNum } from "@/lib/format";
 
 interface ImportPreview {
   newCustomers: number;
@@ -263,16 +264,16 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
             <div className="mt-1 flex justify-between border-t border-border pt-1">
               <dt className="text-text-muted">مجموع بدهی</dt>
               <dd className="font-mono tabular-nums text-text" dir="ltr">
-                {preview.totalDebtBefore.toLocaleString("fa-IR")} ←{" "}
+                {faNum(preview.totalDebtBefore)} ←{" "}
                 <span style={{ color: debtDelta > 0 ? "var(--crit)" : debtDelta < 0 ? "var(--good)" : undefined }}>
-                  {preview.totalDebtAfter.toLocaleString("fa-IR")}
+                  {faNum(preview.totalDebtAfter)}
                 </span>
               </dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-text-muted">ردیف‌های فروش</dt>
               <dd className="font-mono tabular-nums text-text" dir="ltr">
-                {preview.salesRowsBefore.toLocaleString("fa-IR")} ← {preview.salesRowsAfter.toLocaleString("fa-IR")}
+                {faNum(preview.salesRowsBefore)} ← {faNum(preview.salesRowsAfter)}
               </dd>
             </div>
           </dl>
@@ -290,7 +291,7 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
           {preview.duplicateBusinessNames.length > 0 && (
             <div className="mt-3 border-t border-border pt-2">
               <p className="mb-1 text-[length:var(--text-xs)] text-warn">
-                ⚠ {preview.duplicateBusinessNames.length} نام کسب‌وکار با کد دیگری هم موجودند (احتمال دو نسخه‌ای شدن یک مشتری):
+                ⚠ {faNum(preview.duplicateBusinessNames.length)} نام کسب‌وکار با کد دیگری هم موجودند (احتمال دو نسخه‌ای شدن یک مشتری):
               </p>
               <ul className="flex flex-col gap-0.5 text-[length:var(--text-xs)] text-text-muted">
                 {preview.duplicateBusinessNames.slice(0, 6).map((d, i) => (
@@ -307,7 +308,7 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
           {preview.missingFromImport.length > 0 && (
             <div className="mt-3 border-t border-border pt-2">
               <p className="text-[length:var(--text-xs)] text-text-muted">
-                {preview.missingFromImport.length} مشتری موجود در این فایل دیده نشدند (ممکن است از برگه حذف شده باشند).
+                {faNum(preview.missingFromImport.length)} مشتری موجود در این فایل دیده نشدند (ممکن است از برگه حذف شده باشند).
               </p>
             </div>
           )}

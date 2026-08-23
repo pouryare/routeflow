@@ -9,6 +9,7 @@ import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import PurchaseHistory from "./PurchaseHistory";
+import { faDateTime, faNum } from "@/lib/format";
 
 /** Kept in step with the .customer-panel-exit duration in globals.css. */
 const EXIT_MS = 180;
@@ -18,13 +19,6 @@ function debtTier(c: CustomerRow): { label: string; color: string; amount: numbe
   if (c.debt_8_30 > 0) return { label: "بدهی ۸ تا ۳۰ روز", color: STATUS_COLOR.needs_coverage, amount: c.debt_8_30 };
   if (c.debt_0_7 > 0) return { label: "بدهی زیر ۸ روز", color: STATUS_COLOR.visited, amount: c.debt_0_7 };
   return null;
-}
-
-function formatSyncedAt(iso: string): string {
-  const d = new Date(iso);
-  if (Number.isNaN(d.getTime())) return iso;
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function elevateClass(color: string): string {
@@ -182,7 +176,7 @@ export default function CustomerDetailPanel({
             {debt.label}
           </span>
           <span className="font-mono text-[length:var(--text-sm)] tabular-nums" style={{ color: debt.color }}>
-            {debt.amount.toLocaleString("fa-IR")} تومان
+            {faNum(debt.amount)} تومان
           </span>
         </div>
       )}
@@ -197,7 +191,7 @@ export default function CustomerDetailPanel({
         <p className="mt-4 text-[length:var(--text-xs)] text-text-faint">
           به‌روزرسانی:{" "}
           <span dir="ltr" className="inline-block font-mono">
-            {formatSyncedAt(customer.synced_at)}
+            {faDateTime(customer.synced_at)}
           </span>
         </p>
       )}

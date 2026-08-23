@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
+import { faNum } from "@/lib/format";
 
 interface ParsedItem {
   key: string;
@@ -51,8 +52,8 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
       const resolvedCount = parsed.filter((it) => it.resolution !== "unresolved").length;
       const duplicateCount = parsed.filter((it) => it.duplicateOf).length;
       toast(
-        `${parsed.length} مکان پیدا شد (${resolvedCount} با مختصات دقیق)` +
-          (duplicateCount ? ` — ${duplicateCount} مورد مشابه موارد موجود به نظر می‌رسد` : ""),
+        `${faNum(parsed.length)} مکان پیدا شد (${faNum(resolvedCount)} با مختصات دقیق)` +
+          (duplicateCount ? ` — ${faNum(duplicateCount)} مورد مشابه موارد موجود به نظر می‌رسد` : ""),
         resolvedCount === parsed.length && !duplicateCount ? "success" : "info"
       );
     } catch {
@@ -206,7 +207,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
             disabled={busy || selected.size === 0}
             className="mt-3 w-full rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
           >
-            {busy ? "در حال افزودن..." : `افزودن ${selected.size} مورد به لیست`}
+            {busy ? "در حال افزودن..." : `افزودن ${faNum(selected.size)} مورد به لیست`}
           </button>
         </div>
       )}

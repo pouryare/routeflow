@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { faNum } from "@/lib/format";
 
 // Progressive disclosure for the map sidebar. Originally written for the two customer
 // lists that can legitimately run to dozens of rows; now every sidebar section uses it,
@@ -71,7 +72,7 @@ export default function CollapsibleSection({
         >
           <span className="truncate">
             {title}
-            {count !== undefined && ` (${count})`}
+            {count !== undefined && ` (${faNum(count)})`}
           </span>
           <span
             className="shrink-0 text-text-faint transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"

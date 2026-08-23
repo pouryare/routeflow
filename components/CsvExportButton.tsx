@@ -2,6 +2,7 @@
 
 import { toCsv } from "@/lib/csv";
 import { useToast } from "./ToastProvider";
+import { faNum } from "@/lib/format";
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
@@ -73,7 +74,7 @@ export default function CsvExportButton({
       ]),
     ];
     download("مشتریان.csv", toCsv(rows));
-    toast(`CSV با ${customers.length} مشتری دانلود شد.`, "success");
+    toast(`CSV با ${faNum(customers.length)} مشتری دانلود شد.`, "success");
   }
 
   function exportDistricts() {
@@ -90,7 +91,7 @@ export default function CsvExportButton({
       ]),
     ];
     download("مناطق.csv", toCsv(rows));
-    toast(`CSV با ${districts.length} منطقه دانلود شد.`, "success");
+    toast(`CSV با ${faNum(districts.length)} منطقه دانلود شد.`, "success");
   }
 
   return (

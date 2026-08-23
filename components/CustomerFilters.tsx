@@ -1,6 +1,7 @@
 "use client";
 
 import CollapsibleSection from "./CollapsibleSection";
+import { faNum } from "@/lib/format";
 
 export default function CustomerFilters({
   salespeople,
@@ -30,7 +31,7 @@ export default function CustomerFilters({
     }`;
 
   return (
-    <CollapsibleSection title={`فیلتر مشتری‌ها (${filteredCount} از ${totalCount})`} storageKey="filters">
+    <CollapsibleSection title={`فیلتر مشتری‌ها (${faNum(filteredCount)} از ${faNum(totalCount)})`} storageKey="filters">
 
       {salespeople.length > 0 && (
         <div>
