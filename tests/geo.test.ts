@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { distanceKm, formatDistanceKm, nearestNeighborOrder } from "@/lib/geo";
+import { distanceKm, formatDistanceKm, nearestNeighborOrder, routeLengthKm, twoOptOrder } from "@/lib/geo";
 
 describe("distanceKm", () => {
   it("is ~0 for the same point", () => {
@@ -65,5 +65,80 @@ describe("formatDistanceKm", () => {
   it("uses one decimal kilometre above that", () => {
     expect(formatDistanceKm(1)).toBe("1.0 کیلومتر");
     expect(formatDistanceKm(28.14)).toBe("28.1 کیلومتر");
+  });
+})
+
+describe("routeLengthKm", () => {
+  const origin = { lat: 35.75, lng: 51.8 };
+  const a = { lat: 35.70, lng: 51.7 };
+  const c = { lat: 35.60, lng: 51.6 };
+
+  it("is 0 with no stops, whether or not it returns", () => {
+    expect(routeLengthKm(origin, [], false)).toBe(0);
+    expect(routeLengthKm(origin, [], true)).toBe(0);
+  });
+
+  it("measures origin -> stop for a single stop", () => {
+    expect(routeLengthKm(origin, [a], false)).toBeCloseTo(distanceKm(origin, a), 6);
+  });
+
+  it("sums every leg in order", () => {
+    const expected = distanceKm(origin, a) + distanceKm(a, c);
+    expect(routeLengthKm(origin, [a, c], false)).toBeCloseTo(expected, 6);
+  });
+
+  it("adds the leg home when the day returns to its origin", () => {
+    const oneWay = routeLengthKm(origin, [a, c], false);
+    expect(routeLengthKm(origin, [a, c], true)).toBeCloseTo(oneWay + distanceKm(c, origin), 6);
+  });
+})
+
+describe("twoOptOrder", () => {
+  const origin = { lat: 35.0, lng: 51.0 };
+  // Four points on a line. Visiting them out of order forces a crossing that a greedy
+  // pass can leave behind and 2-opt must remove.
+  const pts = [
+    { lat: 35.0, lng: 51.1, id: 1 },
+    { lat: 35.0, lng: 51.2, id: 2 },
+    { lat: 35.0, lng: 51.3, id: 3 },
+    { lat: 35.0, lng: 51.4, id: 4 },
+  ];
+
+  it("straightens a deliberately crossed route", () => {
+    const crossed = [pts[2], pts[0], pts[3], pts[1]];
+    const fixed = twoOptOrder(crossed, origin, false);
+    expect(fixed.map((p) => p.id)).toEqual([1, 2, 3, 4]);
+  });
+
+  // The whole point is that it can only help. If it ever returned a longer route the
+  // planner would be actively making days worse.
+  it("never returns a route longer than the one it was given", () => {
+    for (let trial = 0; trial < 200; trial++) {
+      const stops = Array.from({ length: 7 }, () => ({
+        lat: 35 + Math.random(),
+        lng: 51 + Math.random(),
+      }));
+      const before = routeLengthKm(origin, stops, false);
+      const after = routeLengthKm(origin, twoOptOrder(stops, origin, false), false);
+      expect(after).toBeLessThanOrEqual(before + 1e-9);
+    }
+  });
+
+  it("keeps every stop exactly once", () => {
+    const stops = pts.slice().reverse();
+    const out = twoOptOrder(stops, origin, false);
+    expect(out).toHaveLength(stops.length);
+    expect(new Set(out.map((p) => p.id)).size).toBe(stops.length);
+  });
+
+  it("optimises for the return leg when the day ends at its origin", () => {
+    const stops = [pts[0], pts[3], pts[1], pts[2]];
+    const out = twoOptOrder(stops, origin, true);
+    expect(routeLengthKm(origin, out, true)).toBeLessThanOrEqual(routeLengthKm(origin, stops, true) + 1e-9);
+  });
+
+  it("passes through fewer than two stops untouched", () => {
+    expect(twoOptOrder([], origin, false)).toEqual([]);
+    expect(twoOptOrder([pts[0]], origin, false)).toEqual([pts[0]]);
   });
 })

@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
-import { nearestNeighborOrder } from "@/lib/geo";
+import { distanceKm, formatDistanceKm, nearestNeighborOrder, routeLengthKm, twoOptOrder } from "@/lib/geo";
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import DeliveryImportPanel from "@/components/DeliveryImportPanel";
 import { useToast } from "@/components/ToastProvider";
@@ -36,6 +36,28 @@ function dateLabel(d: Date) {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 }
 
+// Where the day's distances are measured from. Until this existed the planner fell
+// back to *the first stop in the list* whenever there was no GPS fix -- which is the
+// normal case, since a day is planned the evening before, indoors. Every distance
+// figure and the whole stop order were computed from an arbitrary point.
+//
+// Precedence, highest first: a per-day override the user picked, a live GPS fix, the
+// site flagged as default origin, and only then the old first-stop behaviour (kept so
+// a database with no sites at all still renders).
+type OriginSource = "override" | "gps" | "facility" | "first_stop";
+
+interface Origin {
+  lat: number;
+  lng: number;
+  label: string;
+  source: OriginSource;
+}
+
+// Persisted like coverage_precision and coverage_geofence_on. Not every day ends back
+// at the depot, so this is a toggle rather than always-on -- but most do, hence the
+// default.
+const RETURN_KEY = "coverage_return_to_origin";
+
 const STATUS_META: Record<PlanRow["status"], { label: string; color: string }> = {
   planned: { label: "برنامه‌ریزی‌شده", color: "var(--warn)" },
   done: { label: "انجام شد", color: "var(--good)" },
@@ -62,6 +84,10 @@ export default function PlannerPage() {
   const [addQuery, setAddQuery] = useState("");
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
   const [facilities, setFacilities] = useState<FacilityRow[]>([]);
+  const [originOverrideId, setOriginOverrideId] = useState<number | null>(null);
+  const [originPickerOpen, setOriginPickerOpen] = useState(false);
+  const [returnToOrigin, setReturnToOrigin] = useState(true);
+  const [optimising, setOptimising] = useState(false);
   const toast = useToast();
   const [locating, setLocating] = useState(false);
 
@@ -87,6 +113,12 @@ export default function PlannerPage() {
     fetch("/api/customers")
       .then((r) => r.json())
       .then((d) => setCustomers(d.customers ?? []));
+  }, []);
+
+  useEffect(() => {
+    // Read once on mount rather than in useState's initialiser: localStorage is not
+    // available during the server render.
+    setReturnToOrigin(localStorage.getItem(RETURN_KEY) !== "0");
   }, []);
 
   useEffect(() => {
@@ -186,40 +218,134 @@ export default function PlannerPage() {
     );
   }
 
-  const orderedStops = useMemo(() => {
-    const stops = dayPlans.filter(
-      (p) => p.status === "planned" && p.entity_type === "customer" && p.lat && p.lng
-    ) as (PlanRow & { lat: number; lng: number })[];
-    if (stops.length === 0) return [];
-    return nearestNeighborOrder(stops, myPos);
-  }, [dayPlans, myPos]);
+  const origin = useMemo<Origin | null>(() => {
+    const override = originOverrideId === null ? null : facilities.find((f) => f.id === originOverrideId);
+    if (override) return { lat: override.lat, lng: override.lng, label: override.name, source: "override" };
+    if (myPos) return { lat: myPos.lat, lng: myPos.lng, label: "موقعیت من", source: "gps" };
+    const def = facilities.find((f) => f.is_default_origin === 1) ?? facilities.find((f) => f.kind === "home_base");
+    if (def) return { lat: def.lat, lng: def.lng, label: def.name, source: "facility" };
+    return null;
+  }, [originOverrideId, facilities, myPos]);
 
-  const routeUrl = useMemo(() => {
-    if (orderedStops.length === 0) return null;
-    const destStop = orderedStops[orderedStops.length - 1];
-    const routeStops = myPos ? orderedStops : orderedStops.slice(1);
-    const originParam = myPos ? `${myPos.lat},${myPos.lng}` : `${orderedStops[0].lat},${orderedStops[0].lng}`;
-    const waypointStops = routeStops.slice(0, -1);
+  const plannedStops = useMemo(
+    () =>
+      dayPlans.filter(
+        (p) => p.status === "planned" && p.entity_type === "customer" && p.lat && p.lng
+      ) as (PlanRow & { lat: number; lng: number })[],
+    [dayPlans]
+  );
+
+  // The list's own order is the source of truth -- the user can reorder it by hand, and
+  // silently re-sorting underneath them would throw that away. Nearest-neighbour only
+  // fills in when no origin exists at all, which is the pre-facilities behaviour.
+  const orderedStops = useMemo(() => {
+    if (plannedStops.length === 0) return [];
+    if (!origin) return nearestNeighborOrder(plannedStops, null);
+    return plannedStops;
+  }, [plannedStops, origin]);
+
+  const dayLengthKm = useMemo(
+    () => (origin && orderedStops.length ? routeLengthKm(origin, orderedStops, returnToOrigin) : null),
+    [origin, orderedStops, returnToOrigin]
+  );
+
+  // Feature 4: is it worth driving to the warehouse to load before starting? Runs the
+  // same day twice -- straight from the origin, and via the warehouse -- and states the
+  // difference. Both legs are straight-line, so the systematic understatement cancels
+  // and the delta is the honest part.
+  const warehouseDetour = useMemo(() => {
+    if (!origin || orderedStops.length === 0) return null;
+    const warehouse = facilities.find((f) => f.kind === "warehouse");
+    if (!warehouse) return null;
+    // Already starting there -- there is no detour to weigh up.
+    if (distanceKm(origin, warehouse) < 0.05) return null;
+
+    const direct = routeLengthKm(origin, orderedStops, returnToOrigin);
+    const viaWarehouse = routeLengthKm(origin, [warehouse, ...orderedStops], returnToOrigin);
+    return { name: warehouse.name, deltaKm: viaWarehouse - direct };
+  }, [origin, orderedStops, facilities, returnToOrigin]);
+
+  // Feature 6: what a 2-opt pass would save, computed for the button's label. Applying
+  // it is an explicit action -- see applyOptimalOrder.
+  const optimisation = useMemo(() => {
+    if (!origin || orderedStops.length < 3) return null;
+    const current = routeLengthKm(origin, orderedStops, returnToOrigin);
+    const improved = twoOptOrder(orderedStops, origin, returnToOrigin);
+    const improvedLength = routeLengthKm(origin, improved, returnToOrigin);
+    const savedPct = current > 0 ? ((current - improvedLength) / current) * 100 : 0;
+    return { improved, savedPct, savedKm: current - improvedLength };
+  }, [origin, orderedStops, returnToOrigin]);
+
+  // Google's directions share-link accepts at most this many intermediate waypoints and
+  // silently drops the rest -- which, in a van, means stops that vanish without a word.
+  // Surfaced as a warning rather than absorbed.
+  const GOOGLE_WAYPOINT_LIMIT = 10;
+
+  const googleRoute = useMemo(() => {
+    if (orderedStops.length === 0 || !origin) return null;
+
+    // Returning home makes the origin the destination and the last customer just
+    // another waypoint; otherwise the last customer is where the route ends.
+    const destination = returnToOrigin ? origin : orderedStops[orderedStops.length - 1];
+    const waypointStops = returnToOrigin ? orderedStops : orderedStops.slice(0, -1);
 
     const params = new URLSearchParams({
       api: "1",
-      origin: originParam,
-      destination: `${destStop.lat},${destStop.lng}`,
+      origin: `${origin.lat},${origin.lng}`,
+      destination: `${destination.lat},${destination.lng}`,
       travelmode: "driving",
     });
-    if (waypointStops.length) {
-      params.set("waypoints", waypointStops.map((s) => `${s.lat},${s.lng}`).join("|"));
+    const included = waypointStops.slice(0, GOOGLE_WAYPOINT_LIMIT);
+    if (included.length) {
+      params.set("waypoints", included.map((s) => `${s.lat},${s.lng}`).join("|"));
     }
-    return `https://www.google.com/maps/dir/?${params.toString()}`;
-  }, [orderedStops, myPos]);
+    return {
+      url: `https://www.google.com/maps/dir/?${params.toString()}`,
+      dropped: waypointStops.length - included.length,
+    };
+  }, [orderedStops, origin, returnToOrigin]);
 
   const routeStops = useMemo<RouteStop[]>(() => {
     if (orderedStops.length === 0) return [];
     const stops: RouteStop[] = [];
-    if (myPos) stops.push({ lat: myPos.lat, lng: myPos.lng, label: "موقعیت من" });
+    if (origin) stops.push({ lat: origin.lat, lng: origin.lng, label: origin.label });
     orderedStops.forEach((s) => stops.push({ lat: s.lat, lng: s.lng, label: s.label }));
+    if (origin && returnToOrigin) stops.push({ lat: origin.lat, lng: origin.lng, label: `${origin.label} (بازگشت)` });
     return stops;
-  }, [orderedStops, myPos]);
+  }, [orderedStops, origin, returnToOrigin]);
+
+  /** Feature 6. Deliberately an explicit action, not a live re-sort: the stop list has
+   *  manual up/down arrows, and silently reordering underneath the user would discard
+   *  the arrangement they just made by hand. */
+  async function applyOptimalOrder() {
+    if (!optimisation) return;
+    setOptimising(true);
+    try {
+      await Promise.all(
+        optimisation.improved.map((stop, index) =>
+          fetch(`/api/visit-plans/${stop.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sort_order: index }),
+          })
+        )
+      );
+      toast(`ترتیب بهینه اعمال شد — ${optimisation.savedPct.toFixed(0)}٪ کوتاه‌تر`, "success");
+      await loadWeek();
+    } catch {
+      toast("خطا در اعمال ترتیب بهینه", "error");
+    } finally {
+      setOptimising(false);
+    }
+  }
+
+  function toggleReturnToOrigin() {
+    setReturnToOrigin((v) => {
+      const next = !v;
+      localStorage.setItem(RETURN_KEY, next ? "1" : "0");
+      return next;
+    });
+  }
 
   return (
     <div dir="rtl" className="min-h-screen bg-bg p-4 sm:p-6">
@@ -311,9 +437,9 @@ export default function PlannerPage() {
               >
                 {locating ? "در حال یافتن…" : myPos ? "موقعیت من ✓" : "موقعیت من"}
               </button>
-              {routeUrl && (
+              {googleRoute && (
                 <a
-                  href={routeUrl}
+                  href={googleRoute.url}
                   target="_blank"
                   rel="noreferrer"
                   className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
@@ -323,6 +449,115 @@ export default function PlannerPage() {
               )}
             </div>
           </div>
+
+          {/* Feature 1: the origin is always applied, but it must be visible and
+              overridable -- a number computed from a point the user cannot see is a
+              number they cannot check. */}
+          {dayPlans.length > 0 && (
+            <div className="mb-3 flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
+                  مبدأ
+                </span>
+                <button
+                  onClick={() => setOriginPickerOpen((v) => !v)}
+                  className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+                >
+                  {origin ? origin.label : "تعیین نشده"}
+                  {origin?.source === "gps" && " (GPS)"}
+                  {origin?.source === "override" && " (برای امروز)"}
+                  {" ▾"}
+                </button>
+
+                <label className="mr-auto flex cursor-pointer items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
+                  <input
+                    type="checkbox"
+                    checked={returnToOrigin}
+                    onChange={toggleReturnToOrigin}
+                    className="accent-[color:var(--accent)]"
+                  />
+                  بازگشت به مبدأ
+                </label>
+              </div>
+
+              {originPickerOpen && (
+                <div className="flex flex-wrap gap-1.5 border-t border-border pt-2">
+                  {facilities.map((f) => (
+                    <button
+                      key={f.id}
+                      onClick={() => {
+                        setOriginOverrideId(f.id);
+                        setMyPos(null);
+                        setOriginPickerOpen(false);
+                      }}
+                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
+                    >
+                      {f.name}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => {
+                      setOriginOverrideId(null);
+                      setOriginPickerOpen(false);
+                      locate();
+                    }}
+                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
+                  >
+                    موقعیت فعلی من (GPS)
+                  </button>
+                  {originOverrideId !== null && (
+                    <button
+                      onClick={() => {
+                        setOriginOverrideId(null);
+                        setOriginPickerOpen(false);
+                      }}
+                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-crit hover:text-crit"
+                    >
+                      بازگشت به مبدأ پیش‌فرض
+                    </button>
+                  )}
+                </div>
+              )}
+
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[length:var(--text-xs)] text-text-faint">
+                {dayLengthKm !== null && (
+                  <span>
+                    {formatDistanceKm(dayLengthKm)} کل مسیر — خط مستقیم
+                  </span>
+                )}
+                {/* Feature 4 */}
+                {warehouseDetour && (
+                  <span style={{ color: warehouseDetour.deltaKm > 0 ? "var(--warn)" : "var(--good)" }}>
+                    بارگیری از {warehouseDetour.name}:{" "}
+                    {warehouseDetour.deltaKm > 0 ? "+" : "−"}
+                    {formatDistanceKm(Math.abs(warehouseDetour.deltaKm))}
+                    {warehouseDetour.deltaKm <= 0 && " (سر راه است)"}
+                  </span>
+                )}
+              </div>
+
+              {googleRoute && googleRoute.dropped > 0 && (
+                <p className="text-[length:var(--text-xs)] leading-5 text-warn">
+                  گوگل‌مپ حداکثر ۱۰ ایستگاه میانی می‌پذیرد؛ {googleRoute.dropped} ایستگاه در لینک مسیر
+                  نمی‌آید. مسیر را در دو بخش باز کنید.
+                </p>
+              )}
+
+              {/* Feature 6: an explicit action, never a live re-sort -- the list below
+                  has manual reorder arrows and they must not be overwritten silently. */}
+              {optimisation && optimisation.savedPct >= 1 && (
+                <button
+                  onClick={applyOptimalOrder}
+                  disabled={optimising}
+                  className="w-fit rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-[#04191c] disabled:opacity-50"
+                >
+                  {optimising
+                    ? "در حال اعمال…"
+                    : `مرتب‌سازی خودکار — ${optimisation.savedPct.toFixed(0)}٪ کوتاه‌تر (${formatDistanceKm(optimisation.savedKm)})`}
+                </button>
+              )}
+            </div>
+          )}
 
           {loading ? (
             <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>
