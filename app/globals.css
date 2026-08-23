@@ -457,6 +457,44 @@ a:focus-visible {
   color: var(--text-muted) !important;
 }
 
+/* ---- Skeletons: the shape of the content that is coming, so the panel does not
+   reflow under the reader's eyes when it lands. The sweep is what separates "loading"
+   from "empty" -- a static grey block reads as a broken image. ---- */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  background: var(--surface-raised);
+  border-radius: var(--radius-sm);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(231, 238, 245, 0.06) 50%,
+    transparent 100%
+  );
+  animation: skeleton-sweep 1400ms var(--ease-out) infinite;
+}
+
+@keyframes skeleton-sweep {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* The global reduced-motion block above already stops this, but it collapses the
+   animation to 0.01ms rather than removing it -- which would freeze the sweep mid-pass
+   at whatever position it happened to hold. Held at rest instead. */
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after {
+    display: none;
+  }
+}
+
 /* ---- Print media: the one deliberate exception to the single-dark-world commitment.
    Paper is a different rendering context -- a dark page wastes ink and prints poorly. ---- */
 @media print {

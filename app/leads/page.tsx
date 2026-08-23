@@ -8,6 +8,7 @@ import type { RouteStop } from "@/components/PlannerRouteMap";
 import LeadImportPanel from "@/components/LeadImportPanel";
 import { useToast } from "@/components/ToastProvider";
 import { faNum } from "@/lib/format";
+import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -305,7 +306,10 @@ export default function LeadsPage() {
           )}
 
           {loading ? (
-            <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>
+            <>
+              <SkeletonRows rows={4} />
+              <SkeletonLabel>در حال بارگذاری مکان‌ها…</SkeletonLabel>
+            </>
           ) : locations.length === 0 ? (
             <p className="text-[length:var(--text-sm)] text-text-faint">لیست خالی است. از بخش بالا مکان اضافه کنید.</p>
           ) : (

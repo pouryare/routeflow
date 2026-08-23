@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { faNum } from "@/lib/format";
+import { SkeletonLabel, SkeletonRows } from "./Skeleton";
 
 interface SaleOrder {
   order_no: string | null;
@@ -49,7 +50,10 @@ export default function PurchaseHistory({ businessName }: { businessName: string
       </button>
       {open &&
         (orders === null ? (
-          <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">در حال بارگذاری…</p>
+          <>
+            <SkeletonRows rows={2} className="mt-2" />
+            <SkeletonLabel>در حال بارگذاری تاریخچه خرید…</SkeletonLabel>
+          </>
         ) : orders.length === 0 ? (
           <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">هنوز خریدی ثبت نشده</p>
         ) : (

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
+import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
 
 interface PhotoItem {
   id: number;
@@ -92,7 +93,10 @@ export default function PhotoGallery({
       </div>
 
       {photos === null ? (
-        <p className="text-[length:var(--text-xs)] text-text-faint">در حال بارگذاری…</p>
+        <>
+          <SkeletonThumbs count={3} />
+          <SkeletonLabel>در حال بارگذاری تصاویر…</SkeletonLabel>
+        </>
       ) : photos.length === 0 ? (
         <p className="text-[length:var(--text-xs)] text-text-faint">هنوز عکسی ثبت نشده</p>
       ) : (

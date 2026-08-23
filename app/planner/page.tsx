@@ -17,6 +17,7 @@ import type { RouteStop } from "@/components/PlannerRouteMap";
 import DeliveryImportPanel from "@/components/DeliveryImportPanel";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
+import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
@@ -763,7 +764,10 @@ export default function PlannerPage() {
           )}
 
           {loading ? (
-            <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>
+            <>
+              <SkeletonRows rows={3} />
+              <SkeletonLabel>در حال بارگذاری برنامه…</SkeletonLabel>
+            </>
           ) : dayPlans.length === 0 ? (
             <p className="text-[length:var(--text-sm)] text-text-faint">برای این روز هنوز چیزی برنامه‌ریزی نشده.</p>
           ) : (

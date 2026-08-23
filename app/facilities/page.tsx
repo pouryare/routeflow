@@ -8,6 +8,7 @@ import { facilityMarkerHtml } from "@/components/facilityArt";
 import { distanceKm } from "@/lib/geo";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed } from "@/lib/format";
+import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 
 // Leaflet touches window on import, so the picker can't be server-rendered.
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -180,7 +181,12 @@ export default function FacilitiesPage() {
         </p>
 
         <section className="flex flex-col gap-2">
-          {loading && <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>}
+          {loading && (
+            <>
+              <SkeletonRows rows={2} />
+              <SkeletonLabel>در حال بارگذاری مکان‌ها…</SkeletonLabel>
+            </>
+          )}
 
           {facilities.map((f) => {
             const isBusy = busyId === f.id;

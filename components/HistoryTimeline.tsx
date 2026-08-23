@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { faNum } from "@/lib/format";
+import { faDateTime, faNum } from "@/lib/format";
+import { SkeletonLabel, SkeletonLine } from "./Skeleton";
 
 interface ActivityEntry {
   id: number;
@@ -13,12 +14,6 @@ interface ActivityEntry {
   note: string | null;
   changed_by: string | null;
   created_at: string;
-}
-
-function formatDate(iso: string) {
-  const d = new Date(iso);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}/${pad(d.getMonth() + 1)}/${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function describe(e: ActivityEntry): string {
@@ -59,15 +54,22 @@ export default function HistoryTimeline({
       </button>
       {open &&
         (items === null ? (
-          <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">در حال بارگذاری…</p>
+          <>
+            <div className="mt-2 flex flex-col gap-2" aria-hidden="true">
+              <SkeletonLine w="w-5/6" />
+              <SkeletonLine w="w-2/3" />
+              <SkeletonLine w="w-3/4" />
+            </div>
+            <SkeletonLabel>در حال بارگذاری تاریخچه…</SkeletonLabel>
+          </>
         ) : items.length === 0 ? (
           <p className="mt-2 text-[length:var(--text-xs)] text-text-faint">هنوز رویدادی ثبت نشده</p>
         ) : (
           <ul className="mt-2 flex flex-col gap-2">
             {items.map((e) => (
               <li key={e.id} className="text-[length:var(--text-xs)] leading-5 text-text-muted">
-                <span dir="ltr" className="inline-block font-mono text-text-faint">
-                  {formatDate(e.created_at)}
+                <span className="inline-block font-mono text-text-faint">
+                  {faDateTime(e.created_at)}
                 </span>{" "}
                 — {describe(e)}
                 {e.changed_by && <span className="text-text-faint"> ({e.changed_by})</span>}

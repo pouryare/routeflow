@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { faNum } from "@/lib/format";
+import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
 
 interface PhotoItem {
   id: number;
@@ -60,7 +61,10 @@ export default function GalleryPage() {
         </div>
 
         {photos === null ? (
-          <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>
+          <>
+            <SkeletonThumbs count={9} className="sm:grid-cols-4" />
+            <SkeletonLabel>در حال بارگذاری تصاویر…</SkeletonLabel>
+          </>
         ) : photos.length === 0 ? (
           <p className="text-[length:var(--text-sm)] text-text-faint">
             هنوز عکسی ثبت نشده. از پنل مشتری یا منطقه روی نقشه می‌توانید عکس اضافه کنید.
