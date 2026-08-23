@@ -764,6 +764,16 @@ export default function CoverageMap({
     return districtProps.filter((d) => corridorDistrictIds.has(d.id) && d.coverage_status === "needs_coverage").length;
   }, [corridorDistrictIds, districtProps]);
 
+  /** A customer's marker colour under the active mode. Extracted because the selected
+   *  customer is rendered separately from the rest and both must agree. */
+  function markerColor(c: CustomerRow): string {
+    if (colorMode === "debt") return debtColor(c);
+    if (colorMode === "salesperson") return salespersonColor(c.salesperson, salesIndexRef.current);
+    if (colorMode === "inactivity") return inactivityColor(c);
+    if (colorMode === "distance") return distanceColor(c, colourOrigin);
+    return customerStatusColor(c.status);
+  }
+
   function flyToFacility(f: FacilityRow) {
     mapRef.current?.flyTo([f.lat, f.lng], 15, { duration: 1 });
   }
@@ -1366,36 +1376,53 @@ export default function CoverageMap({
 
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} />}
 
+          {/* Clustering stays switched on at every zoom, which is what makes coincident
+              customers reachable at all.
+
+              Nearly half the geocoded customers share their exact coordinates with
+              another one -- three catering businesses on a single point, and so on --
+              because they were geocoded to an area rather than to a door. Markers like
+              that never separate at any zoom, so with clustering disabled above 16 the
+              second and third of each stack were simply unclickable: one pin, drawn
+              three times. A cluster that cannot be split by zooming spiderfies instead,
+              fanning its members out on legs, and that is the only way to reach them.
+
+              The radius tightens at close range so this does not come at the cost of
+              bundling genuinely distinct shops: 60px while reading the city, ~15px once
+              you are working a street. */}
           <MarkerClusterGroup
             chunkedLoading
             showCoverageOnHover={false}
-            maxClusterRadius={60}
-            disableClusteringAtZoom={16}
+            maxClusterRadius={(zoom: number) => (zoom >= 16 ? 15 : 60)}
+            spiderfyOnMaxZoom
+            spiderLegPolylineOptions={{ weight: 1.5, color: "#546271", opacity: 0.9 }}
             iconCreateFunction={clusterIcon as any}
           >
             {filteredCustomers
-              .filter((c) => c.lat && c.lng)
-              .map((c) => {
-                const color =
-                  colorMode === "debt"
-                    ? debtColor(c)
-                    : colorMode === "salesperson"
-                      ? salespersonColor(c.salesperson, salesIndexRef.current)
-                      : colorMode === "inactivity"
-                        ? inactivityColor(c)
-                        : colorMode === "distance"
-                          ? distanceColor(c, colourOrigin)
-                          : customerStatusColor(c.status);
-                return (
-                  <Marker
-                    key={c.id}
-                    position={[c.lat as number, c.lng as number]}
-                    icon={customerIcon(color, selectedCustomer?.id === c.id)}
-                    eventHandlers={{ click: () => setSelectedCustomer(c) }}
-                  />
-                );
-              })}
+              // The selected customer is drawn outside this group, below.
+              .filter((c) => c.lat && c.lng && c.id !== selectedCustomer?.id)
+              .map((c) => (
+                <Marker
+                  key={c.id}
+                  position={[c.lat as number, c.lng as number]}
+                  icon={customerIcon(markerColor(c), false)}
+                  eventHandlers={{ click: () => setSelectedCustomer(c) }}
+                />
+              ))}
           </MarkerClusterGroup>
+
+          {/* Outside the cluster group on purpose: the customer whose panel is open is
+              the one thing on this map that must never be swallowed into a bubble. That
+              is exactly what would happen to a customer opened from the sidebar or from a
+              ?c= link while the map sits at a zoom where their neighbours cluster. */}
+          {selectedCustomer?.lat && selectedCustomer?.lng && (
+            <Marker
+              position={[selectedCustomer.lat, selectedCustomer.lng]}
+              icon={customerIcon(markerColor(selectedCustomer), true)}
+              zIndexOffset={900}
+              eventHandlers={{ click: () => setSelectedCustomer(selectedCustomer) }}
+            />
+          )}
 
           {/* Outside the cluster group and lifted above it: these two are landmarks the
               rest of the map is read against, so they must never be swallowed into a
