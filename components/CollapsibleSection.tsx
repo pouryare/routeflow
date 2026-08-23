@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 // Progressive disclosure for the map sidebar. Originally written for the two customer
 // lists that can legitimately run to dozens of rows; now every sidebar section uses it,
@@ -31,20 +31,30 @@ export default function CollapsibleSection({
   right?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  const [open, setOpen] = useState(defaultOpen);
-
-  // Read after mount, not in useState's initialiser: localStorage does not exist during
-  // the server render, and seeding from it there would hydrate mismatched markup.
-  useEffect(() => {
-    if (!storageKey) return;
-    const stored = localStorage.getItem(`coverage_panel_${storageKey}`);
-    if (stored === "1" || stored === "0") setOpen(stored === "1");
-  }, [storageKey]);
+  // Read in the initialiser rather than an effect. The usual reason to defer this is
+  // that localStorage doesn't exist during a server render -- but the sidebar lives
+  // inside CoverageMap, which is imported with `ssr: false`, so there is no server pass
+  // to mismatch. Deferring would render every section closed for one frame and then pop
+  // the remembered ones open, which is a visible flicker on every load.
+  const [open, setOpen] = useState(() => {
+    if (!storageKey || typeof window === "undefined") return defaultOpen;
+    try {
+      const stored = localStorage.getItem(`coverage_panel_${storageKey}`);
+      return stored === "1" ? true : stored === "0" ? false : defaultOpen;
+    } catch {
+      // Private mode and blocked site data both throw on access.
+      return defaultOpen;
+    }
+  });
 
   function toggle() {
     setOpen((v) => {
       const next = !v;
-      if (storageKey) localStorage.setItem(`coverage_panel_${storageKey}`, next ? "1" : "0");
+      try {
+        if (storageKey) localStorage.setItem(`coverage_panel_${storageKey}`, next ? "1" : "0");
+      } catch {
+        // Storage unavailable -- the fold still works, it just won't be remembered.
+      }
       return next;
     });
   }

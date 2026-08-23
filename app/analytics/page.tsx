@@ -91,6 +91,11 @@ export default function AnalyticsPage() {
   // Feature 12: the last fortnight of days, reconstructed from depot arrivals logged by
   // the geofence. Days with no arrivals are absent rather than shown as zero-hour days:
   // the log is the only evidence there is, and a day nobody recorded is unknown, not empty.
+  // Reuses the page's single clock read (line 36) rather than taking its own: every
+  // figure on this page should agree on what "now" means, and two reads could land
+  // either side of a day boundary and disagree about which days exist.
+  const logWindowStart = new Date(now.getTime() - 21 * 86400000).toISOString();
+
   const dayLogRows = db
     .prepare(
       `SELECT substr(created_at, 1, 10) AS day,
@@ -103,7 +108,7 @@ export default function AnalyticsPage() {
        ORDER BY day DESC
        LIMIT 14`
     )
-    .all(new Date(Date.now() - 21 * 86400000).toISOString()) as {
+    .all(logWindowStart) as {
     day: string;
     first_seen: string;
     last_seen: string;
@@ -118,7 +123,7 @@ export default function AnalyticsPage() {
            WHERE status = 'done' AND planned_date >= ?
            GROUP BY planned_date`
         )
-        .all(new Date(Date.now() - 21 * 86400000).toISOString().slice(0, 10)) as {
+        .all(logWindowStart.slice(0, 10)) as {
         planned_date: string;
         c: number;
       }[]
