@@ -1,26 +1,15 @@
 // Our own fixed sites -- the depots stock is dispatched from -- as opposed to customers
 // (imported from the workbook), leads (pasted links) or districts (coverage polygons).
-// Deliberately a constant rather than a DB table: there are two of them, they don't
-// change from one week to the next, and a table would drag a migration, an API route,
-// a permissions story and an editor UI behind it for data that a code edit expresses
-// perfectly well. If sites ever become something the user adds and moves themselves,
-// promote this shape to saved_locations-style storage -- FacilityKind is already the
-// discriminator that move would need.
-export type FacilityKind = "warehouse" | "home_base";
+//
+// These began life as a hard-coded constant, which was right while there were exactly
+// two of them and only a developer could change them. They are now rows the user owns:
+// they can add a third site, rename one, reposition a pin, or delete one, and every
+// distance the app computes follows. The seed that put the original two in the table
+// lives in lib/db.ts alongside the schema.
+import type { DatabaseSync } from "node:sqlite";
+import { FacilityKind, FacilityRow, getDb } from "./db";
 
-export interface Facility {
-  id: string;
-  kind: FacilityKind;
-  /** Persian display name -- what the popup titles and the legend show. */
-  name: string;
-  /** Address as Google resolved it, or null when the pin was a bare dropped point. */
-  address: string | null;
-  lat: number;
-  lng: number;
-  /** The original share link, kept so the pin can always be re-verified at its source. */
-  mapsUrl: string;
-  note: string | null;
-}
+export type { FacilityKind, FacilityRow };
 
 // Facilities carry no coverage/debt/activity state, so none of MASTER.md's semantic
 // status colors (--good/--warn/--crit/--neutral) may describe them, and --accent is
@@ -35,38 +24,56 @@ export const FACILITY_COLOR = "#D6E6F5";
 export const FACILITY_LABEL: Record<FacilityKind, string> = {
   warehouse: "انبار — منبع تأمین موجودی",
   home_base: "مبدأ توزیع — شروع مسیر روزانه",
+  other: "مکان دیگر",
 };
 
-export const FACILITIES: Facility[] = [
-  {
-    id: "warehouse-bakeh",
-    kind: "warehouse",
-    name: "انبار مرکزی",
-    address: "استان تهران، بکه، بلوار رسول اکرم، املاک طاها",
-    lat: 35.502669,
-    lng: 51.7546255,
-    mapsUrl: "https://maps.app.goo.gl/XYd819ZQiGJzHNKM9",
-    note: "انبار اصلی — تأمین موجودی",
-  },
-  {
-    id: "home-pardis",
-    kind: "home_base",
-    name: "خانه (انبار کوچک)",
-    address: "تهران، پردیس، فاز ۲، خیابان فهمیده",
-    lat: 35.753263,
-    lng: 51.798381,
-    mapsUrl: "https://maps.app.goo.gl/ivx6yY69Zb9S9sKu6",
-    note: "شروع مسیر توزیع روزانه از اینجاست",
-  },
-];
+// Home base first: it is the origin every delivery run starts from, so it leads the
+// sidebar list, the editor and the map legend. Warehouses next, everything else last.
+const KIND_ORDER: Record<FacilityKind, number> = { home_base: 0, warehouse: 1, other: 2 };
 
-/** The site every delivery run starts from. Non-null by construction -- the array above
- *  always carries exactly one home_base -- but typed nullable so a future edit that
- *  removes it fails at the call sites instead of at runtime. */
-export function homeBase(): Facility | null {
-  return FACILITIES.find((f) => f.kind === "home_base") ?? null;
+/** node:sqlite hands back rows with a null prototype. JSON.stringify doesn't care, so
+ *  the API route never had to, but React refuses to pass one across the server/client
+ *  boundary -- and the server-rendered map page passes this list straight into a Client
+ *  Component. Rebuilding each row as an object literal is also the explicit column
+ *  list, so the page and the API can't drift apart in what they send. Same reasoning as
+ *  readCustomers in lib/customers.ts. */
+export function readFacilities(db: DatabaseSync = getDb()): FacilityRow[] {
+  const rows = db.prepare("SELECT * FROM facilities").all() as unknown as FacilityRow[];
+  return rows
+    .map((r) => ({
+      id: r.id,
+      slug: r.slug,
+      kind: r.kind,
+      name: r.name,
+      address: r.address,
+      lat: r.lat,
+      lng: r.lng,
+      maps_url: r.maps_url,
+      notes: r.notes,
+      is_default_origin: r.is_default_origin,
+      owner_username: r.owner_username,
+      created_at: r.created_at,
+      updated_at: r.updated_at,
+    }))
+    .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.name.localeCompare(b.name, "fa"));
 }
 
-export function mainWarehouse(): Facility | null {
-  return FACILITIES.find((f) => f.kind === "warehouse") ?? null;
+export function homeBase(db: DatabaseSync = getDb()): FacilityRow | null {
+  return readFacilities(db).find((f) => f.kind === "home_base") ?? null;
+}
+
+export function mainWarehouse(db: DatabaseSync = getDb()): FacilityRow | null {
+  return readFacilities(db).find((f) => f.kind === "warehouse") ?? null;
+}
+
+/** The point every distance in the app is measured from unless something more specific
+ *  is in play (a GPS fix, or a per-day override on the planner).
+ *
+ *  Falls back through the home base to the first site rather than returning null when
+ *  no row carries the flag: a database in that state -- a bad restore, a future bug --
+ *  should still render distances from a sensible point instead of stranding every
+ *  reading in the app. */
+export function defaultOrigin(db: DatabaseSync = getDb()): FacilityRow | null {
+  const all = readFacilities(db);
+  return all.find((f) => f.is_default_origin === 1) ?? all.find((f) => f.kind === "home_base") ?? all[0] ?? null;
 }
