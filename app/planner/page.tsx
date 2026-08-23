@@ -5,7 +5,14 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
-import { distanceKm, formatDistanceKm, nearestNeighborOrder, routeLengthKm, twoOptOrder } from "@/lib/geo";
+import {
+  distanceKm,
+  distanceToSegmentKm,
+  formatDistanceKm,
+  nearestNeighborOrder,
+  routeLengthKm,
+  twoOptOrder,
+} from "@/lib/geo";
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import DeliveryImportPanel from "@/components/DeliveryImportPanel";
 import { useToast } from "@/components/ToastProvider";
@@ -16,7 +23,7 @@ const WEEKDAYS = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارش
 
 interface PlanRow {
   id: number;
-  entity_type: "district" | "customer";
+  entity_type: "district" | "customer" | "facility";
   entity_id: number;
   planned_date: string;
   status: "planned" | "done" | "skipped";
@@ -63,6 +70,31 @@ const STATUS_META: Record<PlanRow["status"], { label: string; color: string }> =
   done: { label: "انجام شد", color: "var(--good)" },
   skipped: { label: "رد شد", color: "var(--neutral)" },
 };
+
+function RestockHint({
+  hint,
+  busy,
+  onAdd,
+}: {
+  hint: { warehouse: { name: string }; km: number };
+  busy: boolean;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-border-strong px-3 py-2">
+      <span className="text-[length:var(--text-xs)] text-text-muted">
+        {hint.warehouse.name} {formatDistanceKm(hint.km)} از این مسیر فاصله دارد — خط مستقیم
+      </span>
+      <button
+        onClick={onAdd}
+        disabled={busy}
+        className="mr-auto rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-[#04191c] disabled:opacity-50"
+      >
+        {busy ? "در حال افزودن…" : "افزودن توقف"}
+      </button>
+    </div>
+  );
+}
 
 export default function PlannerPage() {
   const days = useMemo(() => {
@@ -230,7 +262,7 @@ export default function PlannerPage() {
   const plannedStops = useMemo(
     () =>
       dayPlans.filter(
-        (p) => p.status === "planned" && p.entity_type === "customer" && p.lat && p.lng
+        (p) => p.status === "planned" && p.entity_type !== "district" && p.lat && p.lng
       ) as (PlanRow & { lat: number; lng: number })[],
     [dayPlans]
   );
@@ -259,6 +291,9 @@ export default function PlannerPage() {
     if (!warehouse) return null;
     // Already starting there -- there is no detour to weigh up.
     if (distanceKm(origin, warehouse) < 0.05) return null;
+    // Already a stop on the day: the decision has been made, and re-offering it as
+    // "+0 metres" is noise, not advice.
+    if (orderedStops.some((s) => s.entity_type === "facility" && s.entity_id === warehouse.id)) return null;
 
     const direct = routeLengthKm(origin, orderedStops, returnToOrigin);
     const viaWarehouse = routeLengthKm(origin, [warehouse, ...orderedStops], returnToOrigin);
@@ -304,6 +339,72 @@ export default function PlannerPage() {
       dropped: waypointStops.length - included.length,
     };
   }, [orderedStops, origin, returnToOrigin]);
+
+  // Feature 5. The same segment-distance helper the corridor uses, asked per consecutive
+  // leg instead of once end to end: if the day already drives past the warehouse, say so
+  // where the decision is rather than in a summary the user has to translate back into
+  // "between which two stops?".
+  //
+  // The threshold is fixed rather than configurable: there is no evidence yet about the
+  // right number, and a setting would invite tuning a value nobody can justify.
+  const RESTOCK_NEAR_KM = 3;
+
+  const restockHint = useMemo(() => {
+    if (!origin || orderedStops.length === 0) return null;
+    const warehouse = facilities.find((f) => f.kind === "warehouse");
+    if (!warehouse) return null;
+    // Already on the route -- nothing to suggest.
+    if (orderedStops.some((s) => s.entity_type === "facility" && s.entity_id === warehouse.id)) return null;
+
+    const legs = [origin, ...orderedStops];
+    let best: { afterIndex: number; km: number } | null = null;
+    for (let i = 0; i < legs.length - 1; i++) {
+      const km = distanceToSegmentKm(warehouse, legs[i], legs[i + 1]);
+      if (km <= RESTOCK_NEAR_KM && (!best || km < best.km)) best = { afterIndex: i, km };
+    }
+    return best ? { warehouse, ...best } : null;
+  }, [origin, orderedStops, facilities]);
+
+  /** Inserts the warehouse into the day at the leg it sits nearest to, then rewrites
+   *  every stop's sort_order so it actually lands there rather than at the end. Reuses
+   *  the same PATCH the auto-order button uses. */
+  async function insertRestockStop() {
+    if (!restockHint) return;
+    setOptimising(true);
+    try {
+      const res = await fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity_type: "facility",
+          entity_id: restockHint.warehouse.id,
+          planned_date: selectedDate,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در افزودن توقف");
+
+      // afterIndex counts the origin as position 0, so it is already the index the new
+      // stop should occupy among the stops themselves.
+      const ids = orderedStops.map((s) => s.id);
+      ids.splice(restockHint.afterIndex, 0, data.id);
+      await Promise.all(
+        ids.map((id, index) =>
+          fetch(`/api/visit-plans/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ sort_order: index }),
+          })
+        )
+      );
+      toast(`${restockHint.warehouse.name} به مسیر اضافه شد`, "success");
+      await loadWeek();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "خطا در افزودن توقف", "error");
+    } finally {
+      setOptimising(false);
+    }
+  }
 
   const routeStops = useMemo<RouteStop[]>(() => {
     if (orderedStops.length === 0) return [];
@@ -565,9 +666,17 @@ export default function PlannerPage() {
             <p className="text-[length:var(--text-sm)] text-text-faint">برای این روز هنوز چیزی برنامه‌ریزی نشده.</p>
           ) : (
             <ul className="flex flex-col gap-2">
+              {/* The hint sits between the two stops it concerns, not in a summary the
+                  user has to translate back into "between which two?". afterIndex 0
+                  means the leg from the origin, so it renders above the first stop. */}
+              {restockHint && restockHint.afterIndex === 0 && (
+                <li>
+                  <RestockHint hint={restockHint} busy={optimising} onAdd={insertRestockStop} />
+                </li>
+              )}
               {dayPlans.map((p, i) => (
-                <li
-                  key={p.id}
+                <li key={p.id} className="flex flex-col gap-2">
+                <div
                   className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
                 >
                   <div className="flex flex-col gap-0.5">
@@ -624,6 +733,10 @@ export default function PlannerPage() {
                       🗑
                     </button>
                   </div>
+                </div>
+                {restockHint && restockHint.afterIndex === i + 1 && (
+                  <RestockHint hint={restockHint} busy={optimising} onAdd={insertRestockStop} />
+                )}
                 </li>
               ))}
             </ul>

@@ -247,6 +247,73 @@ export function getDb(): DatabaseSync {
   // Stored rather than derived per request: readDistrictProperties deliberately does not
   // read boundary_geojson (it is ~600KB across the table), and computing centroids on
   // every request would reintroduce exactly the read that split was made to avoid.
+  // activity_log carries the same district/customer-only CHECK and needs the same
+  // rebuild, for the same reason: a restock stop added to a day, and (feature 11) an
+  // arrival logged at a depot, are both events about a facility. Widening it here rather
+  // than skipping the log for facilities keeps one history for everything on the map.
+  const activitySchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_log'")
+    .get() as { sql: string } | undefined;
+  if (activitySchema && !activitySchema.sql.includes("'facility'")) {
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE activity_log_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility')),
+          entity_id INTEGER NOT NULL,
+          event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned')),
+          old_value TEXT,
+          new_value TEXT,
+          note TEXT,
+          changed_by TEXT,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO activity_log_new (id, entity_type, entity_id, event_type, old_value, new_value, note, changed_by, created_at)
+          SELECT id, entity_type, entity_id, event_type, old_value, new_value, note, changed_by, created_at FROM activity_log;
+        DROP TABLE activity_log;
+        ALTER TABLE activity_log_new RENAME TO activity_log;
+        CREATE INDEX IF NOT EXISTS idx_activity_entity ON activity_log(entity_type, entity_id, created_at);
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
+  // visit_plans shipped with entity_type restricted to district/customer. SQLite cannot
+  // ALTER a CHECK, so widening it to accept a facility means the standard rebuild:
+  // new table, copy every row, drop, rename. Guarded on the constraint text so it runs
+  // exactly once. Same dance saved_locations went through above.
+  const visitPlansSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='visit_plans'")
+    .get() as { sql: string } | undefined;
+  if (visitPlansSchema && !visitPlansSchema.sql.includes("'facility'")) {
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE visit_plans_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility')),
+          entity_id INTEGER NOT NULL,
+          planned_date TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')),
+          sort_order INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO visit_plans_new SELECT * FROM visit_plans;
+        DROP TABLE visit_plans;
+        ALTER TABLE visit_plans_new RENAME TO visit_plans;
+        CREATE INDEX IF NOT EXISTS idx_visit_plans_date ON visit_plans(planned_date);
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
   const districtCentroidCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
   if (!districtCentroidCols.some((c) => c.name === "centroid_lat")) {
     db.exec("ALTER TABLE districts ADD COLUMN centroid_lat REAL");
@@ -307,9 +374,18 @@ export interface District {
 
 export type EntityType = "district" | "customer";
 
+/** visit_plans alone accepts a facility: a restock stop at the warehouse is a genuine
+ *  leg of the day's route, unlike a reminder or a photo, which are always attached to a
+ *  district or a customer. Kept as its own union so widening the route model does not
+ *  quietly loosen every other entity reference in the schema. */
+export type PlanEntityType = EntityType | "facility";
+/** What activity_log accepts. Same widening as PlanEntityType, for the same reason. */
+export type LoggableEntityType = PlanEntityType;
+export const PLAN_ENTITY_TYPES: PlanEntityType[] = ["district", "customer", "facility"];
+
 export interface ActivityEntry {
   id: number;
-  entity_type: EntityType;
+  entity_type: LoggableEntityType;
   entity_id: number;
   event_type: "status_change" | "note" | "assigned";
   old_value: string | null;
@@ -341,7 +417,7 @@ export interface Photo {
 
 export interface VisitPlan {
   id: number;
-  entity_type: EntityType;
+  entity_type: PlanEntityType;
   entity_id: number;
   planned_date: string;
   status: "planned" | "done" | "skipped";

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, VisitPlan, EntityType, logActivity } from "@/lib/db";
+import { getDb, VisitPlan, EntityType, PLAN_ENTITY_TYPES, PlanEntityType, logActivity } from "@/lib/db";
 import { getActorName } from "@/lib/auth";
 
 interface PlanWithLabel extends VisitPlan {
@@ -21,6 +21,16 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
     rows.forEach((r) => customerMap.set(r.id, r));
   }
 
+  const facilityIds = plans.filter((p) => p.entity_type === "facility").map((p) => p.entity_id);
+  const facilityMap = new Map<number, { name: string; lat: number; lng: number }>();
+  if (facilityIds.length) {
+    const placeholders = facilityIds.map(() => "?").join(",");
+    const rows = db
+      .prepare(`SELECT id, name, lat, lng FROM facilities WHERE id IN (${placeholders})`)
+      .all(...facilityIds) as { id: number; name: string; lat: number; lng: number }[];
+    rows.forEach((r) => facilityMap.set(r.id, r));
+  }
+
   const districtMap = new Map<number, { name: string }>();
   if (districtIds.length) {
     const placeholders = districtIds.map(() => "?").join(",");
@@ -34,6 +44,10 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
     if (p.entity_type === "customer") {
       const c = customerMap.get(p.entity_id);
       return { ...p, label: c?.business_name ?? "مشتری حذف‌شده", lat: c?.lat ?? null, lng: c?.lng ?? null };
+    }
+    if (p.entity_type === "facility") {
+      const f = facilityMap.get(p.entity_id);
+      return { ...p, label: f?.name ?? "مکان حذف‌شده", lat: f?.lat ?? null, lng: f?.lng ?? null };
     }
     const d = districtMap.get(p.entity_id);
     return { ...p, label: d?.name ?? "منطقه حذف‌شده", lat: null, lng: null };
@@ -68,12 +82,12 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
   const { entity_type, entity_id, planned_date } = (body ?? {}) as {
-    entity_type?: EntityType;
+    entity_type?: PlanEntityType;
     entity_id?: number;
     planned_date?: string;
   };
 
-  if (entity_type !== "district" && entity_type !== "customer") {
+  if (!entity_type || !PLAN_ENTITY_TYPES.includes(entity_type)) {
     return NextResponse.json({ ok: false, error: "نوع موجودیت نامعتبر است" }, { status: 400 });
   }
   if (typeof entity_id !== "number" || !Number.isInteger(entity_id)) {
