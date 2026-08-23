@@ -7,6 +7,8 @@ import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import FullscreenControl from "./FullscreenControl";
+import LocateControl from "./LocateControl";
+import MyLocationMarker from "./MyLocationMarker";
 import { facilityIcon } from "./facilityIcon";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
@@ -106,6 +108,10 @@ export default function PlannerRouteMap({
               <Tooltip>{f.name}</Tooltip>
             </Marker>
           ))}
+          {/* The route is read against where you actually are, so the map that draws it
+              has to show that too. */}
+          <MyLocationMarker />
+          <LocateControl />
           <FullscreenControl />
         </MapContainer>
       </div>
