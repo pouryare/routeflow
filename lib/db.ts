@@ -156,6 +156,23 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_saved_locations_name ON saved_locations(name);
+
+    CREATE TABLE IF NOT EXISTS facilities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT UNIQUE NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other')),
+      name TEXT NOT NULL,
+      address TEXT,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      maps_url TEXT,
+      notes TEXT,
+      is_default_origin INTEGER NOT NULL DEFAULT 0,
+      owner_username TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_facilities_kind ON facilities(kind);
   `);
 
   // saved_locations shipped with CHECK constraints that lagged the valid resolution
@@ -223,6 +240,8 @@ export function getDb(): DatabaseSync {
   if (!customerCols.some((c) => c.name === "last_purchase_date")) {
     db.exec("ALTER TABLE customers ADD COLUMN last_purchase_date TEXT");
   }
+
+  seedFacilities(db);
 
   _db = db;
   return db;
@@ -379,4 +398,91 @@ export function logActivity(
     entry.changed_by,
     new Date().toISOString()
   );
+}
+
+export type FacilityKind = "warehouse" | "home_base" | "other";
+export const FACILITY_KINDS: FacilityKind[] = ["warehouse", "home_base", "other"];
+
+export interface FacilityRow {
+  id: number;
+  slug: string;
+  kind: FacilityKind;
+  name: string;
+  address: string | null;
+  lat: number;
+  lng: number;
+  maps_url: string | null;
+  notes: string | null;
+  /** SQLite has no boolean type -- 0 or 1. Exactly one row across the table holds 1;
+   *  the invariant is enforced in PATCH /api/facilities/[id], not by an index. */
+  is_default_origin: number;
+  /** NULL means "shared by everyone". Nothing reads this yet -- it exists so that
+   *  giving each driver their own origin later is a query change rather than a
+   *  migration against a table that already holds real data. */
+  owner_username: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+// The two sites the business started from, recovered from the Google Maps links they
+// shared: the warehouse link was a place record (املاک طاها) whose coordinates came out
+// of Google's own place data, the home link carried an explicit dropped pin.
+//
+// Seeded rather than hard-coded so the user can edit them, and keyed on `slug` so that
+// re-running this -- which happens on every boot, and again after any backup restore --
+// neither duplicates a row nor reverts an edit. INSERT OR IGNORE, deliberately not
+// INSERT OR REPLACE: REPLACE would silently throw away a repositioned pin on the next
+// deploy, which is the exact failure this table exists to prevent.
+const FACILITY_SEED: Array<Omit<FacilityRow, "id" | "created_at" | "updated_at">> = [
+  {
+    slug: "warehouse-bakeh",
+    kind: "warehouse",
+    name: "انبار مرکزی",
+    address: "استان تهران، بکه، بلوار رسول اکرم، املاک طاها",
+    lat: 35.502669,
+    lng: 51.7546255,
+    maps_url: "https://maps.app.goo.gl/XYd819ZQiGJzHNKM9",
+    notes: "انبار اصلی — تأمین موجودی",
+    is_default_origin: 0,
+    owner_username: null,
+  },
+  {
+    slug: "home-pardis",
+    kind: "home_base",
+    name: "خانه (انبار کوچک)",
+    address: "تهران، پردیس، فاز ۲، خیابان فهمیده",
+    lat: 35.753263,
+    lng: 51.798381,
+    maps_url: "https://maps.app.goo.gl/ivx6yY69Zb9S9sKu6",
+    notes: "شروع مسیر توزیع روزانه از اینجاست",
+    // Deliveries start here, so this is the point every distance in the app measures
+    // from until the user picks another.
+    is_default_origin: 1,
+    owner_username: null,
+  },
+];
+
+export function seedFacilities(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(`
+    INSERT OR IGNORE INTO facilities
+      (slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+  `);
+  for (const f of FACILITY_SEED) {
+    insert.run(
+      f.slug,
+      f.kind,
+      f.name,
+      f.address,
+      f.lat,
+      f.lng,
+      f.maps_url,
+      f.notes,
+      f.is_default_origin,
+      f.owner_username,
+      now,
+      now
+    );
+  }
 }
