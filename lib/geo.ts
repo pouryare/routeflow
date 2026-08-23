@@ -49,3 +49,14 @@ export function nearestNeighborOrder<T extends LatLng>(stops: T[], start: LatLng
   }
   return ordered;
 }
+
+/** Human-readable straight-line distance in Persian. Switches to metres below a
+ *  kilometre, where "0.4 کیلومتر" reads as false precision for a walk across a yard.
+ *
+ *  Callers are responsible for the "خط مستقیم" qualifier: this returns a bare
+ *  magnitude, and a magnitude the reader mistakes for drive time is worse than no
+ *  figure at all -- in Tehran the two differ by roughly a factor of two. */
+export function formatDistanceKm(km: number): string {
+  if (km < 1) return `${Math.round(km * 1000)} متر`;
+  return `${km.toFixed(1)} کیلومتر`;
+}

@@ -43,7 +43,7 @@ import BasemapToggleControl, { Basemap } from "./BasemapToggleControl";
 import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
 import { useToast } from "./ToastProvider";
-import { distanceKm } from "@/lib/geo";
+import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import { FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 
@@ -57,11 +57,6 @@ const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: fa
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
 const ImportPanel = dynamic(() => import("./ImportPanel"), { ssr: false });
-
-function formatDistanceKm(km: number): string {
-  if (km < 1) return `${Math.round(km * 1000)} متر`;
-  return `${km.toFixed(1)} کیلومتر`;
-}
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
 
@@ -1112,6 +1107,7 @@ export default function CoverageMap({
         {selectedCustomer && (
           <CustomerDetailPanel
             customer={selectedCustomer}
+            facilities={initialFacilities}
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
           />

@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { distanceKm, nearestNeighborOrder } from "@/lib/geo";
+import { distanceKm, formatDistanceKm, nearestNeighborOrder } from "@/lib/geo";
 
 describe("distanceKm", () => {
   it("is ~0 for the same point", () => {
@@ -55,3 +55,15 @@ describe("nearestNeighborOrder", () => {
     expect(nearestNeighborOrder([], { lat: 0, lng: 0 })).toEqual([]);
   });
 });
+
+describe("formatDistanceKm", () => {
+  it("switches to metres below one kilometre, where a decimal km reads as false precision", () => {
+    expect(formatDistanceKm(0.42)).toBe("420 متر");
+    expect(formatDistanceKm(0.999)).toBe("999 متر");
+  });
+
+  it("uses one decimal kilometre above that", () => {
+    expect(formatDistanceKm(1)).toBe("1.0 کیلومتر");
+    expect(formatDistanceKm(28.14)).toBe("28.1 کیلومتر");
+  });
+})

@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { CustomerRow, customerStatusColor, STATUS_COLOR } from "@/lib/types";
+import type { FacilityRow } from "@/lib/facilityTypes";
+import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
@@ -34,14 +36,27 @@ function elevateClass(color: string): string {
 
 export default function CustomerDetailPanel({
   customer,
+  facilities = [],
   onClose,
   onReminderAdded,
 }: {
   customer: CustomerRow;
+  facilities?: FacilityRow[];
   onClose: () => void;
   onReminderAdded?: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+
+  // Measured from our own sites, never from a live GPS fix (spec 1.2): a distance that
+  // changes between two glances at the same panel is describing where the phone is, not
+  // where the customer is. Nearest site first.
+  const siteDistances =
+    customer.lat === null || customer.lng === null
+      ? []
+      : facilities
+          .map((f) => ({ name: f.name, km: distanceKm({ lat: customer.lat as number, lng: customer.lng as number }, f) }))
+          .sort((a, b) => a.km - b.km);
+
   const [planState, setPlanState] = useState<"idle" | "saving" | "added">("idle");
 
   async function addToTodayPlan() {
@@ -145,6 +160,15 @@ export default function CustomerDetailPanel({
           <div className="flex flex-col gap-1">
             <dt className="text-text-muted">آدرس</dt>
             <dd className="leading-6 text-text">{customer.address}</dd>
+          </div>
+        )}
+        {siteDistances.length > 0 && (
+          <div className="flex flex-col gap-1">
+            <dt className="text-text-muted">فاصله از مکان‌های ما</dt>
+            <dd className="font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
+              {siteDistances.map((d) => `${formatDistanceKm(d.km)} تا ${d.name}`).join(" · ")}
+              {" — خط مستقیم"}
+            </dd>
           </div>
         )}
       </dl>

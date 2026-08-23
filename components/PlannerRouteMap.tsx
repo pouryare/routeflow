@@ -1,12 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { MapContainer, TileLayer, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
 import "leaflet-routing-machine/dist/leaflet-routing-machine.css";
 import FullscreenControl from "./FullscreenControl";
+import { facilityIcon } from "./facilityIcon";
+import type { FacilityRow } from "@/lib/facilityTypes";
 
 export interface RouteStop {
   lat: number;
@@ -73,7 +75,13 @@ function RoutingLayer({
   return null;
 }
 
-export default function PlannerRouteMap({ stops }: { stops: RouteStop[] }) {
+export default function PlannerRouteMap({
+  stops,
+  facilities = [],
+}: {
+  stops: RouteStop[];
+  facilities?: FacilityRow[];
+}) {
   const [summary, setSummary] = useState<RouteSummary | null>(null);
   const bounds = useMemo<[number, number][]>(() => stops.map((s) => [s.lat, s.lng]), [stops]);
 
@@ -89,6 +97,14 @@ export default function PlannerRouteMap({ stops }: { stops: RouteStop[] }) {
             maxZoom={20}
           />
           <RoutingLayer stops={stops} onSummary={setSummary} />
+          {/* Below the route markers (zIndexOffset 900): a stop the user is reading off
+              the list is more urgent than a landmark. Without these the origin is
+              invisible on the very map that routes from it. */}
+          {facilities.map((f) => (
+            <Marker key={f.id} position={[f.lat, f.lng]} icon={facilityIcon(f.kind)} zIndexOffset={800}>
+              <Tooltip>{f.name}</Tooltip>
+            </Marker>
+          ))}
           <FullscreenControl />
         </MapContainer>
       </div>

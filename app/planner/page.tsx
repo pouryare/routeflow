@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
+import type { FacilityRow } from "@/lib/facilityTypes";
 import { nearestNeighborOrder } from "@/lib/geo";
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import DeliveryImportPanel from "@/components/DeliveryImportPanel";
@@ -60,6 +61,7 @@ export default function PlannerPage() {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [addQuery, setAddQuery] = useState("");
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
+  const [facilities, setFacilities] = useState<FacilityRow[]>([]);
   const toast = useToast();
   const [locating, setLocating] = useState(false);
 
@@ -85,6 +87,13 @@ export default function PlannerPage() {
     fetch("/api/customers")
       .then((r) => r.json())
       .then((d) => setCustomers(d.customers ?? []));
+  }, []);
+
+  useEffect(() => {
+    fetch("/api/facilities")
+      .then((r) => r.json())
+      .then((d) => setFacilities(d.facilities ?? []))
+      .catch(() => {});
   }, []);
 
   const dayPlans = (plansByDate[selectedDate] ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
@@ -386,7 +395,7 @@ export default function PlannerPage() {
           )}
         </section>
 
-        <PlannerRouteMap stops={routeStops} />
+        <PlannerRouteMap stops={routeStops} facilities={facilities} />
       </div>
     </div>
   );
