@@ -14,6 +14,7 @@ import { useToast } from "./ToastProvider";
 import CopyButton from "./CopyButton";
 import { coordText } from "@/lib/clipboard";
 import { absoluteMapLink } from "@/lib/deepLink";
+import { useSwipeDismiss } from "./useSwipeDismiss";
 import { faDateTime, faNum } from "@/lib/format";
 
 function customerLink(id: number): string {
@@ -102,6 +103,10 @@ export default function CustomerDetailPanel({
     setLeaving(true);
     window.setTimeout(onClose, EXIT_MS);
   }, [onClose]);
+
+  // Docked on the left edge, so it leaves to the left. Through handleClose rather than
+  // onClose, so a swipe gets the same exit animation as the ✕.
+  useSwipeDismiss(panelRef, "left", handleClose);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {

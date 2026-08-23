@@ -50,6 +50,7 @@ import { useToast } from "./ToastProvider";
 import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } from "@/lib/geo";
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
+import { useSwipeDismiss } from "./useSwipeDismiss";
 import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
 import { copyText, coordText } from "@/lib/clipboard";
@@ -67,6 +68,7 @@ const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
 const ImportPanel = dynamic(() => import("./ImportPanel"), { ssr: false });
 const NextStopBar = dynamic(() => import("./NextStopBar"), { ssr: false });
+const ShortcutHelp = dynamic(() => import("./ShortcutHelp"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
 
@@ -342,6 +344,7 @@ export default function CoverageMap({
   const [sectionFilter, setSectionFilter] = useState("");
   const [shapedMarkers, setShapedMarkers] = useState(false);
   const [driverMode, setDriverMode] = useState(false);
+  const [showShortcuts, setShowShortcuts] = useState(false);
   // Per-browser working sets. Empty on the server; filled from storage on mount, like
   // every other preference on this page.
   const [pinnedIds, setPinnedIds] = useState<number[]>([]);
@@ -352,7 +355,68 @@ export default function CoverageMap({
   const districtLayersRef = useRef(new Map<number, Layer>());
   const mapRef = useRef<LeafletMap | null>(null);
   const asideRef = useRef<HTMLElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const sectionFilterRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+
+  const closeSidebar = useCallback(() => setSidebarOpen(false), []);
+  useSwipeDismiss(asideRef, "right", closeSidebar, sidebarOpen);
+
+  /** Keyboard shortcuts, for the half of this app's life that happens at a desk.
+   *
+   *  Every one is a single unmodified key, which is only safe because of the guard
+   *  below: without it, typing a customer's name into the search box would toggle the
+   *  sidebar on every "s". */
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      const el = e.target as HTMLElement | null;
+      const tag = el?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
+
+      switch (e.key) {
+        case "/":
+          e.preventDefault();
+          searchInputRef.current?.focus();
+          break;
+        case "s":
+        case "S":
+          setSidebarOpen((v) => !v);
+          break;
+        case "f":
+        case "F":
+          e.preventDefault();
+          // Opening the sidebar and focusing its filter are one action: the box does not
+          // exist to be focused while the panel is shut.
+          setSidebarOpen(true);
+          window.setTimeout(() => sectionFilterRef.current?.focus(), 50);
+          break;
+        case "g":
+        case "G":
+          navigator.geolocation?.getCurrentPosition(
+            (pos) => {
+              setMyPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+              mapRef.current?.flyTo([pos.coords.latitude, pos.coords.longitude], 15, { duration: 1 });
+            },
+            () => toast("موقعیت پیدا نشد", "error"),
+            { enableHighAccuracy: true, timeout: 10000 }
+          );
+          break;
+        case "?":
+        case "؟":
+          setShowShortcuts(true);
+          break;
+        case "Escape":
+          // Innermost first: Escape should peel one layer, not clear the screen.
+          if (showShortcuts) setShowShortcuts(false);
+          else if (selectedCustomer) setSelectedCustomer(null);
+          else if (sidebarOpen) setSidebarOpen(false);
+          break;
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showShortcuts, selectedCustomer, sidebarOpen, toast]);
 
   const [districtsVersion, setDistrictsVersion] = useState(0);
   const loadDistricts = useCallback(async () => {
@@ -903,6 +967,7 @@ export default function CoverageMap({
         onSelectCustomer={flyToCustomer}
         onSelectDistrict={flyToDistrict}
         onLocationFound={handleLocationFound}
+        inputRef={searchInputRef}
       />
 
       <GeofenceWatcher
@@ -932,6 +997,7 @@ export default function CoverageMap({
               floats over the map. */}
           <div className="relative mt-3">
             <input
+              ref={sectionFilterRef}
               value={sectionFilter}
               onChange={(e) => setSectionFilter(e.target.value)}
               placeholder="فیلتر بخش‌ها…"
@@ -1555,6 +1621,15 @@ export default function CoverageMap({
 
         <ImportPanel onImported={loadCustomers} />
 
+        {/* Last in the panel on purpose: a driver never needs this, and it would be
+            competing with the things they do. */}
+        <button
+          onClick={() => setShowShortcuts(true)}
+          className="self-start font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+        >
+          میان‌برهای صفحه‌کلید (؟)
+        </button>
+
         {error && (
           <p className="flex items-center gap-1.5 text-[length:var(--text-sm)] text-crit">
             <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-crit" />
@@ -1813,6 +1888,8 @@ export default function CoverageMap({
           }}
         />
       )}
+
+      {showShortcuts && <ShortcutHelp onClose={() => setShowShortcuts(false)} />}
 
       {bulkMode && bulkSelectedIds.size > 0 && (
         <div

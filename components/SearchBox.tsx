@@ -47,12 +47,17 @@ export default function SearchBox({
   onSelectCustomer,
   onSelectDistrict,
   onLocationFound,
+  inputRef,
 }: {
   customers: CustomerRow[];
   districts: DistrictFeature[];
   onSelectCustomer: (c: CustomerRow) => void;
   onSelectDistrict: (d: DistrictFeature) => void;
   onLocationFound: (lat: number, lng: number, label: string) => void;
+  /** Handed in so the map's "/" shortcut can put the cursor here. Owned by the caller
+   *  because the caller is what knows about keyboard shortcuts; this component only has
+   *  to agree to be focused. */
+  inputRef?: React.RefObject<HTMLInputElement | null>;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -173,6 +178,7 @@ export default function SearchBox({
       dir="rtl"
     >
       <input
+        ref={inputRef}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
