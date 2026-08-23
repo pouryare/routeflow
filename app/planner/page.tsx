@@ -19,7 +19,9 @@ import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { replaceUrlQuery } from "@/lib/deepLink";
 import CopyButton from "@/components/CopyButton";
+import PrintButton from "@/components/PrintButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
@@ -350,6 +352,35 @@ export default function PlannerPage() {
     return plannedStops;
   }, [plannedStops, origin]);
 
+  /** Distance from the previous positioned stop to each one, keyed by plan id.
+   *
+   *  Totals tell you a day is long. They do not tell you *which* pair of stops made it
+   *  long, which is the only thing you can act on -- and it is exactly what a bad
+   *  ordering looks like: one leg several times the size of its neighbours.
+   *
+   *  Walks the list in displayed order, carrying the last known position forward, so a
+   *  district row (which has no coordinates) is skipped rather than breaking the chain
+   *  between the stops on either side of it. */
+  const legKm = useMemo(() => {
+    const legs = new Map<number, number>();
+    let prev: { lat: number; lng: number } | null = origin;
+    for (const p of dayPlans) {
+      if (p.lat === null || p.lng === null) continue;
+      const here = { lat: p.lat, lng: p.lng };
+      if (prev) legs.set(p.id, distanceKm(prev, here));
+      prev = here;
+    }
+    return legs;
+  }, [dayPlans, origin]);
+
+  /** The drive home, when there is one. Not part of legKm because it belongs to no stop. */
+  const returnLegKm = useMemo(() => {
+    if (!returnToOrigin || !origin) return null;
+    const last = [...dayPlans].reverse().find((p) => p.lat !== null && p.lng !== null);
+    if (!last) return null;
+    return distanceKm({ lat: last.lat as number, lng: last.lng as number }, origin);
+  }, [dayPlans, origin, returnToOrigin]);
+
   const dayLengthKm = useMemo(
     () => (origin && orderedStops.length ? routeLengthKm(origin, orderedStops, returnToOrigin) : null),
     [origin, orderedStops, returnToOrigin]
@@ -561,7 +592,7 @@ export default function PlannerPage() {
   }
 
   return (
-    <div dir="rtl" className="min-h-screen bg-bg p-4 sm:p-6">
+    <div dir="rtl" className="print-report min-h-screen bg-bg p-4 sm:p-6">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
           <div>
@@ -572,13 +603,13 @@ export default function PlannerPage() {
           </div>
           <Link
             href="/"
-            className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+            className="no-print rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
           >
             بازگشت به نقشه ←
           </Link>
         </div>
 
-        <div className="flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
+        <div className="no-print flex gap-1 overflow-x-auto rounded-[var(--radius-md)] border border-border bg-surface p-1">
           {days.map((d) => {
             const ds = toDateStr(d);
             const active = ds === selectedDate;
@@ -607,9 +638,11 @@ export default function PlannerPage() {
           })}
         </div>
 
-        <DeliveryImportPanel selectedDate={selectedDate} onAdded={loadWeek} />
+        <div className="no-print">
+          <DeliveryImportPanel selectedDate={selectedDate} onAdded={loadWeek} />
+        </div>
 
-        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
+        <section className="no-print rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
             افزودن مشتری به برنامه
           </h2>
@@ -642,7 +675,8 @@ export default function PlannerPage() {
             <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
               برنامه {dayLabel(new Date(selectedDate))} ({faNum(dayPlans.length)})
             </h2>
-            <div className="flex items-center gap-2">
+            <div className="no-print flex items-center gap-2">
+              <PrintButton />
               <CopyButton
                 value={() => `${window.location.origin}/planner?date=${selectedDate}`}
                 what="کپی پیوند این روز"
@@ -702,7 +736,7 @@ export default function PlannerPage() {
                   {origin ? origin.label : "تعیین نشده"}
                   {origin?.source === "gps" && " (GPS)"}
                   {origin?.source === "override" && " (برای امروز)"}
-                  {" ▾"}
+                  <span className="no-print">{" ▾"}</span>
                 </button>
 
                 <label className="mr-auto flex cursor-pointer items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
@@ -710,7 +744,7 @@ export default function PlannerPage() {
                     type="checkbox"
                     checked={returnToOrigin}
                     onChange={toggleReturnToOrigin}
-                    className="accent-[color:var(--accent)]"
+                    className="no-print accent-[color:var(--accent)]"
                   />
                   بازگشت به مبدأ
                 </label>
@@ -801,9 +835,19 @@ export default function PlannerPage() {
               <SkeletonLabel>در حال بارگذاری برنامه…</SkeletonLabel>
             </>
           ) : dayPlans.length === 0 ? (
-            <p className="text-[length:var(--text-sm)] text-text-faint">برای این روز هنوز چیزی برنامه‌ریزی نشده.</p>
+            <EmptyState
+              icon="🗓"
+              title="برای این روز هنوز چیزی برنامه‌ریزی نشده"
+              hint="از کادر «افزودن مشتری به برنامه» بالای همین صفحه، یا از دکمه «+ برنامه امروز» در پنل هر مشتری روی نقشه، توقف اضافه کنید."
+            />
           ) : (
-            <ul className="flex flex-col gap-2">
+            <>
+            {legKm.size > 0 && (
+              <p className="mb-2 font-mono text-[length:var(--text-xs)] text-text-faint">
+                فاصله‌های نشان‌داده‌شده بین توقف‌ها خط مستقیم است، نه مسیر جاده‌ای.
+              </p>
+            )}
+            <ul className="print-day-sheet flex flex-col gap-2">
               {/* The hint sits between the two stops it concerns, not in a summary the
                   user has to translate back into "between which two?". afterIndex 0
                   means the leg from the origin, so it renders above the first stop. */}
@@ -814,10 +858,17 @@ export default function PlannerPage() {
               )}
               {dayPlans.map((p, i) => (
                 <li key={p.id} className="flex flex-col gap-2">
+                {legKm.has(p.id) && (
+                  <div className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
+                    <span aria-hidden="true" className="text-text-faint">↓</span>
+                    <span>{formatDistanceKm(legKm.get(p.id) as number)}</span>
+                    <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                  </div>
+                )}
                 <div
-                  className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
+                  className="print-stop flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
                 >
-                  <div className="flex flex-col gap-0.5">
+                  <div className="no-print flex flex-col gap-0.5">
                     <button
                       onClick={() => move(p.id, -1)}
                       disabled={i === 0}
@@ -848,7 +899,7 @@ export default function PlannerPage() {
                   >
                     {STATUS_META[p.status].label}
                   </span>
-                  <div className="flex shrink-0 gap-1">
+                  <div className="no-print flex shrink-0 gap-1">
                     <button
                       onClick={() => setStatus(p.id, "done")}
                       aria-label="انجام شد"
@@ -877,11 +928,22 @@ export default function PlannerPage() {
                 )}
                 </li>
               ))}
+              {returnLegKm !== null && origin && (
+                <li className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
+                  <span aria-hidden="true">↓</span>
+                  <span>{formatDistanceKm(returnLegKm)}</span>
+                  <span>بازگشت به {origin.label}</span>
+                  <span className="h-px flex-1 bg-border" aria-hidden="true" />
+                </li>
+              )}
             </ul>
+            </>
           )}
         </section>
 
-        <PlannerRouteMap stops={routeStops} facilities={facilities} />
+        <div className="no-print">
+          <PlannerRouteMap stops={routeStops} facilities={facilities} />
+        </div>
       </div>
     </div>
   );

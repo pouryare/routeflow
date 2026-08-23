@@ -51,6 +51,9 @@ import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } fr
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 import { useSwipeDismiss } from "./useSwipeDismiss";
+import DataFreshness from "./DataFreshness";
+import EmptyState from "./EmptyState";
+import { newestSync } from "@/lib/freshness";
 import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
 import { copyText, coordText } from "@/lib/clipboard";
@@ -666,6 +669,8 @@ export default function CoverageMap({
       .slice(0, 20);
   }, [customers]);
 
+  const hasPurchaseHistory = useMemo(() => customers.some((c) => c.last_purchase_date), [customers]);
+
   const noCoordCustomers = useMemo(() => {
     return customers
       .filter((c) => c.status?.includes("فعال") && !c.status?.includes("غیرفعال") && (!c.lat || !c.lng))
@@ -990,6 +995,11 @@ export default function CoverageMap({
           </div>
           <h1 className="text-[length:var(--text-xl)] font-bold text-text">نقشه پوشش مشتریان</h1>
 
+          {/* Silent while the data is current. Every figure on this map -- debts,
+              statuses, last-purchase dates -- comes from a spreadsheet somebody has to
+              remember to import, and nothing goes visibly wrong when they forget. */}
+          <DataFreshness syncedAt={newestSync(customers)} className="mt-2" />
+
           {/* Finds a section by name. Twelve folded sections is a better control surface
               than twelve open ones, but it is still twelve headings to scan past when
               you know exactly which switch you came for. Deliberately labelled as a
@@ -1246,8 +1256,27 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        {dormantCustomers.length > 0 && (
-          <CollapsibleSection title="مشتریان راکد" count={dormantCustomers.length} titleClassName="text-warn">
+        {/* Always present, unlike before: a section that disappears when it is empty
+            cannot be distinguished from a section that is broken, and "no dormant
+            customers" is itself worth knowing. The count in the heading answers it
+            without opening. */}
+        <CollapsibleSection
+          title="مشتریان راکد"
+          count={hasPurchaseHistory ? dormantCustomers.length : undefined}
+          titleClassName={dormantCustomers.length > 0 ? "text-warn" : undefined}
+          storageKey="dormant"
+          keywords="بی‌خرید قدیمی سفارش"
+        >
+          {!hasPurchaseHistory ? (
+            <EmptyState
+              icon="🧾"
+              title="تاریخ خرید هیچ مشتری‌ای ثبت نشده"
+              hint="این فهرست از برگه «فروش» اکسل ساخته می‌شود. تا وارد شدن سفارش‌ها، «راکد بودن» قابل تشخیص نیست — و این با «هیچ مشتری راکدی نیست» یکی نیست."
+              className="py-4"
+            />
+          ) : dormantCustomers.length === 0 ? (
+            <EmptyState icon="✓" title="هیچ مشتری فعالی بیش از ۳۰ روز بدون خرید نیست" className="py-4" />
+          ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {dormantCustomers.map(({ customer, days }) => (
                 <button
@@ -1265,11 +1294,18 @@ export default function CoverageMap({
                 </button>
               ))}
             </div>
-          </CollapsibleSection>
-        )}
+          )}
+        </CollapsibleSection>
 
-        {noCoordCustomers.length > 0 && (
-          <CollapsibleSection title="بدون مختصات" count={noCoordCustomers.length}>
+        <CollapsibleSection
+          title="بدون مختصات"
+          count={noCoordCustomers.length}
+          storageKey="nocoord"
+          keywords="مختصات نقشه جای‌گذاری"
+        >
+          {noCoordCustomers.length === 0 ? (
+            <EmptyState icon="✓" title="همه مشتریان فعال روی نقشه جای گرفته‌اند" className="py-4" />
+          ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {noCoordCustomers.map((customer) => (
                 <button
@@ -1283,12 +1319,12 @@ export default function CoverageMap({
                   </span>
                 </button>
               ))}
+              <p className="mt-1.5 text-[length:var(--text-xs)] leading-5 text-text-faint">
+                روی نام کلیک کنید تا جزئیات مشتری باز شود و بتوانید مختصات را بررسی کنید.
+              </p>
             </div>
-            <p className="mt-1.5 text-[length:var(--text-xs)] leading-5 text-text-faint">
-              روی نام کلیک کنید تا جزئیات مشتری باز شود و بتوانید مختصات را بررسی کنید.
-            </p>
-          </CollapsibleSection>
-        )}
+          )}
+        </CollapsibleSection>
 
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}

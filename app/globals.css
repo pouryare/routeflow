@@ -584,4 +584,25 @@ a:focus-visible {
     box-shadow: none !important;
     border-color: #cccccc !important;
   }
+
+  /* The day sheet. A printed route is carried folded in a pocket and read in a vehicle,
+     often as the fallback for a phone that has run out of battery -- so it is set larger
+     than the screen version, not smaller, and every stop is kept whole across a page
+     break. */
+  .print-report {
+    font-size: 12pt;
+  }
+  .print-report li,
+  .print-report tr {
+    break-inside: avoid;
+  }
+  /* Room to tick a stop off by hand, which is the entire reason paper is still useful
+     here. Anchored to the stop row by name: the first child of the <li> is the
+     leg-distance connector, and the box belongs on the stop, not on the gap before it. */
+  .print-day-sheet .print-stop::before {
+    content: "☐";
+    margin-inline-end: 8px;
+    font-size: 14pt;
+    line-height: 1;
+  }
 }

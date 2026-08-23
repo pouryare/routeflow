@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
+import EmptyState from "./EmptyState";
 
 interface PhotoItem {
   id: number;
@@ -98,7 +99,7 @@ export default function PhotoGallery({
           <SkeletonLabel>در حال بارگذاری تصاویر…</SkeletonLabel>
         </>
       ) : photos.length === 0 ? (
-        <p className="text-[length:var(--text-xs)] text-text-faint">هنوز عکسی ثبت نشده</p>
+        <EmptyState icon="🖼" title="هنوز عکسی ثبت نشده" className="py-4" />
       ) : (
         <div className="grid grid-cols-4 gap-1.5">
           {photos.map((p) => (

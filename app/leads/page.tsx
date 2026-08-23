@@ -11,6 +11,7 @@ import { faNum } from "@/lib/format";
 import { parseIdParam } from "@/lib/deepLink";
 import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -325,7 +326,11 @@ export default function LeadsPage() {
               <SkeletonLabel>در حال بارگذاری مکان‌ها…</SkeletonLabel>
             </>
           ) : locations.length === 0 ? (
-            <p className="text-[length:var(--text-sm)] text-text-faint">لیست خالی است. از بخش بالا مکان اضافه کنید.</p>
+            <EmptyState
+              icon="📍"
+              title="هنوز مکان پیشنهادی‌ای ذخیره نشده"
+              hint="لینک یا نتیجه جستجوی گوگل‌مپس را در کادر بالا بچسبانید تا مکان‌های تازه برای بررسی اینجا جمع شوند."
+            />
           ) : (
             <ul className="flex flex-col gap-1.5">
               {locations.map((l) => (

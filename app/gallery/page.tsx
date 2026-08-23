@@ -6,6 +6,7 @@ import { faDate, faNum } from "@/lib/format";
 import { parseIdParam } from "@/lib/deepLink";
 import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
+import EmptyState from "@/components/EmptyState";
 
 interface PhotoItem {
   id: number;
@@ -78,9 +79,11 @@ export default function GalleryPage() {
             <SkeletonLabel>در حال بارگذاری تصاویر…</SkeletonLabel>
           </>
         ) : photos.length === 0 ? (
-          <p className="text-[length:var(--text-sm)] text-text-faint">
-            هنوز عکسی ثبت نشده. از پنل مشتری یا منطقه روی نقشه می‌توانید عکس اضافه کنید.
-          </p>
+          <EmptyState
+            icon="🖼"
+            title="هنوز عکسی ثبت نشده"
+            hint="عکس‌ها از پنل هر مشتری یا منطقه روی نقشه اضافه می‌شوند و بعد همه‌شان اینجا جمع می‌شوند."
+          />
         ) : (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
             {photos.map((p) => (

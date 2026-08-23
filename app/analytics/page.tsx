@@ -4,7 +4,9 @@ import { STATUS_LABEL, STATUS_COLOR, daysSinceLastPurchase } from "@/lib/types";
 import { readFacilities } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
 import CostToServePanel, { type CostToServeRow } from "@/components/CostToServePanel";
-import { faNum } from "@/lib/format";
+import { faDateTime, faNum } from "@/lib/format";
+import DataFreshness from "@/components/DataFreshness";
+import { newestSync } from "@/lib/freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -170,7 +172,7 @@ export default function AnalyticsPage() {
   }
   const weeksMax = Math.max(1, ...weeks.map((w) => w.count));
 
-  const generatedAt = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const generatedAt = faDateTime(now.toISOString());
 
   return (
     <div dir="rtl" className="min-h-screen bg-bg p-4 sm:p-6">
@@ -189,9 +191,13 @@ export default function AnalyticsPage() {
             Analytics
           </div>
           <h1 className="text-[length:var(--text-xl)] font-bold text-text">داشبورد تحلیل پوشش و فروش</h1>
-          <p dir="ltr" className="mt-1 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">
+          <p className="mt-1 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">
             {generatedAt}
           </p>
+          {/* The timestamp above is when this page was built; this is how old the
+              numbers on it are. They are not the same question, and only the second one
+              can be wrong. */}
+          <DataFreshness syncedAt={newestSync(customers)} now={now} className="mt-1" />
         </div>
 
         <section>

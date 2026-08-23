@@ -6,7 +6,9 @@ import { distanceKm } from "@/lib/geo";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import PrintButton from "@/components/PrintButton";
 import CsvExportButton from "@/components/CsvExportButton";
-import { faFixed, faNum } from "@/lib/format";
+import { faDateTime, faFixed, faNum } from "@/lib/format";
+import DataFreshness from "@/components/DataFreshness";
+import { newestSync } from "@/lib/freshness";
 
 export const dynamic = "force-dynamic";
 
@@ -82,7 +84,7 @@ export default async function ReportPage({
   );
 
   const now = new Date();
-  const generatedAt = `${now.getFullYear()}/${String(now.getMonth() + 1).padStart(2, "0")}/${String(now.getDate()).padStart(2, "0")} ${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const generatedAt = faDateTime(now.toISOString());
 
   return (
     <div dir="rtl" className="print-report min-h-screen bg-bg p-4 sm:p-6">
@@ -133,9 +135,13 @@ export default async function ReportPage({
             Coverage Report
           </div>
           <h1 className="text-[length:var(--text-xl)] font-bold text-text">گزارش پوشش و مشتریان</h1>
-          <p dir="ltr" className="mt-1 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">
+          <p className="mt-1 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">
             {generatedAt}
           </p>
+          {/* The timestamp above is when this page was built; this is how old the
+              numbers on it are. They are not the same question, and only the second one
+              can be wrong. */}
+          <DataFreshness syncedAt={newestSync(customers)} now={now} className="mt-1" />
         </div>
 
         <section>
