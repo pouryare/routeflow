@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getDb, District, Customer, CoverageStatus } from "@/lib/db";
 import { STATUS_LABEL, STATUS_COLOR, daysSinceLastPurchase } from "@/lib/types";
+import { readFacilities } from "@/lib/facilities";
+import { distanceKm } from "@/lib/geo";
+import CostToServePanel, { type CostToServeRow } from "@/components/CostToServePanel";
 
 export const dynamic = "force-dynamic";
 
@@ -46,6 +49,44 @@ export default function AnalyticsPage() {
        FROM reminders WHERE resolved = 0`
     )
     .get() as { overdue: number | null; today: number | null; total: number };
+
+  // Feature 9. Revenue per customer against distance from the site we dispatch from.
+  //
+  // The join is by business name as free text -- sales rows carry no customer id -- so
+  // any renamed or differently-spelled business drops out silently. That gap is counted
+  // and surfaced in the panel rather than absorbed, because a total that is quietly
+  // missing rows is worse than one that says so.
+  const facilities = readFacilities(db);
+  const dispatchSite =
+    facilities.find((f) => f.is_default_origin === 1) ?? facilities.find((f) => f.kind === "home_base") ?? facilities[0] ?? null;
+
+  const salesByName = db
+    .prepare("SELECT customer_name, SUM(amount) as total, COUNT(*) as rows FROM sales GROUP BY customer_name")
+    .all() as { customer_name: string; total: number; rows: number }[];
+
+  const knownNames = new Set(customers.map((c) => c.business_name));
+  const matchQuality = salesByName.reduce(
+    (acc, s) => {
+      acc.totalRows += s.rows;
+      if (!knownNames.has(s.customer_name)) {
+        acc.unmatchedRows += s.rows;
+        acc.unmatchedRevenue += s.total;
+      }
+      return acc;
+    },
+    { unmatchedRows: 0, totalRows: 0, unmatchedRevenue: 0 }
+  );
+
+  const revenueByName = new Map(salesByName.map((s) => [s.customer_name, s.total]));
+  const costToServeRows: CostToServeRow[] = customers.map((c) => ({
+    business_name: c.business_name,
+    customer_code: c.customer_code,
+    km:
+      dispatchSite && c.lat !== null && c.lng !== null
+        ? distanceKm({ lat: c.lat, lng: c.lng }, dispatchSite)
+        : null,
+    revenue: revenueByName.get(c.business_name) ?? 0,
+  }));
 
   const topCustomers = db
     .prepare(
@@ -175,6 +216,12 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </section>
+
+        <CostToServePanel
+          rows={costToServeRows}
+          originName={dispatchSite?.name ?? null}
+          match={matchQuality}
+        />
 
         {topCustomers.length > 0 && (
           <section>

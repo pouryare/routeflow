@@ -1,0 +1,226 @@
+"use client";
+
+import { useMemo, useState, useEffect } from "react";
+import { toCsv } from "@/lib/csv";
+import { useToast } from "./ToastProvider";
+
+export interface CostToServeRow {
+  business_name: string;
+  customer_code: string;
+  /** Straight-line km from the dispatch site. Null when the customer has no coordinates. */
+  km: number | null;
+  /** Total sales amount matched to this customer, in تومان. */
+  revenue: number;
+}
+
+/** How many sales rows failed to match any customer, and what they were worth. Sales
+ *  link to customers by business name as free text, so a renamed or differently-spelled
+ *  business silently vanishes from this analysis -- surfaced rather than absorbed. */
+export interface MatchQuality {
+  unmatchedRows: number;
+  totalRows: number;
+  unmatchedRevenue: number;
+}
+
+const COST_PER_KM_KEY = "coverage_cost_per_km";
+
+function fmtToman(n: number): string {
+  return n.toLocaleString("fa-IR");
+}
+
+export default function CostToServePanel({
+  rows,
+  originName,
+  match,
+}: {
+  rows: CostToServeRow[];
+  originName: string | null;
+  match: MatchQuality;
+}) {
+  const [costPerKm, setCostPerKm] = useState("");
+  const [sortBy, setSortBy] = useState<"revenue" | "km" | "ratio">("ratio");
+  const toast = useToast();
+
+  useEffect(() => {
+    setCostPerKm(localStorage.getItem(COST_PER_KM_KEY) ?? "");
+  }, []);
+
+  function updateCost(value: string) {
+    setCostPerKm(value);
+    localStorage.setItem(COST_PER_KM_KEY, value);
+  }
+
+  const cost = Number(costPerKm);
+  const hasCost = costPerKm.trim() !== "" && Number.isFinite(cost) && cost > 0;
+
+  const analysed = useMemo(() => {
+    return rows
+      .map((r) => {
+        // A round trip: you drive out and you drive back.
+        const tripCost = hasCost && r.km !== null ? r.km * 2 * cost : null;
+        const ratio = r.km !== null && r.km > 0 ? r.revenue / r.km : null;
+        return { ...r, tripCost, ratio, margin: tripCost === null ? null : r.revenue - tripCost };
+      })
+      .sort((a, b) => {
+        if (sortBy === "revenue") return b.revenue - a.revenue;
+        if (sortBy === "km") return (b.km ?? -1) - (a.km ?? -1);
+        // Cheapest-to-serve last: the ones worth looking at are the poor ratios.
+        return (a.ratio ?? Infinity) - (b.ratio ?? Infinity);
+      });
+  }, [rows, hasCost, cost, sortBy]);
+
+  const withRevenue = rows.filter((r) => r.revenue > 0).length;
+
+  function exportCsv() {
+    const csv = toCsv([
+      [
+        "نام کسب‌وکار",
+        "کد مشتری",
+        `فاصله از ${originName ?? "مبدأ"} (کیلومتر، خط مستقیم)`,
+        "فروش (تومان)",
+        "فروش به ازای هر کیلومتر",
+        ...(hasCost ? ["هزینه رفت‌وبرگشت (تومان)", "خالص (تومان)"] : []),
+      ],
+      ...analysed.map((r) => [
+        r.business_name,
+        r.customer_code,
+        r.km === null ? "" : r.km.toFixed(1),
+        r.revenue,
+        r.ratio === null ? "" : Math.round(r.ratio),
+        ...(hasCost ? [r.tripCost === null ? "" : Math.round(r.tripCost), r.margin === null ? "" : Math.round(r.margin)] : []),
+      ]),
+    ]);
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "هزینه-خدمات-رسانی.csv";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast(`CSV با ${analysed.length} ردیف دانلود شد.`, "success");
+  }
+
+  return (
+    <section>
+      <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+        <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          هزینه خدمات‌رسانی
+        </h2>
+        {withRevenue > 0 && (
+          <button
+            onClick={exportCsv}
+            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+          >
+            CSV
+          </button>
+        )}
+      </div>
+
+      {/* The honest empty state. With no sales history this table would be a wall of
+          zeros that looks like an answer -- worse than saying there is nothing to show. */}
+      {withRevenue === 0 ? (
+        <div className="rounded-[var(--radius-md)] border border-border bg-surface p-4">
+          <p className="text-[length:var(--text-sm)] leading-6 text-text-muted">
+            هنوز فروشی ثبت نشده که بتوان آن را با مشتری‌ها تطبیق داد
+            {match.totalRows > 0 && ` (${fmtToman(match.totalRows)} ردیف فروش موجود است، اما هیچ‌کدام با نام مشتری‌های نقشه مطابقت ندارد)`}
+            . پس از ثبت سفارش‌ها در برگه «فروش» و به‌روزرسانی از اکسل، این بخش نسبت فروش هر
+            مشتری به فاصله‌اش را نشان می‌دهد.
+          </p>
+          {match.totalRows > 0 && (
+            <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-warn">
+              نام مشتری در برگه «فروش» باید دقیقاً با نام همان مشتری در برگه «مخاطبین» یکسان باشد،
+              وگرنه آن فروش در این تحلیل دیده نمی‌شود.
+            </p>
+          )}
+        </div>
+      ) : (
+        <>
+          <div className="mb-2 flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
+              هزینه هر کیلومتر (تومان)
+              <input
+                value={costPerKm}
+                onChange={(e) => updateCost(e.target.value)}
+                inputMode="numeric"
+                placeholder="مثلاً ۵۰۰۰"
+                className="w-28 rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
+              />
+            </label>
+            <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+              {(
+                [
+                  ["ratio", "کم‌بازده‌ترین"],
+                  ["revenue", "بیشترین فروش"],
+                  ["km", "دورترین"],
+                ] as [typeof sortBy, string][]
+              ).map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setSortBy(key)}
+                  className={`rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                    sortBy === key ? "bg-accent font-medium text-[#04191c]" : "text-text-muted hover:bg-white/5 hover:text-text"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {!hasCost && (
+            <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+              تا وقتی هزینه هر کیلومتر را وارد نکنید، فقط نسبت خام فروش به فاصله نمایش داده می‌شود —
+              هیچ عدد پیش‌فرضی برای آن وجود ندارد که بتوان به آن تکیه کرد.
+            </p>
+          )}
+
+          {match.unmatchedRows > 0 && (
+            <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-warn">
+              {fmtToman(match.unmatchedRows)} ردیف فروش با هیچ مشتری تطبیق نشد
+              {match.unmatchedRevenue > 0 && ` (${fmtToman(Math.round(match.unmatchedRevenue))} تومان)`} — نام آن‌ها در
+              برگه «فروش» با برگه «مخاطبین» یکسان نیست و در ارقام زیر دیده نمی‌شود.
+            </p>
+          )}
+
+          <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
+            <table className="w-full border-collapse text-[length:var(--text-sm)]">
+              <thead>
+                <tr className="border-b border-border bg-surface text-right text-text-muted">
+                  <th className="px-3 py-2 font-medium">مشتری</th>
+                  <th className="px-3 py-2 font-medium">فاصله (خط مستقیم)</th>
+                  <th className="px-3 py-2 font-medium">فروش</th>
+                  <th className="px-3 py-2 font-medium">فروش بر کیلومتر</th>
+                  {hasCost && <th className="px-3 py-2 font-medium">خالص پس از هزینه سفر</th>}
+                </tr>
+              </thead>
+              <tbody>
+                {analysed.map((r) => (
+                  <tr key={r.customer_code} className="border-b border-border last:border-b-0">
+                    <td className="px-3 py-2 text-text">{r.business_name}</td>
+                    <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
+                      {r.km === null ? "—" : `${r.km.toFixed(1)} کیلومتر`}
+                    </td>
+                    <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{fmtToman(r.revenue)}</td>
+                    <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
+                      {r.ratio === null ? "—" : fmtToman(Math.round(r.ratio))}
+                    </td>
+                    {hasCost && (
+                      <td
+                        className="px-3 py-2 font-mono tabular-nums"
+                        style={{ color: r.margin !== null && r.margin < 0 ? "var(--crit)" : "var(--text-muted)" }}
+                      >
+                        {r.margin === null ? "—" : fmtToman(Math.round(r.margin))}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </>
+      )}
+    </section>
+  );
+}
