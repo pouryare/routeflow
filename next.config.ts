@@ -38,6 +38,17 @@ const nextConfig: NextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
         ],
       },
+      {
+        // Files under public/ are served with max-age=0 by default, so the map was
+        // re-fetching this 13KB reference boundary on every single load. It's fixed
+        // survey data with no version stamp in its URL, hence a day of hard caching
+        // plus a week of stale-while-revalidate rather than "immutable" -- a bad copy
+        // ages out on its own instead of being stuck in a browser forever.
+        source: "/tehran-city-boundary.geojson",
+        headers: [
+          { key: "Cache-Control", value: "public, max-age=86400, stale-while-revalidate=604800" },
+        ],
+      },
     ];
   },
 };

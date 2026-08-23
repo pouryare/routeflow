@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, District } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
+import { geometryVersion } from "@/lib/districtGeometry";
+import { readDistrictProperties } from "@/lib/districts";
 
+// Properties only -- no `boundary_geojson`. Geometry moved to the version-stamped,
+// indefinitely-cached /api/districts/geometry, so this response stays around 50KB and
+// a status edit no longer re-sends every polygon in the province.
 export async function GET(req: NextRequest) {
   const db = getDb();
   const sig = db.prepare("SELECT COUNT(*) c, MAX(updated_at) m FROM districts").get() as {
@@ -12,28 +17,7 @@ export async function GET(req: NextRequest) {
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  const rows = db
-    .prepare("SELECT * FROM districts ORDER BY level, parent_name, name")
-    .all() as unknown as District[];
-
-  const features = rows.map((r) => ({
-    type: "Feature",
-    id: r.id,
-    geometry: JSON.parse(r.boundary_geojson),
-    properties: {
-      id: r.id,
-      name: r.name,
-      level: r.level,
-      parent_name: r.parent_name,
-      coverage_status: r.coverage_status,
-      notes: r.notes,
-      is_custom: !!r.is_custom,
-      updated_at: r.updated_at,
-      assigned_to: r.assigned_to,
-    },
-  }));
-
-  return etagJson(tag, { type: "FeatureCollection", features });
+  return etagJson(req, tag, { version: geometryVersion(), districts: readDistrictProperties(db) });
 }
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];

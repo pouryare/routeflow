@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import gsap from "gsap";
 import { CustomerRow, customerStatusColor, STATUS_COLOR } from "@/lib/types";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import PurchaseHistory from "./PurchaseHistory";
+
+/** Kept in step with the .customer-panel-exit duration in globals.css. */
+const EXIT_MS = 180;
 
 function debtTier(c: CustomerRow): { label: string; color: string; amount: number } | null {
   if (c.debt_30_plus > 0) return { label: "بدهی بیش از ۳۰ روز", color: STATUS_COLOR.not_allowed, amount: c.debt_30_plus };
@@ -58,13 +60,13 @@ export default function CustomerDetailPanel({
     }
   }
 
+  // Exit is a CSS class plus a matching timer, the same shape ToastProvider already
+  // uses. It replaces a gsap.to() tween that pulled the whole animation library into
+  // this panel's chunk for one 180ms fade.
+  const [leaving, setLeaving] = useState(false);
   const handleClose = useCallback(() => {
-    const el = panelRef.current;
-    if (!el || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      onClose();
-      return;
-    }
-    gsap.to(el, { opacity: 0, x: -12, duration: 0.18, ease: "power2.in", onComplete: onClose });
+    setLeaving(true);
+    window.setTimeout(onClose, EXIT_MS);
   }, [onClose]);
 
   useEffect(() => {
@@ -83,7 +85,7 @@ export default function CustomerDetailPanel({
       ref={panelRef}
       key={customer.id}
       dir="rtl"
-      className={`customer-panel-enter absolute bottom-4 left-4 top-4 z-[1000] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 ${elevateClass(statusColor)}`}
+      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} absolute bottom-4 left-4 top-4 z-[1000] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 ${elevateClass(statusColor)}`}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
         <h2 className="text-[length:var(--text-md)] font-bold leading-snug text-text">{customer.business_name}</h2>

@@ -262,6 +262,13 @@ a:focus-visible {
 .customer-panel-enter {
   animation: customer-panel-in var(--dur-slow) var(--ease-out) both;
 }
+@keyframes customer-panel-out {
+  from { opacity: 1; transform: translateX(0); }
+  to { opacity: 0; transform: translateX(-12px); }
+}
+.customer-panel-exit {
+  animation: customer-panel-out 180ms var(--ease-out) both;
+}
 
 /* ---- Modal (district editor): backdrop fade + card fade/scale. ---- */
 @keyframes modal-backdrop-in {
@@ -278,6 +285,44 @@ a:focus-visible {
 .modal-card-enter {
   animation: modal-card-in var(--dur-slow) var(--ease-out) both;
 }
+@keyframes modal-backdrop-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+@keyframes modal-card-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.97); }
+}
+/* The exit class goes on the backdrop and drives its only child, the card, so one
+   class and one timer close the whole modal. */
+.modal-exit {
+  animation: modal-backdrop-out 180ms var(--ease-out) both;
+}
+.modal-exit > * {
+  animation: modal-card-out 150ms var(--ease-out) both;
+}
+
+/* ---- Sidebar entrance stagger. Replaces a gsap.from() on the panel's children, which
+   was the only thing keeping ~55KB gzipped of animation library on the map's critical
+   path. The child count is small and stable, so explicit nth-child delays cover it. ---- */
+@keyframes sidebar-item-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.sidebar-stagger > * {
+  animation: sidebar-item-in var(--dur-slow) var(--ease-out) both;
+}
+.sidebar-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.sidebar-stagger > *:nth-child(2) { animation-delay: 60ms; }
+.sidebar-stagger > *:nth-child(3) { animation-delay: 120ms; }
+.sidebar-stagger > *:nth-child(4) { animation-delay: 180ms; }
+.sidebar-stagger > *:nth-child(5) { animation-delay: 240ms; }
+.sidebar-stagger > *:nth-child(6) { animation-delay: 300ms; }
+.sidebar-stagger > *:nth-child(7) { animation-delay: 360ms; }
+.sidebar-stagger > *:nth-child(8) { animation-delay: 420ms; }
+/* Past the eighth item the stagger stops reading as a stagger and just delays content,
+   so everything below lands together. */
+.sidebar-stagger > *:nth-child(n + 9) { animation-delay: 480ms; }
 
 /* ---- Toasts: slide+fade in from the top, quick fade out on dismiss. ---- */
 @keyframes toast-in {
@@ -296,8 +341,14 @@ a:focus-visible {
 }
 @media (prefers-reduced-motion: reduce) {
   .toast-enter,
-  .toast-exit {
+  .toast-exit,
+  .customer-panel-exit,
+  .modal-exit,
+  .modal-exit > * {
     animation-duration: 1ms;
+  }
+  .sidebar-stagger > * {
+    animation-delay: 0ms;
   }
 }
 

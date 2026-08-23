@@ -10,14 +10,9 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@gsap/react": "^2.1.2",
-    "@turf/distance": "^7.4.0",
-    "@turf/helpers": "^7.4.0",
-    "@turf/nearest-point": "^7.4.0",
     "@types/leaflet-routing-machine": "^3.2.9",
     "@types/leaflet.markercluster": "^1.5.6",
     "exceljs": "^4.4.0",
-    "gsap": "^3.15.0",
     "leaflet": "^1.9.4",
     "leaflet-geosearch": "^4.4.0",
     "leaflet-routing-machine": "^3.2.12",

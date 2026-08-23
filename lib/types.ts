@@ -17,21 +17,34 @@ export const STATUS_LABEL: Record<CoverageStatus, string> = {
   unknown: "نامشخص",
 };
 
+export interface DistrictProperties {
+  id: number;
+  name: string;
+  level: "mantaghe" | "mahalle";
+  parent_name: string | null;
+  coverage_status: CoverageStatus;
+  notes: string | null;
+  is_custom: boolean;
+  updated_at: string;
+  assigned_to: string | null;
+}
+
+/** What GET /api/districts returns. Geometry is deliberately absent -- it is fetched
+ *  once from the version-stamped /api/districts/geometry and cached indefinitely, then
+ *  stitched back together client-side into DistrictFeature. See lib/districtGeometry.ts. */
+export interface DistrictPropertiesResponse {
+  version: string;
+  districts: DistrictProperties[];
+}
+
+/** id -> geometry, the payload shape of /api/districts/geometry. */
+export type DistrictGeometryMap = Record<string, GeoJSON.Geometry>;
+
 export interface DistrictFeature {
   type: "Feature";
   id: number;
   geometry: GeoJSON.Geometry;
-  properties: {
-    id: number;
-    name: string;
-    level: "mantaghe" | "mahalle";
-    parent_name: string | null;
-    coverage_status: CoverageStatus;
-    notes: string | null;
-    is_custom: boolean;
-    updated_at: string;
-    assigned_to: string | null;
-  };
+  properties: DistrictProperties;
 }
 
 export interface DistrictCollection {

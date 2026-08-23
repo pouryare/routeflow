@@ -1,15 +1,27 @@
-import distance from "@turf/distance";
-import { point } from "@turf/helpers";
-
 export interface LatLng {
   lat: number;
   lng: number;
 }
 
-// Great-circle distance in kilometers. Thin wrapper so call sites never touch
-// GeoJSON point construction directly.
+// Mean Earth radius (km), the same figure @turf/distance used, so the numbers this
+// returns are unchanged from the version that called into turf.
+const EARTH_RADIUS_KM = 6371.0088;
+
+const toRad = (deg: number) => (deg * Math.PI) / 180;
+
+// Great-circle distance in kilometers, by the haversine formula. This used to delegate
+// to @turf/distance, which meant shipping @turf/distance + @turf/helpers to the browser
+// -- and through GeofenceWatcher and the "nearby customers" panel, onto the map's
+// critical path -- for one trigonometric expression.
 export function distanceKm(a: LatLng, b: LatLng): number {
-  return distance(point([a.lng, a.lat]), point([b.lng, b.lat]), { units: "kilometers" });
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const lat1 = toRad(a.lat);
+  const lat2 = toRad(b.lat);
+
+  const h =
+    Math.sin(dLat / 2) ** 2 + Math.sin(dLng / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(h));
 }
 
 // Greedy nearest-neighbor ordering starting from `start` (or the first stop when

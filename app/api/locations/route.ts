@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         .all(`%${q}%`, `%${q}%`) as unknown as SavedLocationRow[])
     : (db.prepare("SELECT * FROM saved_locations ORDER BY created_at DESC").all() as unknown as SavedLocationRow[]);
 
-  return etagJson(tag, { locations: rows });
+  return etagJson(req, tag, { locations: rows });
 }
 
 interface NewLocationInput {

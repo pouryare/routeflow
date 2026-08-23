@@ -1,5 +1,6 @@
 import { NextRequest } from "next/server";
-import { getDb, Customer } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { readCustomers } from "@/lib/customers";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 
 export async function GET(req: NextRequest) {
@@ -12,6 +13,5 @@ export async function GET(req: NextRequest) {
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  const rows = db.prepare("SELECT * FROM customers ORDER BY business_name").all() as unknown as Customer[];
-  return etagJson(tag, { customers: rows });
+  return etagJson(req, tag, { customers: readCustomers(db) });
 }

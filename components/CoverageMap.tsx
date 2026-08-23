@@ -1,18 +1,20 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
 import { LatLngBounds, divIcon, geoJSON } from "leaflet";
-import type { Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
-import gsap from "gsap";
-import { useGSAP } from "@gsap/react";
+import type { DivIcon, Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import MarkerClusterGroup from "react-leaflet-cluster";
 import {
   DistrictCollection,
   DistrictFeature,
+  DistrictGeometryMap,
+  DistrictProperties,
+  DistrictPropertiesResponse,
   CustomerRow,
   CoverageStatus,
   STATUS_COLOR,
@@ -24,21 +26,35 @@ import {
   inactivityColor,
   daysSinceLastPurchase,
 } from "@/lib/types";
+import {
+  PRECISION_AUTO_ZOOM,
+  PrecisionMode,
+  PrecisionTier,
+  geometryUrl,
+  isPrecisionMode,
+  resolveTier,
+} from "@/lib/precision";
 import CollapsibleSection from "./CollapsibleSection";
-import DistrictEditor from "./DistrictEditor";
-import ImportPanel from "./ImportPanel";
 import CustomerFilters from "./CustomerFilters";
-import CustomerDetailPanel from "./CustomerDetailPanel";
 import StatusPill from "./StatusPill";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
-import HeatmapLayer from "./HeatmapLayer";
 import BasemapToggleControl, { Basemap } from "./BasemapToggleControl";
-import FullscreenControl from "./FullscreenControl";
 import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
 import { useToast } from "./ToastProvider";
 import { distanceKm } from "@/lib/geo";
+
+// Everything below is reachable only after an interaction -- opening a customer, opening
+// a district, expanding the import panel, switching the heatmap on -- or carries a
+// library the first paint doesn't need (leaflet.heat, leaflet.fullscreen and their CSS).
+// Splitting them out keeps that weight off the chunk that has to arrive before the map
+// can draw anything. CoverageMap is itself ssr:false, so none of these need an SSR pass.
+const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
+const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
+const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
+const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
+const ImportPanel = dynamic(() => import("./ImportPanel"), { ssr: false });
 
 function formatDistanceKm(km: number): string {
   if (km < 1) return `${Math.round(km * 1000)} متر`;
@@ -75,6 +91,16 @@ function DebugMapExpose() {
   return null;
 }
 
+/** Publishes the map's zoom upward so the "auto" precision mode can pick a tier.
+ *  Deliberately only listens to zoomend, not zoom: the intermediate values during a
+ *  pinch or a flyTo would thrash the tier and re-fetch geometry mid-gesture. */
+function ZoomWatcher({ onZoom }: { onZoom: (zoom: number) => void }) {
+  const map = useMapEvents({
+    zoomend: () => onZoom(map.getZoom()),
+  });
+  return null;
+}
+
 function FitToCustomers({ customers }: { customers: CustomerRow[] }) {
   const map = useMap();
   const fitted = useRef(false);
@@ -93,17 +119,36 @@ function FitToCustomers({ customers }: { customers: CustomerRow[] }) {
   return null;
 }
 
-function customerIcon(color: string, selected: boolean) {
-  return divIcon({
+// Leaflet icons are stateless factories -- one instance can back every marker that
+// looks alike -- so these are built once per distinct appearance and shared. Building
+// them inline instead meant 135 fresh divIcons on every render of this component (a
+// sidebar toggle, a color-mode switch, a GPS fix), each one forcing Leaflet to tear
+// down and rebuild that marker's DOM.
+const iconCache = new Map<string, DivIcon>();
+
+// Only the selected marker pulses. Two infinite CSS animations on every customer meant
+// a few hundred of them running forever once clustering disengages at zoom 16, which
+// the compositor pays for continuously on a phone -- and a map where everything pulses
+// communicates nothing anyway.
+function customerIcon(color: string, selected: boolean): DivIcon {
+  const key = `${color}|${selected}`;
+  const cached = iconCache.get(key);
+  if (cached) return cached;
+
+  const pings = selected
+    ? `<span class="customer-marker__ping" aria-hidden="true" style="animation-delay:0ms"></span>
+      <span class="customer-marker__ping" aria-hidden="true" style="animation-delay:var(--pulse-stagger)"></span>`
+    : "";
+  const icon = divIcon({
     className: "",
     html: `<div class="customer-marker${selected ? " customer-marker--selected" : ""}" style="--marker-color:${color}">
-      <span class="customer-marker__ping" aria-hidden="true" style="animation-delay:0ms"></span>
-      <span class="customer-marker__ping" aria-hidden="true" style="animation-delay:var(--pulse-stagger)"></span>
-      <span class="customer-marker__diamond"></span>
+      ${pings}<span class="customer-marker__diamond"></span>
     </div>`,
     iconSize: [14, 14],
     iconAnchor: [7, 7],
   });
+  iconCache.set(key, icon);
+  return icon;
 }
 
 // Cluster bubbles reuse the accent hue (identity-neutral -- a cluster mixes every
@@ -138,14 +183,26 @@ const DARK_TILE = {
     '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
 };
 
-export default function CoverageMap() {
-  const [districts, setDistricts] = useState<DistrictCollection | null>(null);
-  const [customers, setCustomers] = useState<CustomerRow[]>([]);
+export default function CoverageMap({
+  initialDistricts,
+  initialCustomers,
+  geometryVersion,
+}: {
+  initialDistricts: DistrictProperties[];
+  initialCustomers: CustomerRow[];
+  geometryVersion: string;
+}) {
+  const [districtProps, setDistrictProps] = useState<DistrictProperties[]>(initialDistricts);
+  const [geomVersion, setGeomVersion] = useState(geometryVersion);
+  const [geometry, setGeometry] = useState<DistrictGeometryMap | null>(null);
+  const [precisionMode, setPrecisionMode] = useState<PrecisionMode>("auto");
+  const [zoom, setZoom] = useState(11);
+  const [customers, setCustomers] = useState<CustomerRow[]>(initialCustomers);
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictFeature | null>(null);
   const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null);
   const [colorMode, setColorMode] = useState<CustomerColorMode>("status");
   const [salespersonFilter, setSalespersonFilter] = useState<Set<string>>(new Set());
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cityBoundary, setCityBoundary] = useState<GeoJSON.Feature | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -170,27 +227,12 @@ export default function CoverageMap() {
   const asideRef = useRef<HTMLElement>(null);
   const toast = useToast();
 
-  useGSAP(
-    () => {
-      if (!sidebarOpen) return;
-      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      if (!asideRef.current) return;
-      gsap.from(asideRef.current.children, {
-        opacity: 0,
-        y: 8,
-        duration: 0.3,
-        ease: "power3.out",
-        stagger: 0.06,
-      });
-    },
-    { dependencies: [sidebarOpen], scope: asideRef }
-  );
-
   const [districtsVersion, setDistrictsVersion] = useState(0);
   const loadDistricts = useCallback(async () => {
     const res = await fetch("/api/districts");
-    const data = await res.json();
-    setDistricts(data);
+    const data: DistrictPropertiesResponse = await res.json();
+    setDistrictProps(data.districts ?? []);
+    setGeomVersion(data.version);
     // GeoJSON layers below are keyed off this counter: react-leaflet's <GeoJSON> doesn't
     // re-diff its `data` prop, so an in-place status edit (feature count unchanged) needs
     // a forced remount to actually recolor the polygon.
@@ -212,11 +254,70 @@ export default function CoverageMap() {
   }, []);
 
   useEffect(() => {
+    const stored = localStorage.getItem("coverage_precision");
+    if (isPrecisionMode(stored)) setPrecisionMode(stored);
+  }, []);
+  useEffect(() => {
+    localStorage.setItem("coverage_precision", precisionMode);
+  }, [precisionMode]);
+
+  const activeTier: PrecisionTier = resolveTier(precisionMode, zoom);
+
+  // Polygon geometry, fetched separately from the properties above and keyed by
+  // (version, tier). Both tiers of a given version are immutable, so a tier already
+  // pulled once is reused for the rest of the session and served from the browser's
+  // disk cache on the next visit -- switching precision back and forth is free after
+  // the first look at each.
+  const geometryCacheRef = useRef(new Map<string, DistrictGeometryMap>());
+  useEffect(() => {
+    const key = `${geomVersion}:${activeTier}`;
+    const cached = geometryCacheRef.current.get(key);
+    if (cached) {
+      setGeometry(cached);
+      return;
+    }
+
+    let cancelled = false;
     setLoading(true);
-    Promise.all([loadDistricts(), loadCustomers()])
-      .catch(() => setError("خطا در بارگذاری اطلاعات"))
-      .finally(() => setLoading(false));
-  }, [loadDistricts, loadCustomers]);
+    // credentials: "include" pairs with the crossOrigin="use-credentials" preload the
+    // server-rendered page emits for the low tier; mismatched modes mean the preload is
+    // discarded and the payload is fetched a second time.
+    fetch(geometryUrl(geomVersion, activeTier), { credentials: "include" })
+      .then((r) => {
+        if (!r.ok) throw new Error(String(r.status));
+        return r.json() as Promise<DistrictGeometryMap>;
+      })
+      .then((data) => {
+        geometryCacheRef.current.set(key, data);
+        if (cancelled) return;
+        setGeometry(data);
+        setError(null);
+      })
+      .catch(() => {
+        if (!cancelled) setError("خطا در بارگذاری مرز مناطق");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [geomVersion, activeTier]);
+
+  // Properties and geometry are stitched back into the FeatureCollection the rest of the
+  // component (and DistrictEditor, SearchBox, flyToDistrict) already expects. A district
+  // whose geometry is missing -- a row inserted since this tier was built -- is dropped
+  // rather than rendered as a shapeless feature; the next version bump picks it up.
+  const districts: DistrictCollection | null = useMemo(() => {
+    if (!geometry) return null;
+    const features: DistrictFeature[] = [];
+    for (const properties of districtProps) {
+      const shape = geometry[String(properties.id)];
+      if (shape) features.push({ type: "Feature", id: properties.id, geometry: shape, properties });
+    }
+    return { type: "FeatureCollection", features };
+  }, [districtProps, geometry]);
 
   // Keeps customer data live without a manual reload -- not just for this tab's own
   // Excel import (ImportPanel's onImported already refreshes that instantly), but for
@@ -468,7 +569,7 @@ export default function CoverageMap() {
       <aside
         ref={asideRef}
         className={`absolute inset-y-0 right-0 z-[1000] flex w-80 flex-col gap-5 overflow-y-auto border-l border-border bg-surface/95 p-4 pt-16 backdrop-blur transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] ${
-          sidebarOpen ? "translate-x-0" : "translate-x-full"
+          sidebarOpen ? "sidebar-stagger translate-x-0" : "translate-x-full"
         }`}
       >
         <div>
@@ -616,6 +717,40 @@ export default function CoverageMap() {
               </button>
             ))}
           </div>
+        </section>
+
+        <section>
+          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+            دقت مرز مناطق
+          </h2>
+          <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+            {(
+              [
+                ["auto", "خودکار"],
+                ["low", "سریع"],
+                ["high", "دقیق"],
+              ] as [PrecisionMode, string][]
+            ).map(([mode, label]) => (
+              <button
+                key={mode}
+                onClick={() => setPrecisionMode(mode)}
+                className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  precisionMode === mode
+                    ? "bg-accent font-medium text-[#04191c]"
+                    : "text-text-muted hover:bg-white/5 hover:text-text"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+            {precisionMode === "auto"
+              ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${PRECISION_AUTO_ZOOM.toLocaleString("fa-IR")} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
+              : precisionMode === "low"
+                ? "همیشه مرزهای ساده‌شده — سبک‌ترین حالت برای اینترنت ضعیف."
+                : "همیشه مرزهای کامل — دقیق‌تر ولی سنگین‌تر."}
+          </p>
         </section>
 
         <section>
@@ -774,6 +909,13 @@ export default function CoverageMap() {
           zoom={11}
           className="h-full w-full"
           ref={mapRef}
+          // ~430 district polygons as individual SVG <path> nodes is the single most
+          // expensive thing on this page: the browser has to build, lay out and style
+          // that many elements before the first frame, then re-transform all of them on
+          // every pan. The canvas renderer draws them into one element instead. Tooltips
+          // and click handling work the same; only per-path CSS would be lost, and the
+          // polygons are styled entirely through Leaflet's own style options.
+          preferCanvas
         >
           <TileLayer
             attribution={basemap === "satellite" ? SATELLITE_TILE.attribution : DARK_TILE.attribution}
@@ -784,7 +926,7 @@ export default function CoverageMap() {
 
           {mantagheFeatures && (
             <GeoJSON
-              key={`mantaghe-${districtsVersion}`}
+              key={`mantaghe-${districtsVersion}-${activeTier}`}
               data={mantagheFeatures as any}
               style={districtStyle as any}
               onEachFeature={onEachDistrict as any}
@@ -792,7 +934,7 @@ export default function CoverageMap() {
           )}
           {mahalleFeatures && (
             <GeoJSON
-              key={`mahalle-${districtsVersion}`}
+              key={`mahalle-${districtsVersion}-${activeTier}`}
               data={mahalleFeatures as any}
               style={districtStyle as any}
               onEachFeature={onEachDistrict as any}
@@ -861,6 +1003,7 @@ export default function CoverageMap() {
           )}
 
           <FitToCustomers customers={customers} />
+          <ZoomWatcher onZoom={setZoom} />
           <LocateControl onPosition={(lat, lng) => setMyPosition({ lat, lng })} />
           <FullscreenControl />
           <BasemapToggleControl mode={basemap} onToggle={() => setBasemap((m) => (m === "dark" ? "satellite" : "dark"))} />

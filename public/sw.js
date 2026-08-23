@@ -2,9 +2,13 @@
 // Caches map tiles + the two main data endpoints so the map stays viewable with weak
 // or no signal. Writes (status changes, photo uploads, etc.) are NOT queued while
 // offline -- that's a deliberate scope boundary, not an oversight.
-const SHELL_CACHE = "shell-v1";
-const TILE_CACHE = "map-tiles-v1";
-const DATA_CACHE = "map-data-v1";
+// Bumped from v1: district geometry moved to its own version-stamped endpoint, so the
+// old DATA_CACHE holds entries in a shape this worker no longer understands. The
+// activate handler below deletes any cache not named here.
+const SHELL_CACHE = "shell-v2";
+const TILE_CACHE = "map-tiles-v2";
+const DATA_CACHE = "map-data-v2";
+const GEOMETRY_CACHE = "map-geometry-v2";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -19,7 +23,7 @@ self.addEventListener("activate", (event) => {
       .then((keys) =>
         Promise.all(
           keys
-            .filter((k) => ![SHELL_CACHE, TILE_CACHE, DATA_CACHE].includes(k))
+            .filter((k) => ![SHELL_CACHE, TILE_CACHE, DATA_CACHE, GEOMETRY_CACHE].includes(k))
             .map((k) => caches.delete(k))
         )
       )
@@ -37,6 +41,39 @@ async function cacheFirst(request, cacheName) {
     return response;
   } catch {
     return cached || Response.error();
+  }
+}
+
+async function cacheFirstGeometry(request, url) {
+  const cache = await caches.open(GEOMETRY_CACHE);
+  const cached = await cache.match(request);
+  if (cached) return cached;
+
+  try {
+    const response = await fetch(request);
+    if (response.ok) {
+      await cache.put(request, response.clone());
+      // Drop every other tier/version once a new one lands. Keys are compared on the
+      // ?v= stamp only, so both precision tiers of the current version survive.
+      const version = url.searchParams.get("v");
+      for (const key of await cache.keys()) {
+        if (new URL(key.url).searchParams.get("v") !== version) await cache.delete(key);
+      }
+    }
+    return response;
+  } catch {
+    // Offline and this exact version isn't cached -- which happens when the app was
+    // updated while this install was away. Slightly stale polygons of the right tier
+    // still draw a usable map; district *status* comes from /api/districts, not from
+    // here, so nothing shown is wrong, only the boundaries may lag a deploy behind.
+    const tier = url.searchParams.get("p");
+    for (const key of await cache.keys()) {
+      if (new URL(key.url).searchParams.get("p") === tier) {
+        const fallback = await cache.match(key);
+        if (fallback) return fallback;
+      }
+    }
+    return Response.error();
   }
 }
 
@@ -99,8 +136,17 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  if (url.hostname.endsWith("basemaps.cartocdn.com")) {
+  if (url.hostname.endsWith("basemaps.cartocdn.com") || url.hostname === "server.arcgisonline.com") {
     event.respondWith(cacheFirst(request, TILE_CACHE));
+    return;
+  }
+
+  // District geometry is immutable per ?v= stamp, so cache-first is exact rather than
+  // merely tolerable: a hit is guaranteed to be the right bytes, and a version bump
+  // simply misses and fetches the new URL. Old versions are swept below so a long-lived
+  // install doesn't accumulate a copy of every generation ever served.
+  if (url.pathname === "/api/districts/geometry") {
+    event.respondWith(cacheFirstGeometry(request, url));
     return;
   }
 

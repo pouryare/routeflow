@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
-import gsap from "gsap";
 import { DistrictFeature, CoverageStatus, STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import { useToast } from "./ToastProvider";
+
+/** Kept in step with the .modal-exit duration in globals.css. */
+const EXIT_MS = 180;
 
 export default function DistrictEditor({
   district,
@@ -31,14 +33,13 @@ export default function DistrictEditor({
   const backdropRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
 
+  // One class on the backdrop drives both it and the card out (see .modal-exit in
+  // globals.css), replacing a gsap timeline that was the only reason this component
+  // needed the animation library at all.
+  const [leaving, setLeaving] = useState(false);
   const animateOut = useCallback((cb: () => void) => {
-    if (!backdropRef.current || !cardRef.current || window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
-      cb();
-      return;
-    }
-    const tl = gsap.timeline({ onComplete: cb });
-    tl.to(cardRef.current, { opacity: 0, scale: 0.97, duration: 0.15, ease: "power2.in" }, 0);
-    tl.to(backdropRef.current, { opacity: 0, duration: 0.18, ease: "power2.in" }, 0);
+    setLeaving(true);
+    window.setTimeout(cb, EXIT_MS);
   }, []);
 
   const handleClose = useCallback(() => animateOut(onClose), [animateOut, onClose]);
@@ -65,7 +66,7 @@ export default function DistrictEditor({
   return (
     <div
       ref={backdropRef}
-      className="modal-backdrop-enter absolute inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4"
+      className={`${leaving ? "modal-exit" : "modal-backdrop-enter"} absolute inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4`}
       onClick={handleClose}
     >
       <div
