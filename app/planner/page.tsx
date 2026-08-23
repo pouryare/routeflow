@@ -120,6 +120,7 @@ export default function PlannerPage() {
   const [originPickerOpen, setOriginPickerOpen] = useState(false);
   const [returnToOrigin, setReturnToOrigin] = useState(true);
   const [optimising, setOptimising] = useState(false);
+  const [siteEvents, setSiteEvents] = useState<{ created_at: string; note: string | null; entity_id: number }[]>([]);
   const toast = useToast();
   const [locating, setLocating] = useState(false);
 
@@ -159,6 +160,16 @@ export default function PlannerPage() {
       .then((d) => setFacilities(d.facilities ?? []))
       .catch(() => {});
   }, []);
+
+  // Feature 12: the day's depot arrivals, logged by the geofence. Only fetched for the
+  // selected day, and only used to describe a day that has actually started -- nothing
+  // here fabricates a start time from the plan.
+  useEffect(() => {
+    fetch(`/api/activity?entity_type=facility&date=${selectedDate}`)
+      .then((r) => r.json())
+      .then((d) => setSiteEvents(d.activity ?? []))
+      .catch(() => setSiteEvents([]));
+  }, [selectedDate]);
 
   const dayPlans = (plansByDate[selectedDate] ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
 
@@ -406,6 +417,44 @@ export default function PlannerPage() {
     }
   }
 
+  /** Feature 12. Derived entirely from logged arrivals, so a day with the site geofence
+   *  switched off simply shows nothing rather than an invented figure. Distance covered
+   *  counts only the stops actually marked done -- what was planned is not what was
+   *  driven. */
+  const dayLog = useMemo(() => {
+    if (siteEvents.length === 0) return null;
+    const times = siteEvents.map((e) => new Date(e.created_at).getTime()).filter((t) => Number.isFinite(t)).sort((a, b) => a - b);
+    if (times.length === 0) return null;
+
+    const first = times[0];
+    const last = times[times.length - 1];
+    const done = dayPlans.filter((p) => p.status === "done");
+
+    // A single arrival means the day is still open: measure to now, not to that one
+    // event, which would read as a zero-length day.
+    const isToday = selectedDate === toDateStr(new Date());
+    const end = times.length > 1 ? last : isToday ? Date.now() : last;
+    const minutes = Math.max(0, Math.round((end - first) / 60000));
+
+    const drivenKm =
+      origin && done.length > 0
+        ? routeLengthKm(
+            origin,
+            done.filter((p) => p.lat && p.lng) as (PlanRow & { lat: number; lng: number })[],
+            returnToOrigin
+          )
+        : null;
+
+    return {
+      startedAt: new Date(first),
+      minutes,
+      stillOpen: times.length === 1 && isToday,
+      doneCount: done.length,
+      drivenKm,
+      stopCount: siteEvents.length,
+    };
+  }, [siteEvents, dayPlans, origin, returnToOrigin, selectedDate]);
+
   const routeStops = useMemo<RouteStop[]>(() => {
     if (orderedStops.length === 0) return [];
     const stops: RouteStop[] = [];
@@ -550,6 +599,25 @@ export default function PlannerPage() {
               )}
             </div>
           </div>
+
+          {dayLog && (
+            <div className="mb-3 flex flex-wrap items-center gap-x-4 gap-y-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 font-mono text-[length:var(--text-xs)] text-text-muted">
+              <span className="uppercase tracking-wide text-accent">امروز</span>
+              <span>
+                شروع{" "}
+                <span dir="ltr" className="inline-block text-text">
+                  {String(dayLog.startedAt.getHours()).padStart(2, "0")}:
+                  {String(dayLog.startedAt.getMinutes()).padStart(2, "0")}
+                </span>
+              </span>
+              <span>
+                {Math.floor(dayLog.minutes / 60)} ساعت و {dayLog.minutes % 60} دقیقه
+                {dayLog.stillOpen && " (در جریان)"}
+              </span>
+              <span>{dayLog.doneCount.toLocaleString("fa-IR")} توقف انجام‌شده</span>
+              {dayLog.drivenKm !== null && <span>{formatDistanceKm(dayLog.drivenKm)} — خط مستقیم</span>}
+            </div>
+          )}
 
           {/* Feature 1: the origin is always applied, but it must be visible and
               overridable -- a number computed from a point the user cannot see is a

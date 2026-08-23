@@ -209,6 +209,7 @@ export default function CoverageMap({
   initialFacilities: FacilityRow[];
   geometryVersion: string;
 }) {
+  const [facilityGeofenceOn, setFacilityGeofenceOn] = useState(false);
   const [corridorOn, setCorridorOn] = useState(false);
   const [corridorWidthKm, setCorridorWidthKm] = useState(5);
   const [districtProps, setDistrictProps] = useState<DistrictProperties[]>(initialDistricts);
@@ -371,6 +372,7 @@ export default function CoverageMap({
   useEffect(() => {
     setGeofenceOn(localStorage.getItem("coverage_geofence_on") === "1");
     setCorridorOn(localStorage.getItem("coverage_corridor_on") === "1");
+    setFacilityGeofenceOn(localStorage.getItem("coverage_geofence_sites") === "1");
     const storedWidth = Number(localStorage.getItem("coverage_corridor_km"));
     if (CORRIDOR_WIDTHS.includes(storedWidth)) setCorridorWidthKm(storedWidth);
   }, []);
@@ -650,7 +652,13 @@ export default function CoverageMap({
         onLocationFound={handleLocationFound}
       />
 
-      <GeofenceWatcher enabled={geofenceOn} customers={filteredCustomers} onPosition={(lat, lng) => setMyPosition({ lat, lng })} />
+      <GeofenceWatcher
+        enabled={geofenceOn}
+        facilitiesEnabled={facilityGeofenceOn}
+        customers={filteredCustomers}
+        facilities={initialFacilities}
+        onPosition={(lat, lng) => setMyPosition({ lat, lng })}
+      />
 
       <aside
         ref={asideRef}
@@ -1022,6 +1030,29 @@ export default function CoverageMap({
               />
             </button>
           </div>
+
+          {/* A sub-option, not a sibling switch: it rides the same permission, the same
+              position stream and the same battery cost as the toggle above, and
+              presenting it as independent would imply otherwise. */}
+          {geofenceOn && (
+            <label className="mt-2 flex items-start gap-2 text-[length:var(--text-xs)] leading-5 text-text-muted">
+              <input
+                type="checkbox"
+                checked={facilityGeofenceOn}
+                onChange={(e) => {
+                  setFacilityGeofenceOn(e.target.checked);
+                  localStorage.setItem("coverage_geofence_sites", e.target.checked ? "1" : "0");
+                }}
+                className="mt-0.5 accent-[color:var(--accent)]"
+              />
+              <span>
+                ثبت حضور در انبارها و مبدأ
+                <span className="block text-text-faint">
+                  رسیدن به انبار یا مبدأ هم ثبت می‌شود — مبنای گزارش ساعت کاری روزانه
+                </span>
+              </span>
+            </label>
+          )}
         </section>
 
         <section>
