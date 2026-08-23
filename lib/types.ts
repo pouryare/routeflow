@@ -78,6 +78,21 @@ export interface CustomerRow {
 
 export type CustomerColorMode = "status" | "debt" | "salesperson" | "inactivity" | "distance";
 
+export const CUSTOMER_COLOR_MODES: CustomerColorMode[] = [
+  "status",
+  "debt",
+  "salesperson",
+  "inactivity",
+  "distance",
+];
+
+/** Guards a colour mode arriving from outside the app -- a deep link, which anyone can
+ *  hand-edit. An unrecognised value falls back to the default rather than colouring
+ *  every marker `undefined`. */
+export function isCustomerColorMode(v: unknown): v is CustomerColorMode {
+  return typeof v === "string" && (CUSTOMER_COLOR_MODES as string[]).includes(v);
+}
+
 // Customer status text comes straight from the workbook ("مشتری فعال", "غیرفعال", ...)
 // and doesn't share a vocabulary with CoverageStatus (district coverage), so it gets
 // its own bucket -> token mapping instead of reusing STATUS_COLOR.

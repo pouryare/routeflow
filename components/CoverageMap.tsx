@@ -27,6 +27,7 @@ import {
   daysSinceLastPurchase,
   distanceColor,
   DISTANCE_BANDS,
+  isCustomerColorMode,
 } from "@/lib/types";
 import {
   PRECISION_AUTO_ZOOM,
@@ -49,6 +50,8 @@ import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } fr
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 import { faNum } from "@/lib/format";
+import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
+import { copyText } from "@/lib/clipboard";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
@@ -62,6 +65,58 @@ const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false })
 const ImportPanel = dynamic(() => import("./ImportPanel"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
+
+const VIEW_KEY = "coverage_view";
+
+/** Where this browser was left. A driver works one district for days at a time, and the
+ *  map used to re-fit to every customer in the province on each load. */
+function readStoredView(): MapView | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(VIEW_KEY);
+    if (!raw) return null;
+    const v = JSON.parse(raw) as Partial<MapView>;
+    if (typeof v.lat !== "number" || typeof v.lng !== "number" || typeof v.zoom !== "number") return null;
+    return { lat: v.lat, lng: v.lng, zoom: v.zoom };
+  } catch {
+    // Unparseable or storage blocked -- fall back to fitting, which is the old behaviour.
+    return null;
+  }
+}
+
+/** The opening view implied by a link that names a target but no position.
+ *
+ *  Computing it here, before the map is constructed, is what lets `?c=42` open *on* the
+ *  customer instead of drawing Tehran and then flying away from it. Districts use the
+ *  centroid already carried on their properties row, so this works before any polygon
+ *  geometry has been fetched.
+ *
+ *  Zoom levels: 15 puts a shop in its street, 13 fits a neighbourhood. */
+function linkTargetView(
+  link: { customerId?: number; districtId?: number },
+  customers: CustomerRow[],
+  districts: DistrictProperties[]
+): MapView | null {
+  if (link.customerId !== undefined) {
+    const c = customers.find((x) => x.id === link.customerId);
+    if (c && c.lat !== null && c.lng !== null) return { lat: c.lat, lng: c.lng, zoom: 15 };
+  }
+  if (link.districtId !== undefined) {
+    const d = districts.find((x) => x.id === link.districtId);
+    if (d && d.centroid_lat !== null && d.centroid_lng !== null) {
+      return { lat: d.centroid_lat, lng: d.centroid_lng, zoom: 13 };
+    }
+  }
+  return null;
+}
+
+function writeStoredView(v: MapView): void {
+  try {
+    localStorage.setItem(VIEW_KEY, JSON.stringify(v));
+  } catch {
+    // Private mode. The map still works, it just won't remember.
+  }
+}
 
 const QUICK_LINKS = [
   { href: "/planner", icon: "🧭", label: "برنامه‌ریزی مسیر و پوشش" },
@@ -106,11 +161,27 @@ function ZoomWatcher({ onZoom }: { onZoom: (zoom: number) => void }) {
   return null;
 }
 
-function FitToCustomers({ customers }: { customers: CustomerRow[] }) {
+/** The opening view when nothing else has said where to look. Skipped entirely when the
+ *  URL carries a view or a target, or when this browser remembers where it was left --
+ *  fitting to all customers would throw away the thing the user actually asked for. */
+/** Publishes the map's position after every gesture. moveend covers zooming too --
+ *  Leaflet fires a move for a zoom -- so one listener is enough, and it fires once at the
+ *  end of a pan rather than continuously through it. */
+function ViewWatcher({ onView }: { onView: (v: MapView) => void }) {
+  const map = useMapEvents({
+    moveend: () => {
+      const c = map.getCenter();
+      onView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() });
+    },
+  });
+  return null;
+}
+
+function FitToCustomers({ customers, enabled }: { customers: CustomerRow[]; enabled: boolean }) {
   const map = useMap();
   const fitted = useRef(false);
   useEffect(() => {
-    if (fitted.current) return;
+    if (!enabled || fitted.current) return;
     const pts = customers.filter((c) => c.lat && c.lng).map((c) => [c.lat as number, c.lng as number] as [number, number]);
     if (pts.length === 0) return;
     fitted.current = true;
@@ -120,7 +191,7 @@ function FitToCustomers({ customers }: { customers: CustomerRow[] }) {
       const bounds = pts.reduce((b, p) => b.extend(p), new LatLngBounds(pts[0], pts[0]));
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
     }
-  }, [customers, map]);
+  }, [customers, map, enabled]);
   return null;
 }
 
@@ -210,6 +281,21 @@ export default function CoverageMap({
   initialFacilities: FacilityRow[];
   geometryVersion: string;
 }) {
+  // --- Deep links -------------------------------------------------------------------
+  // Read once, on the first render, before the map exists: the opening view is a
+  // MapContainer prop, and by the time an effect could run the map has already drawn
+  // Tehran and would have to fly away from it.
+  //
+  // Precedence is URL, then this browser's last position, then fit-to-customers. A link
+  // someone sent is the most specific statement of intent available; the remembered view
+  // is the next; fitting is what is left when nobody has said anything.
+  const [incoming] = useState(() => (typeof window === "undefined" ? {} : parseMapLink(window.location.search)));
+  const [startView] = useState<MapView | null>(
+    () => incoming.view ?? linkTargetView(incoming, initialCustomers, initialDistricts) ?? readStoredView()
+  );
+  const viewRef = useRef<MapView | null>(startView);
+  const linkAppliedRef = useRef({ customer: false, district: false });
+
   const [facilityGeofenceOn, setFacilityGeofenceOn] = useState(false);
   const [corridorOn, setCorridorOn] = useState(false);
   const [corridorWidthKm, setCorridorWidthKm] = useState(5);
@@ -220,8 +306,15 @@ export default function CoverageMap({
   const [zoom, setZoom] = useState(11);
   const [customers, setCustomers] = useState<CustomerRow[]>(initialCustomers);
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictFeature | null>(null);
-  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(null);
-  const [colorMode, setColorMode] = useState<CustomerColorMode>("status");
+  // A ?c= link opens with that customer already selected. No effect and no flyTo: the
+  // customer's own coordinates are what startView above was computed from, so the map
+  // simply opens there.
+  const [selectedCustomer, setSelectedCustomer] = useState<CustomerRow | null>(
+    () => (incoming.customerId === undefined ? null : initialCustomers.find((c) => c.id === incoming.customerId) ?? null)
+  );
+  const [colorMode, setColorMode] = useState<CustomerColorMode>(() =>
+    isCustomerColorMode(incoming.colorMode) ? incoming.colorMode : "status"
+  );
   const [salespersonFilter, setSalespersonFilter] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -242,6 +335,7 @@ export default function CoverageMap({
   const [geofenceOn, setGeofenceOn] = useState(false);
   const bulkModeRef = useRef(bulkMode);
   bulkModeRef.current = bulkMode;
+
   const districtLayersRef = useRef(new Map<number, Layer>());
   const mapRef = useRef<LeafletMap | null>(null);
   const salesIndexRef = useRef(new Map<string, number>());
@@ -406,6 +500,25 @@ export default function CoverageMap({
     }
   }
 
+  // The district half does need an effect: unlike a customer, a district is only a
+  // selectable thing once its polygon geometry has been fetched, and that is async. The
+  // map is already pointing at the right place by then (startView used the centroid) --
+  // this only opens the panel for it.
+  //
+  // Guarded by a ref rather than an empty dependency list: the effect has to be allowed
+  // to re-run until the geometry arrives, but must not re-select once the user has moved
+  // on to another district.
+  useEffect(() => {
+    if (incoming.districtId === undefined || linkAppliedRef.current.district || !districts) return;
+    const d = districts.features.find((f) => f.properties.id === incoming.districtId);
+    if (!d) return;
+    linkAppliedRef.current.district = true;
+    // There is no earlier moment: the feature this selects does not exist until the
+    // geometry fetch above resolves.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSelectedDistrict(d);
+  }, [districts, incoming]);
+
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
       if (salespersonFilter.size > 0 && !salespersonFilter.has(c.salesperson ?? "")) return false;
@@ -548,6 +661,47 @@ export default function CoverageMap({
     () => (districts ? { type: "FeatureCollection" as const, features: districts.features.filter((f) => f.properties.level === "mahalle") } : null),
     [districts]
   );
+
+  /** Everything about the current view except where the map is pointing.
+   *
+   *  The default colour mode is omitted rather than written out, so an untouched map
+   *  produces the short link people will actually paste. */
+  const linkState = useMemo(
+    () => ({
+      customerId: selectedCustomer?.id,
+      districtId: selectedDistrict?.properties.id,
+      colorMode: colorMode === "status" ? undefined : colorMode,
+    }),
+    [selectedCustomer, selectedDistrict, colorMode]
+  );
+
+  /** Rewrites the address bar to describe what is on screen.
+   *
+   *  The map position comes from a ref rather than state on purpose: it changes on every
+   *  pan, and holding it in state would re-render 430 polygons for each one. */
+  const syncUrl = useCallback(() => {
+    replaceUrlQuery(buildMapLink({ ...linkState, view: viewRef.current ?? undefined }));
+  }, [linkState]);
+
+  useEffect(() => {
+    syncUrl();
+  }, [syncUrl]);
+
+  const handleView = useCallback(
+    (v: MapView) => {
+      viewRef.current = v;
+      writeStoredView(v);
+      syncUrl();
+    },
+    [syncUrl]
+  );
+
+  /** Copies a link to exactly this view. The share button's whole job. */
+  async function shareView() {
+    const url = absoluteMapLink({ ...linkState, view: viewRef.current ?? undefined }, "/");
+    const ok = await copyText(url);
+    toast(ok ? "پیوند این نما کپی شد." : "کپی پیوند ممکن نبود.", ok ? "success" : "error");
+  }
 
   function flyToCustomer(c: CustomerRow) {
     setSelectedCustomer(c);
@@ -749,6 +903,20 @@ export default function CoverageMap({
         )}
 
         <CollapsibleSection title="لینک‌های سریع" storageKey="links" defaultOpen>
+            {/* The current view as a link. Everything on screen -- where the map sits,
+                which customer is open, how the markers are coloured -- is already in the
+                address bar; this is the button that says so, because nobody thinks to
+                check the address bar of a map. */}
+            <button
+              onClick={shareView}
+              className="mb-1.5 flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface py-2 pe-3 ps-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
+            >
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white/5 text-[length:var(--text-md)]">
+                ⧉
+              </span>
+              <span className="flex-1 text-[length:var(--text-sm)] text-text">کپی پیوند این نما</span>
+            </button>
+
             <div className="flex flex-col gap-1.5">
               {QUICK_LINKS.map((l) => (
                 <Link
@@ -1131,8 +1299,8 @@ export default function CoverageMap({
 
       <div className="absolute inset-0">
         <MapContainer
-          center={TEHRAN_CENTER}
-          zoom={11}
+          center={startView ? [startView.lat, startView.lng] : TEHRAN_CENTER}
+          zoom={startView?.zoom ?? 11}
           className="h-full w-full"
           ref={mapRef}
           // ~430 district polygons as individual SVG <path> nodes is the single most
@@ -1294,7 +1462,11 @@ export default function CoverageMap({
             </Marker>
           )}
 
-          <FitToCustomers customers={customers} />
+          <FitToCustomers
+            customers={customers}
+            enabled={!startView && incoming.customerId === undefined && incoming.districtId === undefined}
+          />
+          <ViewWatcher onView={handleView} />
           <ZoomWatcher onZoom={setZoom} />
           <LocateControl onPosition={(lat, lng) => setMyPosition({ lat, lng })} />
           <FullscreenControl />
