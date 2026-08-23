@@ -21,6 +21,9 @@
   --warn: #f5a623;
   --crit: #f0475b;
   --neutral: #5b6b7c;
+  /* Own sites (warehouse / home base). Not a status and not the interactive accent --
+     see MASTER.md "Facility marker". */
+  --facility: #d6e6f5;
 
   /* type scale */
   --text-xs: 0.6875rem;
@@ -70,6 +73,7 @@
   --color-warn: var(--warn);
   --color-crit: var(--crit);
   --color-neutral: var(--neutral);
+  --color-facility: var(--facility);
   --font-sans: var(--font-vazirmatn);
   --font-mono: var(--font-jetbrains-mono);
 }
@@ -167,6 +171,48 @@ a:focus-visible {
   opacity: 0.5;
   animation: marker-ping var(--pulse-duration) var(--ease-out) infinite;
 }
+/* ---- Facility markers: our own sites (warehouse, home base). Distinguished by
+   silhouette first and color second -- a solid hexagon for the warehouse, a hollow
+   house for the home base -- so they survive a color-blind reader and the satellite
+   basemap, where a single hue washes out. Static by design: MASTER.md gives the idle
+   radar-ping to things that are live readings, and a building is not one.
+   See MASTER.md "Facility marker". ---- */
+.facility-marker {
+  display: block;
+  color: var(--facility);
+  filter: drop-shadow(0 0 7px color-mix(in srgb, var(--facility) 50%, transparent));
+  transition: transform var(--dur-base) var(--ease-out), filter var(--dur-base) var(--ease-out);
+}
+.facility-marker svg {
+  display: block;
+}
+.leaflet-marker-icon:hover .facility-marker {
+  transform: scale(1.03);
+  filter: drop-shadow(0 0 12px color-mix(in srgb, var(--facility) 85%, transparent));
+}
+/* Warehouse: filled body, glyph knocked out in the page ground so the crates read as
+   negative space rather than a second color. */
+.facility-marker__body {
+  fill: var(--facility);
+  stroke: var(--bg);
+  stroke-width: 2;
+  stroke-linejoin: round;
+}
+.facility-marker__glyph {
+  fill: var(--bg);
+}
+/* Home base: the same two parts inverted -- dark body, bright outline and door -- which
+   separates it from the warehouse at a glance even at the size a phone renders it. */
+.facility-marker--home .facility-marker__body {
+  fill: var(--bg);
+  fill-opacity: 0.88;
+  stroke: var(--facility);
+  stroke-width: 2.2;
+}
+.facility-marker--home .facility-marker__glyph {
+  fill: var(--facility);
+}
+
 .locate-control a {
   display: flex !important;
   align-items: center;
@@ -353,13 +399,22 @@ a:focus-visible {
 }
 
 /* ---- Leaflet overrides: popups/tooltips must carry the site's own type system,
-   not the browser default Leaflet ships with. ---- */
+   not the browser default Leaflet ships with.
+
+   Every selector here is prefixed with `.leaflet-container` purely to out-specify
+   Leaflet's own single-class rules. leaflet.css arrives in the chunk that
+   CoverageMap's `ssr: false` dynamic import pulls in, which the browser applies
+   *after* globals.css -- so at equal specificity Leaflet's `background: white` won
+   the cascade and every popup rendered as an unreadable white card with this app's
+   near-white text on it. Same class of problem the .leaflet-fullscreen-icon block
+   above solves with !important; the descendant prefix does it without one, since
+   every themed element genuinely lives inside the map container. ---- */
 .leaflet-container {
   background: var(--bg);
   font-family: var(--font-vazirmatn), sans-serif;
 }
-.leaflet-popup-content-wrapper,
-.leaflet-tooltip {
+.leaflet-container .leaflet-popup-content-wrapper,
+.leaflet-container .leaflet-tooltip {
   background: var(--surface-raised);
   color: var(--text);
   border: 1px solid var(--border);
@@ -368,13 +423,13 @@ a:focus-visible {
   font-size: var(--text-sm);
   box-shadow: 0 0 0 1px var(--border), 0 8px 24px -8px rgba(0, 0, 0, 0.6);
 }
-.leaflet-popup-tip {
+.leaflet-container .leaflet-popup-tip {
   background: var(--surface-raised);
   border: 1px solid var(--border);
   box-shadow: none;
 }
-.leaflet-tooltip-top:before,
-.leaflet-tooltip-bottom:before {
+.leaflet-container .leaflet-tooltip-top:before,
+.leaflet-container .leaflet-tooltip-bottom:before {
   border-top-color: var(--border);
   border-bottom-color: var(--border);
 }

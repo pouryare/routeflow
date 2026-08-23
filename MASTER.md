@@ -47,10 +47,13 @@ concept *is* the pitch, not a switchable mode) — no light theme, no
 | `--warn` | `#F5A623` | Status: نیاز به پوشش / سرنخ / نمونه داده شد / در حال پیگیری |
 | `--crit` | `#F0475B` | Status: اجازه ورود ندارم / بدهی بحرانی |
 | `--neutral` | `#5B6B7C` | Status: نامشخص / غیرفعال |
+| `--facility` | `#D6E6F5` | Our own sites (انبار مرکزی، خانه) — infrastructure, never a status |
 
 Semantic status colors are **never** repurposed as the interactive accent, and
 `--accent` never carries status meaning — kept distinct per genjutsu's own rule
-(a color must mean one thing).
+(a color must mean one thing). `--facility` is a third category again: our
+own depots carry no coverage/debt/activity reading, so they may not borrow a status
+color, and they are not interactive chrome, so they may not borrow `--accent`.
 
 Contrast checked against `--bg`: `--text` 15.1:1, `--text-muted` 5.8:1,
 `--accent` 9.6:1, `--good` 8.9:1, `--warn` 7.4:1, `--crit` 5.2:1 — all clear
@@ -133,6 +136,16 @@ longer than 300ms for anything the user is waiting on.
 - **Map marker** — diamond (45°-rotated square), 14px, status color fill, 2px
   `--bg`-colored ring (separates it from the dark tiles), glow matching status
   color, idle radar-ping animation (two staggered expanding rings).
+- **Facility marker** — our own sites, in `--facility`, distinguished by silhouette
+  before color so they hold up for a color-blind reader and over satellite tiles:
+  **warehouse** is a filled hexagon, 26×29px, center-anchored, with its crate glyph
+  knocked out in `--bg`; **home base** is the same two parts inverted — a hollow house,
+  24×26px, anchored at its *base* (a house that floats above its point reads as
+  standing next to the address, not on it), `--bg` body at 88% with a `--facility`
+  outline and door. Both static: the idle radar-ping belongs to live readings, and a
+  building is not one. Hover: glow-intensify + scale 1.03, like every other
+  interactive element. Drawn above the cluster layer — they are landmarks the rest of
+  the map is read against, never something to hide inside a customer bubble.
 
 ## Anti-patterns (explicitly avoided)
 

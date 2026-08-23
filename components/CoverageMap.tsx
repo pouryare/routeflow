@@ -44,6 +44,12 @@ import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
 import { useToast } from "./ToastProvider";
 import { distanceKm } from "@/lib/geo";
+import {
+  FACILITIES,
+  FACILITY_LABEL,
+  Facility,
+  FacilityKind,
+} from "@/lib/facilities";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
@@ -171,6 +177,64 @@ function foundLocationIcon() {
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   });
+}
+
+// Our own sites are drawn as inline SVG silhouettes rather than emoji (MASTER.md's
+// anti-pattern list) or a status-colored diamond: they carry no coverage reading, so
+// reusing the customer marker's shape would invite the map to be misread.
+//
+// The warehouse's inner glyph is a stack of crates, not a building. A roof-and-door
+// glyph was tried first and, at the 26px the marker actually renders at, read as a
+// second little house sitting inside a hexagon -- indistinguishable at a glance from
+// the home-base marker beside it in the legend, which defeats the whole point of
+// separating the two by silhouette. Every fill
+// lives in globals.css against --facility/--bg, so no color is duplicated here.
+//
+// The warehouse anchors at its center (a footprint, like the customer diamond); the
+// house anchors at its base, because a house silhouette that floats above the point it
+// marks reads as hovering next to the address rather than standing on it.
+const FACILITY_ART: Record<FacilityKind, { html: string; size: [number, number]; anchor: [number, number] }> = {
+  warehouse: {
+    html: `<svg width="26" height="29" viewBox="0 0 26 29" aria-hidden="true">
+        <path class="facility-marker__body" d="M13 1.2 24.2 7.7v13L13 27.2 1.8 20.7v-13z"/>
+        <rect class="facility-marker__glyph" x="10.4" y="9.6" width="5.2" height="4.6" rx="0.6"/>
+        <rect class="facility-marker__glyph" x="7.1" y="15.2" width="5.2" height="4.6" rx="0.6"/>
+        <rect class="facility-marker__glyph" x="13.7" y="15.2" width="5.2" height="4.6" rx="0.6"/>
+      </svg>`,
+    size: [26, 29],
+    anchor: [13, 15],
+  },
+  home_base: {
+    html: `<svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true">
+        <path class="facility-marker__body" d="M12 1.8 22 9.4v12.4a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 21.8V9.4z"/>
+        <rect class="facility-marker__glyph" x="9.4" y="13.6" width="5.2" height="7.2" rx="0.6"/>
+      </svg>`,
+    size: [24, 26],
+    anchor: [12, 24],
+  },
+};
+
+function facilityIcon(kind: FacilityKind): DivIcon {
+  const key = `facility|${kind}`;
+  const cached = iconCache.get(key);
+  if (cached) return cached;
+  const art = FACILITY_ART[kind];
+  const icon = divIcon({
+    className: "",
+    html: `<div class="facility-marker${kind === "home_base" ? " facility-marker--home" : ""}">${art.html}</div>`,
+    iconSize: art.size,
+    iconAnchor: art.anchor,
+  });
+  iconCache.set(key, icon);
+  return icon;
+}
+
+/** Straight-line distance from one facility to every other, precomputed once -- the
+ *  popup's "N km from the warehouse" line, and the sidebar's site list, both read it. */
+function otherFacilityDistance(f: Facility): { other: Facility; km: number } | null {
+  const other = FACILITIES.find((x) => x.id !== f.id);
+  if (!other) return null;
+  return { other, km: distanceKm(f, other) };
 }
 
 const SATELLITE_TILE = {
@@ -524,6 +588,10 @@ export default function CoverageMap({
     }
   }
 
+  function flyToFacility(f: Facility) {
+    mapRef.current?.flyTo([f.lat, f.lng], 15, { duration: 1 });
+  }
+
   function flyToDistrict(d: DistrictFeature) {
     setSelectedDistrict(d);
     if (!mapRef.current) return;
@@ -803,6 +871,42 @@ export default function CoverageMap({
           </p>
         </section>
 
+        {/* The two silhouettes are repeated here at marker size, not described in words:
+            the legend's job is to teach the shape the user will actually look for. */}
+        <section>
+          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+            تأسیسات ما
+          </h2>
+          <div className="flex flex-col gap-1">
+            {FACILITIES.map((f) => (
+              <button
+                key={f.id}
+                onClick={() => flyToFacility(f)}
+                className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
+              >
+                <span
+                  className="shrink-0"
+                  aria-hidden="true"
+                  dangerouslySetInnerHTML={{
+                    __html: `<span class="facility-marker${f.kind === "home_base" ? " facility-marker--home" : ""}">${FACILITY_ART[f.kind].html}</span>`,
+                  }}
+                />
+                <span className="min-w-0">
+                  <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
+                  {f.note && (
+                    <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.note}</span>
+                  )}
+                </span>
+              </button>
+            ))}
+          </div>
+          {FACILITIES.length === 2 && (
+            <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
+              {formatDistanceKm(distanceKm(FACILITIES[0], FACILITIES[1]))} فاصله مستقیم بین دو انبار
+            </p>
+          )}
+        </section>
+
         <section>
           <div className="flex items-center justify-between gap-2">
             <div>
@@ -978,6 +1082,49 @@ export default function CoverageMap({
                 );
               })}
           </MarkerClusterGroup>
+
+          {/* Outside the cluster group and lifted above it: these two are landmarks the
+              rest of the map is read against, so they must never be swallowed into a
+              customer bubble or hidden behind a blip that happens to overlap them. */}
+          {FACILITIES.map((f) => {
+            const rel = otherFacilityDistance(f);
+            return (
+              <Marker
+                key={f.id}
+                position={[f.lat, f.lng]}
+                icon={facilityIcon(f.kind)}
+                zIndexOffset={1000}
+              >
+                <Popup>
+                  <div dir="rtl" className="text-[length:var(--text-sm)] leading-6">
+                    <p className="font-medium text-text">{f.name}</p>
+                    <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">
+                      {FACILITY_LABEL[f.kind]}
+                    </p>
+                    {f.address && (
+                      <p className="mt-1.5 text-[length:var(--text-xs)] text-text-muted">{f.address}</p>
+                    )}
+                    <p dir="ltr" className="mt-1.5 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
+                      {f.lat.toFixed(6)}, {f.lng.toFixed(6)}
+                    </p>
+                    {rel && (
+                      <p className="mt-1 text-[length:var(--text-xs)] text-text-faint">
+                        {formatDistanceKm(rel.km)} تا {rel.other.name} (خط مستقیم)
+                      </p>
+                    )}
+                    <a
+                      href={f.mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-2 inline-block text-[length:var(--text-xs)] text-accent hover:underline"
+                    >
+                      مسیریابی در گوگل مپ ↗
+                    </a>
+                  </div>
+                </Popup>
+              </Marker>
+            );
+          })}
 
           {foundLocation && (
             <Marker
