@@ -522,10 +522,12 @@ a:focus-visible {
   width: 18px;
   height: 18px;
 }
-/* Wide enough that the larger type does not wrap every label onto two lines. */
+/* Wide enough that the larger type does not wrap every label onto two lines, but never
+   the full width: the strip of map left showing is the affordance that says this is a
+   drawer over the map rather than a page you have navigated to. */
 @media (min-width: 420px) {
   .driver-mode aside {
-    width: 23rem;
+    width: min(23rem, calc(100vw - 3rem));
   }
 }
 
