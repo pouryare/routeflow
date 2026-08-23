@@ -122,10 +122,13 @@ export default function NextStopBar({
     ? distanceKm(myPosition, { lat: next.lat, lng: next.lng })
     : null;
 
+  // Shares its resting place with the arrival prompt, which outranks it in the stacking
+  // scale. That is deliberate: when the prompt is up it is about this very stop, and a
+  // prompt sitting half over the bar is harder to read than one sitting cleanly on it.
   return (
     <div
       dir="rtl"
-      className="pointer-events-none absolute bottom-8 left-1/2 z-[var(--z-map-overlay)] flex w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 justify-center"
+      className="pointer-events-none pinned-bottom absolute left-1/2 z-[var(--z-map-overlay)] flex w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 justify-center"
     >
       <div className="pointer-events-auto flex w-full items-center gap-2 rounded-[var(--radius-lg)] border border-border-strong bg-surface-raised/95 px-3 py-2 backdrop-blur elevate-accent">
         <span className="shrink-0 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">

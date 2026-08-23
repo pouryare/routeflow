@@ -1,13 +1,15 @@
 import { describe, it, expect } from "vitest";
 import {
   distanceKm,
-  corridorPolygon,
+  corridorBandFromPath,
+  distanceToPathKm,
   distanceToSegmentKm,
   formatDistanceKm,
   nearestNeighborOrder,
   routeLengthKm,
   twoOptOrder,
 } from "@/lib/geo";
+import type { LatLng } from "@/lib/geo";
 
 describe("distanceKm", () => {
   it("is ~0 for the same point", () => {
@@ -192,30 +194,58 @@ describe("distanceToSegmentKm", () => {
   });
 })
 
-describe("corridorPolygon", () => {
-  const a = { lat: 35.75, lng: 51.80 };
-  const b = { lat: 35.50, lng: 51.75 };
+describe("corridorBandFromPath", () => {
+  const a = { lat: 35.0, lng: 51.0 };
+  const b = { lat: 35.0, lng: 51.5 };
 
-  it("returns a four-cornered band", () => {
-    expect(corridorPolygon(a, b, 5)).toHaveLength(4);
-  });
-
-  // The band's whole purpose is "everything within N km of the drive", so its corners
-  // have to actually sit N km from the line.
-  it("puts every corner the requested half-width from the segment", () => {
-    for (const [lat, lng] of corridorPolygon(a, b, 5)) {
-      expect(distanceToSegmentKm({ lat, lng }, a, b)).toBeCloseTo(5, 1);
+  it("reproduces the straight-line rectangle for a two-point path", () => {
+    const band = corridorBandFromPath([a, b], 5);
+    expect(band).toHaveLength(4);
+    for (const [lat, lng] of band) {
+      expect(distanceToSegmentKm({ lat, lng }, a, b)).toBeCloseTo(5, 3);
     }
   });
 
-  it("scales with the requested width", () => {
-    const narrow = corridorPolygon(a, b, 2);
-    const wide = corridorPolygon(a, b, 10);
-    expect(distanceToSegmentKm({ lat: narrow[0][0], lng: narrow[0][1] }, a, b)).toBeCloseTo(2, 1);
-    expect(distanceToSegmentKm({ lat: wide[0][0], lng: wide[0][1] }, a, b)).toBeCloseTo(10, 1);
+  it("holds the requested half-width along a bend", () => {
+    // The mitre keeps the band the width it was asked for through a turn rather than
+    // pinching in at the corner, which would quietly exclude districts on the inside.
+    const bend: LatLng[] = [
+      { lat: 35.0, lng: 51.0 },
+      { lat: 35.0, lng: 51.4 },
+      { lat: 35.3, lng: 51.4 },
+    ];
+    const band = corridorBandFromPath(bend, 5);
+    expect(band.length).toBeGreaterThanOrEqual(6);
+    for (const [lat, lng] of band) {
+      expect(distanceToPathKm({ lat, lng }, bend)).toBeGreaterThan(4);
+    }
   });
 
-  it("returns nothing for a zero-length segment, which has no direction to widen", () => {
-    expect(corridorPolygon(a, a, 5)).toEqual([]);
+  it("widens with the half-width", () => {
+    // Exact to the metre, because the band is now laid out on the same sphere distanceKm
+    // measures with. It used to be half a percent out, which is what asking a spherical
+    // ruler about an ellipsoidal drawing costs.
+    const narrow = corridorBandFromPath([a, b], 2);
+    const wide = corridorBandFromPath([a, b], 10);
+    expect(distanceToSegmentKm({ lat: narrow[0][0], lng: narrow[0][1] }, a, b)).toBeCloseTo(2, 3);
+    expect(distanceToSegmentKm({ lat: wide[0][0], lng: wide[0][1] }, a, b)).toBeCloseTo(10, 3);
   });
-})
+
+  it("returns nothing to draw for a degenerate path", () => {
+    expect(corridorBandFromPath([a], 5)).toEqual([]);
+    expect(corridorBandFromPath([a, a], 5)).toEqual([]);
+    expect(corridorBandFromPath([a, b], 0)).toEqual([]);
+  });
+
+  it("flattens wiggles far smaller than the band itself", () => {
+    // Metre-scale jitter in the road geometry cannot be seen inside a 5km band, but its
+    // offsets cross each other and render the band as a bowtie. The result should have
+    // no more corners than the straight version it is indistinguishable from.
+    const jittery: LatLng[] = [];
+    for (let i = 0; i <= 40; i++) {
+      jittery.push({ lat: 35.0 + (i % 2) * 0.0002, lng: 51.0 + i * 0.0125 });
+    }
+    const band = corridorBandFromPath(jittery, 5);
+    expect(band).toHaveLength(4);
+  });
+});

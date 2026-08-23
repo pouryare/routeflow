@@ -77,6 +77,19 @@ export function simplifyRing(ring: Ring, tolerance: number): Ring {
   return simplified.length >= 4 ? simplified : ring;
 }
 
+/** Douglas-Peucker for an *open path* rather than a closed ring.
+ *
+ *  simplifyRing refuses to touch anything under four positions and refuses to return
+ *  fewer, both of which are linear-ring validity rules: a path has no such floor, and a
+ *  route that decimates to its two endpoints is a perfectly good straight road.
+ *
+ *  Units are whatever the caller's positions are in -- the corridor band passes a path
+ *  already projected into kilometres, so its tolerance is in kilometres too. */
+export function simplifyPath(path: Ring, tolerance: number): Ring {
+  if (tolerance <= 0 || path.length <= 2) return path;
+  return douglasPeucker(path, tolerance * tolerance);
+}
+
 export function roundPosition(p: GeoJsonPosition, decimals: number): GeoJsonPosition {
   const f = 10 ** decimals;
   return [Math.round(p[0] * f) / f, Math.round(p[1] * f) / f];

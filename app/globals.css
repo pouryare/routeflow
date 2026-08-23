@@ -38,11 +38,19 @@
      The 1000 floor clears Leaflet's own panes and controls, which top out at 800. ---- */
   --z-map-chrome: 1000;      /* search box, map controls */
   --z-map-overlay: 1010;     /* next-stop bar, bulk-edit bar */
+  --z-prompt: 1015;          /* geofence arrival -- above the map, below anything the
+                                user opened themselves. It was above everything on the
+                                grounds of being time-critical, which had it covering the
+                                bottom of an open panel. It is a suggestion, and it waits
+                                until dismissed, so nothing is lost by letting a panel
+                                the user deliberately opened sit in front of it. */
   --z-panel: 1020;           /* customer detail, district editor -- own the screen */
   --z-sidebar: 1030;         /* covers a panel when opened over it */
   --z-sidebar-toggle: 1035;  /* sits inside the sidebar's footprint and is what closes
-                                it, so it has to clear the thing it controls */
-  --z-prompt: 1040;          /* geofence arrival -- time-critical, beats all the above */
+                                it, so it has to clear the thing it controls. It is
+                                hidden outright while a panel owns the screen -- see
+                                CoverageMap -- because there it would only be chrome
+                                floating over someone's title bar. */
   --z-lightbox: 1050;
   --z-help: 1060;
   --z-toast: 1070;
@@ -381,6 +389,32 @@ a:focus-visible {
 }
 .customer-panel-exit {
   animation: customer-panel-out 180ms var(--ease-out) both;
+}
+
+/* ---- The map fills the *visible* viewport, not the theoretical one.
+
+   `100vh` on mobile Chrome is the height the page would have with the address bar
+   scrolled away, so a full-height map hangs below the bottom of the screen by exactly
+   the height of that bar. Everything anchored to the bottom of the map -- the arrival
+   prompt and its two buttons, the next-stop bar, the bulk-edit bar -- was being placed
+   relative to an edge the user cannot see, which is why the arrival prompt appeared to
+   have no actions: they were rendered, just below the fold.
+
+   `100dvh` tracks the bar as it comes and goes. The `100vh` line below is the fallback
+   for anything that does not know the unit and must stay first; the build strips it back
+   out when every targeted browser understands `dvh`, which today they all do. ---- */
+.map-viewport {
+  height: 100vh;
+  height: 100dvh;
+}
+
+/* ---- Bottom-anchored overlays clear the home indicator as well as the edge.
+
+   `bottom: 1rem` is measured from the bottom of the layout box, which on a phone with a
+   gesture bar is underneath the gesture bar. `max()` keeps the 1rem on hardware with no
+   inset and grows it where there is one. ---- */
+.pinned-bottom {
+  bottom: max(var(--space-4), calc(env(safe-area-inset-bottom) + var(--space-2)));
 }
 
 /* ---- Bottom sheet: the panel's shape on a phone.

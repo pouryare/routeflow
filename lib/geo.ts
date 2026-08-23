@@ -1,4 +1,5 @@
 import { faFixed, faNum } from "./format";
+import { simplifyPath, type GeoJsonPosition } from "./simplify";
 
 export interface LatLng {
   lat: number;
@@ -159,38 +160,129 @@ export function distanceToSegmentKm(p: LatLng, a: LatLng, b: LatLng): number {
   return distanceKm(p, { lat: ay + t * dy, lng: (ax + t * dx) / latScale });
 }
 
-// Ground distance per degree at Tehran's latitude. Only used to widen the corridor band
-// into a drawable shape -- every distance the app actually reports still goes through
-// the haversine above.
-const KM_PER_DEG_LAT = 110.574;
-const KM_PER_DEG_LNG_EQUATOR = 111.32;
-
-/** The four corners of a rectangular band of the given half-width running along the
- *  segment a->b, as [lat, lng] pairs ready for a Leaflet polygon.
+/** Shortest distance in kilometres from a point to anywhere on a path.
  *
- *  Drawn as a plain rectangle rather than a buffered capsule: the rounded ends would
- *  imply the corridor extends past the depots, and it does not -- it is the stretch of
- *  road actually driven between them.
+ *  The corridor question -- "is this district near the run between the two depots" -- is
+ *  asked against a road route, which is a polyline. Measured against the straight line
+ *  between the endpoints instead, a district beside a motorway that bows north would
+ *  read as tens of kilometres off a route it is actually on.
+ *
+ *  Infinity for an empty path, so a corridor that has not been computed puts everything
+ *  outside it rather than inside it. */
+export function distanceToPathKm(p: LatLng, path: LatLng[]): number {
+  if (path.length === 0) return Infinity;
+  if (path.length === 1) return distanceKm(p, path[0]);
+
+  let best = Infinity;
+  for (let i = 0; i < path.length - 1; i++) {
+    const d = distanceToSegmentKm(p, path[i], path[i + 1]);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/** Kilometres per degree of latitude, on the same sphere distanceKm measures with.
+ *
+ *  This was an ellipsoidal figure (110.574 km, which is the meridian degree at the
+ *  *equator*, despite the comment claiming Tehran) while every distance the app reports
+ *  is measured on a sphere of radius EARTH_RADIUS_KM. So the corridor band was drawn
+ *  with one Earth and its contents decided with another, and its edge sat half a percent
+ *  off the width it was asked for. Half a percent is 25 metres on a 5km band -- nothing
+ *  you could see -- but there is no reason to keep two Earths, and deriving this from the
+ *  radius above means they cannot drift apart again.
+ *
+ *  Longitude degrees shrink by cos(latitude), which is why that one is computed per-use
+ *  rather than stored. */
+const KM_PER_DEG_LAT = (Math.PI * EARTH_RADIUS_KM) / 180;
+const KM_PER_DEG_LNG_EQUATOR = KM_PER_DEG_LAT;
+
+/** How far a mitred corner may run past the corner it turns, as a multiple of the band's
+ *  half-width. Without a cap, a hairpin sends the corner off to infinity. */
+const MITRE_LIMIT = 2;
+
+/** A band of the given half-width running along `path`, as [lat, lng] pairs ready for a
+ *  Leaflet polygon.
+ *
+ *  Drawn with square ends rather than rounded ones: a rounded cap would imply the
+ *  corridor extends past the depots, and it does not -- it is the stretch of road
+ *  actually driven between them.
+ *
+ *  ## Why the path is simplified first
+ *
+ *  Offsetting a polyline is only well behaved while the turns are gentle relative to the
+ *  width. Road geometry is full of metre-scale jitter that is invisible inside a 5km band
+ *  but whose offsets cross each other, and a self-crossing ring renders as a bowtie. So
+ *  the path is flattened to a quarter of the half-width first -- detail the band could
+ *  not show anyway. Genuine hairpins can still cross; the mitre cap bounds how badly.
+ *
+ *  ## Why this is only ever a drawing
+ *
+ *  Membership is decided by distanceToPathKm, never by a point-in-polygon test against
+ *  this shape. The distance is exact and stays right through any bend; the polygon is an
+ *  approximation whose whole job is to look like the answer.
  *
  *  Offsets are computed in a local km-space (longitude scaled by cos(latitude)) and
  *  converted back to degrees, so the band has the requested width on the ground rather
  *  than in raw degrees, which would render visibly lopsided at this latitude. */
-export function corridorPolygon(a: LatLng, b: LatLng, halfWidthKm: number): [number, number][] {
-  const kmPerDegLng = KM_PER_DEG_LNG_EQUATOR * Math.cos(toRad((a.lat + b.lat) / 2));
+export function corridorBandFromPath(path: LatLng[], halfWidthKm: number): [number, number][] {
+  if (path.length < 2 || halfWidthKm <= 0) return [];
 
-  const dxKm = (b.lng - a.lng) * kmPerDegLng;
-  const dyKm = (b.lat - a.lat) * KM_PER_DEG_LAT;
-  const length = Math.hypot(dxKm, dyKm);
-  if (length === 0) return [];
+  const meanLat = path.reduce((sum, p) => sum + p.lat, 0) / path.length;
+  const kmPerDegLng = KM_PER_DEG_LNG_EQUATOR * Math.cos(toRad(meanLat));
+  if (kmPerDegLng === 0) return [];
 
-  // Unit vector perpendicular to the run, in km-space, then back into degrees.
-  const offLng = ((-dyKm / length) * halfWidthKm) / kmPerDegLng;
-  const offLat = ((dxKm / length) * halfWidthKm) / KM_PER_DEG_LAT;
+  // Into km-space, dropping repeats so a duplicated vertex cannot produce a zero-length
+  // segment with no direction to take a normal from.
+  const pts: GeoJsonPosition[] = [];
+  for (const p of path) {
+    const q: GeoJsonPosition = [p.lng * kmPerDegLng, p.lat * KM_PER_DEG_LAT];
+    const last = pts[pts.length - 1];
+    if (!last || last[0] !== q[0] || last[1] !== q[1]) pts.push(q);
+  }
 
-  return [
-    [a.lat + offLat, a.lng + offLng],
-    [b.lat + offLat, b.lng + offLng],
-    [b.lat - offLat, b.lng - offLng],
-    [a.lat - offLat, a.lng - offLng],
-  ];
+  const line = simplifyPath(pts, halfWidthKm / 4);
+  if (line.length < 2) return [];
+
+  // Left-hand unit normal of each segment.
+  const normals: GeoJsonPosition[] = [];
+  for (let i = 0; i < line.length - 1; i++) {
+    const dx = line[i + 1][0] - line[i][0];
+    const dy = line[i + 1][1] - line[i][1];
+    const len = Math.hypot(dx, dy);
+    normals.push([-dy / len, dx / len]);
+  }
+
+  const left: [number, number][] = [];
+  const right: [number, number][] = [];
+
+  for (let i = 0; i < line.length; i++) {
+    // At the ends there is only one segment to take a side from; in between, the corner
+    // is mitred along the bisector of the two.
+    const before = normals[i - 1] ?? normals[i];
+    const after = normals[i] ?? normals[i - 1];
+
+    let mx = before[0] + after[0];
+    let my = before[1] + after[1];
+    const mLen = Math.hypot(mx, my);
+
+    let reach = halfWidthKm;
+    if (mLen === 0) {
+      // The path doubles back on itself: there is no bisector, so square off the corner
+      // against the outgoing segment instead of dividing by zero.
+      mx = after[0];
+      my = after[1];
+    } else {
+      mx /= mLen;
+      my /= mLen;
+      // |before + after| is 2cos(half the turn), so 2/|before + after| is the 1/cos that
+      // restores the full width through the bend -- capped, or a hairpin spikes.
+      reach = halfWidthKm * Math.min(2 / mLen, MITRE_LIMIT);
+    }
+
+    const [x, y] = line[i];
+    left.push([(y + my * reach) / KM_PER_DEG_LAT, (x + mx * reach) / kmPerDegLng]);
+    right.push([(y - my * reach) / KM_PER_DEG_LAT, (x - mx * reach) / kmPerDegLng]);
+  }
+
+  return [...left, ...right.reverse()];
 }

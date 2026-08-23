@@ -51,7 +51,9 @@ import NotificationToggle from "./NotificationToggle";
 import NavAppSetting, { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import { useToast } from "./ToastProvider";
-import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } from "@/lib/geo";
+import { corridorBandFromPath, distanceKm, distanceToPathKm, formatDistanceKm } from "@/lib/geo";
+import type { LatLng } from "@/lib/geo";
+import { fetchDrivingRoute, type DrivingRoute } from "@/lib/osrm";
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 import { useSwipeDismiss } from "./useSwipeDismiss";
@@ -908,24 +910,77 @@ export default function CoverageMap({
     return best;
   }, [initialFacilities]);
 
+  /* ---- The corridor follows the road, not the crow.
+
+     Drawn as a straight band between the two depots, the corridor claimed a stretch of
+     city nobody drives through and disowned the districts along the road that actually
+     joins them -- which is the whole question it exists to answer. So the route is
+     fetched once and everything downstream is computed against the road geometry.
+
+     The straight line survives as the fallback, and the sidebar says which one is on
+     screen: a corridor quietly drawn down the wrong streets is worse than one that
+     admits it could not reach the router. ---- */
+  const corridorKey = corridorEnds ? `${corridorEnds.a.id}-${corridorEnds.b.id}` : null;
+
+  /** What came back, and which pair of depots it came back for. Storing the two together
+   *  means "still routing" is derived from them rather than kept as a second flag that
+   *  could disagree -- and an answer for a pair of depots that are no longer the corridor
+   *  reads as absent instead of as a stale road. */
+  const [corridorAnswer, setCorridorAnswer] = useState<{ key: string; route: DrivingRoute | null } | null>(null);
+
+  useEffect(() => {
+    if (!corridorOn || !corridorEnds || !corridorKey) return;
+    if (corridorAnswer?.key === corridorKey) return;
+
+    const controller = new AbortController();
+    let live = true;
+    fetchDrivingRoute(corridorEnds.a, corridorEnds.b, controller.signal).then((route) => {
+      if (live) setCorridorAnswer({ key: corridorKey, route });
+    });
+    return () => {
+      live = false;
+      controller.abort();
+    };
+    // Only the endpoints change the road. Widening the band re-measures against the same
+    // route rather than asking for it again.
+  }, [corridorOn, corridorEnds, corridorKey, corridorAnswer]);
+
+  const corridorRoute = corridorAnswer?.key === corridorKey ? corridorAnswer.route : null;
+  const corridorRouting = corridorOn && corridorKey !== null && corridorAnswer?.key !== corridorKey;
+
+  const corridorPath = useMemo<LatLng[]>(() => {
+    if (corridorRoute) return corridorRoute.path;
+    if (corridorEnds) {
+      return [
+        { lat: corridorEnds.a.lat, lng: corridorEnds.a.lng },
+        { lat: corridorEnds.b.lat, lng: corridorEnds.b.lng },
+      ];
+    }
+    return [];
+  }, [corridorRoute, corridorEnds]);
+
   const corridorBand = useMemo(
-    () => (corridorEnds ? corridorPolygon(corridorEnds.a, corridorEnds.b, corridorWidthKm) : []),
-    [corridorEnds, corridorWidthKm]
+    () => corridorBandFromPath(corridorPath, corridorWidthKm),
+    [corridorPath, corridorWidthKm]
   );
 
   /** District ids whose centre falls inside the band. Districts with no centroid are
-   *  absent rather than assumed outside -- they simply cannot be judged. */
+   *  absent rather than assumed outside -- they simply cannot be judged.
+   *
+   *  Measured against the route itself rather than tested inside the drawn polygon: the
+   *  distance is exact through every bend, while the polygon is an approximation that can
+   *  cross itself at a hairpin. */
   const corridorDistrictIds = useMemo(() => {
-    if (!corridorOn || !corridorEnds) return null;
+    if (!corridorOn || corridorPath.length < 2) return null;
     const ids = new Set<number>();
     for (const d of districtProps) {
       if (d.centroid_lat === null || d.centroid_lng === null) continue;
-      if (distanceToSegmentKm({ lat: d.centroid_lat, lng: d.centroid_lng }, corridorEnds.a, corridorEnds.b) <= corridorWidthKm) {
+      if (distanceToPathKm({ lat: d.centroid_lat, lng: d.centroid_lng }, corridorPath) <= corridorWidthKm) {
         ids.add(d.id);
       }
     }
     return ids;
-  }, [corridorOn, corridorEnds, corridorWidthKm, districtProps]);
+  }, [corridorOn, corridorPath, corridorWidthKm, districtProps]);
 
   const corridorUncovered = useMemo(() => {
     if (!corridorDistrictIds) return 0;
@@ -962,15 +1017,27 @@ export default function CoverageMap({
     mapRef.current?.flyTo([lat, lng], 16, { duration: 1 });
   }
 
+  /** A panel is up and is the thing being read. Map chrome stands down for it. */
+  const panelOwnsScreen = selectedCustomer !== null || selectedDistrict !== null;
+
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-bg">
-      {/* Stood down while the phone-sized search box has the top row. Two 40px controls
-          and a full-width input cannot share 100vw, and the input is the one being used. */}
+    <div className="map-viewport relative w-full overflow-hidden bg-bg">
+      {/* Stood down in two cases, both while the sidebar is shut -- when it is open this
+          button is the only way to close it and has to stay reachable.
+
+          Against the phone-sized search box: two 40px controls and a full-width input
+          cannot share 100vw, and the input is the one being used.
+
+          Against an open panel: this button sits above the sidebar in the stacking scale,
+          and the sidebar sits above the panels, so it floats over a panel's own title bar
+          -- covering the name of what you are looking at with a menu button that would
+          only bury it further. With a panel owning the screen there is nothing here worth
+          reaching, so it stands down until the panel is closed. */}
       <button
         onClick={() => setSidebarOpen((v) => !v)}
         aria-label={sidebarOpen ? "بستن پنل" : "باز کردن پنل"}
         aria-expanded={sidebarOpen}
-        hidden={searchExpanded && !sidebarOpen}
+        hidden={!sidebarOpen && (searchExpanded || panelOwnsScreen)}
         className="absolute right-4 top-4 z-[var(--z-sidebar-toggle)] flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:border-accent active:scale-[0.98]"
       >
         {sidebarOpen ? "✕" : "☰"}
@@ -1433,10 +1500,22 @@ export default function CoverageMap({
                       ))}
                     </div>
                     <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                      مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} ({formatDistanceKm(corridorEnds.km)}، خط مستقیم).
-                      {corridorUncovered > 0
-                        ? ` ${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
-                        : " منطقه نیازمند پوششی سر این راه نیست."}
+                      <span>
+                        مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} (
+                        {formatDistanceKm(corridorRoute ? corridorRoute.km : corridorEnds.km)}
+                        {corridorRoute ? "، روی جاده" : corridorRouting ? "، در حال مسیریابی…" : "، خط مستقیم"}
+                        ).
+                      </span>{" "}
+                      <span>
+                        {corridorUncovered > 0
+                          ? `${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
+                          : "منطقه نیازمند پوششی سر این راه نیست."}
+                      </span>
+                      {!corridorRoute && !corridorRouting && (
+                        <span className="mt-1 block text-warn">
+                          مسیریاب در دسترس نبود — نوار روی خط مستقیم بین دو نقطه کشیده شده، نه روی جاده.
+                        </span>
+                      )}
                     </p>
                   </>
                 )}
@@ -1763,10 +1842,7 @@ export default function CoverageMap({
                 pathOptions={{ color: FACILITY_COLOR, weight: 1, opacity: 0.5, fillColor: FACILITY_COLOR, fillOpacity: 0.07 }}
               />
               <Polyline
-                positions={[
-                  [corridorEnds.a.lat, corridorEnds.a.lng],
-                  [corridorEnds.b.lat, corridorEnds.b.lng],
-                ]}
+                positions={corridorPath.map((p) => [p.lat, p.lng] as [number, number])}
                 interactive={false}
                 pathOptions={{ color: FACILITY_COLOR, weight: 2, opacity: 0.75, dashArray: "8 6" }}
               />
@@ -1962,7 +2038,7 @@ export default function CoverageMap({
       {bulkMode && bulkSelectedIds.size > 0 && (
         <div
           dir="rtl"
-          className="absolute bottom-4 left-1/2 z-[var(--z-map-overlay)] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
+          className="pinned-bottom absolute left-1/2 z-[var(--z-map-overlay)] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
         >
           <span className="shrink-0 text-[length:var(--text-sm)] font-medium text-text">
             {bulkSelectedIds.size} منطقه انتخاب شده
