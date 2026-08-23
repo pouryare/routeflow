@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import { faNum } from "@/lib/format";
 import { useToast } from "./ToastProvider";
+import { useNavApp } from "./NavAppSetting";
+import { navigateUrl } from "@/lib/navApps";
 
 interface PlanRow {
   id: number;
@@ -49,6 +51,7 @@ export default function NextStopBar({
   const [plans, setPlans] = useState<PlanRow[] | null>(null);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const [navAppId] = useNavApp();
 
   const load = useCallback(async () => {
     try {
@@ -160,7 +163,7 @@ export default function NextStopBar({
 
         {next.lat !== null && next.lng !== null && (
           <a
-            href={`https://www.google.com/maps/dir/?api=1&destination=${next.lat},${next.lng}`}
+            href={navigateUrl(navAppId, { lat: next.lat, lng: next.lng }, next.label)}
             target="_blank"
             rel="noopener noreferrer"
             aria-label="مسیریابی به این توقف"

@@ -43,9 +43,13 @@ import CustomerFilters from "./CustomerFilters";
 import StatusPill from "./StatusPill";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
+import MyLocationMarker from "./MyLocationMarker";
+import { useMyPosition } from "./MyPositionProvider";
 import BasemapToggleControl, { Basemap } from "./BasemapToggleControl";
 import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
+import NavAppSetting, { useNavApp } from "./NavAppSetting";
+import { navigateUrl } from "@/lib/navApps";
 import { useToast } from "./ToastProvider";
 import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } from "@/lib/geo";
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
@@ -330,7 +334,6 @@ export default function CoverageMap({
   const [error, setError] = useState<string | null>(null);
   const [cityBoundary, setCityBoundary] = useState<GeoJSON.Feature | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [myPosition, setMyPosition] = useState<{ lat: number; lng: number } | null>(null);
   const [dueReminders, setDueReminders] = useState<DueReminder[]>([]);
   const [heatmapOn, setHeatmapOn] = useState(false);
   const [heatmapByDebt, setHeatmapByDebt] = useState(false);
@@ -361,6 +364,17 @@ export default function CoverageMap({
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sectionFilterRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
+  const [navAppId] = useNavApp();
+
+  // One shared watch, mounted at the root. Previously this component held its own
+  // position state, fed only when the geofence toggle happened to be on -- so the
+  // "nearby customers" list and the next-stop distance were silently unavailable for
+  // anyone who had not turned that on.
+  const { position: myPositionFix, status: positionStatus, error: positionError, retry: retryPosition } = useMyPosition();
+  const myPosition = useMemo(
+    () => (myPositionFix ? { lat: myPositionFix.lat, lng: myPositionFix.lng } : null),
+    [myPositionFix]
+  );
 
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   useSwipeDismiss(asideRef, "right", closeSidebar, sidebarOpen);
@@ -396,14 +410,11 @@ export default function CoverageMap({
           break;
         case "g":
         case "G":
-          navigator.geolocation?.getCurrentPosition(
-            (pos) => {
-              setMyPosition({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-              mapRef.current?.flyTo([pos.coords.latitude, pos.coords.longitude], 15, { duration: 1 });
-            },
-            () => toast("موقعیت پیدا نشد", "error"),
-            { enableHighAccuracy: true, timeout: 10000 }
-          );
+          if (myPosition) mapRef.current?.flyTo([myPosition.lat, myPosition.lng], 16, { duration: 1 });
+          else {
+            toast("هنوز موقعیتی دریافت نشده", "info");
+            retryPosition();
+          }
           break;
         case "?":
         case "؟":
@@ -419,7 +430,7 @@ export default function CoverageMap({
     }
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showShortcuts, selectedCustomer, sidebarOpen, toast]);
+  }, [showShortcuts, selectedCustomer, sidebarOpen, toast, myPosition, retryPosition]);
 
   const [districtsVersion, setDistrictsVersion] = useState(0);
   const loadDistricts = useCallback(async () => {
@@ -980,7 +991,6 @@ export default function CoverageMap({
         facilitiesEnabled={facilityGeofenceOn}
         customers={filteredCustomers}
         facilities={initialFacilities}
-        onPosition={(lat, lng) => setMyPosition({ lat, lng })}
       />
 
       <aside
@@ -1460,7 +1470,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت">
+        <CollapsibleSection title="تنظیمات" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی نشان بلد ویز گوگل">
           <div className="flex flex-col gap-4">
 
             <div className="flex items-center justify-between gap-2">
@@ -1614,6 +1624,8 @@ export default function CoverageMap({
               <NotificationToggle />
 
             </div>
+
+            <NavAppSetting />
 
             <div>
 
@@ -1825,12 +1837,12 @@ export default function CoverageMap({
                     )}
                     <div className="mt-2 flex flex-wrap items-center gap-3">
                       <a
-                        href={f.maps_url ?? "#"}
+                        href={navigateUrl(navAppId, { lat: f.lat, lng: f.lng }, f.name)}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-[length:var(--text-xs)] text-accent hover:underline"
                       >
-                        مسیریابی در گوگل مپ ↗
+                        مسیریابی ↗
                       </a>
                       <Link
                         href={`/facilities?f=${f.id}`}
@@ -1875,7 +1887,9 @@ export default function CoverageMap({
           />
           <ViewWatcher onView={handleView} />
           <ZoomWatcher onZoom={setZoom} />
-          <LocateControl onPosition={(lat, lng) => setMyPosition({ lat, lng })} />
+          {/* Always drawn, never waiting to be asked for. */}
+          <MyLocationMarker />
+          <LocateControl />
           <FullscreenControl />
           <BasemapToggleControl mode={basemap} onToggle={() => setBasemap((m) => (m === "dark" ? "satellite" : "dark"))} />
           <DebugMapExpose />

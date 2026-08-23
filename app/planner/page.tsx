@@ -19,6 +19,8 @@ import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { replaceUrlQuery } from "@/lib/deepLink";
 import CopyButton from "@/components/CopyButton";
+import { useNavApp } from "@/components/NavAppSetting";
+import { navApp, navigateUrl } from "@/lib/navApps";
 import PrintButton from "@/components/PrintButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
@@ -154,6 +156,7 @@ export default function PlannerPage() {
   const [optimising, setOptimising] = useState(false);
   const [siteEvents, setSiteEvents] = useState<{ created_at: string; note: string | null; entity_id: number }[]>([]);
   const toast = useToast();
+  const [navAppId] = useNavApp();
   const [locating, setLocating] = useState(false);
 
   const loadWeek = useCallback(async () => {
@@ -439,11 +442,23 @@ export default function PlannerPage() {
     if (included.length) {
       params.set("waypoints", included.map((s) => `${s.lat},${s.lng}`).join("|"));
     }
+    // Only Google's URL API can carry a whole day. For any other navigation app the
+    // honest reduction is the first leg -- the alternative is a link that looks like it
+    // holds the round and silently holds one stop of it.
+    if (navAppId !== "google") {
+      return {
+        url: navigateUrl(navAppId, orderedStops[0], orderedStops[0].label),
+        dropped: 0,
+        singleLeg: orderedStops.length > 1,
+      };
+    }
+
     return {
       url: `https://www.google.com/maps/dir/?${params.toString()}`,
       dropped: waypointStops.length - included.length,
+      singleLeg: false,
     };
-  }, [orderedStops, origin, returnToOrigin]);
+  }, [orderedStops, origin, returnToOrigin, navAppId]);
 
   // Feature 5. The same segment-distance helper the corridor uses, asked per consecutive
   // leg instead of once end to end: if the day already drives past the warehouse, say so
@@ -695,7 +710,7 @@ export default function PlannerPage() {
                   rel="noreferrer"
                   className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
                 >
-                  شروع مسیر بهینه ↗
+                  {googleRoute.singleLeg ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label} ↗` : "شروع مسیر بهینه ↗"}
                 </a>
               )}
             </div>
@@ -806,6 +821,13 @@ export default function PlannerPage() {
                 )}
               </div>
 
+              {googleRoute?.singleLeg && (
+                <p className="text-[length:var(--text-xs)] leading-5 text-warn">
+                  {navApp(navAppId).label} فقط یک مقصد را می‌پذیرد؛ توقف‌های بعدی را از همین فهرست باز کنید.
+                  برای باز کردن کل مسیر در یک لینک، از «گوگل مپ» استفاده کنید.
+                </p>
+              )}
+
               {googleRoute && googleRoute.dropped > 0 && (
                 <p className="text-[length:var(--text-xs)] leading-5 text-warn">
                   گوگل‌مپ حداکثر ۱۰ ایستگاه میانی می‌پذیرد؛ {googleRoute.dropped} ایستگاه در لینک مسیر
@@ -900,6 +922,17 @@ export default function PlannerPage() {
                     {STATUS_META[p.status].label}
                   </span>
                   <div className="no-print flex shrink-0 gap-1">
+                    {p.lat !== null && p.lng !== null && (
+                      <a
+                        href={navigateUrl(navAppId, { lat: p.lat, lng: p.lng }, p.label)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        aria-label={`مسیریابی به ${p.label}`}
+                        className="rounded-[var(--radius-sm)] px-1.5 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
+                      >
+                        ↗
+                      </a>
+                    )}
                     <button
                       onClick={() => setStatus(p.id, "done")}
                       aria-label="انجام شد"

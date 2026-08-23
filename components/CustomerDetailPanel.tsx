@@ -11,6 +11,8 @@ import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import PurchaseHistory from "./PurchaseHistory";
 import { useToast } from "./ToastProvider";
+import { useNavApp } from "./NavAppSetting";
+import { navigateUrl } from "@/lib/navApps";
 import CopyButton from "./CopyButton";
 import { coordText } from "@/lib/clipboard";
 import { absoluteMapLink } from "@/lib/deepLink";
@@ -58,6 +60,7 @@ export default function CustomerDetailPanel({
   const panelRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
   const router = useRouter();
+  const [navAppId] = useNavApp();
 
   // Measured from our own sites, never from a live GPS fix (spec 1.2): a distance that
   // changes between two glances at the same panel is describing where the phone is, not
@@ -216,6 +219,15 @@ export default function CustomerDetailPanel({
                   nothing outside this app parses ۳۵٫۷. */}
               <span dir="ltr">{coordText(customer.lat, customer.lng)}</span>
               <CopyButton value={coordText(customer.lat, customer.lng)} what="کپی مختصات" />
+              <a
+                href={navigateUrl(navAppId, { lat: customer.lat, lng: customer.lng }, customer.business_name)}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="مسیریابی به این مشتری"
+                className="rounded-[var(--radius-sm)] border border-border px-1.5 py-0.5 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
+              >
+                ↗
+              </a>
             </dd>
           </div>
         )}

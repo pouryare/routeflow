@@ -256,9 +256,19 @@ a:focus-visible {
   line-height: 1;
   text-decoration: none;
 }
+/* Lit once there is a fix to recentre on, dim while there is not, and marked when the
+   permission was refused. A button that looks the same in all three states is a button
+   you press hopefully. */
 .locate-control a.locate-control--active {
   color: var(--accent) !important;
   border-color: var(--accent) !important;
+}
+.locate-control a.locate-control--denied {
+  color: var(--crit) !important;
+  border-color: var(--crit) !important;
+}
+.locate-control a:not(.locate-control--active):not(.locate-control--denied) {
+  opacity: 0.55;
 }
 
 /* leaflet.fullscreen ships its icon as a hardcoded dark-grey (#333) SVG, meant for
@@ -490,6 +500,40 @@ a:focus-visible {
 }
 .leaflet-control-attribution a {
   color: var(--text-muted) !important;
+}
+
+/* ---- Lead markers on the leads map. A prospect not in the route is a small quiet dot;
+   one that is in it carries its stop number, so the map and the ordered list say the
+   same thing in the same order. Distinct from the customer diamond and the facility
+   silhouette, because these are places nobody has been yet. ---- */
+.lead-marker {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--neutral);
+  border: 2px solid var(--bg);
+  box-shadow: 0 0 6px -1px var(--neutral);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--bg);
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.lead-marker--in-run {
+  background: var(--accent);
+  box-shadow: 0 0 10px -1px var(--accent);
+  font-weight: 700;
+  color: #04191c;
+}
+.lead-marker--selected {
+  box-shadow: 0 0 0 2px var(--accent), 0 0 10px -1px var(--accent);
+  transform: scale(1.12);
+}
+.leaflet-marker-icon:hover .lead-marker {
+  transform: scale(1.12);
 }
 
 /* ---- Driver mode: the same app, sized for one thumb in a moving vehicle.

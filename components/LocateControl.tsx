@@ -1,61 +1,44 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
+import { useMyPosition } from "./MyPositionProvider";
 
-export default function LocateControl({
-  onPosition,
-}: {
-  onPosition?: (lat: number, lng: number) => void;
-}) {
+/** The ◎ button: recentre on me.
+ *
+ *  It used to *be* the location feature -- one getCurrentPosition, one marker dropped
+ *  where you happened to be standing when you pressed it, frozen there for the rest of
+ *  the session. The marker now comes from MyLocationMarker and tracks continuously, so
+ *  all this button has left to do is move the viewport, which is the only thing it was
+ *  ever really for.
+ *
+ *  It reports state through its own appearance: dim while there is no fix, lit once
+ *  there is one. A button that looks identical whether or not the app knows where you
+ *  are is a button you press hopefully.
+ */
+export default function LocateControl() {
   const map = useMap();
-  const markerRef = useRef<L.Marker | null>(null);
+  const { position, status, retry } = useMyPosition();
   const buttonRef = useRef<HTMLAnchorElement | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
-  const locate = useCallback(
-    (button: HTMLAnchorElement) => {
-      if (!navigator.geolocation) {
-        setError("مرورگر شما از موقعیت‌یابی پشتیبانی نمی‌کند");
-        return;
-      }
-      button.classList.add("locate-control--active");
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          setError(null);
-          const { latitude, longitude } = pos.coords;
-          map.flyTo([latitude, longitude], 16, { duration: 1 });
-          if (markerRef.current) {
-            markerRef.current.setLatLng([latitude, longitude]);
-          } else {
-            markerRef.current = L.marker([latitude, longitude], {
-              icon: L.divIcon({
-                className: "",
-                html: `<div class="me-marker"><span class="me-marker__ping" aria-hidden="true"></span><span class="me-marker__dot"></span></div>`,
-                iconSize: [16, 16],
-                iconAnchor: [8, 8],
-              }),
-              zIndexOffset: 1000,
-              interactive: false,
-              keyboard: false,
-            }).addTo(map);
-          }
-          onPosition?.(latitude, longitude);
-        },
-        (err) => {
-          button.classList.remove("locate-control--active");
-          setError(
-            err.code === err.PERMISSION_DENIED
-              ? "اجازه دسترسی به موقعیت داده نشد"
-              : "خطا در دریافت موقعیت فعلی"
-          );
-        },
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 30000 }
-      );
-    },
-    [map, onPosition]
-  );
+  // The Leaflet control is created once and its click handler captured then, so it needs
+  // a stable way to see the current fix. Written in an effect rather than during render:
+  // a ref assigned while rendering is a side effect in the render pass.
+  const latestRef = useRef({ position, retry });
+  useEffect(() => {
+    latestRef.current = { position, retry };
+  }, [position, retry]);
+
+  const recentre = useCallback(() => {
+    const { position: pos, retry: askAgain } = latestRef.current;
+    if (!pos) {
+      // Nothing to centre on. Asking again is the only useful thing a press can mean.
+      askAgain();
+      return;
+    }
+    map.flyTo([pos.lat, pos.lng], Math.max(map.getZoom(), 16), { duration: 1 });
+  }, [map]);
 
   useEffect(() => {
     const LocateButton = L.Control.extend({
@@ -63,14 +46,14 @@ export default function LocateControl({
         const container = L.DomUtil.create("div", "leaflet-bar leaflet-control locate-control");
         const button = L.DomUtil.create("a", "", container) as HTMLAnchorElement;
         button.href = "#";
-        button.title = "موقعیت من";
+        button.title = "رفتن به موقعیت من";
         button.innerHTML = "◎";
         button.setAttribute("role", "button");
-        button.setAttribute("aria-label", "نمایش موقعیت من روی نقشه");
+        button.setAttribute("aria-label", "رفتن به موقعیت من");
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.on(button, "click", (e) => {
           L.DomEvent.preventDefault(e);
-          locate(button);
+          recentre();
         });
         buttonRef.current = button;
         return container;
@@ -83,22 +66,23 @@ export default function LocateControl({
     control.addTo(map);
     return () => {
       control.remove();
-      markerRef.current?.remove();
-      markerRef.current = null;
     };
-  }, [map, locate]);
+  }, [map, recentre]);
 
-  if (!error) return null;
-  return (
-    <div
-      dir="rtl"
-      className="absolute bottom-4 left-4 z-[1001] flex items-center gap-1.5 rounded-[var(--radius-md)] border border-border bg-surface-raised px-3 py-2 text-[length:var(--text-sm)] text-crit elevate-crit"
-    >
-      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-crit" />
-      {error}
-      <button onClick={() => setError(null)} aria-label="بستن" className="mr-1 text-text-muted hover:text-text">
-        ✕
-      </button>
-    </div>
-  );
+  // Reflects whether there is anything to recentre *on*, rather than whether a request
+  // is in flight -- which is what the user actually needs to know before pressing it.
+  useEffect(() => {
+    const button = buttonRef.current;
+    if (!button) return;
+    button.classList.toggle("locate-control--active", status === "active");
+    button.classList.toggle("locate-control--denied", status === "denied");
+    button.title =
+      status === "denied"
+        ? "دسترسی به موقعیت داده نشده — برای تلاش دوباره بزنید"
+        : status === "active"
+          ? "رفتن به موقعیت من"
+          : "در حال یافتن موقعیت…";
+  }, [status]);
+
+  return null;
 }

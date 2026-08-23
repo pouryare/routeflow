@@ -164,6 +164,34 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_saved_locations_name ON saved_locations(name);
 
+    /* Named, hand-ordered lists of prospect locations -- "امشب", "غرب تهران", whatever
+       the user calls them. The automatic day-split proposes groupings; these are the
+       answer to not liking what it proposed.
+
+       In the database rather than in localStorage on purpose: a route being driven has
+       to survive the phone restarting mid-round, and a list built on the laptop has to
+       be there on the phone in the van. */
+    CREATE TABLE IF NOT EXISTS lead_lists (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    /* Membership is ordered, because the order *is* the route. ON DELETE CASCADE on both
+       sides: a deleted list takes its membership with it, and a location removed from
+       the prospect list stops appearing in every list that held it rather than becoming
+       a row pointing at nothing. */
+    CREATE TABLE IF NOT EXISTS lead_list_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      list_id INTEGER NOT NULL REFERENCES lead_lists(id) ON DELETE CASCADE,
+      location_id INTEGER NOT NULL REFERENCES saved_locations(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      UNIQUE (list_id, location_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_lead_list_items_list ON lead_list_items(list_id, sort_order);
+
     CREATE TABLE IF NOT EXISTS facilities (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT UNIQUE NOT NULL,
@@ -477,6 +505,71 @@ export interface SavedLocationRow {
   status: LocationStatus | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface LeadListRow {
+  id: number;
+  name: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/** A list plus its membership, in order. The API always returns them together: a list
+ *  without its stops is never useful to a caller, and fetching them separately would
+ *  make every page do two round trips to show one thing. */
+export interface LeadListWithItems extends LeadListRow {
+  location_ids: number[];
+}
+
+export function readLeadLists(db: DatabaseSync = getDb()): LeadListWithItems[] {
+  const lists = db
+    .prepare("SELECT id, name, created_at, updated_at FROM lead_lists ORDER BY created_at")
+    .all() as unknown as LeadListRow[];
+
+  const items = db
+    .prepare("SELECT list_id, location_id FROM lead_list_items ORDER BY list_id, sort_order, id")
+    .all() as unknown as { list_id: number; location_id: number }[];
+
+  const byList = new Map<number, number[]>();
+  for (const it of items) {
+    const arr = byList.get(it.list_id);
+    if (arr) arr.push(it.location_id);
+    else byList.set(it.list_id, [it.location_id]);
+  }
+
+  // Rebuilt as object literals rather than passed through: node:sqlite hands back
+  // null-prototype rows, which cannot cross into a Client Component.
+  return lists.map((l) => ({
+    id: l.id,
+    name: l.name,
+    created_at: l.created_at,
+    updated_at: l.updated_at,
+    location_ids: byList.get(l.id) ?? [],
+  }));
+}
+
+/** Replaces a list's membership wholesale.
+ *
+ *  A whole-list write rather than add/remove/reorder endpoints: the order is the point,
+ *  every edit changes it, and three endpoints that each have to renumber the others is
+ *  three chances to leave the list inconsistent. One statement, one transaction, one
+ *  possible outcome.
+ */
+export function setLeadListItems(db: DatabaseSync, listId: number, locationIds: number[]): void {
+  const now = new Date().toISOString();
+  db.exec("BEGIN");
+  try {
+    db.prepare("DELETE FROM lead_list_items WHERE list_id = ?").run(listId);
+    const insert = db.prepare(
+      "INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
+    );
+    locationIds.forEach((locationId, i) => insert.run(listId, locationId, i, now));
+    db.prepare("UPDATE lead_lists SET updated_at = ? WHERE id = ?").run(now, listId);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
 }
 
 export function logActivity(

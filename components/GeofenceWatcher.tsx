@@ -5,6 +5,7 @@ import { CustomerRow } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { distanceKm } from "@/lib/geo";
 import { useToast } from "./ToastProvider";
+import { useMyPosition } from "./MyPositionProvider";
 
 const TRIGGER_RADIUS_KM = 0.15; // 150m
 // A warehouse yard is a bigger target than a shopfront, and the useful moment is
@@ -32,13 +33,11 @@ export default function GeofenceWatcher({
   facilitiesEnabled = false,
   customers,
   facilities = [],
-  onPosition,
 }: {
   enabled: boolean;
   facilitiesEnabled?: boolean;
   customers: CustomerRow[];
   facilities?: FacilityRow[];
-  onPosition?: (lat: number, lng: number) => void;
 }) {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [saving, setSaving] = useState(false);
@@ -50,60 +49,44 @@ export default function GeofenceWatcher({
   facilitiesRef.current = facilities;
   const facilitiesEnabledRef = useRef(facilitiesEnabled);
   facilitiesEnabledRef.current = facilitiesEnabled;
-  const watchIdRef = useRef<number | null>(null);
+  // Reads the app-wide watch rather than opening a second one. Two watches meant two
+  // wake-ups of the same GPS chip for the same answer, and left this component as the
+  // only thing that knew where the user was -- which is why the position vanished from
+  // the rest of the app whenever this toggle was off.
+  const { position } = useMyPosition();
 
   useEffect(() => {
-    if (!enabled || !navigator.geolocation) {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
+    if (!enabled || !position) return;
+
+    const now = Date.now();
+    const here = { lat: position.lat, lng: position.lng };
+    const notSnoozed = (key: string, window: number) => {
+      const at = snoozedRef.current.get(key);
+      return !at || now - at > window;
+    };
+
+    // Our own sites win a tie: standing in the warehouse yard, "log a restock" is a
+    // more useful offer than a visit to whatever customer happens to be next door.
+    if (facilitiesEnabledRef.current) {
+      const site = facilitiesRef.current
+        .map((f) => ({ f, km: distanceKm(here, f) }))
+        .filter(({ f, km }) => km <= FACILITY_RADIUS_KM && notSnoozed(`facility:${f.id}`, FACILITY_SNOOZE_MS))
+        .sort((a, b) => a.km - b.km)[0];
+      if (site) {
+        setPrompt((prev) => prev ?? { kind: "facility_arrive", facility: site.f });
+        return;
       }
-      return;
     }
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        onPosition?.(latitude, longitude);
-        const now = Date.now();
-        const here = { lat: latitude, lng: longitude };
-        const notSnoozed = (key: string, window: number) => {
-          const at = snoozedRef.current.get(key);
-          return !at || now - at > window;
-        };
-
-        // Our own sites win a tie: standing in the warehouse yard, "log a restock" is a
-        // more useful offer than a visit to whatever customer happens to be next door.
-        if (facilitiesEnabledRef.current) {
-          const site = facilitiesRef.current
-            .map((f) => ({ f, km: distanceKm(here, f) }))
-            .filter(({ f, km }) => km <= FACILITY_RADIUS_KM && notSnoozed(`facility:${f.id}`, FACILITY_SNOOZE_MS))
-            .sort((a, b) => a.km - b.km)[0];
-          if (site) {
-            setPrompt((prev) => prev ?? { kind: "facility_arrive", facility: site.f });
-            return;
-          }
-        }
-
-        const match = customersRef.current
-          .filter((c) => c.lat && c.lng)
-          .map((c) => ({ c, km: distanceKm(here, { lat: c.lat as number, lng: c.lng as number }) }))
-          .filter(({ c, km }) => km <= TRIGGER_RADIUS_KM && notSnoozed(`customer:${c.id}`, SNOOZE_MS))
-          .sort((a, b) => a.km - b.km)[0];
-        if (match) setPrompt((prev) => prev ?? { kind: "customer", customer: match.c });
-      },
-      () => {},
-      { enableHighAccuracy: true, maximumAge: 20000, timeout: 15000 }
-    );
-
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [enabled, facilitiesEnabled]);
+    const match = customersRef.current
+      .filter((c) => c.lat && c.lng)
+      .map((c) => ({ c, km: distanceKm(here, { lat: c.lat as number, lng: c.lng as number }) }))
+      .filter(({ c, km }) => km <= TRIGGER_RADIUS_KM && notSnoozed(`customer:${c.id}`, SNOOZE_MS))
+      .sort((a, b) => a.km - b.km)[0];
+    if (match) setPrompt((prev) => prev ?? { kind: "customer", customer: match.c });
+    // Runs per fix. The lists are read through refs so a customer refresh does not
+    // re-evaluate the geofence against a position that has not changed.
+  }, [enabled, position]);
 
   function promptKey(p: Prompt): string {
     return p.kind === "customer" ? `customer:${p.customer.id}` : `facility:${p.facility.id}`;
