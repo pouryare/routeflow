@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { FACILITY_KINDS, FacilityKind, getDb } from "@/lib/db";
+import { readFacility } from "@/lib/facilities";
 import { isValidCoord } from "@/lib/geoLinks";
 
 interface PatchInput {
@@ -116,9 +117,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
   }
 
   const db = getDb();
-  const row = db.prepare("SELECT is_default_origin FROM facilities WHERE id = ?").get(idNum) as
-    | { is_default_origin: number }
-    | undefined;
+  // The whole row, not just the flag: it is handed back to the caller so the delete can
+  // be undone from the toast. Read before the DELETE, obviously -- afterwards there is
+  // nothing left to describe.
+  const row = readFacility(db, idNum);
   if (!row) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
@@ -149,5 +151,5 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
 
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, deleted: row });
 }

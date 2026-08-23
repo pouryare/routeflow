@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import { CustomerRow, customerStatusColor, STATUS_COLOR } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
@@ -9,6 +10,7 @@ import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import PurchaseHistory from "./PurchaseHistory";
+import { useToast } from "./ToastProvider";
 import { faDateTime, faNum } from "@/lib/format";
 
 /** Kept in step with the .customer-panel-exit duration in globals.css. */
@@ -40,6 +42,8 @@ export default function CustomerDetailPanel({
   onReminderAdded?: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
+  const toast = useToast();
+  const router = useRouter();
 
   // Measured from our own sites, never from a live GPS fix (spec 1.2): a distance that
   // changes between two glances at the same panel is describing where the phone is, not
@@ -58,14 +62,22 @@ export default function CustomerDetailPanel({
     const today = new Date();
     const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
     try {
-      await fetch("/api/visit-plans", {
+      const res = await fetch("/api/visit-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ entity_type: "customer", entity_id: customer.id, planned_date: dateStr }),
       });
+      if (!res.ok) throw new Error();
       setPlanState("added");
+      // The stop lands on a page the user is not looking at, so the toast carries the
+      // way there. Without it, confirming the add means finding the planner by hand.
+      toast("به برنامه امروز افزوده شد.", "success", {
+        label: "نمایش برنامه",
+        onClick: () => router.push("/planner"),
+      });
     } catch {
       setPlanState("idle");
+      toast("خطا در افزودن به برنامه", "error");
     }
   }
 

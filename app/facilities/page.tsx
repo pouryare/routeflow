@@ -29,7 +29,6 @@ export default function FacilitiesPage() {
   const [picker, setPicker] = useState<PickerTarget>(null);
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<FacilityKind>("warehouse");
-  const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const toast = useToast();
@@ -93,14 +92,62 @@ export default function FacilitiesPage() {
     }
   }
 
+  /** Puts a deleted site back exactly as it was -- original id and slug, so the arrivals
+   *  logged there stay attached, and the default-origin flag if it held one, since DELETE
+   *  promotes a replacement and nothing else would move it back. */
+  async function restore(deleted: FacilityRow) {
+    try {
+      const res = await fetch("/api/facilities", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: deleted.name,
+          kind: deleted.kind,
+          lat: deleted.lat,
+          lng: deleted.lng,
+          address: deleted.address,
+          maps_url: deleted.maps_url,
+          notes: deleted.notes,
+          restore: { id: deleted.id, slug: deleted.slug },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در بازگردانی");
+
+      if (deleted.is_default_origin === 1) {
+        await fetch(`/api/facilities/${data.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ is_default_origin: true }),
+        });
+      }
+
+      toast(
+        data.restored
+          ? `«${deleted.name}» بازگردانده شد.`
+          : `«${deleted.name}» بازگردانده شد، اما با شناسه جدید — بازدیدهای ثبت‌شده در آن به این ردیف وصل نیستند.`,
+        data.restored ? "success" : "info"
+      );
+      await load();
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "خطا در بازگردانی", "error");
+    }
+  }
+
   async function remove(id: number) {
     setBusyId(id);
     try {
       const res = await fetch(`/api/facilities/${id}`, { method: "DELETE" });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "خطا در حذف مکان");
-      toast("مکان حذف شد", "success");
-      setConfirmingDelete(null);
+      // The undo is offered rather than the deletion being confirmed up front: the
+      // common case is that the delete was intended, and the rare mistake is repaired in
+      // one tap instead of every correct delete costing a dialog.
+      toast(
+        `«${data.deleted?.name ?? "مکان"}» حذف شد.`,
+        "success",
+        data.deleted ? { label: "بازگردان", onClick: () => restore(data.deleted as FacilityRow) } : undefined
+      );
       await load();
     } catch (e) {
       toast(e instanceof Error ? e.message : "خطا در حذف مکان", "error");
@@ -250,31 +297,16 @@ export default function FacilitiesPage() {
                     >
                       ویرایش موقعیت
                     </button>
-                    {confirmingDelete === f.id ? (
-                      <>
-                        <button
-                          onClick={() => remove(f.id)}
-                          disabled={isBusy}
-                          className="rounded-[var(--radius-sm)] border border-crit bg-crit px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#1a0206] disabled:opacity-50"
-                        >
-                          {isBusy ? "در حال حذف…" : "حذف قطعی"}
-                        </button>
-                        <button
-                          onClick={() => setConfirmingDelete(null)}
-                          className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
-                        >
-                          انصراف
-                        </button>
-                      </>
-                    ) : (
-                      <button
-                        onClick={() => setConfirmingDelete(f.id)}
-                        disabled={isBusy}
-                        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-crit hover:text-crit disabled:opacity-50"
-                      >
-                        حذف
-                      </button>
-                    )}
+                    {/* No confirmation step: the toast carries an undo instead, so the
+                        common case (a delete that was meant) costs one tap and the rare
+                        mistake costs two -- the reverse of the dialog's trade. */}
+                    <button
+                      onClick={() => remove(f.id)}
+                      disabled={isBusy}
+                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-crit hover:text-crit disabled:opacity-50"
+                    >
+                      {isBusy ? "در حال حذف…" : "حذف"}
+                    </button>
                   </div>
                 </div>
 

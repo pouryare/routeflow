@@ -28,6 +28,14 @@ interface NewFacilityInput {
   address?: string | null;
   maps_url?: string | null;
   notes?: string | null;
+  /** Undo of a delete, not a normal add.
+   *
+   *  A site's id is referenced by the arrival log and by any facility stops on a plan.
+   *  Re-adding under a fresh id would put the pin back on the map while silently
+   *  orphaning every visit recorded there, which is not what "undo" claims to do -- so a
+   *  restore reclaims the original id and slug. Refused if either is taken again, in
+   *  which case the caller falls back to a plain add. */
+  restore?: { id?: number; slug?: string };
 }
 
 export async function POST(req: NextRequest) {
@@ -47,21 +55,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "مختصات نامعتبر است" }, { status: 400 });
   }
 
+  const db = getDb();
+
   // Seeded rows carry meaningful slugs ("home-pardis") because the seed has to find them
   // again on every boot. A user-created site only needs a slug that is unique and stable,
   // and that can never collide with a slug a future seed might introduce -- hence the
   // reserved "site-" prefix rather than one derived from the name.
-  const slug = `site-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  const fresh = `site-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
+  const restore = resolveRestore(db, body.restore);
+  const slug = restore?.slug ?? fresh;
   const now = new Date().toISOString();
 
   // A new site never takes the default origin. Moving it is an explicit choice the user
   // makes in the editor, not a side effect of adding a location.
-  const result = getDb()
+  const result = db
     .prepare(
-      `INSERT INTO facilities (slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`
+      `INSERT INTO facilities (id, slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`
     )
     .run(
+      restore?.id ?? null, // NULL on an INTEGER PRIMARY KEY still autoincrements
       slug,
       body.kind as FacilityKind,
       name,
@@ -74,5 +87,23 @@ export async function POST(req: NextRequest) {
       now
     );
 
-  return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
+  return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid), restored: restore !== null });
+}
+
+/** Which parts of a requested restore are actually still available. Returns null when
+ *  the id has since been taken -- an undo that quietly overwrote whatever now holds that
+ *  id would be worse than an undo that lands on a new id. */
+function resolveRestore(
+  db: ReturnType<typeof getDb>,
+  wanted: NewFacilityInput["restore"]
+): { id: number; slug?: string } | null {
+  if (!wanted || !Number.isInteger(wanted.id)) return null;
+  const id = wanted.id as number;
+  const taken = db.prepare("SELECT 1 FROM facilities WHERE id = ?").get(id);
+  if (taken) return null;
+  if (typeof wanted.slug === "string" && wanted.slug) {
+    const slugTaken = db.prepare("SELECT 1 FROM facilities WHERE slug = ?").get(wanted.slug);
+    if (!slugTaken) return { id, slug: wanted.slug };
+  }
+  return { id };
 }

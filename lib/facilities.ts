@@ -47,6 +47,13 @@ export function readFacilities(db: DatabaseSync = getDb()): FacilityRow[] {
     .sort((a, b) => KIND_ORDER[a.kind] - KIND_ORDER[b.kind] || a.name.localeCompare(b.name, "fa"));
 }
 
+/** One site by id, rebuilt as a plain object for the same null-prototype reason as
+ *  readFacilities. Used where a caller needs the whole row rather than a single column
+ *  -- notably DELETE, which hands the deleted row back so the action can be undone. */
+export function readFacility(db: DatabaseSync, id: number): FacilityRow | null {
+  return readFacilities(db).find((f) => f.id === id) ?? null;
+}
+
 export function homeBase(db: DatabaseSync = getDb()): FacilityRow | null {
   return readFacilities(db).find((f) => f.kind === "home_base") ?? null;
 }

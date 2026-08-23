@@ -218,11 +218,44 @@ export default function PlannerPage() {
     }
   }
 
+  /** Re-adds a removed stop where it was, not at the end. DELETE leaves the surrounding
+   *  sort_order values untouched, so the row's original value still fits the gap it left
+   *  -- and its original status comes back with it, since undoing the removal of a stop
+   *  already marked done must not silently reset it to planned. */
+  async function restorePlan(p: PlanRow) {
+    try {
+      const res = await fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          entity_type: p.entity_type,
+          entity_id: p.entity_id,
+          planned_date: p.planned_date,
+          sort_order: p.sort_order,
+          status: p.status,
+        }),
+      });
+      if (!res.ok) throw new Error();
+      toast(`«${p.label}» به برنامه بازگشت.`, "success");
+    } catch {
+      toast("خطا در بازگردانی", "error");
+    } finally {
+      loadWeek();
+    }
+  }
+
   async function removePlan(id: number) {
+    // Captured before the request: after it succeeds there is no row left to describe,
+    // and the undo needs the whole thing to put it back where it was.
+    const removed = dayPlans.find((p) => p.id === id) ?? null;
     try {
       const res = await fetch(`/api/visit-plans/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
-      toast("از برنامه حذف شد.", "info");
+      toast(
+        removed ? `«${removed.label}» از برنامه حذف شد.` : "از برنامه حذف شد.",
+        "info",
+        removed ? { label: "بازگردان", onClick: () => restorePlan(removed) } : undefined
+      );
     } catch {
       toast("خطا در حذف", "error");
     } finally {

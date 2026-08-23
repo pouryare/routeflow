@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, VisitPlan, EntityType, PLAN_ENTITY_TYPES, PlanEntityType, logActivity } from "@/lib/db";
+
+const PLAN_STATUSES: VisitPlan["status"][] = ["planned", "done", "skipped"];
 import { getActorName } from "@/lib/auth";
 
 interface PlanWithLabel extends VisitPlan {
@@ -81,10 +83,17 @@ export async function GET(req: NextRequest) {
 
 export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => null);
-  const { entity_type, entity_id, planned_date } = (body ?? {}) as {
+  const { entity_type, entity_id, planned_date, sort_order, status } = (body ?? {}) as {
     entity_type?: PlanEntityType;
     entity_id?: number;
     planned_date?: string;
+    /** Undo only. A normal add appends; a restore has to land back where it was, and
+     *  DELETE does not renumber the rows around it, so the original value still fits
+     *  the gap it left. */
+    sort_order?: number;
+    /** Undo only, for the same reason: removing a stop you had already marked done and
+     *  then undoing must not quietly reset it to planned. */
+    status?: VisitPlan["status"];
   };
 
   if (!entity_type || !PLAN_ENTITY_TYPES.includes(entity_type)) {
@@ -97,6 +106,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ نامعتبر است" }, { status: 400 });
   }
 
+  if (status !== undefined && !PLAN_STATUSES.includes(status)) {
+    return NextResponse.json({ ok: false, error: "وضعیت نامعتبر است" }, { status: 400 });
+  }
+  if (sort_order !== undefined && !Number.isInteger(sort_order)) {
+    return NextResponse.json({ ok: false, error: "ترتیب نامعتبر است" }, { status: 400 });
+  }
+
   const db = getDb();
   const maxOrder = db
     .prepare("SELECT COALESCE(MAX(sort_order), -1) as m FROM visit_plans WHERE planned_date = ?")
@@ -106,9 +122,9 @@ export async function POST(req: NextRequest) {
   const result = db
     .prepare(
       `INSERT INTO visit_plans (entity_type, entity_id, planned_date, status, sort_order, created_at)
-       VALUES (?, ?, ?, 'planned', ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?)`
     )
-    .run(entity_type, entity_id, planned_date, maxOrder.m + 1, now);
+    .run(entity_type, entity_id, planned_date, status ?? "planned", sort_order ?? maxOrder.m + 1, now);
 
   logActivity(db, {
     entity_type,
@@ -116,7 +132,7 @@ export async function POST(req: NextRequest) {
     event_type: "note",
     old_value: null,
     new_value: null,
-    note: `به برنامه بازدید ${planned_date} اضافه شد`,
+    note: sort_order === undefined ? `به برنامه بازدید ${planned_date} اضافه شد` : `به برنامه بازدید ${planned_date} بازگردانده شد`,
     changed_by: getActorName(req),
   });
 

@@ -197,6 +197,48 @@ describe("DELETE /api/facilities/[id]", () => {
     expect(flagged[0].id).not.toBe(victim.id);
   });
 
+  it("hands the deleted row back so the delete can be undone from the toast", async () => {
+    const id = seedExtraFacility();
+    const body = await (await DELETE(delReq(), ctx(id))).json();
+    expect(body.deleted.id).toBe(id);
+    expect(body.deleted.lat).toBeTypeOf("number");
+    expect(body.deleted.slug).toBeTypeOf("string");
+  });
+
+  it("restores a deleted site under its original id and slug", async () => {
+    // The id matters more than the pin: the arrival log and any facility stop on a plan
+    // reference it, so an undo that invented a new id would put the marker back while
+    // orphaning every visit recorded there.
+    const id = seedExtraFacility();
+    const { deleted } = await (await DELETE(delReq(), ctx(id))).json();
+
+    const res = await POST(facReq({ ...deleted, restore: { id: deleted.id, slug: deleted.slug } }));
+    const body = await res.json();
+    expect(body.restored).toBe(true);
+    expect(body.id).toBe(id);
+
+    const back = getDb().prepare("SELECT slug FROM facilities WHERE id = ?").get(id) as unknown as { slug: string };
+    expect(back.slug).toBe(deleted.slug);
+  });
+
+  it("falls back to a new id rather than overwriting whatever took the old one", async () => {
+    const id = seedExtraFacility();
+    const { deleted } = await (await DELETE(delReq(), ctx(id))).json();
+    // Something else claims that id in the meantime.
+    getDb()
+      .prepare(
+        `INSERT INTO facilities (id, slug, kind, name, lat, lng, is_default_origin, created_at, updated_at)
+         VALUES (?, 'squatter', 'other', 'جای گرفته', 35.7, 51.4, 0, ?, ?)`
+      )
+      .run(id, new Date().toISOString(), new Date().toISOString());
+
+    const body = await (await POST(facReq({ ...deleted, restore: { id: deleted.id, slug: deleted.slug } }))).json();
+    expect(body.restored).toBe(false);
+    expect(body.id).not.toBe(id);
+    const squatter = getDb().prepare("SELECT name FROM facilities WHERE id = ?").get(id) as unknown as { name: string };
+    expect(squatter.name).toBe("جای گرفته");
+  });
+
   it("refuses to delete the last remaining site", async () => {
     const db = getDb();
     db.prepare("DELETE FROM facilities WHERE id NOT IN (SELECT MIN(id) FROM facilities)").run();
