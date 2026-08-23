@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { MapContainer, TileLayer, GeoJSON, Marker, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import { LatLngBounds, divIcon, geoJSON } from "leaflet";
 import type { DivIcon, Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -43,8 +43,8 @@ import BasemapToggleControl, { Basemap } from "./BasemapToggleControl";
 import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
 import { useToast } from "./ToastProvider";
-import { distanceKm, formatDistanceKm } from "@/lib/geo";
-import { FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
+import { corridorPolygon, distanceKm, distanceToSegmentKm, formatDistanceKm } from "@/lib/geo";
+import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
@@ -69,6 +69,10 @@ const QUICK_LINKS = [
   { href: "/analytics", icon: "📈", label: "داشبورد تحلیل" },
 ] as const;
 const DISTRICT_STROKE = { mantaghe: "#2A3A4C", mahalle: "#546271" };
+
+// Three presets rather than a slider: this gets used one-handed in a moving vehicle,
+// where a slider thumb is unusable.
+const CORRIDOR_WIDTHS = [2, 5, 10];
 
 interface DueReminder {
   id: number;
@@ -203,6 +207,8 @@ export default function CoverageMap({
   initialFacilities: FacilityRow[];
   geometryVersion: string;
 }) {
+  const [corridorOn, setCorridorOn] = useState(false);
+  const [corridorWidthKm, setCorridorWidthKm] = useState(5);
   const [districtProps, setDistrictProps] = useState<DistrictProperties[]>(initialDistricts);
   const [geomVersion, setGeomVersion] = useState(geometryVersion);
   const [geometry, setGeometry] = useState<DistrictGeometryMap | null>(null);
@@ -362,6 +368,9 @@ export default function CoverageMap({
 
   useEffect(() => {
     setGeofenceOn(localStorage.getItem("coverage_geofence_on") === "1");
+    setCorridorOn(localStorage.getItem("coverage_corridor_on") === "1");
+    const storedWidth = Number(localStorage.getItem("coverage_corridor_km"));
+    if (CORRIDOR_WIDTHS.includes(storedWidth)) setCorridorWidthKm(storedWidth);
   }, []);
   useEffect(() => {
     localStorage.setItem("coverage_geofence_on", geofenceOn ? "1" : "0");
@@ -435,12 +444,19 @@ export default function CoverageMap({
     const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
     const level = feature?.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
     const selected = !!feature && bulkSelectedIds.has(feature.properties.id);
+
+    // With the corridor on, districts off it recede rather than disappear: the point is
+    // to show what sits near the drive *in context*, and a map that hides everything
+    // else can't be read as a map any more.
+    const inCorridor = !corridorDistrictIds || (!!feature && corridorDistrictIds.has(feature.properties.id));
+    const dim = corridorDistrictIds && !inCorridor ? 0.25 : 1;
+
     return {
       color: selected ? "#2DE0E6" : DISTRICT_STROKE[level],
       weight: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
       fillColor: STATUS_COLOR[status],
-      fillOpacity: selected ? 0.55 : level === "mantaghe" ? 0.08 : 0.35,
-      opacity: selected ? 1 : level === "mantaghe" ? 0.5 : 0.8,
+      fillOpacity: (selected ? 0.55 : level === "mantaghe" ? 0.08 : 0.35) * dim,
+      opacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
       dashArray: selected ? "4 3" : undefined,
     };
   }
@@ -534,6 +550,46 @@ export default function CoverageMap({
       mapRef.current.flyTo([c.lat, c.lng], 15, { duration: 1 });
     }
   }
+
+  // Feature 3: the stretch actually driven between two of our sites. Anything sitting a
+  // few kilometres off it is a nearly free visit, and nothing in the app knew the line
+  // existed. Defaults to the two most distant sites, which for the current pair is the
+  // home base and the warehouse.
+  const corridorEnds = useMemo(() => {
+    if (initialFacilities.length < 2) return null;
+    let best: { a: FacilityRow; b: FacilityRow; km: number } | null = null;
+    for (let i = 0; i < initialFacilities.length; i++) {
+      for (let j = i + 1; j < initialFacilities.length; j++) {
+        const km = distanceKm(initialFacilities[i], initialFacilities[j]);
+        if (!best || km > best.km) best = { a: initialFacilities[i], b: initialFacilities[j], km };
+      }
+    }
+    return best;
+  }, [initialFacilities]);
+
+  const corridorBand = useMemo(
+    () => (corridorEnds ? corridorPolygon(corridorEnds.a, corridorEnds.b, corridorWidthKm) : []),
+    [corridorEnds, corridorWidthKm]
+  );
+
+  /** District ids whose centre falls inside the band. Districts with no centroid are
+   *  absent rather than assumed outside -- they simply cannot be judged. */
+  const corridorDistrictIds = useMemo(() => {
+    if (!corridorOn || !corridorEnds) return null;
+    const ids = new Set<number>();
+    for (const d of districtProps) {
+      if (d.centroid_lat === null || d.centroid_lng === null) continue;
+      if (distanceToSegmentKm({ lat: d.centroid_lat, lng: d.centroid_lng }, corridorEnds.a, corridorEnds.b) <= corridorWidthKm) {
+        ids.add(d.id);
+      }
+    }
+    return ids;
+  }, [corridorOn, corridorEnds, corridorWidthKm, districtProps]);
+
+  const corridorUncovered = useMemo(() => {
+    if (!corridorDistrictIds) return 0;
+    return districtProps.filter((d) => corridorDistrictIds.has(d.id) && d.coverage_status === "needs_coverage").length;
+  }, [corridorDistrictIds, districtProps]);
 
   function flyToFacility(f: FacilityRow) {
     mapRef.current?.flyTo([f.lat, f.lng], 15, { duration: 1 });
@@ -852,6 +908,63 @@ export default function CoverageMap({
               {formatDistanceKm(distanceKm(initialFacilities[0], initialFacilities[1]))} فاصله مستقیم بین دو انبار
             </p>
           )}
+
+          {/* Feature 3. Lives under the sites section because the corridor is a property
+              of the sites, not a separate map layer the user has to connect back to them. */}
+          {corridorEnds && (
+            <div className="mt-3 border-t border-border pt-3">
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-[length:var(--text-sm)] text-text">کریدور بین انبارها</span>
+                <button
+                  onClick={() => {
+                    const next = !corridorOn;
+                    setCorridorOn(next);
+                    localStorage.setItem("coverage_corridor_on", next ? "1" : "0");
+                  }}
+                  role="switch"
+                  aria-checked={corridorOn}
+                  aria-label="نمایش کریدور بین انبارها"
+                  className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                    corridorOn ? "border-accent bg-accent" : "border-border bg-surface"
+                  }`}
+                >
+                  <span
+                    className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                    style={{ right: corridorOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                  />
+                </button>
+              </div>
+
+              {corridorOn && (
+                <>
+                  <div className="mt-2 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+                    {CORRIDOR_WIDTHS.map((km) => (
+                      <button
+                        key={km}
+                        onClick={() => {
+                          setCorridorWidthKm(km);
+                          localStorage.setItem("coverage_corridor_km", String(km));
+                        }}
+                        className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                          corridorWidthKm === km
+                            ? "bg-accent font-medium text-[#04191c]"
+                            : "text-text-muted hover:bg-white/5 hover:text-text"
+                        }`}
+                      >
+                        {km} کیلومتر
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+                    مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} ({formatDistanceKm(corridorEnds.km)}، خط مستقیم).
+                    {corridorUncovered > 0
+                      ? ` ${corridorUncovered.toLocaleString("fa-IR")} منطقه نیازمند پوشش سر این راه است.`
+                      : " منطقه نیازمند پوششی سر این راه نیست."}
+                  </p>
+                </>
+              )}
+            </div>
+          )}
         </section>
 
         <section>
@@ -977,7 +1090,7 @@ export default function CoverageMap({
 
           {mantagheFeatures && (
             <GeoJSON
-              key={`mantaghe-${districtsVersion}-${activeTier}`}
+              key={`mantaghe-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
               data={mantagheFeatures as any}
               style={districtStyle as any}
               onEachFeature={onEachDistrict as any}
@@ -985,7 +1098,7 @@ export default function CoverageMap({
           )}
           {mahalleFeatures && (
             <GeoJSON
-              key={`mahalle-${districtsVersion}-${activeTier}`}
+              key={`mahalle-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
               data={mahalleFeatures as any}
               style={districtStyle as any}
               onEachFeature={onEachDistrict as any}
@@ -997,6 +1110,27 @@ export default function CoverageMap({
               interactive={false}
               style={{ color: "#8697A8", weight: 2, dashArray: "6 5", fill: false, opacity: 0.85 }}
             />
+          )}
+
+          {/* Feature 3 + 14b: the band, and the dashed line down its middle that makes it
+              read as a route rather than an arbitrary rectangle. Non-interactive so it
+              never swallows a click meant for a district underneath. */}
+          {corridorOn && corridorEnds && corridorBand.length > 0 && (
+            <>
+              <Polygon
+                positions={corridorBand}
+                interactive={false}
+                pathOptions={{ color: FACILITY_COLOR, weight: 1, opacity: 0.5, fillColor: FACILITY_COLOR, fillOpacity: 0.07 }}
+              />
+              <Polyline
+                positions={[
+                  [corridorEnds.a.lat, corridorEnds.a.lng],
+                  [corridorEnds.b.lat, corridorEnds.b.lng],
+                ]}
+                interactive={false}
+                pathOptions={{ color: FACILITY_COLOR, weight: 2, opacity: 0.75, dashArray: "8 6" }}
+              />
+            </>
           )}
 
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} />}

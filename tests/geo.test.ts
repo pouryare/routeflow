@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
   distanceKm,
+  corridorPolygon,
   distanceToSegmentKm,
   formatDistanceKm,
   nearestNeighborOrder,
@@ -181,5 +182,33 @@ describe("distanceToSegmentKm", () => {
   it("is symmetric in the segment's endpoints", () => {
     const p = { lat: 35.3, lng: 51.4 };
     expect(distanceToSegmentKm(p, a, b)).toBeCloseTo(distanceToSegmentKm(p, b, a), 6);
+  });
+})
+
+describe("corridorPolygon", () => {
+  const a = { lat: 35.75, lng: 51.80 };
+  const b = { lat: 35.50, lng: 51.75 };
+
+  it("returns a four-cornered band", () => {
+    expect(corridorPolygon(a, b, 5)).toHaveLength(4);
+  });
+
+  // The band's whole purpose is "everything within N km of the drive", so its corners
+  // have to actually sit N km from the line.
+  it("puts every corner the requested half-width from the segment", () => {
+    for (const [lat, lng] of corridorPolygon(a, b, 5)) {
+      expect(distanceToSegmentKm({ lat, lng }, a, b)).toBeCloseTo(5, 1);
+    }
+  });
+
+  it("scales with the requested width", () => {
+    const narrow = corridorPolygon(a, b, 2);
+    const wide = corridorPolygon(a, b, 10);
+    expect(distanceToSegmentKm({ lat: narrow[0][0], lng: narrow[0][1] }, a, b)).toBeCloseTo(2, 1);
+    expect(distanceToSegmentKm({ lat: wide[0][0], lng: wide[0][1] }, a, b)).toBeCloseTo(10, 1);
+  });
+
+  it("returns nothing for a zero-length segment, which has no direction to widen", () => {
+    expect(corridorPolygon(a, a, 5)).toEqual([]);
   });
 })

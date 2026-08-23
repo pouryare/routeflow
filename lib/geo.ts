@@ -156,3 +156,39 @@ export function distanceToSegmentKm(p: LatLng, a: LatLng, b: LatLng): number {
 
   return distanceKm(p, { lat: ay + t * dy, lng: (ax + t * dx) / latScale });
 }
+
+// Ground distance per degree at Tehran's latitude. Only used to widen the corridor band
+// into a drawable shape -- every distance the app actually reports still goes through
+// the haversine above.
+const KM_PER_DEG_LAT = 110.574;
+const KM_PER_DEG_LNG_EQUATOR = 111.32;
+
+/** The four corners of a rectangular band of the given half-width running along the
+ *  segment a->b, as [lat, lng] pairs ready for a Leaflet polygon.
+ *
+ *  Drawn as a plain rectangle rather than a buffered capsule: the rounded ends would
+ *  imply the corridor extends past the depots, and it does not -- it is the stretch of
+ *  road actually driven between them.
+ *
+ *  Offsets are computed in a local km-space (longitude scaled by cos(latitude)) and
+ *  converted back to degrees, so the band has the requested width on the ground rather
+ *  than in raw degrees, which would render visibly lopsided at this latitude. */
+export function corridorPolygon(a: LatLng, b: LatLng, halfWidthKm: number): [number, number][] {
+  const kmPerDegLng = KM_PER_DEG_LNG_EQUATOR * Math.cos(toRad((a.lat + b.lat) / 2));
+
+  const dxKm = (b.lng - a.lng) * kmPerDegLng;
+  const dyKm = (b.lat - a.lat) * KM_PER_DEG_LAT;
+  const length = Math.hypot(dxKm, dyKm);
+  if (length === 0) return [];
+
+  // Unit vector perpendicular to the run, in km-space, then back into degrees.
+  const offLng = ((-dyKm / length) * halfWidthKm) / kmPerDegLng;
+  const offLat = ((dxKm / length) * halfWidthKm) / KM_PER_DEG_LAT;
+
+  return [
+    [a.lat + offLat, a.lng + offLng],
+    [b.lat + offLat, b.lng + offLng],
+    [b.lat - offLat, b.lng - offLng],
+    [a.lat - offLat, a.lng - offLng],
+  ];
+}
