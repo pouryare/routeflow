@@ -674,10 +674,12 @@ export default function CoverageMap({
         </div>
 
         {dueReminders.length > 0 && (
-          <section>
-            <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-crit">
-              یادآوری‌های امروز ({dueReminders.length})
-            </h2>
+          <CollapsibleSection
+            title="یادآوری‌های امروز"
+            count={dueReminders.length}
+            titleClassName="text-crit"
+            defaultOpen
+          >
             <div className="flex flex-col gap-1.5">
               {dueReminders.map((r) => (
                 <div
@@ -701,25 +703,29 @@ export default function CoverageMap({
                 </div>
               ))}
             </div>
-          </section>
+          </CollapsibleSection>
         )}
 
         {myPosition && (
-          <section>
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-                مشتریان نزدیک ({nearbyCustomers.length})
-              </h2>
+          <CollapsibleSection
+            title="مشتریان نزدیک"
+            count={nearbyCustomers.length}
+            defaultOpen
+            right={
+              /* In the header rather than the body: changing the radius is how you
+                 decide whether this section is worth opening at all. */
               <select
                 value={nearbyRadiusKm}
                 onChange={(e) => setNearbyRadiusKm(Number(e.target.value))}
+                aria-label="شعاع جستجوی مشتریان نزدیک"
                 className="rounded-[var(--radius-sm)] border border-border bg-surface px-1.5 py-0.5 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
               >
                 <option value={1}>۱ کیلومتر</option>
                 <option value={2}>۲ کیلومتر</option>
                 <option value={5}>۵ کیلومتر</option>
               </select>
-            </div>
+            }
+          >
             {nearbyCustomers.length === 0 ? (
               <p className="text-[length:var(--text-xs)] text-text-faint">مشتری‌ای در این شعاع پیدا نشد.</p>
             ) : (
@@ -738,8 +744,85 @@ export default function CoverageMap({
                 ))}
               </div>
             )}
-          </section>
+          </CollapsibleSection>
         )}
+
+        <CollapsibleSection title="لینک‌های سریع" storageKey="links" defaultOpen>
+            <div className="flex flex-col gap-1.5">
+              {QUICK_LINKS.map((l) => (
+                <Link
+                  key={l.href}
+                  href={l.href}
+                  className="group flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface py-2 pe-3 ps-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent focus-visible:border-accent"
+                >
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white/5 text-[length:var(--text-md)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:bg-accent/15 group-focus-visible:bg-accent/15">
+                    {l.icon}
+                  </span>
+                  <span className="flex-1 text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:text-accent group-focus-visible:text-accent">
+                    {l.label}
+                  </span>
+                  <span
+                    aria-hidden
+                    className="shrink-0 text-text-faint transition-[transform,color] duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:-translate-x-0.5 group-hover:text-accent group-focus-visible:-translate-x-0.5 group-focus-visible:text-accent"
+                  >
+                    ‹
+                  </span>
+                </Link>
+              ))}
+            </div>
+        </CollapsibleSection>
+
+        <CustomerFilters
+          salespeople={salespeople}
+          salespersonFilter={salespersonFilter}
+          onSalespersonFilterChange={setSalespersonFilter}
+          totalCount={customers.length}
+          filteredCount={filteredCustomers.length}
+        />
+
+        <CollapsibleSection title="رنگ‌بندی مشتریان" storageKey="colour">
+            {/* Five modes no longer fit a single row at sidebar width on a phone, so this
+                is a grid rather than a flex row -- the fifth would otherwise squeeze the
+                other four into unreadable slivers. */}
+            <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+              {(
+                [
+                  ["status", "وضعیت"],
+                  ["debt", "بدهی"],
+                  ["salesperson", "فروشنده"],
+                  ["inactivity", "رکود"],
+                  ["distance", "فاصله"],
+                ] as [CustomerColorMode, string][]
+              ).map(([mode, label]) => (
+                <button
+                  key={mode}
+                  onClick={() => setColorMode(mode)}
+                  disabled={mode === "distance" && !colourOrigin}
+                  className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
+                    colorMode === mode
+                      ? "bg-accent font-medium text-[#04191c]"
+                      : "text-text-muted hover:bg-white/5 hover:text-text"
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+
+            {/* Without this the map is unreadable in distance mode -- the legend below
+                explains district colours only, and the same three hues mean something
+                entirely different on the markers. */}
+            {colorMode === "distance" && colourOrigin && (
+              <div className="mt-2 flex flex-col gap-1.5">
+                <p className="font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
+                  فاصله از {colourOrigin.name} — خط مستقیم
+                </p>
+                {DISTANCE_BANDS.map((band) => (
+                  <StatusPill key={band.label} color={band.color} label={band.label} />
+                ))}
+              </div>
+            )}
+        </CollapsibleSection>
 
         {dormantCustomers.length > 0 && (
           <CollapsibleSection title="مشتریان راکد" count={dormantCustomers.length} titleClassName="text-warn">
@@ -785,343 +868,255 @@ export default function CoverageMap({
           </CollapsibleSection>
         )}
 
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            رنگ‌بندی مشتریان
-          </h2>
-          {/* Five modes no longer fit a single row at sidebar width on a phone, so this
-              is a grid rather than a flex row -- the fifth would otherwise squeeze the
-              other four into unreadable slivers. */}
-          <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-            {(
-              [
-                ["status", "وضعیت"],
-                ["debt", "بدهی"],
-                ["salesperson", "فروشنده"],
-                ["inactivity", "رکود"],
-                ["distance", "فاصله"],
-              ] as [CustomerColorMode, string][]
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setColorMode(mode)}
-                disabled={mode === "distance" && !colourOrigin}
-                className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
-                  colorMode === mode
-                    ? "bg-accent font-medium text-[#04191c]"
-                    : "text-text-muted hover:bg-white/5 hover:text-text"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-
-          {/* Without this the map is unreadable in distance mode -- the legend below
-              explains district colours only, and the same three hues mean something
-              entirely different on the markers. */}
-          {colorMode === "distance" && colourOrigin && (
-            <div className="mt-2 flex flex-col gap-1.5">
-              <p className="font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-                فاصله از {colourOrigin.name} — خط مستقیم
-              </p>
-              {DISTANCE_BANDS.map((band) => (
-                <StatusPill key={band.label} color={band.color} label={band.label} />
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            دقت مرز مناطق
-          </h2>
-          <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-            {(
-              [
-                ["auto", "خودکار"],
-                ["low", "سریع"],
-                ["high", "دقیق"],
-              ] as [PrecisionMode, string][]
-            ).map(([mode, label]) => (
-              <button
-                key={mode}
-                onClick={() => setPrecisionMode(mode)}
-                className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  precisionMode === mode
-                    ? "bg-accent font-medium text-[#04191c]"
-                    : "text-text-muted hover:bg-white/5 hover:text-text"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-            {precisionMode === "auto"
-              ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${PRECISION_AUTO_ZOOM.toLocaleString("fa-IR")} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
-              : precisionMode === "low"
-                ? "همیشه مرزهای ساده‌شده — سبک‌ترین حالت برای اینترنت ضعیف."
-                : "همیشه مرزهای کامل — دقیق‌تر ولی سنگین‌تر."}
-          </p>
-        </section>
-
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            نقشه حرارتی
-          </h2>
-          <div className="flex items-center justify-between">
-            <span className="text-[length:var(--text-sm)] text-text">نمایش تراکم مشتریان</span>
-            <button
-              onClick={() => setHeatmapOn((v) => !v)}
-              role="switch"
-              aria-checked={heatmapOn}
-              aria-label="نمایش نقشه حرارتی"
-              className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                heatmapOn ? "border-accent bg-accent" : "border-border bg-surface"
-              }`}
-            >
-              <span
-                className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                style={{ right: heatmapOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-              />
-            </button>
-          </div>
-          {heatmapOn && (
-            <label className="mt-2 flex items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
-              <input
-                type="checkbox"
-                checked={heatmapByDebt}
-                onChange={(e) => setHeatmapByDebt(e.target.checked)}
-                className="accent-[color:var(--accent)]"
-              />
-              وزن‌دهی بر اساس شدت بدهی
-            </label>
-          )}
-        </section>
-
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            راهنمای رنگ مناطق
-          </h2>
-          <div className="flex flex-col gap-1.5">
-            {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-              <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} />
-            ))}
-          </div>
-          <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-            {bulkMode
-              ? "روی چند منطقه کلیک کنید تا انتخاب شوند، سپس از نوار پایین صفحه تغییر را روی همه اعمال کنید."
-              : "برای تغییر وضعیت یک منطقه، روی آن در نقشه کلیک کنید."}
-          </p>
-        </section>
-
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            تأسیسات ما
-          </h2>
-          <div className="flex flex-col gap-1">
-            {initialFacilities.map((f) => (
-              <button
-                key={f.id}
-                onClick={() => flyToFacility(f)}
-                className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
-              >
-                <span
-                  className="shrink-0"
-                  aria-hidden="true"
-                  dangerouslySetInnerHTML={{
-                    __html: `<span class="facility-marker${f.kind === "home_base" ? " facility-marker--home" : ""}">${FACILITY_ART[f.kind].html}</span>`,
-                  }}
-                />
-                <span className="min-w-0">
-                  <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
-                  {f.notes && (
-                    <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.notes}</span>
-                  )}
-                </span>
-              </button>
-            ))}
-          </div>
-          {initialFacilities.length === 2 && (
-            <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-              {formatDistanceKm(distanceKm(initialFacilities[0], initialFacilities[1]))} فاصله مستقیم بین دو انبار
-            </p>
-          )}
-
-          {/* Feature 3. Lives under the sites section because the corridor is a property
-              of the sites, not a separate map layer the user has to connect back to them. */}
-          {corridorEnds && (
-            <div className="mt-3 border-t border-border pt-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-[length:var(--text-sm)] text-text">کریدور بین انبارها</span>
+        <CollapsibleSection title="تأسیسات ما" storageKey="sites">
+            <div className="flex flex-col gap-1">
+              {initialFacilities.map((f) => (
                 <button
-                  onClick={() => {
-                    const next = !corridorOn;
-                    setCorridorOn(next);
-                    localStorage.setItem("coverage_corridor_on", next ? "1" : "0");
-                  }}
-                  role="switch"
-                  aria-checked={corridorOn}
-                  aria-label="نمایش کریدور بین انبارها"
-                  className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                    corridorOn ? "border-accent bg-accent" : "border-border bg-surface"
-                  }`}
+                  key={f.id}
+                  onClick={() => flyToFacility(f)}
+                  className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                 >
                   <span
-                    className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                    style={{ right: corridorOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                    className="shrink-0"
+                    aria-hidden="true"
+                    dangerouslySetInnerHTML={{
+                      __html: `<span class="facility-marker${f.kind === "home_base" ? " facility-marker--home" : ""}">${FACILITY_ART[f.kind].html}</span>`,
+                    }}
                   />
+                  <span className="min-w-0">
+                    <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
+                    {f.notes && (
+                      <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.notes}</span>
+                    )}
+                  </span>
                 </button>
+              ))}
+            </div>
+            {initialFacilities.length === 2 && (
+              <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
+                {formatDistanceKm(distanceKm(initialFacilities[0], initialFacilities[1]))} فاصله مستقیم بین دو انبار
+              </p>
+            )}
+
+            {/* Feature 3. Lives under the sites section because the corridor is a property
+                of the sites, not a separate map layer the user has to connect back to them. */}
+            {corridorEnds && (
+              <div className="mt-3 border-t border-border pt-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-[length:var(--text-sm)] text-text">کریدور بین انبارها</span>
+                  <button
+                    onClick={() => {
+                      const next = !corridorOn;
+                      setCorridorOn(next);
+                      localStorage.setItem("coverage_corridor_on", next ? "1" : "0");
+                    }}
+                    role="switch"
+                    aria-checked={corridorOn}
+                    aria-label="نمایش کریدور بین انبارها"
+                    className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                      corridorOn ? "border-accent bg-accent" : "border-border bg-surface"
+                    }`}
+                  >
+                    <span
+                      className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                      style={{ right: corridorOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                    />
+                  </button>
+                </div>
+
+                {corridorOn && (
+                  <>
+                    <div className="mt-2 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+                      {CORRIDOR_WIDTHS.map((km) => (
+                        <button
+                          key={km}
+                          onClick={() => {
+                            setCorridorWidthKm(km);
+                            localStorage.setItem("coverage_corridor_km", String(km));
+                          }}
+                          className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                            corridorWidthKm === km
+                              ? "bg-accent font-medium text-[#04191c]"
+                              : "text-text-muted hover:bg-white/5 hover:text-text"
+                          }`}
+                        >
+                          {km} کیلومتر
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+                      مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} ({formatDistanceKm(corridorEnds.km)}، خط مستقیم).
+                      {corridorUncovered > 0
+                        ? ` ${corridorUncovered.toLocaleString("fa-IR")} منطقه نیازمند پوشش سر این راه است.`
+                        : " منطقه نیازمند پوششی سر این راه نیست."}
+                    </p>
+                  </>
+                )}
               </div>
+            )}
+        </CollapsibleSection>
 
-              {corridorOn && (
-                <>
-                  <div className="mt-2 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                    {CORRIDOR_WIDTHS.map((km) => (
-                      <button
-                        key={km}
-                        onClick={() => {
-                          setCorridorWidthKm(km);
-                          localStorage.setItem("coverage_corridor_km", String(km));
-                        }}
-                        className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                          corridorWidthKm === km
-                            ? "bg-accent font-medium text-[#04191c]"
-                            : "text-text-muted hover:bg-white/5 hover:text-text"
-                        }`}
-                      >
-                        {km} کیلومتر
-                      </button>
-                    ))}
-                  </div>
-                  <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                    مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} ({formatDistanceKm(corridorEnds.km)}، خط مستقیم).
-                    {corridorUncovered > 0
-                      ? ` ${corridorUncovered.toLocaleString("fa-IR")} منطقه نیازمند پوشش سر این راه است.`
-                      : " منطقه نیازمند پوششی سر این راه نیست."}
-                  </p>
-                </>
-              )}
+        <CollapsibleSection title="راهنمای رنگ مناطق" storageKey="legend">
+            <div className="flex flex-col gap-1.5">
+              {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
+                <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} />
+              ))}
             </div>
-          )}
-        </section>
+            <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+              {bulkMode
+                ? "روی چند منطقه کلیک کنید تا انتخاب شوند، سپس از نوار پایین صفحه تغییر را روی همه اعمال کنید."
+                : "برای تغییر وضعیت یک منطقه، روی آن در نقشه کلیک کنید."}
+            </p>
+        </CollapsibleSection>
 
-        <section>
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <span className="text-[length:var(--text-sm)] text-text">ثبت خودکار بازدید (GPS)</span>
-              <p className="text-[length:var(--text-xs)] text-text-faint">وقتی نزدیک مشتری هستید پیشنهاد ثبت بازدید نمایش داده می‌شود</p>
+        <CollapsibleSection title="نقشه حرارتی" storageKey="heatmap">
+            <div className="flex items-center justify-between">
+              <span className="text-[length:var(--text-sm)] text-text">نمایش تراکم مشتریان</span>
+              <button
+                onClick={() => setHeatmapOn((v) => !v)}
+                role="switch"
+                aria-checked={heatmapOn}
+                aria-label="نمایش نقشه حرارتی"
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  heatmapOn ? "border-accent bg-accent" : "border-border bg-surface"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                  style={{ right: heatmapOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                />
+              </button>
             </div>
-            <button
-              onClick={() => setGeofenceOn((v) => !v)}
-              role="switch"
-              aria-checked={geofenceOn}
-              aria-label="ثبت خودکار بازدید"
-              className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                geofenceOn ? "border-accent bg-accent" : "border-border bg-surface"
-              }`}
-            >
-              <span
-                className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                style={{ right: geofenceOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-              />
-            </button>
-          </div>
+            {heatmapOn && (
+              <label className="mt-2 flex items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
+                <input
+                  type="checkbox"
+                  checked={heatmapByDebt}
+                  onChange={(e) => setHeatmapByDebt(e.target.checked)}
+                  className="accent-[color:var(--accent)]"
+                />
+                وزن‌دهی بر اساس شدت بدهی
+              </label>
+            )}
+        </CollapsibleSection>
 
-          {/* A sub-option, not a sibling switch: it rides the same permission, the same
-              position stream and the same battery cost as the toggle above, and
-              presenting it as independent would imply otherwise. */}
-          {geofenceOn && (
-            <label className="mt-2 flex items-start gap-2 text-[length:var(--text-xs)] leading-5 text-text-muted">
-              <input
-                type="checkbox"
-                checked={facilityGeofenceOn}
-                onChange={(e) => {
-                  setFacilityGeofenceOn(e.target.checked);
-                  localStorage.setItem("coverage_geofence_sites", e.target.checked ? "1" : "0");
-                }}
-                className="mt-0.5 accent-[color:var(--accent)]"
-              />
-              <span>
-                ثبت حضور در انبارها و مبدأ
-                <span className="block text-text-faint">
-                  رسیدن به انبار یا مبدأ هم ثبت می‌شود — مبنای گزارش ساعت کاری روزانه
+        <CollapsibleSection title="تنظیمات" storageKey="settings">
+          <div className="flex flex-col gap-4">
+
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[length:var(--text-sm)] text-text">ثبت خودکار بازدید (GPS)</span>
+                <p className="text-[length:var(--text-xs)] text-text-faint">وقتی نزدیک مشتری هستید پیشنهاد ثبت بازدید نمایش داده می‌شود</p>
+              </div>
+              <button
+                onClick={() => setGeofenceOn((v) => !v)}
+                role="switch"
+                aria-checked={geofenceOn}
+                aria-label="ثبت خودکار بازدید"
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  geofenceOn ? "border-accent bg-accent" : "border-border bg-surface"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                  style={{ right: geofenceOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                />
+              </button>
+            </div>
+
+            {/* A sub-option, not a sibling switch: it rides the same permission, the same
+                position stream and the same battery cost as the toggle above, and
+                presenting it as independent would imply otherwise. */}
+            {geofenceOn && (
+              <label className="mt-2 flex items-start gap-2 text-[length:var(--text-xs)] leading-5 text-text-muted">
+                <input
+                  type="checkbox"
+                  checked={facilityGeofenceOn}
+                  onChange={(e) => {
+                    setFacilityGeofenceOn(e.target.checked);
+                    localStorage.setItem("coverage_geofence_sites", e.target.checked ? "1" : "0");
+                  }}
+                  className="mt-0.5 accent-[color:var(--accent)]"
+                />
+                <span>
+                  ثبت حضور در انبارها و مبدأ
+                  <span className="block text-text-faint">
+                    رسیدن به انبار یا مبدأ هم ثبت می‌شود — مبنای گزارش ساعت کاری روزانه
+                  </span>
                 </span>
-              </span>
-            </label>
-          )}
-        </section>
+              </label>
+            )}
 
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            اعلان‌ها
-          </h2>
-          <NotificationToggle />
-        </section>
-
-        <section>
-          <div className="flex items-center justify-between gap-2">
-            <div>
-              <span className="text-[length:var(--text-sm)] text-text">انتخاب چندتایی مناطق</span>
-              <p className="text-[length:var(--text-xs)] text-text-faint">برای ویرایش‌های گروهی روی دسکتاپ</p>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[length:var(--text-sm)] text-text">انتخاب چندتایی مناطق</span>
+                <p className="text-[length:var(--text-xs)] text-text-faint">برای ویرایش‌های گروهی روی دسکتاپ</p>
+              </div>
+              <button
+                onClick={() => setBulkMode((v) => !v)}
+                role="switch"
+                aria-checked={bulkMode}
+                aria-label="حالت انتخاب چندتایی مناطق"
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  bulkMode ? "border-accent bg-accent" : "border-border bg-surface"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                  style={{ right: bulkMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                />
+              </button>
             </div>
-            <button
-              onClick={() => setBulkMode((v) => !v)}
-              role="switch"
-              aria-checked={bulkMode}
-              aria-label="حالت انتخاب چندتایی مناطق"
-              className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                bulkMode ? "border-accent bg-accent" : "border-border bg-surface"
-              }`}
-            >
-              <span
-                className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                style={{ right: bulkMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
-              />
-            </button>
-          </div>
-        </section>
 
-        <CustomerFilters
-          salespeople={salespeople}
-          salespersonFilter={salespersonFilter}
-          onSalespersonFilterChange={setSalespersonFilter}
-          totalCount={customers.length}
-          filteredCount={filteredCustomers.length}
-        />
+            <div>
+
+              <NotificationToggle />
+
+            </div>
+
+            <div>
+
+              <p className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
+                دقت مرز مناطق
+              </p>
+
+              <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+                {(
+                  [
+                    ["auto", "خودکار"],
+                    ["low", "سریع"],
+                    ["high", "دقیق"],
+                  ] as [PrecisionMode, string][]
+                ).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setPrecisionMode(mode)}
+                    className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                      precisionMode === mode
+                        ? "bg-accent font-medium text-[#04191c]"
+                        : "text-text-muted hover:bg-white/5 hover:text-text"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+                {precisionMode === "auto"
+                  ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${PRECISION_AUTO_ZOOM.toLocaleString("fa-IR")} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
+                  : precisionMode === "low"
+                    ? "همیشه مرزهای ساده‌شده — سبک‌ترین حالت برای اینترنت ضعیف."
+                    : "همیشه مرزهای کامل — دقیق‌تر ولی سنگین‌تر."}
+              </p>
+
+            </div>
+
+          </div>
+        </CollapsibleSection>
 
         <ImportPanel onImported={loadCustomers} />
-
-        <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-            لینک‌های سریع
-          </h2>
-          <div className="flex flex-col gap-1.5">
-            {QUICK_LINKS.map((l) => (
-              <Link
-                key={l.href}
-                href={l.href}
-                className="group flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface py-2 pe-3 ps-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent focus-visible:border-accent"
-              >
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white/5 text-[length:var(--text-md)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:bg-accent/15 group-focus-visible:bg-accent/15">
-                  {l.icon}
-                </span>
-                <span className="flex-1 text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:text-accent group-focus-visible:text-accent">
-                  {l.label}
-                </span>
-                <span
-                  aria-hidden
-                  className="shrink-0 text-text-faint transition-[transform,color] duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:-translate-x-0.5 group-hover:text-accent group-focus-visible:-translate-x-0.5 group-focus-visible:text-accent"
-                >
-                  ‹
-                </span>
-              </Link>
-            ))}
-          </div>
-        </section>
 
         {error && (
           <p className="flex items-center gap-1.5 text-[length:var(--text-sm)] text-crit">
@@ -1129,6 +1124,7 @@ export default function CoverageMap({
             {error}
           </p>
         )}
+
         {loading && <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>}
       </aside>
 

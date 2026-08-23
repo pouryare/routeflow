@@ -1,5 +1,7 @@
 "use client";
 
+import CollapsibleSection from "./CollapsibleSection";
+
 export default function CustomerFilters({
   salespeople,
   salespersonFilter,
@@ -28,11 +30,7 @@ export default function CustomerFilters({
     }`;
 
   return (
-    <section>
-      <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-        فیلتر مشتری‌ها
-        <span className="text-text-faint"> ({filteredCount} از {totalCount})</span>
-      </h2>
+    <CollapsibleSection title={`فیلتر مشتری‌ها (${filteredCount} از ${totalCount})`} storageKey="filters">
 
       {salespeople.length > 0 && (
         <div>
@@ -46,6 +44,6 @@ export default function CustomerFilters({
           </div>
         </div>
       )}
-    </section>
+    </CollapsibleSection>
   );
 }

@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useToast } from "./ToastProvider";
+import CollapsibleSection from "./CollapsibleSection";
 
 interface ImportPreview {
   newCustomers: number;
@@ -158,10 +159,7 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
   const debtDelta = preview ? preview.totalDebtAfter - preview.totalDebtBefore : 0;
 
   return (
-    <section>
-      <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-        به‌روزرسانی از اکسل
-      </h2>
+    <CollapsibleSection title="به‌روزرسانی از اکسل" storageKey="import">
 
       {status?.lastImport && (
         <p className="mb-2 text-[length:var(--text-xs)] text-text-faint">
@@ -337,6 +335,6 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
         اطلاعات مشتری‌ها («مخاطبین») و فروش («فروش») خوانده می‌شود. وضعیت مناطق روی نقشه دست‌نخورده می‌ماند. ستون‌ها بر اساس
         عنوان آن‌ها شناسایی می‌شوند، نه جای ثابت — اما بهتر است ستونی اضافه یا جابه‌جا نشود تا از این خطا جلوگیری شود.
       </p>
-    </section>
+    </CollapsibleSection>
   );
 }
