@@ -88,6 +88,60 @@ export default function AnalyticsPage() {
     revenue: revenueByName.get(c.business_name) ?? 0,
   }));
 
+  // Feature 12: the last fortnight of days, reconstructed from depot arrivals logged by
+  // the geofence. Days with no arrivals are absent rather than shown as zero-hour days:
+  // the log is the only evidence there is, and a day nobody recorded is unknown, not empty.
+  const dayLogRows = db
+    .prepare(
+      `SELECT substr(created_at, 1, 10) AS day,
+              MIN(created_at) AS first_seen,
+              MAX(created_at) AS last_seen,
+              COUNT(*) AS stops
+       FROM activity_log
+       WHERE entity_type = 'facility' AND created_at >= ?
+       GROUP BY day
+       ORDER BY day DESC
+       LIMIT 14`
+    )
+    .all(new Date(Date.now() - 21 * 86400000).toISOString()) as {
+    day: string;
+    first_seen: string;
+    last_seen: string;
+    stops: number;
+  }[];
+
+  const doneByDay = new Map(
+    (
+      db
+        .prepare(
+          `SELECT planned_date, COUNT(*) AS c FROM visit_plans
+           WHERE status = 'done' AND planned_date >= ?
+           GROUP BY planned_date`
+        )
+        .all(new Date(Date.now() - 21 * 86400000).toISOString().slice(0, 10)) as {
+        planned_date: string;
+        c: number;
+      }[]
+    ).map((r) => [r.planned_date, r.c])
+  );
+
+  const dayLog = dayLogRows.map((r) => {
+    const start = new Date(r.first_seen);
+    const end = new Date(r.last_seen);
+    const minutes = Math.max(0, Math.round((end.getTime() - start.getTime()) / 60000));
+    const hhmm = (d: Date) => `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    return {
+      day: r.day,
+      start: hhmm(start),
+      // A single arrival cannot bound a day, so it reports a start and no span rather
+      // than a span of zero.
+      end: r.stops > 1 ? hhmm(end) : null,
+      minutes: r.stops > 1 ? minutes : null,
+      stops: r.stops,
+      done: doneByDay.get(r.day) ?? 0,
+    };
+  });
+
   const topCustomers = db
     .prepare(
       `SELECT customer_name, SUM(amount) as total FROM sales GROUP BY customer_name ORDER BY total DESC LIMIT 10`
@@ -216,6 +270,48 @@ export default function AnalyticsPage() {
             </div>
           </div>
         </section>
+
+        {dayLog.length > 0 && (
+          <section>
+            <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+              روزهای کاری اخیر
+            </h2>
+            <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
+              <table className="w-full border-collapse text-[length:var(--text-sm)]">
+                <thead>
+                  <tr className="border-b border-border bg-surface text-right text-text-muted">
+                    <th className="px-3 py-2 font-medium">تاریخ</th>
+                    <th className="px-3 py-2 font-medium">شروع</th>
+                    <th className="px-3 py-2 font-medium">پایان</th>
+                    <th className="px-3 py-2 font-medium">مدت</th>
+                    <th className="px-3 py-2 font-medium">توقف در مکان‌های ما</th>
+                    <th className="px-3 py-2 font-medium">بازدید انجام‌شده</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {dayLog.map((d) => (
+                    <tr key={d.day} className="border-b border-border last:border-b-0">
+                      <td className="px-3 py-2 font-mono tabular-nums text-text">{d.day}</td>
+                      <td dir="ltr" className="px-3 py-2 text-right font-mono tabular-nums text-text-muted">{d.start}</td>
+                      <td dir="ltr" className="px-3 py-2 text-right font-mono tabular-nums text-text-muted">{d.end ?? "—"}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
+                        {d.minutes === null
+                          ? "—"
+                          : `${Math.floor(d.minutes / 60)} ساعت و ${d.minutes % 60} دقیقه`}
+                      </td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{d.stops.toLocaleString("fa-IR")}</td>
+                      <td className="px-3 py-2 font-mono tabular-nums text-text-muted">{d.done.toLocaleString("fa-IR")}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+              از روی ثبت خودکار حضور در انبارها و مبدأ ساخته می‌شود — روزهایی که این گزینه خاموش بوده،
+              اینجا دیده نمی‌شوند.
+            </p>
+          </section>
+        )}
 
         <CostToServePanel
           rows={costToServeRows}

@@ -29,6 +29,8 @@ export default function FacilitiesPage() {
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<FacilityKind>("warehouse");
   const [confirmingDelete, setConfirmingDelete] = useState<number | null>(null);
+  const [renamingId, setRenamingId] = useState<number | null>(null);
+  const [renameDraft, setRenameDraft] = useState("");
   const toast = useToast();
 
   const load = useCallback(async () => {
@@ -126,7 +128,7 @@ export default function FacilitiesPage() {
 
         <p className="text-[length:var(--text-sm)] leading-6 text-text-muted">
           انبارها و نقطه شروع مسیر شما. «مبدأ پیش‌فرض» جایی است که برنامه‌ریز مسیر، فاصله‌ها را از آنجا
-          حساب می‌کند — هر بار فقط یک مکان می‌تواند مبدأ باشد.
+          حساب می‌کند — هر بار فقط یک مکان می‌تواند مبدأ باشد. برای تغییر نام، روی نام مکان بزنید.
         </p>
 
         <section className="flex flex-col gap-2">
@@ -153,12 +155,54 @@ export default function FacilitiesPage() {
                     dangerouslySetInnerHTML={{ __html: facilityMarkerHtml(f.kind) }}
                   />
                   <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-                      <h2 className="text-[length:var(--text-md)] font-medium text-text">{f.name}</h2>
-                      <span className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
-                        {KIND_NAME[f.kind]}
-                      </span>
-                    </div>
+                    {renamingId === f.id ? (
+                      <form
+                        onSubmit={(e) => {
+                          e.preventDefault();
+                          const name = renameDraft.trim();
+                          setRenamingId(null);
+                          if (name && name !== f.name) patch(f.id, { name }, "نام مکان تغییر کرد");
+                        }}
+                        className="flex flex-wrap items-center gap-2"
+                      >
+                        <input
+                          value={renameDraft}
+                          onChange={(e) => setRenameDraft(e.target.value)}
+                          autoFocus
+                          onKeyDown={(e) => e.key === "Escape" && setRenamingId(null)}
+                          className="min-w-40 flex-1 rounded-[var(--radius-sm)] border border-accent bg-surface px-2 py-1 text-[length:var(--text-sm)] text-text outline-none"
+                        />
+                        <button
+                          type="submit"
+                          className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c]"
+                        >
+                          ذخیره
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRenamingId(null)}
+                          className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
+                        >
+                          انصراف
+                        </button>
+                      </form>
+                    ) : (
+                      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                        <button
+                          onClick={() => {
+                            setRenameDraft(f.name);
+                            setRenamingId(f.id);
+                          }}
+                          title="تغییر نام"
+                          className="text-right text-[length:var(--text-md)] font-medium text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+                        >
+                          {f.name}
+                        </button>
+                        <span className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
+                          {KIND_NAME[f.kind]}
+                        </span>
+                      </div>
+                    )}
                     <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">{FACILITY_LABEL[f.kind]}</p>
                     {f.address && (
                       <p className="mt-1.5 text-[length:var(--text-xs)] leading-5 text-text-muted">{f.address}</p>
