@@ -1,5 +1,12 @@
 import { describe, it, expect } from "vitest";
-import { distanceKm, formatDistanceKm, nearestNeighborOrder, routeLengthKm, twoOptOrder } from "@/lib/geo";
+import {
+  distanceKm,
+  distanceToSegmentKm,
+  formatDistanceKm,
+  nearestNeighborOrder,
+  routeLengthKm,
+  twoOptOrder,
+} from "@/lib/geo";
 
 describe("distanceKm", () => {
   it("is ~0 for the same point", () => {
@@ -140,5 +147,39 @@ describe("twoOptOrder", () => {
   it("passes through fewer than two stops untouched", () => {
     expect(twoOptOrder([], origin, false)).toEqual([]);
     expect(twoOptOrder([pts[0]], origin, false)).toEqual([pts[0]]);
+  });
+})
+
+describe("distanceToSegmentKm", () => {
+  const a = { lat: 35.0, lng: 51.0 };
+  const b = { lat: 35.0, lng: 52.0 };
+
+  it("is 0 for a point on the segment", () => {
+    expect(distanceToSegmentKm({ lat: 35.0, lng: 51.5 }, a, b)).toBeCloseTo(0, 3);
+  });
+
+  it("measures the perpendicular drop for a point beside the segment", () => {
+    const p = { lat: 35.05, lng: 51.5 };
+    expect(distanceToSegmentKm(p, a, b)).toBeCloseTo(distanceKm(p, { lat: 35.0, lng: 51.5 }), 1);
+  });
+
+  // The two cases a naive perpendicular-distance formula gets wrong: a point past
+  // either end must measure to that endpoint, not to the infinite line through it.
+  it("clamps to the near endpoint when the projection falls beyond the segment", () => {
+    const before = { lat: 35.0, lng: 50.0 };
+    expect(distanceToSegmentKm(before, a, b)).toBeCloseTo(distanceKm(before, a), 1);
+
+    const after = { lat: 35.0, lng: 53.0 };
+    expect(distanceToSegmentKm(after, a, b)).toBeCloseTo(distanceKm(after, b), 1);
+  });
+
+  it("handles a zero-length segment as distance to that single point", () => {
+    const p = { lat: 35.2, lng: 51.2 };
+    expect(distanceToSegmentKm(p, a, a)).toBeCloseTo(distanceKm(p, a), 3);
+  });
+
+  it("is symmetric in the segment's endpoints", () => {
+    const p = { lat: 35.3, lng: 51.4 };
+    expect(distanceToSegmentKm(p, a, b)).toBeCloseTo(distanceToSegmentKm(p, b, a), 6);
   });
 })

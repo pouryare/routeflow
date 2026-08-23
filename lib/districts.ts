@@ -8,7 +8,8 @@ import { DistrictProperties } from "./types";
 export function readDistrictProperties(db: DatabaseSync = getDb()): DistrictProperties[] {
   const rows = db
     .prepare(
-      `SELECT id, name, level, parent_name, coverage_status, notes, is_custom, updated_at, assigned_to
+      `SELECT id, name, level, parent_name, coverage_status, notes, is_custom, updated_at, assigned_to,
+              centroid_lat, centroid_lng
        FROM districts ORDER BY level, parent_name, name`
     )
     .all() as unknown as District[];
@@ -23,5 +24,7 @@ export function readDistrictProperties(db: DatabaseSync = getDb()): DistrictProp
     is_custom: !!r.is_custom,
     updated_at: r.updated_at,
     assigned_to: r.assigned_to,
+    centroid_lat: r.centroid_lat,
+    centroid_lng: r.centroid_lng,
   }));
 }

@@ -27,6 +27,8 @@ export interface DistrictProperties {
   is_custom: boolean;
   updated_at: string;
   assigned_to: string | null;
+  centroid_lat: number | null;
+  centroid_lng: number | null;
 }
 
 /** What GET /api/districts returns. Geometry is deliberately absent -- it is fetched

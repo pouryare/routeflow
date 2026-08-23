@@ -106,3 +106,71 @@ export function decimateGeometry(
   }
   return { type: "MultiPolygon", coordinates: geometry.coordinates.map((poly) => poly.map(ring)) };
 }
+
+/** Area-weighted centroid of a polygon or multipolygon, as {lat, lng}.
+ *
+ *  Districts are ranked and measured by "how far away is it", which needs one point per
+ *  district. The area-weighted centre is the right one: a plain average of vertices
+ *  drifts toward whichever edge the source data happened to draw with more points, and
+ *  picking the first ring lets a small detached piece stand in for the whole district.
+ *
+ *  Computed in raw degrees rather than a projection. Over a Tehran district the
+ *  distortion is far below the kilometre-scale distances this feeds, and every
+ *  alternative drags in a projection library for no gain at this precision.
+ *
+ *  Returns null when there is nothing to measure, so callers store NULL rather than a
+ *  NaN that would silently poison every distance computed from it. */
+export function polygonCentroid(geometry: DistrictGeometry): { lat: number; lng: number } | null {
+  const polygons: Ring[][] = geometry.type === "Polygon" ? [geometry.coordinates] : geometry.coordinates;
+
+  let areaTotal = 0;
+  let xTotal = 0;
+  let yTotal = 0;
+  const allPoints: GeoJsonPosition[] = [];
+
+  for (const rings of polygons) {
+    // Only the outer ring positions the shape. A hole moves the true centroid, but a
+    // district's holes are enclaves whose effect is far below the resolution this feeds.
+    const outer = rings[0];
+    if (!outer || outer.length < 3) continue;
+    allPoints.push(...outer);
+
+    // Shoelace. The signed area is negative for one winding direction and positive for
+    // the other; using the signed value in both the numerator and the weight makes the
+    // sign cancel, so winding never matters.
+    let signedArea = 0;
+    let cx = 0;
+    let cy = 0;
+    for (let i = 0; i < outer.length - 1; i++) {
+      const [x0, y0] = outer[i];
+      const [x1, y1] = outer[i + 1];
+      const cross = x0 * y1 - x1 * y0;
+      signedArea += cross;
+      cx += (x0 + x1) * cross;
+      cy += (y0 + y1) * cross;
+    }
+    signedArea /= 2;
+    if (signedArea === 0) continue;
+
+    xTotal += cx / 6;
+    yTotal += cy / 6;
+    areaTotal += signedArea;
+  }
+
+  if (areaTotal !== 0) {
+    return { lng: xTotal / areaTotal, lat: yTotal / areaTotal };
+  }
+
+  // Every ring was degenerate (zero area) -- a line, or a repeated point. The bounding
+  // box centre is still a usable location, and a district drawn that badly should show
+  // up somewhere sensible rather than not at all.
+  if (allPoints.length === 0) return null;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const [x, y] of allPoints) {
+    if (x < minX) minX = x;
+    if (x > maxX) maxX = x;
+    if (y < minY) minY = y;
+    if (y > maxY) maxY = y;
+  }
+  return { lng: (minX + maxX) / 2, lat: (minY + maxY) / 2 };
+}

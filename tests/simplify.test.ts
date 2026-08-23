@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { decimateGeometry, roundPosition, simplifyRing, type Ring } from "@/lib/simplify";
+import { decimateGeometry, polygonCentroid, roundPosition, simplifyRing, type Ring } from "@/lib/simplify";
 
 /** A closed square ring padded with points that sit exactly on its edges. Every padding
  *  point is redundant, so any working simplifier drops all of them and keeps the corners. */
@@ -120,3 +120,57 @@ describe("decimateGeometry", () => {
     expect((out.coordinates as number[][][][])[1][0]).toHaveLength(5);
   });
 });
+
+describe("polygonCentroid", () => {
+  const square = (x: number, y: number, size: number): Ring => [
+    [x, y],
+    [x + size, y],
+    [x + size, y + size],
+    [x, y + size],
+    [x, y],
+  ];
+
+  it("puts a square's centroid at its middle", () => {
+    const c = polygonCentroid({ type: "Polygon", coordinates: [square(0, 0, 10)] });
+    expect(c!.lng).toBeCloseTo(5, 6);
+    expect(c!.lat).toBeCloseTo(5, 6);
+  });
+
+  it("is unaffected by ring winding direction", () => {
+    const cw = polygonCentroid({ type: "Polygon", coordinates: [square(0, 0, 10)] });
+    const ccw = polygonCentroid({ type: "Polygon", coordinates: [square(0, 0, 10).slice().reverse()] });
+    expect(ccw!.lat).toBeCloseTo(cw!.lat, 6);
+    expect(ccw!.lng).toBeCloseTo(cw!.lng, 6);
+  });
+
+  // A district is one shape even when the data models it as several rings; weighting by
+  // area stops a tiny outlying island from dragging the centre off the main body.
+  it("weights a multipolygon by area, not by ring count", () => {
+    const c = polygonCentroid({
+      type: "MultiPolygon",
+      coordinates: [[square(0, 0, 10)], [square(100, 0, 1)]],
+    });
+    expect(c!.lng).toBeGreaterThan(4);
+    expect(c!.lng).toBeLessThan(6);
+  });
+
+  it("ignores holes in the outer ring's own position", () => {
+    const c = polygonCentroid({ type: "Polygon", coordinates: [square(0, 0, 10), square(4, 4, 2)] });
+    expect(c!.lng).toBeCloseTo(5, 1);
+    expect(c!.lat).toBeCloseTo(5, 1);
+  });
+
+  // A zero-area ring makes the shoelace formula divide by zero; the bounding-box centre
+  // is a defensible answer and a NaN pin on the map is not.
+  it("falls back to the bounding-box centre for a degenerate ring", () => {
+    const line: Ring = [[0, 0], [10, 0], [0, 0]];
+    const c = polygonCentroid({ type: "Polygon", coordinates: [line] });
+    expect(Number.isFinite(c!.lat)).toBe(true);
+    expect(Number.isFinite(c!.lng)).toBe(true);
+    expect(c!.lng).toBeCloseTo(5, 6);
+  });
+
+  it("returns null for geometry with no usable coordinates", () => {
+    expect(polygonCentroid({ type: "Polygon", coordinates: [] })).toBeNull();
+  });
+})

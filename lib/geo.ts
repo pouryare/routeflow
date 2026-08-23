@@ -117,3 +117,42 @@ export function twoOptOrder<T extends LatLng>(stops: T[], origin: LatLng, return
 
   return best;
 }
+
+/** Shortest straight-line distance from a point to a *segment* (not the infinite line
+ *  through it) in kilometres.
+ *
+ *  Backs two features that ask the same geometric question in different words: which
+ *  leads and districts sit close to the corridor between two depots, and whether a day's
+ *  route already passes near the warehouse between two consecutive stops.
+ *
+ *  Works in a local flat approximation: longitude degrees are scaled by cos(latitude) so
+ *  they carry the same ground distance as latitude degrees, the projection is solved in
+ *  that plane, and the resulting point is measured back with the real haversine. Over
+ *  the tens of kilometres this is used across, the error is metres against distances
+ *  measured in kilometres -- a projection library would buy nothing.
+ *
+ *  The clamp to [0, 1] is the whole reason this isn't a one-line perpendicular formula:
+ *  without it, a point past either end of the segment measures to a spot on the
+ *  extended line that nobody will ever drive past. */
+export function distanceToSegmentKm(p: LatLng, a: LatLng, b: LatLng): number {
+  const latScale = Math.cos(toRad((a.lat + b.lat) / 2));
+
+  const ax = a.lng * latScale;
+  const ay = a.lat;
+  const bx = b.lng * latScale;
+  const by = b.lat;
+  const px = p.lng * latScale;
+  const py = p.lat;
+
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lengthSquared = dx * dx + dy * dy;
+
+  // Degenerate segment -- both endpoints are the same place.
+  if (lengthSquared === 0) return distanceKm(p, a);
+
+  let t = ((px - ax) * dx + (py - ay) * dy) / lengthSquared;
+  t = Math.max(0, Math.min(1, t));
+
+  return distanceKm(p, { lat: ay + t * dy, lng: (ax + t * dx) / latScale });
+}

@@ -2,6 +2,8 @@ import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 import type { FacilityRow } from "./facilityTypes";
+import { polygonCentroid } from "./simplify";
+import type { DistrictGeometry } from "./simplify";
 
 // Re-exported so server modules that already import from db.ts keep one import site.
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
@@ -241,6 +243,17 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE activity_log ADD COLUMN changed_by TEXT");
   }
 
+  // Districts are ranked by how far away they are, which needs one point per district.
+  // Stored rather than derived per request: readDistrictProperties deliberately does not
+  // read boundary_geojson (it is ~600KB across the table), and computing centroids on
+  // every request would reintroduce exactly the read that split was made to avoid.
+  const districtCentroidCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
+  if (!districtCentroidCols.some((c) => c.name === "centroid_lat")) {
+    db.exec("ALTER TABLE districts ADD COLUMN centroid_lat REAL");
+    db.exec("ALTER TABLE districts ADD COLUMN centroid_lng REAL");
+  }
+  backfillDistrictCentroids(db);
+
   const customerCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
   if (!customerCols.some((c) => c.name === "last_purchase_date")) {
     db.exec("ALTER TABLE customers ADD COLUMN last_purchase_date TEXT");
@@ -286,6 +299,10 @@ export interface District {
   is_custom: number;
   updated_at: string;
   assigned_to: string | null;
+  /** Area-weighted centre, filled by backfillDistrictCentroids. NULL when the geometry
+   *  could not produce one -- callers must treat that as "distance unknown", never 0. */
+  centroid_lat: number | null;
+  centroid_lng: number | null;
 }
 
 export type EntityType = "district" | "customer";
@@ -465,5 +482,36 @@ export function seedFacilities(db: DatabaseSync): void {
       now,
       now
     );
+  }
+}
+
+/** Fills in centroids for districts that have none. Runs on every boot but only touches
+ *  rows still NULL, so the ~600KB geometry read happens once after the migration (and
+ *  again only for newly drawn districts) rather than on every start.
+ *
+ *  A district whose geometry cannot produce a centroid is left NULL rather than given a
+ *  fake one: NULL sorts to the end of a distance ranking, a wrong coordinate does not. */
+export function backfillDistrictCentroids(db: DatabaseSync): void {
+  const pending = db
+    .prepare("SELECT id, boundary_geojson FROM districts WHERE centroid_lat IS NULL AND boundary_geojson IS NOT NULL")
+    .all() as unknown as { id: number; boundary_geojson: string }[];
+  if (pending.length === 0) return;
+
+  const update = db.prepare("UPDATE districts SET centroid_lat = ?, centroid_lng = ? WHERE id = ?");
+  db.exec("BEGIN");
+  try {
+    for (const row of pending) {
+      let centroid: { lat: number; lng: number } | null = null;
+      try {
+        centroid = polygonCentroid(JSON.parse(row.boundary_geojson) as DistrictGeometry);
+      } catch {
+        centroid = null; // malformed geometry -- leave it NULL, see the doc comment
+      }
+      if (centroid) update.run(centroid.lat, centroid.lng, row.id);
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
   }
 }
