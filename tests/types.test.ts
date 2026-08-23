@@ -4,6 +4,7 @@ import {
   debtColor,
   salespersonColor,
   daysSinceLastPurchase,
+  distanceColor,
   inactivityColor,
   STATUS_COLOR,
   CustomerRow,
@@ -107,3 +108,39 @@ describe("salespersonColor", () => {
     expect(a).not.toBe(b);
   });
 });
+
+describe("distanceColor", () => {
+  const origin = { lat: 35.753263, lng: 51.798381 };
+  // For a due-north offset the haversine reduces exactly to R * dlat, so this places a
+  // point at a precisely known distance. Using the mean 110.574 km/degree instead is off
+  // by 0.6% -- enough to land a "10 km" point outside a 10 km band and fail the boundary
+  // assertions for a reason that has nothing to do with the code under test.
+  const KM_PER_DEG = (Math.PI / 180) * 6371.0088;
+  const at = (km: number) => customer({ lat: origin.lat + km / KM_PER_DEG, lng: origin.lng });
+
+  it("greens a customer inside the near band", () => {
+    expect(distanceColor(at(5), origin)).toBe(STATUS_COLOR.visited);
+  });
+
+  it("ambers the middle band", () => {
+    expect(distanceColor(at(15), origin)).toBe(STATUS_COLOR.needs_coverage);
+  });
+
+  it("reds anything past the far threshold", () => {
+    expect(distanceColor(at(30), origin)).toBe(STATUS_COLOR.not_allowed);
+  });
+
+  // An unknown distance is not a short one, and must not read as a cheap customer.
+  it("is neutral when the customer has no coordinates", () => {
+    expect(distanceColor(customer({ lat: null, lng: null }), origin)).toBe(STATUS_COLOR.unknown);
+  });
+
+  it("is neutral when no origin is configured", () => {
+    expect(distanceColor(at(5), null)).toBe(STATUS_COLOR.unknown);
+  });
+
+  it("puts the band boundaries on the near side", () => {
+    expect(distanceColor(at(10), origin)).toBe(STATUS_COLOR.visited);
+    expect(distanceColor(at(20), origin)).toBe(STATUS_COLOR.needs_coverage);
+  });
+})

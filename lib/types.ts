@@ -1,3 +1,4 @@
+import { distanceKm, type LatLng } from "./geo";
 export type CoverageStatus = "visited" | "needs_coverage" | "not_allowed" | "unknown";
 
 // Mirrors the --good/--warn/--crit/--neutral tokens in MASTER.md. Duplicated as literal
@@ -75,7 +76,7 @@ export interface CustomerRow {
   last_purchase_date: string | null;
 }
 
-export type CustomerColorMode = "status" | "debt" | "salesperson" | "inactivity";
+export type CustomerColorMode = "status" | "debt" | "salesperson" | "inactivity" | "distance";
 
 // Customer status text comes straight from the workbook ("مشتری فعال", "غیرفعال", ...)
 // and doesn't share a vocabulary with CoverageStatus (district coverage), so it gets
@@ -119,4 +120,36 @@ export function salespersonColor(name: string | null, index: Map<string, number>
   if (!name) return STATUS_COLOR.unknown;
   if (!index.has(name)) index.set(name, index.size);
   return SALES_PALETTE[index.get(name)! % SALES_PALETTE.length];
+}
+
+// Distance bands, in km from the default-origin site. Fixed rather than derived from
+// quantiles of the current customer set: a colour that means "far" has to mean the same
+// thing next week, and a quantile scale silently repaints the whole map every time a
+// customer is added. Chosen against the real spread -- median 19km, max 24km from the
+// Pardis home base -- so all three bands actually carry customers.
+export const DISTANCE_NEAR_KM = 10;
+export const DISTANCE_MID_KM = 20;
+
+export const DISTANCE_BANDS: { color: string; label: string }[] = [
+  { color: STATUS_COLOR.visited, label: `تا ${DISTANCE_NEAR_KM} کیلومتر` },
+  { color: STATUS_COLOR.needs_coverage, label: `${DISTANCE_NEAR_KM} تا ${DISTANCE_MID_KM} کیلومتر` },
+  { color: STATUS_COLOR.not_allowed, label: `بیش از ${DISTANCE_MID_KM} کیلومتر` },
+  { color: STATUS_COLOR.unknown, label: "بدون مختصات" },
+];
+
+/** Colours a customer by how far it is from the site we dispatch from -- a cost
+ *  reading, which is why it reuses the good/warn/crit tokens rather than introducing a
+ *  second colour language on the same markers. Precedent: inactivityColor already maps
+ *  those tokens onto a non-status quantity for the same reason.
+ *
+ *  Straight-line, like every distance in this app. Callers must label it as such.
+ *
+ *  An unknown distance is neutral, never green: a customer with no coordinates is not
+ *  a cheap one, and colouring it as such is exactly the wrong nudge. */
+export function distanceColor(c: { lat: number | null; lng: number | null }, origin: LatLng | null): string {
+  if (!origin || c.lat === null || c.lng === null) return STATUS_COLOR.unknown;
+  const km = distanceKm({ lat: c.lat, lng: c.lng }, origin);
+  if (km <= DISTANCE_NEAR_KM) return STATUS_COLOR.visited;
+  if (km <= DISTANCE_MID_KM) return STATUS_COLOR.needs_coverage;
+  return STATUS_COLOR.not_allowed;
 }

@@ -25,6 +25,8 @@ import {
   salespersonColor,
   inactivityColor,
   daysSinceLastPurchase,
+  distanceColor,
+  DISTANCE_BANDS,
 } from "@/lib/types";
 import {
   PRECISION_AUTO_ZOOM,
@@ -555,6 +557,19 @@ export default function CoverageMap({
   // few kilometres off it is a nearly free visit, and nothing in the app knew the line
   // existed. Defaults to the two most distant sites, which for the current pair is the
   // home base and the warehouse.
+  /** The site distances and colours are measured from. Deliberately the configured
+   *  site and never a live GPS fix (spec 1.2): letting position feed this would repaint
+   *  the entire map as the user drives, and a customer's colour would describe where the
+   *  phone is rather than what the customer costs to reach. */
+  const colourOrigin = useMemo(
+    () =>
+      initialFacilities.find((f) => f.is_default_origin === 1) ??
+      initialFacilities.find((f) => f.kind === "home_base") ??
+      initialFacilities[0] ??
+      null,
+    [initialFacilities]
+  );
+
   const corridorEnds = useMemo(() => {
     if (initialFacilities.length < 2) return null;
     let best: { a: FacilityRow; b: FacilityRow; km: number } | null = null;
@@ -766,19 +781,24 @@ export default function CoverageMap({
           <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
             رنگ‌بندی مشتریان
           </h2>
-          <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+          {/* Five modes no longer fit a single row at sidebar width on a phone, so this
+              is a grid rather than a flex row -- the fifth would otherwise squeeze the
+              other four into unreadable slivers. */}
+          <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
             {(
               [
                 ["status", "وضعیت"],
                 ["debt", "بدهی"],
                 ["salesperson", "فروشنده"],
                 ["inactivity", "رکود"],
+                ["distance", "فاصله"],
               ] as [CustomerColorMode, string][]
             ).map(([mode, label]) => (
               <button
                 key={mode}
                 onClick={() => setColorMode(mode)}
-                className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                disabled={mode === "distance" && !colourOrigin}
+                className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
                   colorMode === mode
                     ? "bg-accent font-medium text-[#04191c]"
                     : "text-text-muted hover:bg-white/5 hover:text-text"
@@ -788,6 +808,20 @@ export default function CoverageMap({
               </button>
             ))}
           </div>
+
+          {/* Without this the map is unreadable in distance mode -- the legend below
+              explains district colours only, and the same three hues mean something
+              entirely different on the markers. */}
+          {colorMode === "distance" && colourOrigin && (
+            <div className="mt-2 flex flex-col gap-1.5">
+              <p className="font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
+                فاصله از {colourOrigin.name} — خط مستقیم
+              </p>
+              {DISTANCE_BANDS.map((band) => (
+                <StatusPill key={band.label} color={band.color} label={band.label} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section>
@@ -1152,7 +1186,9 @@ export default function CoverageMap({
                       ? salespersonColor(c.salesperson, salesIndexRef.current)
                       : colorMode === "inactivity"
                         ? inactivityColor(c)
-                        : customerStatusColor(c.status);
+                        : colorMode === "distance"
+                          ? distanceColor(c, colourOrigin)
+                          : customerStatusColor(c.status);
                 return (
                   <Marker
                     key={c.id}
