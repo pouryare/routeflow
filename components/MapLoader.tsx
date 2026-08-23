@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import { CustomerRow, DistrictProperties } from "@/lib/types";
+import type { FacilityRow } from "@/lib/facilityTypes";
 
 const CoverageMap = dynamic(() => import("@/components/CoverageMap"), {
   ssr: false,
@@ -15,6 +16,7 @@ const CoverageMap = dynamic(() => import("@/components/CoverageMap"), {
 export default function MapLoader(props: {
   initialDistricts: DistrictProperties[];
   initialCustomers: CustomerRow[];
+  initialFacilities: FacilityRow[];
   geometryVersion: string;
 }) {
   return <CoverageMap {...props} />;

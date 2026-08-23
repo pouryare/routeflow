@@ -7,25 +7,14 @@
 // distance the app computes follows. The seed that put the original two in the table
 // lives in lib/db.ts alongside the schema.
 import type { DatabaseSync } from "node:sqlite";
-import { FacilityKind, FacilityRow, getDb } from "./db";
+import { getDb } from "./db";
+import type { FacilityKind, FacilityRow } from "./facilityTypes";
 
+// Server-side callers get everything from one import; client code must import the
+// constants from ./facilityTypes directly, since importing a value from this module
+// pulls node:sqlite into the bundle. See the header of lib/facilityTypes.ts.
 export type { FacilityKind, FacilityRow };
-
-// Facilities carry no coverage/debt/activity state, so none of MASTER.md's semantic
-// status colors (--good/--warn/--crit/--neutral) may describe them, and --accent is
-// reserved for interactive UI. They get their own token instead: --facility, an ice
-// white that reads on a radar console as "friendly asset, not a reading". Duplicated
-// as literal hex for the same reason STATUS_COLOR is -- Leaflet writes marker colors
-// straight into inline styles, where var() would resolve inconsistently.
-export const FACILITY_COLOR = "#D6E6F5";
-
-// The role each kind plays, not its name -- the popup prints the name as its title
-// directly above this line, so a label that repeats it says nothing.
-export const FACILITY_LABEL: Record<FacilityKind, string> = {
-  warehouse: "انبار — منبع تأمین موجودی",
-  home_base: "مبدأ توزیع — شروع مسیر روزانه",
-  other: "مکان دیگر",
-};
+export { FACILITY_COLOR, FACILITY_LABEL, FACILITY_KINDS } from "./facilityTypes";
 
 // Home base first: it is the origin every delivery run starts from, so it leads the
 // sidebar list, the editor and the map legend. Warehouses next, everything else last.

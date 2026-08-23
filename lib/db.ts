@@ -1,6 +1,11 @@
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
+import type { FacilityRow } from "./facilityTypes";
+
+// Re-exported so server modules that already import from db.ts keep one import site.
+export type { FacilityKind, FacilityRow } from "./facilityTypes";
+export { FACILITY_KINDS } from "./facilityTypes";
 
 const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(process.cwd(), "data", "coverage.db");
 
@@ -398,30 +403,6 @@ export function logActivity(
     entry.changed_by,
     new Date().toISOString()
   );
-}
-
-export type FacilityKind = "warehouse" | "home_base" | "other";
-export const FACILITY_KINDS: FacilityKind[] = ["warehouse", "home_base", "other"];
-
-export interface FacilityRow {
-  id: number;
-  slug: string;
-  kind: FacilityKind;
-  name: string;
-  address: string | null;
-  lat: number;
-  lng: number;
-  maps_url: string | null;
-  notes: string | null;
-  /** SQLite has no boolean type -- 0 or 1. Exactly one row across the table holds 1;
-   *  the invariant is enforced in PATCH /api/facilities/[id], not by an index. */
-  is_default_origin: number;
-  /** NULL means "shared by everyone". Nothing reads this yet -- it exists so that
-   *  giving each driver their own origin later is a query change rather than a
-   *  migration against a table that already holds real data. */
-  owner_username: string | null;
-  created_at: string;
-  updated_at: string;
 }
 
 // The two sites the business started from, recovered from the Google Maps links they

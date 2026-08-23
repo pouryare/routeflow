@@ -44,12 +44,8 @@ import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
 import { useToast } from "./ToastProvider";
 import { distanceKm } from "@/lib/geo";
-import {
-  FACILITIES,
-  FACILITY_LABEL,
-  Facility,
-  FacilityKind,
-} from "@/lib/facilities";
+import { FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
+import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
@@ -72,6 +68,7 @@ const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
 const QUICK_LINKS = [
   { href: "/planner", icon: "🧭", label: "برنامه‌ریزی مسیر و پوشش" },
   { href: "/leads", icon: "📍", label: "لیست مکان‌های پیشنهادی" },
+  { href: "/facilities", icon: "🏢", label: "مکان‌های ما (انبارها و مبدأ)" },
   { href: "/gallery", icon: "🖼", label: "گالری تصاویر" },
   { href: "/report", icon: "📊", label: "گزارش پوشش و مشتریان" },
   { href: "/analytics", icon: "📈", label: "داشبورد تحلیل" },
@@ -179,62 +176,15 @@ function foundLocationIcon() {
   });
 }
 
-// Our own sites are drawn as inline SVG silhouettes rather than emoji (MASTER.md's
-// anti-pattern list) or a status-colored diamond: they carry no coverage reading, so
-// reusing the customer marker's shape would invite the map to be misread.
-//
-// The warehouse's inner glyph is a stack of crates, not a building. A roof-and-door
-// glyph was tried first and, at the 26px the marker actually renders at, read as a
-// second little house sitting inside a hexagon -- indistinguishable at a glance from
-// the home-base marker beside it in the legend, which defeats the whole point of
-// separating the two by silhouette. Every fill
-// lives in globals.css against --facility/--bg, so no color is duplicated here.
-//
-// The warehouse anchors at its center (a footprint, like the customer diamond); the
-// house anchors at its base, because a house silhouette that floats above the point it
-// marks reads as hovering next to the address rather than standing on it.
-const FACILITY_ART: Record<FacilityKind, { html: string; size: [number, number]; anchor: [number, number] }> = {
-  warehouse: {
-    html: `<svg width="26" height="29" viewBox="0 0 26 29" aria-hidden="true">
-        <path class="facility-marker__body" d="M13 1.2 24.2 7.7v13L13 27.2 1.8 20.7v-13z"/>
-        <rect class="facility-marker__glyph" x="10.4" y="9.6" width="5.2" height="4.6" rx="0.6"/>
-        <rect class="facility-marker__glyph" x="7.1" y="15.2" width="5.2" height="4.6" rx="0.6"/>
-        <rect class="facility-marker__glyph" x="13.7" y="15.2" width="5.2" height="4.6" rx="0.6"/>
-      </svg>`,
-    size: [26, 29],
-    anchor: [13, 15],
-  },
-  home_base: {
-    html: `<svg width="24" height="26" viewBox="0 0 24 26" aria-hidden="true">
-        <path class="facility-marker__body" d="M12 1.8 22 9.4v12.4a1.6 1.6 0 0 1-1.6 1.6H3.6A1.6 1.6 0 0 1 2 21.8V9.4z"/>
-        <rect class="facility-marker__glyph" x="9.4" y="13.6" width="5.2" height="7.2" rx="0.6"/>
-      </svg>`,
-    size: [24, 26],
-    anchor: [12, 24],
-  },
-};
-
-function facilityIcon(kind: FacilityKind): DivIcon {
-  const key = `facility|${kind}`;
-  const cached = iconCache.get(key);
-  if (cached) return cached;
-  const art = FACILITY_ART[kind];
-  const icon = divIcon({
-    className: "",
-    html: `<div class="facility-marker${kind === "home_base" ? " facility-marker--home" : ""}">${art.html}</div>`,
-    iconSize: art.size,
-    iconAnchor: art.anchor,
-  });
-  iconCache.set(key, icon);
-  return icon;
-}
-
-/** Straight-line distance from one facility to every other, precomputed once -- the
- *  popup's "N km from the warehouse" line, and the sidebar's site list, both read it. */
-function otherFacilityDistance(f: Facility): { other: Facility; km: number } | null {
-  const other = FACILITIES.find((x) => x.id !== f.id);
-  if (!other) return null;
-  return { other, km: distanceKm(f, other) };
+/** Straight-line distance from one site to the nearest other one -- the popup's
+ *  "N km from the warehouse" line. Takes the list rather than closing over it, since
+ *  the sites now arrive as a prop and can change while the map is open. */
+function otherFacilityDistance(f: FacilityRow, all: FacilityRow[]): { other: FacilityRow; km: number } | null {
+  const others = all.filter((x) => x.id !== f.id);
+  if (others.length === 0) return null;
+  return others
+    .map((other) => ({ other, km: distanceKm(f, other) }))
+    .sort((a, b) => a.km - b.km)[0];
 }
 
 const SATELLITE_TILE = {
@@ -250,10 +200,12 @@ const DARK_TILE = {
 export default function CoverageMap({
   initialDistricts,
   initialCustomers,
+  initialFacilities,
   geometryVersion,
 }: {
   initialDistricts: DistrictProperties[];
   initialCustomers: CustomerRow[];
+  initialFacilities: FacilityRow[];
   geometryVersion: string;
 }) {
   const [districtProps, setDistrictProps] = useState<DistrictProperties[]>(initialDistricts);
@@ -588,7 +540,7 @@ export default function CoverageMap({
     }
   }
 
-  function flyToFacility(f: Facility) {
+  function flyToFacility(f: FacilityRow) {
     mapRef.current?.flyTo([f.lat, f.lng], 15, { duration: 1 });
   }
 
@@ -878,7 +830,7 @@ export default function CoverageMap({
             تأسیسات ما
           </h2>
           <div className="flex flex-col gap-1">
-            {FACILITIES.map((f) => (
+            {initialFacilities.map((f) => (
               <button
                 key={f.id}
                 onClick={() => flyToFacility(f)}
@@ -893,16 +845,16 @@ export default function CoverageMap({
                 />
                 <span className="min-w-0">
                   <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
-                  {f.note && (
-                    <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.note}</span>
+                  {f.notes && (
+                    <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.notes}</span>
                   )}
                 </span>
               </button>
             ))}
           </div>
-          {FACILITIES.length === 2 && (
+          {initialFacilities.length === 2 && (
             <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-              {formatDistanceKm(distanceKm(FACILITIES[0], FACILITIES[1]))} فاصله مستقیم بین دو انبار
+              {formatDistanceKm(distanceKm(initialFacilities[0], initialFacilities[1]))} فاصله مستقیم بین دو انبار
             </p>
           )}
         </section>
@@ -1086,8 +1038,8 @@ export default function CoverageMap({
           {/* Outside the cluster group and lifted above it: these two are landmarks the
               rest of the map is read against, so they must never be swallowed into a
               customer bubble or hidden behind a blip that happens to overlap them. */}
-          {FACILITIES.map((f) => {
-            const rel = otherFacilityDistance(f);
+          {initialFacilities.map((f) => {
+            const rel = otherFacilityDistance(f, initialFacilities);
             return (
               <Marker
                 key={f.id}
@@ -1113,7 +1065,7 @@ export default function CoverageMap({
                       </p>
                     )}
                     <a
-                      href={f.mapsUrl}
+                      href={f.maps_url ?? "#"}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="mt-2 inline-block text-[length:var(--text-xs)] text-accent hover:underline"

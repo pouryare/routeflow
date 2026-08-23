@@ -3,10 +3,11 @@ import { getDb } from "@/lib/db";
 import { geometryVersion } from "@/lib/districtGeometry";
 import { readCustomers } from "@/lib/customers";
 import { readDistrictProperties } from "@/lib/districts";
+import { readFacilities } from "@/lib/facilities";
 import { geometryUrl } from "@/lib/precision";
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
-// SQLite is local and these two reads are sub-millisecond, so paying for them inline is
+// SQLite is local and these reads are sub-millisecond, so paying for them inline is
 // far cheaper than the two extra round trips the client used to make -- which couldn't
 // even start until the shell bundle had downloaded, parsed, hydrated and mounted the
 // dynamically-imported map. Reading the DB isn't a dynamic API as far as Next is
@@ -18,6 +19,7 @@ export default function Home() {
   const db = getDb();
   const districts = readDistrictProperties(db);
   const customers = readCustomers(db);
+  const facilities = readFacilities(db);
   const version = geometryVersion();
 
   return (
@@ -33,6 +35,7 @@ export default function Home() {
       <MapLoader
         initialDistricts={districts}
         initialCustomers={customers}
+        initialFacilities={facilities}
         geometryVersion={version}
       />
     </>
