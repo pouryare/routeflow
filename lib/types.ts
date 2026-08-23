@@ -128,6 +128,32 @@ export function inactivityColor(c: CustomerRow, now: Date = new Date()): string 
   return STATUS_COLOR.not_allowed;
 }
 
+/** Marker shapes for the colour-blind-safe mode.
+ *
+ *  Status is carried by green/amber/red alone, which is the one hue triad that
+ *  deuteranopia and protanopia collapse -- somewhere around 8% of men see two of those
+ *  three as the same colour. The facility markers already solved this for our own sites
+ *  by committing to silhouette first and colour second; this extends the same idea to
+ *  customers.
+ *
+ *  Keyed off the colour rather than the status because four of the five colour modes
+ *  (status, debt, inactivity, distance) map onto exactly this palette -- so one mapping
+ *  covers all of them, and each keeps its own meaning for the shape. The salesperson
+ *  mode has its own categorical palette and stays diamonds throughout: there can be more
+ *  salespeople than there are distinguishable shapes, and a shape that has to be looked
+ *  up in a legend is worse than no shape at all.
+ *
+ *  The assignment follows road signs, which is the one shape vocabulary everybody
+ *  already has: triangle warns, square stops, circle is clear. */
+export type MarkerShape = "circle" | "triangle" | "square" | "diamond";
+
+export function shapeForColor(color: string): MarkerShape {
+  if (color === STATUS_COLOR.visited) return "circle";
+  if (color === STATUS_COLOR.needs_coverage) return "triangle";
+  if (color === STATUS_COLOR.not_allowed) return "square";
+  return "diamond";
+}
+
 // Categorical palette for the "salesperson" color mode -- deliberately outside the
 // good/warn/crit/accent set (MASTER.md: those never carry non-semantic meaning).
 const SALES_PALETTE = ["#5B8DEF", "#8B7CF6", "#E8749C", "#C9A227", "#4A9DA8", "#B0854A"];

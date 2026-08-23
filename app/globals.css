@@ -117,36 +117,71 @@ a:focus-visible {
   position: relative;
   width: 14px;
   height: 14px;
+
+  /* The shape is three custom properties rather than three rulesets, because the
+     rotation appears in the hover, selected and ping rules as well -- and a shape
+     modifier that had to override all four would go out of step the first time one of
+     them changed. Custom properties resolve at use time, keyframes included. */
+  --marker-rotate: 45deg;
+  --marker-radius: 2px;
+  --marker-clip: none;
+}
+.customer-marker--circle {
+  --marker-rotate: 0deg;
+  --marker-radius: 999px;
+}
+.customer-marker--square {
+  --marker-rotate: 0deg;
+  --marker-radius: 2px;
+}
+.customer-marker--triangle {
+  --marker-rotate: 0deg;
+  --marker-radius: 0;
+  --marker-clip: polygon(50% 0%, 100% 100%, 0% 100%);
 }
 .customer-marker__diamond {
   position: absolute;
   inset: 0;
-  border-radius: 2px;
+  border-radius: var(--marker-radius);
   background: var(--marker-color);
   border: 2px solid var(--bg);
-  transform: rotate(45deg);
+  clip-path: var(--marker-clip);
+  transform: rotate(var(--marker-rotate));
   box-shadow: 0 0 8px -1px var(--marker-color);
   transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+/* A clip-path cuts the box-shadow off with everything else outside the shape, so the
+   triangle loses the glow that every other marker has. Restored as a drop-shadow, which
+   filters the already-clipped result rather than the box. */
+.customer-marker--triangle .customer-marker__diamond {
+  box-shadow: none;
+  border: 0;
+  filter: drop-shadow(0 0 4px var(--marker-color));
 }
 .customer-marker__ping {
   position: absolute;
   inset: 0;
-  border-radius: 2px;
+  border-radius: var(--marker-radius);
   background: var(--marker-color);
-  transform: rotate(45deg) scale(1);
+  clip-path: var(--marker-clip);
+  transform: rotate(var(--marker-rotate)) scale(1);
   opacity: 0.55;
   animation: marker-ping var(--pulse-duration) var(--ease-out) infinite;
 }
 @keyframes marker-ping {
-  0% { transform: rotate(45deg) scale(1); opacity: 0.5; }
-  100% { transform: rotate(45deg) scale(2.6); opacity: 0; }
+  0% { transform: rotate(var(--marker-rotate)) scale(1); opacity: 0.5; }
+  100% { transform: rotate(var(--marker-rotate)) scale(2.6); opacity: 0; }
 }
 .customer-marker--selected .customer-marker__diamond {
-  transform: rotate(45deg) scale(1.15);
+  transform: rotate(var(--marker-rotate)) scale(1.15);
   box-shadow: 0 0 0 2px var(--accent), 0 0 10px -1px var(--marker-color);
 }
+.customer-marker--selected.customer-marker--triangle .customer-marker__diamond {
+  box-shadow: none;
+  filter: drop-shadow(0 0 0 2px var(--accent)) drop-shadow(0 0 6px var(--marker-color));
+}
 .leaflet-marker-icon:hover .customer-marker__diamond {
-  transform: rotate(45deg) scale(1.15);
+  transform: rotate(var(--marker-rotate)) scale(1.15);
 }
 
 /* ---- "Me" marker: round accent dot, distinct from the diamond customer marker. ---- */
@@ -455,6 +490,43 @@ a:focus-visible {
 }
 .leaflet-control-attribution a {
   color: var(--text-muted) !important;
+}
+
+/* ---- Driver mode: the same app, sized for one thumb in a moving vehicle.
+
+   The default sizing is desk sizing -- 11px labels and 24px-tall buttons are fine when
+   you are sitting still with a mouse. They are not fine held at arm's length on a phone
+   propped against a windscreen, which is where this app spends most of its working day.
+
+   Everything scales from the type tokens, so the whole interface grows together rather
+   than one panel at a time. The minimum tap height is applied only inside the sidebar:
+   the Leaflet controls have their own sizing, and forcing a floor on every button on the
+   page would inflate the icon buttons inside popups into slabs. ---- */
+:root.driver-mode {
+  --text-xs: 0.8125rem;
+  --text-sm: 0.9375rem;
+  --text-base: 1rem;
+  --text-md: 1.125rem;
+  --text-lg: 1.375rem;
+  --text-xl: 1.625rem;
+}
+.driver-mode aside button,
+.driver-mode aside a,
+.driver-mode aside select,
+.driver-mode aside input[type="text"],
+.driver-mode aside input:not([type]) {
+  min-height: 40px;
+}
+.driver-mode aside input[type="checkbox"],
+.driver-mode aside input[type="radio"] {
+  width: 18px;
+  height: 18px;
+}
+/* Wide enough that the larger type does not wrap every label onto two lines. */
+@media (min-width: 420px) {
+  .driver-mode aside {
+    width: 23rem;
+  }
 }
 
 /* ---- Skeletons: the shape of the content that is coming, so the panel does not

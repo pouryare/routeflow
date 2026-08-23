@@ -28,6 +28,7 @@ import {
   distanceColor,
   DISTANCE_BANDS,
   isCustomerColorMode,
+  shapeForColor,
 } from "@/lib/types";
 import {
   PRECISION_AUTO_ZOOM,
@@ -209,8 +210,9 @@ const iconCache = new Map<string, DivIcon>();
 // a few hundred of them running forever once clustering disengages at zoom 16, which
 // the compositor pays for continuously on a phone -- and a map where everything pulses
 // communicates nothing anyway.
-function customerIcon(color: string, selected: boolean): DivIcon {
-  const key = `${color}|${selected}`;
+function customerIcon(color: string, selected: boolean, shaped: boolean): DivIcon {
+  const shape = shaped ? shapeForColor(color) : "diamond";
+  const key = `${color}|${selected}|${shape}`;
   const cached = iconCache.get(key);
   if (cached) return cached;
 
@@ -220,7 +222,7 @@ function customerIcon(color: string, selected: boolean): DivIcon {
     : "";
   const icon = divIcon({
     className: "",
-    html: `<div class="customer-marker${selected ? " customer-marker--selected" : ""}" style="--marker-color:${color}">
+    html: `<div class="customer-marker customer-marker--${shape}${selected ? " customer-marker--selected" : ""}" style="--marker-color:${color}">
       ${pings}<span class="customer-marker__diamond"></span>
     </div>`,
     iconSize: [14, 14],
@@ -338,6 +340,8 @@ export default function CoverageMap({
   const [geofenceOn, setGeofenceOn] = useState(false);
   const [nextStopOn, setNextStopOn] = useState(true);
   const [sectionFilter, setSectionFilter] = useState("");
+  const [shapedMarkers, setShapedMarkers] = useState(false);
+  const [driverMode, setDriverMode] = useState(false);
   // Per-browser working sets. Empty on the server; filled from storage on mount, like
   // every other preference on this page.
   const [pinnedIds, setPinnedIds] = useState<number[]>([]);
@@ -479,6 +483,8 @@ export default function CoverageMap({
     // Defaults on -- it costs nothing on a day with no plan, since the bar renders
     // nothing at all then.
     setNextStopOn(localStorage.getItem("coverage_nextstop_off") !== "1");
+    setShapedMarkers(localStorage.getItem("coverage_shaped_markers") === "1");
+    setDriverMode(localStorage.getItem("coverage_driver_mode") === "1");
     setPinnedIds(readIds(PINNED_KEY));
     // A customer arrived at by link has been viewed as surely as one arrived at by
     // click. That path sets the selection in a lazy initialiser, before this list
@@ -500,6 +506,13 @@ export default function CoverageMap({
   useEffect(() => {
     localStorage.setItem("coverage_geofence_on", geofenceOn ? "1" : "0");
   }, [geofenceOn]);
+
+  // The class goes on <html>, not on a wrapper here: it has to reach the Leaflet
+  // popups, the toasts and the bottom bar, none of which render inside this tree.
+  useEffect(() => {
+    document.documentElement.classList.toggle("driver-mode", driverMode);
+    return () => document.documentElement.classList.remove("driver-mode");
+  }, [driverMode]);
 
   async function resolveReminder(id: number) {
     try {
@@ -1161,7 +1174,7 @@ export default function CoverageMap({
                   فاصله از {colourOrigin.name} — خط مستقیم
                 </p>
                 {DISTANCE_BANDS.map((band) => (
-                  <StatusPill key={band.label} color={band.color} label={band.label} />
+                  <StatusPill key={band.label} color={band.color} label={band.label} shaped={shapedMarkers} />
                 ))}
               </div>
             )}
@@ -1304,7 +1317,7 @@ export default function CoverageMap({
         <CollapsibleSection title="راهنمای رنگ مناطق" storageKey="legend" keywords="وضعیت پوشش رنگ legend">
             <div className="flex flex-col gap-1.5">
               {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-                <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} />
+                <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} shaped={shapedMarkers} />
               ))}
             </div>
             <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
@@ -1345,7 +1358,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی">
+        <CollapsibleSection title="تنظیمات" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت">
           <div className="flex flex-col gap-4">
 
             <div className="flex items-center justify-between gap-2">
@@ -1391,6 +1404,60 @@ export default function CoverageMap({
                 </span>
               </label>
             )}
+
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[length:var(--text-sm)] text-text">حالت رانندگی</span>
+                <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
+                  متن و دکمه‌ها بزرگ‌تر می‌شوند — برای استفاده با یک دست داخل خودرو
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const next = !driverMode;
+                  setDriverMode(next);
+                  localStorage.setItem("coverage_driver_mode", next ? "1" : "0");
+                }}
+                role="switch"
+                aria-checked={driverMode}
+                aria-label="حالت رانندگی"
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  driverMode ? "border-accent bg-accent" : "border-border bg-surface"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                  style={{ right: driverMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <span className="text-[length:var(--text-sm)] text-text">نشانگرهای شکل‌دار</span>
+                <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
+                  به جای تکیه بر رنگ سبز/نارنجی/قرمز، هر وضعیت شکل خودش را می‌گیرد — دایره، مثلث، مربع
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const next = !shapedMarkers;
+                  setShapedMarkers(next);
+                  localStorage.setItem("coverage_shaped_markers", next ? "1" : "0");
+                }}
+                role="switch"
+                aria-checked={shapedMarkers}
+                aria-label="نشانگرهای شکل‌دار"
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  shapedMarkers ? "border-accent bg-accent" : "border-border bg-surface"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                  style={{ right: shapedMarkers ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                />
+              </button>
+            </div>
 
             <div className="flex items-center justify-between gap-2">
               <div>
@@ -1596,7 +1663,7 @@ export default function CoverageMap({
                 <Marker
                   key={c.id}
                   position={[c.lat as number, c.lng as number]}
-                  icon={customerIcon(markerColor(c), false)}
+                  icon={customerIcon(markerColor(c), false, shapedMarkers)}
                   eventHandlers={{ click: () => openCustomer(c) }}
                 />
               ))}
@@ -1609,7 +1676,7 @@ export default function CoverageMap({
           {selectedCustomer?.lat && selectedCustomer?.lng && (
             <Marker
               position={[selectedCustomer.lat, selectedCustomer.lng]}
-              icon={customerIcon(markerColor(selectedCustomer), true)}
+              icon={customerIcon(markerColor(selectedCustomer), true, shapedMarkers)}
               zIndexOffset={900}
               eventHandlers={{ click: () => setSelectedCustomer(selectedCustomer) }}
             />
