@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
+import { matchesQuery } from "@/lib/persian";
 
 // leaflet-geosearch's own SearchResult type lives at a package-internal path that
 // isn't reliably resolvable through its published exports map -- only the fields
@@ -67,17 +68,21 @@ export default function SearchBox({
 
   const results = useMemo<Result[]>(() => {
     if (!trimmed || isUrl || coordMatch) return [];
+    // Matched under normalisation rather than by raw substring. Imported names very
+    // often carry the Arabic ي and ك where a phone keyboard produces the Persian ی and
+    // ک -- different codepoints, near-identical glyphs -- so a raw match made those
+    // customers unfindable by typing their own name.
     const customerResults: Result[] = customers
       .filter(
         (c) =>
-          c.business_name.includes(trimmed) ||
-          c.customer_code.includes(trimmed) ||
-          (c.phone ?? "").includes(trimmed)
+          matchesQuery(c.business_name, trimmed) ||
+          matchesQuery(c.customer_code, trimmed) ||
+          matchesQuery(c.phone ?? "", trimmed)
       )
       .slice(0, 6)
       .map((customer) => ({ kind: "customer", customer }));
     const districtResults: Result[] = districts
-      .filter((d) => d.properties.name.includes(trimmed))
+      .filter((d) => matchesQuery(d.properties.name, trimmed))
       .slice(0, 6)
       .map((district) => ({ kind: "district", district }));
     return [...customerResults, ...districtResults].slice(0, 8);

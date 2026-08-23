@@ -37,7 +37,7 @@ import {
   isPrecisionMode,
   resolveTier,
 } from "@/lib/precision";
-import CollapsibleSection from "./CollapsibleSection";
+import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import StatusPill from "./StatusPill";
 import SearchBox from "./SearchBox";
@@ -52,6 +52,7 @@ import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
 import { copyText, coordText } from "@/lib/clipboard";
+import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
 import CopyButton from "./CopyButton";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
@@ -336,12 +337,16 @@ export default function CoverageMap({
   const [foundLocation, setFoundLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geofenceOn, setGeofenceOn] = useState(false);
   const [nextStopOn, setNextStopOn] = useState(true);
+  const [sectionFilter, setSectionFilter] = useState("");
+  // Per-browser working sets. Empty on the server; filled from storage on mount, like
+  // every other preference on this page.
+  const [pinnedIds, setPinnedIds] = useState<number[]>([]);
+  const [recentIds, setRecentIds] = useState<number[]>([]);
   const bulkModeRef = useRef(bulkMode);
   bulkModeRef.current = bulkMode;
 
   const districtLayersRef = useRef(new Map<number, Layer>());
   const mapRef = useRef<LeafletMap | null>(null);
-  const salesIndexRef = useRef(new Map<string, number>());
   const asideRef = useRef<HTMLElement>(null);
   const toast = useToast();
 
@@ -474,8 +479,23 @@ export default function CoverageMap({
     // Defaults on -- it costs nothing on a day with no plan, since the bar renders
     // nothing at all then.
     setNextStopOn(localStorage.getItem("coverage_nextstop_off") !== "1");
+    setPinnedIds(readIds(PINNED_KEY));
+    // A customer arrived at by link has been viewed as surely as one arrived at by
+    // click. That path sets the selection in a lazy initialiser, before this list
+    // exists, so it is recorded here instead.
+    const stored = readIds(RECENT_KEY);
+    if (incoming.customerId !== undefined && initialCustomers.some((c) => c.id === incoming.customerId)) {
+      const withLink = addRecent(stored, incoming.customerId);
+      writeIds(RECENT_KEY, withLink);
+      setRecentIds(withLink);
+    } else {
+      setRecentIds(stored);
+    }
     const storedWidth = Number(localStorage.getItem("coverage_corridor_km"));
     if (CORRIDOR_WIDTHS.includes(storedWidth)) setCorridorWidthKm(storedWidth);
+    // Mount only. Re-running would overwrite toggles the user has changed since load
+    // with whatever storage held when the page opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     localStorage.setItem("coverage_geofence_on", geofenceOn ? "1" : "0");
@@ -542,6 +562,23 @@ export default function CoverageMap({
       .slice(0, 20);
   }, [customers, myPosition, nearbyRadiusKm]);
 
+  const customerById = useMemo(() => new Map(customers.map((c) => [c.id, c])), [customers]);
+
+  const pinnedCustomers = useMemo(
+    () => pruneIds(pinnedIds, new Set(customerById.keys())).map((id) => customerById.get(id) as CustomerRow),
+    [pinnedIds, customerById]
+  );
+
+  // A customer already pinned is not also "recent": it has a permanent home two
+  // sections up, and listing it twice makes the panel longer without saying more.
+  const recentCustomers = useMemo(
+    () =>
+      pruneIds(recentIds, new Set(customerById.keys()))
+        .filter((id) => !pinnedIds.includes(id))
+        .map((id) => customerById.get(id) as CustomerRow),
+    [recentIds, pinnedIds, customerById]
+  );
+
   const dormantCustomers = useMemo(() => {
     const now = new Date();
     return customers
@@ -563,6 +600,19 @@ export default function CoverageMap({
     customers.forEach((c) => c.salesperson && s.add(c.salesperson));
     return Array.from(s).sort();
   }, [customers]);
+
+  /** Palette slot per salesperson, assigned alphabetically.
+   *
+   *  salespersonColor hands out slots on first sight, mutating the map it is given. Fed
+   *  from a ref during render, that made a person's colour depend on which markers
+   *  happened to render first -- so it could differ between two loads of the same map.
+   *  Deriving it from the sorted list instead makes it deterministic, and means nothing
+   *  is mutated while rendering. */
+  const salesIndex = useMemo(() => {
+    const m = new Map<string, number>();
+    salespeople.forEach((name, i) => m.set(name, i));
+    return m;
+  }, [salespeople]);
 
   function districtStyle(feature?: DistrictFeature) {
     const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
@@ -709,11 +759,30 @@ export default function CoverageMap({
     toast(ok ? "پیوند این نما کپی شد." : "کپی پیوند ممکن نبود.", ok ? "success" : "error");
   }
 
-  function flyToCustomer(c: CustomerRow) {
+  /** Every route to an open customer panel funnels through here, so this is the one
+   *  place that has to record the view. */
+  const openCustomer = useCallback((c: CustomerRow) => {
     setSelectedCustomer(c);
+    setRecentIds((prev) => {
+      const next = addRecent(prev, c.id);
+      writeIds(RECENT_KEY, next);
+      return next;
+    });
+  }, []);
+
+  function flyToCustomer(c: CustomerRow) {
+    openCustomer(c);
     if (c.lat && c.lng && mapRef.current) {
       mapRef.current.flyTo([c.lat, c.lng], 15, { duration: 1 });
     }
+  }
+
+  function togglePinned(id: number) {
+    setPinnedIds((prev) => {
+      const next = toggleId(prev, id);
+      writeIds(PINNED_KEY, next);
+      return next;
+    });
   }
 
   // Feature 3: the stretch actually driven between two of our sites. Anything sitting a
@@ -773,7 +842,7 @@ export default function CoverageMap({
    *  customer is rendered separately from the rest and both must agree. */
   function markerColor(c: CustomerRow): string {
     if (colorMode === "debt") return debtColor(c);
-    if (colorMode === "salesperson") return salespersonColor(c.salesperson, salesIndexRef.current);
+    if (colorMode === "salesperson") return salespersonColor(c.salesperson, salesIndex);
     if (colorMode === "inactivity") return inactivityColor(c);
     if (colorMode === "distance") return distanceColor(c, colourOrigin);
     return customerStatusColor(c.status);
@@ -842,7 +911,40 @@ export default function CoverageMap({
             Coverage Map
           </div>
           <h1 className="text-[length:var(--text-xl)] font-bold text-text">نقشه پوشش مشتریان</h1>
+
+          {/* Finds a section by name. Twelve folded sections is a better control surface
+              than twelve open ones, but it is still twelve headings to scan past when
+              you know exactly which switch you came for. Deliberately labelled as a
+              filter of sections, so it is not mistaken for the customer search that
+              floats over the map. */}
+          <div className="relative mt-3">
+            <input
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
+              placeholder="فیلتر بخش‌ها…"
+              aria-label="فیلتر بخش‌های پنل"
+              className="w-full rounded-[var(--radius-md)] border border-border bg-surface py-1.5 pe-2 ps-7 text-[length:var(--text-xs)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
+            />
+            {sectionFilter && (
+              <button
+                onClick={() => setSectionFilter("")}
+                aria-label="پاک کردن فیلتر"
+                className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+              >
+                ✕
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Everything below is filterable. An empty panel with no explanation reads as a
+            failure, so a filter that matches nothing says so. */}
+        <SectionFilterContext.Provider value={sectionFilter}>
+        {sectionFilter.trim() && (
+          <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
+            نمایش بخش‌های مرتبط با «{sectionFilter.trim()}».
+          </p>
+        )}
 
         {dueReminders.length > 0 && (
           <CollapsibleSection
@@ -918,7 +1020,63 @@ export default function CoverageMap({
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="لینک‌های سریع" storageKey="links" defaultOpen>
+        {pinnedCustomers.length > 0 && (
+          <CollapsibleSection title="سنجاق‌شده" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
+            <div className="flex flex-col gap-1.5">
+              {pinnedCustomers.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface px-2 py-2"
+                >
+                  <button
+                    onClick={() => flyToCustomer(c)}
+                    className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+                  >
+                    {c.business_name}
+                  </button>
+                  <button
+                    onClick={() => togglePinned(c.id)}
+                    aria-label={`برداشتن سنجاق ${c.business_name}`}
+                    title="برداشتن سنجاق"
+                    className="shrink-0 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-crit"
+                  >
+                    ★
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        {recentCustomers.length > 0 && (
+          <CollapsibleSection title="اخیراً دیده‌شده" count={recentCustomers.length} storageKey="recent">
+            <div className="flex flex-col gap-1.5">
+              {recentCustomers.map((c) => (
+                <div
+                  key={c.id}
+                  className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface px-2 py-2"
+                >
+                  <button
+                    onClick={() => flyToCustomer(c)}
+                    className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+                  >
+                    {c.business_name}
+                  </button>
+                  <button
+                    onClick={() => togglePinned(c.id)}
+                    aria-label={`سنجاق کردن ${c.business_name}`}
+                    title="سنجاق کردن"
+                    className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+                  >
+                    ☆
+                  </button>
+                </div>
+              ))}
+            </div>
+          </CollapsibleSection>
+        )}
+
+        <CollapsibleSection title="لینک‌های سریع" storageKey="links" keywords="برنامه گزارش تحلیل گالری مکان پیشنهادی پیوند اشتراک" defaultOpen>
             {/* The current view as a link. Everything on screen -- where the map sits,
                 which customer is open, how the markers are coloured -- is already in the
                 address bar; this is the button that says so, because nobody thinks to
@@ -965,7 +1123,7 @@ export default function CoverageMap({
           filteredCount={filteredCustomers.length}
         />
 
-        <CollapsibleSection title="رنگ‌بندی مشتریان" storageKey="colour">
+        <CollapsibleSection title="رنگ‌بندی مشتریان" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
             {/* Five modes no longer fit a single row at sidebar width on a phone, so this
                 is a grid rather than a flex row -- the fifth would otherwise squeeze the
                 other four into unreadable slivers. */}
@@ -1055,7 +1213,7 @@ export default function CoverageMap({
 
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}
-        <CollapsibleSection title="تأسیسات ما" storageKey="sites">
+        <CollapsibleSection title="تأسیسات ما" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
             <div className="flex flex-col gap-1">
               {initialFacilities.map((f) => (
                 <button
@@ -1143,7 +1301,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="راهنمای رنگ مناطق" storageKey="legend">
+        <CollapsibleSection title="راهنمای رنگ مناطق" storageKey="legend" keywords="وضعیت پوشش رنگ legend">
             <div className="flex flex-col gap-1.5">
               {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
                 <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} />
@@ -1156,7 +1314,7 @@ export default function CoverageMap({
             </p>
         </CollapsibleSection>
 
-        <CollapsibleSection title="نقشه حرارتی" storageKey="heatmap">
+        <CollapsibleSection title="نقشه حرارتی" storageKey="heatmap" keywords="تراکم بدهی heatmap">
             <div className="flex items-center justify-between">
               <span className="text-[length:var(--text-sm)] text-text">نمایش تراکم مشتریان</span>
               <button
@@ -1187,7 +1345,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" storageKey="settings">
+        <CollapsibleSection title="تنظیمات" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی">
           <div className="flex flex-col gap-4">
 
             <div className="flex items-center justify-between gap-2">
@@ -1338,6 +1496,7 @@ export default function CoverageMap({
         )}
 
         {loading && <p className="text-[length:var(--text-sm)] text-text-muted">در حال بارگذاری…</p>}
+        </SectionFilterContext.Provider>
       </aside>
 
       <div className="absolute inset-0">
@@ -1438,7 +1597,7 @@ export default function CoverageMap({
                   key={c.id}
                   position={[c.lat as number, c.lng as number]}
                   icon={customerIcon(markerColor(c), false)}
-                  eventHandlers={{ click: () => setSelectedCustomer(c) }}
+                  eventHandlers={{ click: () => openCustomer(c) }}
                 />
               ))}
           </MarkerClusterGroup>
@@ -1548,6 +1707,8 @@ export default function CoverageMap({
           <CustomerDetailPanel
             customer={selectedCustomer}
             facilities={initialFacilities}
+            pinned={pinnedIds.includes(selectedCustomer.id)}
+            onTogglePin={() => togglePinned(selectedCustomer.id)}
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
           />

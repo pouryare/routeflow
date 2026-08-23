@@ -31,7 +31,7 @@ export default function CustomerFilters({
     }`;
 
   return (
-    <CollapsibleSection title={`فیلتر مشتری‌ها (${faNum(filteredCount)} از ${faNum(totalCount)})`} storageKey="filters">
+    <CollapsibleSection title={`فیلتر مشتری‌ها (${faNum(filteredCount)} از ${faNum(totalCount)})`} storageKey="filters" keywords="فروشنده مسئول نمایش">
 
       {salespeople.length > 0 && (
         <div>

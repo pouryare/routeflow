@@ -40,11 +40,17 @@ function elevateClass(color: string): string {
 export default function CustomerDetailPanel({
   customer,
   facilities = [],
+  pinned = false,
+  onTogglePin,
   onClose,
   onReminderAdded,
 }: {
   customer: CustomerRow;
   facilities?: FacilityRow[];
+  /** Whether this customer is in the sidebar's pinned list. Owned there, not here:
+   *  the panel is transient and the list has to outlive it. */
+  pinned?: boolean;
+  onTogglePin?: () => void;
   onClose: () => void;
   onReminderAdded?: () => void;
 }) {
@@ -117,6 +123,19 @@ export default function CustomerDetailPanel({
     >
       <div className="mb-1 flex items-start justify-between gap-2">
         <h2 className="text-[length:var(--text-md)] font-bold leading-snug text-text">{customer.business_name}</h2>
+        {onTogglePin && (
+          <button
+            onClick={onTogglePin}
+            aria-pressed={pinned}
+            aria-label={pinned ? "برداشتن سنجاق" : "سنجاق کردن این مشتری"}
+            title={pinned ? "برداشتن سنجاق" : "سنجاق کردن — در بالای پنل نگه داشته می‌شود"}
+            className={`shrink-0 rounded-[var(--radius-sm)] p-1 text-[length:var(--text-md)] leading-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+              pinned ? "text-accent hover:text-crit" : "text-text-faint hover:text-accent"
+            }`}
+          >
+            {pinned ? "★" : "☆"}
+          </button>
+        )}
         <button
           onClick={handleClose}
           aria-label="بستن"
