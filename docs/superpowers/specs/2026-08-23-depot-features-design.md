@@ -1,7 +1,7 @@
 # Depot-derived features — design
 
 Date: 2026-08-23
-Status: approved feature set, pending spec review
+Status: stages 1-5 implemented. Feature 13 dropped at the user's direction (2026-08-23) — see §9.
 
 The approved feature set built on the business's two sites — the Bakkeh
 warehouse and the Pardis home base — now that they are real points on the map:
@@ -325,7 +325,7 @@ state. Ordering is driven by the dependency graph in §1, not by feature value.
 | 3 | 10, 3 (+14b), 5 | Centroids before the corridor; the corridor's helper before restock |
 | 4 | 8, 14d, 9 | Analysis, cheapest first |
 | 5 | 11, 12 | Geofence and the activity-log migration, then the day log on top |
-| 6 | 13a | Stock, after the spike's re-scope |
+| ~~6~~ | ~~13a~~ | Dropped — see §9 |
 
 ## 9. Feature 13, re-scoped by spike
 
@@ -347,13 +347,21 @@ correct feature is different and smaller.
 Neither sheet is imported today; `lib/importExcel.ts` reads only `مخاطبین` and
 `فروش`.
 
-**13a — stock-versus-demand check. Build this.** Import `کالاها` and
-`موجودی انبار`. The planner then answers a question that matters daily: do
-tomorrow's stops need more of a product than exists? `NMA-ANM` currently sits at
-zero against a threshold of 1,200. Uses data that is already maintained and
-already correct, and needs no new data entry.
+**13a — stock-versus-demand check. Proposed, then dropped.** The plan was to
+import `کالاها` and `موجودی انبار` so the delivery import could warn when a day's
+orders exceed stock. The user cancelled feature 13 entirely on 2026-08-23, mid-
+implementation; the work was reverted before commit, so no `products` table,
+importer or dead code exists in the repo.
 
-**13b — per-site stock split. Do not build.** The dimension does not exist and
+Recorded here because the finding still stands and would be the starting point if
+it is ever revived: the catalogue and stock figures are importable and already
+maintained, and a further obstacle surfaced during implementation — the delivery
+import parses each order's product lines but discards them, persisting only a
+customer visit-plan. Any stock-versus-demand check therefore has to run at import
+time (where the loading decision is actually made) or else persist line items,
+which the current schema does not.
+
+**13b — per-site stock split. Was already a "do not build".** The dimension does not exist and
 would have to be created by daily manual entry ("what did I load at home this
 morning"). That is a recurring cost on the user for a benefit that only appears
 when a product is at one site and not the other — which, across four SKUs, is
