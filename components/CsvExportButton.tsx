@@ -26,6 +26,10 @@ interface CustomerRow {
   debt_8_30: number;
   debt_30_plus: number;
   last_purchase_date: string | null;
+  /** Nearest of our own sites and the straight-line distance to it. Both null when the
+   *  row has no coordinates, or when no sites are configured. */
+  nearest_site: string | null;
+  nearest_site_km: number | null;
 }
 
 interface DistrictRow {
@@ -34,6 +38,8 @@ interface DistrictRow {
   parent_name: string | null;
   coverage_status: string;
   assigned_to: string | null;
+  nearest_site: string | null;
+  nearest_site_km: number | null;
 }
 
 export default function CsvExportButton({
@@ -47,7 +53,10 @@ export default function CsvExportButton({
 
   function exportCustomers() {
     const rows = [
-      ["نام کسب‌وکار", "کد مشتری", "وضعیت", "فروشنده", "تلفن", "آدرس", "بدهی ۰-۷", "بدهی ۸-۳۰", "بدهی ۳۰+", "آخرین خرید"],
+      // "خط مستقیم" is in the header because a spreadsheet column outlives the page it
+      // came from -- whoever opens this next has no other way to know it is not drive
+      // distance, and in Tehran the two differ by roughly a factor of two.
+      ["نام کسب‌وکار", "کد مشتری", "وضعیت", "فروشنده", "تلفن", "آدرس", "بدهی ۰-۷", "بدهی ۸-۳۰", "بدهی ۳۰+", "آخرین خرید", "نزدیک‌ترین مکان ما", "فاصله (کیلومتر، خط مستقیم)"],
       ...customers.map((c) => [
         c.business_name,
         c.customer_code,
@@ -59,6 +68,8 @@ export default function CsvExportButton({
         c.debt_8_30,
         c.debt_30_plus,
         c.last_purchase_date,
+        c.nearest_site,
+        c.nearest_site_km === null ? "" : c.nearest_site_km.toFixed(1),
       ]),
     ];
     download("مشتریان.csv", toCsv(rows));
@@ -67,8 +78,16 @@ export default function CsvExportButton({
 
   function exportDistricts() {
     const rows = [
-      ["نام", "سطح", "منطقه بالادست", "وضعیت", "مسئول"],
-      ...districts.map((d) => [d.name, d.level, d.parent_name, d.coverage_status, d.assigned_to]),
+      ["نام", "سطح", "منطقه بالادست", "وضعیت", "مسئول", "نزدیک‌ترین مکان ما", "فاصله (کیلومتر، خط مستقیم)"],
+      ...districts.map((d) => [
+        d.name,
+        d.level,
+        d.parent_name,
+        d.coverage_status,
+        d.assigned_to,
+        d.nearest_site,
+        d.nearest_site_km === null ? "" : d.nearest_site_km.toFixed(1),
+      ]),
     ];
     download("مناطق.csv", toCsv(rows));
     toast(`CSV با ${districts.length} منطقه دانلود شد.`, "success");

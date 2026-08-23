@@ -1,6 +1,9 @@
 import Link from "next/link";
 import { getDb, District, Customer, CoverageStatus } from "@/lib/db";
 import { STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
+import { readFacilities } from "@/lib/facilities";
+import { distanceKm } from "@/lib/geo";
+import type { FacilityRow } from "@/lib/facilityTypes";
 import PrintButton from "@/components/PrintButton";
 import CsvExportButton from "@/components/CsvExportButton";
 
@@ -12,15 +15,60 @@ function countBy<T extends string>(items: T[]): Record<T, number> {
   return out;
 }
 
-export default function ReportPage() {
+/** Nearest of our own sites to a point, or nulls when the point or the site list is
+ *  missing. Shared by the coverage table and both CSV exports so a district and a
+ *  customer are never measured against different sites. */
+function nearestSite(
+  point: { lat: number | null; lng: number | null },
+  facilities: FacilityRow[]
+): { name: string | null; km: number | null } {
+  if (point.lat === null || point.lng === null || facilities.length === 0) {
+    return { name: null, km: null };
+  }
+  const best = facilities
+    .map((f) => ({ name: f.name, km: distanceKm({ lat: point.lat as number, lng: point.lng as number }, f) }))
+    .sort((a, b) => a.km - b.km)[0];
+  return best;
+}
+
+export default async function ReportPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gaps?: string }>;
+}) {
+  const { gaps } = await searchParams;
+  // Server-rendered page, so the sort lives in the URL rather than in client state --
+  // which also means a sorted report stays sorted when printed or shared as a link.
+  const sortByDistance = gaps === "near";
   const db = getDb();
   const districts = db.prepare("SELECT * FROM districts").all() as unknown as District[];
   const customers = db.prepare("SELECT * FROM customers ORDER BY business_name").all() as unknown as Customer[];
 
+  const facilities = readFacilities(db);
+  const origin = facilities.find((f) => f.is_default_origin === 1) ?? facilities[0] ?? null;
+
   const districtCounts = countBy(districts.map((d) => d.coverage_status));
+
+  // Prospecting should start with the districts that are cheap to reach, which the
+  // alphabetical default gives no way to see. Districts with no centroid sort last
+  // rather than first -- an unknown distance is not a short one.
   const attention = districts
     .filter((d) => d.coverage_status === "needs_coverage" || d.coverage_status === "not_allowed")
-    .sort((a, b) => a.coverage_status.localeCompare(b.coverage_status));
+    .map((d) => ({
+      district: d,
+      km:
+        origin && d.centroid_lat !== null && d.centroid_lng !== null
+          ? distanceKm({ lat: d.centroid_lat, lng: d.centroid_lng }, origin)
+          : null,
+    }))
+    .sort((a, b) => {
+      if (sortByDistance) {
+        if (a.km === null) return b.km === null ? 0 : 1;
+        if (b.km === null) return -1;
+        return a.km - b.km;
+      }
+      return a.district.coverage_status.localeCompare(b.district.coverage_status);
+    });
 
   const totalDebt = customers.reduce(
     (acc, c) => {
@@ -58,6 +106,10 @@ export default function ReportPage() {
                 debt_8_30: c.debt_8_30,
                 debt_30_plus: c.debt_30_plus,
                 last_purchase_date: c.last_purchase_date,
+                ...(() => {
+                  const n = nearestSite(c, facilities);
+                  return { nearest_site: n.name, nearest_site_km: n.km };
+                })(),
               }))}
               districts={districts.map((d) => ({
                 name: d.name,
@@ -65,6 +117,10 @@ export default function ReportPage() {
                 parent_name: d.parent_name,
                 coverage_status: d.coverage_status,
                 assigned_to: d.assigned_to,
+                ...(() => {
+                  const n = nearestSite({ lat: d.centroid_lat, lng: d.centroid_lng }, facilities);
+                  return { nearest_site: n.name, nearest_site_km: n.km };
+                })(),
               }))}
             />
             <PrintButton />
@@ -125,9 +181,32 @@ export default function ReportPage() {
 
         {attention.length > 0 && (
           <section>
-            <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
-              مناطق نیازمند توجه ({attention.length})
-            </h2>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+                مناطق نیازمند توجه ({attention.length})
+              </h2>
+              {origin && (
+                <div className="no-print flex items-center gap-1.5 text-[length:var(--text-xs)]">
+                  <span className="text-text-faint">مرتب‌سازی:</span>
+                  <Link
+                    href="/report"
+                    className={`rounded-[var(--radius-sm)] border px-2 py-0.5 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                      sortByDistance ? "border-border text-text-muted hover:border-accent hover:text-accent" : "border-accent text-accent"
+                    }`}
+                  >
+                    الفبا
+                  </Link>
+                  <Link
+                    href="/report?gaps=near"
+                    className={`rounded-[var(--radius-sm)] border px-2 py-0.5 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                      sortByDistance ? "border-accent text-accent" : "border-border text-text-muted hover:border-accent hover:text-accent"
+                    }`}
+                  >
+                    نزدیک‌ترین به {origin.name}
+                  </Link>
+                </div>
+              )}
+            </div>
             <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
               <table className="w-full border-collapse text-[length:var(--text-sm)]">
                 <thead>
@@ -136,10 +215,11 @@ export default function ReportPage() {
                     <th className="px-3 py-2 font-medium">منطقه بالادست</th>
                     <th className="px-3 py-2 font-medium">وضعیت</th>
                     <th className="px-3 py-2 font-medium">مسئول</th>
+                    {origin && <th className="px-3 py-2 font-medium">فاصله (خط مستقیم)</th>}
                   </tr>
                 </thead>
                 <tbody>
-                  {attention.map((d) => (
+                  {attention.map(({ district: d, km }) => (
                     <tr key={d.id} className="border-b border-border last:border-b-0">
                       <td className="px-3 py-2 text-text">{d.name}</td>
                       <td className="px-3 py-2 text-text-muted">{d.parent_name ?? "—"}</td>
@@ -147,6 +227,11 @@ export default function ReportPage() {
                         {STATUS_LABEL[d.coverage_status]}
                       </td>
                       <td className="px-3 py-2 text-text-muted">{d.assigned_to ?? "—"}</td>
+                      {origin && (
+                        <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
+                          {km === null ? "—" : `${km.toFixed(1)} کیلومتر`}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
