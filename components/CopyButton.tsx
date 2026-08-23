@@ -18,7 +18,10 @@ export default function CopyButton({
   what,
   className = "",
 }: {
-  value: string;
+  /** A function when the text depends on `window` -- an absolute URL, say. Computing
+   *  that during render makes the server and the client disagree about what the button
+   *  holds; resolving it on click sidesteps the question entirely. */
+  value: string | (() => string);
   /** Visible text. Omit for the bare icon, which is what the tight rows use. */
   label?: string;
   /** Names the thing in the failure message and to screen readers: "کپی آدرس". */
@@ -38,7 +41,7 @@ export default function CopyButton({
   }, []);
 
   async function onClick() {
-    const ok = await copyText(value);
+    const ok = await copyText(typeof value === "function" ? value() : value);
     if (!ok) {
       toast(`${what} کپی نشد — دسترسی به کلیپ‌بورد ممکن نبود.`, "error");
       return;

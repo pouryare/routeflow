@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { nearestNeighborOrder } from "@/lib/geo";
@@ -8,6 +8,8 @@ import type { RouteStop } from "@/components/PlannerRouteMap";
 import LeadImportPanel from "@/components/LeadImportPanel";
 import { useToast } from "@/components/ToastProvider";
 import { faNum } from "@/lib/format";
+import { parseIdParam } from "@/lib/deepLink";
+import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
@@ -44,6 +46,18 @@ function chunk<T>(arr: T[], size: number): T[][] {
 export default function LeadsPage() {
   const [locations, setLocations] = useState<SavedLocation[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // /leads?l=12 -- the address of one suggested location, so a lead can be pointed at
+  // from a note or a message rather than described ("the one in Pardis, third down").
+  const [linkedId] = useState<number | undefined>(() =>
+    typeof window === "undefined" ? undefined : parseIdParam(window.location.search, "l")
+  );
+  const linkedRef = useRef<HTMLLIElement>(null);
+
+  useEffect(() => {
+    if (linkedId === undefined) return;
+    linkedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [linkedId, loading]);
   const [query, setQuery] = useState("");
   // Every routable location starts selected -- tracking exclusions instead of
   // inclusions means a freshly-added or freshly-loaded location is selected by
@@ -317,7 +331,10 @@ export default function LeadsPage() {
               {locations.map((l) => (
                 <li
                   key={l.id}
-                  className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
+                  ref={l.id === linkedId ? linkedRef : undefined}
+                  className={`flex flex-col gap-2 rounded-[var(--radius-md)] border bg-surface px-3 py-2 ${
+                    l.id === linkedId ? "border-accent elevate-accent" : "border-border"
+                  }`}
                 >
                   <div className="flex items-start gap-2">
                     <input
@@ -335,6 +352,10 @@ export default function LeadsPage() {
                       {l.address && <p className="truncate text-[length:var(--text-xs)] text-text-faint">{l.address}</p>}
                     </div>
                     <div className="flex shrink-0 items-center gap-1">
+                      <CopyButton
+                        value={() => `${window.location.origin}/leads?l=${l.id}`}
+                        what="کپی پیوند این مکان"
+                      />
                       <a
                         href={l.maps_url}
                         target="_blank"

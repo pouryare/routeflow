@@ -11,7 +11,14 @@ import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import PurchaseHistory from "./PurchaseHistory";
 import { useToast } from "./ToastProvider";
+import CopyButton from "./CopyButton";
+import { coordText } from "@/lib/clipboard";
+import { absoluteMapLink } from "@/lib/deepLink";
 import { faDateTime, faNum } from "@/lib/format";
+
+function customerLink(id: number): string {
+  return absoluteMapLink({ customerId: id }, "/");
+}
 
 /** Kept in step with the .customer-panel-exit duration in globals.css. */
 const EXIT_MS = 180;
@@ -122,13 +129,18 @@ export default function CustomerDetailPanel({
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {customer.status && <StatusPill color={statusColor} label={customer.status} />}
         <span className="font-mono text-[length:var(--text-xs)] text-text-faint">{customer.customer_code}</span>
-        <button
-          onClick={addToTodayPlan}
-          disabled={planState !== "idle"}
-          className="mr-auto rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:hover:border-border disabled:hover:text-text-muted"
-        >
-          {planState === "added" ? "✓ افزوده شد" : planState === "saving" ? "..." : "+ برنامه امروز"}
-        </button>
+        <div className="mr-auto flex items-center gap-1.5">
+          {/* A link straight back to this customer on this map -- the thing you send
+              yourself the night before, or send to someone else to look at. */}
+          <CopyButton value={() => customerLink(customer.id)} what="کپی پیوند این مشتری" />
+          <button
+            onClick={addToTodayPlan}
+            disabled={planState !== "idle"}
+            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:hover:border-border disabled:hover:text-text-muted"
+          >
+            {planState === "added" ? "✓ افزوده شد" : planState === "saving" ? "..." : "+ برنامه امروز"}
+          </button>
+        </div>
       </div>
 
       <dl className="flex flex-col gap-3 border-t border-border pt-3 text-[length:var(--text-sm)]">
@@ -141,10 +153,11 @@ export default function CustomerDetailPanel({
         {customer.phone && (
           <div className="flex items-baseline justify-between gap-3">
             <dt className="shrink-0 text-text-muted">تلفن</dt>
-            <dd className="font-mono text-left text-accent">
+            <dd className="flex items-center gap-2 font-mono text-left text-accent">
               <a href={`tel:${customer.phone}`} className="hover:underline">
                 {customer.phone}
               </a>
+              <CopyButton value={customer.phone} what="کپی شماره تلفن" />
             </dd>
           </div>
         )}
@@ -164,8 +177,22 @@ export default function CustomerDetailPanel({
         )}
         {customer.address && (
           <div className="flex flex-col gap-1">
-            <dt className="text-text-muted">آدرس</dt>
+            <dt className="flex items-center justify-between gap-2 text-text-muted">
+              آدرس
+              <CopyButton value={customer.address} what="کپی آدرس" />
+            </dt>
             <dd className="leading-6 text-text">{customer.address}</dd>
+          </div>
+        )}
+        {customer.lat !== null && customer.lng !== null && (
+          <div className="flex items-baseline justify-between gap-3">
+            <dt className="shrink-0 text-text-muted">مختصات</dt>
+            <dd className="flex items-center gap-2 font-mono text-[length:var(--text-xs)] text-text-faint">
+              {/* Latin digits on purpose: this exists to be pasted into a maps app, and
+                  nothing outside this app parses ۳۵٫۷. */}
+              <span dir="ltr">{coordText(customer.lat, customer.lng)}</span>
+              <CopyButton value={coordText(customer.lat, customer.lng)} what="کپی مختصات" />
+            </dd>
           </div>
         )}
         {siteDistances.length > 0 && (

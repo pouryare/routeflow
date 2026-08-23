@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { FACILITY_KINDS, FACILITY_LABEL, FacilityKind, FacilityRow } from "@/lib/facilityTypes";
@@ -8,6 +8,9 @@ import { facilityMarkerHtml } from "@/components/facilityArt";
 import { distanceKm } from "@/lib/geo";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed } from "@/lib/format";
+import { parseIdParam } from "@/lib/deepLink";
+import { coordText } from "@/lib/clipboard";
+import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 
 // Leaflet touches window on import, so the picker can't be server-rendered.
@@ -18,6 +21,13 @@ const KIND_NAME: Record<FacilityKind, string> = {
   home_base: "خانه / مبدأ",
   other: "مکان دیگر",
 };
+
+/** The shareable address of one site. Absolute so it survives being pasted into a chat
+ *  app, which will not resolve a bare path. */
+function siteLink(id: number): string {
+  const origin = typeof window === "undefined" ? "" : window.location.origin;
+  return `${origin}/facilities?f=${id}`;
+}
 
 /** Repositioning and adding both open the same picker; this says which, and for whom.
  *  `null` means no picker is open. */
@@ -33,6 +43,20 @@ export default function FacilitiesPage() {
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const toast = useToast();
+
+  // /facilities?f=3 -- the link the map popup and the copy button hand out. Read once:
+  // it names where to look on arrival, not a filter that stays applied.
+  const [linkedId] = useState<number | undefined>(() =>
+    typeof window === "undefined" ? undefined : parseIdParam(window.location.search, "f")
+  );
+  const linkedRef = useRef<HTMLElement>(null);
+
+  // Runs when the list arrives, not on mount: the card being scrolled to does not exist
+  // until the fetch resolves.
+  useEffect(() => {
+    if (linkedId === undefined || facilities.length === 0) return;
+    linkedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }, [linkedId, facilities]);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -198,8 +222,13 @@ export default function FacilitiesPage() {
             return (
               <article
                 key={f.id}
+                ref={f.id === linkedId ? linkedRef : undefined}
                 className={`rounded-[var(--radius-lg)] border bg-surface-raised p-4 transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  f.is_default_origin === 1 ? "border-border-strong elevate-accent" : "border-border"
+                  f.id === linkedId
+                    ? "border-accent elevate-accent"
+                    : f.is_default_origin === 1
+                      ? "border-border-strong elevate-accent"
+                      : "border-border"
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -261,11 +290,10 @@ export default function FacilitiesPage() {
                     {f.address && (
                       <p className="mt-1.5 text-[length:var(--text-xs)] leading-5 text-text-muted">{f.address}</p>
                     )}
-                    <p
-                      dir="ltr"
-                      className="mt-1.5 text-right font-mono text-[length:var(--text-xs)] text-text-faint"
-                    >
-                      {f.lat.toFixed(6)}, {f.lng.toFixed(6)}
+                    <p className="mt-1.5 flex items-center gap-2 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
+                      <span dir="ltr">{coordText(f.lat, f.lng)}</span>
+                      <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />
+                      <CopyButton value={() => siteLink(f.id)} what="کپی پیوند این مکان" />
                     </p>
                     {nearest && (
                       <p className="mt-1 font-mono text-[length:var(--text-xs)] text-text-faint">

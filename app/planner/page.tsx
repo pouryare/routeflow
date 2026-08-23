@@ -17,6 +17,8 @@ import type { RouteStop } from "@/components/PlannerRouteMap";
 import DeliveryImportPanel from "@/components/DeliveryImportPanel";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
+import { replaceUrlQuery } from "@/lib/deepLink";
+import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
@@ -112,6 +114,32 @@ export default function PlannerPage() {
   }, []);
 
   const [selectedDate, setSelectedDate] = useState(() => toDateStr(days[0]));
+
+  // /planner?date=2026-08-24 -- "here is tomorrow's round".
+  //
+  // Applied in an effect rather than as the initial state, even though the value is
+  // available synchronously: this page is prerendered, so the server has no query string
+  // and would render today while the browser rendered the linked day. React resolves
+  // that disagreement by discarding the server's HTML, which is a real cost paid for one
+  // frame's head start.
+  //
+  // Only a date the strip actually offers is honoured -- a date outside the week has no
+  // tab to select and would strand the page on a day it cannot navigate away from.
+  useEffect(() => {
+    const wanted = new URLSearchParams(window.location.search).get("date");
+    const offered = days.map(toDateStr);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    if (wanted && offered.includes(wanted)) setSelectedDate(wanted);
+    // Mount only: this reads the URL the page was opened with, and the effect below is
+    // what keeps the address bar in step from then on.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Keeps the address bar on the day being looked at, so the link is copyable at any
+  // moment rather than only the one the page was opened with.
+  useEffect(() => {
+    replaceUrlQuery(`?date=${selectedDate}`);
+  }, [selectedDate]);
   const [plansByDate, setPlansByDate] = useState<Record<string, PlanRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
@@ -615,6 +643,10 @@ export default function PlannerPage() {
               برنامه {dayLabel(new Date(selectedDate))} ({faNum(dayPlans.length)})
             </h2>
             <div className="flex items-center gap-2">
+              <CopyButton
+                value={() => `${window.location.origin}/planner?date=${selectedDate}`}
+                what="کپی پیوند این روز"
+              />
               <button
                 onClick={locate}
                 disabled={locating}

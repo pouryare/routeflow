@@ -51,7 +51,8 @@ import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
-import { copyText } from "@/lib/clipboard";
+import { copyText, coordText } from "@/lib/clipboard";
+import CopyButton from "./CopyButton";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
@@ -1417,22 +1418,31 @@ export default function CoverageMap({
                     {f.address && (
                       <p className="mt-1.5 text-[length:var(--text-xs)] text-text-muted">{f.address}</p>
                     )}
-                    <p dir="ltr" className="mt-1.5 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
-                      {f.lat.toFixed(6)}, {f.lng.toFixed(6)}
+                    <p className="mt-1.5 flex items-center gap-2 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
+                      <span dir="ltr">{coordText(f.lat, f.lng)}</span>
+                      <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />
                     </p>
                     {rel && (
                       <p className="mt-1 text-[length:var(--text-xs)] text-text-faint">
                         {formatDistanceKm(rel.km)} تا {rel.other.name} (خط مستقیم)
                       </p>
                     )}
-                    <a
-                      href={f.maps_url ?? "#"}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="mt-2 inline-block text-[length:var(--text-xs)] text-accent hover:underline"
-                    >
-                      مسیریابی در گوگل مپ ↗
-                    </a>
+                    <div className="mt-2 flex flex-wrap items-center gap-3">
+                      <a
+                        href={f.maps_url ?? "#"}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[length:var(--text-xs)] text-accent hover:underline"
+                      >
+                        مسیریابی در گوگل مپ ↗
+                      </a>
+                      <Link
+                        href={`/facilities?f=${f.id}`}
+                        className="text-[length:var(--text-xs)] text-accent hover:underline"
+                      >
+                        ویرایش این مکان ←
+                      </Link>
+                    </div>
                   </div>
                 </Popup>
               </Marker>
@@ -1448,8 +1458,9 @@ export default function CoverageMap({
               <Popup>
                 <div dir="rtl" className="text-[length:var(--text-sm)]">
                   <p className="mb-1 font-medium text-text">{foundLocation.label}</p>
-                  <p dir="ltr" className="font-mono text-[length:var(--text-xs)] text-text-muted">
-                    {foundLocation.lat.toFixed(6)}, {foundLocation.lng.toFixed(6)}
+                  <p className="flex items-center gap-2 font-mono text-[length:var(--text-xs)] text-text-muted">
+                    <span dir="ltr">{coordText(foundLocation.lat, foundLocation.lng)}</span>
+                    <CopyButton value={coordText(foundLocation.lat, foundLocation.lng)} what="کپی مختصات" />
                   </p>
                   <button
                     onClick={() => setFoundLocation(null)}
