@@ -31,7 +31,19 @@ export default function CustomerFilters({
     }`;
 
   return (
-    <CollapsibleSection title={`فیلتر مشتری‌ها (${faNum(filteredCount)} از ${faNum(totalCount)})`} storageKey="filters" keywords="فروشنده مسئول نمایش">
+    <CollapsibleSection
+      title="فیلتر مشتری‌ها"
+      icon="🔎"
+      /* The count belongs in the chip, not spliced into the title -- and "N of M" is
+         what makes a filter's state readable without opening it. */
+      right={
+        <span className="font-mono text-[length:var(--text-xs)] text-text-faint">
+          {faNum(filteredCount)} از {faNum(totalCount)}
+        </span>
+      }
+      storageKey="filters"
+      keywords="فروشنده مسئول نمایش"
+    >
 
       {salespeople.length > 0 && (
         <div>

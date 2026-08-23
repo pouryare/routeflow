@@ -261,6 +261,16 @@ export function getDb(): DatabaseSync {
     db.exec("UPDATE saved_locations SET updated_at = created_at WHERE updated_at IS NULL");
   }
 
+  // Prospect scoring. Three nullable columns rather than a ratings table: the criteria
+  // are fixed and there is exactly one score per criterion per location, so a join would
+  // buy nothing and cost every read. NULL is "not judged yet", which is deliberately not
+  // the same as a score of zero.
+  for (const col of ["rating_potential", "rating_volume", "rating_ease"]) {
+    if (!savedLocationCols.some((c) => c.name === col)) {
+      db.exec(`ALTER TABLE saved_locations ADD COLUMN ${col} INTEGER`);
+    }
+  }
+
   const districtCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
   if (!districtCols.some((c) => c.name === "assigned_to")) {
     db.exec("ALTER TABLE districts ADD COLUMN assigned_to TEXT");
@@ -503,6 +513,9 @@ export interface SavedLocationRow {
   resolution: LocationResolution;
   notes: string | null;
   status: LocationStatus | null;
+  rating_potential: number | null;
+  rating_volume: number | null;
+  rating_ease: number | null;
   created_at: string;
   updated_at: string;
 }

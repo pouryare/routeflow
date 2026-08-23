@@ -1065,7 +1065,7 @@ export default function CoverageMap({
 
         {dueReminders.length > 0 && (
           <CollapsibleSection
-            title="یادآوری‌های امروز"
+            title="یادآوری‌های امروز" icon="🔔"
             count={dueReminders.length}
             titleClassName="text-crit"
             defaultOpen
@@ -1098,7 +1098,7 @@ export default function CoverageMap({
 
         {myPosition && (
           <CollapsibleSection
-            title="مشتریان نزدیک"
+            title="مشتریان نزدیک" icon="📍"
             count={nearbyCustomers.length}
             defaultOpen
             right={
@@ -1138,7 +1138,7 @@ export default function CoverageMap({
         )}
 
         {pinnedCustomers.length > 0 && (
-          <CollapsibleSection title="سنجاق‌شده" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
+          <CollapsibleSection title="سنجاق‌شده" icon="⭐" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
             <div className="flex flex-col gap-1.5">
               {pinnedCustomers.map((c) => (
                 <div
@@ -1166,7 +1166,7 @@ export default function CoverageMap({
         )}
 
         {recentCustomers.length > 0 && (
-          <CollapsibleSection title="اخیراً دیده‌شده" count={recentCustomers.length} storageKey="recent">
+          <CollapsibleSection title="اخیراً دیده‌شده" icon="🕘" count={recentCustomers.length} storageKey="recent">
             <div className="flex flex-col gap-1.5">
               {recentCustomers.map((c) => (
                 <div
@@ -1193,7 +1193,7 @@ export default function CoverageMap({
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="لینک‌های سریع" storageKey="links" keywords="برنامه گزارش تحلیل گالری مکان پیشنهادی پیوند اشتراک" defaultOpen>
+        <CollapsibleSection title="لینک‌های سریع" icon="🧭" storageKey="links" keywords="برنامه گزارش تحلیل گالری مکان پیشنهادی پیوند اشتراک" defaultOpen>
             {/* The current view as a link. Everything on screen -- where the map sits,
                 which customer is open, how the markers are coloured -- is already in the
                 address bar; this is the button that says so, because nobody thinks to
@@ -1240,7 +1240,7 @@ export default function CoverageMap({
           filteredCount={filteredCustomers.length}
         />
 
-        <CollapsibleSection title="رنگ‌بندی مشتریان" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
+        <CollapsibleSection title="رنگ‌بندی مشتریان" icon="🎨" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
             {/* Five modes no longer fit a single row at sidebar width on a phone, so this
                 is a grid rather than a flex row -- the fifth would otherwise squeeze the
                 other four into unreadable slivers. */}
@@ -1289,7 +1289,7 @@ export default function CoverageMap({
             customers" is itself worth knowing. The count in the heading answers it
             without opening. */}
         <CollapsibleSection
-          title="مشتریان راکد"
+          title="مشتریان راکد" icon="💤"
           count={hasPurchaseHistory ? dormantCustomers.length : undefined}
           titleClassName={dormantCustomers.length > 0 ? "text-warn" : undefined}
           storageKey="dormant"
@@ -1326,7 +1326,7 @@ export default function CoverageMap({
         </CollapsibleSection>
 
         <CollapsibleSection
-          title="بدون مختصات"
+          title="بدون مختصات" icon="❓"
           count={noCoordCustomers.length}
           storageKey="nocoord"
           keywords="مختصات نقشه جای‌گذاری"
@@ -1356,7 +1356,7 @@ export default function CoverageMap({
 
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}
-        <CollapsibleSection title="تأسیسات ما" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
+        <CollapsibleSection title="تأسیسات ما" icon="🏢" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
             <div className="flex flex-col gap-1">
               {initialFacilities.map((f) => (
                 <button
@@ -1444,7 +1444,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="راهنمای رنگ مناطق" storageKey="legend" keywords="وضعیت پوشش رنگ legend">
+        <CollapsibleSection title="راهنمای رنگ مناطق" icon="🗺" storageKey="legend" keywords="وضعیت پوشش رنگ legend">
             <div className="flex flex-col gap-1.5">
               {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
                 <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} shaped={shapedMarkers} />
@@ -1457,7 +1457,7 @@ export default function CoverageMap({
             </p>
         </CollapsibleSection>
 
-        <CollapsibleSection title="نقشه حرارتی" storageKey="heatmap" keywords="تراکم بدهی heatmap">
+        <CollapsibleSection title="نقشه حرارتی" icon="🔥" storageKey="heatmap" keywords="تراکم بدهی heatmap">
             <div className="flex items-center justify-between">
               <span className="text-[length:var(--text-sm)] text-text">نمایش تراکم مشتریان</span>
               <button
@@ -1488,7 +1488,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی نشان بلد ویز گوگل">
+        <CollapsibleSection title="تنظیمات" icon="⚙️" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی نشان بلد ویز گوگل">
           <div className="flex flex-col gap-4">
 
             <div className="flex items-center justify-between gap-2">

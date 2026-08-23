@@ -20,6 +20,7 @@ export const SectionFilterContext = createContext<string>("");
 
 export default function CollapsibleSection({
   title,
+  icon,
   count,
   titleClassName,
   storageKey,
@@ -29,6 +30,13 @@ export default function CollapsibleSection({
   children,
 }: {
   title: string;
+  /** One emoji, shown in a tile before the title.
+   *
+   *  Twelve headings in the same monospace uppercase are twelve identical grey lines,
+   *  and finding one means reading all of them. A glyph is what the eye actually lands
+   *  on, and it survives being scanned at arm's length in a vehicle, which the 11px
+   *  label does not. */
+  icon?: string;
   /** Rendered as "title (count)" when given. Omit for sections that aren't a list. */
   count?: number;
   titleClassName?: string;
@@ -87,14 +95,35 @@ export default function CollapsibleSection({
         <button
           onClick={toggle}
           aria-expanded={expanded}
-          className={`flex min-w-0 flex-1 items-center justify-between gap-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent ${
+          className={`group flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-md)] py-1 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/[0.03] ${
             titleClassName ?? "text-text-muted"
           }`}
         >
-          <span className="truncate">
+          {icon && (
+            <span
+              aria-hidden="true"
+              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                expanded ? "bg-accent/15" : "bg-white/5 group-hover:bg-accent/15"
+              }`}
+            >
+              {icon}
+            </span>
+          )}
+          <span className="min-w-0 flex-1 truncate font-mono text-[length:var(--text-xs)] uppercase tracking-wide transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:text-accent">
             {title}
-            {count !== undefined && ` (${faNum(count)})`}
           </span>
+          {count !== undefined && (
+            /* Its own chip rather than "(12)" appended to the label: the count is the
+               part you are actually reading when you scan the panel for what needs
+               attention, and inside the title it is just more monospace text. */
+            <span
+              className={`shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] leading-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                count > 0 ? "bg-white/10 text-text" : "text-text-faint"
+              }`}
+            >
+              {faNum(count)}
+            </span>
+          )}
           <span
             className="shrink-0 text-text-faint transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
             style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}

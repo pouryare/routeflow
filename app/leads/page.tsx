@@ -18,6 +18,8 @@ import NavAppSetting, { useNavApp } from "@/components/NavAppSetting";
 import { navigateUrl, routeUrl } from "@/lib/navApps";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
+import StarRating from "@/components/StarRating";
+import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
 import type { LeadPoint } from "@/components/LeadsMap";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
@@ -41,6 +43,9 @@ interface SavedLocation {
   lng: number | null;
   resolution: "direct" | "pluscode" | "nominatim" | "manual" | "unresolved";
   status: LocationStatus | null;
+  rating_potential: number | null;
+  rating_volume: number | null;
+  rating_ease: number | null;
   created_at: string;
 }
 
@@ -54,10 +59,11 @@ interface LeadList {
   location_ids: number[];
 }
 
-type SortMode = "nearest" | "name" | "newest" | "status";
+type SortMode = "nearest" | "score" | "name" | "newest" | "status";
 
 const SORT_LABEL: Record<SortMode, string> = {
   nearest: "نزدیک‌ترین",
+  score: "بهترین امتیاز",
   name: "نام",
   newest: "تازه‌ترین",
   status: "وضعیت",
@@ -85,6 +91,7 @@ export default function LeadsPage() {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>("nearest");
   const [pinningId, setPinningId] = useState<number | null>(null);
+  const [scoringId, setScoringId] = useState<number | null>(null);
   const [converting, setConverting] = useState<number | null>(null);
   const [stopsPerDay, setStopsPerDay] = useState(8);
   const [proposedDays, setProposedDays] = useState<RoutableLocation[][] | null>(null);
@@ -392,6 +399,14 @@ export default function LeadsPage() {
       // Anything without coordinates cannot be near or far, so it sits at the end rather
       // than being silently treated as distance zero.
       sorted.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity));
+    } else if (sortMode === "score") {
+      // Unrated last rather than first: an unrated place is an open question, and the
+      // point of this ordering is to surface the answered ones you rated highly.
+      sorted.sort(
+        (a, b) =>
+          (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) ||
+          (a.km ?? Infinity) - (b.km ?? Infinity)
+      );
     } else if (sortMode === "name") {
       sorted.sort((a, b) => a.loc.name.localeCompare(b.loc.name, "fa"));
     } else if (sortMode === "newest") {
@@ -464,6 +479,25 @@ export default function LeadsPage() {
       load();
     } catch {
       toast("خطا در ثبت موقعیت", "error");
+    }
+  }
+
+  /** One tap on one star. Applied locally first: the row must respond at the moment it
+   *  is touched, at the kerb, on a connection that may be doing nothing at all. A failed
+   *  write says so and reloads, rather than leaving a score on screen that is not saved. */
+  async function setScore(id: number, key: LeadCriterion, value: number | null) {
+    const column = key === "potential" ? "rating_potential" : key === "volume" ? "rating_volume" : "rating_ease";
+    setLocations((prev) => prev.map((l) => (l.id === id ? { ...l, [column]: value } : l)));
+    try {
+      const res = await fetch(`/api/locations/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      if (!res.ok) throw new Error();
+    } catch {
+      toast("امتیاز ذخیره نشد", "error");
+      load();
     }
   }
 
@@ -634,7 +668,7 @@ export default function LeadsPage() {
         {/* ---- automatic day split ---------------------------------------------- */}
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <CollapsibleSection
-            title="تقسیم خودکار بین روزها"
+            title="تقسیم خودکار بین روزها" icon="🗂"
             storageKey="leads_split"
             keywords="خوشه‌بندی روز مسیر تقسیم"
           >
@@ -760,6 +794,8 @@ export default function LeadsPage() {
               {visible.map(({ loc: l, km }) => {
                 const runIdx = run.indexOf(l.id);
                 const inRun = runIdx !== -1;
+                const avg = averageScore(l);
+                const scoring = scoringId === l.id;
                 return (
                   <li
                     key={l.id}
@@ -792,6 +828,14 @@ export default function LeadsPage() {
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate text-[length:var(--text-sm)] text-text">{l.name}</span>
+                          {avg !== null && (
+                            <span
+                              className="shrink-0 font-mono text-[length:var(--text-xs)] text-warn"
+                              title="میانگین امتیاز"
+                            >
+                              ★ {faNum(Math.round(avg * 10) / 10)}
+                            </span>
+                          )}
                           {km !== null ? (
                             <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-accent">
                               {formatDistanceKm(km)}
@@ -845,6 +889,22 @@ export default function LeadsPage() {
                         ))}
                       </select>
 
+                      {/* Folded away by default. Three labelled star rows under every
+                          entry would triple the height of a list whose job is to be
+                          scanned, and scoring happens once per place while the list is
+                          read many times. */}
+                      <button
+                        onClick={() => setScoringId(scoring ? null : l.id)}
+                        aria-expanded={scoring}
+                        className={`rounded-[var(--radius-sm)] border px-2 py-1 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                          avg !== null
+                            ? "border-warn/50 text-warn hover:border-warn"
+                            : "border-border text-text-muted hover:border-accent hover:text-accent"
+                        }`}
+                      >
+                        {scoring ? "بستن امتیاز" : avg !== null ? "★ امتیاز" : "☆ امتیازدهی"}
+                      </button>
+
                       {l.lat === null ? (
                         <button
                           onClick={() => setPinningId(pinningId === l.id ? null : l.id)}
@@ -862,6 +922,34 @@ export default function LeadsPage() {
                         </button>
                       )}
                     </div>
+
+                    {scoring && (
+                      <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-bg px-3 py-2.5">
+                        {LEAD_CRITERIA.map((c) => (
+                          <div key={c.key} className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="min-w-0">
+                              <span className="block text-[length:var(--text-sm)] text-text">
+                                <span aria-hidden="true" className="me-1">
+                                  {c.icon}
+                                </span>
+                                {c.label}
+                              </span>
+                              {/* "4 out of 5" only means something if two people would
+                                  agree what it is 4 out of. */}
+                              <span className="block text-[length:var(--text-xs)] text-text-faint">{c.hint}</span>
+                            </span>
+                            <StarRating
+                              value={scoreOf(l, c.key)}
+                              label={c.label}
+                              onChange={(v) => setScore(l.id, c.key, v)}
+                            />
+                          </div>
+                        ))}
+                        <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
+                          برای پاک کردن یک امتیاز، روی همان ستاره دوباره بزنید.
+                        </p>
+                      </div>
+                    )}
 
                     {pinningId === l.id && (
                       <LocationPinPicker
@@ -889,7 +977,7 @@ export default function LeadsPage() {
         />
 
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <CollapsibleSection title="تنظیمات" storageKey="leads_settings" keywords="مسیریابی برنامه نشان بلد ویز گوگل">
+          <CollapsibleSection title="تنظیمات" icon="⚙️" storageKey="leads_settings" keywords="مسیریابی برنامه نشان بلد ویز گوگل">
             <NavAppSetting />
           </CollapsibleSection>
         </section>

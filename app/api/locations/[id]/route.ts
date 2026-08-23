@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, LOCATION_STATUSES, LocationStatus } from "@/lib/db";
 import { isValidCoord } from "@/lib/geoLinks";
+import { LEAD_CRITERIA, LeadCriterion, columnFor, isValidStars } from "@/lib/leadScore";
 
-interface PatchInput {
+interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
   lat?: number;
   lng?: number;
   status?: LocationStatus | null;
@@ -44,6 +45,20 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
   if (body.notes !== undefined) {
     sets.push("notes = ?");
     values.push(body.notes);
+  }
+
+  // Scores arrive one criterion at a time -- a star is tapped, not a form submitted --
+  // so each is independently optional and null clears it. Column names come from
+  // columnFor rather than from the request, which is what keeps this an update of three
+  // known columns instead of whatever the caller names.
+  for (const criterion of LEAD_CRITERIA) {
+    const value = body[criterion.key];
+    if (value === undefined) continue;
+    if (!isValidStars(value)) {
+      return NextResponse.json({ ok: false, error: "امتیاز نامعتبر است" }, { status: 400 });
+    }
+    sets.push(`${columnFor(criterion.key)} = ?`);
+    values.push(value);
   }
 
   if (sets.length === 0) {

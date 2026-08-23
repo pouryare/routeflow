@@ -160,7 +160,7 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
   const debtDelta = preview ? preview.totalDebtAfter - preview.totalDebtBefore : 0;
 
   return (
-    <CollapsibleSection title="به‌روزرسانی از اکسل" storageKey="import" keywords="excel وان‌درایو onedrive همگام‌سازی بازگردانی داده">
+    <CollapsibleSection title="به‌روزرسانی از اکسل" icon="📥" storageKey="import" keywords="excel وان‌درایو onedrive همگام‌سازی بازگردانی داده">
 
       {status?.lastImport && (
         <p className="mb-2 text-[length:var(--text-xs)] text-text-faint">
