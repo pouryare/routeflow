@@ -64,6 +64,7 @@ const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: fa
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
 const ImportPanel = dynamic(() => import("./ImportPanel"), { ssr: false });
+const NextStopBar = dynamic(() => import("./NextStopBar"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
 
@@ -334,6 +335,7 @@ export default function CoverageMap({
   const [bulkSaving, setBulkSaving] = useState(false);
   const [foundLocation, setFoundLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geofenceOn, setGeofenceOn] = useState(false);
+  const [nextStopOn, setNextStopOn] = useState(true);
   const bulkModeRef = useRef(bulkMode);
   bulkModeRef.current = bulkMode;
 
@@ -469,6 +471,9 @@ export default function CoverageMap({
     setGeofenceOn(localStorage.getItem("coverage_geofence_on") === "1");
     setCorridorOn(localStorage.getItem("coverage_corridor_on") === "1");
     setFacilityGeofenceOn(localStorage.getItem("coverage_geofence_sites") === "1");
+    // Defaults on -- it costs nothing on a day with no plan, since the bar renders
+    // nothing at all then.
+    setNextStopOn(localStorage.getItem("coverage_nextstop_off") !== "1");
     const storedWidth = Number(localStorage.getItem("coverage_corridor_km"));
     if (CORRIDOR_WIDTHS.includes(storedWidth)) setCorridorWidthKm(storedWidth);
   }, []);
@@ -1231,6 +1236,33 @@ export default function CoverageMap({
 
             <div className="flex items-center justify-between gap-2">
               <div>
+                <span className="text-[length:var(--text-sm)] text-text">نوار توقف بعدی</span>
+                <p className="text-[length:var(--text-xs)] text-text-faint">
+                  توقف بعدی برنامه امروز را پایین نقشه نشان می‌دهد
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  const next = !nextStopOn;
+                  setNextStopOn(next);
+                  localStorage.setItem("coverage_nextstop_off", next ? "0" : "1");
+                }}
+                role="switch"
+                aria-checked={nextStopOn}
+                aria-label="نوار توقف بعدی"
+                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                  nextStopOn ? "border-accent bg-accent" : "border-border bg-surface"
+                }`}
+              >
+                <span
+                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
+                  style={{ right: nextStopOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
+                />
+              </button>
+            </div>
+
+            <div className="flex items-center justify-between gap-2">
+              <div>
                 <span className="text-[length:var(--text-sm)] text-text">انتخاب چندتایی مناطق</span>
                 <p className="text-[length:var(--text-xs)] text-text-faint">برای ویرایش‌های گروهی روی دسکتاپ</p>
               </div>
@@ -1531,6 +1563,25 @@ export default function CoverageMap({
           onSaved={() => {
             setSelectedDistrict(null);
             loadDistricts();
+          }}
+        />
+      )}
+
+      {/* Suppressed in bulk mode, where the bulk action bar owns the bottom of the
+          screen -- and bulk district editing is a desk activity, not a driving one. */}
+      {!bulkMode && (
+        <NextStopBar
+          enabled={nextStopOn}
+          myPosition={myPosition}
+          onDismiss={() => {
+            setNextStopOn(false);
+            localStorage.setItem("coverage_nextstop_off", "1");
+            toast("نوار توقف بعدی پنهان شد — از «تنظیمات» دوباره روشن می‌شود.", "info");
+          }}
+          onFocus={(entityId, lat, lng) => {
+            const c = customers.find((x) => x.id === entityId);
+            if (c) flyToCustomer(c);
+            else mapRef.current?.flyTo([lat, lng], 15, { duration: 1 });
           }}
         />
       )}
