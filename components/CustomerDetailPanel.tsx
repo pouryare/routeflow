@@ -107,9 +107,21 @@ export default function CustomerDetailPanel({
     window.setTimeout(onClose, EXIT_MS);
   }, [onClose]);
 
-  // Docked on the left edge, so it leaves to the left. Through handleClose rather than
-  // onClose, so a swipe gets the same exit animation as the ✕.
-  useSwipeDismiss(panelRef, "left", handleClose);
+  // The panel is a left-docked card on a desktop and a bottom sheet on a phone, so the
+  // gesture that puts it away differs with the viewport. Matched against the same
+  // breakpoint the stylesheet uses -- one number, in two places that have to agree.
+  const [isSheet, setIsSheet] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const apply = () => setIsSheet(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  // Through handleClose rather than onClose, so a swipe gets the same exit animation as
+  // the ✕.
+  useSwipeDismiss(panelRef, isSheet ? "down" : "left", handleClose);
 
   useEffect(() => {
     function onKey(e: KeyboardEvent) {
@@ -127,7 +139,7 @@ export default function CustomerDetailPanel({
       ref={panelRef}
       key={customer.id}
       dir="rtl"
-      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} absolute bottom-4 left-4 top-4 z-[1000] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 ${elevateClass(statusColor)}`}
+      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} sheet-on-mobile absolute bottom-4 left-4 top-20 z-[var(--z-panel)] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 ${elevateClass(statusColor)}`}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
         <h2 className="text-[length:var(--text-md)] font-bold leading-snug text-text">{customer.business_name}</h2>

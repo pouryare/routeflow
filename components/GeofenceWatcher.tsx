@@ -161,7 +161,7 @@ export default function GeofenceWatcher({
   return (
     <div
       dir="rtl"
-      className="absolute bottom-4 left-1/2 z-[1001] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
+      className="absolute bottom-4 left-1/2 z-[var(--z-prompt)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
     >
       <p className="text-[length:var(--text-sm)] text-text">
         شما نزدیک{" "}

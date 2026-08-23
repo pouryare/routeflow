@@ -25,6 +25,28 @@
      see MASTER.md "Facility marker". */
   --facility: #d6e6f5;
 
+  /* ---- Stacking order ------------------------------------------------------------
+     Every floating thing in the app, in one ordered list, because the alternative is
+     what this replaced: a dozen literal z-index values scattered across a dozen files,
+     each chosen against whatever its author happened to be looking at. That is how the
+     customer panel ended up at 1000 with the search box at 1001 -- so on a phone, where
+     both sit at the top of the screen, the panel's own title and close button were
+     underneath the search box and could not be tapped.
+
+     Read bottom to top. Anything added later belongs *in this list*, not next to it.
+
+     The 1000 floor clears Leaflet's own panes and controls, which top out at 800. ---- */
+  --z-map-chrome: 1000;      /* search box, map controls */
+  --z-map-overlay: 1010;     /* next-stop bar, bulk-edit bar */
+  --z-panel: 1020;           /* customer detail, district editor -- own the screen */
+  --z-sidebar: 1030;         /* covers a panel when opened over it */
+  --z-sidebar-toggle: 1035;  /* sits inside the sidebar's footprint and is what closes
+                                it, so it has to clear the thing it controls */
+  --z-prompt: 1040;          /* geofence arrival -- time-critical, beats all the above */
+  --z-lightbox: 1050;
+  --z-help: 1060;
+  --z-toast: 1070;
+
   /* type scale */
   --text-xs: 0.6875rem;
   --text-sm: 0.8125rem;
@@ -359,6 +381,57 @@ a:focus-visible {
 }
 .customer-panel-exit {
   animation: customer-panel-out 180ms var(--ease-out) both;
+}
+
+/* ---- Bottom sheet: the panel's shape on a phone.
+
+   A 320px card inset 16px from every edge is a desktop shape. On a phone it becomes a
+   near-full-screen rectangle whose top edge lands exactly where the search box and the
+   sidebar button already live -- so its own header was both visually and physically
+   underneath them. Stacking order alone would have made the buttons work again while
+   leaving the title covered.
+
+   A sheet anchored to the bottom sidesteps the collision rather than winning it: the
+   chrome keeps the top of the screen, the sheet takes the bottom, and neither has to
+   know about the other. It also puts the panel's controls within thumb reach, which the
+   top of a phone screen is not. ---- */
+@media (max-width: 639px) {
+  .sheet-on-mobile {
+    inset: auto 0 0 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    max-height: 85vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: 0;
+    /* Clears the home indicator on gesture-navigation phones, where the last row of a
+       sheet otherwise sits under the system bar. */
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  }
+
+  /* The grab handle. Purely a signal: it says "this came from the bottom edge and can go
+     back there", which is what makes the swipe-to-dismiss discoverable. */
+  .sheet-on-mobile::before {
+    content: "";
+    position: sticky;
+    top: 0;
+    display: block;
+    width: 36px;
+    height: 4px;
+    margin: -4px auto 8px;
+    border-radius: 999px;
+    background: var(--border-strong);
+  }
+
+  /* Rises from the edge it is attached to, rather than sliding in from the left as it
+     does on desktop. */
+  @keyframes customer-panel-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes customer-panel-out {
+    from { opacity: 1; transform: translateY(0); }
+    to { opacity: 0; transform: translateY(24px); }
+  }
 }
 
 /* ---- Modal (district editor): backdrop fade + card fade/scale. ---- */

@@ -125,7 +125,7 @@ export default function NextStopBar({
   return (
     <div
       dir="rtl"
-      className="pointer-events-none absolute bottom-8 left-1/2 z-[1040] flex w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 justify-center"
+      className="pointer-events-none absolute bottom-8 left-1/2 z-[var(--z-map-overlay)] flex w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 justify-center"
     >
       <div className="pointer-events-auto flex w-full items-center gap-2 rounded-[var(--radius-lg)] border border-border-strong bg-surface-raised/95 px-3 py-2 backdrop-blur elevate-accent">
         <span className="shrink-0 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">

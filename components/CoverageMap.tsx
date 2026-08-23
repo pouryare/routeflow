@@ -351,6 +351,7 @@ export default function CoverageMap({
   const [shapedMarkers, setShapedMarkers] = useState(false);
   const [driverMode, setDriverMode] = useState(false);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [searchExpanded, setSearchExpanded] = useState(false);
   // Per-browser working sets. Empty on the server; filled from storage on mount, like
   // every other preference on this page.
   const [pinnedIds, setPinnedIds] = useState<number[]>([]);
@@ -963,11 +964,14 @@ export default function CoverageMap({
 
   return (
     <div className="relative h-screen w-full overflow-hidden bg-bg">
+      {/* Stood down while the phone-sized search box has the top row. Two 40px controls
+          and a full-width input cannot share 100vw, and the input is the one being used. */}
       <button
         onClick={() => setSidebarOpen((v) => !v)}
         aria-label={sidebarOpen ? "بستن پنل" : "باز کردن پنل"}
         aria-expanded={sidebarOpen}
-        className="absolute right-4 top-4 z-[1001] flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:border-accent active:scale-[0.98]"
+        hidden={searchExpanded && !sidebarOpen}
+        className="absolute right-4 top-4 z-[var(--z-sidebar-toggle)] flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:border-accent active:scale-[0.98]"
       >
         {sidebarOpen ? "✕" : "☰"}
         {!sidebarOpen && dueReminders.length > 0 && (
@@ -984,6 +988,7 @@ export default function CoverageMap({
         onSelectDistrict={flyToDistrict}
         onLocationFound={handleLocationFound}
         inputRef={searchInputRef}
+        onExpandedChange={setSearchExpanded}
       />
 
       <GeofenceWatcher
@@ -995,7 +1000,7 @@ export default function CoverageMap({
 
       <aside
         ref={asideRef}
-        className={`absolute inset-y-0 right-0 z-[1000] flex w-80 flex-col gap-5 overflow-y-auto border-l border-border bg-surface/95 p-4 pt-16 backdrop-blur transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] ${
+        className={`absolute inset-y-0 right-0 z-[var(--z-sidebar)] flex w-80 flex-col gap-5 overflow-y-auto border-l border-border bg-surface/95 p-4 pt-16 backdrop-blur transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] ${
           sidebarOpen ? "sidebar-stagger translate-x-0" : "translate-x-full"
         }`}
       >
@@ -1009,6 +1014,19 @@ export default function CoverageMap({
               statuses, last-purchase dates -- comes from a spreadsheet somebody has to
               remember to import, and nothing goes visibly wrong when they forget. */}
           <DataFreshness syncedAt={newestSync(customers)} className="mt-2" />
+
+          {positionStatus === "denied" && (
+            <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--text-xs)] leading-5 text-crit">
+              <span aria-hidden="true">⚠</span>
+              {positionError ?? "دسترسی به موقعیت داده نشده"} — موقعیت شما روی نقشه نشان داده نمی‌شود.
+              <button
+                onClick={retryPosition}
+                className="rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+              >
+                تلاش دوباره
+              </button>
+            </p>
+          )}
 
           {/* Finds a section by name. Twelve folded sections is a better control surface
               than twelve open ones, but it is still twelve headings to scan past when
@@ -1944,7 +1962,7 @@ export default function CoverageMap({
       {bulkMode && bulkSelectedIds.size > 0 && (
         <div
           dir="rtl"
-          className="absolute bottom-4 left-1/2 z-[1050] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
+          className="absolute bottom-4 left-1/2 z-[var(--z-map-overlay)] flex w-[min(560px,calc(100vw-2rem))] -translate-x-1/2 flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
         >
           <span className="shrink-0 text-[length:var(--text-sm)] font-medium text-text">
             {bulkSelectedIds.size} منطقه انتخاب شده

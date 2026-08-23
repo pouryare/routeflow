@@ -91,7 +91,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         dir="rtl"
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed left-4 top-4 z-[2000] flex w-[calc(100%-2rem)] max-w-xs flex-col gap-2"
+        className="pointer-events-none fixed left-4 top-4 z-[var(--z-toast)] flex w-[calc(100%-2rem)] max-w-xs flex-col gap-2"
       >
         {toasts.map((t) => {
           const meta = VARIANT_META[t.variant];

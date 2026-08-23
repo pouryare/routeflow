@@ -6,8 +6,9 @@ import { RefObject, useEffect } from "react";
  *  wandered. */
 const MIN_DISTANCE_PX = 60;
 
-/** How much more horizontal than vertical the gesture has to be. Both panels this is
- *  used on scroll vertically, and a scroll that drifts sideways must not dismiss them. */
+/** How much more the gesture has to move along the dismissing axis than across it. Both
+ *  panels this is used on scroll vertically, and a scroll that drifts sideways must not
+ *  dismiss them -- nor a horizontal flick count as a downward one. */
 const DOMINANCE = 1.6;
 
 /** Past this, it stops reading as a flick and starts reading as a drag that changed its
@@ -25,11 +26,12 @@ const MAX_DURATION_MS = 700;
  *  scrolls, and getting that wrong costs the ability to scroll the panel at all -- a much
  *  worse outcome than an un-animated dismissal.
  *
- *  @param direction the way the panel leaves: "right" for one docked on the right edge.
+ *  @param direction the way the panel leaves: "right" for one docked on the right edge,
+ *                   "down" for a bottom sheet.
  */
 export function useSwipeDismiss(
   ref: RefObject<HTMLElement | null>,
-  direction: "left" | "right",
+  direction: "left" | "right" | "down",
   onDismiss: () => void,
   enabled = true
 ): void {
@@ -46,6 +48,13 @@ export function useSwipeDismiss(
       // Ignore anything multi-touch: that is a pinch or a two-finger scroll, and neither
       // is a dismissal.
       if (e.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+      // A downward drag inside a sheet that is scrolled past its top is a scroll, and
+      // always was going to be. Only from the very top does dragging down mean "put this
+      // away" -- the rule every native bottom sheet follows, for the same reason.
+      if (direction === "down" && el && el.scrollTop > 0) {
         tracking = false;
         return;
       }
@@ -66,9 +75,15 @@ export function useSwipeDismiss(
       const dy = touch.clientY - startY;
 
       if (Date.now() - startedAt > MAX_DURATION_MS) return;
-      if (Math.abs(dx) < MIN_DISTANCE_PX) return;
-      if (Math.abs(dx) < Math.abs(dy) * DOMINANCE) return;
-      if (direction === "right" ? dx <= 0 : dx >= 0) return;
+
+      // Along the dismissing axis, and across it.
+      const along = direction === "down" ? dy : dx;
+      const across = direction === "down" ? dx : dy;
+
+      if (Math.abs(along) < MIN_DISTANCE_PX) return;
+      if (Math.abs(along) < Math.abs(across) * DOMINANCE) return;
+      // Away from the edge the panel is docked to, never towards it.
+      if (direction === "left" ? along >= 0 : along <= 0) return;
 
       onDismiss();
     }

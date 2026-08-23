@@ -42,7 +42,7 @@ export default function ShortcutHelp({ onClose }: { onClose: () => void }) {
       role="dialog"
       aria-modal="true"
       aria-label="میان‌برهای صفحه‌کلید"
-      className="modal-enter fixed inset-0 z-[1300] flex items-center justify-center bg-black/70 p-4"
+      className="modal-enter fixed inset-0 z-[var(--z-help)] flex items-center justify-center bg-black/70 p-4"
       onClick={onClose}
     >
       <div

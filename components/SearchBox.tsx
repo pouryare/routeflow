@@ -48,6 +48,7 @@ export default function SearchBox({
   onSelectDistrict,
   onLocationFound,
   inputRef,
+  onExpandedChange,
 }: {
   customers: CustomerRow[];
   districts: DistrictFeature[];
@@ -58,6 +59,13 @@ export default function SearchBox({
    *  because the caller is what knows about keyboard shortcuts; this component only has
    *  to agree to be focused. */
   inputRef?: React.RefObject<HTMLInputElement | null>;
+  /** Fires when the phone-sized box opens or closes.
+   *
+   *  Expanded, it takes the whole top row -- the row the sidebar button also sits in. The
+   *  parent hides that button for the duration, which is the only way two things sharing
+   *  one strip can avoid landing on top of each other. Padding the text away from it
+   *  would leave the button covering an input the user is typing into. */
+  onExpandedChange?: (expanded: boolean) => void;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -66,6 +74,46 @@ export default function SearchBox({
   const [geoResults, setGeoResults] = useState<GeoResult[] | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
+  const localInputRef = useRef<HTMLInputElement>(null);
+
+  /** Collapsed to an icon on a phone until it is wanted.
+   *
+   *  Expanded, this box is a permanent 300px obstruction across the top of a map that is
+   *  already sharing that strip with the sidebar button -- and it is a control you reach
+   *  for occasionally, on a screen where the map is the point. Collapsed it costs a
+   *  40px circle; expanded it takes the whole width, which is more room than it ever had
+   *  squeezed in beside the sidebar button.
+   *
+   *  Desktop has the width to spare and keeps the box open, so this only ever engages
+   *  below the sheet breakpoint. */
+  const [isNarrow, setIsNarrow] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 639px)");
+    const apply = () => setIsNarrow(mq.matches);
+    // Reads a media query, which only exists in the browser -- there is no render in
+    // which this could be computed instead.
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+
+  const collapsed = isNarrow && !expanded;
+
+  function expand() {
+    setExpanded(true);
+    onExpandedChange?.(true);
+    // After paint, or there is nothing focusable yet.
+    window.setTimeout(() => (inputRef ?? localInputRef).current?.focus(), 0);
+  }
+
+  function collapse() {
+    setExpanded(false);
+    onExpandedChange?.(false);
+    setOpen(false);
+    setQuery("");
+  }
 
   const trimmed = query.trim();
   const isUrl = URL_RE.test(trimmed);
@@ -171,14 +219,40 @@ export default function SearchBox({
   return (
     <div
       ref={boxRef}
-      // Centered within the space left of the sidebar-toggle button (top-right, 40px
-      // wide + its own margin) rather than the full viewport -- centering on 100vw
-      // regardless of that button made the two overlap on narrow phone screens.
-      className="absolute left-4 right-[4.5rem] top-4 z-[1001] mx-auto w-72 max-w-[calc(100vw-5.5rem)]"
+      // Three arrangements, one element.
+      //
+      // Collapsed: a 40px button beside the sidebar toggle, top-right. Not top-left --
+      // that belongs to Leaflet's own control stack (zoom, locate, basemap), which runs
+      // 44px wide and 190px down the side and sits on top of anything put there.
+      //
+      // Expanded on a phone: nearly the full row, but starting clear of that same stack
+      // so opening the search never buries the locate button. The sidebar toggle is
+      // hidden by the parent for the duration, which is what frees the right end.
+      //
+      // Desktop: centred in the space left of the sidebar toggle, where it has always been.
+      className={
+        collapsed
+          ? "absolute right-[4.5rem] top-4 z-[var(--z-map-chrome)]"
+          : isNarrow
+            ? "absolute left-14 right-4 top-4 z-[var(--z-map-chrome)]"
+            : "absolute left-4 right-[4.5rem] top-4 z-[var(--z-map-chrome)] mx-auto w-72 max-w-[calc(100vw-5.5rem)]"
+      }
       dir="rtl"
     >
+      {collapsed ? (
+        <button
+          onClick={expand}
+          aria-label="جستجوی مشتری، منطقه یا آدرس"
+          aria-expanded={false}
+          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent active:scale-[0.98]"
+        >
+          ⌕
+        </button>
+      ) : (
+      <>
+      <div className="relative">
       <input
-        ref={inputRef}
+        ref={inputRef ?? localInputRef}
         value={query}
         onChange={(e) => {
           setQuery(e.target.value);
@@ -187,8 +261,22 @@ export default function SearchBox({
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder="جستجوی مشتری، منطقه، آدرس یا لینک نقشه…"
-        className="w-full rounded-[var(--radius-md)] border border-border bg-surface-raised px-3 py-2 text-[length:var(--text-sm)] text-text outline-none elevate-accent transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
+        className={`w-full rounded-[var(--radius-md)] border border-border bg-surface-raised py-2 pe-3 text-[length:var(--text-sm)] text-text outline-none elevate-accent transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent ${
+          isNarrow ? "ps-9" : "ps-3"
+        }`}
       />
+      {/* Only on a phone, where the box was opened from an icon and so needs a way back
+          to one. On a desktop it was never collapsed and there is nothing to return to. */}
+      {isNarrow && (
+        <button
+          onClick={collapse}
+          aria-label="بستن جستجو"
+          className="absolute inset-y-0 left-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+        >
+          ✕
+        </button>
+      )}
+      </div>
 
       {open && trimmed && (
         <div className="mt-1 max-h-80 overflow-y-auto rounded-[var(--radius-md)] border border-border bg-surface-raised elevate-accent">
@@ -267,6 +355,8 @@ export default function SearchBox({
             </div>
           )}
         </div>
+      )}
+      </>
       )}
     </div>
   );

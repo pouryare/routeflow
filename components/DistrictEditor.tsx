@@ -66,7 +66,7 @@ export default function DistrictEditor({
   return (
     <div
       ref={backdropRef}
-      className={`${leaving ? "modal-exit" : "modal-backdrop-enter"} absolute inset-0 z-[1100] flex items-center justify-center bg-black/50 p-4`}
+      className={`${leaving ? "modal-exit" : "modal-backdrop-enter"} absolute inset-0 z-[var(--z-panel)] flex items-center justify-center bg-black/50 p-4`}
       onClick={handleClose}
     >
       <div
