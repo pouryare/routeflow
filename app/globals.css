@@ -318,13 +318,52 @@ a:focus-visible {
   line-height: 1;
   filter: drop-shadow(0 0 6px var(--accent));
 }
-.basemap-toggle-control a {
+.basemap-toggle-control a,
+.layers-toggle-control a {
   display: flex !important;
   align-items: center;
   justify-content: center;
   font-size: 15px;
   line-height: 1;
   text-decoration: none;
+}
+
+/* ---- The layers button, and the count of layers you have moved off their defaults. ---- */
+.layers-toggle-control a {
+  position: relative;
+}
+.layers-toggle-control a.is-open {
+  color: var(--accent);
+}
+.layers-badge {
+  position: absolute;
+  top: -5px;
+  inset-inline-start: -5px;
+  min-width: 15px;
+  height: 15px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--bg);
+  font-family: var(--font-jetbrains-mono), monospace;
+  font-size: 9px;
+  font-weight: 700;
+  line-height: 15px;
+  text-align: center;
+}
+
+/* ---- Street names over a dark map.
+
+   CARTO publish two label-only tile sets and neither is usable here as shipped: the
+   "light" one is slate grey and the "dark" one near-black, both drawn to sit on a pale
+   basemap. Inverting the near-black set turns the text near-white and leaves the
+   transparency untouched, since `invert()` works on colour channels and not on alpha --
+   so the halo inverts with it and keeps the text legible over satellite imagery too.
+
+   Cheaper and more honest than the alternative, which was to render our own label tiles
+   from vector data for the sake of one colour. ---- */
+.tiles-inverted {
+  filter: invert(1);
 }
 
 /* ---- Marker cluster bubble: identity-neutral (accent hue), matches the me-marker/

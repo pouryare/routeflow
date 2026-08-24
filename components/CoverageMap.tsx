@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { MapContainer, TileLayer, GeoJSON, Marker, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
 import { LatLngBounds, divIcon, geoJSON } from "leaflet";
 import type { DivIcon, Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -45,7 +45,6 @@ import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
-import BasemapToggleControl, { Basemap } from "./BasemapToggleControl";
 import GeofenceWatcher from "./GeofenceWatcher";
 import NotificationToggle from "./NotificationToggle";
 import NavAppSetting, { useNavApp } from "./NavAppSetting";
@@ -54,6 +53,20 @@ import { useToast } from "./ToastProvider";
 import { corridorBandFromPath, distanceKm, distanceToPathKm, formatDistanceKm } from "@/lib/geo";
 import type { LatLng } from "@/lib/geo";
 import { fetchDrivingRoute, type DrivingRoute } from "@/lib/osrm";
+import {
+  BASEMAP_KEY,
+  LABELS_TILE,
+  LAYERS_KEY,
+  basemapDef,
+  changedFromDefault,
+  isBasemapId,
+  parseLayerPrefs,
+  type BasemapId,
+  type LayerPrefs,
+  type OverlayId,
+} from "@/lib/mapLayers";
+import LayersPanel, { LayerHint, LayersControl } from "./LayersPanel";
+import TrafficZoneLayer, { useTrafficZones } from "./TrafficZoneLayer";
 import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
 import { FACILITY_ART, facilityIcon } from "./facilityIcon";
 import { useSwipeDismiss } from "./useSwipeDismiss";
@@ -276,16 +289,6 @@ function otherFacilityDistance(f: FacilityRow, all: FacilityRow[]): { other: Fac
     .sort((a, b) => a.km - b.km)[0];
 }
 
-const SATELLITE_TILE = {
-  url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-  attribution: "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
-};
-const DARK_TILE = {
-  url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-  attribution:
-    '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
-};
-
 export default function CoverageMap({
   initialDistricts,
   initialCustomers,
@@ -313,8 +316,11 @@ export default function CoverageMap({
   const linkAppliedRef = useRef({ customer: false, district: false });
 
   const [facilityGeofenceOn, setFacilityGeofenceOn] = useState(false);
-  const [corridorOn, setCorridorOn] = useState(false);
   const [corridorWidthKm, setCorridorWidthKm] = useState(5);
+  const [layers, setLayers] = useState<LayerPrefs>(() => parseLayerPrefs(null));
+  const [layersOpen, setLayersOpen] = useState(false);
+  const heatmapOn = layers.heatmap;
+  const corridorOn = layers.corridor;
   const [districtProps, setDistrictProps] = useState<DistrictProperties[]>(initialDistricts);
   const [geomVersion, setGeomVersion] = useState(geometryVersion);
   const [geometry, setGeometry] = useState<DistrictGeometryMap | null>(null);
@@ -337,9 +343,8 @@ export default function CoverageMap({
   const [cityBoundary, setCityBoundary] = useState<GeoJSON.Feature | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dueReminders, setDueReminders] = useState<DueReminder[]>([]);
-  const [heatmapOn, setHeatmapOn] = useState(false);
   const [heatmapByDebt, setHeatmapByDebt] = useState(false);
-  const [basemap, setBasemap] = useState<Basemap>("dark");
+  const [basemap, setBasemap] = useState<BasemapId>("dark");
   const [nearbyRadiusKm, setNearbyRadiusKm] = useState(2);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<number>>(new Set());
@@ -559,8 +564,20 @@ export default function CoverageMap({
 
   useEffect(() => {
     setGeofenceOn(localStorage.getItem("coverage_geofence_on") === "1");
-    setCorridorOn(localStorage.getItem("coverage_corridor_on") === "1");
     setFacilityGeofenceOn(localStorage.getItem("coverage_geofence_sites") === "1");
+
+    // The heatmap and the corridor each had their own key before every layer moved into
+    // one panel. Carry those two forward the first time, so a map someone left with the
+    // corridor on comes back with it on.
+    const storedLayers = localStorage.getItem(LAYERS_KEY);
+    const restored = parseLayerPrefs(storedLayers);
+    if (!storedLayers) {
+      restored.corridor = localStorage.getItem("coverage_corridor_on") === "1";
+      restored.heatmap = localStorage.getItem("coverage_heatmap_on") === "1";
+    }
+    setLayers(restored);
+    const storedBasemap = localStorage.getItem(BASEMAP_KEY);
+    if (isBasemapId(storedBasemap)) setBasemap(storedBasemap);
     // Defaults on -- it costs nothing on a day with no plan, since the bar renders
     // nothing at all then.
     setNextStopOn(localStorage.getItem("coverage_nextstop_off") !== "1");
@@ -587,6 +604,20 @@ export default function CoverageMap({
   useEffect(() => {
     localStorage.setItem("coverage_geofence_on", geofenceOn ? "1" : "0");
   }, [geofenceOn]);
+
+  /** One toggle for every layer, so nothing has to remember its own storage key. */
+  const setLayer = useCallback((id: OverlayId, on: boolean) => {
+    setLayers((prev) => {
+      const next = { ...prev, [id]: on };
+      localStorage.setItem(LAYERS_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
+  const chooseBasemap = useCallback((id: BasemapId) => {
+    setBasemap(id);
+    localStorage.setItem(BASEMAP_KEY, id);
+  }, []);
 
   // The class goes on <html>, not on a wrapper here: it has to reach the Leaflet
   // popups, the toasts and the bottom bar, none of which render inside this tree.
@@ -945,6 +976,12 @@ export default function CoverageMap({
     // route rather than asking for it again.
   }, [corridorOn, corridorEnds, corridorKey, corridorAnswer]);
 
+  // Fetched only once either zone is asked for, so a map nobody switches them on never
+  // pays for the file.
+  const { zones: trafficZones, status: zoneStatus } = useTrafficZones(
+    layers.traffic_zone || layers.low_emission
+  );
+
   const corridorRoute = corridorAnswer?.key === corridorKey ? corridorAnswer.route : null;
   const corridorRouting = corridorOn && corridorKey !== null && corridorAnswer?.key !== corridorKey;
 
@@ -1018,7 +1055,18 @@ export default function CoverageMap({
   }
 
   /** A panel is up and is the thing being read. Map chrome stands down for it. */
-  const panelOwnsScreen = selectedCustomer !== null || selectedDistrict !== null;
+  const panelOwnsScreen = selectedCustomer !== null || selectedDistrict !== null || layersOpen;
+
+  const activeBasemap = basemapDef(basemap);
+  // Redundant over a basemap that already prints its own names, and drawing both puts two
+  // slightly different label sets on top of each other.
+  const showLabels = layers.labels && !activeBasemap.hasLabels;
+  const shownZones = useMemo(() => {
+    const on = new Set<string>();
+    if (layers.traffic_zone) on.add("limited_traffic");
+    if (layers.low_emission) on.add("low_emission");
+    return on;
+  }, [layers.traffic_zone, layers.low_emission]);
 
   return (
     <div className="map-viewport relative w-full overflow-hidden bg-bg">
@@ -1459,24 +1507,7 @@ export default function CoverageMap({
               <div className="mt-3 border-t border-border pt-3">
                 <div className="flex items-center justify-between gap-2">
                   <span className="text-[length:var(--text-sm)] text-text">کریدور بین انبارها</span>
-                  <button
-                    onClick={() => {
-                      const next = !corridorOn;
-                      setCorridorOn(next);
-                      localStorage.setItem("coverage_corridor_on", next ? "1" : "0");
-                    }}
-                    role="switch"
-                    aria-checked={corridorOn}
-                    aria-label="نمایش کریدور بین انبارها"
-                    className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                      corridorOn ? "border-accent bg-accent" : "border-border bg-surface"
-                    }`}
-                  >
-                    <span
-                      className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                      style={{ right: corridorOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                    />
-                  </button>
+                  {!corridorOn && <LayerHint onOpen={() => setLayersOpen(true)} what="کریدور" compact />}
                 </div>
 
                 {corridorOn && (
@@ -1536,26 +1567,11 @@ export default function CoverageMap({
             </p>
         </CollapsibleSection>
 
-        <CollapsibleSection title="نقشه حرارتی" icon="🔥" storageKey="heatmap" keywords="تراکم بدهی heatmap">
-            <div className="flex items-center justify-between">
-              <span className="text-[length:var(--text-sm)] text-text">نمایش تراکم مشتریان</span>
-              <button
-                onClick={() => setHeatmapOn((v) => !v)}
-                role="switch"
-                aria-checked={heatmapOn}
-                aria-label="نمایش نقشه حرارتی"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  heatmapOn ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: heatmapOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-            {heatmapOn && (
-              <label className="mt-2 flex items-center gap-2 text-[length:var(--text-xs)] text-text-muted">
+        {/* Switching it on lives in the layers panel with every other layer; how it is
+            weighted is a property of the layer, and belongs next to the data it weights. */}
+        <CollapsibleSection title="نقشه حرارتی" icon="🔥" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
+            {heatmapOn ? (
+              <label className="flex items-center gap-2 text-[length:var(--text-sm)] text-text-muted">
                 <input
                   type="checkbox"
                   checked={heatmapByDebt}
@@ -1564,6 +1580,8 @@ export default function CoverageMap({
                 />
                 وزن‌دهی بر اساس شدت بدهی
               </label>
+            ) : (
+              <LayerHint onOpen={() => setLayersOpen(true)} what="نقشه حرارتی" />
             )}
         </CollapsibleSection>
 
@@ -1800,14 +1818,38 @@ export default function CoverageMap({
           // polygons are styled entirely through Leaflet's own style options.
           preferCanvas
         >
+          {/* Keyed on the basemap: react-leaflet updates a TileLayer's url in place, and
+              swapping between providers with different subdomain rules leaves the old
+              rotation behind. Remounting is cheap and always right. */}
           <TileLayer
-            attribution={basemap === "satellite" ? SATELLITE_TILE.attribution : DARK_TILE.attribution}
-            url={basemap === "satellite" ? SATELLITE_TILE.url : DARK_TILE.url}
-            subdomains={basemap === "satellite" ? undefined : "abcd"}
-            maxZoom={20}
+            key={activeBasemap.id}
+            attribution={activeBasemap.attribution}
+            url={activeBasemap.url}
+            subdomains={activeBasemap.subdomains ?? "abc"}
+            maxZoom={activeBasemap.maxZoom}
           />
 
-          {mantagheFeatures && (
+          {/* Names go in their own pane above the district fills (overlayPane, 400) and
+              below the markers (600). In the tile pane they would be tinted by every
+              coverage colour drawn over them, which is most of the city.
+
+              The tiles are CARTO's near-black label set, inverted in CSS -- see
+              lib/mapLayers.ts for why neither of their ready-made sets works here. */}
+          {showLabels && (
+            <Pane name="labels" style={{ zIndex: 450, pointerEvents: "none" }}>
+              <TileLayer
+                url={LABELS_TILE.url}
+                attribution={LABELS_TILE.attribution}
+                subdomains={LABELS_TILE.subdomains}
+                maxZoom={LABELS_TILE.maxZoom}
+                className="tiles-inverted"
+              />
+            </Pane>
+          )}
+
+          <TrafficZoneLayer zones={trafficZones} status={zoneStatus} show={shownZones} />
+
+          {layers.districts && mantagheFeatures && (
             <GeoJSON
               key={`mantaghe-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
               data={mantagheFeatures as any}
@@ -1815,7 +1857,7 @@ export default function CoverageMap({
               onEachFeature={onEachDistrict as any}
             />
           )}
-          {mahalleFeatures && (
+          {layers.districts && mahalleFeatures && (
             <GeoJSON
               key={`mahalle-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
               data={mahalleFeatures as any}
@@ -1873,7 +1915,7 @@ export default function CoverageMap({
             spiderLegPolylineOptions={{ weight: 1.5, color: "#546271", opacity: 0.9 }}
             iconCreateFunction={clusterIcon as any}
           >
-            {filteredCustomers
+            {(layers.customers ? filteredCustomers : [])
               // The selected customer is drawn outside this group, below.
               .filter((c) => c.lat && c.lng && c.id !== selectedCustomer?.id)
               .map((c) => (
@@ -1889,7 +1931,10 @@ export default function CoverageMap({
           {/* Outside the cluster group on purpose: the customer whose panel is open is
               the one thing on this map that must never be swallowed into a bubble. That
               is exactly what would happen to a customer opened from the sidebar or from a
-              ?c= link while the map sits at a zoom where their neighbours cluster. */}
+              ?c= link while the map sits at a zoom where their neighbours cluster.
+
+              Drawn even with the customers layer switched off: whatever you turned off,
+              you did not mean the one you are looking at. */}
           {selectedCustomer?.lat && selectedCustomer?.lng && (
             <Marker
               position={[selectedCustomer.lat, selectedCustomer.lng]}
@@ -1902,7 +1947,7 @@ export default function CoverageMap({
           {/* Outside the cluster group and lifted above it: these two are landmarks the
               rest of the map is read against, so they must never be swallowed into a
               customer bubble or hidden behind a blip that happens to overlap them. */}
-          {initialFacilities.map((f) => {
+          {layers.facilities && initialFacilities.map((f) => {
             const rel = otherFacilityDistance(f, initialFacilities);
             return (
               <Marker
@@ -1985,7 +2030,7 @@ export default function CoverageMap({
           <MyLocationMarker />
           <LocateControl />
           <FullscreenControl />
-          <BasemapToggleControl mode={basemap} onToggle={() => setBasemap((m) => (m === "dark" ? "satellite" : "dark"))} />
+          <LayersControl open={layersOpen} count={changedFromDefault(layers)} onClick={() => setLayersOpen((v) => !v)} />
           <DebugMapExpose />
         </MapContainer>
 
@@ -2000,6 +2045,17 @@ export default function CoverageMap({
           />
         )}
       </div>
+
+      <LayersPanel
+        open={layersOpen}
+        onClose={() => setLayersOpen(false)}
+        basemap={basemap}
+        onBasemap={chooseBasemap}
+        layers={layers}
+        onLayer={setLayer}
+        zoneStatus={zoneStatus}
+        hasCorridor={corridorEnds !== null}
+      />
 
       {selectedDistrict && (
         <DistrictEditor

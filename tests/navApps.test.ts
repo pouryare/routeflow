@@ -23,8 +23,12 @@ describe("navigateUrl", () => {
     expect(navigateUrl("waze", dest)).toBe("https://waze.com/ul?ll=35.685409,52.017364&navigate=yes");
   });
 
-  it("builds a Neshan link", () => {
-    expect(navigateUrl("neshan", dest)).toBe("https://neshan.org/maps/@35.685409,52.017364,16z");
+  it("builds a Neshan link that sets a destination rather than only centring the map", () => {
+    // The `/@lat,lng,16z` view URL this used to emit opened the app at wherever it was
+    // left. The routing path is what makes it go somewhere.
+    expect(navigateUrl("neshan", dest)).toBe(
+      "https://neshan.org/maps/@35.685409,52.017364,15.3z/routing/destination/35.685409,52.017364"
+    );
   });
 
   it("builds a Balad link", () => {

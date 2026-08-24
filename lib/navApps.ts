@@ -6,26 +6,30 @@
  *
  *  ## On the URL formats below
  *
- *  Google Maps and Waze are built from their vendors' own published URL APIs, so those
- *  two are certain.
+ *  Google Maps and Waze are built from their vendors' own published URL APIs.
  *
- *  Neshan and Balad publish no English deep-link documentation that could be checked
- *  from here, and neither service is reachable from this server to test against. Their
- *  formats below are the ones this codebase's own link *parser* already handles
- *  (lib/geoLinks.ts) -- which is evidence, since that parser was written against real
- *  links pasted from those apps, but it is evidence about what they emit, not proof of
- *  what they accept.
+ *  Neshan's was wrong until it was tested in the field. It used to be
+ *  `neshan.org/maps/@lat,lng,16z`, guessed from the shape of what the link *parser*
+ *  handles -- which is evidence about what Neshan emits, not about what it accepts, and
+ *  in this case the app opened without going anywhere. Neshan's own service settles it:
+ *  `nshn.ir/?lat=..&lng=..` redirects to `neshan.org/maps/share/lat,lng`, and the
+ *  routing form redirects to a `/routing/destination/` path. All three of neshan.org,
+ *  maps.neshan.org and nshn.ir publish assetlinks.json declaring
+ *  `delegate_permission/common.handle_all_urls` for the Neshan package, so those links
+ *  open the app rather than a browser tab.
  *
- *  Two things follow from that, and both are deliberate:
+ *  Balad's was confirmed by opening it on a phone.
+ *
+ *  Two things stay, and both are deliberate:
  *
  *  1. `system` exists, and it is the honest fallback. A geo: URI is the OS-level
  *     standard (RFC 5870); on Android it opens the app chooser listing every navigation
- *     app actually installed, Neshan and Balad included. It cannot be wrong about a
- *     format because it does not encode one.
+ *     app actually installed. It cannot be wrong about a format because it does not
+ *     encode one.
  *
  *  2. Each provider is testable from the settings screen against a known coordinate, so
  *     a format that turns out to be wrong is found in five seconds on the sofa rather
- *     than at a junction.
+ *     than at a junction. That is how this one was found.
  */
 
 export type NavAppId = "google" | "waze" | "neshan" | "balad" | "system";
@@ -61,16 +65,16 @@ export const NAV_APPS: NavApp[] = [
   {
     id: "neshan",
     label: "نشان",
-    note: "نقطه را در نشان باز می‌کند. هر بار یک مقصد.",
+    note: "مسیریابی را در نشان شروع می‌کند. هر بار یک مقصد.",
     supportsWaypoints: false,
-    verified: false,
+    verified: true,
   },
   {
     id: "balad",
     label: "بلد",
     note: "نقطه را در بلد باز می‌کند. هر بار یک مقصد.",
     supportsWaypoints: false,
-    verified: false,
+    verified: true,
   },
   {
     id: "waze",
@@ -112,9 +116,12 @@ export function navigateUrl(app: NavAppId, dest: LatLngPoint, label?: string): s
       return `https://waze.com/ul?ll=${pair(dest)}&navigate=yes`;
 
     case "neshan":
-      // Mirrors Google's "/@lat,lng,zoom" shape, which is what lib/geoLinks.ts already
-      // parses out of real Neshan share links.
-      return `https://neshan.org/maps/@${pair(dest)},16z`;
+      // Sets the destination as well as centring the map, which is what the Google and
+      // Waze links here do and what "navigate there" is asked for. The bare
+      // `/@lat,lng,16z` view URL this used to emit centred nothing: Neshan's router
+      // wants the full `<zoom>z` segment followed by a `/routing/destination/` path,
+      // and silently opened the app at wherever it was left otherwise.
+      return `https://neshan.org/maps/@${pair(dest)},15.3z/routing/destination/${pair(dest)}`;
 
     case "balad":
       // The separate latitude=/longitude= query shape, likewise taken from what the

@@ -136,7 +136,13 @@ self.addEventListener("fetch", (event) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
 
-  if (url.hostname.endsWith("basemaps.cartocdn.com") || url.hostname === "server.arcgisonline.com") {
+  // OSM's own tile server asks that clients cache heavily rather than re-request, so this
+  // is politeness as much as offline support.
+  if (
+    url.hostname.endsWith("basemaps.cartocdn.com") ||
+    url.hostname === "server.arcgisonline.com" ||
+    url.hostname === "tile.openstreetmap.org"
+  ) {
     event.respondWith(cacheFirst(request, TILE_CACHE));
     return;
   }
