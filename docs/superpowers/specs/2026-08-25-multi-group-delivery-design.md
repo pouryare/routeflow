@@ -18,7 +18,7 @@ van stock and workbook write-back (1), and live driver location (2).
 | Who assigns | Both — group managers within their group, owner anywhere, and the owner can override. |
 | Shared password | Retired. Named accounts only, with one migration release where `APP_PASSWORD` still works as an owner login. |
 | Tracking | PWA + wake lock + offline queue. Honest "last seen N min ago" when it gaps. No native app for now. |
-| Workbook write-back | The app writes the `.xlsx` directly (§4). |
+| Workbook write-back | The app never writes the workbook. It emits a three-column paste-in block (§4). Direct writing was chosen first, then abandoned on measured evidence — see §4.1. |
 | فروش فوری | In Phase 1, tied to van stock (§5). |
 
 ---
@@ -265,104 +265,82 @@ basement loading bay who marks a stop delivered cannot lose it.
 
 ---
 
-## 4. Phase 1b — Writing back to the workbook
+## 4. Phase 1b — Getting delivery results into the workbook
 
-The app writes `سیستم فروش و انبار.xlsx` directly. This is the riskiest component in the
-design: the workbook is the business's accounting system, and the app is not its only
-writer.
+The app records what was delivered and by whom. `پورسانت` pays drivers off `فروش`. Those
+two facts have to meet. This section is how — and, first, how *not*.
 
-### 4.1 Known hazards
+### 4.1 Why the app does not write the workbook
 
-1. **exceljs re-serialises the whole workbook.** It does not round-trip charts, pivot
-   tables, conditional formatting or data validation faithfully. `داشبورد` is the most
-   likely casualty.
-2. **Formulas are not recalculated** by exceljs; cached results are preserved. A written
-   workbook can therefore show stale derived values until opened in Excel.
-3. **The canonical workbook lives in OneDrive, not on this machine** (§10). Local copies
-   are stale snapshots — the one in `/root/` was missing seven columns. Any write must go
-   to the OneDrive copy, and a local write would be written to the wrong file entirely.
-4. **Writing back to a OneDrive share link is not solved.** `lib/oneDriveFetch.ts` only
-   *reads*, via an anonymous share-link redeem. Uploading needs a genuine write path
-   (Graph API with OAuth, or a synced local copy) that does not exist yet — see §4.5.
+The original decision was for the app to write the `.xlsx` directly. That was tested and
+abandoned. Two independent findings killed it:
 
-### 4.2 Mandatory guards
+**The cell-level Excel API does not support this account.** Microsoft Graph can patch
+individual ranges — `PATCH /me/drive/items/{id}/workbook/worksheets('فروش')/range(address='L3')`
+— which would have been ideal: Excel's own engine applies the edit, nothing else is
+touched. But the workbook sits on **consumer** OneDrive (`onedrive.live.com/personal/…`),
+and the Graph docs are explicit: *"Support for workbooks stored in OneDrive Consumer
+platform is still not available."* The call returns `FileOpenUserUnauthorized`. Only
+OneDrive for Business and SharePoint are supported.
 
-These are not optional hardening; without them this feature can destroy the accounting
-file.
+That leaves whole-file download-and-replace as the only automated path — and:
 
-- **Never write in place.** Read → modify → write to a temporary file → re-open and
-  verify → atomic `rename()` over the original. Keep the prior version as a timestamped
-  backup under `data/workbook-backups/`.
-- **Content-hash guard.** Record the SHA-256 of the workbook at read time; refuse to
-  write if it no longer matches, because someone edited it meanwhile. Surface a clear
-  "the file changed, re-import first" error. This matters more than usual here: the
-  workbook is edited in Excel Online by people who are not using this app.
-- **Pre-flight structure check.** Verify sheet names, the header row of `فروش`, and that
-  the target row's `شماره سفارش` (column B) matches the stop's `order_no` before touching
-  any cell. Refuse the whole write on any mismatch — never a partial write.
-- **Write only `فروش`.** Columns L, Q, R, S, U (§4.3). Never the derived sheets.
-- **One configured source.** `ONEDRIVE_SALES_FILE_URL` (§10) is the only address of the
-  workbook. Never a local path, never a value from the request body.
-- **Dry-run mode first.** The write path reports exactly which cells it would change,
-  and the owner confirms, before anything is written.
+**exceljs cannot round-trip this workbook.** Measured against the live file on
+2026-08-25, reading it and writing it back out with a single cell changed:
 
-### 4.3 Fidelity test — a gate, not a nicety
+| Part | Live | After round-trip |
+|---|---|---|
+| charts | 3 | **0 — destroyed** |
+| drawings | 2 | **0 — destroyed** |
+| dataValidation | 6 | **12 — mangled** |
+| conditionalFormatting | 9 | 9 — survived |
+| worksheets | 13 | 13 — survived |
 
-The commission columns already exist and are correct (§1.2, §1.3), so no workbook schema
-change is needed. What remains is proving that a round-trip through exceljs does not
-damage the file.
+`داشبورد` is blanked and the `فروش` column-D dropdown is corrupted. This is not a risk to
+mitigate; it is a measured failure. **No automated write path to this workbook is safe,
+and none should be built** until the workbook moves to a Microsoft 365 Business account,
+at which point §4.1's first paragraph becomes available and this section can be revisited.
 
-**Before any write to the real workbook**, run the one-time fidelity test: take a copy of
-the live file, write it through the exceljs path, open it in Excel, and confirm that
-`داشبورد`, all formatting, data validation dropdowns (column D depends on one) and every
-formula survived. If they do not, the write-back falls back to producing a paste-in
-sheet, and that outcome is reported rather than worked around.
+### 4.2 What replaces it: a paste-in block
 
-### 4.4 What gets written
+The app owns delivery status and driver attribution. Excel keeps owning money. The
+handover is three columns of plain text.
 
-Exactly three input cells per delivered stop, matched on `شماره سفارش` (column B):
+1. The app reads the live workbook (`lib/oneDriveFetch.ts`, §10) and maps each
+   `شماره سفارش` to its `فروش` row number.
+2. It emits three single-column blocks covering rows 3–302 — `L` (وضعیت ارسال),
+   `P` (فروش فوری), `T` (راننده تحویل‌دهنده) — each carrying the value already in the
+   workbook, with the run's results merged in.
+3. The owner pastes three times in Excel Online: at `L3`, `P3`, `T3`.
+4. `O`, `Q`, `R`, `S` and `U` recalculate on their own. Commission is correct, charts,
+   dropdowns and conditional formatting are never touched.
 
-| Cell | Value |
-|---|---|
-| `L` وضعیت ارسال | `تحویل‌شده` |
-| `T` راننده تحویل‌دهنده | the driver's name from `همکاران`, matched via `users.staff_code` |
-| `P` فروش فوری | `بله` for a van sale (§5), otherwise left blank |
+**Full columns rather than only the changed rows**, because scattered single-cell pastes
+are error-prone and slow. Emitting the existing value for unchanged rows is safe here and
+*only* here: `L`, `P` and `T` are the three input columns of `فروش` with no formulas in
+them (§1.2). Nothing else in the workbook may be emitted this way.
 
-Nothing else. `O`, `Q`, `R`, `S` and `U` are formulas that compute weight, salesperson,
-and both commissions on their own (§1.3) — the app writing any of them would destroy the
-calculation it is trying to feed.
+**Read-before-emit is mandatory.** The block is only valid against the workbook revision
+it was generated from. Record the source SHA-256 on the export and show it on screen; if
+the workbook has changed since, regenerate rather than paste a stale block. Row alignment
+is the whole correctness argument, and a row inserted in `فروش` invalidates it.
 
-Failed stops leave all three cells untouched, so the order stays on `ارسال امروز` for the
-next run.
+### 4.3 UI
 
-`T` is written on **every** delivered stop, never left blank on the assumption that a
-default is fine: a blank `T` attributes the delivery to یوسف (§1.3), which is a payroll
-error once a second driver exists.
+A «خروجی برای اکسل» panel on the dispatch page: pick a date, see the three blocks with a
+copy button each, plus a plain-language summary — "۱۴ تحویل، ۲ ناموفق، ۳ فروش فوری" — and
+a warning banner if the workbook changed since the block was generated.
 
-### 4.5 Open: how the write actually reaches OneDrive
+Failed stops are excluded entirely, so the order stays on `ارسال امروز` for the next run.
 
-`lib/oneDriveFetch.ts` reads an anonymous share link by redeeming a cookie and following
-redirects. **There is no equivalent write path**, and the anonymous share-link mechanism
-does not offer one — uploading requires an authenticated Microsoft Graph call.
-
-Three options, in order of preference:
-
-1. **Graph API with a registered app and OAuth refresh token.** The real fix. Costs an
-   Azure app registration and a consent flow, and the token needs storing and refreshing.
-2. **A synced local copy** — OneDrive client on this host, app writes the local file, the
-   client syncs it up. No new auth, but it reintroduces the sync-race hazard and depends
-   on a sync client running reliably on a headless server.
-3. **Export a paste-in sheet** — the app produces the `L`/`T`/`P` values keyed by
-   `شماره سفارش` and the owner pastes them in. No new auth, no corruption risk, but the
-   daily reconciliation work stays manual.
-
-This must be decided before §4 is implemented. It does not block Phase 0 or §3.
+`T` is emitted for **every** delivered stop, never left blank: a blank `T` attributes the
+delivery to یوسف (§1.3), which is a payroll error once a second driver exists.
 
 ---
 
 ## 5. Phase 1c — Van stock and فروش فوری
 
-Built on §1.4: the app owns the *split*, never the total.
+Built on §1.5: the app owns the *split*, never the total.
 
 ### 5.1 Schema
 
@@ -388,10 +366,13 @@ Built on §1.4: the app owns the *split*, never the total.
    commission rate.
 4. **Reconcile** at end of day: expected on-hand vs counted returns. A discrepancy is
    recorded, not silently absorbed.
-5. **Export**: instant sales become new `فروش` rows via §4, with `P` = `بله` and `T` =
-   the driver, so the workbook applies the higher فروش فوری rate and pays no salesperson
-   (§1.3). This is the one case where the write-back *appends* rather than updates, and
-   it is the highest-risk write — gate it behind the same dry-run confirmation.
+5. **Export**: an instant sale has no existing `فروش` row, so unlike §4.2 it cannot be a
+   column paste. The app emits it as a **new-row block** — a full A–L row in `فروش`
+   column order, with `P` = `بله` and `T` = the driver — to be pasted at the first empty
+   row. The formula columns (`F`, `H`, `I`, `J`, `M`, `N`, `O`, `Q`, `R`, `S`, `U`) are
+   left out of the block and must be filled down by dragging, exactly as when adding a
+   sale by hand. Document that step in the UI; it is the one place the operator has to do
+   something more than paste.
 
 ### 5.3 Scope note
 
@@ -463,17 +444,20 @@ No CSP change is needed; every new endpoint is `'self'` (`next.config.ts`).
 1. **Cross-group leakage is the main danger.** ~25 existing routes plus several server
    components return unscoped data today. Missing one is a silent breach, not a visible
    bug.
-2. **The workbook write-back can destroy the accounting file.** §4.1–4.4 exist for this
-   reason. The fidelity test in §4.3 is a gate, not a nicety, and the write path to
-   OneDrive is still an open question (§4.5).
-3. **A blank `راننده تحویل‌دهنده` silently pays یوسف.** `U` defaults to `همکاران` C6
+2. **Nothing may write the workbook automatically** (§4.1 — measured). If a future change
+   proposes it, re-run the round-trip test first; the answer is currently "it destroys
+   `داشبورد`".
+3. **Row alignment is the correctness argument for the paste-in block.** A row inserted
+   into `فروش` between generating and pasting silently writes every value one row off.
+   The SHA-256 check in §4.2 is what prevents it and is not optional.
+4. **A blank `راننده تحویل‌دهنده` silently pays یوسف.** `U` defaults to `همکاران` C6
    whenever `T` is blank (§1.3). Every delivered stop must write `T`, or one driver is
    credited with everyone's work.
-4. **Background GPS in a browser is unreliable.** The wake-lock approach is the best a
+5. **Background GPS in a browser is unreliable.** The wake-lock approach is the best a
    PWA can do. If gaps prove unacceptable, the server side and the dispatch map are
    unchanged by a later Capacitor wrapper — only the client collector is replaced.
-5. **Per-group Excel files can collide** on `کد مشتری` in the global upsert.
-6. **The database becomes materially more valuable** — the only record of what a driver
+6. **Per-group Excel files can collide** on `کد مشتری` in the global upsert.
+7. **The database becomes materially more valuable** — the only record of what a driver
    did and where. Confirm `scripts/backup.mjs` is on a cron before Phase 2 ships.
 
 ## 8. Verification
@@ -488,12 +472,12 @@ Per phase, before moving on:
   write group A's rows, and a `driver` gets 403 on everything except their own run.
 - **Migration against a copy of the real DB** — `cp data/coverage.db /tmp/` and boot with
   `COVERAGE_DB_PATH=/tmp/coverage.db` before touching production data.
-- **Workbook fidelity test (§4.3)** against a copy of the live file, opened in Excel,
-  before any write to the real one. Confirm `داشبورد`, formatting, the column-D dropdown
-  and every formula survived the exceljs round-trip.
-- **Commission cross-check**: after a write-back, confirm `فروش` `O`/`R`/`S` recomputed to
-  the expected figures for a known stop, and that `U` resolved to the driver in `T` rather
-  than the یوسف default (§1.3).
+- **Paste-in block alignment**: generate a block, paste it into a *copy* of the live
+  workbook, and confirm every `شماره سفارش` still lines up with its own `L`/`P`/`T` value.
+  Then confirm `O`/`R`/`S` recomputed to the expected figures and `U` resolved to the
+  driver from `T` rather than the یوسف default (§1.3).
+- **Staleness guard**: regenerate a block, edit the workbook, and confirm the app refuses
+  to present the stale block rather than letting it be pasted.
 - **Manual end-to-end on a phone**: create a group, assign districts, upload that group's
   sheet, accept the proposed split, publish, log in as the driver on a real handset,
   accept the consent modal, load the van, start the run, watch the dot move on
