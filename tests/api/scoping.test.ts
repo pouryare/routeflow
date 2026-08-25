@@ -440,11 +440,38 @@ describe("GET /api/activity", () => {
   });
 });
 
-describe("owner-only routes", () => {
-  it("refuses a group manager the sales ledger", async () => {
-    const res = await getSales(as(eastMgrId, "group_manager", east, "http://localhost/api/sales?customer=x"));
+describe("GET /api/sales", () => {
+  it("lets a group manager read their own customer's ledger", async () => {
+    const res = await getSales(
+      as(eastMgrId, "group_manager", east, "http://localhost/api/sales?customer=" + encodeURIComponent("مشتری شرق"))
+    );
+    expect(res.status).toBe(200);
+    expect((await res.json()).ok).toBe(true);
+  });
+
+  it("hides another group's customer behind a 404, not a 403", async () => {
+    // The leak this guards: sales rows are keyed by customer_name, so without the group
+    // check any guessable business name would return that customer's whole debt history.
+    const res = await getSales(
+      as(eastMgrId, "group_manager", east, "http://localhost/api/sales?customer=" + encodeURIComponent("مشتری غرب"))
+    );
+    expect(res.status).toBe(404);
+  });
+
+  it("gives the owner any customer's ledger", async () => {
+    const res = await getSales(
+      as(ownerId, "owner", null, "http://localhost/api/sales?customer=" + encodeURIComponent("مشتری غرب"))
+    );
+    expect(res.status).toBe(200);
+  });
+
+  it("refuses a driver with 403", async () => {
+    const res = await getSales(as(driverId, "driver", east, "http://localhost/api/sales?customer=x"));
     expect(res.status).toBe(403);
   });
+});
+
+describe("owner-only routes", () => {
   it("refuses a group manager the import status", async () => {
     const res = await getImportStatus(as(eastMgrId, "group_manager", east, "http://localhost/api/import/status"));
     expect(res.status).toBe(403);

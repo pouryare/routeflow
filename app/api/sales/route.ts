@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
+import { groupFilter, requireRole } from "@/lib/session";
 
-// Owner only, per the Phase 0 plan's role table. sales rows are keyed by customer_name
-// and carry no group of their own, so there is nothing to scope them by yet; until
-// there is, the safe reading of "unscoped" is "owner only".
+// A manager may read the purchase history of their own customers -- it is what the
+// customer detail panel shows, and a manager who cannot see it cannot do their job.
+//
+// sales rows are keyed by customer_name and carry no group of their own, so the scope
+// comes from the customers table: the named customer has to be one this caller can
+// already see. Widening the role without that check would have been the leak, since any
+// business name is guessable and the ledger is the whole debt picture.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, ["owner", "group_manager"]);
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);
@@ -16,6 +20,16 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDb();
+  const filter = groupFilter(guard.session);
+  const reachable = db
+    .prepare(`SELECT 1 FROM customers WHERE business_name = ?${filter.sql} LIMIT 1`)
+    .get(customer, ...filter.params);
+  // 404, not 403: the same rule as everywhere else -- a 403 would confirm that a customer
+  // by this name exists in someone else's group.
+  if (!reachable) {
+    return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
+  }
+
   const orders = db
     .prepare(
       `SELECT order_no, sale_date, product_name, qty, amount, payment_status, shipping_status

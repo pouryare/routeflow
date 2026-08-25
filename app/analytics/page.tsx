@@ -10,7 +10,7 @@ import { newestSync } from "@/lib/freshness";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, groupFilterWithShared } from "@/lib/session";
+import { getSessionFromCookies, groupFilter, groupFilterWithShared } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -24,17 +24,24 @@ function fmtDate(d: Date): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 }
 
-// Owner only, per the Phase 0 plan's role table: this page aggregates debt and coverage
-// across the whole province, which is exactly the view a single group is not entitled to.
+// Open to managers as well as the owner, but every figure on it is scoped: a manager sees
+// their own group's coverage and debt, not the province's. The page is an aggregate, so
+// the scope has to be applied to the rows it aggregates rather than to the page -- an
+// unscoped total is a leak even when no individual customer is named.
 export default async function AnalyticsPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "owner") redirect("/");
+  if (session.role === "driver") redirect("/driver");
+  const f = groupFilter(session);
 
   const db = getDb();
-  const districts = db.prepare("SELECT * FROM districts").all() as unknown as District[];
-  const customers = db.prepare("SELECT * FROM customers").all() as unknown as Customer[];
+  const districts = db
+    .prepare(`SELECT * FROM districts WHERE 1 = 1${f.sql}`)
+    .all(...f.params) as unknown as District[];
+  const customers = db
+    .prepare(`SELECT * FROM customers WHERE 1 = 1${f.sql}`)
+    .all(...f.params) as unknown as Customer[];
 
   const districtCounts = countBy(districts.map((d) => d.coverage_status));
   const totalDebt = customers.reduce(
