@@ -1,0 +1,160 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDb, ROLES, type Role, type UserRow } from "@/lib/db";
+import { hashPassword } from "@/lib/auth";
+import { requireRole } from "@/lib/session";
+
+const MIN_PASSWORD = 8;
+
+/** Would this change leave the app with no active owner?
+ *
+ *  The only way back from that is scripts/create-user.mjs over SSH, so it is worth one
+ *  extra query on every account edit. */
+function wouldStrandTheApp(db: ReturnType<typeof getDb>, target: UserRow, becomingNonOwner: boolean): boolean {
+  if (target.role !== "owner" || !target.active || !becomingNonOwner) return false;
+  const { n } = db
+    .prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND active = 1 AND id != ?")
+    .get(target.id) as { n: number };
+  return n === 0;
+}
+
+export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
+  const guard = requireRole(req, ["owner"]);
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+  const userId = Number(id);
+  if (!Number.isInteger(userId)) {
+    return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  }
+
+  const db = getDb();
+  const target = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as UserRow | undefined;
+  if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
+
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  const sets: string[] = [];
+  const values: (string | number | null)[] = [];
+
+  // token_version is the whole revocation mechanism: a token lives 30 days, and
+  // getSession() rejects one whose tv no longer matches the row. Every change below that
+  // alters what an existing session may do has to bump it, or a password reset leaves the
+  // old session working for a month and a deactivation does nothing at all.
+  let bumpVersion = false;
+
+  if (body?.password !== undefined) {
+    const password = typeof body.password === "string" ? body.password : "";
+    if (password.length < MIN_PASSWORD) {
+      return NextResponse.json({ ok: false, error: `رمز عبور باید حداقل ${MIN_PASSWORD} نویسه باشد` }, { status: 400 });
+    }
+    sets.push("password_hash = ?");
+    values.push(hashPassword(password));
+    bumpVersion = true;
+  }
+
+  if (body?.display_name !== undefined) {
+    const name = typeof body.display_name === "string" ? body.display_name.trim() : "";
+    if (!name) return NextResponse.json({ ok: false, error: "نام نمایشی الزامی است" }, { status: 400 });
+    sets.push("display_name = ?");
+    values.push(name);
+  }
+
+  const nextRole = body?.role as Role | undefined;
+  if (nextRole !== undefined) {
+    if (!ROLES.includes(nextRole)) {
+      return NextResponse.json({ ok: false, error: "نقش نامعتبر است" }, { status: 400 });
+    }
+    if (wouldStrandTheApp(db, target, nextRole !== "owner")) {
+      return NextResponse.json(
+        { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },
+        { status: 409 }
+      );
+    }
+    sets.push("role = ?");
+    values.push(nextRole);
+    bumpVersion = true;
+  }
+
+  if (body?.group_id !== undefined) {
+    const groupId = Number.isInteger(body.group_id) ? (body.group_id as number) : null;
+    if (groupId !== null && !db.prepare("SELECT 1 FROM groups WHERE id = ?").get(groupId)) {
+      return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 400 });
+    }
+    sets.push("group_id = ?");
+    values.push(groupId);
+    bumpVersion = true;
+  }
+
+  // Checked after both, so "role and group in one request" is judged on the final state.
+  const finalRole = nextRole ?? target.role;
+  const finalGroup = body?.group_id !== undefined ? (Number.isInteger(body.group_id) ? (body.group_id as number) : null) : target.group_id;
+  if (finalRole !== "owner" && finalGroup === null) {
+    return NextResponse.json({ ok: false, error: "برای این نقش، انتخاب گروه الزامی است" }, { status: 400 });
+  }
+
+  if (body?.staff_code !== undefined) {
+    const code = typeof body.staff_code === "string" && body.staff_code.trim() ? body.staff_code.trim() : null;
+    sets.push("staff_code = ?");
+    values.push(code);
+  }
+  if (body?.phone !== undefined) {
+    const phone = typeof body.phone === "string" && body.phone.trim() ? body.phone.trim() : null;
+    sets.push("phone = ?");
+    values.push(phone);
+  }
+
+  if (body?.active !== undefined) {
+    const active = body.active ? 1 : 0;
+    if (!active && wouldStrandTheApp(db, target, true)) {
+      return NextResponse.json(
+        { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },
+        { status: 409 }
+      );
+    }
+    sets.push("active = ?");
+    values.push(active);
+    bumpVersion = true;
+  }
+
+  if (sets.length === 0) {
+    return NextResponse.json({ ok: false, error: "چیزی برای ذخیره نیست" }, { status: 400 });
+  }
+  if (bumpVersion) sets.push("token_version = token_version + 1");
+
+  values.push(userId);
+  try {
+    db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...(values as never[]));
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "خطا";
+    return NextResponse.json({ ok: false, error: msg }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
+  const guard = requireRole(req, ["owner"]);
+  if (!guard.ok) return guard.response;
+
+  const { id } = await ctx.params;
+  const userId = Number(id);
+  if (!Number.isInteger(userId)) {
+    return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  }
+
+  const db = getDb();
+  const target = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as UserRow | undefined;
+  if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
+
+  if (wouldStrandTheApp(db, target, true)) {
+    return NextResponse.json(
+      { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },
+      { status: 409 }
+    );
+  }
+
+  // Deactivate, never delete. activity_log.changed_by_user_id points at this row, and
+  // history that says who did what is worth more than a tidy table. The bump is what
+  // actually ends their session.
+  db.prepare("UPDATE users SET active = 0, token_version = token_version + 1 WHERE id = ?").run(userId);
+  return NextResponse.json({ ok: true, deactivated: true });
+}

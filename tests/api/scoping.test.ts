@@ -148,11 +148,13 @@ const { GET: getImportStatus } = await import("@/app/api/import/status/route");
 const { POST: postImportUndo } = await import("@/app/api/import/undo/route");
 const { POST: subscribePush } = await import("@/app/api/push/subscribe/route");
 
+// Only the ids an assertion actually names are bound. The east-side rows still have to
+// exist -- they are what proves a manager sees their own and not merely nothing -- but
+// they are asserted on by name, so binding their ids would just be dead weight.
 let eastCustomerId = 0, westCustomerId = 0, eastDistrictId = 0;
-let eastLocId = 0, westLocId = 0, eastListId = 0, westListId = 0;
-let eastFacId = 0, westFacId = 0, sharedFacId = 0;
-let eastReminderId = 0, westReminderId = 0;
-let eastPhotoId = 0, westPhotoId = 0;
+let westLocId = 0, westListId = 0;
+let westFacId = 0, sharedFacId = 0;
+let westReminderId = 0, westPhotoId = 0;
 let eastPlanId = 0, westPlanId = 0;
 
 const idCtx = (n: number) => ({ params: Promise.resolve({ id: String(n) }) }) as never;
@@ -177,17 +179,17 @@ beforeAll(() => {
   const loc = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, updated_at) VALUES (?, ?, ?, ?, 'manual', ?, ?, ?)"
   );
-  eastLocId = Number(loc.run("پین شرق", "https://maps.example/e", 35.7, 51.4, east, now, now).lastInsertRowid);
+  loc.run("پین شرق", "https://maps.example/e", 35.7, 51.4, east, now, now);
   westLocId = Number(loc.run("پین غرب", "https://maps.example/w", 35.7, 51.2, west, now, now).lastInsertRowid);
 
   const list = db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at) VALUES (?, ?, ?, ?)");
-  eastListId = Number(list.run("لیست شرق", east, now, now).lastInsertRowid);
+  list.run("لیست شرق", east, now, now);
   westListId = Number(list.run("لیست غرب", west, now, now).lastInsertRowid);
 
   const fac = db.prepare(
     "INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, group_id, created_at, updated_at) VALUES (?, 'other', ?, ?, ?, 0, ?, ?, ?)"
   );
-  eastFacId = Number(fac.run("fac-east", "انبار شرق", 35.7, 51.4, east, now, now).lastInsertRowid);
+  fac.run("fac-east", "انبار شرق", 35.7, 51.4, east, now, now);
   westFacId = Number(fac.run("fac-west", "انبار غرب", 35.7, 51.2, west, now, now).lastInsertRowid);
   // No group: the company-wide depot every group plans out of.
   sharedFacId = Number(fac.run("fac-shared", "انبار مرکزی", 35.7, 51.3, null, now, now).lastInsertRowid);
@@ -195,13 +197,13 @@ beforeAll(() => {
   const rem = db.prepare(
     "INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at) VALUES ('customer', ?, '2026-09-01', ?, 0, ?)"
   );
-  eastReminderId = Number(rem.run(eastCustomerId, "پیگیری شرق", now).lastInsertRowid);
+  rem.run(eastCustomerId, "پیگیری شرق", now);
   westReminderId = Number(rem.run(westCustomerId, "پیگیری غرب", now).lastInsertRowid);
 
   const ph = db.prepare(
     "INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at) VALUES ('customer', ?, ?, ?, ?, ?)"
   );
-  eastPhotoId = Number(ph.run(eastCustomerId, "stem-east", "عکس شرق", now, now).lastInsertRowid);
+  ph.run(eastCustomerId, "stem-east", "عکس شرق", now, now);
   westPhotoId = Number(ph.run(westCustomerId, "stem-west", "عکس غرب", now, now).lastInsertRowid);
 
   const vp = db.prepare(

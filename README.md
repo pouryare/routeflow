@@ -20,8 +20,52 @@ npm install
 npm run dev       # http://localhost:3000
 ```
 
-The app is gated by a single shared password (see `.env.local` — `APP_PASSWORD`).
-Change it any time; sessions are signed cookies (`SESSION_SECRET`), 30-day expiry.
+Sessions are signed cookies (`SESSION_SECRET`), 30-day expiry. Who you are is in the
+cookie; what you may see is decided per request against the database — see below.
+
+## Accounts and groups
+
+Everyone signs in as themselves. There are three roles:
+
+| Role | Sees |
+|---|---|
+| `owner` | Everything, every group. Only role that can reach `/admin/*`, run an import, or read the sales ledger and analytics. |
+| `group_manager` | Only their own group's customers, districts, pins, lists, photos, reminders and plans. Plus the company-wide sites (the warehouse), which every group routes out of. |
+| `driver` | Only `/driver`. Any other page sends them back there. |
+
+A row belonging to another group answers **404, not 403** — a 403 would confirm it exists,
+which by itself says how the province is carved up.
+
+Manage accounts at **`/admin/users`** and groups and territory at **`/admin/groups`**, both
+owner-only.
+
+### The first owner
+
+That one account cannot be made through `/admin/users`, because that screen needs you to
+already be signed in as an owner. Start the app once so it can create and migrate the
+database, then:
+
+```bash
+node scripts/create-user.mjs <username> <password> "<Display Name>" owner
+```
+
+A `group_manager` or `driver` additionally needs a group id as the fifth argument — an
+account with a role but no group can reach nothing at all, so the script refuses to make one.
+
+### `staff_code`
+
+Free text, and it must match the شناسه column in the `همکاران` sheet of the workbook
+**exactly** (`DRV1`, `SP2`, …). It is the join key for commission; a typo there does not
+error, it just silently pays nobody.
+
+### The shared password is on its way out
+
+`APP_PASSWORD` still logs in, as an owner, so that adding accounts cannot lock the team out
+mid-migration. Any session opened that way shows a standing warning banner. It mints
+`uid: 0`, which matches no row, so that session can reach the pages the proxy allows but not
+the API routes that resolve a real user — enough to find your way around, not enough to be a
+permanent way in. Once every coworker has an account, the `checkPassword` branch in
+`app/api/login/route.ts` and the function in `lib/auth.ts` both go.
 
 ## District data (one-time setup, already done)
 
