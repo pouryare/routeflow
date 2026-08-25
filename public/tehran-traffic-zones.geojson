@@ -2,7 +2,7 @@
  "type": "FeatureCollection",
  "attribution": "© OpenStreetMap contributors (ODbL)",
  "source": "OSM relations 6947428 and 6950174, via Overpass",
- "built_at": "2026-08-24",
+ "built_at": "2026-08-25",
  "features": [
   {
    "type": "Feature",
@@ -10,6 +10,7 @@
     "id": "limited_traffic",
     "name": "محدوده طرح ترافیک",
     "name_en": "Restricted Traffic Boundary",
+    "kind": "permit",
     "restricted": [
      {
       "days": [
@@ -30,6 +31,7 @@
       "to": "13:00"
      }
     ],
+    "hours_source": "OSM relation 6947428, motor_vehicle:conditional",
     "osm_relation": 6947428,
     "note": "محدودیتهای ترافیکی بصورت پیش فرض برای همه وسایل نقلیه ممنوع است به استثنای اتوبوس، تاکسی، موتورسیکلت و امدادی. برای سایر خودروها ساعات آزاد از شنبه تا چهارشنبه از ۱۷ تا ۶:۳۰ صبح و پنجشنبه از ۱۳ به بعد مگر مشتریان طرح. جمعه و روزهای تعطیل کاملا آزاد است"
    },
@@ -943,7 +945,28 @@
     "id": "low_emission",
     "name": "محدوده کنترل آلودگی هوا",
     "name_en": "Tehran Low Emission Zone",
-    "restricted": null,
+    "kind": "quota",
+    "restricted": [
+     {
+      "days": [
+       6,
+       0,
+       1,
+       2,
+       3
+      ],
+      "from": "06:30",
+      "to": "18:00"
+     },
+     {
+      "days": [
+       4
+      ],
+      "from": "06:30",
+      "to": "13:00"
+     }
+    ],
+    "hours_source": "اعلام شهرداری تهران (OSM ساعت‌ها را ثبت نکرده)",
     "osm_relation": 6950174,
     "note": "رابطه طبق مستندات او.اس.ام برای low_emission_zone تعریف شده. برای طرح ترافیک رابطه limited_traffic_zone استفاده شده شرایط جدید طرح کاهش آلودگی هوا: yon.ir/Q5ErO"
    },

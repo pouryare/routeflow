@@ -5,9 +5,23 @@
  *  cost no request at runtime and work with no signal. They change roughly never.
  *
  *  The hours for محدوده طرح ترافیک come from the relation's own `motor_vehicle:conditional`
- *  tag. The pollution-control zone carries no hours in OSM, so this reports "unknown" for
- *  it rather than inventing a schedule -- being confidently wrong about a zone that issues
- *  fines is worse than saying nothing.
+ *  tag. OSM records none for the pollution-control zone, so those come from Tehran
+ *  municipality's published schedule instead and each zone carries the provenance of its
+ *  own hours. They are not the same schedule: the طرح ends at 17:00 and the pollution zone
+ *  runs until 18:00, which is exactly the sort of hour-long difference that gets a car
+ *  ticketed on the way home.
+ *
+ *  ## Two different kinds of restriction
+ *
+ *  They are not both walls. The طرح needs a permit -- without one you may not drive in at
+ *  all. The pollution zone is a meter: driving in is allowed and spends one day of a
+ *  seasonal allowance, 20 days on a Tehran plate and 15 on any other. "You may not" and
+ *  "this costs one of your twenty" are different decisions at a junction, so `kind` keeps
+ *  them apart and the wording follows it.
+ *
+ *  A zone with no recorded hours still reports "unknown" rather than a guess. Nothing
+ *  ships in that state today; the path stays because inventing a schedule for a zone that
+ *  issues fines is the one failure worth designing against.
  *
  *  ## What this deliberately does not know
  *
@@ -26,15 +40,26 @@ export interface RestrictedWindow {
   to: string;
 }
 
+/** "permit": you may not drive in without one. "quota": you may, and it spends a day of
+ *  a seasonal allowance. */
+export type ZoneKind = "permit" | "quota";
+
 export interface TrafficZoneProperties {
   id: string;
   name: string;
   name_en: string | null;
+  kind: ZoneKind;
   /** Null when nobody has recorded the hours -- see the note above. */
   restricted: RestrictedWindow[] | null;
+  /** Where the hours came from, since the two zones do not share a source. */
+  hours_source: string;
   osm_relation: number;
   note: string | null;
 }
+
+/** Seasonal free-entry allowance for the quota zone, by plate. Shown rather than assumed:
+ *  the number is the whole reason a quota zone is worth telling apart from a permit one. */
+export const QUOTA_DAYS = { tehran: 20, other: 15 } as const;
 
 export type ZoneState = "restricted" | "free" | "unknown";
 

@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Polygon, Tooltip } from "react-leaflet";
 import {
+  QUOTA_DAYS,
   TRAFFIC_ZONES_URL,
   zoneStatusNow,
   type TrafficZoneProperties,
@@ -70,7 +71,10 @@ export function useTrafficZones(enabled: boolean): {
  *  Colouring an inactive zone grey was the first attempt, and on the map it was
  *  indistinguishable from the city boundary and the district borders, which are grey
  *  dashed lines too. A zone that can cost you a fine has to keep looking like one even
- *  while it happens to be open. */
+ *  while it happens to be open.
+ *
+ *  Red for the permit zone and amber for the quota zone, matching the crit/warn pair the
+ *  rest of the app uses: one turns you back, the other charges you. */
 const ZONE_COLOR: Record<string, string> = {
   limited_traffic: "#FF5C5C",
   low_emission: "#E8B93B",
@@ -123,7 +127,16 @@ export default function TrafficZoneLayer({
               <Tooltip sticky direction="top">
                 <span dir="rtl">
                   <span className="font-medium">{z.properties.name}</span>
-                  {state === "restricted" && <span> — الان محدود{until ? ` تا ${faDigits(until)}` : ""}</span>}
+                  {biting && z.properties.kind === "permit" && (
+                    <span> — الان محدود{until ? ` تا ${faDigits(until)}` : ""}؛ بدون مجوز وارد نشوید</span>
+                  )}
+                  {biting && z.properties.kind === "quota" && (
+                    <span>
+                      {" "}
+                      — الان طرح است{until ? ` تا ${faDigits(until)}` : ""}؛ ورود یک روز از سهمیه فصلی
+                      ({faDigits(String(QUOTA_DAYS.tehran))} روز با پلاک تهران) کم می‌کند
+                    </span>
+                  )}
                   {state === "free" && <span> — الان آزاد{until ? ` تا ${faDigits(until)}` : ""}</span>}
                   {state === "unknown" && <span> — ساعت‌هایش ثبت نشده</span>}
                 </span>

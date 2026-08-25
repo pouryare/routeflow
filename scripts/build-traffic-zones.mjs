@@ -29,24 +29,37 @@ async function overpass() {
 
 const data = await overpass();
 
+// JS day numbering: 0 = Sunday ... 6 = Saturday. Both zones are free on Friday (5) and
+// on public holidays, which nothing here can know about -- see lib/trafficZones.ts.
+const SAT_TO_WED = [6, 0, 1, 2, 3];
+const THURSDAY = [4];
+
 const META = {
   6947428: {
     id: "limited_traffic",
     name: "محدوده طرح ترافیک",
-    // From the relation's own motor_vehicle:conditional tag. Restricted to permit
-    // holders inside these windows; free outside them, and free all day Friday.
+    // Permit or nothing: without one you may not drive in at all during these windows.
+    kind: "permit",
+    hoursSource: "OSM relation 6947428, motor_vehicle:conditional",
     restricted: [
-      { days: [6, 0, 1, 2, 3], from: "06:30", to: "17:00" },
-      { days: [4], from: "06:30", to: "13:00" },
+      { days: SAT_TO_WED, from: "06:30", to: "17:00" },
+      { days: THURSDAY, from: "06:30", to: "13:00" },
     ],
   },
   6950174: {
     id: "low_emission",
     name: "محدوده کنترل آلودگی هوا",
-    // OSM carries no opening_hours for this one, so the app shows the boundary without
-    // claiming to know when it is enforced. Better silent than confidently wrong about
-    // something that costs a fine.
-    restricted: null,
+    // Not a wall but a meter: driving in is allowed and spends one day of a seasonal
+    // allowance -- 20 days on a Tehran plate, 15 on any other. Worth keeping distinct
+    // from the zone above, because "you may not" and "this will cost you one of twenty"
+    // are different decisions at a junction.
+    kind: "quota",
+    // Runs an hour later than the طرح, which is why the two cannot share a schedule.
+    hoursSource: "اعلام شهرداری تهران (OSM ساعت‌ها را ثبت نکرده)",
+    restricted: [
+      { days: SAT_TO_WED, from: "06:30", to: "18:00" },
+      { days: THURSDAY, from: "06:30", to: "13:00" },
+    ],
   },
 };
 
@@ -68,7 +81,9 @@ for (const el of data.elements) {
       id: meta.id,
       name: meta.name,
       name_en: el.tags["name:en"] ?? null,
+      kind: meta.kind,
       restricted: meta.restricted,
+      hours_source: meta.hoursSource,
       osm_relation: el.id,
       note: el.tags.note ?? null,
     },

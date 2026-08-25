@@ -45,9 +45,30 @@ describe("zoneStatusNow", () => {
   });
 
   it("says unknown rather than guessing when nobody recorded the hours", () => {
-    // The pollution-control zone has no hours in OSM. Claiming it is free would invite a
-    // fine; claiming it is restricted would send someone the long way round for nothing.
+    // Nothing ships in this state now that both zones have hours, but the path stays:
+    // inventing a schedule for a zone that issues fines is the failure worth guarding.
     expect(zoneStatusNow(null, at(0, 10, 0))).toEqual({ state: "unknown", until: null });
+  });
+});
+
+describe("the two zones do not share a schedule", () => {
+  // The pollution zone runs an hour later than the طرح. Between 17:00 and 18:00 you may
+  // drive into the central zone but the outer one is still counting your quota -- which
+  // is exactly the hour someone drives home in.
+  const POLLUTION: RestrictedWindow[] = [
+    { days: [6, 0, 1, 2, 3], from: "06:30", to: "18:00" },
+    { days: [4], from: "06:30", to: "13:00" },
+  ];
+
+  it("differs in the 17:00-18:00 hour on a working day", () => {
+    expect(zoneStatusNow(TEHRAN, at(0, 17, 30)).state).toBe("free");
+    expect(zoneStatusNow(POLLUTION, at(0, 17, 30))).toEqual({ state: "restricted", until: "18:00" });
+  });
+
+  it("agrees on Thursday afternoon and on Friday", () => {
+    expect(zoneStatusNow(TEHRAN, at(5, 14, 0)).state).toBe("free");
+    expect(zoneStatusNow(POLLUTION, at(5, 14, 0)).state).toBe("free");
+    expect(zoneStatusNow(POLLUTION, at(6, 10, 0))).toEqual({ state: "free", until: null });
   });
 });
 
@@ -116,9 +137,46 @@ describe("the shipped zone file", () => {
     expect(at(51.338097, 35.699739)).toEqual([]);
   });
 
-  it("records hours for the traffic zone and none for the pollution zone", () => {
-    const byId = Object.fromEntries(file.features.map((f: { properties: Record<string, unknown> }) => [f.properties.id, f.properties]));
-    expect(byId.limited_traffic.restricted).toHaveLength(2);
-    expect(byId.low_emission.restricted).toBeNull();
+  it("gives each zone its own hours, its own kind and its own provenance", () => {
+    const byId = Object.fromEntries(
+      file.features.map((f: { properties: Record<string, unknown> }) => [f.properties.id, f.properties])
+    );
+    // Permit against quota: one turns you back, the other spends a day of an allowance,
+    // and the wording in the panel and on the map follows this field.
+    expect(byId.limited_traffic.kind).toBe("permit");
+    expect(byId.low_emission.kind).toBe("quota");
+
+    // Same opening minute, different closing hour. Sharing one schedule between them was
+    // the obvious shortcut and would be wrong for an hour every working day.
+    expect(byId.limited_traffic.restricted[0].to).toBe("17:00");
+    expect(byId.low_emission.restricted[0].to).toBe("18:00");
+    expect(byId.limited_traffic.restricted[0].from).toBe("06:30");
+    expect(byId.low_emission.restricted[0].from).toBe("06:30");
+
+    // The hours came from two different places and the file has to remember which.
+    expect(byId.limited_traffic.hours_source).toContain("OSM");
+    expect(byId.low_emission.hours_source).not.toContain("OSM relation");
+
+    // Friday is in nobody's window.
+    for (const id of ["limited_traffic", "low_emission"]) {
+      for (const w of byId[id].restricted) expect(w.days).not.toContain(5);
+    }
+  });
+
+  it("draws the pollution ring between the expressways it is described by", () => {
+    // The published description bounds it by Hemmat to the north, Besat to the south,
+    // Imam Ali to the east and Navvab/Chamran to the west. Checking the shipped ring
+    // against those is what catches having baked the wrong OSM relation entirely.
+    const ring = (file.features as { properties: { id: string }; geometry: { coordinates: [number, number][][] } }[])
+      .find((f) => f.properties.id === "low_emission")!
+      .geometry.coordinates[0];
+    const lats = ring.map((p) => p[1]);
+    const lngs = ring.map((p) => p[0]);
+    const near = (actual: number, expected: number) => expect(Math.abs(actual - expected)).toBeLessThan(0.01);
+
+    near(Math.max(...lats), 35.756); // بزرگراه همت
+    near(Math.min(...lats), 35.646); // بزرگراه بعثت
+    near(Math.max(...lngs), 51.484); // بزرگراه امام علی
+    near(Math.min(...lngs), 51.379); // نواب / چمران
   });
 });

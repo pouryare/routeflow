@@ -14,7 +14,7 @@ import {
   type OverlayId,
 } from "@/lib/mapLayers";
 import { faDigits } from "@/lib/format";
-import type { ZoneStatus } from "@/lib/trafficZones";
+import type { ZoneKind, ZoneStatus } from "@/lib/trafficZones";
 
 /** The layers button, sitting with Leaflet's own controls.
  *
@@ -120,16 +120,22 @@ function Row({
 }
 
 /** A zone's own line in the panel says whether you may drive in right now, because the
- *  boundary alone does not answer the question anyone actually has. */
-function ZoneNow({ status }: { status: ZoneStatus }) {
+ *  boundary alone does not answer the question anyone actually has.
+ *
+ *  A permit zone in force reads as شد/نشد and is drawn in the critical colour; a quota
+ *  zone in force is a price, not a wall, so it gets the warning colour and says what it
+ *  spends. Giving both the same red would have the app shout equally at "turn around" and
+ *  at "this is one of your twenty days". */
+function ZoneNow({ status, kind }: { status: ZoneStatus; kind: ZoneKind }) {
   if (status.state === "unknown") {
     return <span className="rounded-full bg-white/10 px-1.5 py-px text-[10px] text-text-faint">ساعت نامعلوم</span>;
   }
   if (status.state === "restricted") {
-    return (
-      <span className="rounded-full bg-crit/20 px-1.5 py-px text-[10px] text-crit">
-        الان محدود{status.until ? ` تا ${faDigits(status.until)}` : ""}
-      </span>
+    const until = status.until ? ` تا ${faDigits(status.until)}` : "";
+    return kind === "permit" ? (
+      <span className="rounded-full bg-crit/20 px-1.5 py-px text-[10px] text-crit">الان محدود{until}</span>
+    ) : (
+      <span className="rounded-full bg-warn/20 px-1.5 py-px text-[10px] text-warn">الان طرح است{until}</span>
     );
   }
   return (
@@ -242,7 +248,7 @@ export default function LayersPanel({
                     }
                     suffix={
                       (o.id === "traffic_zone" || o.id === "low_emission") && status ? (
-                        <ZoneNow status={status} />
+                        <ZoneNow status={status} kind={o.id === "traffic_zone" ? "permit" : "quota"} />
                       ) : undefined
                     }
                   />
@@ -253,8 +259,8 @@ export default function LayersPanel({
         })}
 
         <p className="border-t border-border px-1 pt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-          ساعت‌های طرح ترافیک از OpenStreetMap است و تعطیلات رسمی را نمی‌داند — در تعطیلات
-          محدوده آزاد است ولی اینجا «محدود» نشان داده می‌شود.
+          هیچ‌کدام از این دو، تعطیلات رسمی را نمی‌دانند — در تعطیلات هر دو محدوده آزادند ولی
+          اینجا فعال نشان داده می‌شوند. جمعه‌ها درست حساب می‌شود.
         </p>
       </div>
     </div>
