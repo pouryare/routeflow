@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireRole } from "@/lib/session";
 
+// Owner only, per the Phase 0 plan's role table. sales rows are keyed by customer_name
+// and carry no group of their own, so there is nothing to scope them by yet; until
+// there is, the safe reading of "unscoped" is "owner only".
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner"]);
+  if (!guard.ok) return guard.response;
+
   const { searchParams } = new URL(req.url);
   const customer = searchParams.get("customer");
   if (!customer) {

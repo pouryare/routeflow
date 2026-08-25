@@ -12,10 +12,21 @@ const { getDb, readLeadLists } = await import("@/lib/db");
 const { GET, POST } = await import("@/app/api/lead-lists/route");
 const { PATCH, DELETE } = await import("@/app/api/lead-lists/[id]/route");
 const { NextRequest } = await import("next/server");
+const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
+
+// These routes require a real session now. This file is about list mechanics, not
+// authorisation, so everything here runs as an owner; the scoping rules themselves live
+// in tests/api/scoping.test.ts.
+let ownerId = 0;
+
+function authCookie() {
+  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, tv: 0, name: "مالک" });
+  return `${COOKIE_NAME}=${token}`;
+}
 
 let locA = 0;
 let locB = 0;
@@ -24,6 +35,11 @@ let locC = 0;
 beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
+  ownerId = Number(
+    db.prepare(
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+    ).run("lists-owner", "x:y", "مالک", now).lastInsertRowid
+  );
   const insert = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at) VALUES (?, ?, ?, ?, 'manual', ?)"
   );
@@ -36,7 +52,7 @@ function post(body: unknown) {
   return new NextRequest("http://localhost/api/lead-lists", {
     method: "POST",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", cookie: authCookie() },
   });
 }
 
@@ -44,7 +60,7 @@ function patch(body: unknown) {
   return new NextRequest("http://localhost/api/lead-lists/1", {
     method: "PATCH",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", cookie: authCookie() },
   });
 }
 
@@ -119,7 +135,7 @@ describe("PATCH /api/lead-lists/[id]", () => {
 
 describe("GET /api/lead-lists", () => {
   it("returns lists with their ordered membership", async () => {
-    const body = await (await GET()).json();
+    const body = await (await GET(new NextRequest("http://localhost/api/lead-lists", { headers: { cookie: authCookie() } }))).json();
     expect(body.ok).toBe(true);
     expect(Array.isArray(body.lists)).toBe(true);
     expect(body.lists.every((l: { location_ids: unknown }) => Array.isArray(l.location_ids))).toBe(true);
@@ -129,7 +145,7 @@ describe("GET /api/lead-lists", () => {
 describe("DELETE /api/lead-lists/[id]", () => {
   it("deletes the list and hands back enough to undo it", async () => {
     const { id } = await (await POST(post({ name: "رفتنی", location_ids: [locA, locC] }))).json();
-    const body = await (await DELETE(new NextRequest("http://localhost/x", { method: "DELETE" }), ctx(id))).json();
+    const body = await (await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(id))).json();
     expect(body.deleted.name).toBe("رفتنی");
     expect(body.deleted.location_ids).toEqual([locA, locC]);
     expect(readLeadLists().find((l) => l.id === id)).toBeUndefined();
@@ -137,7 +153,7 @@ describe("DELETE /api/lead-lists/[id]", () => {
 
   it("takes the membership with it, leaving no orphan rows", async () => {
     const { id } = await (await POST(post({ name: "کاسکید", location_ids: [locB] }))).json();
-    await DELETE(new NextRequest("http://localhost/x", { method: "DELETE" }), ctx(id));
+    await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(id));
     const left = getDb().prepare("SELECT COUNT(*) n FROM lead_list_items WHERE list_id = ?").get(id) as unknown as {
       n: number;
     };
@@ -146,12 +162,12 @@ describe("DELETE /api/lead-lists/[id]", () => {
 
   it("leaves the locations themselves alone", async () => {
     const { id } = await (await POST(post({ name: "بی‌ضرر", location_ids: [locA] }))).json();
-    await DELETE(new NextRequest("http://localhost/x", { method: "DELETE" }), ctx(id));
+    await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(id));
     expect(getDb().prepare("SELECT id FROM saved_locations WHERE id = ?").get(locA)).toBeTruthy();
   });
 
   it("404s an unknown list", async () => {
-    const res = await DELETE(new NextRequest("http://localhost/x", { method: "DELETE" }), ctx(999999));
+    const res = await DELETE(new NextRequest("http://localhost/x", { method: "DELETE", headers: { cookie: authCookie() } }), ctx(999999));
     expect(res.status).toBe(404);
   });
 });

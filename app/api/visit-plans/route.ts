@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, VisitPlan, EntityType, PLAN_ENTITY_TYPES, PlanEntityType, logActivity } from "@/lib/db";
 
 const PLAN_STATUSES: VisitPlan["status"][] = ["planned", "done", "skipped"];
-import { getActorName } from "@/lib/auth";
+import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 
 interface PlanWithLabel extends VisitPlan {
   label: string;
@@ -56,7 +56,12 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
   });
 }
 
+// visit_plans is option 2: a stop is *at* a customer, district or facility.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const f = entityGroupFilter(guard.session, "v");
+
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const date = searchParams.get("date");
@@ -66,22 +71,31 @@ export async function GET(req: NextRequest) {
   let rows: VisitPlan[];
   if (date) {
     rows = db
-      .prepare("SELECT * FROM visit_plans WHERE planned_date = ? ORDER BY sort_order, id")
-      .all(date) as unknown as VisitPlan[];
+      .prepare(
+        `SELECT v.* FROM visit_plans v${f.joins} WHERE v.planned_date = ?${f.sql} ORDER BY v.sort_order, v.id`
+      )
+      .all(date, ...f.params) as unknown as VisitPlan[];
   } else if (from && to) {
     rows = db
-      .prepare("SELECT * FROM visit_plans WHERE planned_date BETWEEN ? AND ? ORDER BY planned_date, sort_order, id")
-      .all(from, to) as unknown as VisitPlan[];
+      .prepare(
+        `SELECT v.* FROM visit_plans v${f.joins} WHERE v.planned_date BETWEEN ? AND ?${f.sql} ORDER BY v.planned_date, v.sort_order, v.id`
+      )
+      .all(from, to, ...f.params) as unknown as VisitPlan[];
   } else {
     rows = db
-      .prepare("SELECT * FROM visit_plans ORDER BY planned_date, sort_order, id LIMIT 200")
-      .all() as unknown as VisitPlan[];
+      .prepare(
+        `SELECT v.* FROM visit_plans v${f.joins} WHERE 1 = 1${f.sql} ORDER BY v.planned_date, v.sort_order, v.id LIMIT 200`
+      )
+      .all(...f.params) as unknown as VisitPlan[];
   }
 
   return NextResponse.json({ ok: true, plans: enrich(db, rows) });
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = await req.json().catch(() => null);
   const { entity_type, entity_id, planned_date, sort_order, status } = (body ?? {}) as {
     entity_type?: PlanEntityType;
@@ -114,6 +128,10 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
+  if (!canReachEntity(guard.session, db, entity_type, entity_id)) {
+    return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
+  }
+
   const maxOrder = db
     .prepare("SELECT COALESCE(MAX(sort_order), -1) as m FROM visit_plans WHERE planned_date = ?")
     .get(planned_date) as { m: number };
@@ -133,7 +151,8 @@ export async function POST(req: NextRequest) {
     old_value: null,
     new_value: null,
     note: sort_order === undefined ? `به برنامه بازدید ${planned_date} اضافه شد` : `به برنامه بازدید ${planned_date} بازگردانده شد`,
-    changed_by: getActorName(req),
+    changed_by: guard.session.user.display_name,
+    changed_by_user_id: guard.session.user.id,
   });
 
   return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });

@@ -7,6 +7,10 @@ import CostToServePanel, { type CostToServeRow } from "@/components/CostToServeP
 import { faDateTime, faNum } from "@/lib/format";
 import DataFreshness from "@/components/DataFreshness";
 import { newestSync } from "@/lib/freshness";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies, groupFilterWithShared } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -20,7 +24,14 @@ function fmtDate(d: Date): string {
   return `${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
 }
 
-export default function AnalyticsPage() {
+// Owner only, per the Phase 0 plan's role table: this page aggregates debt and coverage
+// across the whole province, which is exactly the view a single group is not entitled to.
+export default async function AnalyticsPage() {
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  if (!session) redirect("/login");
+  if (session.role !== "owner") redirect("/");
+
   const db = getDb();
   const districts = db.prepare("SELECT * FROM districts").all() as unknown as District[];
   const customers = db.prepare("SELECT * FROM customers").all() as unknown as Customer[];
@@ -59,7 +70,7 @@ export default function AnalyticsPage() {
   // any renamed or differently-spelled business drops out silently. That gap is counted
   // and surfaced in the panel rather than absorbed, because a total that is quietly
   // missing rows is worse than one that says so.
-  const facilities = readFacilities(db);
+  const facilities = readFacilities(db, groupFilterWithShared(session));
   const dispatchSite =
     facilities.find((f) => f.is_default_origin === 1) ?? facilities.find((f) => f.kind === "home_base") ?? facilities[0] ?? null;
 

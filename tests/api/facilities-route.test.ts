@@ -12,20 +12,35 @@ const { getDb } = await import("@/lib/db");
 const { GET, POST } = await import("@/app/api/facilities/route");
 const { PATCH, DELETE } = await import("@/app/api/facilities/[id]/route");
 const { NextRequest } = await import("next/server");
+const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
+// These routes require a real session now. This file covers site mechanics, not
+// authorisation, so everything runs as an owner -- scoping lives in scoping.test.ts.
+let ownerId = 0;
+
 beforeAll(() => {
-  getDb();
+  const db = getDb();
+  ownerId = Number(
+    db.prepare(
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+    ).run("fac-owner", "x:y", "مالک", new Date().toISOString()).lastInsertRowid
+  );
 });
+
+function authCookie() {
+  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, tv: 0, name: "مالک" });
+  return `${COOKIE_NAME}=${token}`;
+}
 
 function facReq(body: unknown) {
   return new NextRequest("http://localhost/api/facilities", {
     method: "POST",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", cookie: authCookie() },
   });
 }
 
@@ -33,12 +48,12 @@ function patchReq(body: unknown) {
   return new NextRequest("http://localhost/api/facilities/1", {
     method: "PATCH",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", cookie: authCookie() },
   });
 }
 
 function delReq() {
-  return new NextRequest("http://localhost/api/facilities/1", { method: "DELETE" });
+  return new NextRequest("http://localhost/api/facilities/1", { method: "DELETE", headers: { cookie: authCookie() } });
 }
 
 function ctx(id: number | string) {
@@ -86,7 +101,7 @@ describe("POST /api/facilities", () => {
 
 describe("GET /api/facilities", () => {
   it("returns every site", async () => {
-    const res = await GET(new NextRequest("http://localhost/api/facilities"));
+    const res = await GET(new NextRequest("http://localhost/api/facilities", { headers: { cookie: authCookie() } }));
     const body = await res.json();
     expect(body.facilities.length).toBeGreaterThanOrEqual(2);
   });
@@ -94,11 +109,11 @@ describe("GET /api/facilities", () => {
   // A pin move must invalidate the cache signature, or the client keeps rendering the
   // old position behind a 304 -- the exact bug updated_at exists to prevent.
   it("answers 304 while nothing changes, then 200 once a pin moves", async () => {
-    const first = await GET(new NextRequest("http://localhost/api/facilities"));
+    const first = await GET(new NextRequest("http://localhost/api/facilities", { headers: { cookie: authCookie() } }));
     const tag = first.headers.get("ETag")!;
 
     const second = await GET(
-      new NextRequest("http://localhost/api/facilities", { headers: { "if-none-match": tag } })
+      new NextRequest("http://localhost/api/facilities", { headers: { "if-none-match": tag, cookie: authCookie() } })
     );
     expect(second.status).toBe(304);
 
@@ -106,7 +121,7 @@ describe("GET /api/facilities", () => {
     await PATCH(patchReq({ lat: 35.72, lng: 51.42 }), ctx(id));
 
     const third = await GET(
-      new NextRequest("http://localhost/api/facilities", { headers: { "if-none-match": tag } })
+      new NextRequest("http://localhost/api/facilities", { headers: { "if-none-match": tag, cookie: authCookie() } })
     );
     expect(third.status).toBe(200);
   });

@@ -1,8 +1,16 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, LocationResolution, SavedLocationRow } from "@/lib/db";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
+import { groupFilter, requireRole, scopeGroupIds } from "@/lib/session";
 
+// saved_locations is option 1 (spec §2.3 / Task 8): a pin belongs outright to the group
+// that dropped it, so the table carries its own group_id, stamped on insert.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const filter = groupFilter(guard.session);
+  const scope = scopeGroupIds(guard.session);
+
   const db = getDb();
   const q = req.nextUrl.searchParams.get("q")?.trim();
 
@@ -10,15 +18,20 @@ export async function GET(req: NextRequest) {
     c: number;
     m: string | null;
   };
-  const tag = etagFor(`saved_locations-${q ?? ""}`, sig.c, sig.m);
+  // Scope belongs in the cache key -- see the note in /api/customers.
+  const tag = etagFor(`saved_locations-${q ?? ""}-${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
   const rows = q
     ? (db
-        .prepare("SELECT * FROM saved_locations WHERE name LIKE ? OR address LIKE ? ORDER BY created_at DESC")
-        .all(`%${q}%`, `%${q}%`) as unknown as SavedLocationRow[])
-    : (db.prepare("SELECT * FROM saved_locations ORDER BY created_at DESC").all() as unknown as SavedLocationRow[]);
+        .prepare(
+          `SELECT * FROM saved_locations WHERE (name LIKE ? OR address LIKE ?)${filter.sql} ORDER BY created_at DESC`
+        )
+        .all(`%${q}%`, `%${q}%`, ...filter.params) as unknown as SavedLocationRow[])
+    : (db
+        .prepare(`SELECT * FROM saved_locations WHERE 1 = 1${filter.sql} ORDER BY created_at DESC`)
+        .all(...filter.params) as unknown as SavedLocationRow[]);
 
   return etagJson(req, tag, { locations: rows });
 }
@@ -33,6 +46,9 @@ interface NewLocationInput {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = await req.json().catch(() => null);
   const items = (body as { items?: NewLocationInput[] } | null)?.items;
   if (!Array.isArray(items) || items.length === 0) {
@@ -42,8 +58,8 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const now = new Date().toISOString();
   const insert = db.prepare(`
-    INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, group_id, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     ON CONFLICT(maps_url) DO NOTHING
   `);
 
@@ -63,6 +79,8 @@ export async function POST(req: NextRequest) {
         typeof it.lat === "number" ? it.lat : null,
         typeof it.lng === "number" ? it.lng : null,
         resolution,
+        // An owner's pin is unowned until territory says otherwise; a manager's is theirs.
+        guard.session.groupId,
         now,
         now
       );

@@ -2,8 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import { getDb, Photo } from "@/lib/db";
 import { photoFilePath } from "@/lib/photos";
+import { canReachEntity, requireRole } from "@/lib/session";
 
+// The image bytes themselves, so this needs the same check as the metadata route --
+// otherwise another group's photo is one guessed id away.
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/file">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const photoId = Number(id);
   if (!Number.isInteger(photoId)) {
@@ -13,6 +19,9 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/
 
   const db = getDb();
   const row = db.prepare("SELECT * FROM photos WHERE id = ?").get(photoId) as Photo | undefined;
+  if (row && !canReachEntity(guard.session, db, row.entity_type, row.entity_id)) {
+    return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
+  }
   if (!row) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }

@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { requireRole } from "@/lib/session";
 
 interface SubscriptionBody {
   endpoint?: string;
   keys?: { p256dh?: string; auth?: string };
 }
 
+// All three roles: a driver's phone needs to register for notifications like anyone
+// else's device. The subscription is an endpoint, not business data.
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  if (!guard.ok) return guard.response;
+
   const body = (await req.json().catch(() => null)) as SubscriptionBody | null;
   const endpoint = body?.endpoint;
   const p256dh = body?.keys?.p256dh;
@@ -25,6 +31,9 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  if (!guard.ok) return guard.response;
+
   const body = (await req.json().catch(() => null)) as { endpoint?: string } | null;
   if (!body?.endpoint) {
     return NextResponse.json({ ok: false, error: "اشتراک نامعتبر است" }, { status: 400 });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, SavedLocationRow } from "@/lib/db";
+import { canReachGroup, requireRole } from "@/lib/session";
 
 // Promotes a prospect into the real customers table -- a manual insert, distinct from
 // the Excel/OneDrive sync path (importCustomersFromWorkbook), so it gets its own
@@ -9,6 +10,9 @@ import { getDb, SavedLocationRow } from "@/lib/db";
 // duplicate check in /api/locations/parse also covers the customers table, so re-pasting
 // the same venue's link later is still caught).
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[id]/convert">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
@@ -16,6 +20,13 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[
   }
 
   const db = getDb();
+  const owning = db.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(idNum) as
+    | { group_id: number | null }
+    | undefined;
+  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+    return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
+  }
+
   const location = db.prepare("SELECT * FROM saved_locations WHERE id = ?").get(idNum) as
     | SavedLocationRow
     | undefined;

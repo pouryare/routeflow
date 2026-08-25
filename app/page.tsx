@@ -5,6 +5,10 @@ import { readCustomers } from "@/lib/customers";
 import { readDistrictProperties } from "@/lib/districts";
 import { readFacilities } from "@/lib/facilities";
 import { geometryUrl } from "@/lib/precision";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
 // SQLite is local and these reads are sub-millisecond, so paying for them inline is
@@ -15,11 +19,19 @@ import { geometryUrl } from "@/lib/precision";
 // would bake one snapshot of the data into the HTML forever.
 export const dynamic = "force-dynamic";
 
-export default function Home() {
+// A server component reads the DB directly, so it has to resolve the session itself --
+// proxy.ts only proves someone is signed in, not which group's data they may see.
+export default async function Home() {
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  if (!session) redirect("/login");
+  if (session.role === "driver") redirect("/driver");
+  const scope = scopeGroupIds(session);
+
   const db = getDb();
-  const districts = readDistrictProperties(db);
-  const customers = readCustomers(db);
-  const facilities = readFacilities(db);
+  const districts = readDistrictProperties(db, scope);
+  const customers = readCustomers(db, scope);
+  const facilities = readFacilities(db, groupFilterWithShared(session));
   const version = geometryVersion();
 
   return (

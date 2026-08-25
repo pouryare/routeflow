@@ -1,9 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { canReachEntity, requireRole } from "@/lib/session";
 
 const VALID_STATUSES = ["planned", "done", "skipped"];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) {
@@ -21,6 +25,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plan
   }
 
   const db = getDb();
+  const owning = db.prepare("SELECT entity_type, entity_id FROM visit_plans WHERE id = ?").get(planId) as
+    | { entity_type: string; entity_id: number }
+    | undefined;
+  if (!owning || !canReachEntity(guard.session, db, owning.entity_type, owning.entity_id)) {
+    return NextResponse.json({ ok: false, error: "برنامه پیدا نشد" }, { status: 404 });
+  }
   const existing = db.prepare("SELECT id FROM visit_plans WHERE id = ?").get(planId);
   if (!existing) {
     return NextResponse.json({ ok: false, error: "برنامه پیدا نشد" }, { status: 404 });
@@ -40,13 +50,22 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plan
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
+export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const planId = Number(id);
   if (!Number.isInteger(planId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
   const db = getDb();
+  const owning = db.prepare("SELECT entity_type, entity_id FROM visit_plans WHERE id = ?").get(planId) as
+    | { entity_type: string; entity_id: number }
+    | undefined;
+  if (!owning || !canReachEntity(guard.session, db, owning.entity_type, owning.entity_id)) {
+    return NextResponse.json({ ok: false, error: "برنامه پیدا نشد" }, { status: 404 });
+  }
   db.prepare("DELETE FROM visit_plans WHERE id = ?").run(planId);
   return NextResponse.json({ ok: true });
 }

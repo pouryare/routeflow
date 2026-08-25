@@ -4,6 +4,7 @@ import { parsePastedChat } from "@/lib/pasteImport";
 import { resolveMapsLinks } from "@/lib/resolveMapsLink";
 import { placeNameFromAddress } from "@/lib/geoLinks";
 import { distanceKm } from "@/lib/geo";
+import { groupFilter, requireRole } from "@/lib/session";
 
 // Shown for a link that resolved to no address at all, so it still appears in the
 // preview to be pinned and renamed by hand instead of vanishing from the import.
@@ -51,6 +52,9 @@ function findDuplicate(
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = await req.json().catch(() => null);
   const text = (body as { text?: string } | null)?.text;
   if (!text || !text.trim()) {
@@ -63,13 +67,17 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const existing = db.prepare("SELECT maps_url FROM saved_locations WHERE maps_url = ?");
+  // Every pool here is scoped. The duplicate check is the subtle one: an unscoped
+  // "you already saved this" would confirm the existence of another group's pin to
+  // someone who cannot otherwise see it.
+  const filter = groupFilter(guard.session);
+  const existing = db.prepare(`SELECT maps_url FROM saved_locations WHERE maps_url = ?${filter.sql}`);
   const savedLocationPool = db
-    .prepare("SELECT name, lat, lng FROM saved_locations")
-    .all() as unknown as DuplicateCandidate[];
+    .prepare(`SELECT name, lat, lng FROM saved_locations WHERE 1 = 1${filter.sql}`)
+    .all(...filter.params) as unknown as DuplicateCandidate[];
   const customerPool = db
-    .prepare("SELECT business_name AS name, lat, lng FROM customers")
-    .all() as unknown as DuplicateCandidate[];
+    .prepare(`SELECT business_name AS name, lat, lng FROM customers WHERE 1 = 1${filter.sql}`)
+    .all(...filter.params) as unknown as DuplicateCandidate[];
 
   const resolved = await resolveMapsLinks(
     items.map((it) => it.mapsUrl),
@@ -82,7 +90,7 @@ export async function POST(req: NextRequest) {
     // "here are the venues" message usually arrives in) is named from the venue name Google
     // itself carries in the resolved place address.
     const name = it.name || (r.address ? placeNameFromAddress(r.address) : null) || UNNAMED_LOCATION;
-    const alreadySaved = !!existing.get(it.mapsUrl);
+    const alreadySaved = !!existing.get(it.mapsUrl, ...filter.params);
     const duplicateOf = alreadySaved
       ? null
       : findDuplicate(name, r.lat, r.lng, [

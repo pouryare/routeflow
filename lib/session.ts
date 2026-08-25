@@ -23,7 +23,16 @@ export type Guard = { ok: true; session: Session } | { ok: false; response: Next
  *  also why this cannot live in proxy.ts: middleware has no safe route to the database.
  */
 export function getSession(req: NextRequest): Session | null {
-  const claims = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
+  return getSessionFromCookies(req.cookies.get(COOKIE_NAME)?.value);
+}
+
+/** The same resolution, entered from a raw cookie value rather than a NextRequest.
+ *
+ *  Server components have no NextRequest -- they reach the cookie through next/headers --
+ *  so both entry points delegate here. One implementation means a page and its API route
+ *  can never disagree about who the caller is. */
+export function getSessionFromCookies(token: string | undefined | null): Session | null {
+  const claims = parseSessionToken(token);
   if (!claims) return null;
 
   const user = getDb().prepare("SELECT * FROM users WHERE id = ?").get(claims.uid) as UserRow | undefined;
@@ -70,6 +79,76 @@ export function groupFilter(session: Session, column = "group_id"): { sql: strin
   if (scope === "all") return { sql: "", params: [] };
   if (scope.length === 0) return { sql: " AND 1 = 0", params: [] };
   return { sql: ` AND ${column} = ?`, params: [scope[0]] };
+}
+
+/** Like groupFilter, but also admits rows that belong to no group at all.
+ *
+ *  For tables where an ungrouped row means "shared by the whole company" rather than
+ *  "not assigned yet". facilities is the case that forces it: the warehouse and the home
+ *  origin are seeded with no group, and every group needs them to plan a route. A plain
+ *  groupFilter would empty the depot list for every manager and leave the planner with
+ *  nowhere to start from.
+ *
+ *  Read-only. Writes still go through canReachGroup, so a manager can see the shared
+ *  warehouse but cannot rename or delete it. */
+export function groupFilterWithShared(session: Session, column = "group_id"): { sql: string; params: number[] } {
+  const scope = scopeGroupIds(session);
+  if (scope === "all") return { sql: "", params: [] };
+  if (scope.length === 0) return { sql: ` AND ${column} IS NULL`, params: [] };
+  return { sql: ` AND (${column} IS NULL OR ${column} = ?)`, params: [scope[0]] };
+}
+
+/** Join + filter for the tables that carry no group of their own and reach one through
+ *  their (entity_type, entity_id) pair -- photos, reminders, visit_plans, activity_log
+ *  (spec §2.3 / Task 8, option 2).
+ *
+ *  Joining rather than denormalising means a district changing hands takes its reminders
+ *  and photos with it, with no second copy of the truth to keep in step.
+ *
+ *  A facility with no group is company-wide (the seeded warehouse), so rows attached to
+ *  one stay visible to every group -- otherwise a manager could not see the depot
+ *  arrivals their own day is measured by. A *customer* or *district* with no group is a
+ *  different thing entirely: not shared, just not territorised yet, and it stays hidden.
+ */
+export function entityGroupFilter(
+  session: Session,
+  alias: string
+): { joins: string; sql: string; params: number[] } {
+  const joins = `
+     LEFT JOIN customers _ec ON ${alias}.entity_type = 'customer' AND _ec.id = ${alias}.entity_id
+     LEFT JOIN districts _ed ON ${alias}.entity_type = 'district' AND _ed.id = ${alias}.entity_id
+     LEFT JOIN facilities _ef ON ${alias}.entity_type = 'facility' AND _ef.id = ${alias}.entity_id`;
+  const shared = `(${alias}.entity_type = 'facility' AND _ef.group_id IS NULL)`;
+
+  const scope = scopeGroupIds(session);
+  if (scope === "all") return { joins, sql: "", params: [] };
+  if (scope.length === 0) return { joins, sql: ` AND ${shared}`, params: [] };
+  return {
+    joins,
+    sql: ` AND (COALESCE(_ec.group_id, _ed.group_id, _ef.group_id) = ? OR ${shared})`,
+    params: [scope[0]],
+  };
+}
+
+/** Whether this session may write a row hanging off the given entity. Same rule as the
+ *  filter above: the parent's group decides, and an ungrouped facility is shared. */
+export function canReachEntity(
+  session: Session,
+  db: ReturnType<typeof getDb>,
+  entityType: string,
+  entityId: number
+): boolean {
+  if (session.role === "owner") return true;
+
+  const table = entityType === "customer" ? "customers" : entityType === "district" ? "districts" : entityType === "facility" ? "facilities" : null;
+  if (!table) return false;
+
+  const row = db.prepare(`SELECT group_id FROM ${table} WHERE id = ?`).get(entityId) as
+    | { group_id: number | null }
+    | undefined;
+  if (!row) return false;
+  if (entityType === "facility" && row.group_id === null) return true;
+  return canReachGroup(session, row.group_id);
 }
 
 /** Whether this session may touch a row belonging to the given group. Use before any

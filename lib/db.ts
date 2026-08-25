@@ -401,6 +401,31 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE customers ADD COLUMN group_id INTEGER REFERENCES groups(id)");
   }
 
+  // Group ownership for the tables that are owned outright rather than through what they
+  // point at (spec §2.3 / Task 8). saved_locations, lead_lists and facilities each belong
+  // to one group from the moment they are created, so they carry their own column and it
+  // is stamped from the creating session.
+  //
+  // photos, reminders and visit_plans deliberately do NOT get one: their
+  // (entity_type, entity_id) already names a customer, district or facility that carries
+  // the group, so they join to it instead. That way a district changing hands takes its
+  // reminders and photos with it, with no second copy of the truth to keep in step.
+  for (const table of ["saved_locations", "lead_lists", "facilities"] as const) {
+    const cols = db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[];
+    if (!cols.some((c) => c.name === "group_id")) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN group_id INTEGER REFERENCES groups(id)`);
+    }
+  }
+
+  // activity_log.changed_by holds a display name, so renaming someone rewrites their
+  // history and two people with the same name are indistinguishable. Record the id too.
+  const activityActorCols = db.prepare("PRAGMA table_info(activity_log)").all() as { name: string }[];
+  if (!activityActorCols.some((c) => c.name === "changed_by_user_id")) {
+    // changed_by stays: it is what the history UI renders, and it must keep reading
+    // correctly for rows written before this column existed, which have no id to look up.
+    db.exec("ALTER TABLE activity_log ADD COLUMN changed_by_user_id INTEGER REFERENCES users(id)");
+  }
+
   // visit_plans shipped with entity_type restricted to district/customer. SQLite cannot
   // ALTER a CHECK, so widening it to accept a facility means the standard rebuild:
   // new table, copy every row, drop, rename. Guarded on the constraint text so it runs
@@ -514,6 +539,9 @@ export interface ActivityEntry {
   new_value: string | null;
   note: string | null;
   changed_by: string | null;
+  /** The acting user's id, so history survives a rename and two people with the same
+   *  display name stay distinguishable. NULL on rows written before accounts existed. */
+  changed_by_user_id: number | null;
   created_at: string;
 }
 
@@ -637,10 +665,17 @@ export interface LeadListWithItems extends LeadListRow {
   location_ids: number[];
 }
 
-export function readLeadLists(db: DatabaseSync = getDb()): LeadListWithItems[] {
+export function readLeadLists(
+  db: DatabaseSync = getDb(),
+  groupIds: number[] | "all" = "all"
+): LeadListWithItems[] {
+  // See readCustomers: an empty scope must read as "nothing", never as "everything".
+  if (groupIds !== "all" && groupIds.length === 0) return [];
+  const where = groupIds === "all" ? "" : ` WHERE group_id IN (${groupIds.map(() => "?").join(", ")})`;
+  const params = groupIds === "all" ? [] : groupIds;
   const lists = db
-    .prepare("SELECT id, name, created_at, updated_at FROM lead_lists ORDER BY created_at")
-    .all() as unknown as LeadListRow[];
+    .prepare(`SELECT id, name, created_at, updated_at FROM lead_lists${where} ORDER BY created_at`)
+    .all(...params) as unknown as LeadListRow[];
 
   const items = db
     .prepare("SELECT list_id, location_id FROM lead_list_items ORDER BY list_id, sort_order, id")
@@ -690,11 +725,11 @@ export function setLeadListItems(db: DatabaseSync, listId: number, locationIds: 
 
 export function logActivity(
   db: DatabaseSync,
-  entry: Omit<ActivityEntry, "id" | "created_at">
+  entry: Omit<ActivityEntry, "id" | "created_at" | "changed_by_user_id"> & { changed_by_user_id?: number | null }
 ): void {
   db.prepare(
-    `INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, changed_by_user_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     entry.entity_type,
     entry.entity_id,
@@ -703,6 +738,7 @@ export function logActivity(
     entry.new_value,
     entry.note,
     entry.changed_by,
+    entry.changed_by_user_id ?? null,
     new Date().toISOString()
   );
 }

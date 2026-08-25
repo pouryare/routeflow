@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, setLeadListItems } from "@/lib/db";
 import { sanitiseIds } from "../route";
+import { canReachGroup, groupFilter, requireRole } from "@/lib/session";
 
 interface PatchInput {
   name?: string;
@@ -11,6 +12,9 @@ interface PatchInput {
 const MAX_NAME = 60;
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
@@ -23,6 +27,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
   }
 
   const db = getDb();
+  const owning = db.prepare("SELECT group_id FROM lead_lists WHERE id = ?").get(idNum) as
+    | { group_id: number | null }
+    | undefined;
+  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+    return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
+  }
   const exists = db.prepare("SELECT 1 FROM lead_lists WHERE id = ?").get(idNum);
   if (!exists) {
     return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
@@ -52,7 +62,13 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
     // foreign key and roll the whole write back, losing the rest of the reorder with it.
     // Filtered here instead, so the list simply comes back without the dead entry.
     const known = new Set(
-      (db.prepare("SELECT id FROM saved_locations").all() as unknown as { id: number }[]).map((r) => r.id)
+      // Scoped: without this a manager could add another group's saved pins to their own
+      // list and read the pins back through it.
+      (
+        db
+          .prepare(`SELECT id FROM saved_locations WHERE 1 = 1${groupFilter(guard.session).sql}`)
+          .all(...groupFilter(guard.session).params) as unknown as { id: number }[]
+      ).map((r) => r.id)
     );
     setLeadListItems(db, idNum, ids.filter((locId) => known.has(locId)));
   }
@@ -60,7 +76,10 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
   return NextResponse.json({ ok: true });
 }
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
+export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
@@ -68,6 +87,12 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/lead-lis
   }
 
   const db = getDb();
+  const owning = db.prepare("SELECT group_id FROM lead_lists WHERE id = ?").get(idNum) as
+    | { group_id: number | null }
+    | undefined;
+  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+    return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
+  }
   const row = db.prepare("SELECT id, name FROM lead_lists WHERE id = ?").get(idNum) as
     | { id: number; name: string }
     | undefined;

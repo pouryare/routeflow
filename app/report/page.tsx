@@ -9,6 +9,10 @@ import CsvExportButton from "@/components/CsvExportButton";
 import { faDateTime, faFixed, faNum } from "@/lib/format";
 import DataFreshness from "@/components/DataFreshness";
 import { newestSync } from "@/lib/freshness";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies, groupFilter, groupFilterWithShared } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -43,11 +47,21 @@ export default async function ReportPage({
   // Server-rendered page, so the sort lives in the URL rather than in client state --
   // which also means a sorted report stays sorted when printed or shared as a link.
   const sortByDistance = gaps === "near";
-  const db = getDb();
-  const districts = db.prepare("SELECT * FROM districts").all() as unknown as District[];
-  const customers = db.prepare("SELECT * FROM customers ORDER BY business_name").all() as unknown as Customer[];
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  if (!session) redirect("/login");
+  if (session.role === "driver") redirect("/driver");
+  const f = groupFilter(session);
 
-  const facilities = readFacilities(db);
+  const db = getDb();
+  const districts = db
+    .prepare(`SELECT * FROM districts WHERE 1 = 1${f.sql}`)
+    .all(...f.params) as unknown as District[];
+  const customers = db
+    .prepare(`SELECT * FROM customers WHERE 1 = 1${f.sql} ORDER BY business_name`)
+    .all(...f.params) as unknown as Customer[];
+
+  const facilities = readFacilities(db, groupFilterWithShared(session));
   const origin = facilities.find((f) => f.is_default_origin === 1) ?? facilities[0] ?? null;
 
   const districtCounts = countBy(districts.map((d) => d.coverage_status));

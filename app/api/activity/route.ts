@@ -1,8 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, ActivityEntry, LoggableEntityType, PLAN_ENTITY_TYPES, logActivity } from "@/lib/db";
-import { getActorName } from "@/lib/auth";
+import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 
+// activity_log is option 2 as well: an entry belongs to whatever it is an entry about.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const f = entityGroupFilter(guard.session, "a");
+
   const { searchParams } = new URL(req.url);
   const entityType = searchParams.get("entity_type") as LoggableEntityType | null;
   const date = searchParams.get("date");
@@ -22,11 +27,11 @@ export async function GET(req: NextRequest) {
     }
     const rows = db
       .prepare(
-        `SELECT * FROM activity_log
-         WHERE entity_type = ? AND created_at >= ? AND created_at < ?
-         ORDER BY created_at`
+        `SELECT a.* FROM activity_log a${f.joins}
+         WHERE a.entity_type = ? AND a.created_at >= ? AND a.created_at < ?${f.sql}
+         ORDER BY a.created_at`
       )
-      .all(entityType, `${date}T00:00:00.000Z`, `${date}T23:59:59.999Z`) as unknown as ActivityEntry[];
+      .all(entityType, `${date}T00:00:00.000Z`, `${date}T23:59:59.999Z`, ...f.params) as unknown as ActivityEntry[];
     return NextResponse.json({ ok: true, activity: rows });
   }
 
@@ -37,9 +42,11 @@ export async function GET(req: NextRequest) {
 
   const rows = db
     .prepare(
-      "SELECT * FROM activity_log WHERE entity_type = ? AND entity_id = ? ORDER BY created_at DESC LIMIT 50"
+      `SELECT a.* FROM activity_log a${f.joins}
+       WHERE a.entity_type = ? AND a.entity_id = ?${f.sql}
+       ORDER BY a.created_at DESC LIMIT 50`
     )
-    .all(entityType, entityId) as unknown as ActivityEntry[];
+    .all(entityType, entityId, ...f.params) as unknown as ActivityEntry[];
 
   return NextResponse.json({ ok: true, activity: rows });
 }
@@ -58,6 +65,9 @@ interface NewActivityInput {
  *  "status_change" could write a history entry claiming a status change that never
  *  happened. */
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = (await req.json().catch(() => null)) as NewActivityInput | null;
   if (!body) {
     return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
@@ -73,14 +83,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "متن رویداد الزامی است" }, { status: 400 });
   }
 
-  logActivity(getDb(), {
+  const db = getDb();
+  if (!canReachEntity(guard.session, db, body.entity_type, body.entity_id)) {
+    return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
+  }
+
+  logActivity(db, {
     entity_type: body.entity_type,
     entity_id: body.entity_id,
     event_type: "note",
     old_value: null,
     new_value: null,
     note,
-    changed_by: getActorName(req),
+    // Both: the name is what the history UI renders, the id is what survives a rename.
+    changed_by: guard.session.user.display_name,
+    changed_by_user_id: guard.session.user.id,
   });
 
   return NextResponse.json({ ok: true });

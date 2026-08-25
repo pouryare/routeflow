@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import { describe, it, expect, beforeAll, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -117,5 +117,359 @@ describe("PATCH /api/districts/bulk", () => {
       headers: { "Content-Type": "application/json" },
     });
     expect((await patchBulk(req)).status).toBe(403);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Task 8: one pair per route -- a manager must not reach the other group's row,
+// and a driver must be refused outright. Written out rather than parameterised:
+// a route with no test of its own is a route nobody checked.
+// ---------------------------------------------------------------------------
+
+const { GET: getDistricts } = await import("@/app/api/districts/route");
+const { GET: getGeometry } = await import("@/app/api/districts/geometry/route");
+const { GET: getLocations } = await import("@/app/api/locations/route");
+const { PATCH: patchLocation, DELETE: deleteLocation } = await import("@/app/api/locations/[id]/route");
+const { POST: convertLocation } = await import("@/app/api/locations/[id]/convert/route");
+const { GET: getLeadLists } = await import("@/app/api/lead-lists/route");
+const { PATCH: patchLeadList, DELETE: deleteLeadList } = await import("@/app/api/lead-lists/[id]/route");
+const { GET: getFacilities } = await import("@/app/api/facilities/route");
+const { PATCH: patchFacility } = await import("@/app/api/facilities/[id]/route");
+const { GET: getReminders, POST: postReminder } = await import("@/app/api/reminders/route");
+const { PATCH: patchReminder, DELETE: deleteReminder } = await import("@/app/api/reminders/[id]/route");
+const { GET: getPhotos } = await import("@/app/api/photos/route");
+const { DELETE: deletePhoto } = await import("@/app/api/photos/[id]/route");
+const { GET: getPhotoFile } = await import("@/app/api/photos/[id]/file/route");
+const { GET: getPlans, POST: postPlan } = await import("@/app/api/visit-plans/route");
+const { PATCH: patchPlan, DELETE: deletePlan } = await import("@/app/api/visit-plans/[id]/route");
+const { GET: getActivity, POST: postActivity } = await import("@/app/api/activity/route");
+const { GET: getSales } = await import("@/app/api/sales/route");
+const { GET: getImportStatus } = await import("@/app/api/import/status/route");
+const { POST: postImportUndo } = await import("@/app/api/import/undo/route");
+const { POST: subscribePush } = await import("@/app/api/push/subscribe/route");
+
+let eastCustomerId = 0, westCustomerId = 0, eastDistrictId = 0;
+let eastLocId = 0, westLocId = 0, eastListId = 0, westListId = 0;
+let eastFacId = 0, westFacId = 0, sharedFacId = 0;
+let eastReminderId = 0, westReminderId = 0;
+let eastPhotoId = 0, westPhotoId = 0;
+let eastPlanId = 0, westPlanId = 0;
+
+const idCtx = (n: number) => ({ params: Promise.resolve({ id: String(n) }) }) as never;
+const json = (body: unknown) => ({
+  method: "PATCH" as const,
+  body: JSON.stringify(body),
+  headers: { "Content-Type": "application/json" },
+});
+
+beforeAll(() => {
+  const db = getDb();
+  const now = new Date().toISOString();
+
+  eastCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'E1'").get() as { id: number }).id;
+  westCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get() as { id: number }).id;
+  eastDistrictId = Number(
+    db.prepare(
+      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
+    ).run("محله شرق", east, now).lastInsertRowid
+  );
+
+  const loc = db.prepare(
+    "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, updated_at) VALUES (?, ?, ?, ?, 'manual', ?, ?, ?)"
+  );
+  eastLocId = Number(loc.run("پین شرق", "https://maps.example/e", 35.7, 51.4, east, now, now).lastInsertRowid);
+  westLocId = Number(loc.run("پین غرب", "https://maps.example/w", 35.7, 51.2, west, now, now).lastInsertRowid);
+
+  const list = db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at) VALUES (?, ?, ?, ?)");
+  eastListId = Number(list.run("لیست شرق", east, now, now).lastInsertRowid);
+  westListId = Number(list.run("لیست غرب", west, now, now).lastInsertRowid);
+
+  const fac = db.prepare(
+    "INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, group_id, created_at, updated_at) VALUES (?, 'other', ?, ?, ?, 0, ?, ?, ?)"
+  );
+  eastFacId = Number(fac.run("fac-east", "انبار شرق", 35.7, 51.4, east, now, now).lastInsertRowid);
+  westFacId = Number(fac.run("fac-west", "انبار غرب", 35.7, 51.2, west, now, now).lastInsertRowid);
+  // No group: the company-wide depot every group plans out of.
+  sharedFacId = Number(fac.run("fac-shared", "انبار مرکزی", 35.7, 51.3, null, now, now).lastInsertRowid);
+
+  const rem = db.prepare(
+    "INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at) VALUES ('customer', ?, '2026-09-01', ?, 0, ?)"
+  );
+  eastReminderId = Number(rem.run(eastCustomerId, "پیگیری شرق", now).lastInsertRowid);
+  westReminderId = Number(rem.run(westCustomerId, "پیگیری غرب", now).lastInsertRowid);
+
+  const ph = db.prepare(
+    "INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at) VALUES ('customer', ?, ?, ?, ?, ?)"
+  );
+  eastPhotoId = Number(ph.run(eastCustomerId, "stem-east", "عکس شرق", now, now).lastInsertRowid);
+  westPhotoId = Number(ph.run(westCustomerId, "stem-west", "عکس غرب", now, now).lastInsertRowid);
+
+  const vp = db.prepare(
+    "INSERT INTO visit_plans (entity_type, entity_id, planned_date, status, sort_order, created_at) VALUES ('customer', ?, '2026-09-01', 'planned', 0, ?)"
+  );
+  eastPlanId = Number(vp.run(eastCustomerId, now).lastInsertRowid);
+  westPlanId = Number(vp.run(westCustomerId, now).lastInsertRowid);
+
+  const act = db.prepare(
+    "INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, created_at) VALUES ('customer', ?, 'note', NULL, NULL, ?, 'x', ?)"
+  );
+  act.run(eastCustomerId, "رویداد شرق", now);
+  act.run(westCustomerId, "رویداد غرب", now);
+});
+
+// The bulk-territory case deliberately moves a district between groups and recomputes
+// customer groups, which nulls these fixtures (they carry no coordinates). Restoring the
+// intended ownership before every test keeps each case independent of the order it runs in.
+beforeEach(() => {
+  const db = getDb();
+  db.prepare("UPDATE customers SET group_id = ? WHERE customer_code = 'E1'").run(east);
+  db.prepare("UPDATE customers SET group_id = ? WHERE customer_code = 'W1'").run(west);
+  db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(west, westDistrictId);
+  db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(east, eastDistrictId);
+});
+
+describe("GET /api/districts", () => {
+  it("gives a group manager only their own districts", async () => {
+    const res = await getDistricts(as(eastMgrId, "group_manager", east, "http://localhost/api/districts"));
+    const names = (await res.json()).districts.map((d: { name: string }) => d.name);
+    expect(names).toEqual(["محله شرق"]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getDistricts(as(driverId, "driver", east, "http://localhost/api/districts"));
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/districts/geometry", () => {
+  it("refuses a driver with 403", async () => {
+    const res = await getGeometry(as(driverId, "driver", east, "http://localhost/api/districts/geometry"));
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("GET /api/locations", () => {
+  it("gives a group manager only their own pins", async () => {
+    const res = await getLocations(as(eastMgrId, "group_manager", east, "http://localhost/api/locations"));
+    const names = (await res.json()).locations.map((l: { name: string }) => l.name);
+    expect(names).toEqual(["پین شرق"]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getLocations(as(driverId, "driver", east, "http://localhost/api/locations"));
+    expect(res.status).toBe(403);
+  });
+  it("hides another group's pin behind a 404 on PATCH", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/locations/${westLocId}`, json({ status: "visited" }));
+    expect((await patchLocation(req, idCtx(westLocId))).status).toBe(404);
+  });
+  it("hides another group's pin behind a 404 on DELETE", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/locations/${westLocId}`, { method: "DELETE" });
+    expect((await deleteLocation(req, idCtx(westLocId))).status).toBe(404);
+  });
+  it("refuses converting another group's pin to a customer", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/locations/${westLocId}/convert`, {
+      method: "POST",
+      body: JSON.stringify({}),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await convertLocation(req, idCtx(westLocId))).status).toBe(404);
+  });
+});
+
+describe("GET /api/lead-lists", () => {
+  it("gives a group manager only their own lists", async () => {
+    const res = await getLeadLists(as(eastMgrId, "group_manager", east, "http://localhost/api/lead-lists"));
+    const names = (await res.json()).lists.map((l: { name: string }) => l.name);
+    expect(names).toEqual(["لیست شرق"]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getLeadLists(as(driverId, "driver", east, "http://localhost/api/lead-lists"));
+    expect(res.status).toBe(403);
+  });
+  it("hides another group's list behind a 404 on PATCH", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/lead-lists/${westListId}`, json({ name: "نفوذ" }));
+    expect((await patchLeadList(req, idCtx(westListId))).status).toBe(404);
+  });
+  it("hides another group's list behind a 404 on DELETE", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/lead-lists/${westListId}`, { method: "DELETE" });
+    expect((await deleteLeadList(req, idCtx(westListId))).status).toBe(404);
+  });
+});
+
+describe("GET /api/facilities", () => {
+  it("gives a group manager their own site and the shared depot, but not another group's", async () => {
+    const res = await getFacilities(as(eastMgrId, "group_manager", east, "http://localhost/api/facilities"));
+    const names = (await res.json()).facilities.map((f: { name: string }) => f.name).sort();
+    expect(names).toContain("انبار شرق");
+    expect(names).toContain("انبار مرکزی");
+    expect(names).not.toContain("انبار غرب");
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getFacilities(as(driverId, "driver", east, "http://localhost/api/facilities"));
+    expect(res.status).toBe(403);
+  });
+  it("hides another group's site behind a 404 on PATCH", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/facilities/${westFacId}`, json({ name: "نفوذ" }));
+    expect((await patchFacility(req, idCtx(westFacId))).status).toBe(404);
+  });
+  it("lets a manager see the shared depot but not rename it", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/facilities/${sharedFacId}`, json({ name: "نفوذ" }));
+    expect((await patchFacility(req, idCtx(sharedFacId))).status).toBe(404);
+  });
+});
+
+describe("GET /api/reminders", () => {
+  it("gives the owner both groups' reminders", async () => {
+    const res = await getReminders(as(ownerId, "owner", null, "http://localhost/api/reminders"));
+    const msgs = (await res.json()).reminders.map((r: { message: string }) => r.message);
+    expect(msgs.sort()).toEqual(["پیگیری شرق", "پیگیری غرب"]);
+  });
+  it("gives a group manager only reminders on their own customers", async () => {
+    const res = await getReminders(as(eastMgrId, "group_manager", east, "http://localhost/api/reminders"));
+    const msgs = (await res.json()).reminders.map((r: { message: string }) => r.message);
+    expect(msgs).toEqual(["پیگیری شرق"]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getReminders(as(driverId, "driver", east, "http://localhost/api/reminders"));
+    expect(res.status).toBe(403);
+  });
+  it("refuses a reminder posted against another group's customer", async () => {
+    const req = as(eastMgrId, "group_manager", east, "http://localhost/api/reminders", {
+      method: "POST",
+      body: JSON.stringify({ entity_type: "customer", entity_id: westCustomerId, due_date: "2026-09-02", message: "نفوذ" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await postReminder(req)).status).toBe(404);
+  });
+  it("hides another group's reminder behind a 404 on PATCH", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/reminders/${westReminderId}`, json({ resolved: true }));
+    expect((await patchReminder(req, idCtx(westReminderId))).status).toBe(404);
+  });
+  it("hides another group's reminder behind a 404 on DELETE", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/reminders/${westReminderId}`, { method: "DELETE" });
+    expect((await deleteReminder(req, idCtx(westReminderId))).status).toBe(404);
+  });
+});
+
+describe("GET /api/photos", () => {
+  it("gives a group manager only photos of their own customers", async () => {
+    const res = await getPhotos(as(eastMgrId, "group_manager", east, "http://localhost/api/photos"));
+    const caps = (await res.json()).photos.map((p: { caption: string }) => p.caption);
+    expect(caps).toEqual(["عکس شرق"]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getPhotos(as(driverId, "driver", east, "http://localhost/api/photos"));
+    expect(res.status).toBe(403);
+  });
+  it("hides another group's photo behind a 404 on DELETE", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/photos/${westPhotoId}`, { method: "DELETE" });
+    expect((await deletePhoto(req, idCtx(westPhotoId))).status).toBe(404);
+  });
+  it("refuses the raw image bytes of another group's photo", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/photos/${westPhotoId}/file`);
+    expect((await getPhotoFile(req, idCtx(westPhotoId))).status).toBe(404);
+  });
+});
+
+describe("GET /api/visit-plans", () => {
+  it("gives a group manager only stops at their own customers", async () => {
+    const res = await getPlans(as(eastMgrId, "group_manager", east, "http://localhost/api/visit-plans"));
+    const ids = (await res.json()).plans.map((p: { id: number }) => p.id);
+    expect(ids).toEqual([eastPlanId]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getPlans(as(driverId, "driver", east, "http://localhost/api/visit-plans"));
+    expect(res.status).toBe(403);
+  });
+  it("refuses a stop planned at another group's customer", async () => {
+    const req = as(eastMgrId, "group_manager", east, "http://localhost/api/visit-plans", {
+      method: "POST",
+      body: JSON.stringify({ entity_type: "customer", entity_id: westCustomerId, planned_date: "2026-09-03" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await postPlan(req)).status).toBe(404);
+  });
+  it("hides another group's stop behind a 404 on PATCH", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/visit-plans/${westPlanId}`, json({ status: "done" }));
+    expect((await patchPlan(req, idCtx(westPlanId))).status).toBe(404);
+  });
+  it("hides another group's stop behind a 404 on DELETE", async () => {
+    const req = as(eastMgrId, "group_manager", east, `http://localhost/api/visit-plans/${westPlanId}`, { method: "DELETE" });
+    expect((await deletePlan(req, idCtx(westPlanId))).status).toBe(404);
+  });
+});
+
+describe("GET /api/activity", () => {
+  it("gives a group manager only their own customer's history", async () => {
+    const west = await getActivity(
+      as(eastMgrId, "group_manager", east, `http://localhost/api/activity?entity_type=customer&entity_id=${westCustomerId}`)
+    );
+    expect((await west.json()).activity).toEqual([]);
+    const own = await getActivity(
+      as(eastMgrId, "group_manager", east, `http://localhost/api/activity?entity_type=customer&entity_id=${eastCustomerId}`)
+    );
+    expect((await own.json()).activity.map((a: { note: string }) => a.note)).toEqual(["رویداد شرق"]);
+  });
+  it("refuses a driver with 403", async () => {
+    const res = await getActivity(
+      as(driverId, "driver", east, `http://localhost/api/activity?entity_type=customer&entity_id=${eastCustomerId}`)
+    );
+    expect(res.status).toBe(403);
+  });
+  it("refuses an entry logged against another group's customer", async () => {
+    const req = as(eastMgrId, "group_manager", east, "http://localhost/api/activity", {
+      method: "POST",
+      body: JSON.stringify({ entity_type: "customer", entity_id: westCustomerId, note: "نفوذ" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await postActivity(req)).status).toBe(404);
+  });
+  it("records the acting user's id, not just their name", async () => {
+    const req = as(ownerId, "owner", null, "http://localhost/api/activity", {
+      method: "POST",
+      body: JSON.stringify({ entity_type: "customer", entity_id: eastCustomerId, note: "ثبت مالک" }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await postActivity(req)).status).toBe(200);
+    const row = getDb()
+      .prepare("SELECT changed_by, changed_by_user_id FROM activity_log WHERE note = 'ثبت مالک'")
+      .get() as { changed_by: string; changed_by_user_id: number };
+    expect(row.changed_by).toBe("مالک");
+    expect(row.changed_by_user_id).toBe(ownerId);
+  });
+});
+
+describe("owner-only routes", () => {
+  it("refuses a group manager the sales ledger", async () => {
+    const res = await getSales(as(eastMgrId, "group_manager", east, "http://localhost/api/sales?customer=x"));
+    expect(res.status).toBe(403);
+  });
+  it("refuses a group manager the import status", async () => {
+    const res = await getImportStatus(as(eastMgrId, "group_manager", east, "http://localhost/api/import/status"));
+    expect(res.status).toBe(403);
+  });
+  it("refuses a group manager an import undo", async () => {
+    const res = await postImportUndo(
+      as(eastMgrId, "group_manager", east, "http://localhost/api/import/undo", { method: "POST" })
+    );
+    expect(res.status).toBe(403);
+  });
+});
+
+describe("push/subscribe", () => {
+  it("lets a driver register their device", async () => {
+    const req = as(driverId, "driver", east, "http://localhost/api/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await subscribePush(req)).status).toBe(200);
+  });
+  it("still refuses an anonymous device", async () => {
+    const req = new NextRequest("http://localhost/api/push/subscribe", {
+      method: "POST",
+      body: JSON.stringify({ endpoint: "https://push.example/2", keys: { p256dh: "a", auth: "b" } }),
+      headers: { "Content-Type": "application/json" },
+    });
+    expect((await subscribePush(req)).status).toBe(401);
   });
 });

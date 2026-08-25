@@ -3,10 +3,16 @@ import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import sharp from "sharp";
 import { getDb, Photo, EntityType, logActivity } from "@/lib/db";
-import { getActorName } from "@/lib/auth";
+import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
 
+// photos is option 2: a photo is *of* a customer, district or facility, so it inherits
+// that row's group rather than carrying one of its own.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const f = entityGroupFilter(guard.session, "p");
+
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const entityType = searchParams.get("entity_type");
@@ -15,10 +21,14 @@ export async function GET(req: NextRequest) {
   let rows: Photo[];
   if (entityType && entityId) {
     rows = db
-      .prepare("SELECT * FROM photos WHERE entity_type = ? AND entity_id = ? ORDER BY taken_at DESC")
-      .all(entityType, Number(entityId)) as unknown as Photo[];
+      .prepare(
+        `SELECT p.* FROM photos p${f.joins} WHERE p.entity_type = ? AND p.entity_id = ?${f.sql} ORDER BY p.taken_at DESC`
+      )
+      .all(entityType, Number(entityId), ...f.params) as unknown as Photo[];
   } else {
-    rows = db.prepare("SELECT * FROM photos ORDER BY taken_at DESC LIMIT 500").all() as unknown as Photo[];
+    rows = db
+      .prepare(`SELECT p.* FROM photos p${f.joins} WHERE 1 = 1${f.sql} ORDER BY p.taken_at DESC LIMIT 500`)
+      .all(...f.params) as unknown as Photo[];
   }
 
   // enrich with a display label for the standalone /gallery browse view
@@ -50,6 +60,9 @@ export async function GET(req: NextRequest) {
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20MB -- generous for a phone camera photo
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const formData = await req.formData().catch(() => null);
   const file = formData?.get("file");
   const entityType = formData?.get("entity_type") as EntityType | null;
@@ -95,6 +108,10 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
   const db = getDb();
+  if (!canReachEntity(guard.session, db, entityType, entityId)) {
+    return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
+  }
+
   const result = db
     .prepare(
       `INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at)
@@ -109,7 +126,8 @@ export async function POST(req: NextRequest) {
     old_value: null,
     new_value: null,
     note: "عکس جدید اضافه شد",
-    changed_by: getActorName(req),
+    changed_by: guard.session.user.display_name,
+    changed_by_user_id: guard.session.user.id,
   });
 
   return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid), file_stem: stem });

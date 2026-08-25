@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import { getDb, Photo } from "@/lib/db";
 import { photoFilePath } from "@/lib/photos";
+import { canReachEntity, requireRole } from "@/lib/session";
 
-export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/photos/[id]">) {
+export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/photos/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const photoId = Number(id);
   if (!Number.isInteger(photoId)) {
@@ -11,6 +15,9 @@ export async function DELETE(_req: NextRequest, ctx: RouteContext<"/api/photos/[
   }
   const db = getDb();
   const row = db.prepare("SELECT * FROM photos WHERE id = ?").get(photoId) as Photo | undefined;
+  if (row && !canReachEntity(guard.session, db, row.entity_type, row.entity_id)) {
+    return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
+  }
   if (!row) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }

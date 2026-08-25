@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractLatLng, extractPlusCodeCoords, isAllowedLinkHost, isPrivateOrLocalHost } from "@/lib/geoLinks";
+import { requireRole } from "@/lib/session";
 
 const MAX_REDIRECTS = 6;
 const FETCH_TIMEOUT_MS = 8000;
@@ -25,7 +26,12 @@ async function fetchNoRedirect(url: string) {
   }
 }
 
+// Guard only, no scope: this resolves a map link the caller already holds and reads
+// nothing out of the database.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const urlParam = req.nextUrl.searchParams.get("url")?.trim();
   if (!urlParam || !/^https?:\/\//i.test(urlParam)) {
     return NextResponse.json({ ok: false, error: "لینک نامعتبر است" }, { status: 400 });

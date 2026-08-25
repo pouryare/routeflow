@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, readLeadLists, setLeadListItems } from "@/lib/db";
+import { requireRole, scopeGroupIds } from "@/lib/session";
 
 const MAX_NAME = 60;
 
-export async function GET() {
-  return NextResponse.json({ ok: true, lists: readLeadLists() });
+// lead_lists is option 1: a list is compiled by one group and belongs to it outright.
+export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
+  return NextResponse.json({ ok: true, lists: readLeadLists(getDb(), scopeGroupIds(guard.session)) });
 }
 
 interface NewListInput {
@@ -15,6 +20,9 @@ interface NewListInput {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = (await req.json().catch(() => null)) as NewListInput | null;
   if (!body) {
     return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
@@ -36,8 +44,8 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const now = new Date().toISOString();
   const result = db
-    .prepare("INSERT INTO lead_lists (name, created_at, updated_at) VALUES (?, ?, ?)")
-    .run(name, now, now);
+    .prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at) VALUES (?, ?, ?, ?)")
+    .run(name, guard.session.groupId, now, now);
   const id = Number(result.lastInsertRowid);
 
   if (ids.length) setLeadListItems(db, id, ids);

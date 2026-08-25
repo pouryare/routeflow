@@ -26,8 +26,16 @@ const KIND_ORDER: Record<FacilityKind, number> = { home_base: 0, warehouse: 1, o
  *  Component. Rebuilding each row as an object literal is also the explicit column
  *  list, so the page and the API can't drift apart in what they send. Same reasoning as
  *  readCustomers in lib/customers.ts. */
-export function readFacilities(db: DatabaseSync = getDb()): FacilityRow[] {
-  const rows = db.prepare("SELECT * FROM facilities").all() as unknown as FacilityRow[];
+export function readFacilities(
+  db: DatabaseSync = getDb(),
+  /** SQL fragment + params from groupFilterWithShared(). Facilities with no group are
+   *  company-wide (the seeded warehouse and home origin), so they stay visible to every
+   *  group rather than being scoped away. */
+  scope: { sql: string; params: number[] } = { sql: "", params: [] }
+): FacilityRow[] {
+  const rows = db
+    .prepare(`SELECT * FROM facilities WHERE 1 = 1${scope.sql}`)
+    .all(...scope.params) as unknown as FacilityRow[];
   return rows
     .map((r) => ({
       id: r.id,

@@ -3,8 +3,17 @@ import { FACILITY_KINDS, FacilityKind, getDb } from "@/lib/db";
 import { readFacilities } from "@/lib/facilities";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { isValidCoord } from "@/lib/geoLinks";
+import { groupFilterWithShared, requireRole, scopeGroupIds } from "@/lib/session";
 
+// facilities is option 1 (spec §2.3 / Task 8): a site a group adds belongs to that group.
+// A site with no group is company-wide -- the seeded warehouse and home origin -- and stays
+// readable by everyone, because every group plans its routes out of the same depot.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const scope = groupFilterWithShared(guard.session);
+  const scopeIds = scopeGroupIds(guard.session);
+
   const db = getDb();
   // COUNT + MAX(updated_at) is the same cheap signature the districts and locations
   // lists use. updated_at is what makes a pin move invalidate the tag -- without it a
@@ -13,11 +22,11 @@ export async function GET(req: NextRequest) {
     c: number;
     m: string | null;
   };
-  const tag = etagFor("facilities", sig.c, sig.m);
+  const tag = etagFor(`facilities:${scopeIds === "all" ? "all" : scopeIds.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { facilities: readFacilities(db) });
+  return etagJson(req, tag, { facilities: readFacilities(db, scope) });
 }
 
 interface NewFacilityInput {
@@ -39,6 +48,9 @@ interface NewFacilityInput {
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = (await req.json().catch(() => null)) as NewFacilityInput | null;
   if (!body) {
     return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
@@ -70,8 +82,8 @@ export async function POST(req: NextRequest) {
   // makes in the editor, not a side effect of adding a location.
   const result = db
     .prepare(
-      `INSERT INTO facilities (id, slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?)`
+      `INSERT INTO facilities (id, slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`
     )
     .run(
       restore?.id ?? null, // NULL on an INTEGER PRIMARY KEY still autoincrements
@@ -83,6 +95,8 @@ export async function POST(req: NextRequest) {
       body.lng,
       body.maps_url ?? null,
       body.notes ?? null,
+      // A site a manager adds is theirs. An owner adds one for the company, with no group.
+      guard.session.groupId,
       now,
       now
     );

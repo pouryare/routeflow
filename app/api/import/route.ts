@@ -1,7 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { importCustomersFromWorkbook } from "@/lib/importExcel";
+import { getDb } from "@/lib/db";
+import { recomputeCustomerGroups } from "@/lib/groups";
+import { requireRole } from "@/lib/session";
 
+// Owner only: an import rewrites customer rows across the whole province, so it is not
+// something a single group's manager can set off.
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner"]);
+  if (!guard.ok) return guard.response;
+
   const formData = await req.formData().catch(() => null);
   const file = formData?.get("file");
 
@@ -19,5 +27,8 @@ export async function POST(req: NextRequest) {
   if (!result.ok) {
     return NextResponse.json(result, { status: 422 });
   }
+  // A freshly imported customer has group_id NULL until territory is applied, which makes
+  // it invisible to every group manager. Recompute before anyone can notice.
+  if (!dryRun) recomputeCustomerGroups(getDb());
   return NextResponse.json(result);
 }

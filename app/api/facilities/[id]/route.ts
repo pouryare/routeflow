@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { FACILITY_KINDS, FacilityKind, getDb } from "@/lib/db";
 import { readFacility } from "@/lib/facilities";
 import { isValidCoord } from "@/lib/geoLinks";
+import { canReachGroup, requireRole } from "@/lib/session";
 
 interface PatchInput {
   name?: string;
@@ -13,7 +14,13 @@ interface PatchInput {
   is_default_origin?: boolean;
 }
 
+// Writes use canReachGroup, not the shared-aware read filter: a manager can *see* the
+// company warehouse (group_id NULL) but must not be able to rename, move or delete it.
+// Only an owner reaches an ungrouped row.
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
@@ -26,8 +33,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
   }
 
   const db = getDb();
-  const exists = db.prepare("SELECT id FROM facilities WHERE id = ?").get(idNum);
-  if (!exists) {
+  const exists = db.prepare("SELECT id, group_id FROM facilities WHERE id = ?").get(idNum) as
+    | { id: number; group_id: number | null }
+    | undefined;
+  // 404 rather than 403 for another group's site, for the same reason as districts:
+  // a 403 confirms it exists.
+  if (!exists || !canReachGroup(guard.session, exists.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
@@ -110,6 +121,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilities/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
@@ -121,7 +135,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
   // be undone from the toast. Read before the DELETE, obviously -- afterwards there is
   // nothing left to describe.
   const row = readFacility(db, idNum);
-  if (!row) {
+  const owning = db.prepare("SELECT group_id FROM facilities WHERE id = ?").get(idNum) as
+    | { group_id: number | null }
+    | undefined;
+  if (!row || !owning || !canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 

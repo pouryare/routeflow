@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, Reminder, EntityType } from "@/lib/db";
+import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 
 function todayStr(): string {
   const d = new Date();
@@ -31,7 +32,13 @@ function enrich(db: ReturnType<typeof getDb>, rows: Reminder[]) {
   }));
 }
 
+// reminders is option 2: a reminder is *about* a customer or district, so it belongs to
+// whichever group owns that row. Joined, not denormalised -- see entityGroupFilter.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const f = entityGroupFilter(guard.session, "r");
+
   const db = getDb();
   const { searchParams } = new URL(req.url);
   const due = searchParams.get("due"); // "today" | "week" | "all"
@@ -39,23 +46,32 @@ export async function GET(req: NextRequest) {
   let rows: Reminder[];
   if (due === "today") {
     rows = db
-      .prepare("SELECT * FROM reminders WHERE resolved = 0 AND due_date <= ? ORDER BY due_date")
-      .all(todayStr()) as unknown as Reminder[];
+      .prepare(
+        `SELECT r.* FROM reminders r${f.joins} WHERE r.resolved = 0 AND r.due_date <= ?${f.sql} ORDER BY r.due_date`
+      )
+      .all(todayStr(), ...f.params) as unknown as Reminder[];
   } else if (due === "week") {
     const weekLater = new Date();
     weekLater.setDate(weekLater.getDate() + 7);
     const weekStr = `${weekLater.getFullYear()}-${String(weekLater.getMonth() + 1).padStart(2, "0")}-${String(weekLater.getDate()).padStart(2, "0")}`;
     rows = db
-      .prepare("SELECT * FROM reminders WHERE resolved = 0 AND due_date <= ? ORDER BY due_date")
-      .all(weekStr) as unknown as Reminder[];
+      .prepare(
+        `SELECT r.* FROM reminders r${f.joins} WHERE r.resolved = 0 AND r.due_date <= ?${f.sql} ORDER BY r.due_date`
+      )
+      .all(weekStr, ...f.params) as unknown as Reminder[];
   } else {
-    rows = db.prepare("SELECT * FROM reminders ORDER BY resolved, due_date").all() as unknown as Reminder[];
+    rows = db
+      .prepare(`SELECT r.* FROM reminders r${f.joins} WHERE 1 = 1${f.sql} ORDER BY r.resolved, r.due_date`)
+      .all(...f.params) as unknown as Reminder[];
   }
 
   return NextResponse.json({ ok: true, reminders: enrich(db, rows) });
 }
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = await req.json().catch(() => null);
   const { entity_type, entity_id, due_date, message } = (body ?? {}) as {
     entity_type?: EntityType;
@@ -78,6 +94,12 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
+  // 404, not 403: a reminder posted against another group's customer must not confirm
+  // that the customer exists.
+  if (!canReachEntity(guard.session, db, entity_type, entity_id)) {
+    return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
+  }
+
   const result = db
     .prepare(
       `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)

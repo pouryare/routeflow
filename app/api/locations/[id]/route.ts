@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, LOCATION_STATUSES, LocationStatus } from "@/lib/db";
 import { isValidCoord } from "@/lib/geoLinks";
 import { LEAD_CRITERIA, LeadCriterion, columnFor, isValidStars } from "@/lib/leadScore";
+import { canReachGroup, requireRole } from "@/lib/session";
 
 interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
   lat?: number;
@@ -11,10 +12,24 @@ interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
+  }
+
+  const db = getDb();
+  // Ownership is decided before the payload is validated: whether this row is yours is
+  // not a question the request body gets a say in, and a 400 on someone else's row would
+  // still be a different answer from a 404.
+  const owning = db.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(idNum) as
+    | { group_id: number | null }
+    | undefined;
+  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+    return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
   const body = (await req.json().catch(() => null)) as PatchInput | null;
@@ -22,7 +37,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
     return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   const sets: string[] = [];
   const values: (string | number | null)[] = [];
 
@@ -76,6 +90,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/locations/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const idNum = Number(id);
   if (!Number.isInteger(idNum)) {
@@ -83,6 +100,12 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/locations
   }
 
   const db = getDb();
+  const owning = db.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(idNum) as
+    | { group_id: number | null }
+    | undefined;
+  if (!owning || !canReachGroup(guard.session, owning.group_id)) {
+    return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
+  }
   const result = db.prepare("DELETE FROM saved_locations WHERE id = ?").run(idNum);
   if (result.changes === 0) {
     return NextResponse.json({ ok: false, error: "مورد پیدا نشد" }, { status: 404 });
