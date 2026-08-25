@@ -48,79 +48,79 @@ kilogram, at a higher rate for فروش فوری (یوسف: ۲۴٬۰۰۰ vs ۳۰
 
 ### 1.2 `فروش` — the sales ledger, and the write-back target
 
-Actual layout, read from the header row:
+Read from the **live** workbook. It has 21 columns (A–U):
 
-| Col | Header |
-|---|---|
-| A | تاریخ |
-| B | شماره سفارش |
-| C | مشتری |
-| D | کالا و بسته‌بندی |
-| E | تعداد بسته |
-| F | مقدار کسر شده (formula: `E × pack size`, in base units — this is what draws down stock) |
-| G | قیمت فروش هر بسته |
-| H | جمع فروش |
-| I | بهای تمام‌شده |
-| J | سود |
-| K | وضعیت پرداخت |
-| L | **وضعیت ارسال** |
-| M | کالا (خودکار) |
-| N | واحد (خودکار) |
+| Col | Header | Kind |
+|---|---|---|
+| A | تاریخ | input |
+| B | شماره سفارش | input |
+| C | مشتری | input |
+| D | کالا و بسته‌بندی | input (dropdown from the packaging table) |
+| E | تعداد بسته | input |
+| F | مقدار کسر شده | formula — `E × qty-per-pack`, in base units; draws down stock |
+| G | قیمت فروش هر بسته | input |
+| H | جمع فروش | formula |
+| I | بهای تمام‌شده | formula |
+| J | سود | formula |
+| K | وضعیت پرداخت | input |
+| L | **وضعیت ارسال** | **input — the app writes this** |
+| M | کالا (خودکار) | formula |
+| N | واحد (خودکار) | formula |
+| O | وزن به کیلوگرم (خودکار) | formula — `F × کالاها!I` |
+| P | **فروش فوری** | **input — the app writes this ("بله" or blank)** |
+| Q | فروشنده این سفارش (خودکار) | formula |
+| R | پورسانت فروشنده | formula |
+| S | پورسانت راننده | formula |
+| T | **راننده تحویل‌دهنده** | **input — the app writes this** |
+| U | راننده مؤثر (خودکار) | formula |
 
-**`فروش` stops at column N.** But `پورسانت` computes driver pay as
-`SUMIFS(فروش!$S, فروش!$U, name)` and salesperson pay as `SUMIFS(فروش!$R, فروش!$Q, name)`.
-Columns Q/R/S/U **do not exist in the workbook today** — they are referenced by the
-commission sheet but never populated.
+### 1.3 The workbook already computes all commission
 
-**Consequence: driver commission currently computes to zero.** The write-back does not
-merely fill these columns in; it has to establish them. O, P and T have no known
-meaning and must be left alone. This is a one-time, explicitly confirmed setup step,
-not something the app should infer (§4.3).
+This is the most important finding for Phase 1, and it makes the write-back far smaller
+and safer than first assumed.
 
-### 1.3 `ارسال امروز` — the delivery list
+- `O` = `F × INDEX(کالاها!$I$3:$I$6, MATCH(M, کالاها!$A$3:$A$6, 0))` — kilograms, derived
+  from base-unit quantity times **`کالاها` column I, «کیلوگرم هر واحد پایه (برای محاسبه
+  پورسانت)»** (0.01 kg per عدد for `NMA-VEG`). The weight data exists.
+- `Q` = the customer's salesperson from `مخاطبین!L`, **unless `P = "بله"`**, in which case
+  it is blank — an instant sale pays no salesperson.
+- `R` = `همکاران!D` (salesperson rate) `× O`.
+- `S` = `IF(P = "بله", همکاران!E, همکاران!D) × O`, keyed on `U` — the driver's normal or
+  فروش فوری rate times kilograms.
+- `U` = `IF(ISBLANK(T), همکاران!$C$6, T)` — the effective driver, **defaulting to
+  `همکاران` C6 (یوسف / DRV1) whenever `T` is blank.**
 
-A filtered view of `فروش` where `L <> "تحویل‌شده"` — note it is *all* outstanding
-orders, not only today's. «مبلغ قابل دریافت» is `IF(K="پرداخت‌شده", 0, H)`, so the COD
-figure is already correct: prepaid orders show zero to collect. The driver app can
-show this column verbatim.
+**Consequence: the app must never compute or write a commission figure.** It writes three
+input cells — `L`, `P`, `T` — and the workbook does every piece of money maths itself.
+Writing to `O`, `Q`, `R`, `S` or `U` would destroy a formula.
 
-### 1.4 `کالاها` and `موجودی انبار` — stock
+**Consequence: `T` must always be written once there is more than one driver.** Today a
+blank `T` silently attributes the delivery to یوسف. With ten drivers that default becomes
+a payroll error, not a convenience.
+
+### 1.4 `ارسال امروز` — the delivery list
+
+A filtered view of `فروش` where `L <> "تحویل‌شده"` — note it is *all* outstanding orders,
+not only today's. «مبلغ قابل دریافت» is `IF(K = "پرداخت‌شده", 0, H)`, so the COD figure is
+already correct: prepaid orders show zero to collect. The driver app can show this column
+verbatim.
+
+### 1.5 `کالاها` and `موجودی انبار` — stock
 
 Four products (`NMA-VEG`, `NMA-ANM`, `MRH-VEG`, `MRH-VEG-BULK`), each with a base unit
-(عدد or کیلوگرم) and a packaging table at `کالاها` rows 10–13 mapping a packaging label
-to product id, unit and quantity-per-pack.
+(عدد or کیلوگرم), a kg-per-base-unit factor (column I), and a packaging table at rows
+9–13 mapping a packaging label to product id, unit and quantity-per-pack (120 عدد per
+جعبه بچه, 10 کیلوگرم per بلوک عمده).
 
 `موجودی انبار` is fully derived: `کل ورودی` = `SUMIF(خرید)`, `کل خروجی` =
 `SUMIF(فروش!F keyed on فروش!M)`, current stock = in − out, plus a reorder suggestion.
 
-**Consequence — and this is the key insight for van stock:** the workbook tracks stock
-at *business* level with no location dimension. A sale draws down the single pool the
-moment it is recorded, whether it left a warehouse or a van. So the app must not try to
-own the total; it owns only the *split* — where inside the business the stock currently
-sits. Van stock is a **sub-ledger between "left the warehouse" and "sold to a
-customer"**, and it never contradicts the workbook's total. §5 builds on this.
-
-### 1.5 Commission per kilogram is not computable today
-
-The packaging table (`کالاها` rows 9–13) maps a packaging to **base units**, not to
-weight:
-
-| بسته‌بندی | کالا | مقدار در هر بسته | base unit |
-|---|---|---|---|
-| NMA-VEG-CB | NMA-VEG | 120 | عدد |
-| NMA-ANM-CB | NMA-ANM | 120 | عدد |
-| MRH-VEG-CB | MRH-VEG | 100 | عدد |
-| MRH-VEG-BULK-BLK | MRH-VEG-BULK | 10 | کیلوگرم |
-
-Driver commission is تومان/کیلوگرم (§1.1), but three of the four products are counted in
-عدد and **no column anywhere in the workbook gives the weight of one عدد**. Commission is
-therefore computable only for `MRH-VEG-BULK`.
-
-**This is missing business data, not a design decision, and it blocks §4.4 and §5.**
-The recommended fix is one new column in `کالاها` — «وزن هر واحد پایه (کیلوگرم)» — which
-makes every product's weight derivable as `مقدار کسر شده × وزن واحد پایه`. Until that
-column exists and is filled in, the app must record kilograms as unknown rather than
-guess, and must not write a commission figure it cannot justify.
+**Consequence — the key insight for van stock:** the workbook tracks stock at *business*
+level with no location dimension. A sale draws down the single pool the moment it is
+recorded, whether the goods left a warehouse or a van. So the app must not try to own the
+total; it owns only the *split* — where inside the business the stock currently sits. Van
+stock is a **sub-ledger between "left the warehouse" and "sold to a customer"**, and it
+never contradicts the workbook's total. §5 builds on this.
 
 ---
 
@@ -278,11 +278,12 @@ writer.
    likely casualty.
 2. **Formulas are not recalculated** by exceljs; cached results are preserved. A written
    workbook can therefore show stale derived values until opened in Excel.
-3. **The file moved during the design session** — from `/root/pourya/` to
-   `/root/telepourya/` — without the app's involvement. Its location is not stable and
-   other processes touch it.
-4. **OneDrive.** `lib/oneDriveFetch.ts` reads the workbook from a share link. If the
-   canonical copy lives in OneDrive, a local write races the sync client.
+3. **The canonical workbook lives in OneDrive, not on this machine** (§10). Local copies
+   are stale snapshots — the one in `/root/` was missing seven columns. Any write must go
+   to the OneDrive copy, and a local write would be written to the wrong file entirely.
+4. **Writing back to a OneDrive share link is not solved.** `lib/oneDriveFetch.ts` only
+   *reads*, via an anonymous share-link redeem. Uploading needs a genuine write path
+   (Graph API with OAuth, or a synced local copy) that does not exist yet — see §4.5.
 
 ### 4.2 Mandatory guards
 
@@ -294,39 +295,68 @@ file.
   backup under `data/workbook-backups/`.
 - **Content-hash guard.** Record the SHA-256 of the workbook at read time; refuse to
   write if it no longer matches, because someone edited it meanwhile. Surface a clear
-  "the file changed, re-import first" error.
+  "the file changed, re-import first" error. This matters more than usual here: the
+  workbook is edited in Excel Online by people who are not using this app.
 - **Pre-flight structure check.** Verify sheet names, the header row of `فروش`, and that
   the target row's `شماره سفارش` (column B) matches the stop's `order_no` before touching
   any cell. Refuse the whole write on any mismatch — never a partial write.
 - **Write only `فروش`.** Columns L, Q, R, S, U (§4.3). Never the derived sheets.
-- **Configured path, not a guess.** A `WORKBOOK_PATH` env var, validated at startup.
+- **One configured source.** `ONEDRIVE_SALES_FILE_URL` (§10) is the only address of the
+  workbook. Never a local path, never a value from the request body.
 - **Dry-run mode first.** The write path reports exactly which cells it would change,
   and the owner confirms, before anything is written.
 
-### 4.3 Establishing the commission columns
+### 4.3 Fidelity test — a gate, not a nicety
 
-Because Q/R/S/U do not exist yet (§1.2), the first write is a schema change to the
-workbook, not a data update. Handle it as an explicit one-time setup screen that shows
-the intended headers — Q = فروشنده، R = پورسانت فروشنده، S = پورسانت راننده،
-U = راننده — and requires the owner to confirm before writing. O, P and T are left
-untouched; their meaning is unknown.
+The commission columns already exist and are correct (§1.2, §1.3), so no workbook schema
+change is needed. What remains is proving that a round-trip through exceljs does not
+damage the file.
 
-**Before this ships**, run the one-time fidelity test: write a *copy* of the real
-workbook through the exceljs path, open it in Excel, and confirm `داشبورد`, formatting
-and all formulas survived. If they do not, the write-back has to fall back to producing
-a paste-in sheet instead, and that outcome should be reported rather than worked around.
+**Before any write to the real workbook**, run the one-time fidelity test: take a copy of
+the live file, write it through the exceljs path, open it in Excel, and confirm that
+`داشبورد`, all formatting, data validation dropdowns (column D depends on one) and every
+formula survived. If they do not, the write-back falls back to producing a paste-in
+sheet, and that outcome is reported rather than worked around.
 
 ### 4.4 What gets written
 
-On run completion, for each delivered stop: `L` = `تحویل‌شده`, `U` = the driver's name
-from `همکاران` (matched via `users.staff_code`), and `S` = the driver's commission —
-kilograms delivered × the driver's rate, at the فروش فوری rate where the line came from a
-van sale. Failed stops leave `L` untouched.
+Exactly three input cells per delivered stop, matched on `شماره سفارش` (column B):
 
-**`S` cannot be computed until the weight column of §1.5 exists.** Until then the write
-back fills `L` and `U` only, and leaves `S` empty rather than writing a fabricated
-figure. `L` and `U` alone are still worth having: they close the delivery loop and
-attribute the sale, and `U` is half of what `پورسانت` needs.
+| Cell | Value |
+|---|---|
+| `L` وضعیت ارسال | `تحویل‌شده` |
+| `T` راننده تحویل‌دهنده | the driver's name from `همکاران`, matched via `users.staff_code` |
+| `P` فروش فوری | `بله` for a van sale (§5), otherwise left blank |
+
+Nothing else. `O`, `Q`, `R`, `S` and `U` are formulas that compute weight, salesperson,
+and both commissions on their own (§1.3) — the app writing any of them would destroy the
+calculation it is trying to feed.
+
+Failed stops leave all three cells untouched, so the order stays on `ارسال امروز` for the
+next run.
+
+`T` is written on **every** delivered stop, never left blank on the assumption that a
+default is fine: a blank `T` attributes the delivery to یوسف (§1.3), which is a payroll
+error once a second driver exists.
+
+### 4.5 Open: how the write actually reaches OneDrive
+
+`lib/oneDriveFetch.ts` reads an anonymous share link by redeeming a cookie and following
+redirects. **There is no equivalent write path**, and the anonymous share-link mechanism
+does not offer one — uploading requires an authenticated Microsoft Graph call.
+
+Three options, in order of preference:
+
+1. **Graph API with a registered app and OAuth refresh token.** The real fix. Costs an
+   Azure app registration and a consent flow, and the token needs storing and refreshing.
+2. **A synced local copy** — OneDrive client on this host, app writes the local file, the
+   client syncs it up. No new auth, but it reintroduces the sync-race hazard and depends
+   on a sync client running reliably on a headless server.
+3. **Export a paste-in sheet** — the app produces the `L`/`T`/`P` values keyed by
+   `شماره سفارش` and the owner pastes them in. No new auth, no corruption risk, but the
+   daily reconciliation work stays manual.
+
+This must be decided before §4 is implemented. It does not block Phase 0 or §3.
 
 ---
 
@@ -337,9 +367,10 @@ Built on §1.4: the app owns the *split*, never the total.
 ### 5.1 Schema
 
 - **`products`** — mirrored from `کالاها` on import: `product_code` (`NMA-VEG` …),
-  `name`, `base_unit`, `category`. Plus a `packagings` table from the `کالاها` rows 10–13
-  table: `product_code`, `label`, `qty_per_pack`, so a packaging label converts to base
-  units exactly as `فروش!F` does.
+  `name`, `base_unit`, `category`, `kg_per_base_unit` (column I). Plus a `packagings`
+  table from `کالاها` rows 10–13: `product_code`, `label`, `qty_per_pack`, so a packaging
+  label converts to base units exactly as `فروش!F` does, and to kilograms exactly as
+  `فروش!O` does. Mirrored, never authored here — `کالاها` stays the source of truth.
 - **`van_loads`** — one per run: `run_id`, `facility_id` (loaded from), `loaded_by`,
   `loaded_at`, `reconciled_at`, `status`.
 - **`van_load_lines`** — `van_load_id`, `product_code`, `qty_base_units`, `qty_returned`.
@@ -357,9 +388,10 @@ Built on §1.4: the app owns the *split*, never the total.
    commission rate.
 4. **Reconcile** at end of day: expected on-hand vs counted returns. A discrepancy is
    recorded, not silently absorbed.
-5. **Export**: instant sales become new `فروش` rows via §4. This is the one case where
-   the write-back *appends* rather than updates, and it is the highest-risk write —
-   gate it behind the same dry-run confirmation.
+5. **Export**: instant sales become new `فروش` rows via §4, with `P` = `بله` and `T` =
+   the driver, so the workbook applies the higher فروش فوری rate and pays no salesperson
+   (§1.3). This is the one case where the write-back *appends* rather than updates, and
+   it is the highest-risk write — gate it behind the same dry-run confirmation.
 
 ### 5.3 Scope note
 
@@ -431,12 +463,12 @@ No CSP change is needed; every new endpoint is `'self'` (`next.config.ts`).
 1. **Cross-group leakage is the main danger.** ~25 existing routes plus several server
    components return unscoped data today. Missing one is a silent breach, not a visible
    bug.
-2. **The workbook write-back can destroy the accounting file.** §4.1–4.3 exist for this
-   reason. The fidelity test in §4.3 is a gate, not a nicety.
-3. **Driver commission cannot be paid correctly yet**, for two independent reasons:
-   `فروش` Q/R/S/U do not exist (§1.2), and per-kilogram pay is not computable for
-   piece-counted products (§1.5). Both must be fixed before any pay figure the app
-   produces means anything.
+2. **The workbook write-back can destroy the accounting file.** §4.1–4.4 exist for this
+   reason. The fidelity test in §4.3 is a gate, not a nicety, and the write path to
+   OneDrive is still an open question (§4.5).
+3. **A blank `راننده تحویل‌دهنده` silently pays یوسف.** `U` defaults to `همکاران` C6
+   whenever `T` is blank (§1.3). Every delivered stop must write `T`, or one driver is
+   credited with everyone's work.
 4. **Background GPS in a browser is unreliable.** The wake-lock approach is the best a
    PWA can do. If gaps prove unacceptable, the server side and the dispatch map are
    unchanged by a later Capacitor wrapper — only the client collector is replaced.
@@ -456,8 +488,12 @@ Per phase, before moving on:
   write group A's rows, and a `driver` gets 403 on everything except their own run.
 - **Migration against a copy of the real DB** — `cp data/coverage.db /tmp/` and boot with
   `COVERAGE_DB_PATH=/tmp/coverage.db` before touching production data.
-- **Workbook fidelity test (§4.3)** against a copy, opened in Excel, before any write to
-  the real file.
+- **Workbook fidelity test (§4.3)** against a copy of the live file, opened in Excel,
+  before any write to the real one. Confirm `داشبورد`, formatting, the column-D dropdown
+  and every formula survived the exceljs round-trip.
+- **Commission cross-check**: after a write-back, confirm `فروش` `O`/`R`/`S` recomputed to
+  the expected figures for a known stop, and that `U` resolved to the driver in `T` rather
+  than the یوسف default (§1.3).
 - **Manual end-to-end on a phone**: create a group, assign districts, upload that group's
   sheet, accept the proposed split, publish, log in as the driver on a real handset,
   accept the consent modal, load the van, start the run, watch the dot move on
@@ -470,3 +506,30 @@ Per phase, before moving on:
 
 Phase 0 → 1a → 1b → 1c → 2. Phase 0 blocks everything. §3 (1a) and §4 (1b) are
 independently useful and can ship before §5 (1c) if needed.
+
+---
+
+## 10. Where the workbook lives
+
+**The canonical `سیستم فروش و انبار.xlsx` is on OneDrive, not on this machine.** Any local
+copy is a stale snapshot and must not be trusted — the copy found under `/root/` during
+design was missing columns O through U entirely, which inverted several conclusions in
+this document before it was checked against the live file.
+
+The share link is configured server-side as **`ONEDRIVE_SALES_FILE_URL`** in `.env.local`
+(gitignored, like every other secret in this project). It is read by
+`app/api/import/onedrive/route.ts`, which deliberately takes it from server config rather
+than the request body so the endpoint cannot be turned into an SSRF vector, and fetched by
+`lib/oneDriveFetch.ts`.
+
+The link is an "anyone with the link" share — it is a credential for the whole customer,
+sales and debt dataset, which is why it lives in `.env.local` rather than in source. To
+read the live workbook from a script:
+
+```bash
+set -a && . ./.env.local && set +a
+node --experimental-strip-types your-script.ts   # import { fetchOneDriveFile } from "./lib/oneDriveFetch.ts"
+```
+
+If the link is ever rotated, `ONEDRIVE_SALES_FILE_URL` is the only place that needs
+changing.

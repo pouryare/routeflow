@@ -40,12 +40,40 @@ node --experimental-strip-types scripts/seed-districts.ts
 Coverage isn't 100% complete or guaranteed accurate everywhere — use the polygon-draw
 tool on the map to add or fix any neighborhood that's missing or wrong.
 
+## The source workbook — where it actually lives
+
+**`سیستم فروش و انبار.xlsx` lives on OneDrive.** That copy is the source of truth; any
+copy sitting on this machine is a stale snapshot and must not be trusted. (One found in
+`/root/` in August 2026 was missing seven columns of the `فروش` sheet, including every
+commission column, which is exactly the kind of wrong answer a local copy gives you.)
+
+The share link is configured server-side as `ONEDRIVE_SALES_FILE_URL` in `.env.local`.
+It is an "anyone with the link" share — effectively a credential for the entire customer,
+sales and debt dataset — so it stays out of git like every other secret here. Rotating the
+link means changing that one variable and nothing else.
+
+- `lib/oneDriveFetch.ts` fetches it (anonymous share-link redeem + manual redirect
+  following with a cookie jar — see the comment there for why the obvious API routes
+  don't work).
+- `app/api/import/onedrive/route.ts` runs the import. It reads the URL from server config
+  rather than the request body on purpose: accepting a client-supplied fetch target would
+  make it an SSRF and data-injection vector.
+
+To read the live workbook from a one-off script:
+
+```bash
+set -a && . ./.env.local && set +a
+node --experimental-strip-types your-script.ts
+# inside: import { fetchOneDriveFile } from "./lib/oneDriveFetch.ts";
+```
+
 ## Updating customer data
 
 Use the "به‌روزرسانی از اکسل" panel in the app to upload the current
-`سیستم فروش و انبار.xlsx`. It reads the `مخاطبین` sheet and upserts by `کد مشتری` —
-safe to re-run any time the workbook changes. District/coverage data is a separate
-table and is never touched by this import.
+`سیستم فروش و انبار.xlsx`, or trigger the OneDrive import above to pull it directly.
+It reads the `مخاطبین` sheet and upserts by `کد مشتری` — safe to re-run any time the
+workbook changes. District/coverage data is a separate table and is never touched by
+this import.
 
 ## Deployment (already set up on this server)
 
