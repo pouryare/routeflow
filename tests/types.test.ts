@@ -1,5 +1,7 @@
 import { describe, it, expect } from "vitest";
 import {
+  isDistrictColorMode,
+  districtGroupColor,
   customerStatusColor,
   debtColor,
   salespersonColor,
@@ -144,3 +146,26 @@ describe("distanceColor", () => {
     expect(distanceColor(at(20), origin)).toBe(STATUS_COLOR.needs_coverage);
   });
 })
+
+describe("district colour modes", () => {
+  it("accepts the two real modes and rejects anything else", () => {
+    expect(isDistrictColorMode("status")).toBe(true);
+    expect(isDistrictColorMode("group")).toBe(true);
+    expect(isDistrictColorMode("owner")).toBe(false);
+    expect(isDistrictColorMode(undefined)).toBe(false);
+    expect(isDistrictColorMode(7)).toBe(false);
+  });
+
+  it("colours a district by its group", () => {
+    const colors = new Map<number, string | null>([
+      [1, "#2DE0E6"],
+      [2, null],
+    ]);
+    expect(districtGroupColor(1, colors)).toBe("#2DE0E6");
+    // A group with no colour set, and a district in no group at all, both fall back to
+    // the neutral grey -- neither is a coverage status, so neither may borrow one.
+    expect(districtGroupColor(2, colors)).toBe(STATUS_COLOR.unknown);
+    expect(districtGroupColor(null, colors)).toBe(STATUS_COLOR.unknown);
+    expect(districtGroupColor(99, colors)).toBe(STATUS_COLOR.unknown);
+  });
+});

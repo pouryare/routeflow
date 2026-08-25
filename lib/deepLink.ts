@@ -20,6 +20,7 @@ export const MAP_PARAM = {
   district: "d",
   view: "at",
   color: "color",
+  districtColor: "dcolor",
 } as const;
 
 export interface MapView {
@@ -35,6 +36,8 @@ export interface MapLinkState {
   /** Left as a string here rather than the CustomerColorMode union: this module has no
    *  business knowing the list of modes, and the caller validates against its own. */
   colorMode?: string;
+  /** What the district fill means -- same arrangement, validated by the caller. */
+  districtColorMode?: string;
 }
 
 // ~1.1 metres at this latitude. Enough to land on the right building, short enough that
@@ -81,6 +84,9 @@ export function parseMapLink(search: string): MapLinkState {
   const color = p.get(MAP_PARAM.color);
   if (color) state.colorMode = color;
 
+  const districtColor = p.get(MAP_PARAM.districtColor);
+  if (districtColor) state.districtColorMode = districtColor;
+
   return state;
 }
 
@@ -93,6 +99,7 @@ export function buildMapLink(state: MapLinkState): string {
   if (state.districtId !== undefined) p.set(MAP_PARAM.district, String(state.districtId));
   if (state.view) p.set(MAP_PARAM.view, formatView(state.view));
   if (state.colorMode) p.set(MAP_PARAM.color, state.colorMode);
+  if (state.districtColorMode) p.set(MAP_PARAM.districtColor, state.districtColorMode);
   const s = p.toString();
   return s ? `?${s}` : "";
 }

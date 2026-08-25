@@ -29,6 +29,9 @@ import {
   DISTANCE_BANDS,
   isCustomerColorMode,
   shapeForColor,
+  type DistrictColorMode,
+  districtGroupColor,
+  isDistrictColorMode,
 } from "@/lib/types";
 import {
   PRECISION_AUTO_ZOOM,
@@ -38,6 +41,7 @@ import {
   isPrecisionMode,
   resolveTier,
 } from "@/lib/precision";
+import type { Role } from "@/lib/db";
 import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
 import StatusPill from "./StatusPill";
@@ -153,6 +157,14 @@ const QUICK_LINKS = [
   { href: "/gallery", icon: "🖼", label: "گالری تصاویر" },
   { href: "/report", icon: "📊", label: "گزارش پوشش و مشتریان" },
   { href: "/analytics", icon: "📈", label: "داشبورد تحلیل" },
+] as const;
+
+// Owner-only, and kept out of QUICK_LINKS rather than filtered out of it: proxy.ts would
+// bounce a manager or driver off these anyway, and a link that exists only to refuse you
+// is worse than no link.
+const ADMIN_LINKS = [
+  { href: "/admin/groups", icon: "🗂", label: "گروه‌ها و محدوده‌ها" },
+  { href: "/admin/users", icon: "👥", label: "حساب‌های کاربری" },
 ] as const;
 const DISTRICT_STROKE = { mantaghe: "#2A3A4C", mahalle: "#546271" };
 
@@ -289,15 +301,28 @@ function otherFacilityDistance(f: FacilityRow, all: FacilityRow[]): { other: Fac
     .sort((a, b) => a.km - b.km)[0];
 }
 
+/** The groups this viewer may see -- for the territory colour mode and the bulk assign
+ *  control. An owner gets every group; a manager gets only their own, which is the only
+ *  one any district they can see belongs to. */
+export interface MapGroup {
+  id: number;
+  name: string;
+  color: string | null;
+}
+
 export default function CoverageMap({
   initialDistricts,
   initialCustomers,
   initialFacilities,
+  groups,
+  role,
   geometryVersion,
 }: {
   initialDistricts: DistrictProperties[];
   initialCustomers: CustomerRow[];
   initialFacilities: FacilityRow[];
+  groups: MapGroup[];
+  role: Role;
   geometryVersion: string;
 }) {
   // --- Deep links -------------------------------------------------------------------
@@ -337,6 +362,11 @@ export default function CoverageMap({
   const [colorMode, setColorMode] = useState<CustomerColorMode>(() =>
     isCustomerColorMode(incoming.colorMode) ? incoming.colorMode : "status"
   );
+  // What the district fill means. Separate from the customer colour mode above: they
+  // colour different things and are read independently.
+  const [districtColorMode, setDistrictColorMode] = useState<DistrictColorMode>(() =>
+    isDistrictColorMode(incoming.districtColorMode) ? incoming.districtColorMode : "status"
+  );
   const [salespersonFilter, setSalespersonFilter] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -350,6 +380,8 @@ export default function CoverageMap({
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<number>>(new Set());
   const [bulkStatusChoice, setBulkStatusChoice] = useState<CoverageStatus | "">("");
   const [bulkAssignChoice, setBulkAssignChoice] = useState("");
+  // "" = leave alone, "__ungroup__" = clear it, otherwise a group id. Owner only.
+  const [bulkGroupChoice, setBulkGroupChoice] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
   const [foundLocation, setFoundLocation] = useState<{ lat: number; lng: number; label: string } | null>(null);
   const [geofenceOn, setGeofenceOn] = useState(false);
@@ -741,8 +773,14 @@ export default function CoverageMap({
     return m;
   }, [salespeople]);
 
+  const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
+
   function districtStyle(feature?: DistrictFeature) {
     const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
+    const fill =
+      districtColorMode === "group"
+        ? districtGroupColor(feature?.properties.group_id ?? null, groupColors)
+        : STATUS_COLOR[status];
     const level = feature?.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
     const selected = !!feature && bulkSelectedIds.has(feature.properties.id);
 
@@ -755,8 +793,10 @@ export default function CoverageMap({
     return {
       color: selected ? "#2DE0E6" : DISTRICT_STROKE[level],
       weight: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
-      fillColor: STATUS_COLOR[status],
-      fillOpacity: (selected ? 0.55 : level === "mantaghe" ? 0.08 : 0.35) * dim,
+      fillColor: fill,
+      // Territory reads as a filled area rather than a tint: in group mode the fill is the
+      // whole point, where in status mode it sits under markers that have to stay legible.
+      fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
       opacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
       dashArray: selected ? "4 3" : undefined,
     };
@@ -802,29 +842,43 @@ export default function CoverageMap({
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bulkSelectedIds]);
+  }, [bulkSelectedIds, districtColorMode, groupColors]);
 
   useEffect(() => {
     if (!bulkMode) setBulkSelectedIds(new Set());
   }, [bulkMode]);
 
   async function applyBulk() {
-    if (bulkSelectedIds.size === 0 || (!bulkStatusChoice && !bulkAssignChoice)) return;
+    if (bulkSelectedIds.size === 0 || (!bulkStatusChoice && !bulkAssignChoice && !bulkGroupChoice)) return;
     setBulkSaving(true);
     const count = bulkSelectedIds.size;
-    const body: { ids: number[]; coverage_status?: CoverageStatus; assigned_to?: string } = {
-      ids: Array.from(bulkSelectedIds),
-    };
+    const body: {
+      ids: number[];
+      coverage_status?: CoverageStatus;
+      assigned_to?: string;
+      group_id?: number | null;
+    } = { ids: Array.from(bulkSelectedIds) };
     if (bulkStatusChoice) body.coverage_status = bulkStatusChoice;
     if (bulkAssignChoice) body.assigned_to = bulkAssignChoice === "__unassign__" ? "" : bulkAssignChoice;
+    // The server rejects this from anyone but an owner, and recomputes which customers
+    // belong to whom once the territory has moved.
+    if (bulkGroupChoice) body.group_id = bulkGroupChoice === "__ungroup__" ? null : Number(bulkGroupChoice);
     try {
       const res = await fetch("/api/districts/bulk", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error();
-      toast(`${faNum(count)} منطقه به‌روزرسانی شد.`, "success");
+      const data = await res.json().catch(() => null);
+      if (!res.ok || !data?.ok) throw new Error();
+      // regrouped is how many customers changed hands with the territory -- the part of a
+      // territory move nobody can see on the map, so it gets said out loud.
+      toast(
+        typeof data.regrouped === "number" && data.regrouped > 0
+          ? `${faNum(count)} منطقه به‌روزرسانی شد — ${faNum(data.regrouped)} مشتری هم جابه‌جا شد.`
+          : `${faNum(count)} منطقه به‌روزرسانی شد.`,
+        "success"
+      );
     } catch {
       toast("خطا در به‌روزرسانی گروهی مناطق", "error");
     } finally {
@@ -832,6 +886,7 @@ export default function CoverageMap({
       setBulkSelectedIds(new Set());
       setBulkStatusChoice("");
       setBulkAssignChoice("");
+      setBulkGroupChoice("");
       loadDistricts();
     }
   }
@@ -854,8 +909,9 @@ export default function CoverageMap({
       customerId: selectedCustomer?.id,
       districtId: selectedDistrict?.properties.id,
       colorMode: colorMode === "status" ? undefined : colorMode,
+      districtColorMode: districtColorMode === "status" ? undefined : districtColorMode,
     }),
-    [selectedCustomer, selectedDistrict, colorMode]
+    [selectedCustomer, selectedDistrict, colorMode, districtColorMode]
   );
 
   /** Rewrites the address bar to describe what is on screen.
@@ -1324,7 +1380,7 @@ export default function CoverageMap({
             </button>
 
             <div className="flex flex-col gap-1.5">
-              {QUICK_LINKS.map((l) => (
+              {[...QUICK_LINKS, ...(role === "owner" ? ADMIN_LINKS : [])].map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}
@@ -1554,11 +1610,53 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="راهنمای رنگ مناطق" icon="🗺" storageKey="legend" keywords="وضعیت پوشش رنگ legend">
+        <CollapsibleSection title="راهنمای رنگ مناطق" icon="🗺" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
+            {/* One meaning at a time. The fill cannot say both "needs coverage" and
+                "belongs to گروه غرب" at once without an amber district being ambiguous,
+                so the mode switches and the legend below switches with it. Hidden
+                entirely when there are no groups yet -- a switch with one option is
+                just clutter. */}
+            {groups.length > 0 && (
+              <div className="mb-2 grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
+                {(
+                  [
+                    ["status", "وضعیت پوشش"],
+                    ["group", "گروه"],
+                  ] as [DistrictColorMode, string][]
+                ).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    onClick={() => setDistrictColorMode(mode)}
+                    className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                      districtColorMode === mode
+                        ? "bg-accent font-medium text-[#04191c]"
+                        : "text-text-muted hover:bg-white/5 hover:text-text"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            )}
+
             <div className="flex flex-col gap-1.5">
-              {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-                <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} shaped={shapedMarkers} />
-              ))}
+              {districtColorMode === "group" ? (
+                <>
+                  {groups.map((g) => (
+                    <StatusPill
+                      key={g.id}
+                      color={g.color ?? STATUS_COLOR.unknown}
+                      label={g.name}
+                      shaped={shapedMarkers}
+                    />
+                  ))}
+                  <StatusPill color={STATUS_COLOR.unknown} label="بدون گروه" shaped={shapedMarkers} />
+                </>
+              ) : (
+                (Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
+                  <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} shaped={shapedMarkers} />
+                ))
+              )}
             </div>
             <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
               {bulkMode
@@ -2124,6 +2222,21 @@ export default function CoverageMap({
               </option>
             ))}
           </select>
+          {role === "owner" && groups.length > 0 && (
+            <select
+              value={bulkGroupChoice}
+              onChange={(e) => setBulkGroupChoice(e.target.value)}
+              className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
+            >
+              <option value="">— بدون تغییر گروه —</option>
+              {groups.map((g) => (
+                <option key={g.id} value={String(g.id)}>
+                  {g.name}
+                </option>
+              ))}
+              <option value="__ungroup__">— خارج کردن از گروه —</option>
+            </select>
+          )}
           <div className="mr-auto flex shrink-0 gap-2">
             <button
               onClick={() => setBulkSelectedIds(new Set())}
@@ -2133,7 +2246,7 @@ export default function CoverageMap({
             </button>
             <button
               onClick={applyBulk}
-              disabled={bulkSaving || (!bulkStatusChoice && !bulkAssignChoice)}
+              disabled={bulkSaving || (!bulkStatusChoice && !bulkAssignChoice && !bulkGroupChoice)}
               className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {bulkSaving ? "در حال اعمال…" : "اعمال روی همه"}

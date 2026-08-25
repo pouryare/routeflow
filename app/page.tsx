@@ -9,6 +9,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
+import { readGroups } from "@/lib/groups";
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
 // SQLite is local and these reads are sub-millisecond, so paying for them inline is
@@ -32,6 +33,11 @@ export default async function Home() {
   const districts = readDistrictProperties(db, scope);
   const customers = readCustomers(db, scope);
   const facilities = readFacilities(db, groupFilterWithShared(session));
+  // Only the groups this caller can actually see: an owner gets all of them, a manager
+  // gets their own, which is the only one any district they can see belongs to.
+  const visibleGroups = readGroups(db)
+    .filter((g) => scope === "all" || scope.includes(g.id))
+    .map((g) => ({ id: g.id, name: g.name, color: g.color }));
   const version = geometryVersion();
 
   return (
@@ -48,6 +54,8 @@ export default async function Home() {
         initialDistricts={districts}
         initialCustomers={customers}
         initialFacilities={facilities}
+        groups={visibleGroups}
+        role={session.role}
         geometryVersion={version}
       />
     </>

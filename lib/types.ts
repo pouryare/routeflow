@@ -18,6 +18,28 @@ export const STATUS_LABEL: Record<CoverageStatus, string> = {
   unknown: "نامشخص",
 };
 
+/** What the district fill means right now.
+ *
+ *  Districts are filled by coverage status by default. Group is a second, mutually
+ *  exclusive reading of the same polygons -- one at a time, with the legend swapping to
+ *  match, because MASTER.md's rule is that a colour means one thing. An amber district
+ *  must never be ambiguous between "needs coverage" and "belongs to گروه غرب". */
+export type DistrictColorMode = "status" | "group";
+
+export const DISTRICT_COLOR_MODES: DistrictColorMode[] = ["status", "group"];
+
+/** Guards a mode arriving from a deep link, which anyone can hand-edit. */
+export function isDistrictColorMode(v: unknown): v is DistrictColorMode {
+  return typeof v === "string" && (DISTRICT_COLOR_MODES as string[]).includes(v);
+}
+
+/** Fill for a district in group mode. A district in no group is not a status, so it takes
+ *  the same neutral grey "unknown" does rather than borrowing a group's colour. */
+export function districtGroupColor(groupId: number | null, colors: Map<number, string | null>): string {
+  if (groupId === null) return STATUS_COLOR.unknown;
+  return colors.get(groupId) ?? STATUS_COLOR.unknown;
+}
+
 export interface DistrictProperties {
   id: number;
   name: string;

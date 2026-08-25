@@ -88,3 +88,23 @@ describe("parseIdParam", () => {
     expect(parseIdParam("", "f")).toBeUndefined();
   });
 });
+
+describe("district colour mode in the link", () => {
+  it("round-trips through build and parse", () => {
+    expect(buildMapLink({ districtColorMode: "group" })).toBe("?dcolor=group");
+    expect(parseMapLink("?dcolor=group").districtColorMode).toBe("group");
+  });
+
+  it("keeps the two colour modes independent", () => {
+    // They colour different things -- customers and districts -- and are read separately,
+    // so one must never be able to overwrite the other in a shared link.
+    const link = buildMapLink({ colorMode: "debt", districtColorMode: "group" });
+    const back = parseMapLink(link);
+    expect(back.colorMode).toBe("debt");
+    expect(back.districtColorMode).toBe("group");
+  });
+
+  it("omits the default so an untouched map produces a bare link", () => {
+    expect(buildMapLink({})).toBe("");
+  });
+});
