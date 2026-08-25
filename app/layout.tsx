@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Vazirmatn, JetBrains_Mono } from "next/font/google";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
+import SharedLoginBanner from "@/components/SharedLoginBanner";
 import { ToastProvider } from "@/components/ToastProvider";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
 import "./globals.css";
@@ -30,6 +31,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="min-h-full flex flex-col font-sans">
         <ServiceWorkerRegister />
+        <SharedLoginBanner />
         {/* One geolocation watch for the whole app, mounted at the root so every page --
             map, planner, leads -- reads the same live position instead of each opening
             its own watch on the same GPS chip. */}

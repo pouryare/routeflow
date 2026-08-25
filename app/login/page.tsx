@@ -36,6 +36,14 @@ function LoginForm() {
         setLoading(false);
         return;
       }
+      // Drives the standing banner in the app shell. Set or cleared on every successful
+      // login, so signing in as a real account is what makes the warning go away.
+      try {
+        if (data.shared_password_login) sessionStorage.setItem("shared_login", "1");
+        else sessionStorage.removeItem("shared_login");
+      } catch {
+        // Storage unavailable; the banner just will not show.
+      }
       router.push(params.get("next") || "/");
       router.refresh();
     } catch {
