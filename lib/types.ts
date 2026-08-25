@@ -28,6 +28,9 @@ export interface DistrictProperties {
   is_custom: boolean;
   updated_at: string;
   assigned_to: string | null;
+  /** Which group holds this territory, NULL when unclaimed. Distinct from assigned_to,
+   *  which is a free-text person name and means something else entirely. */
+  group_id: number | null;
   centroid_lat: number | null;
   centroid_lng: number | null;
 }
