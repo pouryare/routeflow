@@ -20,7 +20,7 @@ export async function POST(req: NextRequest) {
   const password = body?.password;
   const username = typeof body?.username === "string" ? body.username.trim() : null;
 
-  let sessionName: string | null;
+  let token: string;
   if (username) {
     // Named-account path: a real per-coworker login, additive alongside the shared
     // password below -- it can never lock the team out, since the shared password
@@ -29,19 +29,25 @@ export async function POST(req: NextRequest) {
     if (!user || typeof password !== "string" || !verifyPassword(password, user.password_hash)) {
       return NextResponse.json({ ok: false, error: "نام کاربری یا رمز عبور اشتباه است" }, { status: 401 });
     }
-    sessionName = user.display_name;
+    token = createSessionToken({
+      uid: user.id,
+      role: user.role,
+      gid: user.group_id,
+      tv: user.token_version,
+      name: user.display_name,
+    });
   } else {
-    const name = typeof body?.name === "string" ? body.name : null;
+    const name = typeof body?.name === "string" ? body.name : "مدیر";
     if (typeof password !== "string" || !checkPassword(password)) {
       return NextResponse.json({ ok: false, error: "رمز عبور اشتباه است" }, { status: 401 });
     }
-    sessionName = name;
+    token = createSessionToken({ uid: 0, role: "owner", gid: null, tv: 0, name });
   }
 
   rateLimitReset(key);
 
   const res = NextResponse.json({ ok: true });
-  res.cookies.set(COOKIE_NAME, createSessionToken(sessionName), {
+  res.cookies.set(COOKIE_NAME, token, {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     sameSite: "lax",

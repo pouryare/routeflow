@@ -1,6 +1,12 @@
 import crypto from "node:crypto";
+import type { Role } from "./db";
 
-const COOKIE_NAME = "coverage_session";
+// Bumped from "coverage_session". The v1 token carried an expiry and an optional display
+// name and nothing else -- there is no uid, role or group to recover from one, so every
+// v1 cookie has to be treated as invalid. Renaming makes that automatic instead of
+// requiring backward-compatible parsing for a shape that can never satisfy the new
+// authorisation checks. The cost is one forced re-login for everyone.
+const COOKIE_NAME = "coverage_session_v2";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 const MAX_NAME_LEN = 60;
 
@@ -14,50 +20,60 @@ function sign(payload: string): string {
   return crypto.createHmac("sha256", secret()).update(payload).digest("hex");
 }
 
-export interface SessionData {
-  expiry: number;
-  /** Optional display name the user typed at login -- who's making changes, not an
-   *  auth boundary. Threaded into activity_log.changed_by so history entries can say
-   *  who made a change, without building out full multi-user accounts. */
-  name: string | null;
+export interface SessionClaims {
+  uid: number;
+  role: Role;
+  /** null for an owner, who is not scoped to a group. */
+  gid: number | null;
+  /** Snapshot of users.token_version. Bumping that column invalidates every token
+   *  already issued to the user -- how a password reset or a deactivation takes effect
+   *  immediately rather than in up to 30 days. */
+  tv: number;
+  exp: number;
+  name: string;
 }
 
-/** issued value: "<expiryEpochSeconds>:<base64url(name)>.<hmac>" (name segment is
- *  empty when none was given -- payload for a token with no name collapses back to
- *  the original plain "<expiry>.<hmac>" shape, so pre-existing cookies stay valid). */
-export function createSessionToken(name?: string | null): string {
-  const expiry = Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS;
-  const trimmed = name?.trim().slice(0, MAX_NAME_LEN) || "";
-  const payload = trimmed ? `${expiry}:${Buffer.from(trimmed).toString("base64url")}` : String(expiry);
+/** Token shape: "<base64url(JSON claims)>.<hmac-sha256 of that same base64url string>".
+ *
+ *  The claims are signed, not encrypted: anyone holding the cookie can read their own
+ *  role out of it, which is fine. What matters is that they cannot change it -- editing
+ *  any claim invalidates the MAC, and the MAC is verified before the JSON is ever
+ *  parsed. */
+export function createSessionToken(claims: Omit<SessionClaims, "exp">): string {
+  const full: SessionClaims = {
+    ...claims,
+    name: (claims.name ?? "").trim().slice(0, MAX_NAME_LEN),
+    exp: Math.floor(Date.now() / 1000) + MAX_AGE_SECONDS,
+  };
+  const payload = Buffer.from(JSON.stringify(full)).toString("base64url");
   return `${payload}.${sign(payload)}`;
 }
 
-export function parseSessionToken(token: string | undefined | null): SessionData | null {
+export function parseSessionToken(token: string | undefined | null): SessionClaims | null {
   if (!token) return null;
   const dot = token.lastIndexOf(".");
   if (dot === -1) return null;
   const payload = token.slice(0, dot);
   const mac = token.slice(dot + 1);
 
+  // Verify before parsing: never hand attacker-controlled bytes to JSON.parse on the
+  // strength of a signature you have not checked yet.
   const expected = sign(payload);
   const macBuf = Buffer.from(mac, "hex");
   const expectedBuf = Buffer.from(expected, "hex");
   if (macBuf.length !== expectedBuf.length) return null;
   if (!crypto.timingSafeEqual(macBuf, expectedBuf)) return null;
 
-  const [expiryStr, namePart] = payload.split(":");
-  const expiry = Number(expiryStr);
-  if (!Number.isFinite(expiry) || expiry <= Math.floor(Date.now() / 1000)) return null;
-
-  let name: string | null = null;
-  if (namePart) {
-    try {
-      name = Buffer.from(namePart, "base64url").toString("utf8") || null;
-    } catch {
-      name = null;
-    }
+  let claims: SessionClaims;
+  try {
+    claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as SessionClaims;
+  } catch {
+    return null;
   }
-  return { expiry, name };
+
+  if (typeof claims.uid !== "number" || typeof claims.exp !== "number") return null;
+  if (claims.exp <= Math.floor(Date.now() / 1000)) return null;
+  return claims;
 }
 
 export function verifySessionToken(token: string | undefined | null): boolean {
@@ -93,12 +109,11 @@ export function verifyPassword(password: string, stored: string): boolean {
   return crypto.timingSafeEqual(candidate, expected);
 }
 
-/** Reads the display name out of the request's own session cookie -- for routes
- *  that log activity and want to attribute it, without threading a header through
- *  every mutating fetch() call site across the app. */
+/** Reads the display name out of the request's own session cookie, for routes that log
+ *  activity and want to attribute it. */
 export function getActorName(req: { cookies: { get(name: string): { value: string } | undefined } }): string | null {
   const token = req.cookies.get(COOKIE_NAME)?.value;
-  return parseSessionToken(token)?.name ?? null;
+  return parseSessionToken(token)?.name || null;
 }
 
 export { COOKIE_NAME, MAX_AGE_SECONDS };

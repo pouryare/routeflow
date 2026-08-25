@@ -5,6 +5,7 @@ process.env.APP_PASSWORD = "hunter2";
 
 const { POST } = await import("@/app/api/login/route");
 const { NextRequest } = await import("next/server");
+const { COOKIE_NAME } = await import("@/lib/auth");
 
 function loginReq(password: string, ip: string) {
   return new NextRequest("http://localhost/api/login", {
@@ -19,7 +20,7 @@ describe("POST /api/login", () => {
     const res = await POST(loginReq("hunter2", "9.9.9.1"));
     const data = await res.json();
     expect(data.ok).toBe(true);
-    expect(res.headers.get("set-cookie")).toContain("coverage_session=");
+    expect(res.headers.get("set-cookie")).toContain(`${COOKIE_NAME}=`);
   });
 
   it("rejects a wrong password", async () => {

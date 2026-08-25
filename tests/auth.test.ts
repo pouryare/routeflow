@@ -6,7 +6,7 @@ beforeAll(() => {
   process.env.APP_PASSWORD = "correct-horse-battery-staple";
 });
 
-const { createSessionToken, parseSessionToken, verifySessionToken, checkPassword, getActorName, hashPassword, verifyPassword } =
+const { createSessionToken, parseSessionToken, verifySessionToken, checkPassword, getActorName, hashPassword, verifyPassword, COOKIE_NAME } =
   await import("@/lib/auth");
 
 describe("checkPassword", () => {
@@ -22,32 +22,47 @@ describe("checkPassword", () => {
 });
 
 describe("session tokens", () => {
-  it("round-trips: a freshly created token verifies as valid", () => {
-    const token = createSessionToken();
-    expect(verifySessionToken(token)).toBe(true);
+  const base = { uid: 7, role: "group_manager" as const, gid: 3, tv: 0, name: "سارا" };
+
+  it("round-trips every claim", () => {
+    const token = createSessionToken(base);
+    const claims = parseSessionToken(token);
+    expect(claims?.uid).toBe(7);
+    expect(claims?.role).toBe("group_manager");
+    expect(claims?.gid).toBe(3);
+    expect(claims?.tv).toBe(0);
+    expect(claims?.name).toBe("سارا");
   });
 
-  it("carries no name when none is given", () => {
-    const token = createSessionToken();
-    expect(parseSessionToken(token)?.name).toBeNull();
+  it("carries a null group for an owner", () => {
+    const token = createSessionToken({ ...base, role: "owner", gid: null });
+    expect(parseSessionToken(token)?.gid).toBeNull();
   });
 
-  it("carries the actor name when one is given", () => {
-    const token = createSessionToken("Pourya");
-    expect(parseSessionToken(token)?.name).toBe("Pourya");
+  it("verifies a freshly created token", () => {
+    expect(verifySessionToken(createSessionToken(base))).toBe(true);
   });
 
   it("rejects a tampered payload", () => {
-    const token = createSessionToken("Pourya");
+    const token = createSessionToken(base);
     const dot = token.lastIndexOf(".");
-    const tampered = `${token.slice(0, dot)}x${token.slice(dot)}`;
-    expect(verifySessionToken(tampered)).toBe(false);
+    expect(verifySessionToken(`${token.slice(0, dot)}x${token.slice(dot)}`)).toBe(false);
   });
 
   it("rejects a tampered signature", () => {
-    const token = createSessionToken();
+    const token = createSessionToken(base);
     const tampered = token.slice(0, -1) + (token.at(-1) === "0" ? "1" : "0");
     expect(verifySessionToken(tampered)).toBe(false);
+  });
+
+  it("cannot be escalated by editing the role claim", () => {
+    const token = createSessionToken(base);
+    const [payload, mac] = token.split(".");
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8"));
+    claims.role = "owner";
+    const forged = `${Buffer.from(JSON.stringify(claims)).toString("base64url")}.${mac}`;
+    expect(verifySessionToken(forged)).toBe(false);
+    expect(parseSessionToken(forged)).toBeNull();
   });
 
   it("rejects garbage input", () => {
@@ -58,11 +73,14 @@ describe("session tokens", () => {
   });
 
   it("rejects an expired token", () => {
-    // build a token with an already-past expiry, signed the same way createSessionToken does
-    const pastExpiry = Math.floor(Date.now() / 1000) - 10;
-    const payload = String(pastExpiry);
+    const claims = { uid: 1, role: "owner", gid: null, tv: 0, name: "x", exp: Math.floor(Date.now() / 1000) - 10 };
+    const payload = Buffer.from(JSON.stringify(claims)).toString("base64url");
     const mac = crypto.createHmac("sha256", process.env.SESSION_SECRET!).update(payload).digest("hex");
     expect(verifySessionToken(`${payload}.${mac}`)).toBe(false);
+  });
+
+  it("uses the v2 cookie name", () => {
+    expect(COOKIE_NAME).toBe("coverage_session_v2");
   });
 });
 
@@ -90,7 +108,7 @@ describe("getActorName", () => {
   }
 
   it("reads the name back off a valid session cookie", () => {
-    const token = createSessionToken("Sara");
+    const token = createSessionToken({ uid: 1, role: "owner", gid: null, tv: 0, name: "Sara" });
     expect(getActorName(fakeRequest(token))).toBe("Sara");
   });
   it("returns null when there's no cookie", () => {
