@@ -1,17 +1,25 @@
 import { NextRequest } from "next/server";
 import { getDb } from "@/lib/db";
 import { readCustomers } from "@/lib/customers";
+import { requireRole, scopeGroupIds } from "@/lib/session";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const scope = scopeGroupIds(guard.session);
+
   const db = getDb();
   const sig = db.prepare("SELECT COUNT(*) c, MAX(synced_at) m FROM customers").get() as {
     c: number;
     m: string | null;
   };
-  const tag = etagFor("customers", sig.c, sig.m);
+  // The scope is part of the cache key. Without it an owner and a group manager share a
+  // tag for different bodies, so one browser that signs out and back in as the other role
+  // revalidates, gets a 304, and redisplays the previous role's list from its own cache.
+  const tag = etagFor(`customers:${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { customers: readCustomers(db) });
+  return etagJson(req, tag, { customers: readCustomers(db, scope) });
 }

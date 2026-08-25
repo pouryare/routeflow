@@ -11,6 +11,7 @@ process.env.APP_PASSWORD = "test-password";
 const { getDb } = await import("@/lib/db");
 const { PATCH } = await import("@/app/api/districts/bulk/route");
 const { NextRequest } = await import("next/server");
+const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 
 function seedDistrict(status = "unknown") {
   const db = getDb();
@@ -24,11 +25,17 @@ function seedDistrict(status = "unknown") {
   return Number(result.lastInsertRowid);
 }
 
+// The route requires a real session now. These cases are about the bulk-update
+// mechanics, not authorisation, so they all run as an owner -- the scoping rules
+// themselves are covered in tests/api/scoping.test.ts.
+let ownerId = 0;
+
 function bulkReq(body: unknown) {
+  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, tv: 0, name: "مالک" });
   return new NextRequest("http://localhost/api/districts/bulk", {
     method: "PATCH",
     body: JSON.stringify(body),
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", cookie: `${COOKIE_NAME}=${token}` },
   });
 }
 
@@ -39,7 +46,12 @@ afterAll(() => {
 });
 
 beforeAll(() => {
-  getDb(); // ensure schema is created before any test seeds rows
+  const db = getDb(); // ensure schema is created before any test seeds rows
+  ownerId = Number(
+    db.prepare(
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+    ).run("bulk-owner", "x:y", "مالک", new Date().toISOString()).lastInsertRowid
+  );
 });
 
 describe("PATCH /api/districts/bulk", () => {

@@ -485,6 +485,9 @@ export interface District {
   is_custom: number;
   updated_at: string;
   assigned_to: string | null;
+  /** Which group holds this territory. NULL means unclaimed -- an owner sees it, no
+   *  group manager does. Distinct from assigned_to, which is a free-text person name. */
+  group_id: number | null;
   /** Area-weighted centre, filled by backfillDistrictCentroids. NULL when the geometry
    *  could not produce one -- callers must treat that as "distance unknown", never 0. */
   centroid_lat: number | null;

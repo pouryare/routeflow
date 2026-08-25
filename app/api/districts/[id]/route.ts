@@ -1,11 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, District, logActivity } from "@/lib/db";
 import { getActorName } from "@/lib/auth";
+import { canReachGroup, requireRole } from "@/lib/session";
 import { STATUS_LABEL } from "@/lib/types";
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/[id]">) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const { id } = await ctx.params;
   const districtId = Number(id);
   if (!Number.isInteger(districtId)) {
@@ -20,7 +24,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/
 
   const db = getDb();
   const existing = db.prepare("SELECT * FROM districts WHERE id = ?").get(districtId) as District | undefined;
-  if (!existing) {
+  // 404 rather than 403 for a district in another group. A 403 would confirm the row
+  // exists, which itself tells a manager how the province is carved up and who holds what.
+  if (!existing || !canReachGroup(guard.session, existing.group_id)) {
     return NextResponse.json({ ok: false, error: "منطقه پیدا نشد" }, { status: 404 });
   }
 

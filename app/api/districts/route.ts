@@ -3,26 +3,35 @@ import { getDb } from "@/lib/db";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { geometryVersion } from "@/lib/districtGeometry";
 import { readDistrictProperties } from "@/lib/districts";
+import { requireRole, scopeGroupIds } from "@/lib/session";
 
 // Properties only -- no `boundary_geojson`. Geometry moved to the version-stamped,
 // indefinitely-cached /api/districts/geometry, so this response stays around 50KB and
 // a status edit no longer re-sends every polygon in the province.
 export async function GET(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+  const scope = scopeGroupIds(guard.session);
+
   const db = getDb();
   const sig = db.prepare("SELECT COUNT(*) c, MAX(updated_at) m FROM districts").get() as {
     c: number;
     m: string | null;
   };
-  const tag = etagFor("districts", sig.c, sig.m);
+  // Scope is part of the tag -- see the note in /api/customers.
+  const tag = etagFor(`districts:${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { version: geometryVersion(), districts: readDistrictProperties(db) });
+  return etagJson(req, tag, { version: geometryVersion(), districts: readDistrictProperties(db, scope) });
 }
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
 export async function POST(req: NextRequest) {
+  const guard = requireRole(req, ["owner", "group_manager"]);
+  if (!guard.ok) return guard.response;
+
   const body = await req.json().catch(() => null);
   const { name, geometry, coverage_status, notes } = body ?? {};
 
@@ -39,10 +48,12 @@ export async function POST(req: NextRequest) {
   try {
     const result = db
       .prepare(
-        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, updated_at)
-         VALUES (?, 'mahalle', NULL, ?, ?, ?, 1, ?)`
+        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, group_id, updated_at)
+         VALUES (?, 'mahalle', NULL, ?, ?, ?, 1, ?, ?)`
       )
-      .run(name.trim(), JSON.stringify(geometry), status, notes ?? null, now);
+      // A custom district belongs to whoever drew it. An owner draws for nobody in
+      // particular, so theirs is left unowned until territory is assigned explicitly.
+      .run(name.trim(), JSON.stringify(geometry), status, notes ?? null, guard.session.groupId, now);
     return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
