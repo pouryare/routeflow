@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/
   }
 
   const body = await req.json().catch(() => null);
-  const { coverage_status, notes, assigned_to } = body ?? {};
+  const { coverage_status, notes } = body ?? {};
   if (coverage_status !== undefined && !VALID_STATUSES.includes(coverage_status)) {
     return NextResponse.json({ ok: false, error: "وضعیت نامعتبر است" }, { status: 400 });
   }
@@ -41,10 +41,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/
   if (notes !== undefined) {
     sets.push("notes = ?");
     values.push(notes);
-  }
-  if (assigned_to !== undefined) {
-    sets.push("assigned_to = ?");
-    values.push(assigned_to || null);
   }
   sets.push("updated_at = ?");
   values.push(now);
@@ -74,18 +70,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/
         old_value: null,
         new_value: null,
         note: notes,
-        changed_by: actor,
-        changed_by_user_id: actorId,
-      });
-    }
-    if (assigned_to !== undefined && (assigned_to || null) !== existing.assigned_to) {
-      logActivity(db, {
-        entity_type: "district",
-        entity_id: districtId,
-        event_type: "assigned",
-        old_value: existing.assigned_to,
-        new_value: assigned_to || null,
-        note: null,
         changed_by: actor,
         changed_by_user_id: actorId,
       });

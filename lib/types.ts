@@ -49,9 +49,9 @@ export interface DistrictProperties {
   notes: string | null;
   is_custom: boolean;
   updated_at: string;
-  assigned_to: string | null;
-  /** Which group holds this territory, NULL when unclaimed. Distinct from assigned_to,
-   *  which is a free-text person name and means something else entirely. */
+  /** Which group holds this territory, NULL when unclaimed. This replaced the old
+   *  free-text assigned_to: responsibility for an area is now a group's, not a name
+   *  somebody typed. */
   group_id: number | null;
   centroid_lat: number | null;
   centroid_lng: number | null;

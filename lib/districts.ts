@@ -15,7 +15,7 @@ export function readDistrictProperties(
   const params = groupIds === "all" ? [] : groupIds;
   const rows = db
     .prepare(
-      `SELECT id, name, level, parent_name, coverage_status, notes, is_custom, updated_at, assigned_to,
+      `SELECT id, name, level, parent_name, coverage_status, notes, is_custom, updated_at,
               group_id, centroid_lat, centroid_lng
        FROM districts${where} ORDER BY level, parent_name, name`
     )
@@ -30,7 +30,6 @@ export function readDistrictProperties(
     notes: r.notes,
     is_custom: !!r.is_custom,
     updated_at: r.updated_at,
-    assigned_to: r.assigned_to,
     group_id: r.group_id,
     centroid_lat: r.centroid_lat,
     centroid_lng: r.centroid_lng,

@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest) {
   const { session } = guard;
 
   const body = await req.json().catch(() => null);
-  const { ids, coverage_status, assigned_to, group_id } = body ?? {};
+  const { ids, coverage_status, group_id } = body ?? {};
 
   if (!Array.isArray(ids) || ids.length === 0 || !ids.every((id) => Number.isInteger(id))) {
     return NextResponse.json({ ok: false, error: "شناسه مناطق نامعتبر است" }, { status: 400 });
@@ -24,7 +24,7 @@ export async function PATCH(req: NextRequest) {
   if (coverage_status !== undefined && !VALID_STATUSES.includes(coverage_status)) {
     return NextResponse.json({ ok: false, error: "وضعیت نامعتبر است" }, { status: 400 });
   }
-  if (coverage_status === undefined && assigned_to === undefined && group_id === undefined) {
+  if (coverage_status === undefined && group_id === undefined) {
     return NextResponse.json({ ok: false, error: "هیچ تغییری مشخص نشده" }, { status: 400 });
   }
   // Handing territory between groups is an owner's decision. A manager who could set it
@@ -62,7 +62,6 @@ export async function PATCH(req: NextRequest) {
     const getStmt = db.prepare("SELECT * FROM districts WHERE id = ?");
     const sets: string[] = [];
     if (coverage_status !== undefined) sets.push("coverage_status = ?");
-    if (assigned_to !== undefined) sets.push("assigned_to = ?");
     if (group_id !== undefined) sets.push("group_id = ?");
     sets.push("updated_at = ?");
     const updateStmt = db.prepare(`UPDATE districts SET ${sets.join(", ")} WHERE id = ?`);
@@ -73,7 +72,6 @@ export async function PATCH(req: NextRequest) {
 
       const values: unknown[] = [];
       if (coverage_status !== undefined) values.push(coverage_status);
-      if (assigned_to !== undefined) values.push(assigned_to || null);
       if (group_id !== undefined) values.push(group_id ?? null);
       values.push(now, id);
       updateStmt.run(...(values as never[]));
@@ -86,18 +84,6 @@ export async function PATCH(req: NextRequest) {
           event_type: "status_change",
           old_value: STATUS_LABEL[existing.coverage_status as keyof typeof STATUS_LABEL] ?? existing.coverage_status,
           new_value: STATUS_LABEL[coverage_status as keyof typeof STATUS_LABEL] ?? coverage_status,
-          note: null,
-          changed_by: actor,
-          changed_by_user_id: actorId,
-        });
-      }
-      if (assigned_to !== undefined && (assigned_to || null) !== existing.assigned_to) {
-        logActivity(db, {
-          entity_type: "district",
-          entity_id: id,
-          event_type: "assigned",
-          old_value: existing.assigned_to,
-          new_value: assigned_to || null,
           note: null,
           changed_by: actor,
           changed_by_user_id: actorId,

@@ -26,7 +26,6 @@ export default function DistrictEditor({
 }) {
   const [status, setStatus] = useState<CoverageStatus>(district.properties.coverage_status);
   const [notes, setNotes] = useState(district.properties.notes ?? "");
-  const [assignedTo, setAssignedTo] = useState(district.properties.assigned_to ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const toast = useToast();
@@ -50,7 +49,7 @@ export default function DistrictEditor({
     const res = await fetch(`/api/districts/${district.properties.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ coverage_status: status, notes, assigned_to: assignedTo }),
+      body: JSON.stringify({ coverage_status: status, notes }),
     });
     const data = await res.json();
     setSaving(false);
@@ -105,19 +104,6 @@ export default function DistrictEditor({
           <StatusPill color={STATUS_COLOR[status]} label={STATUS_LABEL[status]} />
         </div>
 
-        <label className="mb-1.5 block text-[length:var(--text-sm)] font-medium text-text">مسئول این منطقه</label>
-        <select
-          value={assignedTo}
-          onChange={(e) => setAssignedTo(e.target.value)}
-          className="mb-4 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-base)] text-text outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent focus:elevate-accent"
-        >
-          <option value="">— تعیین نشده —</option>
-          {salespeople.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
 
         <label className="mb-1.5 block text-[length:var(--text-sm)] font-medium text-text">یادداشت</label>
         <textarea

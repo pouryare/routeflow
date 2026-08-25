@@ -379,7 +379,6 @@ export default function CoverageMap({
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<number>>(new Set());
   const [bulkStatusChoice, setBulkStatusChoice] = useState<CoverageStatus | "">("");
-  const [bulkAssignChoice, setBulkAssignChoice] = useState("");
   // "" = leave alone, "__ungroup__" = clear it, otherwise a group id. Owner only.
   const [bulkGroupChoice, setBulkGroupChoice] = useState("");
   const [bulkSaving, setBulkSaving] = useState(false);
@@ -849,17 +848,15 @@ export default function CoverageMap({
   }, [bulkMode]);
 
   async function applyBulk() {
-    if (bulkSelectedIds.size === 0 || (!bulkStatusChoice && !bulkAssignChoice && !bulkGroupChoice)) return;
+    if (bulkSelectedIds.size === 0 || (!bulkStatusChoice && !bulkGroupChoice)) return;
     setBulkSaving(true);
     const count = bulkSelectedIds.size;
     const body: {
       ids: number[];
       coverage_status?: CoverageStatus;
-      assigned_to?: string;
       group_id?: number | null;
     } = { ids: Array.from(bulkSelectedIds) };
     if (bulkStatusChoice) body.coverage_status = bulkStatusChoice;
-    if (bulkAssignChoice) body.assigned_to = bulkAssignChoice === "__unassign__" ? "" : bulkAssignChoice;
     // The server rejects this from anyone but an owner, and recomputes which customers
     // belong to whom once the territory has moved.
     if (bulkGroupChoice) body.group_id = bulkGroupChoice === "__ungroup__" ? null : Number(bulkGroupChoice);
@@ -885,7 +882,6 @@ export default function CoverageMap({
       setBulkSaving(false);
       setBulkSelectedIds(new Set());
       setBulkStatusChoice("");
-      setBulkAssignChoice("");
       setBulkGroupChoice("");
       loadDistricts();
     }
@@ -2209,19 +2205,6 @@ export default function CoverageMap({
               </option>
             ))}
           </select>
-          <select
-            value={bulkAssignChoice}
-            onChange={(e) => setBulkAssignChoice(e.target.value)}
-            className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
-          >
-            <option value="">— بدون تغییر مسئول —</option>
-            <option value="__unassign__">— حذف مسئول —</option>
-            {salespeople.map((s) => (
-              <option key={s} value={s}>
-                {s}
-              </option>
-            ))}
-          </select>
           {role === "owner" && groups.length > 0 && (
             <select
               value={bulkGroupChoice}
@@ -2246,7 +2229,7 @@ export default function CoverageMap({
             </button>
             <button
               onClick={applyBulk}
-              disabled={bulkSaving || (!bulkStatusChoice && !bulkAssignChoice && !bulkGroupChoice)}
+              disabled={bulkSaving || (!bulkStatusChoice && !bulkGroupChoice)}
               className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {bulkSaving ? "در حال اعمال…" : "اعمال روی همه"}

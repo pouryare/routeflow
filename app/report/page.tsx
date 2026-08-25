@@ -133,7 +133,6 @@ export default async function ReportPage({
                 level: d.level,
                 parent_name: d.parent_name,
                 coverage_status: d.coverage_status,
-                assigned_to: d.assigned_to,
                 ...(() => {
                   const n = nearestSite({ lat: d.centroid_lat, lng: d.centroid_lng }, facilities);
                   return { nearest_site: n.name, nearest_site_km: n.km };
@@ -235,7 +234,6 @@ export default async function ReportPage({
                     <th className="px-3 py-2 font-medium">نام</th>
                     <th className="px-3 py-2 font-medium">منطقه بالادست</th>
                     <th className="px-3 py-2 font-medium">وضعیت</th>
-                    <th className="px-3 py-2 font-medium">مسئول</th>
                     {origin && <th className="px-3 py-2 font-medium">فاصله (خط مستقیم)</th>}
                   </tr>
                 </thead>
@@ -247,7 +245,6 @@ export default async function ReportPage({
                       <td className="px-3 py-2" style={{ color: STATUS_COLOR[d.coverage_status] }}>
                         {STATUS_LABEL[d.coverage_status]}
                       </td>
-                      <td className="px-3 py-2 text-text-muted">{d.assigned_to ?? "—"}</td>
                       {origin && (
                         <td className="px-3 py-2 font-mono tabular-nums text-text-muted">
                           {km === null ? "—" : `${faFixed(km, 1)} کیلومتر`}

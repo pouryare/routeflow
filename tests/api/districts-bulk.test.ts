@@ -104,13 +104,12 @@ describe("PATCH /api/districts/bulk", () => {
     expect(data.updated).toBe(1);
   });
 
-  it("can update assignment independently of status", async () => {
+  it("refuses a request that names no change at all", async () => {
+    // assigned_to used to be the other thing this route could set. Responsibility for an
+    // area is a group's now, so a body carrying only that field changes nothing and must
+    // not report success.
     const id = seedDistrict();
     const res = await PATCH(bulkReq({ ids: [id], assigned_to: "Ali" }));
-    const data = await res.json();
-    expect(data.ok).toBe(true);
-    const db = getDb();
-    const row = db.prepare("SELECT assigned_to FROM districts WHERE id = ?").get(id) as { assigned_to: string };
-    expect(row.assigned_to).toBe("Ali");
+    expect(res.status).toBe(400);
   });
 });

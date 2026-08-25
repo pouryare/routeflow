@@ -510,9 +510,9 @@ export interface District {
   notes: string | null;
   is_custom: number;
   updated_at: string;
-  assigned_to: string | null;
   /** Which group holds this territory. NULL means unclaimed -- an owner sees it, no
-   *  group manager does. Distinct from assigned_to, which is a free-text person name. */
+   *  group manager does. Replaced the free-text assigned_to column, which is retained in
+   *  the table only so history written against it stays readable. */
   group_id: number | null;
   /** Area-weighted centre, filled by backfillDistrictCentroids. NULL when the geometry
    *  could not produce one -- callers must treat that as "distance unknown", never 0. */
