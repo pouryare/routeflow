@@ -122,7 +122,34 @@ Expected: FAIL — `no such table: groups`.
 
 - [ ] **Step 3: Add the schema and migration**
 
-In `lib/db.ts`, add to the big `db.exec()` block (put it directly before `CREATE TABLE IF NOT EXISTS users`):
+In `lib/db.ts`, first **replace** the existing `CREATE TABLE IF NOT EXISTS users` in the
+big `db.exec()` block with the new twelve-column shape, so a fresh database is created
+correctly rather than being built old and immediately rebuilt:
+
+```sql
+    CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      username TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      display_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'group_manager'
+        CHECK (role IN ('owner', 'group_manager', 'driver')),
+      group_id INTEGER REFERENCES groups(id),
+      staff_code TEXT,
+      phone TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      token_version INTEGER NOT NULL DEFAULT 0,
+      location_consent_at TEXT,
+      created_at TEXT NOT NULL
+    );
+```
+
+The rebuild migration below still runs, and is still required: it is what upgrades a
+database that already holds the old five-column table. On a fresh database the
+`token_version` guard sees the new shape and correctly skips it.
+
+Then add the groups table to the same block, directly **before** the `users` table (the
+`REFERENCES groups(id)` above needs it to exist first):
 
 ```sql
     /* A group is one management team covering part of Tehran province. Territory is
@@ -1213,7 +1240,10 @@ describe("groupForPoint", () => {
     expect(groupForPoint(getDb(), 0.5, 2.5)).toBe(east);
   });
   it("returns null when the containing district belongs to no group", () => {
-    expect(groupForPoint(getDb(), 3.5, 1.5)).toBeNull();
+    // (lat 1.5, lng 3.5) is inside PARENT and inside neither LEFT nor RIGHT. PARENT has
+    // group_id NULL, so this exercises "found a district, nobody owns it" -- which is a
+    // different path from "no district contains this point" above.
+    expect(groupForPoint(getDb(), 1.5, 3.5)).toBeNull();
   });
 });
 
@@ -1506,19 +1536,22 @@ describe("PATCH /api/districts/[id]", () => {
 
   it("lets the owner edit any group's district", async () => {
     const req = as(ownerId, "owner", null, `http://localhost/api/districts/${westDistrictId}`, init);
-    const res = await patchDistrict(req, { params: Promise.resolve({ id: String(westDistrictId) }) });
+    const res = await patchDistrict(req, { params: Promise.resolve({ id: String(westDistrictId) }) } as never);
     expect(res.status).toBe(200);
   });
 
   it("hides another group's district behind a 404, not a 403", async () => {
     const req = as(eastMgrId, "group_manager", east, `http://localhost/api/districts/${westDistrictId}`, init);
-    const res = await patchDistrict(req, { params: Promise.resolve({ id: String(westDistrictId) }) });
+    const res = await patchDistrict(req, { params: Promise.resolve({ id: String(westDistrictId) }) } as never);
     expect(res.status).toBe(404);
   });
 });
 ```
 
-Check the real second-argument shape of the `[id]` route handler before running — Next 16 passes `{ params: Promise<{ id: string }> }`; match whatever `app/api/districts/[id]/route.ts` already declares.
+The `[id]` handlers declare their second parameter as Next 16's generated
+`RouteContext<"/api/districts/[id]">`, not a hand-written type. The object above matches
+it at runtime, and `as never` states plainly that the test is bypassing a generated type
+rather than inventing a wrong one. Do not "fix" this by changing the handler signature.
 
 - [ ] **Step 2: Run the test to verify it fails**
 
@@ -1533,6 +1566,38 @@ For each route: call `requireRole` first, then thread `groupFilter` into the que
 - `GET /api/districts` — `["owner", "group_manager"]`
 - `PATCH /api/districts/[id]` — `["owner", "group_manager"]`
 - `PATCH /api/districts/bulk` — `["owner", "group_manager"]`, and reject the whole request if **any** id is out of scope rather than silently skipping those rows, so a partial write never looks like a success.
+- `PATCH /api/districts/bulk` also gains **`group_id`** as an accepted field alongside
+  `coverage_status` and `assigned_to`. This is how territory is handed to a group in bulk,
+  and Task 9's editor depends on it. Only an `owner` may set it — a group manager
+  reassigning territory could hand themselves someone else's districts. After any request
+  that changed `group_id`, call `recomputeCustomerGroups(db)` inside the same transaction
+  scope, or customers keep pointing at the previous owner.
+
+  Add a test for it in this task:
+
+```ts
+it("lets an owner move a district to another group and follows it with the customers", async () => {
+  const db = getDb();
+  const req = as(ownerId, "owner", null, "http://localhost/api/districts/bulk", {
+    method: "PATCH",
+    body: JSON.stringify({ ids: [westDistrictId], group_id: east }),
+    headers: { "Content-Type": "application/json" },
+  });
+  const res = await patchBulk(req);
+  expect(res.status).toBe(200);
+  const row = db.prepare("SELECT group_id FROM districts WHERE id = ?").get(westDistrictId) as { group_id: number };
+  expect(row.group_id).toBe(east);
+});
+
+it("refuses a group manager setting group_id at all", async () => {
+  const req = as(eastMgrId, "group_manager", east, "http://localhost/api/districts/bulk", {
+    method: "PATCH",
+    body: JSON.stringify({ ids: [westDistrictId], group_id: east }),
+    headers: { "Content-Type": "application/json" },
+  });
+  expect((await patchBulk(req)).status).toBe(403);
+});
+```
 
 Give `readCustomers(db)` and `readDistrictProperties(db)` in `lib/customers.ts` / `lib/districts.ts` an optional second parameter `groupIds: number[] | "all"` and apply it in the query, so the server components in Task 8 can scope too.
 
@@ -1596,12 +1661,10 @@ describe("GET /api/reminders", () => {
   beforeAll(() => {
     const db = getDb();
     const now = new Date().toISOString();
-    eastCustomerId = Number(
-      db.prepare("SELECT id FROM customers WHERE customer_code = 'E1'").get<{ id: number }>()!.id
-    );
-    westCustomerId = Number(
-      db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get<{ id: number }>()!.id
-    );
+    // node:sqlite's .get() takes no type parameter -- cast the result, as the rest of
+    // this codebase does.
+    eastCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'E1'").get() as { id: number }).id;
+    westCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get() as { id: number }).id;
     const r = db.prepare(
       "INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at) VALUES ('customer', ?, '2026-09-01', ?, 0, ?)"
     );
@@ -1749,8 +1812,34 @@ Owner only, enforced twice: `proxy.ts` on the `/api/admin` prefix (Task 5) and `
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/api/admin-groups.test.ts` using the temp-DB header from Task 7 and the same
-`as(userId, role, gid, url, init)` helper.
+Create `tests/api/admin-groups.test.ts` using the temp-DB header from Task 7.
+
+Each of these two suites owns its fixtures. vitest gives every test file its own module
+registry, so the `ownerId` / `eastMgrId` / `east` defined in `tests/api/scoping.test.ts`
+do not exist here — create them in this file's own `beforeAll`:
+
+```ts
+let east = 0, west = 0, ownerId = 0, eastMgrId = 0;
+
+beforeAll(() => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)");
+  east = Number(g.run("شرق", "east", now).lastInsertRowid);
+  west = Number(g.run("غرب", "west", now).lastInsertRowid);
+
+  const u = db.prepare(
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
+  );
+  ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
+  eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
+});
+
+function as(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, url: string, init: RequestInit = {}) {
+  const token = createSessionToken({ uid: userId, role, gid, tv: 0, name: "t" });
+  return new NextRequest(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `${COOKIE_NAME}=${token}` } });
+}
+```
 
 ```ts
 const { GET: listGroups, POST: createGroup } = await import("@/app/api/admin/groups/route");
@@ -1795,7 +1884,7 @@ describe("PATCH /api/admin/groups/[id]", () => {
   it("renames a group", async () => {
     const req = as(ownerId, "owner", null, `http://localhost/api/admin/groups/${east}`,
       body("", "PATCH", { name: "شرق تهران" }));
-    const res = await patchGroup(req, { params: Promise.resolve({ id: String(east) }) });
+    const res = await patchGroup(req, { params: Promise.resolve({ id: String(east) }) } as never);
     expect(res.status).toBe(200);
     const row = getDb().prepare("SELECT name FROM groups WHERE id = ?").get(east) as { name: string };
     expect(row.name).toBe("شرق تهران");
@@ -1807,7 +1896,7 @@ describe("DELETE /api/admin/groups/[id]", () => {
     // eastMgrId belongs to `east`, so deleting it would strand that account with a
     // dangling group_id and no way to reach anything.
     const req = as(ownerId, "owner", null, `http://localhost/api/admin/groups/${east}`, { method: "DELETE" });
-    const res = await deleteGroup(req, { params: Promise.resolve({ id: String(east) }) });
+    const res = await deleteGroup(req, { params: Promise.resolve({ id: String(east) }) } as never);
     expect(res.status).toBe(409);
   });
 
@@ -1823,7 +1912,7 @@ describe("DELETE /api/admin/groups/[id]", () => {
         .run("محله موقت", gid, now).lastInsertRowid
     );
     const req = as(ownerId, "owner", null, `http://localhost/api/admin/groups/${gid}`, { method: "DELETE" });
-    expect((await deleteGroup(req, { params: Promise.resolve({ id: String(gid) }) })).status).toBe(200);
+    expect((await deleteGroup(req, { params: Promise.resolve({ id: String(gid) }) } as never)).status).toBe(200);
     const row = db.prepare("SELECT group_id FROM districts WHERE id = ?").get(did) as { group_id: number | null };
     expect(row.group_id).toBeNull();
   });
@@ -1869,7 +1958,36 @@ git commit -m "Let the owner create groups and hand them territory"
 
 - [ ] **Step 1: Write the failing test**
 
-Create `tests/api/admin-users.test.ts`, same header and `as()` helper:
+Create `tests/api/admin-users.test.ts`, same temp-DB header.
+
+Each of these two suites owns its fixtures. vitest gives every test file its own module
+registry, so the `ownerId` / `eastMgrId` / `east` defined in `tests/api/scoping.test.ts`
+do not exist here — create them in this file's own `beforeAll`:
+
+```ts
+let east = 0, west = 0, ownerId = 0, eastMgrId = 0;
+
+beforeAll(() => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)");
+  east = Number(g.run("شرق", "east", now).lastInsertRowid);
+  west = Number(g.run("غرب", "west", now).lastInsertRowid);
+
+  const u = db.prepare(
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
+  );
+  ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
+  eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
+});
+
+function as(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, url: string, init: RequestInit = {}) {
+  const token = createSessionToken({ uid: userId, role, gid, tv: 0, name: "t" });
+  return new NextRequest(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `${COOKIE_NAME}=${token}` } });
+}
+```
+
+Then the tests:
 
 ```ts
 const { POST: createUser } = await import("@/app/api/admin/users/route");
@@ -1939,7 +2057,7 @@ describe("PATCH /api/admin/users/[id]", () => {
     const before = versionOf("newdrv");
     const res = await patchUser(
       as(ownerId, "owner", null, `${URL_NEW}/${id}`, json("PATCH", { password: "pw-fresh-1" })),
-      { params: Promise.resolve({ id: String(id) }) }
+      { params: Promise.resolve({ id: String(id) }) } as never
     );
     expect(res.status).toBe(200);
     // The bump is the point: without it, a session issued before the reset stays valid
@@ -1952,7 +2070,7 @@ describe("PATCH /api/admin/users/[id]", () => {
     const before = versionOf("hashme");
     await patchUser(
       as(ownerId, "owner", null, `${URL_NEW}/${id}`, json("PATCH", { active: false })),
-      { params: Promise.resolve({ id: String(id) }) }
+      { params: Promise.resolve({ id: String(id) }) } as never
     );
     expect(versionOf("hashme")).toBe(before + 1);
   });
@@ -1964,7 +2082,7 @@ describe("PATCH /api/admin/users/[id]", () => {
     expect(owners).toHaveLength(1);
     const res = await patchUser(
       as(ownerId, "owner", null, `${URL_NEW}/${owners[0].id}`, json("PATCH", { role: "group_manager", group_id: east })),
-      { params: Promise.resolve({ id: String(owners[0].id) }) }
+      { params: Promise.resolve({ id: String(owners[0].id) }) } as never
     );
     // Otherwise the app ends up with nobody who can administer it, and the only way back
     // is scripts/create-user.mjs over SSH.
