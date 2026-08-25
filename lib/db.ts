@@ -142,11 +142,32 @@ export function getDb(): DatabaseSync {
       sales_json TEXT NOT NULL
     );
 
+    /* A group is one management team covering part of Tehran province. Territory is
+       expressed by assigning districts to a group (districts.group_id), not by drawing
+       new geometry -- the 22 منطقه and 369 محله polygons are already surveyed, and a
+       second boundary system would be a second thing to disagree with the first. */
+    CREATE TABLE IF NOT EXISTS groups (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT UNIQUE NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      color TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE NOT NULL,
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'group_manager'
+        CHECK (role IN ('owner', 'group_manager', 'driver')),
+      group_id INTEGER REFERENCES groups(id),
+      staff_code TEXT,
+      phone TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      token_version INTEGER NOT NULL DEFAULT 0,
+      location_consent_at TEXT,
       created_at TEXT NOT NULL
     );
 
@@ -320,6 +341,66 @@ export function getDb(): DatabaseSync {
     }
   }
 
+  // users predates roles entirely: it was a username/password/display_name table backing
+  // an optional named login beside the shared APP_PASSWORD. Roles and group scoping need
+  // a CHECK constraint, which SQLite cannot add via ALTER, so this is the standard
+  // rebuild.
+  //
+  // Existing rows become 'owner' on purpose. Those accounts already have unrestricted
+  // access today (the app has no scoping at all), so 'owner' preserves exactly the
+  // access they have rather than silently revoking it -- a migration that locks the user
+  // out of their own production app is a worse failure than one that defers a demotion
+  // to the admin screen.
+  const usersSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql: string } | undefined;
+  if (usersSchema && !usersSchema.sql.includes("token_version")) {
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE users_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'group_manager'
+            CHECK (role IN ('owner', 'group_manager', 'driver')),
+          group_id INTEGER REFERENCES groups(id),
+          staff_code TEXT,
+          phone TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          location_consent_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO users_new (id, username, password_hash, display_name, role, created_at)
+          SELECT id, username, password_hash, display_name, 'owner', created_at FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_new RENAME TO users;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    }
+  }
+
+  // Territory. Nullable rather than NOT NULL: a district nobody has claimed yet is a
+  // real state, and it is different from one deliberately given to a group.
+  const districtGroupCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
+  if (!districtGroupCols.some((c) => c.name === "group_id")) {
+    db.exec("ALTER TABLE districts ADD COLUMN group_id INTEGER REFERENCES groups(id)");
+  }
+
+  // A cache, not a source of truth -- recomputed from district containment by
+  // recomputeCustomerGroups() whenever territory changes or customers are imported.
+  // Stored rather than derived per query because deriving it means point-in-polygon
+  // against 369 polygons per customer, per request.
+  const customerGroupCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
+  if (!customerGroupCols.some((c) => c.name === "group_id")) {
+    db.exec("ALTER TABLE customers ADD COLUMN group_id INTEGER REFERENCES groups(id)");
+  }
+
   // visit_plans shipped with entity_type restricted to district/customer. SQLite cannot
   // ALTER a CHECK, so widening it to accept a facility means the standard rebuild:
   // new table, copy every row, drop, rename. Guarded on the constraint text so it runs
@@ -491,11 +572,30 @@ export interface ImportSnapshotRow {
   sales_json: string;
 }
 
+export type Role = "owner" | "group_manager" | "driver";
+export const ROLES: Role[] = ["owner", "group_manager", "driver"];
+
+export interface GroupRow {
+  id: number;
+  name: string;
+  slug: string;
+  color: string | null;
+  active: number;
+  created_at: string;
+}
+
 export interface UserRow {
   id: number;
   username: string;
   password_hash: string;
   display_name: string;
+  role: Role;
+  group_id: number | null;
+  staff_code: string | null;
+  phone: string | null;
+  active: number;
+  token_version: number;
+  location_consent_at: string | null;
   created_at: string;
 }
 
