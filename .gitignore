@@ -47,6 +47,12 @@ next-env.d.ts
 # local database/photo backups (see scripts/backup.mjs) -- these belong on a
 # separate disk/host to protect against this machine's own failure, not in git
 /backups/
+# a database backup left anywhere under data/ is the same real customer data as the
+# runtime db above -- ignore the path too, not just the canonical one
+/data/backups/
+
+# git worktrees created for feature work: a whole second checkout, node_modules and all
+/.claude/worktrees/
 
 # raw cloned source repos used only to generate mahalle.geojson once
 /data/tehran-map-src
