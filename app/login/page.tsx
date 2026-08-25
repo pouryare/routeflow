@@ -10,6 +10,11 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // proxy.ts only sets ?next= when it turned someone away from a page they asked for, so
+  // its presence means "you were signed in a moment ago, and now you are not". Without
+  // saying so, an expired session looks exactly like a broken app: the map they expected
+  // is replaced by a form, with no clue why.
+  const bounced = !!params.get("next");
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -69,6 +74,15 @@ function LoginForm() {
         <p className="mb-6 text-sm text-text-muted">
           با نام کاربری و رمز عبور خودتان وارد شوید.
         </p>
+
+        {bounced && (
+          <p
+            role="status"
+            className="mb-4 rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn"
+          >
+            نشست شما پایان یافته است. برای ادامه دوباره وارد شوید.
+          </p>
+        )}
 
         <input
           type="text"

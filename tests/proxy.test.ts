@@ -49,6 +49,25 @@ describe("the retired shared-password session", () => {
     expect(page.headers.get("location")).toContain("/login");
     expect(proxy(legacy("/api/customers")).status).toBe(401);
   });
+
+  it("clears the dead cookie on the way out", () => {
+    // Otherwise the browser keeps presenting a credential that can never work again, and
+    // every navigation for the next 30 days takes the same round trip to be refused.
+    const token = createSessionToken({ uid: 0, role: "owner", gid: null, tv: 0, name: "مدیر" });
+    const res = proxy(
+      new NextRequest("http://localhost/planner", { headers: { cookie: `${COOKIE_NAME}=${token}` } })
+    );
+    const setCookie = res.headers.get("set-cookie") ?? "";
+    expect(setCookie).toContain(`${COOKIE_NAME}=`);
+    expect(setCookie).toMatch(/Max-Age=0|Expires=Thu, 01 Jan 1970/);
+  });
+
+  it("tells the login page where the caller was headed", () => {
+    // The login form reads this to explain that a session ended, rather than presenting a
+    // bare form to someone who thought they were already signed in.
+    const res = proxy(new NextRequest("http://localhost/planner"));
+    expect(res.headers.get("location")).toContain("next=%2Fplanner");
+  });
 });
 
 describe("role prefixes", () => {

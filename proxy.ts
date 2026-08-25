@@ -12,6 +12,14 @@ const PUBLIC_PATHS = ["/login", "/api/login", "/sw.js", "/manifest.webmanifest",
 // deactivated; a stale claim still passes here. Every route does the authoritative,
 // DB-backed check via requireRole() in lib/session.ts. The job of this file is to stop a
 // driver's browser downloading the admin bundle, not to protect the data behind it.
+function loginUrlFor(req: NextRequest, pathname: string): URL {
+  const url = new URL("/login", req.url);
+  // The login form reads this to say that a session ended, rather than showing a bare
+  // form to someone who believed they were still signed in.
+  url.searchParams.set("next", pathname);
+  return url;
+}
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -27,10 +35,14 @@ export function proxy(req: NextRequest) {
   // API call -- pages loading, nothing on them working. Treat it as signed out, which is
   // what it is, and send the holder to a login form that can actually help them.
   if (!claims || claims.uid === 0) {
-    if (isApi) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
-    const loginUrl = new URL("/login", req.url);
-    loginUrl.searchParams.set("next", pathname);
-    return NextResponse.redirect(loginUrl);
+    const res = isApi
+      ? NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 })
+      : NextResponse.redirect(loginUrlFor(req, pathname));
+    // Clear it on the way out. A cookie that can never work again is worse than none:
+    // the browser keeps presenting it, every navigation takes the same round trip to be
+    // refused, and the holder has no way to tell a dead session from a broken app.
+    res.cookies.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
+    return res;
   }
 
   const deny = (to: string) =>
