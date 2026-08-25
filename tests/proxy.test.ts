@@ -1,7 +1,6 @@
 import { describe, it, expect } from "vitest";
 
 process.env.SESSION_SECRET = "test-secret";
-process.env.APP_PASSWORD = "test-password";
 
 const { proxy } = await import("@/proxy");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
@@ -33,6 +32,22 @@ describe("authentication", () => {
   });
   it("401s an anonymous API request", () => {
     expect(proxy(req("/api/customers")).status).toBe(401);
+  });
+});
+
+describe("the retired shared-password session", () => {
+  it("treats a uid-0 cookie as signed out rather than letting it half-work", () => {
+    // Those cookies were minted by the shared-password login and are still validly
+    // signed for 30 days. getSession() rejects uid 0 because it matches no row, so
+    // without this the holder would load every page and have every API call fail.
+    const token = createSessionToken({ uid: 0, role: "owner", gid: null, tv: 0, name: "مدیر" });
+    const legacy = (pathname: string) =>
+      new NextRequest(`http://localhost${pathname}`, { headers: { cookie: `${COOKIE_NAME}=${token}` } });
+
+    const page = proxy(legacy("/planner"));
+    expect(page.status).toBe(307);
+    expect(page.headers.get("location")).toContain("/login");
+    expect(proxy(legacy("/api/customers")).status).toBe(401);
   });
 });
 

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, District, logActivity } from "@/lib/db";
-import { getActorName } from "@/lib/auth";
 import { canReachGroup, requireRole } from "@/lib/session";
 import { recomputeCustomerGroups } from "@/lib/groups";
 import { STATUS_LABEL } from "@/lib/types";
@@ -53,7 +52,8 @@ export async function PATCH(req: NextRequest) {
     }
   }
 
-  const actor = getActorName(req);
+  const actor = guard.session.user.display_name;
+  const actorId = guard.session.user.id;
   const now = new Date().toISOString();
   let updated = 0;
 
@@ -88,6 +88,7 @@ export async function PATCH(req: NextRequest) {
           new_value: STATUS_LABEL[coverage_status as keyof typeof STATUS_LABEL] ?? coverage_status,
           note: null,
           changed_by: actor,
+          changed_by_user_id: actorId,
         });
       }
       if (assigned_to !== undefined && (assigned_to || null) !== existing.assigned_to) {
@@ -99,6 +100,7 @@ export async function PATCH(req: NextRequest) {
           new_value: assigned_to || null,
           note: null,
           changed_by: actor,
+          changed_by_user_id: actorId,
         });
       }
     }

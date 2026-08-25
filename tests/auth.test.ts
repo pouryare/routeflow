@@ -3,23 +3,10 @@ import crypto from "node:crypto";
 
 beforeAll(() => {
   process.env.SESSION_SECRET = "test-secret-do-not-use-in-prod";
-  process.env.APP_PASSWORD = "correct-horse-battery-staple";
 });
 
-const { createSessionToken, parseSessionToken, verifySessionToken, checkPassword, getActorName, hashPassword, verifyPassword, COOKIE_NAME } =
+const { createSessionToken, parseSessionToken, verifySessionToken, hashPassword, verifyPassword, COOKIE_NAME } =
   await import("@/lib/auth");
-
-describe("checkPassword", () => {
-  it("accepts the configured password", () => {
-    expect(checkPassword("correct-horse-battery-staple")).toBe(true);
-  });
-  it("rejects a wrong password", () => {
-    expect(checkPassword("wrong")).toBe(false);
-  });
-  it("rejects a wrong password even the same length (timing-safe path)", () => {
-    expect(checkPassword("correct-horse-battery-staplX")).toBe(false);
-  });
-});
 
 describe("session tokens", () => {
   const base = { uid: 7, role: "group_manager" as const, gid: 3, tv: 0, name: "سارا" };
@@ -99,22 +86,5 @@ describe("hashPassword / verifyPassword", () => {
   it("rejects malformed stored values instead of throwing", () => {
     expect(verifyPassword("anything", "not-a-valid-hash")).toBe(false);
     expect(verifyPassword("anything", "")).toBe(false);
-  });
-});
-
-describe("getActorName", () => {
-  function fakeRequest(cookieValue: string | undefined) {
-    return { cookies: { get: () => (cookieValue === undefined ? undefined : { value: cookieValue }) } };
-  }
-
-  it("reads the name back off a valid session cookie", () => {
-    const token = createSessionToken({ uid: 1, role: "owner", gid: null, tv: 0, name: "Sara" });
-    expect(getActorName(fakeRequest(token))).toBe("Sara");
-  });
-  it("returns null when there's no cookie", () => {
-    expect(getActorName(fakeRequest(undefined))).toBeNull();
-  });
-  it("returns null for an invalid cookie rather than throwing", () => {
-    expect(getActorName(fakeRequest("garbage"))).toBeNull();
   });
 });

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkPassword, createSessionToken, verifyPassword, COOKIE_NAME, MAX_AGE_SECONDS } from "@/lib/auth";
+import { createSessionToken, verifyPassword, COOKIE_NAME, MAX_AGE_SECONDS } from "@/lib/auth";
 import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
 import { findUserByUsername } from "@/lib/users";
 
@@ -21,47 +21,36 @@ export async function POST(req: NextRequest) {
 
   const body = await req.json().catch(() => null);
   const password = body?.password;
-  const username = typeof body?.username === "string" ? body.username.trim() : null;
+  const username = typeof body?.username === "string" ? body.username.trim() : "";
 
-  let token: string;
-  let sharedPasswordLogin = false;
+  // Named accounts are the only way in. The shared APP_PASSWORD login that used to sit
+  // here is gone (spec §2.5, second release): every coworker has an account, and a
+  // password several people know is not one anybody can be held to. The bootstrap path
+  // for an owner locked out of their own account is scripts/create-user.mjs on the server.
+  const user = username ? findUserByUsername(username) : null;
+  if (!user || !user.active || typeof password !== "string" || !verifyPassword(password, user.password_hash)) {
+    return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
+  }
 
-  if (username) {
-    const user = findUserByUsername(username);
-    if (!user || !user.active || typeof password !== "string" || !verifyPassword(password, user.password_hash)) {
-      return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
-    }
-    token = createSessionToken({
+  rateLimitReset(key);
+
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(
+    COOKIE_NAME,
+    createSessionToken({
       uid: user.id,
       role: user.role,
       gid: user.group_id,
       tv: user.token_version,
       name: user.display_name,
-    });
-  } else {
-    // Migration path (spec §2.5, release one of two). The shared password still opens the
-    // app, as an owner, so adding accounts cannot lock the team out mid-migration. uid 0
-    // matches no row, so getSession() rejects it -- meaning this session can reach the
-    // pages proxy.ts allows but not the API routes that resolve a real user. That is
-    // deliberate: it is enough to reach the admin screens and create real accounts, and
-    // not enough to be a permanent way in.
-    if (typeof password !== "string" || !checkPassword(password)) {
-      return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
+    }),
+    {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: MAX_AGE_SECONDS,
+      path: "/",
     }
-    const name = typeof body?.name === "string" ? body.name : "مدیر";
-    token = createSessionToken({ uid: 0, role: "owner", gid: null, tv: 0, name });
-    sharedPasswordLogin = true;
-  }
-
-  rateLimitReset(key);
-
-  const res = NextResponse.json({ ok: true, shared_password_login: sharedPasswordLogin });
-  res.cookies.set(COOKIE_NAME, token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: MAX_AGE_SECONDS,
-    path: "/",
-  });
+  );
   return res;
 }

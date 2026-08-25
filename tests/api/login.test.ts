@@ -6,7 +6,6 @@ import os from "node:os";
 const testDbPath = path.join(os.tmpdir(), `coverage-test-login-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-process.env.APP_PASSWORD = "hunter2";
 
 const { POST } = await import("@/app/api/login/route");
 const { NextRequest } = await import("next/server");
@@ -17,17 +16,26 @@ afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
+// There is only one way in now, so the rate-limit cases run through a real account
+// rather than the shared password they used to use.
+beforeAll(() => {
+  const db = getDb();
+  db.prepare(
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+  ).run("limiter", hashPassword("hunter2-real"), "محدودیت", new Date().toISOString());
+});
+
 function loginReq(password: string, ip: string) {
   return new NextRequest("http://localhost/api/login", {
     method: "POST",
-    body: JSON.stringify({ password }),
+    body: JSON.stringify({ username: "limiter", password }),
     headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
   });
 }
 
 describe("POST /api/login", () => {
   it("accepts the correct password and sets a session cookie", async () => {
-    const res = await POST(loginReq("hunter2", "9.9.9.1"));
+    const res = await POST(loginReq("hunter2-real", "9.9.9.1"));
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(res.headers.get("set-cookie")).toContain(`${COOKIE_NAME}=`);
@@ -58,7 +66,7 @@ describe("POST /api/login", () => {
     for (let i = 0; i < 4; i++) {
       await POST(loginReq("wrong", ip));
     }
-    const ok = await POST(loginReq("hunter2", ip));
+    const ok = await POST(loginReq("hunter2-real", ip));
     expect(ok.status).toBe(200);
     // would have been the 6th attempt (blocked) had the counter not reset
     const after = await POST(loginReq("wrong", ip));
@@ -128,15 +136,26 @@ describe("named account login", () => {
   });
 });
 
-describe("shared password migration login", () => {
-  it("still works, but only as an owner, and says so", async () => {
-    const res = await POST(loginReq("hunter2", "8.8.2.1"));
+describe("the shared password is gone", () => {
+  it("refuses a password-only request, whatever the password", async () => {
+    // APP_PASSWORD used to open the app on its own. Nothing reads it any more, so a body
+    // with no username cannot authenticate regardless of what it carries.
+    for (const password of ["hunter2", "hunter2-real", "sara-pass"]) {
+      const res = await POST(
+        new NextRequest("http://localhost/api/login", {
+          method: "POST",
+          body: JSON.stringify({ password }),
+          headers: { "Content-Type": "application/json", "x-forwarded-for": "7.7.7." + password.length },
+        })
+      );
+      expect(res.status).toBe(401);
+    }
+  });
+
+  it("no longer reports a shared_password_login flag", async () => {
+    const res = await POST(namedLogin("sara", "sara-pass", "8.8.9.9"));
     const data = await res.json();
     expect(data.ok).toBe(true);
-    expect(data.shared_password_login).toBe(true);
-    const claims = parseSessionToken(cookieFrom(res));
-    expect(claims?.role).toBe("owner");
-    expect(claims?.gid).toBeNull();
-    expect(claims?.uid).toBe(0);
+    expect("shared_password_login" in data).toBe(false);
   });
 });

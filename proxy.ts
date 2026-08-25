@@ -22,7 +22,11 @@ export function proxy(req: NextRequest) {
   const claims = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
   const isApi = pathname.startsWith("/api");
 
-  if (!claims) {
+  // uid 0 was the shared-password session, which no longer exists. Such a cookie still
+  // has a valid signature, so without this it would sail through here and then fail every
+  // API call -- pages loading, nothing on them working. Treat it as signed out, which is
+  // what it is, and send the holder to a login form that can actually help them.
+  if (!claims || claims.uid === 0) {
     if (isApi) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
     const loginUrl = new URL("/login", req.url);
     loginUrl.searchParams.set("next", pathname);

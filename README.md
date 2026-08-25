@@ -58,14 +58,20 @@ Free text, and it must match the شناسه column in the `همکاران` sheet
 **exactly** (`DRV1`, `SP2`, …). It is the join key for commission; a typo there does not
 error, it just silently pays nobody.
 
-### The shared password is on its way out
+### There is no shared password
 
-`APP_PASSWORD` still logs in, as an owner, so that adding accounts cannot lock the team out
-mid-migration. Any session opened that way shows a standing warning banner. It mints
-`uid: 0`, which matches no row, so that session can reach the pages the proxy allows but not
-the API routes that resolve a real user — enough to find your way around, not enough to be a
-permanent way in. Once every coworker has an account, the `checkPassword` branch in
-`app/api/login/route.ts` and the function in `lib/auth.ts` both go.
+`APP_PASSWORD` is gone. It used to open the app on its own, as an owner, so that adding
+accounts could not lock the team out mid-migration — that job is done, and a password
+several people know is not one anybody can be held to. Nothing reads the variable any more;
+you can delete the line from `.env.local`.
+
+The consequence worth knowing: **a named account is now the only way in.** If every owner
+password is lost, the way back is SSH to the server and `scripts/create-user.mjs`, which
+writes straight to the database and does not need anyone to be logged in.
+
+Session cookies minted by the old shared login carry `uid: 0`, match no account, and are
+rejected at the proxy — their holders are sent to the login form rather than into an app
+where every page loads and nothing on it works.
 
 ## District data (one-time setup, already done)
 

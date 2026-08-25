@@ -342,7 +342,8 @@ export function getDb(): DatabaseSync {
   }
 
   // users predates roles entirely: it was a username/password/display_name table backing
-  // an optional named login beside the shared APP_PASSWORD. Roles and group scoping need
+  // an optional named login, back when a shared password was the usual way in. Roles and
+  // group scoping need
   // a CHECK constraint, which SQLite cannot add via ALTER, so this is the standard
   // rebuild.
   //

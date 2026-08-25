@@ -80,19 +80,8 @@ export function verifySessionToken(token: string | undefined | null): boolean {
   return parseSessionToken(token) !== null;
 }
 
-export function checkPassword(candidate: string): boolean {
-  const real = process.env.APP_PASSWORD;
-  if (!real) throw new Error("APP_PASSWORD env var is not set");
-  const a = Buffer.from(candidate);
-  const b = Buffer.from(real);
-  if (a.length !== b.length) return false;
-  return crypto.timingSafeEqual(a, b);
-}
-
-// Per-user accounts (additive, alongside the shared APP_PASSWORD above -- the shared
-// password keeps working exactly as before, so adding named accounts can never lock
-// the team out of the app). scrypt is Node's own built-in KDF, so this needs no new
-// dependency. Stored as "salt:hash", both hex.
+// scrypt is Node's own built-in KDF, so this needs no new dependency.
+// Stored as "salt:hash", both hex.
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16);
   const hash = crypto.scryptSync(password, salt, 64);
@@ -107,13 +96,6 @@ export function verifyPassword(password: string, stored: string): boolean {
   const candidate = crypto.scryptSync(password, salt, expected.length);
   if (candidate.length !== expected.length) return false;
   return crypto.timingSafeEqual(candidate, expected);
-}
-
-/** Reads the display name out of the request's own session cookie, for routes that log
- *  activity and want to attribute it. */
-export function getActorName(req: { cookies: { get(name: string): { value: string } | undefined } }): string | null {
-  const token = req.cookies.get(COOKIE_NAME)?.value;
-  return parseSessionToken(token)?.name || null;
 }
 
 export { COOKIE_NAME, MAX_AGE_SECONDS };
