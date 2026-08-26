@@ -32,6 +32,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
     { href: "/sales/products", label: "کالاها و قیمت‌ها", ready: true },
     { href: "/sales/orders", label: "سفارش‌ها", ready: true },
     { href: "/sales/runs", label: "مسیر تحویل", ready: session.role !== "salesperson" },
+    { href: "/sales/commission", label: "پورسانت", ready: true },
   ];
 
   return (

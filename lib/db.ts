@@ -414,6 +414,47 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_delivery_stops_run ON delivery_stops(run_id, sort_order);
     CREATE INDEX IF NOT EXISTS idx_delivery_stops_order ON delivery_stops(order_id);
+
+    /* ---- Commission ---------------------------------------------------------------
+       Paid per kilogram of goods delivered. Effective-dated and INSERT-only, like
+       product_prices and for the same reason: a rate held in one cell means raising it
+       today silently restates what everyone earned last month.
+
+       salesperson_user_id NULL is the company-wide default that applies to anyone
+       without a rate of their own -- so onboarding a فروشنده does not require setting a
+       rate before their first order can accrue anything. */
+    CREATE TABLE IF NOT EXISTS commission_rates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_user_id INTEGER REFERENCES users(id),
+      rate_per_kg_toman INTEGER NOT NULL,
+      /* For فوری deliveries. Null means the ordinary rate applies to those too. */
+      urgent_rate_per_kg_toman INTEGER,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_commission_rates_lookup
+      ON commission_rates(salesperson_user_id, valid_from);
+
+    /* Money that actually moved. Accrual is derived from delivered weight and the rate
+       in force, and can therefore be restated by a backdated rate; a payment cannot,
+       and that asymmetry is deliberate -- one is a calculation, the other is a fact.
+
+       NOT NULL on the person: a payment with nobody attached is money leaving with no
+       statement to reconcile it against. */
+    CREATE TABLE IF NOT EXISTS commission_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_user_id INTEGER NOT NULL REFERENCES users(id),
+      amount_toman INTEGER NOT NULL,
+      paid_on TEXT NOT NULL,
+      period_from TEXT,
+      period_to TEXT,
+      notes TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_commission_payments_person
+      ON commission_payments(salesperson_user_id, paid_on);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do

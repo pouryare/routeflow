@@ -1,0 +1,239 @@
+/** Reading and writing the commission ledger.
+ *
+ *  Two different kinds of number live here and they are treated differently on purpose:
+ *
+ *  - **Accrued** is derived, every time, from delivered weight and the rate in force on
+ *    the order's date. Nothing is stored, so there is no cached figure to drift from the
+ *    lines it came from. A backdated rate therefore restates unpaid accruals, which is
+ *    what a backdated raise is supposed to do.
+ *  - **Paid** is a row. It records money that moved and no later edit can restate it.
+ *
+ *  Commission accrues on delivery, not on confirmation. A confirmed order is a promise;
+ *  the goods can still come back on the van, and paying on the promise means clawing it
+ *  back afterwards.
+ */
+
+import type { DatabaseSync } from "node:sqlite";
+import { rateFor, accrualToman, type RateRow } from "./commission";
+import { lineKg, type LineSnapshot } from "./orderMath";
+import { isToman } from "./money";
+
+export interface Period {
+  from: string;
+  to: string;
+}
+
+export interface StatementOrder {
+  order_id: number;
+  order_no: string;
+  order_date: string;
+  customer_name: string;
+  kg: number;
+  rate_per_kg_toman: number;
+  accrual_toman: number;
+}
+
+export interface Statement {
+  salesperson_user_id: number;
+  display_name: string;
+  kg: number;
+  accrued_toman: number;
+  paid_toman: number;
+  /** Lifetime, not period: what is actually still owed to this person today. */
+  owed_toman: number;
+  orders: StatementOrder[];
+}
+
+export function setRate(
+  db: DatabaseSync,
+  input: {
+    salesperson_user_id?: number | null;
+    rate_per_kg_toman: number;
+    urgent_rate_per_kg_toman?: number | null;
+    valid_from: string;
+    created_by?: number | null;
+  }
+): number {
+  if (!isToman(input.rate_per_kg_toman)) {
+    throw new TypeError(`نرخ پورسانت باید عدد صحیح تومان باشد: ${input.rate_per_kg_toman}`);
+  }
+  return Number(
+    db
+      .prepare(
+        `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman,
+                                       urgent_rate_per_kg_toman, valid_from, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        input.salesperson_user_id ?? null,
+        input.rate_per_kg_toman,
+        input.urgent_rate_per_kg_toman ?? null,
+        input.valid_from.slice(0, 10),
+        input.created_by ?? null,
+        new Date().toISOString()
+      ).lastInsertRowid
+  );
+}
+
+export function recordPayment(
+  db: DatabaseSync,
+  input: {
+    salesperson_user_id: number;
+    amount_toman: number;
+    paid_on: string;
+    period_from?: string | null;
+    period_to?: string | null;
+    notes?: string | null;
+    created_by?: number | null;
+  }
+): number {
+  if (!isToman(input.amount_toman)) {
+    throw new TypeError(`مبلغ پرداخت باید عدد صحیح تومان باشد: ${input.amount_toman}`);
+  }
+  return Number(
+    db
+      .prepare(
+        `INSERT INTO commission_payments (salesperson_user_id, amount_toman, paid_on,
+                                          period_from, period_to, notes, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        input.salesperson_user_id,
+        input.amount_toman,
+        input.paid_on.slice(0, 10),
+        input.period_from?.slice(0, 10) ?? null,
+        input.period_to?.slice(0, 10) ?? null,
+        input.notes ?? null,
+        input.created_by ?? null,
+        new Date().toISOString()
+      ).lastInsertRowid
+  );
+}
+
+export function readRates(db: DatabaseSync): (RateRow & { display_name: string | null })[] {
+  return db
+    .prepare(
+      `SELECT cr.*, u.display_name
+         FROM commission_rates cr
+         LEFT JOIN users u ON u.id = cr.salesperson_user_id
+        ORDER BY cr.valid_from DESC, cr.id DESC`
+    )
+    .all() as unknown as (RateRow & { display_name: string | null })[];
+}
+
+/** Every delivered order credited to a person inside a period, with its accrual. */
+function accrualsFor(
+  db: DatabaseSync,
+  salespersonId: number,
+  period: Period,
+  rates: RateRow[]
+): StatementOrder[] {
+  const orders = db
+    .prepare(
+      `SELECT o.id AS order_id, o.order_no, o.order_date, c.business_name AS customer_name
+         FROM orders o
+         JOIN customers c ON c.id = o.customer_id
+        WHERE o.salesperson_user_id = ?
+          AND o.status = 'delivered'
+          AND o.order_date BETWEEN ? AND ?
+        ORDER BY o.order_date, o.id`
+    )
+    .all(salespersonId, period.from.slice(0, 10), period.to.slice(0, 10)) as unknown as {
+    order_id: number;
+    order_no: string;
+    order_date: string;
+    customer_name: string;
+  }[];
+
+  const linesOf = db.prepare(
+    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
+            qty_per_pack, kg_per_base_unit
+       FROM order_lines WHERE order_id = ?`
+  );
+
+  return orders.map((order) => {
+    const lines = linesOf.all(order.order_id) as unknown as LineSnapshot[];
+    const kg = lines.reduce((total, line) => total + lineKg(line), 0);
+    // The rate in force on the day the order was taken -- not today's, and not the rate
+    // on the delivery date, so a rate change mid-round cannot split one round in two.
+    const rate = rateFor(rates, salespersonId, order.order_date);
+    const perKg = rate?.rate_per_kg_toman ?? 0;
+    return { ...order, kg, rate_per_kg_toman: perKg, accrual_toman: accrualToman(kg, perKg) };
+  });
+}
+
+export function statementFor(
+  db: DatabaseSync,
+  salespersonId: number,
+  period: Period
+): Statement {
+  const person = db
+    .prepare("SELECT id, display_name FROM users WHERE id = ?")
+    .get(salespersonId) as { id: number; display_name: string } | undefined;
+
+  const rates = db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
+  const orders = accrualsFor(db, salespersonId, period, rates);
+
+  const accrued = orders.reduce((total, o) => total + o.accrual_toman, 0);
+
+  const paidInPeriod = db
+    .prepare(
+      "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM commission_payments WHERE salesperson_user_id = ? AND paid_on BETWEEN ? AND ?"
+    )
+    .get(salespersonId, period.from.slice(0, 10), period.to.slice(0, 10)) as { total: number };
+
+  // Owed is deliberately lifetime rather than period: what somebody is still due does
+  // not reset because a report window moved.
+  const lifetimeAccrued = accrualsFor(
+    db,
+    salespersonId,
+    { from: "0000-01-01", to: "9999-12-31" },
+    rates
+  ).reduce((total, o) => total + o.accrual_toman, 0);
+  const lifetimePaid = db
+    .prepare(
+      "SELECT COALESCE(SUM(amount_toman), 0) AS total FROM commission_payments WHERE salesperson_user_id = ?"
+    )
+    .get(salespersonId) as { total: number };
+
+  return {
+    salesperson_user_id: salespersonId,
+    display_name: person?.display_name ?? "—",
+    kg: orders.reduce((total, o) => total + o.kg, 0),
+    accrued_toman: accrued,
+    paid_toman: paidInPeriod.total,
+    owed_toman: lifetimeAccrued - lifetimePaid.total,
+    orders,
+  };
+}
+
+/** One line per فروشنده.
+ *
+ *  `groupId` undefined means every group -- the owner's view. Passing a group narrows it
+ *  to that group's salespeople; passing null narrows it to nobody, which is the right
+ *  answer for a manager who has not been given a group yet. Same shape of reasoning as
+ *  groupFilter: the empty case must read as "nothing", never as "everything".
+ */
+export function allStatements(
+  db: DatabaseSync,
+  period: Period,
+  opts: { groupId?: number | null } = {}
+): Statement[] {
+  const groupId = opts.groupId;
+  // A manager with no group can reach nobody. Returning [] rather than falling through
+  // to the unscoped query is the same rule groupFilter follows: the empty case must read
+  // as "nothing", never as "everything".
+  if (groupId === null) return [];
+
+  const people = (
+    groupId === undefined
+      ? db.prepare("SELECT id FROM users WHERE role = 'salesperson' ORDER BY display_name").all()
+      : db
+          .prepare(
+            "SELECT id FROM users WHERE role = 'salesperson' AND group_id = ? ORDER BY display_name"
+          )
+          .all(groupId)
+  ) as unknown as { id: number }[];
+
+  return people.map((person) => statementFor(db, person.id, period));
+}

@@ -23,16 +23,22 @@ export interface PriceRow {
   valid_from: string;
 }
 
-/** The price in force on a date, or null if the product had no price yet.
+
+/** The row in force on a date, out of a set of effective-dated rows.
  *
- *  Null rather than zero, and rather than falling back to the earliest price: a product
- *  with no price on the day of sale is a data problem the person recording the order has
- *  to see, not something to paper over with a number that was never charged.
+ *  Extracted from priceAt because commission rates need exactly the same rule and the
+ *  tie-break is the fiddly part: on a shared start date the higher id wins, which is the
+ *  row inserted second -- a figure corrected on the day it was entered, where taking the
+ *  first would keep the typo forever.
+ *
+ *  Compares on the date part alone. valid_from is a civil date and onDate may be a full
+ *  timestamp; "2026-05-01T09:00:00Z" > "2026-05-01" as a string, which would happen to
+ *  be right here and would stop being right the moment valid_from grew a time of its own.
  */
-export function priceAt<T extends PriceRow>(rows: T[], onDate: string): T | null {
-  // Compare on the date part alone. valid_from is a civil date and onDate may be a full
-  // timestamp; "2026-05-01T09:00:00Z" > "2026-05-01" as a string, which would be right
-  // by luck here but wrong the moment valid_from grew a time of its own.
+export function effectiveAt<T extends { id: number; valid_from: string }>(
+  rows: T[],
+  onDate: string
+): T | null {
   const day = onDate.slice(0, 10);
 
   let best: T | null = null;
@@ -44,14 +50,21 @@ export function priceAt<T extends PriceRow>(rows: T[], onDate: string): T | null
     }
     const bestDay = best.valid_from.slice(0, 10);
     const candidateDay = candidate.valid_from.slice(0, 10);
-    // A later start wins. On a tie the higher id wins, which is the row inserted second
-    // -- a price corrected on the day it was entered, where taking the first would keep
-    // the typo forever.
     if (candidateDay > bestDay || (candidateDay === bestDay && candidate.id > best.id)) {
       best = candidate;
     }
   }
   return best;
+}
+
+/** The price in force on a date, or null if the product had no price yet.
+ *
+ *  Null rather than zero, and rather than falling back to the earliest price: a product
+ *  with no price on the day of sale is a data problem the person recording the order has
+ *  to see, not something to paper over with a number that was never charged.
+ */
+export function priceAt<T extends PriceRow>(rows: T[], onDate: string): T | null {
+  return effectiveAt(rows, onDate);
 }
 
 /** Every price for a product, newest first, for the "why was it this price?" view.
