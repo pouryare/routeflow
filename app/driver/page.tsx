@@ -1,44 +1,66 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
+import { getDb, plain } from "@/lib/db";
+import { readRun, readDriverRuns } from "@/lib/delivery";
+import { faJalaliLong } from "@/lib/jalali";
+import DriverRun from "@/components/driver/DriverRun";
 
 export const dynamic = "force-dynamic";
 
-/** Placeholder until Phase 1a builds the real driver app (spec §3.3).
+/** The driver's whole app: today's round, and nothing else.
  *
- *  It exists because proxy.ts sends every driver here and three pages redirect here, so
- *  without it the first driver account anyone creates lands on a 404 with nowhere to go --
- *  and a driver cannot reach any other page to find that out. A page that says "not ready
- *  yet" is a far better answer than a dead end. */
+ *  Falls back to their most recent run rather than showing an empty screen -- a driver
+ *  opening this at 00:30 after a late round is finishing yesterday's work, not starting
+ *  a day with no stops.
+ */
 export default async function DriverPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
+  if (session.role !== "driver") redirect("/");
+
+  const db = getDb();
+  const runs = readDriverRuns(db, session.user.id);
+  const today = new Date().toISOString().slice(0, 10);
+  const chosen = runs.find((r) => r.run_date === today) ?? runs[0];
+  const run = chosen ? readRun(db, chosen.id) : null;
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-4 bg-bg p-6 text-center">
-      <div className="font-mono text-xs tracking-[0.12em] text-accent uppercase">Coverage Map</div>
-      <h1 className="text-xl font-bold text-text">
-        {session.user.display_name} عزیز، خوش آمدید
-      </h1>
-      <p className="max-w-sm text-sm text-text-muted">
-        برنامه راننده هنوز آماده نشده است. به‌زودی مسیر امروز و لیست تحویل‌ها همین‌جا نمایش
-        داده می‌شود.
-      </p>
-      {/* Owners and managers can be sent somewhere useful; a driver has nowhere else to be,
-          so offering them a link would only produce a redirect straight back here. */}
-      {session.role !== "driver" && (
-        <Link href="/" className="text-sm text-accent transition-opacity hover:opacity-80">
-          بازگشت به نقشه
-        </Link>
+    <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]">
+      <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">
+        <div>
+          <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">
+            مسیر امروز
+          </h1>
+          <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            {session.user.display_name}
+            {run && ` · ${faJalaliLong(run.run_date)}`}
+          </p>
+        </div>
+        <form action="/api/logout" method="post">
+          <button
+            type="submit"
+            className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+          >
+            خروج
+          </button>
+        </form>
+      </header>
+
+      {!run || run.stops.length === 0 ? (
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-faint)]">
+          امروز مسیری برای شما ثبت نشده است. وقتی مدیر سفارش‌ها را به مسیر شما اضافه کند،
+          همین‌جا نمایش داده می‌شود.
+        </p>
+      ) : (
+        <DriverRun
+          run={plain([run])[0]}
+          driverName={session.user.display_name}
+          businessName="فروش و پخش"
+        />
       )}
-      <form action="/api/logout" method="post">
-        <button type="submit" className="cursor-pointer text-xs text-text-faint transition-colors hover:text-accent">
-          خروج از حساب
-        </button>
-      </form>
     </main>
   );
 }

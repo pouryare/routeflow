@@ -270,6 +270,45 @@ describe("recordDelivery", () => {
     expect(orderRow.status).toBe("cancelled");
   });
 
+  it("is idempotent, so a queued delivery can be retried safely", () => {
+    // The offline queue will replay whatever it could not send. Every write in
+    // recordDelivery is an assignment rather than an increment, so replaying one is a
+    // no-op -- which is the property that makes retrying safe without a dedupe table.
+    const db = getDb();
+    const order = createOrder(db, {
+      customer_id: ctx.customer,
+      order_date: "2026-09-02",
+      created_by: ctx.owner,
+      lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 4 }],
+    });
+    confirmOrder(db, order.id);
+    const run = createRun(db, {
+      driver_user_id: ctx.driver,
+      run_date: "2026-09-02",
+      created_by: ctx.owner,
+    });
+    const stopId = addStop(db, run, order.id);
+    const stop = readRun(db, run)!.stops[0];
+
+    const payload = {
+      lines: [{ line_id: stop.lines[0].id, packs_delivered: 3 }],
+      collected_toman: 500000,
+      by: ctx.driver,
+    };
+    recordDelivery(db, stopId, payload);
+    const first = db
+      .prepare("SELECT status, paid_toman, payment_status FROM orders WHERE id = ?")
+      .get(order.id);
+
+    recordDelivery(db, stopId, payload);
+    const second = db
+      .prepare("SELECT status, paid_toman, payment_status FROM orders WHERE id = ?")
+      .get(order.id);
+
+    expect(second).toEqual(first);
+    expect(readOrder(db, order.id)!.lines[0].packs_delivered).toBe(3);
+  });
+
   it("refuses to deliver a line that belongs to another order", () => {
     const db = getDb();
     const run = readRun(db, ctx.run)!;
