@@ -130,6 +130,39 @@ export function entityGroupFilter(
   };
 }
 
+/** Who may see which orders.
+ *
+ *  groupFilter cannot express this, and that is why it exists separately. Orders have
+ *  three different scoping rules rather than one, because "smaller than the group" is a
+ *  real requirement here for the first time:
+ *
+ *    owner          every order
+ *    group_manager  their group's -- they aggregate the cold-call orders
+ *    salesperson    only the ones they recorded, which is narrower than their group
+ *    driver         only the ones on today's run
+ *
+ *  The salesperson rule is deliberately not also group-scoped. Their own orders are
+ *  their own wherever the customer sits, and adding a group clause could hide an order
+ *  from the person who took it if the customer's territory were later reassigned.
+ *
+ *  The driver rule is closed rather than open until delivery runs exist. An unfinished
+ *  rule that defaults to visible is how a driver ends up reading the whole ledger.
+ */
+export function orderFilter(session: Session, alias = "o"): { sql: string; params: number[] } {
+  if (session.role === "owner") return { sql: "", params: [] };
+
+  if (session.role === "salesperson") {
+    return { sql: ` AND ${alias}.salesperson_user_id = ?`, params: [session.user.id] };
+  }
+
+  if (session.role === "driver") return { sql: " AND 1 = 0", params: [] };
+
+  // group_manager. Same reasoning as groupFilter: never an empty fragment, because an
+  // empty fragment widens the query to everything rather than narrowing it to nothing.
+  if (session.groupId === null) return { sql: " AND 1 = 0", params: [] };
+  return { sql: ` AND ${alias}.group_id = ?`, params: [session.groupId] };
+}
+
 /** Whether this session may write a row hanging off the given entity. Same rule as the
  *  filter above: the parent's group decides, and an ungrouped facility is shared. */
 export function canReachEntity(

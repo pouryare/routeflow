@@ -14,6 +14,22 @@ const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(process.cwd(), "data",
 
 let _db: DatabaseSync | null = null;
 
+/** Rows from node:sqlite, made safe to hand to a client component.
+ *
+ *  `DatabaseSync.prepare().all()` returns objects with a **null prototype**. React
+ *  refuses to serialise those across the server/client boundary -- "Only plain objects,
+ *  and a few built-ins, can be passed to Client Components" -- and the page 500s at
+ *  render time. Nothing in the types sees it: a null-prototype object satisfies every
+ *  interface it structurally matches, so tsc, eslint and every unit test pass while the
+ *  page is broken. It only shows up in a browser.
+ *
+ *  So any query result that crosses into a `"use client"` component goes through here
+ *  first. Results that only ever render on the server do not need it.
+ */
+export function plain<T>(rows: T[]): T[] {
+  return rows.map((row) => ({ ...row }));
+}
+
 export function getDb(): DatabaseSync {
   if (_db) return _db;
 
@@ -287,7 +303,85 @@ export function getDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_product_prices_lookup
       ON product_prices(product_id, packaging_id, valid_from);
     CREATE INDEX IF NOT EXISTS idx_packagings_product ON packagings(product_id);
+
+    /* ---- Orders ------------------------------------------------------------------
+       The table that replaces the paper. Sales were never recorded in the workbook --
+       they were written on slips -- so there is nothing to migrate into this and no
+       dual-running period, which is why it is worth building now rather than later.
+
+       group_id is stamped from the customer when the order is created rather than
+       joined at read time, the same pattern saved_locations and lead_lists use. A
+       customer moving territory must not move last month's orders with it: the order
+       belongs to whoever's territory it was sold in. */
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      /* Allocated by the server inside the insert transaction. Hand-typed numbers
+         collide the moment two people record at once. Latin digits -- see
+         formatOrderNo in lib/orderMath.ts. */
+      order_no TEXT UNIQUE NOT NULL,
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      group_id INTEGER REFERENCES groups(id),
+      /* Who the order is credited to for commission. Not necessarily who typed it:
+         today the manager records what the cold-call فروشنده sold. */
+      salesperson_user_id INTEGER REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'confirmed', 'delivered', 'cancelled')),
+      order_date TEXT NOT NULL,
+      delivered_at TEXT,
+      payment_status TEXT NOT NULL DEFAULT 'unpaid'
+        CHECK (payment_status IN ('unpaid', 'partial', 'paid')),
+      paid_toman INTEGER NOT NULL DEFAULT 0,
+      /* Non-null means the order was taken past the customer's credit limit, and by
+         whom. The limit warns rather than blocks, so this is the record of the
+         override -- a warning nobody can be shown to have ignored is not a control. */
+      credit_override_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id, order_date);
+    CREATE INDEX IF NOT EXISTS idx_orders_scope ON orders(group_id, status, order_date);
+    CREATE INDEX IF NOT EXISTS idx_orders_salesperson ON orders(salesperson_user_id, order_date);
+
+    /* The snapshot columns below are written once and never recomputed. That is the
+       whole mechanism: product_prices answers "what do we charge now", and these answer
+       "what did this order actually cost", and only having both makes a retroactive
+       correction a deliberate, visible act instead of an invisible side effect.
+
+       qty_per_pack and kg_per_base_unit are frozen here rather than joined for the same
+       reason: a box revised from 120 to 100 عدد must not change what an old order
+       weighed, because commission was already paid on the original figure. */
+    CREATE TABLE IF NOT EXISTS order_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      packaging_id INTEGER NOT NULL REFERENCES packagings(id),
+      packs_ordered REAL NOT NULL,
+      /* Null until the driver confirms. Zero is a real answer -- the customer refused
+         the line at the door -- and is not the same thing as null. */
+      packs_delivered REAL,
+      unit_price_toman INTEGER NOT NULL,
+      unit_cost_toman INTEGER NOT NULL DEFAULT 0,
+      qty_per_pack REAL NOT NULL,
+      kg_per_base_unit REAL NOT NULL,
+      /* Which price row this was read from, so "why was it charged that?" has an answer
+         rather than an inference. */
+      price_id INTEGER REFERENCES product_prices(id),
+      is_reversal INTEGER NOT NULL DEFAULT 0,
+      reverses_line_id INTEGER REFERENCES order_lines(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_order_lines_order ON order_lines(order_id);
+    CREATE INDEX IF NOT EXISTS idx_order_lines_product ON order_lines(product_id);
   `);
+
+  /* Nullable, and null means no limit rather than a limit of zero -- most customers do
+     not have one, and a default of 0 would refuse every sale on the day it shipped. */
+  const customerCreditCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
+  if (!customerCreditCols.some((c) => c.name === "credit_limit_toman")) {
+    db.exec("ALTER TABLE customers ADD COLUMN credit_limit_toman INTEGER");
+  }
 
   // saved_locations shipped with CHECK constraints that lagged the valid resolution
   // values over time ('nominatim', then 'manual') -- CREATE TABLE IF NOT EXISTS never

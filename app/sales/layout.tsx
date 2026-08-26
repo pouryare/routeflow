@@ -30,7 +30,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   const tabs = [
     { href: "/sales", label: "خلاصه", ready: true },
     { href: "/sales/products", label: "کالاها و قیمت‌ها", ready: true },
-    { href: "/sales/orders", label: "سفارش‌ها", ready: false },
+    { href: "/sales/orders", label: "سفارش‌ها", ready: true },
   ];
 
   return (

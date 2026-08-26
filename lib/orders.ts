@@ -1,0 +1,376 @@
+/** Recording an order.
+ *
+ *  This is the module that replaces the paper slips. Everything it does that looks
+ *  fussy is protecting one property: an order, once confirmed, means the same thing in
+ *  six months as it did on the day it was taken. Commission is paid off these numbers.
+ */
+
+import type { DatabaseSync } from "node:sqlite";
+import { resolvePrice } from "./catalogue";
+import { toJalali } from "./jalali";
+import {
+  formatOrderNo,
+  orderTotalToman,
+  orderKg,
+  orderMarginToman,
+  lineTotalToman,
+  lineKg,
+  type LineSnapshot,
+} from "./orderMath";
+
+/** A refusal the caller is expected to show the user, rather than a bug. */
+export class OrderError extends Error {}
+
+export interface LineInput {
+  product_id: number;
+  packaging_id: number;
+  packs: number;
+  is_reversal?: boolean;
+  reverses_line_id?: number | null;
+}
+
+export interface CreateOrderInput {
+  customer_id: number;
+  order_date: string;
+  created_by: number;
+  salesperson_user_id?: number | null;
+  credit_override_by?: number | null;
+  notes?: string | null;
+  lines: LineInput[];
+}
+
+export interface OrderLine extends LineSnapshot {
+  id: number;
+  product_id: number;
+  packaging_id: number;
+  product_name: string;
+  packaging_name: string;
+  is_reversal: number;
+  total_toman: number;
+  kg: number;
+}
+
+export interface OrderDetail {
+  id: number;
+  order_no: string;
+  customer_id: number;
+  customer_name: string;
+  group_id: number | null;
+  salesperson_user_id: number | null;
+  salesperson_name: string | null;
+  status: string;
+  order_date: string;
+  delivered_at: string | null;
+  payment_status: string;
+  paid_toman: number;
+  credit_override_by: number | null;
+  notes: string | null;
+  created_at: string;
+  lines: OrderLine[];
+  total_toman: number;
+  kg: number;
+  margin_toman: number;
+}
+
+/** The next number for the Jalali year the order falls in.
+ *
+ *  MAX + 1 over that year's rows, read inside the caller's transaction. The UNIQUE
+ *  constraint on order_no is what actually guarantees no duplicate -- this only has to
+ *  be right, not exclusive, and BEGIN IMMEDIATE in createOrder takes the write lock
+ *  before the read so two concurrent writers cannot both see the same maximum. */
+function nextOrderNo(db: DatabaseSync, orderDate: string): string {
+  const jy = toJalali(orderDate)?.jy ?? toJalali(new Date().toISOString())!.jy;
+  const prefix = `${jy}-`;
+  const row = db
+    .prepare("SELECT MAX(order_no) AS latest FROM orders WHERE order_no LIKE ?")
+    .get(`${prefix}%`) as { latest: string | null };
+
+  const previous = row.latest ? Number(row.latest.slice(prefix.length)) : 0;
+  return formatOrderNo(jy, previous + 1);
+}
+
+/** Resolves everything a line needs to be frozen, or refuses.
+ *
+ *  Refusing an unpriced product rather than defaulting to zero is deliberate: a free
+ *  order is a real thing, so a silent zero is indistinguishable from one, and the
+ *  person recording it is the only one who can tell the difference. */
+function snapshotLine(db: DatabaseSync, orderDate: string, input: LineInput) {
+  const packaging = db
+    .prepare(
+      `SELECT pk.id, pk.qty_per_pack, pk.product_id, p.kg_per_base_unit, p.avg_cost_toman, p.name AS product_name
+         FROM packagings pk JOIN products p ON p.id = pk.product_id
+        WHERE pk.id = ? AND pk.product_id = ?`
+    )
+    .get(input.packaging_id, input.product_id) as
+    | {
+        qty_per_pack: number;
+        kg_per_base_unit: number;
+        avg_cost_toman: number;
+        product_name: string;
+      }
+    | undefined;
+
+  if (!packaging) throw new OrderError("بسته‌بندی برای این کالا پیدا نشد");
+
+  const price = resolvePrice(db, input.product_id, input.packaging_id, orderDate);
+  if (!price) {
+    throw new OrderError(`«${packaging.product_name}» در این تاریخ قیمت ندارد`);
+  }
+
+  return {
+    unit_price_toman: price.price_toman,
+    unit_cost_toman: packaging.avg_cost_toman,
+    qty_per_pack: packaging.qty_per_pack,
+    kg_per_base_unit: packaging.kg_per_base_unit,
+    price_id: price.id,
+  };
+}
+
+export function createOrder(
+  db: DatabaseSync,
+  input: CreateOrderInput
+): { id: number; order_no: string } {
+  if (input.lines.length === 0) throw new OrderError("سفارش بدون قلم ثبت نمی‌شود");
+
+  const customer = db
+    .prepare("SELECT id, group_id FROM customers WHERE id = ?")
+    .get(input.customer_id) as { group_id: number | null } | undefined;
+  if (!customer) throw new OrderError("مشتری پیدا نشد");
+
+  // IMMEDIATE rather than a deferred BEGIN: the transaction reads the highest order
+  // number and then writes it back, and a deferred transaction would let two writers
+  // both read the same maximum before either takes the lock.
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const orderNo = nextOrderNo(db, input.order_date);
+    const now = new Date().toISOString();
+
+    const orderId = Number(
+      db
+        .prepare(
+          `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
+                               order_date, notes, credit_override_by, created_by, created_at, updated_at)
+           VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`
+        )
+        .run(
+          orderNo,
+          input.customer_id,
+          customer.group_id,
+          input.salesperson_user_id ?? null,
+          input.order_date.slice(0, 10),
+          input.notes ?? null,
+          input.credit_override_by ?? null,
+          input.created_by,
+          now,
+          now
+        ).lastInsertRowid
+    );
+
+    for (const line of input.lines) {
+      insertLine(db, orderId, input.order_date, line, now);
+    }
+
+    db.exec("COMMIT");
+    return { id: orderId, order_no: orderNo };
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
+function insertLine(
+  db: DatabaseSync,
+  orderId: number,
+  orderDate: string,
+  line: LineInput,
+  now: string
+) {
+  const snap = snapshotLine(db, orderDate, line);
+  db.prepare(
+    `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered,
+                              unit_price_toman, unit_cost_toman, qty_per_pack,
+                              kg_per_base_unit, price_id, is_reversal, reverses_line_id, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    orderId,
+    line.product_id,
+    line.packaging_id,
+    line.packs,
+    snap.unit_price_toman,
+    snap.unit_cost_toman,
+    snap.qty_per_pack,
+    snap.kg_per_base_unit,
+    snap.price_id,
+    line.is_reversal ? 1 : 0,
+    line.reverses_line_id ?? null,
+    now
+  );
+}
+
+/** Adds a line to a draft. Refuses once the order is confirmed -- at that point the
+ *  correction is a reversal line, which is a different and deliberate act. */
+export function addLine(db: DatabaseSync, orderId: number, line: LineInput): void {
+  const order = db.prepare("SELECT status, order_date FROM orders WHERE id = ?").get(orderId) as
+    | { status: string; order_date: string }
+    | undefined;
+  if (!order) throw new OrderError("سفارش پیدا نشد");
+  if (order.status !== "draft") {
+    throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
+  }
+  insertLine(db, orderId, order.order_date, line, new Date().toISOString());
+  touch(db, orderId);
+}
+
+export function confirmOrder(db: DatabaseSync, orderId: number): void {
+  const order = db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId) as
+    | { status: string }
+    | undefined;
+  if (!order) throw new OrderError("سفارش پیدا نشد");
+  if (order.status !== "draft") throw new OrderError("این سفارش قبلاً تأیید شده است");
+
+  const lines = db
+    .prepare("SELECT COUNT(*) AS n FROM order_lines WHERE order_id = ?")
+    .get(orderId) as { n: number };
+  if (lines.n === 0) throw new OrderError("سفارش بدون قلم تأیید نمی‌شود");
+
+  db.prepare("UPDATE orders SET status = 'confirmed', updated_at = ? WHERE id = ?").run(
+    new Date().toISOString(),
+    orderId
+  );
+
+  stampLastPurchase(db, orderId);
+}
+
+/** Brings customers.last_purchase_date up to this order's date.
+ *
+ *  That column is what daysSinceLastPurchase reads, which drives inactivityColor on the
+ *  map, the dormant-customer count on analytics and the whole purchase-history panel.
+ *  Nothing has written it since the original workbook import, which is why all of those
+ *  features currently render nothing for every customer.
+ *
+ *  MAX rather than assignment: catching up on a week of paper slips means recording an
+ *  older order after a newer one, and that must not make an active customer look
+ *  dormant. COALESCE covers the first order a customer has ever had.
+ */
+function stampLastPurchase(db: DatabaseSync, orderId: number): void {
+  db.prepare(
+    `UPDATE customers
+        SET last_purchase_date = MAX(
+              COALESCE(last_purchase_date, ''),
+              (SELECT order_date FROM orders WHERE id = ?)
+            )
+      WHERE id = (SELECT customer_id FROM orders WHERE id = ?)`
+  ).run(orderId, orderId);
+}
+
+function touch(db: DatabaseSync, orderId: number) {
+  db.prepare("UPDATE orders SET updated_at = ? WHERE id = ?").run(
+    new Date().toISOString(),
+    orderId
+  );
+}
+
+function linesOf(db: DatabaseSync, orderId: number): OrderLine[] {
+  const rows = db
+    .prepare(
+      `SELECT ol.*, p.name AS product_name, pk.name AS packaging_name
+         FROM order_lines ol
+         JOIN products p ON p.id = ol.product_id
+         JOIN packagings pk ON pk.id = ol.packaging_id
+        WHERE ol.order_id = ?
+        ORDER BY ol.id`
+    )
+    .all(orderId) as unknown as (OrderLine & LineSnapshot)[];
+
+  return rows.map((row) => ({
+    ...row,
+    total_toman: lineTotalToman(row),
+    kg: lineKg(row),
+  }));
+}
+
+export function readOrder(db: DatabaseSync, orderId: number): OrderDetail | null {
+  const order = db
+    .prepare(
+      `SELECT o.*, c.business_name AS customer_name, u.display_name AS salesperson_name
+         FROM orders o
+         JOIN customers c ON c.id = o.customer_id
+         LEFT JOIN users u ON u.id = o.salesperson_user_id
+        WHERE o.id = ?`
+    )
+    .get(orderId) as unknown as OrderDetail | undefined;
+  if (!order) return null;
+
+  const lines = linesOf(db, orderId);
+  return {
+    ...order,
+    lines,
+    total_toman: orderTotalToman(lines),
+    kg: orderKg(lines),
+    margin_toman: orderMarginToman(lines),
+  };
+}
+
+export interface OrderSummary {
+  id: number;
+  order_no: string;
+  customer_name: string;
+  salesperson_name: string | null;
+  status: string;
+  order_date: string;
+  payment_status: string;
+  paid_toman: number;
+  total_toman: number;
+  kg: number;
+  line_count: number;
+}
+
+/** The order list, already scoped.
+ *
+ *  Takes the filter fragment rather than the session so that the scoping decision is
+ *  made once, at the route, by orderFilter -- and so this module cannot accidentally be
+ *  called without one. */
+export function readOrders(
+  db: DatabaseSync,
+  scope: { sql: string; params: number[] },
+  opts: { limit?: number; customerId?: number; status?: string } = {}
+): OrderSummary[] {
+  const extra: string[] = [];
+  const params: (number | string)[] = [...scope.params];
+  if (opts.customerId !== undefined) {
+    extra.push(" AND o.customer_id = ?");
+    params.push(opts.customerId);
+  }
+  if (opts.status !== undefined) {
+    extra.push(" AND o.status = ?");
+    params.push(opts.status);
+  }
+
+  const orders = db
+    .prepare(
+      `SELECT o.id, o.order_no, o.status, o.order_date, o.payment_status, o.paid_toman,
+              c.business_name AS customer_name, u.display_name AS salesperson_name
+         FROM orders o
+         JOIN customers c ON c.id = o.customer_id
+         LEFT JOIN users u ON u.id = o.salesperson_user_id
+        WHERE 1 = 1${scope.sql}${extra.join("")}
+        ORDER BY o.id DESC
+        LIMIT ?`
+    )
+    .all(...params, opts.limit ?? 200) as unknown as Omit<
+    OrderSummary,
+    "total_toman" | "kg" | "line_count"
+  >[];
+
+  // Totals are derived from the frozen line columns rather than stored on the order, so
+  // there is no second copy of the figure to fall out of step with the lines.
+  return orders.map((order) => {
+    const lines = linesOf(db, order.id);
+    return {
+      ...order,
+      total_toman: orderTotalToman(lines),
+      kg: orderKg(lines),
+      line_count: lines.length,
+    };
+  });
+}
