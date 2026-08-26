@@ -1,0 +1,75 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getDb } from "@/lib/db";
+import { requireRole, orderFilter } from "@/lib/session";
+import { readOrder, confirmOrder, addLine, OrderError } from "@/lib/orders";
+
+const CAN_SELL = ["owner", "group_manager", "salesperson"] as const;
+
+/** Whether this session may see this order at all.
+ *
+ *  Answered by running the caller's own scope fragment against the single row, rather
+ *  than by re-deriving the rule here. One definition of who-sees-what (orderFilter) that
+ *  the list and the detail both go through means the two cannot drift -- the classic
+ *  version of this bug is a list that hides a row and a detail page that shows it.
+ */
+function visible(session: Parameters<typeof orderFilter>[0], orderId: number): boolean {
+  const scope = orderFilter(session);
+  const row = getDb()
+    .prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`)
+    .get(orderId, ...scope.params);
+  return row !== undefined;
+}
+
+const NOT_FOUND = NextResponse.json({ ok: false, error: "سفارش پیدا نشد" }, { status: 404 });
+
+export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const guard = requireRole(req, [...CAN_SELL]);
+  if (!guard.ok) return guard.response;
+
+  const id = Number((await ctx.params).id);
+  if (!visible(guard.session, id)) return NOT_FOUND;
+
+  const order = readOrder(getDb(), id);
+  if (!order) return NOT_FOUND;
+  return NextResponse.json({ ok: true, order });
+}
+
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const guard = requireRole(req, [...CAN_SELL]);
+  if (!guard.ok) return guard.response;
+
+  const id = Number((await ctx.params).id);
+  // Checked before anything is read or written, so an order in another group is
+  // indistinguishable from one that does not exist -- including on a failed confirm,
+  // where a 400 would otherwise confirm it is real.
+  if (!visible(guard.session, id)) return NOT_FOUND;
+
+  const body = (await req.json().catch(() => null)) as {
+    status?: unknown;
+    line?: unknown;
+  } | null;
+
+  try {
+    if (body?.status === "confirmed") {
+      confirmOrder(getDb(), id);
+      return NextResponse.json({ ok: true });
+    }
+
+    if (body?.line && typeof body.line === "object") {
+      const line = body.line as { product_id: number; packaging_id: number; packs: number };
+      addLine(getDb(), id, {
+        product_id: Number(line.product_id),
+        packaging_id: Number(line.packaging_id),
+        packs: Number(line.packs),
+      });
+      return NextResponse.json({ ok: true });
+    }
+
+    return NextResponse.json({ ok: false, error: "تغییری مشخص نشده" }, { status: 400 });
+  } catch (e) {
+    if (e instanceof OrderError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
+    }
+    throw e;
+  }
+}

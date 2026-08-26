@@ -151,10 +151,17 @@ function writeStoredView(v: MapView): void {
 }
 
 const QUICK_LINKS = [
+  { href: "/sales", icon: "🧾", label: "فروش و سفارش‌ها" },
   { href: "/planner", icon: "🧭", label: "برنامه‌ریزی مسیر و پوشش" },
   { href: "/leads", icon: "📍", label: "لیست مکان‌های پیشنهادی" },
   { href: "/facilities", icon: "🏢", label: "مکان‌های ما (انبارها و مبدأ)" },
   { href: "/gallery", icon: "🖼", label: "گالری تصاویر" },
+] as const;
+
+// Whole-group aggregates. A فروشنده is scoped to their own orders, so proxy.ts sends
+// them to /sales instead -- and by the same rule as ADMIN_LINKS below, they should not
+// see a link whose only purpose would be to turn them away.
+const GROUP_WIDE_LINKS = [
   { href: "/report", icon: "📊", label: "گزارش پوشش و مشتریان" },
   { href: "/analytics", icon: "📈", label: "داشبورد تحلیل" },
 ] as const;
@@ -1376,7 +1383,11 @@ export default function CoverageMap({
             </button>
 
             <div className="flex flex-col gap-1.5">
-              {[...QUICK_LINKS, ...(role === "owner" ? ADMIN_LINKS : [])].map((l) => (
+              {[
+                ...QUICK_LINKS,
+                ...(role === "salesperson" ? [] : GROUP_WIDE_LINKS),
+                ...(role === "owner" ? ADMIN_LINKS : []),
+              ].map((l) => (
                 <Link
                   key={l.href}
                   href={l.href}

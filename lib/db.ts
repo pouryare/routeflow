@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 import type { FacilityRow } from "./facilityTypes";
+import type { Role } from "./roles";
 import { polygonCentroid } from "./simplify";
 import type { DistrictGeometry } from "./simplify";
 
@@ -12,6 +13,22 @@ export { FACILITY_KINDS } from "./facilityTypes";
 const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(process.cwd(), "data", "coverage.db");
 
 let _db: DatabaseSync | null = null;
+
+/** Rows from node:sqlite, made safe to hand to a client component.
+ *
+ *  `DatabaseSync.prepare().all()` returns objects with a **null prototype**. React
+ *  refuses to serialise those across the server/client boundary -- "Only plain objects,
+ *  and a few built-ins, can be passed to Client Components" -- and the page 500s at
+ *  render time. Nothing in the types sees it: a null-prototype object satisfies every
+ *  interface it structurally matches, so tsc, eslint and every unit test pass while the
+ *  page is broken. It only shows up in a browser.
+ *
+ *  So any query result that crosses into a `"use client"` component goes through here
+ *  first. Results that only ever render on the server do not need it.
+ */
+export function plain<T>(rows: T[]): T[] {
+  return rows.map((row) => ({ ...row }));
+}
 
 export function getDb(): DatabaseSync {
   if (_db) return _db;
@@ -161,7 +178,7 @@ export function getDb(): DatabaseSync {
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'group_manager'
-        CHECK (role IN ('owner', 'group_manager', 'driver')),
+        CHECK (role IN ('owner', 'group_manager', 'salesperson', 'driver')),
       group_id INTEGER REFERENCES groups(id),
       staff_code TEXT,
       phone TEXT,
@@ -229,7 +246,254 @@ export function getDb(): DatabaseSync {
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_facilities_kind ON facilities(kind);
+
+    /* ---- The sales catalogue ------------------------------------------------------
+       Company-wide, deliberately with no group_id. Two groups selling different
+       products would be two businesses; the column would only ever be null, and a
+       nullable scope column that is always null is an invitation to write a filter
+       against it later and empty everyone's screen. */
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      sku TEXT UNIQUE,
+      base_unit TEXT NOT NULL DEFAULT 'عدد',
+      /* عدد -> kg. Commission is paid per kilogram, so this factor is payroll input,
+         which is why an order line freezes it rather than reading it back later. */
+      kg_per_base_unit REAL NOT NULL DEFAULT 0,
+      /* Moving average, maintained by purchase receipts. Whole Toman, like every money
+         column added from here on -- see lib/money.ts for why the legacy REAL columns
+         were left alone but must not spread. */
+      avg_cost_toman INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    /* How the product is sold: «جعبه بچه (۱۲۰ عددی)», «کارتن ۲۴ تایی».
+
+       qty_per_pack lives on the product/packaging pair rather than on the name, because
+       the name is not unique across products in the real data: «جعبه بچه» is 120 عدد of
+       one brand and 100 عدد of another, and both are rows in the workbook today. */
+    CREATE TABLE IF NOT EXISTS packagings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      qty_per_pack REAL NOT NULL,
+      barcode TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      UNIQUE (product_id, name)
+    );
+
+    /* Prices over time. Changing a price is an INSERT here; a row is never UPDATEd.
+       That is what stops last month's revenue moving when this month's price is set --
+       the failure mode of the single price cell this replaces. */
+    CREATE TABLE IF NOT EXISTS product_prices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      /* Null means the price covers every packaging of the product -- the common case
+         when a product is sold one way. */
+      packaging_id INTEGER REFERENCES packagings(id) ON DELETE CASCADE,
+      price_toman INTEGER NOT NULL,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_product_prices_lookup
+      ON product_prices(product_id, packaging_id, valid_from);
+    CREATE INDEX IF NOT EXISTS idx_packagings_product ON packagings(product_id);
+
+    /* ---- Orders ------------------------------------------------------------------
+       The table that replaces the paper. Sales were never recorded in the workbook --
+       they were written on slips -- so there is nothing to migrate into this and no
+       dual-running period, which is why it is worth building now rather than later.
+
+       group_id is stamped from the customer when the order is created rather than
+       joined at read time, the same pattern saved_locations and lead_lists use. A
+       customer moving territory must not move last month's orders with it: the order
+       belongs to whoever's territory it was sold in. */
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      /* Allocated by the server inside the insert transaction. Hand-typed numbers
+         collide the moment two people record at once. Latin digits -- see
+         formatOrderNo in lib/orderMath.ts. */
+      order_no TEXT UNIQUE NOT NULL,
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      group_id INTEGER REFERENCES groups(id),
+      /* Who the order is credited to for commission. Not necessarily who typed it:
+         today the manager records what the cold-call فروشنده sold. */
+      salesperson_user_id INTEGER REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'confirmed', 'delivered', 'cancelled')),
+      order_date TEXT NOT NULL,
+      delivered_at TEXT,
+      payment_status TEXT NOT NULL DEFAULT 'unpaid'
+        CHECK (payment_status IN ('unpaid', 'partial', 'paid')),
+      paid_toman INTEGER NOT NULL DEFAULT 0,
+      /* Non-null means the order was taken past the customer's credit limit, and by
+         whom. The limit warns rather than blocks, so this is the record of the
+         override -- a warning nobody can be shown to have ignored is not a control. */
+      credit_override_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id, order_date);
+    CREATE INDEX IF NOT EXISTS idx_orders_scope ON orders(group_id, status, order_date);
+    CREATE INDEX IF NOT EXISTS idx_orders_salesperson ON orders(salesperson_user_id, order_date);
+
+    /* The snapshot columns below are written once and never recomputed. That is the
+       whole mechanism: product_prices answers "what do we charge now", and these answer
+       "what did this order actually cost", and only having both makes a retroactive
+       correction a deliberate, visible act instead of an invisible side effect.
+
+       qty_per_pack and kg_per_base_unit are frozen here rather than joined for the same
+       reason: a box revised from 120 to 100 عدد must not change what an old order
+       weighed, because commission was already paid on the original figure. */
+    CREATE TABLE IF NOT EXISTS order_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      packaging_id INTEGER NOT NULL REFERENCES packagings(id),
+      packs_ordered REAL NOT NULL,
+      /* Null until the driver confirms. Zero is a real answer -- the customer refused
+         the line at the door -- and is not the same thing as null. */
+      packs_delivered REAL,
+      unit_price_toman INTEGER NOT NULL,
+      unit_cost_toman INTEGER NOT NULL DEFAULT 0,
+      qty_per_pack REAL NOT NULL,
+      kg_per_base_unit REAL NOT NULL,
+      /* Which price row this was read from, so "why was it charged that?" has an answer
+         rather than an inference. */
+      price_id INTEGER REFERENCES product_prices(id),
+      is_reversal INTEGER NOT NULL DEFAULT 0,
+      reverses_line_id INTEGER REFERENCES order_lines(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_order_lines_order ON order_lines(order_id);
+    CREATE INDEX IF NOT EXISTS idx_order_lines_product ON order_lines(product_id);
+
+    /* ---- Delivery ----------------------------------------------------------------
+       A run is one driver's day. UNIQUE on (driver, date) because two runs for the
+       same driver on the same day is always a mistake, and the mistake is expensive:
+       half the stops end up on a run nobody opens. */
+    CREATE TABLE IF NOT EXISTS delivery_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      driver_user_id INTEGER NOT NULL REFERENCES users(id),
+      group_id INTEGER REFERENCES groups(id),
+      run_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'planned'
+        CHECK (status IN ('planned', 'in_progress', 'done')),
+      started_at TEXT,
+      finished_at TEXT,
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (driver_user_id, run_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_delivery_runs_driver ON delivery_runs(driver_user_id, run_date);
+
+    /* One stop is one order at one door. The stop carries what happened there; the
+       order's own lines carry what was actually handed over. */
+    CREATE TABLE IF NOT EXISTS delivery_stops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE,
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'delivered', 'refused', 'skipped')),
+      collected_toman INTEGER NOT NULL DEFAULT 0,
+      delivered_at TEXT,
+      delivered_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (run_id, order_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_delivery_stops_run ON delivery_stops(run_id, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_delivery_stops_order ON delivery_stops(order_id);
+
+    /* ---- Commission ---------------------------------------------------------------
+       Paid per kilogram of goods delivered. Effective-dated and INSERT-only, like
+       product_prices and for the same reason: a rate held in one cell means raising it
+       today silently restates what everyone earned last month.
+
+       salesperson_user_id NULL is the company-wide default that applies to anyone
+       without a rate of their own -- so onboarding a فروشنده does not require setting a
+       rate before their first order can accrue anything. */
+    CREATE TABLE IF NOT EXISTS commission_rates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_user_id INTEGER REFERENCES users(id),
+      rate_per_kg_toman INTEGER NOT NULL,
+      /* For فوری deliveries. Null means the ordinary rate applies to those too. */
+      urgent_rate_per_kg_toman INTEGER,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_commission_rates_lookup
+      ON commission_rates(salesperson_user_id, valid_from);
+
+    /* Money that actually moved. Accrual is derived from delivered weight and the rate
+       in force, and can therefore be restated by a backdated rate; a payment cannot,
+       and that asymmetry is deliberate -- one is a calculation, the other is a fact.
+
+       NOT NULL on the person: a payment with nobody attached is money leaving with no
+       statement to reconcile it against. */
+    CREATE TABLE IF NOT EXISTS commission_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_user_id INTEGER NOT NULL REFERENCES users(id),
+      amount_toman INTEGER NOT NULL,
+      paid_on TEXT NOT NULL,
+      period_from TEXT,
+      period_to TEXT,
+      notes TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_commission_payments_person
+      ON commission_payments(salesperson_user_id, paid_on);
+
+    /* ---- Purchases and stock ------------------------------------------------------
+       A receipt of goods into the warehouse. Replaces the خرید sheet.
+
+       Company-wide, with no group_id, for the same reason the catalogue has none: one
+       warehouse serves every group, and a scope column that is always null invites a
+       filter that empties everyone's screen. */
+    CREATE TABLE IF NOT EXISTS purchases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier TEXT,
+      purchase_date TEXT NOT NULL,
+      invoice_no TEXT,
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchase_date);
+
+    /* Quantities are in the product's base unit (عدد), not in packs: a supplier's
+       carton is rarely the carton we sell, and converting once on the way in is far
+       less error-prone than carrying two pack sizes through every stock query. */
+    CREATE TABLE IF NOT EXISTS purchase_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchase_id INTEGER NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      base_qty REAL NOT NULL,
+      unit_cost_toman INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_purchase_lines_purchase ON purchase_lines(purchase_id);
+    CREATE INDEX IF NOT EXISTS idx_purchase_lines_product ON purchase_lines(product_id);
   `);
+
+  /* Nullable, and null means no limit rather than a limit of zero -- most customers do
+     not have one, and a default of 0 would refuse every sale on the day it shipped. */
+  const customerCreditCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
+  if (!customerCreditCols.some((c) => c.name === "credit_limit_toman")) {
+    db.exec("ALTER TABLE customers ADD COLUMN credit_limit_toman INTEGER");
+  }
 
   // saved_locations shipped with CHECK constraints that lagged the valid resolution
   // values over time ('nominatim', then 'manual') -- CREATE TABLE IF NOT EXISTS never
@@ -383,6 +647,57 @@ export function getDb(): DatabaseSync {
     } catch (e) {
       db.exec("ROLLBACK");
       throw e;
+    }
+  }
+
+  // 'salesperson' joins the roles. The manager aggregates cold-call orders today; the
+  // three people already named in customers.salesperson get their own accounts once the
+  // sales section can show each of them their own orders and nobody else's.
+  //
+  // SQLite cannot ALTER a CHECK, so this is the same rebuild as above -- with one thing
+  // the earlier rebuilds did not have to handle. activity_log.changed_by_user_id now
+  // REFERENCES users(id), and DROP TABLE on a table a foreign key points at raises a
+  // constraint violation while enforcement is on. PRAGMA foreign_keys is a silent no-op
+  // inside a transaction, so it has to be toggled around the whole thing, not within it.
+  const usersRoleSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql: string } | undefined;
+  if (usersRoleSchema && !usersRoleSchema.sql.includes("salesperson")) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE users_role_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'group_manager'
+            CHECK (role IN ('owner', 'group_manager', 'salesperson', 'driver')),
+          group_id INTEGER REFERENCES groups(id),
+          staff_code TEXT,
+          phone TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          location_consent_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO users_role_new
+          (id, username, password_hash, display_name, role, group_id, staff_code, phone,
+           active, token_version, location_consent_at, created_at)
+          SELECT id, username, password_hash, display_name, role, group_id, staff_code, phone,
+                 active, token_version, location_consent_at, created_at FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_role_new RENAME TO users;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      // Always, including on the failure path: leaving a connection with enforcement off
+      // would silently drop referential integrity for every write that followed.
+      db.exec("PRAGMA foreign_keys = ON");
     }
   }
 
@@ -604,8 +919,12 @@ export interface ImportSnapshotRow {
   sales_json: string;
 }
 
-export type Role = "owner" | "group_manager" | "driver";
-export const ROLES: Role[] = ["owner", "group_manager", "driver"];
+/** Re-exported from roles.ts so server modules that already import from db.ts keep one
+ *  import site, the same arrangement facilityTypes has at the top of this file. The
+ *  definition itself has to live outside db.ts because client components need it and
+ *  cannot import node:sqlite. */
+export type { Role } from "./roles";
+export { ROLES, ROLE_LABEL, ROLE_DESCRIPTION } from "./roles";
 
 export interface GroupRow {
   id: number;

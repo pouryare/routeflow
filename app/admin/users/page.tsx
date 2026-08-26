@@ -3,14 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { faDate } from "@/lib/format";
-
-type Role = "owner" | "group_manager" | "driver";
-
-const ROLE_LABEL: Record<Role, string> = {
-  owner: "مالک",
-  group_manager: "مدیر گروه",
-  driver: "راننده",
-};
+import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 
 interface UserRow {
   id: number;
@@ -151,7 +144,7 @@ export default function AdminUsersPage() {
             onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
           >
-            {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+            {ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABEL[r]}</option>
             ))}
           </select>
@@ -219,7 +212,7 @@ export default function AdminUsersPage() {
                         }
                         className="rounded-md border border-border bg-surface-raised px-2 py-1 text-xs text-text outline-none focus:border-accent"
                       >
-                        {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
+                        {ROLES.map((r) => (
                           <option key={r} value={r}>{ROLE_LABEL[r]}</option>
                         ))}
                       </select>
