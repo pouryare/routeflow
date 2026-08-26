@@ -2,6 +2,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
 import type { FacilityRow } from "./facilityTypes";
+import type { Role } from "./roles";
 import { polygonCentroid } from "./simplify";
 import type { DistrictGeometry } from "./simplify";
 
@@ -161,7 +162,7 @@ export function getDb(): DatabaseSync {
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'group_manager'
-        CHECK (role IN ('owner', 'group_manager', 'driver')),
+        CHECK (role IN ('owner', 'group_manager', 'salesperson', 'driver')),
       group_id INTEGER REFERENCES groups(id),
       staff_code TEXT,
       phone TEXT,
@@ -386,6 +387,57 @@ export function getDb(): DatabaseSync {
     }
   }
 
+  // 'salesperson' joins the roles. The manager aggregates cold-call orders today; the
+  // three people already named in customers.salesperson get their own accounts once the
+  // sales section can show each of them their own orders and nobody else's.
+  //
+  // SQLite cannot ALTER a CHECK, so this is the same rebuild as above -- with one thing
+  // the earlier rebuilds did not have to handle. activity_log.changed_by_user_id now
+  // REFERENCES users(id), and DROP TABLE on a table a foreign key points at raises a
+  // constraint violation while enforcement is on. PRAGMA foreign_keys is a silent no-op
+  // inside a transaction, so it has to be toggled around the whole thing, not within it.
+  const usersRoleSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql: string } | undefined;
+  if (usersRoleSchema && !usersRoleSchema.sql.includes("salesperson")) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE users_role_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'group_manager'
+            CHECK (role IN ('owner', 'group_manager', 'salesperson', 'driver')),
+          group_id INTEGER REFERENCES groups(id),
+          staff_code TEXT,
+          phone TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          location_consent_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO users_role_new
+          (id, username, password_hash, display_name, role, group_id, staff_code, phone,
+           active, token_version, location_consent_at, created_at)
+          SELECT id, username, password_hash, display_name, role, group_id, staff_code, phone,
+                 active, token_version, location_consent_at, created_at FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_role_new RENAME TO users;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      // Always, including on the failure path: leaving a connection with enforcement off
+      // would silently drop referential integrity for every write that followed.
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+
   // Territory. Nullable rather than NOT NULL: a district nobody has claimed yet is a
   // real state, and it is different from one deliberately given to a group.
   const districtGroupCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
@@ -604,8 +656,12 @@ export interface ImportSnapshotRow {
   sales_json: string;
 }
 
-export type Role = "owner" | "group_manager" | "driver";
-export const ROLES: Role[] = ["owner", "group_manager", "driver"];
+/** Re-exported from roles.ts so server modules that already import from db.ts keep one
+ *  import site, the same arrangement facilityTypes has at the top of this file. The
+ *  definition itself has to live outside db.ts because client components need it and
+ *  cannot import node:sqlite. */
+export type { Role } from "./roles";
+export { ROLES, ROLE_LABEL, ROLE_DESCRIPTION } from "./roles";
 
 export interface GroupRow {
   id: number;

@@ -56,6 +56,13 @@ export function proxy(req: NextRequest) {
   if (isAdmin && claims.role !== "owner") return deny("/");
   if (isDriver && claims.role !== "driver") return deny("/");
 
+  // /analytics and /report aggregate a whole group's revenue, debt and coverage, and
+  // /report hands the reader a CSV of every row behind the totals. A salesperson is
+  // scoped to their own orders, so for them these are not a wider view of their own data
+  // but somebody else's -- they get their own figures at /sales/me instead.
+  const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
+  if (isGroupWide && claims.role === "salesperson") return deny("/sales");
+
   // A driver has one screen. Sending them anywhere else back to it keeps the whole
   // customer/coverage surface off a device that spends the day in a vehicle, and means a
   // mistyped URL is not the thing standing between a driver and the debt ledger.

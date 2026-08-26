@@ -6,7 +6,7 @@ const { proxy } = await import("@/proxy");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 const { NextRequest } = await import("next/server");
 
-function req(pathname: string, role?: "owner" | "group_manager" | "driver") {
+function req(pathname: string, role?: "owner" | "group_manager" | "salesperson" | "driver") {
   const headers: Record<string, string> = {};
   if (role) {
     const token = createSessionToken({ uid: 1, role, gid: role === "owner" ? null : 2, tv: 0, name: "t" });
@@ -92,5 +92,47 @@ describe("role prefixes", () => {
     const res = proxy(req("/planner", "driver"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/driver");
+  });
+});
+
+describe("a salesperson", () => {
+  it("may open the sales section", () => {
+    expect(proxy(req("/sales", "salesperson")).status).toBe(200);
+    expect(proxy(req("/sales/orders/new", "salesperson")).status).toBe(200);
+  });
+
+  it("is not blocked from the map by the coarse gate", () => {
+    // What they can actually read there is decided per route by requireRole, which still
+    // names only owner and group_manager. Those widen as the sales screens land.
+    expect(proxy(req("/", "salesperson")).status).toBe(200);
+  });
+
+  it("is kept out of /admin", () => {
+    const res = proxy(req("/admin/users", "salesperson"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/");
+  });
+
+  it("is kept out of the driver app", () => {
+    expect(proxy(req("/driver", "salesperson")).status).toBe(307);
+  });
+
+  it("is kept out of the group-wide analytics page", () => {
+    // /analytics aggregates the whole group's revenue and debt. A salesperson sees only
+    // their own orders, so the aggregate is a leak -- they get /sales/me instead.
+    const res = proxy(req("/analytics", "salesperson"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/sales");
+  });
+
+  it("is kept out of the group-wide report page", () => {
+    // Same shape as /analytics: whole-group coverage tables, and a CSV export button
+    // that hands the reader every row behind them.
+    expect(proxy(req("/report", "salesperson")).status).toBe(307);
+  });
+
+  it("does not lock out the roles that page is for", () => {
+    expect(proxy(req("/analytics", "owner")).status).toBe(200);
+    expect(proxy(req("/analytics", "group_manager")).status).toBe(200);
   });
 });
