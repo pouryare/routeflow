@@ -455,6 +455,37 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_commission_payments_person
       ON commission_payments(salesperson_user_id, paid_on);
+
+    /* ---- Purchases and stock ------------------------------------------------------
+       A receipt of goods into the warehouse. Replaces the خرید sheet.
+
+       Company-wide, with no group_id, for the same reason the catalogue has none: one
+       warehouse serves every group, and a scope column that is always null invites a
+       filter that empties everyone's screen. */
+    CREATE TABLE IF NOT EXISTS purchases (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      supplier TEXT,
+      purchase_date TEXT NOT NULL,
+      invoice_no TEXT,
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases(purchase_date);
+
+    /* Quantities are in the product's base unit (عدد), not in packs: a supplier's
+       carton is rarely the carton we sell, and converting once on the way in is far
+       less error-prone than carrying two pack sizes through every stock query. */
+    CREATE TABLE IF NOT EXISTS purchase_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      purchase_id INTEGER NOT NULL REFERENCES purchases(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      base_qty REAL NOT NULL,
+      unit_cost_toman INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_purchase_lines_purchase ON purchase_lines(purchase_id);
+    CREATE INDEX IF NOT EXISTS idx_purchase_lines_product ON purchase_lines(product_id);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
