@@ -26,6 +26,8 @@ export default function BarChart({
   height = 140,
   width = 520,
   colorful = false,
+  barLabel,
+  max,
   empty,
 }: {
   title: string;
@@ -37,15 +39,35 @@ export default function BarChart({
   width?: number;
   /** Give each bar its own hue. Off by default: one measure is one series. */
   colorful?: boolean;
+  /** Draws the value above each bar. Give it a compact form -- «۹۵٪», «۱٫۲م» -- not the
+   *  full «۳۷٬۲۶۵٬۰۰۰ تومان», which will not fit and will collide with its neighbour.
+   *  Omitted means no labels, which is right for a dense series. */
+  barLabel?: (value: number) => string;
+  /** Fixes the top of the scale. Without it a chart scales to its own largest bar, so
+   *  95% and 100% render almost the same height and the difference vanishes. Set it for
+   *  anything measured against a known ceiling. */
+  max?: number;
   empty?: string;
 }) {
   const values = data.map((d) => d.value);
-  const bars = barLayout(values, width, height);
-  const centres = barCentres(data.length, width);
-  const ticks = niceTicks(0, Math.max(...values, 0));
+  // Padding the series with the ceiling makes barLayout scale to it without needing
+  // a second code path: the extra value is never drawn.
+  const bars = barLayout(max === undefined ? values : [...values, max], width, height).slice(
+    0,
+    values.length
+  );
+  // Same slot count as barLayout saw, or the labels drift out from under their bars.
+  const centres = barCentres(max === undefined ? data.length : data.length + 1, width);
+  const ticks = niceTicks(0, Math.max(...values, max ?? 0, 0));
   const yOf = linearScale(0, ticks[ticks.length - 1], height, 0);
 
   const colorAt = (i: number) => data[i].color ?? (colorful ? seriesColor(i) : SINGLE_SERIES_COLOR);
+
+  // Headroom above the plot for the value labels. The tallest bar reaches y = 0, so
+  // without this its label is clamped onto the bar and reads as printed on top of it.
+  // Extending the viewBox upward rather than shrinking the bars keeps every bar the
+  // same height it would have had, so charts with and without labels stay comparable.
+  const headroom = barLabel ? 14 : 0;
 
   return (
     <ChartFrame
@@ -53,12 +75,14 @@ export default function BarChart({
       subtitle={subtitle}
       empty={empty}
       rows={data.map((d) => ({ label: d.label, value: formatValue(d.value) }))}
-      legend={colorful ? data.map((d, i) => ({ label: d.label, color: colorAt(i) })) : undefined}
+      /* No legend: every bar is labelled directly on the axis beneath it, so identity
+         is carried by position and text rather than by colour alone -- which is what a
+         legend is there to guarantee. Repeating the same names underneath is noise. */
     >
       <svg
-        viewBox={`0 0 ${width} ${height + 26}`}
+        viewBox={`0 ${-headroom} ${width} ${height + 26 + headroom}`}
         width="100%"
-        height={height + 26}
+        height={height + 26 + headroom}
         role="img"
         aria-label={title}
         className="max-w-full"
@@ -92,16 +116,30 @@ export default function BarChart({
           </g>
         ))}
 
-        {centres.map((cx, i) => (
+        {barLabel &&
+          bars.map((bar, i) => (
+            <text
+              key={`v-${data[i].label}`}
+              x={bar.x + bar.width / 2}
+              y={bar.y - 5}
+              textAnchor="middle"
+              className="fill-[var(--text-muted)] tabular-nums"
+              style={{ fontSize: 10 }}
+            >
+              {barLabel(data[i].value)}
+            </text>
+          ))}
+
+        {data.map((datum, i) => (
           <text
-            key={data[i].label}
-            x={cx}
+            key={datum.label}
+            x={centres[i]}
             y={height + 16}
             textAnchor="middle"
             className="fill-[var(--text-faint)] text-[length:var(--text-xs)]"
             style={{ fontSize: 10 }}
           >
-            {data[i].label.length > 10 ? `${data[i].label.slice(0, 9)}…` : data[i].label}
+            {datum.label.length > 10 ? `${datum.label.slice(0, 9)}…` : datum.label}
           </text>
         ))}
       </svg>
