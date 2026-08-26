@@ -471,6 +471,43 @@ describe("GET /api/sales", () => {
   });
 });
 
+describe("sales aggregates reach their group through the customer", () => {
+  // /analytics reads `sales` directly rather than through a route, and `sales` carries no
+  // group of its own. These assert the join those queries depend on, so the page cannot
+  // quietly go back to showing province-wide revenue to a group manager.
+  it("attributes a sale to a group only via the customer's business_name", () => {
+    const db = getDb();
+    db.prepare(
+      "INSERT INTO sales (order_no, sale_date, customer_name, amount, imported_at) VALUES ('A1', '2026-08-01', ?, 500, ?)"
+    ).run("مشتری شرق", new Date().toISOString());
+    db.prepare(
+      "INSERT INTO sales (order_no, sale_date, customer_name, amount, imported_at) VALUES ('A2', '2026-08-01', ?, 900, ?)"
+    ).run("مشتری غرب", new Date().toISOString());
+
+    const scoped = db
+      .prepare(
+        `SELECT s.customer_name FROM sales s JOIN customers c ON c.business_name = s.customer_name
+         WHERE 1 = 1 AND c.group_id = ? GROUP BY s.customer_name`
+      )
+      .all(east) as unknown as { customer_name: string }[];
+    expect(scoped.map((r) => r.customer_name)).toEqual(["مشتری شرق"]);
+  });
+
+  it("leaves a sale naming no known customer out of every group", () => {
+    const db = getDb();
+    db.prepare(
+      "INSERT INTO sales (order_no, sale_date, customer_name, amount, imported_at) VALUES ('A3', '2026-08-01', 'کسی که نیست', 100, ?)"
+    ).run(new Date().toISOString());
+    const rows = db
+      .prepare(
+        `SELECT s.customer_name FROM sales s JOIN customers c ON c.business_name = s.customer_name
+         WHERE 1 = 1 AND c.group_id = ?`
+      )
+      .all(east) as unknown as { customer_name: string }[];
+    expect(rows.some((r) => r.customer_name === "کسی که نیست")).toBe(false);
+  });
+});
+
 describe("owner-only routes", () => {
   it("refuses a group manager the import status", async () => {
     const res = await getImportStatus(as(eastMgrId, "group_manager", east, "http://localhost/api/import/status"));

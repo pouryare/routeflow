@@ -10,7 +10,7 @@ import { newestSync } from "@/lib/freshness";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, groupFilter, groupFilterWithShared } from "@/lib/session";
+import { getSessionFromCookies, groupFilter, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
 
 export const dynamic = "force-dynamic";
 
@@ -81,9 +81,29 @@ export default async function AnalyticsPage() {
   const dispatchSite =
     facilities.find((f) => f.is_default_origin === 1) ?? facilities.find((f) => f.kind === "home_base") ?? facilities[0] ?? null;
 
-  const salesByName = db
-    .prepare("SELECT customer_name, SUM(amount) as total, COUNT(*) as rows FROM sales GROUP BY customer_name")
-    .all() as { customer_name: string; total: number; rows: number }[];
+  // sales carries no group of its own -- it reaches one through the customer it names, and
+  // that link is business_name equality, which is all the workbook import provides.
+  //
+  // An owner reads the unscoped table on purpose: matchQuality below exists to count sales
+  // rows matching no customer at all, and a join would silently drop the very rows it is
+  // there to measure. A manager gets the join, because a row that matches no customer
+  // cannot be attributed to a group and so is not theirs to see. Without this the revenue
+  // figures here were province-wide while the debt figures beside them were scoped.
+  const salesScope = groupFilter(session, "c.group_id");
+  const salesByName = (
+    scopeGroupIds(session) === "all"
+      ? db
+          .prepare("SELECT customer_name, SUM(amount) as total, COUNT(*) as rows FROM sales GROUP BY customer_name")
+          .all()
+      : db
+          .prepare(
+            `SELECT s.customer_name, SUM(s.amount) as total, COUNT(*) as rows
+             FROM sales s JOIN customers c ON c.business_name = s.customer_name
+             WHERE 1 = 1${salesScope.sql}
+             GROUP BY s.customer_name`
+          )
+          .all(...salesScope.params)
+  ) as { customer_name: string; total: number; rows: number }[];
 
   const knownNames = new Set(customers.map((c) => c.business_name));
   const matchQuality = salesByName.reduce(
@@ -168,11 +188,17 @@ export default async function AnalyticsPage() {
     };
   });
 
+  // Named customers, so this one is always joined -- an owner seeing an unattributable
+  // name in a "top customers" list learns nothing, and a manager must not see another
+  // group's at all.
   const topCustomers = db
     .prepare(
-      `SELECT customer_name, SUM(amount) as total FROM sales GROUP BY customer_name ORDER BY total DESC LIMIT 10`
+      `SELECT s.customer_name, SUM(s.amount) as total
+       FROM sales s JOIN customers c ON c.business_name = s.customer_name
+       WHERE 1 = 1${salesScope.sql}
+       GROUP BY s.customer_name ORDER BY total DESC LIMIT 10`
     )
-    .all() as { customer_name: string; total: number }[];
+    .all(...salesScope.params) as { customer_name: string; total: number }[];
   const topCustomersMax = Math.max(1, ...topCustomers.map((c) => c.total));
 
   const weeks: { label: string; count: number }[] = [];
