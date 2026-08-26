@@ -155,7 +155,19 @@ export function orderFilter(session: Session, alias = "o"): { sql: string; param
     return { sql: ` AND ${alias}.salesperson_user_id = ?`, params: [session.user.id] };
   }
 
-  if (session.role === "driver") return { sql: " AND 1 = 0", params: [] };
+  if (session.role === "driver") {
+    // The orders on runs assigned to this driver, and nothing else. Scoped by run
+    // rather than by date: a driver needs yesterday's run to reprint a receipt or fix
+    // what they typed at the door, and a date clause would cut that off at midnight in
+    // the middle of a shift. The set is a few dozen orders either way.
+    return {
+      sql: ` AND ${alias}.id IN (
+              SELECT ds.order_id FROM delivery_stops ds
+                JOIN delivery_runs dr ON dr.id = ds.run_id
+               WHERE dr.driver_user_id = ?)`,
+      params: [session.user.id],
+    };
+  }
 
   // group_manager. Same reasoning as groupFilter: never an empty fragment, because an
   // empty fragment widens the query to everything rather than narrowing it to nothing.

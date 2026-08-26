@@ -48,12 +48,20 @@ describe("orderFilter", () => {
     expect(f.params).toEqual([5]);
   });
 
-  it("shows a driver nothing until delivery runs exist", () => {
-    // A driver's orders are the ones on today's run, and runs arrive with the delivery
-    // slice. Until then this must be closed rather than open -- an unfinished rule that
-    // defaults to visible is how a driver ends up reading the whole ledger.
+  it("narrows a driver to the orders on their own runs", () => {
+    // Scoped through delivery_stops rather than by group or by date. Behaviour against
+    // real rows -- that another driver's stops stay hidden -- is covered in
+    // delivery.test.ts against an actual database.
     const f = orderFilter(session("driver", 9, 7));
-    expect(f.sql).toBe(" AND 1 = 0");
+    expect(f.sql).toContain("delivery_stops");
+    expect(f.sql).toContain("driver_user_id = ?");
+    expect(f.params).toEqual([9]);
+  });
+
+  it("does not let a driver see by group", () => {
+    // The group is the wrong boundary here: a driver on the east run has no business
+    // reading every east order, only the ones on a van they are driving.
+    expect(orderFilter(session("driver", 9, 7)).sql).not.toContain("o.group_id");
   });
 
   it("shows a manager with no group nothing, rather than everything", () => {

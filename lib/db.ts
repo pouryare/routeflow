@@ -374,6 +374,46 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_order_lines_order ON order_lines(order_id);
     CREATE INDEX IF NOT EXISTS idx_order_lines_product ON order_lines(product_id);
+
+    /* ---- Delivery ----------------------------------------------------------------
+       A run is one driver's day. UNIQUE on (driver, date) because two runs for the
+       same driver on the same day is always a mistake, and the mistake is expensive:
+       half the stops end up on a run nobody opens. */
+    CREATE TABLE IF NOT EXISTS delivery_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      driver_user_id INTEGER NOT NULL REFERENCES users(id),
+      group_id INTEGER REFERENCES groups(id),
+      run_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'planned'
+        CHECK (status IN ('planned', 'in_progress', 'done')),
+      started_at TEXT,
+      finished_at TEXT,
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (driver_user_id, run_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_delivery_runs_driver ON delivery_runs(driver_user_id, run_date);
+
+    /* One stop is one order at one door. The stop carries what happened there; the
+       order's own lines carry what was actually handed over. */
+    CREATE TABLE IF NOT EXISTS delivery_stops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE,
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'delivered', 'refused', 'skipped')),
+      collected_toman INTEGER NOT NULL DEFAULT 0,
+      delivered_at TEXT,
+      delivered_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (run_id, order_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_delivery_stops_run ON delivery_stops(run_id, sort_order);
+    CREATE INDEX IF NOT EXISTS idx_delivery_stops_order ON delivery_stops(order_id);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
