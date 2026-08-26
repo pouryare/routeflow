@@ -29,7 +29,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   // before anyone touches it, and 404s under the reader who does.
   const tabs = [
     { href: "/sales", label: "خلاصه", ready: true },
-    { href: "/sales/products", label: "کالاها و قیمت‌ها", ready: false },
+    { href: "/sales/products", label: "کالاها و قیمت‌ها", ready: true },
     { href: "/sales/orders", label: "سفارش‌ها", ready: false },
   ];
 

@@ -230,6 +230,63 @@ export function getDb(): DatabaseSync {
       updated_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_facilities_kind ON facilities(kind);
+
+    /* ---- The sales catalogue ------------------------------------------------------
+       Company-wide, deliberately with no group_id. Two groups selling different
+       products would be two businesses; the column would only ever be null, and a
+       nullable scope column that is always null is an invitation to write a filter
+       against it later and empty everyone's screen. */
+    CREATE TABLE IF NOT EXISTS products (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      sku TEXT UNIQUE,
+      base_unit TEXT NOT NULL DEFAULT 'عدد',
+      /* عدد -> kg. Commission is paid per kilogram, so this factor is payroll input,
+         which is why an order line freezes it rather than reading it back later. */
+      kg_per_base_unit REAL NOT NULL DEFAULT 0,
+      /* Moving average, maintained by purchase receipts. Whole Toman, like every money
+         column added from here on -- see lib/money.ts for why the legacy REAL columns
+         were left alone but must not spread. */
+      avg_cost_toman INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+
+    /* How the product is sold: «جعبه بچه (۱۲۰ عددی)», «کارتن ۲۴ تایی».
+
+       qty_per_pack lives on the product/packaging pair rather than on the name, because
+       the name is not unique across products in the real data: «جعبه بچه» is 120 عدد of
+       one brand and 100 عدد of another, and both are rows in the workbook today. */
+    CREATE TABLE IF NOT EXISTS packagings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      qty_per_pack REAL NOT NULL,
+      barcode TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      UNIQUE (product_id, name)
+    );
+
+    /* Prices over time. Changing a price is an INSERT here; a row is never UPDATEd.
+       That is what stops last month's revenue moving when this month's price is set --
+       the failure mode of the single price cell this replaces. */
+    CREATE TABLE IF NOT EXISTS product_prices (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      /* Null means the price covers every packaging of the product -- the common case
+         when a product is sold one way. */
+      packaging_id INTEGER REFERENCES packagings(id) ON DELETE CASCADE,
+      price_toman INTEGER NOT NULL,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_product_prices_lookup
+      ON product_prices(product_id, packaging_id, valid_from);
+    CREATE INDEX IF NOT EXISTS idx_packagings_product ON packagings(product_id);
   `);
 
   // saved_locations shipped with CHECK constraints that lagged the valid resolution
