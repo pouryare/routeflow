@@ -31,6 +31,25 @@ describe("the role list", () => {
   });
 });
 
+describe("the bootstrap script", () => {
+  test("knows the same roles as the app", async () => {
+    // create-user.mjs cannot import lib/roles.ts -- it is plain ESM run by node with no
+    // build step -- so it keeps its own copy of the list. That copy is exactly the kind
+    // that drifts: it had already fallen behind once, and the failure mode is the owner
+    // being unable to create the account type the sales section exists for.
+    const fs = await import("node:fs");
+    const source = fs.readFileSync(new URL("../scripts/create-user.mjs", import.meta.url), "utf8");
+    const match = /const ROLES = \[([^\]]*)\]/.exec(source);
+    expect(match, "no ROLES literal in create-user.mjs").toBeTruthy();
+
+    const scriptRoles = match![1]
+      .split(",")
+      .map((s) => s.trim().replace(/^["']|["']$/g, ""))
+      .filter(Boolean);
+    expect(scriptRoles).toEqual(ROLES);
+  });
+});
+
 describe("Role", () => {
   test("accepts each member of ROLES", () => {
     const roles: Role[] = ["owner", "group_manager", "salesperson", "driver"];

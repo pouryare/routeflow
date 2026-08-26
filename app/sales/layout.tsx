@@ -24,10 +24,13 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   if (!session) redirect("/login");
   if (session.role === "driver") redirect("/driver");
 
+  // `ready` flips as each slice lands. A tab for a page that does not exist yet is not
+  // merely untidy: Next prefetches every <Link> on render, so it 404s in the console
+  // before anyone touches it, and 404s under the reader who does.
   const tabs = [
-    { href: "/sales", label: "خلاصه" },
-    { href: "/sales/orders", label: "سفارش‌ها" },
-    { href: "/sales/products", label: "کالاها و قیمت‌ها" },
+    { href: "/sales", label: "خلاصه", ready: true },
+    { href: "/sales/products", label: "کالاها و قیمت‌ها", ready: false },
+    { href: "/sales/orders", label: "سفارش‌ها", ready: false },
   ];
 
   return (
@@ -50,15 +53,25 @@ export default async function SalesLayout({ children }: { children: ReactNode })
       </header>
 
       <nav className="mb-[var(--space-5)] flex flex-wrap gap-[var(--space-2)]">
-        {tabs.map((t) => (
-          <Link
-            key={t.href}
-            href={t.href}
-            className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            {t.label}
-          </Link>
-        ))}
+        {tabs.map((t) =>
+          t.ready ? (
+            <Link
+              key={t.href}
+              href={t.href}
+              className="rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              {t.label}
+            </Link>
+          ) : (
+            <span
+              key={t.href}
+              aria-disabled
+              className="rounded-[var(--radius-md)] border border-dashed border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-faint)]"
+            >
+              {t.label} <span className="text-[length:var(--text-xs)]">· به‌زودی</span>
+            </span>
+          )
+        )}
       </nav>
 
       {children}

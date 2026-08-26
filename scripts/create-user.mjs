@@ -6,7 +6,7 @@
 // owner. Day-to-day account management belongs there, not here.
 //
 // Usage:
-//   node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|driver> [group_id]
+//   node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|salesperson|driver> [group_id]
 
 import { DatabaseSync } from "node:sqlite";
 import crypto from "node:crypto";
@@ -15,9 +15,11 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(ROOT, "data", "coverage.db");
-const ROLES = ["owner", "group_manager", "driver"];
+// Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
+// node with no build step, so it cannot import the TypeScript definition.
+const ROLES = ["owner", "group_manager", "salesperson", "driver"];
 const USAGE =
-  'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|driver> [group_id]';
+  'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|salesperson|driver> [group_id]';
 
 const [username, password, displayName, role, groupArg] = process.argv.slice(2);
 if (!username || !password || !displayName || !role) {
