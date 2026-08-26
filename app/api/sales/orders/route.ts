@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
-import { createOrder, readOrders, OrderError, type LineInput } from "@/lib/orders";
+import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
 
 const CAN_SELL = ["owner", "group_manager", "salesperson"] as const;
 
@@ -13,13 +13,20 @@ export async function GET(req: NextRequest) {
   const customerId = url.searchParams.get("customer");
   const status = url.searchParams.get("status");
 
-  const orders = readOrders(getDb(), orderFilter(guard.session), {
+  const scope = orderFilter(guard.session);
+  const orders = readOrders(getDb(), scope, {
     customerId: customerId ? Number(customerId) : undefined,
     status: status ?? undefined,
     limit: Number(url.searchParams.get("limit") ?? 200),
   });
 
-  return NextResponse.json({ ok: true, orders });
+  // Additive, and only when a customer is named: what that shop habitually buys is the
+  // question the map's customer panel asks, and it is meaningless across all customers.
+  const products = customerId
+    ? productMixFor(getDb(), scope, Number(customerId))
+    : [];
+
+  return NextResponse.json({ ok: true, orders, products });
 }
 
 export async function POST(req: NextRequest) {

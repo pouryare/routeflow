@@ -297,3 +297,43 @@ describe("GET /api/sales/orders/[id]", () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe("GET /api/sales/orders?customer=", () => {
+  it("returns only that customer's orders", async () => {
+    const res = await GET(get(AS.owner(), `?customer=${ctx.eastCustomer}`));
+    const { orders } = await res.json();
+    expect(orders.length).toBeGreaterThan(0);
+    expect(
+      orders.every((o: { customer_name: string }) => o.customer_name === "رستوران شرق")
+    ).toBe(true);
+  });
+
+  it("still refuses to cross a group boundary", async () => {
+    // The west manager asking for an east customer by id gets their own scope applied,
+    // not the customer they named -- a filter must never widen a scope.
+    const res = await GET(get(AS.westManager(), `?customer=${ctx.eastCustomer}`));
+    const { orders } = await res.json();
+    expect(orders).toHaveLength(0);
+  });
+
+  it("includes what that customer habitually buys", async () => {
+    const res = await GET(get(AS.owner(), `?customer=${ctx.eastCustomer}`));
+    const { products } = await res.json();
+    expect(products.length).toBeGreaterThan(0);
+    expect(products[0].product_name).toBe("کره گیاهی");
+  });
+
+  it("returns no product mix when no customer is named", async () => {
+    // The question is meaningless across every customer at once, and computing it
+    // would scan every line in the table for nothing.
+    const { products } = await (await GET(get(AS.owner()))).json();
+    expect(products).toEqual([]);
+  });
+
+  it("scopes the product mix too, not just the orders", async () => {
+    const { products } = await (
+      await GET(get(AS.westManager(), `?customer=${ctx.eastCustomer}`))
+    ).json();
+    expect(products).toEqual([]);
+  });
+});

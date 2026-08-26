@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { readOrder } from "@/lib/orders";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
+import { buildMapLink } from "@/lib/deepLink";
 import ConfirmOrderButton from "@/components/sales/ConfirmOrderButton";
 
 export const dynamic = "force-dynamic";
@@ -51,7 +52,18 @@ export default async function OrderDetailPage({
             سفارش {faNum(Number(order.order_no.split("-")[1]))}#
           </h2>
           <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
-            {order.customer_name} · {faJalaliDate(order.order_date)} ·{" "}
+            {/* Back to the shop on the map. buildMapLink is the same format the map's
+                own share links use and parseMapLink already reads on load, so this
+                needs no new plumbing on the receiving side. */}
+            <Link
+              /* buildMapLink already includes the leading "?" -- see lib/deepLink.ts. */
+              href={`/${buildMapLink({ customerId: order.customer_id })}`}
+              className="text-[var(--text)] no-underline underline-offset-2 hover:text-[var(--accent)] hover:underline"
+              title="نمایش روی نقشه"
+            >
+              {order.customer_name}
+            </Link>{" "}
+            · {faJalaliDate(order.order_date)} ·{" "}
             {STATUS_LABEL[order.status] ?? order.status}
           </p>
         </div>

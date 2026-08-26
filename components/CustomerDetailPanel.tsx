@@ -285,7 +285,14 @@ export default function CustomerDetailPanel({
 
       <AddReminder entityType="customer" entityId={customer.id} onAdded={onReminderAdded} />
       <PhotoGallery entityType="customer" entityId={customer.id} />
-      <PurchaseHistory businessName={customer.business_name} />
+      {/* Keyed so selecting a different shop remounts it: the fetch result belongs to
+          one customer, and reusing the instance would show the previous shop's orders
+          until the new request landed. */}
+      <PurchaseHistory
+        key={customer.id}
+        customerId={customer.id}
+        customerName={customer.business_name}
+      />
       <HistoryTimeline entityType="customer" entityId={customer.id} />
     </div>
   );

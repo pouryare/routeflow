@@ -56,17 +56,21 @@ export default function OrderForm({
   customers,
   products,
   sellers,
+  initialCustomerId = null,
 }: {
   customers: Customer[];
   products: Product[];
   sellers: { id: number; display_name: string }[];
+  /** Arrives from the map's customer panel. Already validated against this caller's
+   *  own customer list by the page, so it is safe to select without re-checking. */
+  initialCustomerId?: number | null;
 }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const [query, setQuery] = useState("");
-  const [customerId, setCustomerId] = useState<number | null>(null);
+  const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [sellerId, setSellerId] = useState("");
   const [notes, setNotes] = useState("");

@@ -15,6 +15,7 @@ import {
   orderMarginToman,
   lineTotalToman,
   lineKg,
+  effectivePacks,
   type LineSnapshot,
 } from "./orderMath";
 
@@ -373,4 +374,58 @@ export function readOrders(
       line_count: lines.length,
     };
   });
+}
+
+export interface ProductMixRow {
+  product_id: number;
+  product_name: string;
+  packs: number;
+  total_toman: number;
+}
+
+/** What one customer actually buys, biggest spend first.
+ *
+ *  The question a manager asks standing outside a shop, and the reason the customer
+ *  panel on the map is worth joining to the sales data at all: «they take کره گیاهی and
+ *  دوغ» is more useful there than any total.
+ *
+ *  Drafts are excluded -- a draft is a list somebody is still editing, and treating it
+ *  as a buying habit would let an abandoned order shape what gets offered. Takes the
+ *  same scope fragment as readOrders so it cannot see further than the list beside it.
+ */
+export function productMixFor(
+  db: DatabaseSync,
+  scope: { sql: string; params: number[] },
+  customerId: number
+): ProductMixRow[] {
+  const rows = db
+    .prepare(
+      `SELECT ol.product_id, p.name AS product_name,
+              ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
+              ol.qty_per_pack, ol.kg_per_base_unit
+         FROM order_lines ol
+         JOIN orders o ON o.id = ol.order_id
+         JOIN products p ON p.id = ol.product_id
+        WHERE o.customer_id = ?
+          AND o.status IN ('confirmed', 'delivered')${scope.sql}`
+    )
+    .all(customerId, ...scope.params) as unknown as (LineSnapshot & {
+    product_id: number;
+    product_name: string;
+  })[];
+
+  const byProduct = new Map<number, ProductMixRow>();
+  for (const line of rows) {
+    const existing = byProduct.get(line.product_id) ?? {
+      product_id: line.product_id,
+      product_name: line.product_name,
+      packs: 0,
+      total_toman: 0,
+    };
+    existing.packs += effectivePacks(line);
+    existing.total_toman += lineTotalToman(line);
+    byProduct.set(line.product_id, existing);
+  }
+
+  return [...byProduct.values()].sort((a, b) => b.total_toman - a.total_toman);
 }

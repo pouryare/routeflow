@@ -12,9 +12,8 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
-const { createOrder, readOrder, readOrders, confirmOrder, addLine, OrderError } = await import(
-  "@/lib/orders"
-);
+const { createOrder, readOrder, readOrders, confirmOrder, addLine, productMixFor, OrderError } =
+  await import("@/lib/orders");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
@@ -345,6 +344,60 @@ describe("readOrders", () => {
     const rows = readOrders(getDb(), { sql: "", params: [] });
     for (let i = 1; i < rows.length; i++) {
       expect(rows[i - 1].id).toBeGreaterThan(rows[i].id);
+    }
+  });
+});
+
+describe("productMixFor", () => {
+  it("sums what one customer has bought, by product", () => {
+    const db = getDb();
+    const customer = Number(
+      db
+        .prepare("INSERT INTO customers (customer_code, business_name, synced_at) VALUES (?, ?, ?)")
+        .run("MIX1", "مشتری ترکیب", new Date().toISOString()).lastInsertRowid
+    );
+    const a = createOrder(db, draftInput({ customer_id: customer }));
+    confirmOrder(db, a.id);
+    const b = createOrder(db, draftInput({ customer_id: customer }));
+    confirmOrder(db, b.id);
+
+    const mix = productMixFor(db, { sql: "", params: [] }, customer);
+    expect(mix).toHaveLength(1);
+    expect(mix[0].product_name).toBe("کره گیاهی مرحبا");
+    // Two orders of 2 packs each.
+    expect(mix[0].packs).toBe(4);
+  });
+
+  it("counts only the customer asked for", () => {
+    const db = getDb();
+    const other = Number(
+      db
+        .prepare("INSERT INTO customers (customer_code, business_name, synced_at) VALUES (?, ?, ?)")
+        .run("MIX2", "مشتری دیگر", new Date().toISOString()).lastInsertRowid
+    );
+    expect(productMixFor(db, { sql: "", params: [] }, other)).toEqual([]);
+  });
+
+  it("honours the scope fragment, so it cannot leak across groups", () => {
+    const db = getDb();
+    expect(productMixFor(db, { sql: " AND 1 = 0", params: [] }, ctx.customer)).toEqual([]);
+  });
+
+  it("ignores a draft, which nobody has agreed to yet", () => {
+    const db = getDb();
+    const customer = Number(
+      db
+        .prepare("INSERT INTO customers (customer_code, business_name, synced_at) VALUES (?, ?, ?)")
+        .run("MIX3", "فقط پیش‌نویس", new Date().toISOString()).lastInsertRowid
+    );
+    createOrder(db, draftInput({ customer_id: customer }));
+    expect(productMixFor(db, { sql: "", params: [] }, customer)).toEqual([]);
+  });
+
+  it("puts the biggest spend first", () => {
+    const mix = productMixFor(getDb(), { sql: "", params: [] }, ctx.customer);
+    for (let i = 1; i < mix.length; i++) {
+      expect(mix[i - 1].total_toman).toBeGreaterThanOrEqual(mix[i].total_toman);
     }
   });
 });
