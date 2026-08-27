@@ -157,7 +157,7 @@ export default function CostToServePanel({
                   key={key}
                   onClick={() => setSortBy(key)}
                   className={`rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                    sortBy === key ? "bg-accent font-medium text-[#04191c]" : "text-text-muted hover:bg-white/5 hover:text-text"
+                    sortBy === key ? "bg-accent font-medium text-accent-ink" : "text-text-muted hover:bg-white/5 hover:text-text"
                   }`}
                 >
                   {label}

@@ -57,7 +57,7 @@ export default function RunPanel({
             href={routeHref}
             target="_blank"
             rel="noopener noreferrer"
-            className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
+            className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
           >
             {singleLeg
               ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label} ↗`
@@ -69,7 +69,7 @@ export default function RunPanel({
           <button
             onClick={onOptimise}
             disabled={busy}
-            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-[#04191c] disabled:opacity-50"
+            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
           >
             مرتب‌سازی خودکار — {faNum(optimiseGain)}٪ کوتاه‌تر
           </button>

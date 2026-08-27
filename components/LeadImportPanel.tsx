@@ -140,7 +140,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
           <button
             onClick={parse}
             disabled={busy || !text.trim()}
-            className="mt-2 rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+            className="mt-2 rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
           >
             {busy ? "در حال استخراج و مکان‌یابی…" : "تجزیه"}
           </button>
@@ -205,7 +205,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
           <button
             onClick={addSelected}
             disabled={busy || selected.size === 0}
-            className="mt-3 w-full rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+            className="mt-3 w-full rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
           >
             {busy ? "در حال افزودن..." : `افزودن ${faNum(selected.size)} مورد به لیست`}
           </button>

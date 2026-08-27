@@ -350,7 +350,7 @@ function StopCard({
                 type="button"
                 onClick={record}
                 disabled={busy}
-                className="flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-[#04191c] disabled:opacity-50"
+                className="flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink disabled:opacity-50"
               >
                 {busy ? "…" : "ثبت تحویل و چاپ رسید"}
               </button>

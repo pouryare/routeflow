@@ -172,3 +172,77 @@ export function barCentres(count: number, width: number): number[] {
   const slot = width / Math.max(1, count);
   return Array.from({ length: count }, (_, i) => width - (i + 0.5) * slot);
 }
+
+/** The same series as `linePath`, drawn as a smooth curve instead of straight segments.
+ *
+ *  Monotone cubic (Fritsch-Carlson), and the choice of interpolant is the whole point.
+ *  The obvious alternative -- Catmull-Rom, or any plain cubic spline through the points --
+ *  overshoots: given 10, 90, 90 it draws a curve that rises above 90 between the second and
+ *  third point. On a decorative chart that is a rounding of the truth. On this app's
+ *  charts the y-axis is money and stock, so a curve bulging past the highest reading is
+ *  the plot claiming a figure that never happened.
+ *
+ *  Fritsch-Carlson fixes the tangents so the curve is monotone wherever the data is: it
+ *  cannot rise between two points that fall, and it cannot exceed the larger of any
+ *  adjacent pair. The line looks smooth and still says only what the numbers say.
+ */
+export function smoothLinePath(values: number[], width: number, height: number): string {
+  if (values.length === 0) return "";
+  if (values.length < 3) return linePath(values, width, height);
+
+  const max = Math.max(...values);
+  const min = Math.min(...values, 0);
+  const yScale = linearScale(min, max, height, 0);
+  const step = width / (values.length - 1);
+
+  // Right to left, matching linePath: index 0 sits at the right edge. x therefore
+  // decreases as i grows, so every slope below is computed in that same direction and the
+  // curve is built in the order it is drawn.
+  const pts = values.map((v, i) => ({ x: width - i * step, y: yScale(v) }));
+
+  const n = pts.length;
+  const dx: number[] = [];
+  const slope: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    dx.push(pts[i + 1].x - pts[i].x);
+    slope.push((pts[i + 1].y - pts[i].y) / (pts[i + 1].x - pts[i].x));
+  }
+
+  // Tangents start as the average of the neighbouring slopes, then get clamped.
+  const m: number[] = new Array(n);
+  m[0] = slope[0];
+  m[n - 1] = slope[n - 2];
+  for (let i = 1; i < n - 1; i++) {
+    // A sign change means this point is a local extreme. Flattening the tangent to zero
+    // there is what stops the curve sailing past it.
+    m[i] = slope[i - 1] * slope[i] <= 0 ? 0 : (slope[i - 1] + slope[i]) / 2;
+  }
+
+  for (let i = 0; i < n - 1; i++) {
+    if (slope[i] === 0) {
+      m[i] = 0;
+      m[i + 1] = 0;
+      continue;
+    }
+    const a = m[i] / slope[i];
+    const b = m[i + 1] / slope[i];
+    // The Fritsch-Carlson condition: keep (a, b) inside a circle of radius 3, which is
+    // the region where the cubic stays monotone.
+    const h = Math.hypot(a, b);
+    if (h > 3) {
+      const t = 3 / h;
+      m[i] = t * a * slope[i];
+      m[i + 1] = t * b * slope[i];
+    }
+  }
+
+  let d = `M ${pts[0].x.toFixed(2)} ${pts[0].y.toFixed(2)}`;
+  for (let i = 0; i < n - 1; i++) {
+    const c1x = pts[i].x + dx[i] / 3;
+    const c1y = pts[i].y + (m[i] * dx[i]) / 3;
+    const c2x = pts[i + 1].x - dx[i] / 3;
+    const c2y = pts[i + 1].y - (m[i + 1] * dx[i]) / 3;
+    d += ` C ${c1x.toFixed(2)} ${c1y.toFixed(2)}, ${c2x.toFixed(2)} ${c2y.toFixed(2)}, ${pts[i + 1].x.toFixed(2)} ${pts[i + 1].y.toFixed(2)}`;
+  }
+  return d;
+}

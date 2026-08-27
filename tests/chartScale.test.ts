@@ -1,5 +1,12 @@
 import { describe, expect, test } from "vitest";
-import { niceTicks, linearScale, donutArcs, linePath, barLayout } from "@/lib/chartScale";
+import {
+  niceTicks,
+  linearScale,
+  donutArcs,
+  linePath,
+  barLayout,
+  smoothLinePath,
+} from "@/lib/chartScale";
 
 describe("niceTicks", () => {
   test("covers the range with round numbers", () => {
@@ -132,5 +139,59 @@ describe("barLayout", () => {
       expect(Number.isFinite(b.height)).toBe(true);
       expect(Number.isFinite(b.x)).toBe(true);
     }
+  });
+});
+
+describe("smoothLinePath", () => {
+  /** Samples every cubic segment of a path and returns the extreme y values it reaches.
+   *  The control points alone do not answer this -- a bezier stays inside its hull, so a
+   *  control point above the data does not prove the curve goes there, and one below does
+   *  not prove it does not. So the curve is actually evaluated. */
+  function curveExtent(d: string) {
+    const nums = (s: string) => s.match(/-?\d+(\.\d+)?/g)!.map(Number);
+    const [, y0] = nums(d.slice(0, d.indexOf("C")));
+    let cur = y0;
+    let lo = y0;
+    let hi = y0;
+    for (const seg of d.split("C").slice(1)) {
+      const [, c1y, , c2y, , py] = nums(seg);
+      for (let t = 0; t <= 1; t += 0.02) {
+        const u = 1 - t;
+        const y =
+          u * u * u * cur + 3 * u * u * t * c1y + 3 * u * t * t * c2y + t * t * t * py;
+        lo = Math.min(lo, y);
+        hi = Math.max(hi, y);
+      }
+      cur = py;
+    }
+    return { lo, hi };
+  }
+
+  test("never draws above the highest reading or below the lowest", () => {
+    // The case a Catmull-Rom spline gets wrong: a steep rise into a plateau makes a plain
+    // cubic bulge past the plateau, so the chart shows a peak that is not in the data.
+    const values = [10, 90, 90, 20, 5, 60];
+    const d = smoothLinePath(values, 300, 100);
+    const { lo, hi } = curveExtent(d);
+
+    // y is inverted in SVG: the largest value maps to the smallest y.
+    const yOf = linearScale(Math.min(...values, 0), Math.max(...values), 100, 0);
+    const yAtMax = yOf(Math.max(...values));
+    const yAtMin = yOf(Math.min(...values, 0));
+
+    expect(hi).toBeLessThanOrEqual(yAtMin + 0.5);
+    expect(lo).toBeGreaterThanOrEqual(yAtMax - 0.5);
+  });
+
+  test("falls back to straight segments below three points", () => {
+    // Two points have no interior tangent to constrain, and a curve through them would be
+    // a straight line drawn expensively.
+    expect(smoothLinePath([5, 9], 100, 50)).toBe(linePath([5, 9], 100, 50));
+  });
+
+  test("holds a flat run flat", () => {
+    const d = smoothLinePath([40, 40, 40, 40], 200, 80);
+    const { lo, hi } = curveExtent(d);
+    expect(hi - lo).toBeLessThan(0.5);
   });
 });

@@ -3,10 +3,11 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orderFilter, groupFilter } from "@/lib/session";
-import { getDb } from "@/lib/db";
+import { getDb, plain } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
+import OrderPocketCard, { OrderDoc } from "@/components/sales/OrderPocketCard";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +69,22 @@ export default async function OrdersPage({
     customerId: focused?.id,
   });
 
+  // Which of these orders are already loaded onto a van. One query for the whole page
+  // rather than one per row -- the list renders up to 200 orders.
+  const onARun = new Set(
+    (
+      plain(
+        db
+          .prepare(
+            `SELECT DISTINCT order_id FROM delivery_stops WHERE order_id IN (${orders
+              .map(() => "?")
+              .join(",") || "NULL"})`
+          )
+          .all(...orders.map((o) => o.id))
+      ) as unknown as { order_id: number }[]
+    ).map((r) => r.order_id)
+  );
+
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
       <div className="flex items-center justify-between gap-[var(--space-3)]">
@@ -91,7 +108,7 @@ export default async function OrdersPage({
           )}
           <Link
             href={focused ? `/sales/orders/new?customer=${focused.id}` : "/sales/orders/new"}
-            className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-[#04191c] no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
+            className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
           >
             ثبت سفارش تازه
           </Link>
@@ -122,9 +139,16 @@ export default async function OrdersPage({
         <ul className="flex list-none flex-col gap-[var(--space-2)] p-0">
           {orders.map((order) => (
             <li key={order.id}>
-              <Link
+              <OrderPocketCard
                 href={`/sales/orders/${order.id}`}
-                className="block rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)] no-underline transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)]"
+                tone={STATUS_TONE[order.status] ?? "var(--neutral)"}
+                docs={
+                  [
+                    // A draft has not been invoiced, so there is no receipt to file.
+                    order.status !== "draft" && "receipt",
+                    onARun.has(order.id) && "delivery",
+                  ].filter(Boolean) as OrderDoc[]
+                }
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
                   <span className="text-[length:var(--text-base)] text-[var(--text)]">
@@ -145,7 +169,7 @@ export default async function OrdersPage({
                   <span className="tabular-nums">{faNum(order.kg)} کیلو</span>
                   {order.salesperson_name && <span>{order.salesperson_name}</span>}
                 </div>
-              </Link>
+              </OrderPocketCard>
             </li>
           ))}
         </ul>

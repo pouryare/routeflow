@@ -67,7 +67,7 @@ export default function AddReminder({
             <button
               onClick={submit}
               disabled={saving || !dueDate || !message.trim()}
-              className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-xs)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
             >
               ذخیره
             </button>

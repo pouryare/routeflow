@@ -1438,7 +1438,7 @@ export default function CoverageMap({
                   disabled={mode === "distance" && !colourOrigin}
                   className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
                     colorMode === mode
-                      ? "bg-accent font-medium text-[#04191c]"
+                      ? "bg-accent font-medium text-accent-ink"
                       : "text-text-muted hover:bg-white/5 hover:text-text"
                   }`}
                 >
@@ -1585,7 +1585,7 @@ export default function CoverageMap({
                           }}
                           className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                             corridorWidthKm === km
-                              ? "bg-accent font-medium text-[#04191c]"
+                              ? "bg-accent font-medium text-accent-ink"
                               : "text-text-muted hover:bg-white/5 hover:text-text"
                           }`}
                         >
@@ -1636,7 +1636,7 @@ export default function CoverageMap({
                     onClick={() => setDistrictColorMode(mode)}
                     className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                       districtColorMode === mode
-                        ? "bg-accent font-medium text-[#04191c]"
+                        ? "bg-accent font-medium text-accent-ink"
                         : "text-text-muted hover:bg-white/5 hover:text-text"
                     }`}
                   >
@@ -1866,7 +1866,7 @@ export default function CoverageMap({
                     onClick={() => setPrecisionMode(mode)}
                     className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                       precisionMode === mode
-                        ? "bg-accent font-medium text-[#04191c]"
+                        ? "bg-accent font-medium text-accent-ink"
                         : "text-text-muted hover:bg-white/5 hover:text-text"
                     }`}
                   >
@@ -2241,7 +2241,7 @@ export default function CoverageMap({
             <button
               onClick={applyBulk}
               disabled={bulkSaving || (!bulkStatusChoice && !bulkGroupChoice)}
-              className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {bulkSaving ? "در حال اعمال…" : "اعمال روی همه"}
             </button>

@@ -1,6 +1,7 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import Island, { IslandTone } from "./Island";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -22,16 +23,41 @@ interface ToastItem {
   variant: ToastVariant;
   action?: ToastAction;
   running: boolean;
-  leaving: boolean;
+  open: boolean;
 }
 
 type ShowToast = (message: string, variant?: ToastVariant, action?: ToastAction) => void;
 const ToastContext = createContext<ShowToast | null>(null);
 
-const VARIANT_META: Record<ToastVariant, { border: string; icon: string; elevate: string }> = {
-  success: { border: "border-good", icon: "✓", elevate: "elevate-good" },
-  error: { border: "border-crit", icon: "⚠", elevate: "elevate-crit" },
-  info: { border: "border-accent", icon: "ℹ", elevate: "elevate-accent" },
+const TONE: Record<ToastVariant, IslandTone> = {
+  success: "good",
+  error: "crit",
+  info: "accent",
+};
+
+/** Drawn rather than typed. The glyphs these replace (✓ ⚠ ℹ) rendered in whatever the
+ *  system had for them, which on Android meant a different weight and baseline per device
+ *  and, in a Persian layout, occasional mirroring. */
+const ICON: Record<ToastVariant, React.ReactNode> = {
+  success: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8.5l3.2 3.2L13 5" />
+    </svg>
+  ),
+  error: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M8 2.6l5.8 10.1H2.2L8 2.6z" />
+      <path d="M8 6.6v3" />
+      <path d="M8 11.4h.01" />
+    </svg>
+  ),
+  info: (
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="8" cy="8" r="6" />
+      <path d="M8 7.4v3.2" />
+      <path d="M8 5.2h.01" />
+    </svg>
+  ),
 };
 
 const LIFETIME_MS: Record<ToastVariant, number> = { success: 3500, error: 6500, info: 4000 };
@@ -41,11 +67,26 @@ const LIFETIME_MS: Record<ToastVariant, number> = { success: 3500, error: 6500, 
 // it, decide the delete was a mistake, and move a thumb across a phone screen.
 const ACTION_LIFETIME_MS = 9000;
 
-const EXIT_MS = 180;
+// One pill-frame before widening, so the arrival reads as a single motion.
+const OPEN_DELAY_MS = 30;
+// Long enough for the collapse to finish before the node leaves. --dur-morph plus slack.
+const COLLAPSE_MS = 460;
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
+  const timers = useRef<number[]>([]);
+
+  // Every timer this provider opens, cancelled on unmount. Without it a toast scheduled
+  // just before a route change calls setState on a component that is gone.
+  useEffect(() => {
+    const owned = timers.current;
+    return () => owned.forEach(window.clearTimeout);
+  }, []);
+
+  const later = useCallback((fn: () => void, ms: number) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  }, []);
 
   const remove = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -53,19 +94,28 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
   const startExit = useCallback(
     (id: number) => {
-      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, leaving: true } : t)));
-      window.setTimeout(() => remove(id), EXIT_MS);
+      // Collapse to a pill first, then leave. Vanishing at full width skips the half of
+      // the morph that makes the island read as one object rather than a box that blinked.
+      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, open: false } : t)));
+      later(() => remove(id), COLLAPSE_MS);
     },
-    [remove]
+    [later, remove]
   );
 
   const showToast = useCallback<ShowToast>(
     (message, variant = "info", action) => {
       const id = ++idRef.current;
-      setToasts((prev) => [...prev, { id, message, variant, action, running: false, leaving: false }]);
-      window.setTimeout(() => startExit(id), action ? ACTION_LIFETIME_MS : LIFETIME_MS[variant]);
+      setToasts((prev) => [
+        ...prev,
+        { id, message, variant, action, running: false, open: false },
+      ]);
+      later(
+        () => setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, open: true } : t))),
+        OPEN_DELAY_MS
+      );
+      later(() => startExit(id), action ? ACTION_LIFETIME_MS : LIFETIME_MS[variant]);
     },
-    [startExit]
+    [later, startExit]
   );
 
   const runAction = useCallback(
@@ -87,47 +137,48 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={showToast}>
       {children}
+      {/* Centred rather than corner-pinned: the island idiom reads as coming from the top
+          of the device, and centring is the one position that is identical in RTL and LTR
+          so the layout does not have to be checked twice. */}
       <div
         dir="rtl"
         aria-live="polite"
         aria-atomic="false"
-        className="pointer-events-none fixed left-4 top-4 z-[var(--z-toast)] flex w-[calc(100%-2rem)] max-w-xs flex-col gap-2"
+        className="pointer-events-none fixed left-1/2 top-4 z-[var(--z-toast)] flex -translate-x-1/2 flex-col items-center gap-2"
       >
-        {toasts.map((t) => {
-          const meta = VARIANT_META[t.variant];
-          return (
-            <div
-              key={t.id}
-              role="status"
-              className={`pointer-events-auto flex items-start gap-2 rounded-[var(--radius-md)] border ${meta.border} bg-surface-raised px-3 py-2 text-[length:var(--text-sm)] text-text ${meta.elevate} ${
-                t.leaving ? "toast-exit" : "toast-enter"
-              }`}
-            >
-              <span className="mt-0.5 shrink-0" aria-hidden="true">
-                {meta.icon}
-              </span>
-              <div className="min-w-0 flex-1">
-                <span className="block leading-5">{t.message}</span>
-                {t.action && (
-                  <button
-                    onClick={() => runAction(t)}
-                    disabled={t.running}
-                    className="mt-1.5 rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-[#04191c] disabled:opacity-50"
-                  >
-                    {t.running ? "…" : t.action.label}
-                  </button>
-                )}
-              </div>
+        {toasts.map((t) => (
+          <Island
+            key={t.id}
+            open={t.open}
+            tone={TONE[t.variant]}
+            icon={ICON[t.variant]}
+            className="pointer-events-auto"
+          >
+            <div role="status" className="flex items-start gap-2">
+              <span className="block min-w-0 flex-1 leading-5">{t.message}</span>
+
+              {t.action && (
+                <button
+                  onClick={() => runAction(t)}
+                  disabled={t.running}
+                  className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
+                >
+                  {t.running ? "…" : t.action.label}
+                </button>
+              )}
+
               <button
                 onClick={() => startExit(t.id)}
                 aria-label="بستن اعلان"
                 className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
               >
-                ✕
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+                  <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
+                </svg>
               </button>
             </div>
-          );
-        })}
+          </Island>
+        ))}
       </div>
     </ToastContext.Provider>
   );

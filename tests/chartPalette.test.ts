@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { describe, expect, test } from "vitest";
 import {
   SERIES_COLORS,
@@ -9,25 +11,56 @@ import {
 
 describe("the categorical palette", () => {
   test("is the exact order that was validated, in that order", () => {
-    // These seven hues and this ordering passed the colour-blindness, lightness,
-    // chroma and contrast checks against this app's chart surface (#121a24).
-    // Reordering them is not a cosmetic change -- an earlier attempt to lead with the
-    // app's cyan accent collapsed green against magenta to a deuteranopia distance of
-    // 1.6, meaning a red-green colourblind reader could not tell two series apart.
+    // The palette moved behind CSS variables so a theme change re-colours every chart
+    // without re-rendering it, but the property this test defends did not move: the
+    // ordering is what was validated, and reordering it is not a cosmetic change. An
+    // earlier attempt to lead with the app's cyan accent collapsed green against magenta
+    // to a deuteranopia distance of 1.6 -- two series a red-green colourblind reader
+    // cannot tell apart. So the indirection is checked here and the literals below.
     expect(SERIES_COLORS).toEqual([
-      "#3987e5",
-      "#d95926",
-      "#199e70",
-      "#c98500",
-      "#d55181",
-      "#008300",
-      "#9085e9",
+      "var(--series-1)",
+      "var(--series-2)",
+      "var(--series-3)",
+      "var(--series-4)",
+      "var(--series-5)",
+      "var(--series-6)",
+      "var(--series-7)",
+    ]);
+  });
+
+  test("resolves to the validated hexes, in both themes", () => {
+    // Reads the stylesheet rather than trusting it. Without this the test above only
+    // proves the variables are referenced in order -- it would pass just as happily if
+    // someone edited globals.css and swapped two hues, which is exactly the edit the
+    // original version of this test existed to catch.
+    const css = readFileSync(path.join(process.cwd(), "app", "globals.css"), "utf8");
+    const setAt = (from: number) =>
+      Array.from({ length: 7 }, (_, i) => {
+        const m = css.slice(from).match(new RegExp(`--series-${i + 1}:\\s*(#[0-9a-f]{6})`, "i"));
+        return m?.[1].toLowerCase();
+      });
+
+    const lightAt = css.indexOf('[data-theme="light"]');
+    expect(lightAt).toBeGreaterThan(-1);
+
+    // Dark: the original validated order. Worst adjacent separation 7.9, yellow against
+    // magenta under deuteranopia.
+    expect(setAt(0)).toEqual([
+      "#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9",
+    ]);
+
+    // Light: same hues re-solved for a white chart surface, searched to meet that same
+    // 7.9 figure rather than a looser one. It lands at 7.9, aqua against yellow under
+    // protanopia. Bright cyan is absent for the same reason it is absent from the dark
+    // categorical order -- it is a single-series colour, not a categorical one.
+    expect(setAt(lightAt)).toEqual([
+      "#0068cb", "#b63e00", "#018058", "#9c6600", "#ac0258", "#008d00", "#6a3fe9",
     ]);
   });
 
   test("assigns by position, so a colour follows a series and not its rank", () => {
-    expect(seriesColor(0)).toBe("#3987e5");
-    expect(seriesColor(2)).toBe("#199e70");
+    expect(seriesColor(0)).toBe("var(--series-1)");
+    expect(seriesColor(2)).toBe("var(--series-3)");
   });
 
   test("folds an eighth series into Other rather than inventing a hue", () => {

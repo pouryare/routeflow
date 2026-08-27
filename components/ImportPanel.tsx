@@ -177,7 +177,7 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
           <button
             onClick={syncFromOneDrive}
             disabled={busy}
-            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
           >
             {busy ? "در حال دریافت از OneDrive..." : "☁ همگام‌سازی از OneDrive"}
           </button>
@@ -317,7 +317,7 @@ export default function ImportPanel({ onImported }: { onImported: () => void }) 
             <button
               onClick={confirmImport}
               disabled={busy}
-              className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+              className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
             >
               {busy ? "در حال اعمال..." : "تأیید و اعمال"}
             </button>

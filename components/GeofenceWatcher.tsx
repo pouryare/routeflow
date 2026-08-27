@@ -174,7 +174,7 @@ export default function GeofenceWatcher({
         <button
           onClick={prompt.kind === "customer" ? confirmVisit : confirmFacilityStop}
           disabled={saving}
-          className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+          className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
         >
           {saving ? "..." : "بله، ثبت شد"}
         </button>

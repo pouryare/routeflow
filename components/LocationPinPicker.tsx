@@ -12,7 +12,7 @@ const TEHRAN_CENTER: [number, number] = [35.7, 51.4];
 
 const pinIcon = L.divIcon({
   className: "",
-  html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:2px solid #04191c;box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>`,
+  html: `<div style="width:22px;height:22px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--accent);border:2px solid var(--accent-ink);box-shadow:0 2px 6px rgba(0,0,0,0.4)"></div>`,
   iconSize: [22, 22],
   iconAnchor: [11, 22],
 });
@@ -84,7 +84,7 @@ export default function LocationPinPicker({
           <button
             onClick={() => pos && onConfirm(pos[0], pos[1])}
             disabled={!pos}
-            className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c] disabled:opacity-50"
+            className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink disabled:opacity-50"
           >
             ثبت موقعیت
           </button>

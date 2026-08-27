@@ -55,11 +55,14 @@ function LoginForm() {
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[140vmax] -translate-x-1/2 -translate-y-1/2 opacity-[0.12]"
+        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[140vmax] -translate-x-1/2 -translate-y-1/2"
         style={{
           background:
             "conic-gradient(from 0deg, var(--accent), transparent 22%, transparent)",
           animation: "spin var(--sweep-duration) linear infinite",
+          // Tokenised rather than a fixed 0.12: the same alpha that is barely visible on
+          // near-black is a grey wedge across a pale canvas.
+          opacity: "var(--sweep-opacity)",
         }}
       />
 
@@ -107,7 +110,7 @@ function LoginForm() {
         <button
           type="submit"
           disabled={loading || !username.trim() || !password}
-          className="w-full cursor-pointer rounded-md border border-accent bg-accent py-2 font-medium text-[#04191c] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+          className="w-full cursor-pointer rounded-md border border-accent bg-accent py-2 font-medium text-accent-ink transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
         >
           {loading ? "در حال ورود..." : "ورود"}
         </button>

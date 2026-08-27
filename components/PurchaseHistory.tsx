@@ -154,7 +154,7 @@ export default function PurchaseHistory({
           <div className="mt-3 flex flex-wrap gap-2">
             <Link
               href={`/sales/orders/new?customer=${customerId}`}
-              className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-xs)] font-medium text-[#04191c] no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
+              className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
             >
               ثبت سفارش تازه
             </Link>
