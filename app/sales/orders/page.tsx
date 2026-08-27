@@ -136,7 +136,7 @@ export default async function OrdersPage({
             : "اولین سفارش را ثبت کنید. از همان لحظه، بدهی و تاریخ آخرین خرید مشتری‌ها روی نقشه هم به‌روز می‌شود."}
         </p>
       ) : (
-        <ul className="flex list-none flex-col gap-[var(--space-2)] p-0">
+        <ul className="flex list-none flex-col gap-[var(--space-4)] p-0 pt-[var(--space-2)]">
           {orders.map((order) => (
             <li key={order.id}>
               <OrderPocketCard
@@ -149,6 +149,12 @@ export default async function OrdersPage({
                     onARun.has(order.id) && "delivery",
                   ].filter(Boolean) as OrderDoc[]
                 }
+                /* Each paper prints the figure that document is actually about, so
+                   pulling the fan open answers a question rather than showing a prop. */
+                docNote={{
+                  receipt: faToman(order.total_toman),
+                  delivery: `${faNum(order.kg)} کیلو`,
+                }}
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
                   <span className="text-[length:var(--text-base)] text-[var(--text)]">

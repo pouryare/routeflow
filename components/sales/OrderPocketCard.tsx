@@ -27,12 +27,16 @@ export default function OrderPocketCard({
   href,
   docs,
   tone,
+  docNote,
   children,
 }: {
   href: string;
   docs: OrderDoc[];
   /** The order's status colour. Washes up through the card behind the papers. */
   tone: string;
+  /** A figure to print on a paper -- the invoice total, the delivered weight. Optional
+   *  per document, because a paper with a blank line on it is worse than a bare one. */
+  docNote?: Partial<Record<OrderDoc, string>>;
   children: ReactNode;
 }) {
   return (
@@ -47,10 +51,16 @@ export default function OrderPocketCard({
                 // Fanned by index. Alternating the sign keeps a two-paper fan symmetrical
                 // instead of leaning, which reads as a stack rather than as a slip.
                 ["--paper-i" as string]: String(i),
-                transform: `translateX(${i * 26}px) rotate(${i % 2 === 0 ? -4 : 3}deg)`,
                 zIndex: docs.length - i,
               }}
-            />
+            >
+              {/* Only rendered large enough to read once the fan opens; at rest the card
+                  covers all but the top edge. */}
+              <span className="pocket__paper-label">{DOC_LABEL[d]}</span>
+              {docNote?.[d] ? (
+                <span className="pocket__paper-note num">{docNote[d]}</span>
+              ) : null}
+            </span>
           ))}
         </span>
       )}

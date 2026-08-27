@@ -1535,3 +1535,76 @@ body {
 .kargah .seg > a[aria-current="page"] { color: var(--text); font-weight: 600; }
 .kargah .seg > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .kargah .seg > span[aria-disabled] { color: var(--text-faint); }
+
+/* ---- Document pocket, کارگاه treatment --------------------------------------
+   The base rule above shows a 14px edge and lifts it 3px on hover, which is a hint
+   that something is attached. Here the papers are real documents carrying a label
+   and a figure, and hovering pulls them right out of the pocket.
+
+   Two constraints, both load-bearing:
+   - They travel DOWNWARD at rest and up to y=0 on hover, so they never leave the
+     card's own box. Moving them up instead puts them outside it, where the list's
+     overflow clips the top row.
+   - Two documents cannot both fit inside one card's width, so the fan deliberately
+     overhangs the edges; that is what the raised z-index is for.              */
+.kargah .pocket { padding-top: 78px; z-index: 0; }
+.kargah .pocket:hover,
+.kargah .pocket:focus-within { z-index: 5; }
+
+.kargah .pocket__papers {
+  inset-inline: var(--space-4);
+  inset-inline-start: auto;
+  height: 68px;
+  width: auto;
+  z-index: 0;
+}
+.kargah .pocket:hover .pocket__papers,
+.kargah .pocket:focus-within .pocket__papers { z-index: 3; }
+
+.kargah .pocket__paper {
+  width: 152px;
+  height: auto;
+  min-height: 62px;
+  padding: 10px 12px;
+  inset-inline-end: calc(var(--paper-i) * 78px + 4px);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  transform-origin: center;
+  /* tucked: pushed down so only the top edge clears the card */
+  transform: translateY(52px) rotate(calc((var(--paper-i) - 0.5) * 7deg));
+  transition: transform 520ms var(--spring-pop), box-shadow 340ms var(--ease-out);
+}
+.kargah .pocket__paper-label {
+  display: block;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  letter-spacing: .04em;
+}
+.kargah .pocket__paper-note {
+  display: block;
+  /* A wrapped figure reads as two numbers. The paper sizes to the money, not the
+     other way round. */
+  white-space: nowrap;
+  font-size: var(--text-sm);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.35;
+  color: var(--text);
+}
+.kargah .pocket:hover .pocket__paper,
+.kargah .pocket:focus-within .pocket__paper {
+  transform: translateY(0)
+             translateX(calc((var(--paper-i) - 0.5) * -58px))
+             rotate(calc((var(--paper-i) - 0.5) * 15deg))
+             scale(1.03);
+  box-shadow: var(--sh-lift);
+}
+.kargah .pocket__card { border-radius: var(--radius-2xl); box-shadow: var(--sh-1); }
+.kargah .pocket__card:hover { box-shadow: var(--sh-2); }
+
+@media (prefers-reduced-motion: reduce) {
+  .kargah .pocket__paper { transition-duration: 1ms; }
+}
