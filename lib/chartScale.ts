@@ -246,3 +246,23 @@ export function smoothLinePath(values: number[], width: number, height: number):
   }
   return d;
 }
+
+/** A trailing moving average of a newest-first series.
+ *
+ *  The dashboards hand out `revenue_by_day` sorted newest first, so "the previous k
+ *  days" are at HIGHER indices, not lower ones -- the window looks forward through the
+ *  array and backward through time. Getting that the wrong way round produces a
+ *  comparison line that leads the measure instead of lagging it, which looks entirely
+ *  plausible and is exactly backwards.
+ *
+ *  The window shortens at the old end rather than dropping those points, so the average
+ *  spans the same days as the series it is drawn against; a shorter array would silently
+ *  shift every reading along the x axis.
+ */
+export function movingAverage(values: number[], window: number): number[] {
+  if (window < 1) return values.slice();
+  return values.map((_, i) => {
+    const slice = values.slice(i, i + window);
+    return slice.reduce((a, b) => a + b, 0) / slice.length;
+  });
+}

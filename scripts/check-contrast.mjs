@@ -107,6 +107,20 @@ for (const [theme, selector] of [
     const r = ratio(t[ink], t[fill]);
     say(r >= 4.5, `${theme} ${ink} on ${fill}: ${r.toFixed(2)} (need 4.5)`);
   }
+
+  // Gradient stat cards. Only the strongest stop of each mesh is checked because it is
+  // the worst case: every other stop is that colour mixed toward --surface, which moves
+  // it away from the ink in light and toward it in dark, never past it.
+  for (const wash of ["--wash-peach", "--wash-mint", "--wash-sand", "--wash-sky"]) {
+    for (const ink of ["--text", "--wash-ink-muted"]) {
+      if (!t[ink] || !t[wash]) {
+        say(false, `${theme} ${ink} on ${wash}: MISSING`);
+        continue;
+      }
+      const r = ratio(t[ink], t[wash]);
+      say(r >= 4.5, `${theme} ${ink} on ${wash}: ${r.toFixed(2)} (need 4.5)`);
+    }
+  }
 }
 
 if (failures) {

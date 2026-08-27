@@ -1410,6 +1410,18 @@ body {
   --info-soft: #E5F0F6;
   --plum-soft: #F2ECFA;
 
+  /* Gradient-stat washes. Only the strongest stop is a token; the rest of each mesh is
+     mixed toward --surface from it, so one value moves a whole card. The muted ink has
+     its OWN token because --text-muted lands at 3.79 on the coolest wash -- a label
+     that answers to the wash it sits on, not to the page. */
+  --wash-peach: #FFD7BE;
+  --wash-mint: #CFE6D2;
+  --wash-sand: #F0DFBB;
+  --wash-sky: #CFE0EC;
+  --wash-ink: var(--text);
+  --wash-ink-muted: #6A6055;
+  --wash-edge: rgba(62, 44, 28, .10);
+
   /* ---- Elevation. Warm-tinted; a neutral shadow on a warm ground reads as dirt. */
   --sh-1: 0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10);
   --sh-2: 0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17);
@@ -1435,6 +1447,12 @@ body {
   --text-xl: 1.5rem;
   --text-2xl: 2rem;
   --text-3xl: 2.875rem;
+
+  /* One series has nothing to be confused with, so it wears the accent -- which in this
+     scope is the terracotta, not the map's cyan. The categorical --series-1..7 are left
+     exactly as validated in lib/chartPalette.ts and must not be re-tinted by eye. */
+  --series-single: var(--accent);
+  --series-compare: var(--tint-plum);
 
   --stagger-base: 55ms;
 
@@ -1477,6 +1495,16 @@ body {
   --crit-soft: #3A1B25;
   --info-soft: #1B2A34;
   --plum-soft: #2A2337;
+
+  /* Dark carries its OWN mixes. The light pastels glare on a dark ground -- they are
+     the brightest thing on the page and the figure printed on them disappears. */
+  --wash-peach: #4A2A1C;
+  --wash-mint: #24382A;
+  --wash-sand: #40331A;
+  --wash-sky: #1F3341;
+  --wash-ink: var(--text);
+  --wash-ink-muted: #A99C8D;
+  --wash-edge: rgba(0, 0, 0, .38);
 
   --sh-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6);
   --sh-2: 0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7);
@@ -1607,4 +1635,192 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .kargah .pocket__paper { transition-duration: 1ms; }
+}
+
+/* ---- Gradient stat card (MASTER.md, "Gradient stat card") --------------------
+   A soft two-source mesh rather than a linear ramp: one wash from the top inline-start
+   corner and a fainter one from the opposite corner, so the card has a direction to it
+   instead of a stripe. Both are mixed toward --surface from a single wash token, which
+   is what keeps a re-tint to one value.
+
+   The wash is painted on a ::before rather than on the element so the card can still
+   carry a hover elevation without the gradient having to be redeclared.           */
+.kargah .gstat {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  border: 1px solid var(--wash-edge);
+  padding: var(--space-4) var(--space-4) calc(var(--space-4) + 2px);
+  box-shadow: var(--sh-1);
+  transition: box-shadow 260ms var(--ease-out), transform 260ms var(--ease-out);
+}
+.kargah .gstat::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(118% 150% at 100% 0%,
+      var(--wash) 0%,
+      color-mix(in oklab, var(--wash) 46%, var(--surface)) 44%,
+      var(--surface) 100%),
+    radial-gradient(92% 130% at 0% 100%,
+      color-mix(in oklab, var(--wash) 34%, var(--surface)) 0%,
+      transparent 68%);
+}
+.kargah .gstat:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.kargah .gstat--peach { --wash: var(--wash-peach); }
+.kargah .gstat--mint  { --wash: var(--wash-mint); }
+.kargah .gstat--sand  { --wash: var(--wash-sand); }
+.kargah .gstat--sky   { --wash: var(--wash-sky); }
+
+.kargah .gstat__label {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--wash-ink-muted);
+}
+.kargah .gstat__value {
+  display: block;
+  margin-top: var(--space-2);
+  font-size: var(--text-xl);
+  font-weight: 700;
+  letter-spacing: -.02em;
+  line-height: 1.25;
+  color: var(--wash-ink);
+}
+.kargah .gstat__note {
+  display: block;
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--wash-ink-muted);
+}
+.kargah .gstat__icon {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in oklab, var(--wash) 62%, var(--surface));
+  font-size: var(--text-sm);
+  line-height: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kargah .gstat { transition-duration: 1ms; }
+  .kargah .gstat:hover { transform: none; }
+}
+
+/* ---- Carved bay card (MASTER.md, "Carved bay card") -------------------------
+   The bay is cut out of `.cradlecard` with clip-path, so:
+   - the avatars are a SIBLING (`.cradle`), never a child. clip-path clips descendants,
+     and avatars placed inside are erased by the very bay meant to hold them.
+   - elevation is `filter: drop-shadow()`, never `box-shadow`. A box-shadow is drawn on
+     the element's box and is then clipped away with everything else outside the path,
+     so a clipped card with a box-shadow simply has no shadow at all.
+   Below the carve's minimum width `carvedCardPath` returns null, `.carved` comes off,
+   and the card falls back to an ordinary rounded rectangle with the avatars above it. */
+.kargah .cradlewrap { position: relative; }
+.kargah .cradle {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 0 var(--space-2) var(--space-2);
+  min-height: 40px;
+}
+.kargah .cradlecard {
+  position: relative;
+  background: var(--surface);
+  border-radius: var(--radius-2xl);
+  box-shadow: var(--sh-1);
+  padding: var(--space-4);
+}
+/* Only once the path is actually applied. Swapping to drop-shadow before the carve is
+   measured leaves an uncarved card wearing the wrong shadow for a frame. */
+.kargah .cradlecard.carved {
+  box-shadow: none;
+  filter: var(--card-drop);
+  padding-top: var(--space-2);
+}
+.kargah .cradlecard.carved .shoulder {
+  /* The shoulder is the strip beside the bay: it gets the card's own width minus the
+     notch, which is why it is measured in the same place the path is. */
+  min-height: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  padding-inline-start: var(--space-3);
+}
+.kargah .cradlecard:not(.carved) .shoulder { padding-bottom: var(--space-2); }
+/* Pulled up into the bay. Absolute so the card's flow is unaffected when the carve
+   turns off and the avatars go back to sitting above it. */
+.kargah .cradlewrap:has(.cradlecard.carved) .cradle {
+  position: absolute;
+  top: 6px;
+  inset-inline-end: var(--space-4);
+  z-index: 2;
+  padding: 0;
+}
+.kargah .cradle__face {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--surface);
+  background: var(--surface-sunk);
+  display: grid;
+  place-items: center;
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-inline-start: -10px;
+  box-shadow: var(--sh-1);
+}
+.kargah .cradle__face:first-child { margin-inline-start: 0; }
+.kargah .cradle__face--more { background: var(--accent-soft); color: var(--accent-text); }
+
+/* ---- Spline chart (MASTER.md, "Spline chart") -------------------------------
+   The entrance is CSS keyframes rather than a class the way Reveal does it, because a
+   chart remounts on every navigation into its page -- which is exactly when it should
+   replay -- so there is nothing for JS to decide.
+
+   The line is drawn with pathLength="1", so one dasharray value works whatever the real
+   path length is, and the draw runs right to left because the path starts at index 0,
+   which in RTL is the newest reading at the right edge. The dots' delays ascend with the
+   same index, so each point lands as the line reaches it.                        */
+.kargah .spline__line {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: spline-draw calc(var(--dot-count, 8) * var(--dot-step, 55ms) + 260ms)
+             var(--ease-out) both;
+}
+@keyframes spline-draw { to { stroke-dashoffset: 0; } }
+
+.kargah .spline__area {
+  opacity: 0;
+  animation: spline-wash 620ms var(--ease-out) both;
+  animation-delay: 200ms;
+}
+@keyframes spline-wash { to { opacity: 1; } }
+
+/* `r` is a real CSS property on SVG geometry, so the radius can be animated by the
+   compositor instead of by a React state update per frame. */
+.kargah .dot-p {
+  animation: dot-land 460ms var(--spring-pop) both;
+  animation-delay: calc(var(--dot-i) * var(--dot-step, 55ms));
+}
+@keyframes dot-land {
+  from { r: 0px; }
+  to { r: 4.6px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kargah .spline__line,
+  .kargah .spline__area,
+  .kargah .dot-p { animation: none; }
+  .kargah .spline__line { stroke-dashoffset: 0; }
+  .kargah .spline__area { opacity: 1; }
+  .kargah .dot-p { r: 4.6px; }
 }
