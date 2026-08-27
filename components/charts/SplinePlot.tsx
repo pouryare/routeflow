@@ -81,10 +81,16 @@ export default function SplinePlot({
       onPointerLeave={() => setActive(null)}
       style={{ ["--dot-count" as string]: n }}
     >
+      {/* No `height` attribute, and height:auto in the style.
+          With a fixed pixel height the default preserveAspectRatio ("xMidYMid meet")
+          scales the drawing to fit the SHORTER axis and centres it, so in a card wider
+          than the viewBox's ratio the plot sits in a narrow column with empty margins on
+          both sides. Letting the height come from the intrinsic ratio makes it fill the
+          card, and keeps the dots circular -- which preserveAspectRatio="none" would not. */}
       <svg
         viewBox={`0 0 ${width} ${height + 22}`}
         width="100%"
-        height={height + 22}
+        style={{ height: "auto" }}
         role="img"
         aria-label={ariaLabel}
         className="block max-w-full"
@@ -122,13 +128,16 @@ export default function SplinePlot({
         {series.map((s) => (
           <path
             key={s.label}
-            className="spline__line"
+            /* The dash pattern lives in CSS, not on the element. `.spline__line` sets
+               stroke-dasharray for its draw-on animation, and a CSS declaration beats a
+               presentation attribute -- so a strokeDasharray prop here would be
+               overridden and the comparison would render solid. */
+            className={`spline__line${s.dashed ? " spline__line--dashed" : ""}`}
             pathLength={1}
             d={splinePath(pointsOf(s))}
             fill="none"
             stroke={s.color}
-            strokeWidth={s.dashed ? 1.75 : 2.5}
-            strokeDasharray={s.dashed ? "0.012 0.014" : undefined}
+            strokeWidth={s.dashed ? 2 : 2.5}
             strokeLinecap="round"
             strokeLinejoin="round"
           />
@@ -172,6 +181,13 @@ export default function SplinePlot({
           </>
         )}
 
+        {/* direction: ltr on the labels, and it is load-bearing.
+            `text-anchor` resolves against the INLINE direction, so under the page's rtl
+            an anchor of "end" extends the box to the RIGHT and "start" extends it LEFT --
+            both off the viewBox, which clips them. Measured: end@x=509 ran 509->551 in a
+            520-wide box. Forcing ltr makes start/end physical again, and a year/month/day
+            date is an ltr run anyway; the isolate keeps it from disturbing its
+            surroundings. */}
         {n > 0 && (
           <>
             <text
@@ -179,7 +195,7 @@ export default function SplinePlot({
               y={height + 16}
               textAnchor="end"
               className="fill-[var(--text-muted)]"
-              style={{ fontSize: 10 }}
+              style={{ fontSize: 10, direction: "ltr", unicodeBidi: "isolate" }}
             >
               {labels[0]}
             </text>
@@ -188,7 +204,7 @@ export default function SplinePlot({
               y={height + 16}
               textAnchor="start"
               className="fill-[var(--text-muted)]"
-              style={{ fontSize: 10 }}
+              style={{ fontSize: 10, direction: "ltr", unicodeBidi: "isolate" }}
             >
               {labels[n - 1]}
             </text>

@@ -89,7 +89,10 @@ export default async function SalesHomePage() {
           note={
             d.debt.over_30 > 0
               ? `${faToman(d.debt.over_30)} بالای ۳۰ روز`
-              : `${faNum(d.customer_count)} مشتری بدهکار`
+              /* customer_count is COUNT(*) over the territory's customers, NOT the ones
+                 in debt -- a shop with no orders yet is still in it. Calling it
+                 «مشتری بدهکار» printed "141 customers in debt" beside a balance of zero. */
+              : `${faNum(d.customer_count)} مشتری در منطقه`
           }
         />
       </Reveal>

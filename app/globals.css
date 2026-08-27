@@ -1798,6 +1798,17 @@ body {
 }
 @keyframes spline-draw { to { stroke-dashoffset: 0; } }
 
+/* The comparison series cannot draw on: its dash pattern IS the dasharray, and the
+   draw animation needs that property for itself. So it fades in instead, on the same
+   clock the area wash uses -- background arriving as background. */
+.kargah .spline__line--dashed {
+  stroke-dasharray: 0.006 0.013;
+  stroke-dashoffset: 0;
+  opacity: 0;
+  animation: spline-wash 620ms var(--ease-out) both;
+  animation-delay: 180ms;
+}
+
 .kargah .spline__area {
   opacity: 0;
   animation: spline-wash 620ms var(--ease-out) both;
@@ -1818,10 +1829,12 @@ body {
 
 @media (prefers-reduced-motion: reduce) {
   .kargah .spline__line,
+  .kargah .spline__line--dashed,
   .kargah .spline__area,
   .kargah .dot-p { animation: none; }
   .kargah .spline__line { stroke-dashoffset: 0; }
-  .kargah .spline__area { opacity: 1; }
+  .kargah .spline__area,
+  .kargah .spline__line--dashed { opacity: 1; }
   .kargah .dot-p { r: 4.6px; }
 }
 
@@ -1872,6 +1885,20 @@ body {
   margin-inline-start: auto;
   font-size: var(--text-xs);
   color: var(--text-muted);
+}
+/* The cards scroll inside their own lane rather than stretching it.
+   A lane that grows with its contents makes the four stages incomparable -- the tallest
+   one sets the page height and the others become slivers of whitespace beside it. */
+.kargah .lane__cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  max-height: 56vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  /* Room for the card's own hover lift and focus ring, which a tight overflow clips. */
+  margin: -4px;
+  padding: 4px;
 }
 .kargah .lane__hint {
   margin: auto 0 0;

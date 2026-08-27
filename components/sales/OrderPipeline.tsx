@@ -33,6 +33,15 @@ const DRAG_THRESHOLD = 6;
  *  same gesture, so without this a successful drag also opens the modal. */
 const CLICK_GUARD_MS = 60;
 
+/** Cards drawn per lane before the rest are summarised.
+ *
+ *  Without it the تحویل‌شده lane grows without limit -- it is the only lane nothing ever
+ *  leaves -- and a board whose fourth column is nine thousand pixels tall has stopped
+ *  being a board: the four stages can no longer be seen against each other, which is the
+ *  entire reason for drawing them side by side. The lane header keeps the TRUE total, and
+ *  the overflow is stated in words with a link to the full list, never silently dropped. */
+const LANE_CAP = 12;
+
 type Drag = { order: PipelineOrder; from: StageKey; x: number; y: number; width: number };
 
 /** The order board (MASTER.md, "Order pipeline").
@@ -176,7 +185,8 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                 <span className="lane__count num">{faNum(rows.length)}</span>
               </header>
 
-              {rows.map((o) => {
+              <div className="lane__cards">
+              {rows.slice(0, LANE_CAP).map((o) => {
                 const movable = stage.key === "draft";
                 return (
                   <button
@@ -214,6 +224,16 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                 <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
                   خالی
                 </p>
+              )}
+              </div>
+
+              {rows.length > LANE_CAP && (
+                <a
+                  href={`/sales/orders`}
+                  className="m-0 text-[length:var(--text-xs)] text-[var(--accent-text)] no-underline hover:underline"
+                >
+                  {faNum(rows.length - LANE_CAP)} سفارش دیگر در این مرحله ←
+                </a>
               )}
 
               <p className="lane__hint">
