@@ -12,6 +12,11 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    /* A nested git worktree -- a second, full checkout of this app. `eslint` with no
+       arguments walked it as if it were source, which is where roughly 12,200 of the
+       12,264 problems `npm run lint` used to report came from, and why the command was
+       not worth running. A separate checkout lints on its own terms. */
+    ".claude/**",
   ]),
 ]);
 

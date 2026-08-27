@@ -72,6 +72,11 @@ export default function FacilitiesPage() {
   }, [toast]);
 
   useEffect(() => {
+    // Fetch on mount. The setState is inside the async function, past its first
+    // await; the rule sees only that the call starts synchronously. Moving the data
+    // fetch out of an effect entirely is the real answer, and that is a data-layer
+    // change rather than a lint fix.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     load();
   }, [load]);
 

@@ -174,6 +174,11 @@ export default function PlannerPage() {
   }, [days]);
 
   useEffect(() => {
+    // Fetch on mount. The setState is inside the async function, past its first
+    // await; the rule sees only that the call starts synchronously. Moving the data
+    // fetch out of an effect entirely is the real answer, and that is a data-layer
+    // change rather than a lint fix.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadWeek();
   }, [loadWeek]);
 
@@ -186,6 +191,7 @@ export default function PlannerPage() {
   useEffect(() => {
     // Read once on mount rather than in useState's initialiser: localStorage is not
     // available during the server render.
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above.
     setReturnToOrigin(localStorage.getItem(RETURN_KEY) !== "0");
   }, []);
 

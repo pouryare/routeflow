@@ -518,6 +518,9 @@ export default function CoverageMap({
 
   useEffect(() => {
     const stored = localStorage.getItem("coverage_precision");
+    // Browser-only read: localStorage does not exist during the server render, so this
+    // cannot move into useState's initialiser without a hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (isPrecisionMode(stored)) setPrecisionMode(stored);
   }, []);
   useEffect(() => {
@@ -609,10 +612,18 @@ export default function CoverageMap({
   }, []);
 
   useEffect(() => {
+    // Fetch on mount. The setState is inside the async function, past its first
+    // await; the rule sees only that the call starts synchronously. Moving the data
+    // fetch out of an effect entirely is the real answer, and that is a data-layer
+    // change rather than a lint fix.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadReminders();
   }, [loadReminders]);
 
   useEffect(() => {
+    // Browser-only read: localStorage does not exist during the server render, so this
+    // cannot move into useState's initialiser without a hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setGeofenceOn(localStorage.getItem("coverage_geofence_on") === "1");
     setFacilityGeofenceOn(localStorage.getItem("coverage_geofence_sites") === "1");
 
@@ -835,9 +846,7 @@ export default function CoverageMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bulkSelectedIds, districtColorMode, groupColors]);
 
-  useEffect(() => {
-    if (!bulkMode) setBulkSelectedIds(new Set());
-  }, [bulkMode]);
+
 
   async function applyBulk() {
     if (bulkSelectedIds.size === 0 || (!bulkStatusChoice && !bulkGroupChoice)) return;
@@ -1844,7 +1853,15 @@ export default function CoverageMap({
                 <p className="text-[length:var(--text-xs)] text-text-faint">برای ویرایش‌های گروهی روی دسکتاپ</p>
               </div>
               <button
-                onClick={() => setBulkMode((v) => !v)}
+                onClick={() => {
+                    /* Leaving bulk mode drops the selection. Said at the click rather
+                       than in an effect on [bulkMode]: an effect renders once with the
+                       stale selection still highlighted and then again without it, which
+                       is what react-hooks/set-state-in-effect is about. This is the only
+                       place bulkMode changes. */
+                    if (bulkMode) setBulkSelectedIds(new Set());
+                    setBulkMode((v) => !v);
+                  }}
                 role="switch"
                 aria-checked={bulkMode}
                 aria-label="حالت انتخاب چندتایی مناطق"

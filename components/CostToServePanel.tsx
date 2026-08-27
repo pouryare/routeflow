@@ -39,6 +39,9 @@ export default function CostToServePanel({
   const toast = useToast();
 
   useEffect(() => {
+    // Browser-only read: localStorage does not exist during the server render, so this
+    // cannot move into useState's initialiser without a hydration mismatch.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setCostPerKm(localStorage.getItem(COST_PER_KM_KEY) ?? "");
   }, []);
 

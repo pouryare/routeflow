@@ -108,11 +108,23 @@ export default function SearchBox({
     window.setTimeout(() => (inputRef ?? localInputRef).current?.focus(), 0);
   }
 
+  /** Every change of the query invalidates what the previous one produced.
+   *
+   *  Said here, at the moment it happens, rather than in an effect watching [query]:
+   *  clearing state in an effect makes React render once with the stale results still on
+   *  screen and then again without them, which is what react-hooks/set-state-in-effect is
+   *  about. There are only three ways the query changes and all three go through here. */
+  function changeQuery(next: string) {
+    setQuery(next);
+    setGeoResults(null);
+    setLinkError(null);
+  }
+
   function collapse() {
     setExpanded(false);
     onExpandedChange?.(false);
     setOpen(false);
-    setQuery("");
+    changeQuery("");
   }
 
   const trimmed = query.trim();
@@ -141,10 +153,7 @@ export default function SearchBox({
     return [...customerResults, ...districtResults].slice(0, 8);
   }, [trimmed, customers, districts, isUrl, coordMatch]);
 
-  useEffect(() => {
-    setGeoResults(null);
-    setLinkError(null);
-  }, [query]);
+
 
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
@@ -161,9 +170,8 @@ export default function SearchBox({
   }
 
   function reset() {
-    setQuery("");
+    changeQuery("");
     setOpen(false);
-    setGeoResults(null);
   }
 
   function goToCoords() {
@@ -255,7 +263,7 @@ export default function SearchBox({
         ref={inputRef ?? localInputRef}
         value={query}
         onChange={(e) => {
-          setQuery(e.target.value);
+          changeQuery(e.target.value);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}

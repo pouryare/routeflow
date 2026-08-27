@@ -18,6 +18,10 @@ export default function NotificationToggle() {
 
   useEffect(() => {
     if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
+      // Feature detection: Notification and serviceWorker do not exist during the
+      // server render, so this cannot be decided in useState's initialiser without a
+      // hydration mismatch.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setState("unsupported");
       return;
     }
