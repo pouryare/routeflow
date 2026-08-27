@@ -29,25 +29,58 @@ export interface BasemapDef {
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
+/** CARTO's basemaps stopped serving unkeyed tiles in the open: they still return real
+ *  geometry, but with "API KEY REQUIRED" stamped diagonally across every tile, which is
+ *  what the map had been showing. Their free tier is a signup away, so the URL is kept
+ *  behind an env var -- set NEXT_PUBLIC_CARTO_API_KEY and the original quiet dark tiles
+ *  come back untouched. Without it the app uses OpenStreetMap, which is unkeyed, carries
+ *  Persian labels, and goes to z19.
+ *
+ *  Esri's Canvas "Dark Gray" was the other candidate and is the reason this is not it:
+ *  it stops at z16 and returns a blank placeholder above that, and this app is used to
+ *  find a shop's door. */
+const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY;
+
+const QUIET_TILES = CARTO_KEY
+  ? {
+      url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_KEY}`,
+      attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`,
+      subdomains: "abcd",
+      maxZoom: 20,
+    }
+  : {
+      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+      attribution: OSM_ATTRIBUTION,
+      subdomains: undefined,
+      maxZoom: 19,
+    };
+
+/** Whether the quiet basemap is OSM being toned down by CSS rather than a purpose-built
+ *  quiet tile set. The map applies `.tiles-quiet` only in that case -- filtering CARTO's
+ *  already-muted tiles a second time would wash them out. */
+export const QUIET_NEEDS_TONING = !CARTO_KEY;
+
 export const BASEMAPS: BasemapDef[] = [
   {
+    /* The id stays "dark" even though the tiles no longer are: it is the value written to
+       localStorage under BASEMAP_KEY, and renaming it would silently reset the basemap
+       for everyone who has ever chosen one. The label is what people read. */
     id: "dark",
-    label: "تیره",
+    label: "آرام",
     icon: "🌙",
-    hint: "کم‌رنگ، تا رنگ‌های مشتری‌ها و مناطق دیده شوند.",
-    url: "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-    attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`,
-    subdomains: "abcd",
-    maxZoom: 20,
-    // dark_all does carry labels, but sparsely: it drops most street names to keep the
-    // basemap quiet. That is the gap the names overlay fills.
-    hasLabels: false,
+    hint: "کم‌رنگ، تا رنگ‌های مشتری‌ها و مناطق دیده شوند. با تم روشن و تیره هماهنگ می‌شود.",
+    url: QUIET_TILES.url,
+    attribution: QUIET_TILES.attribution,
+    subdomains: QUIET_TILES.subdomains,
+    maxZoom: QUIET_TILES.maxZoom,
+    // Toned down but still OSM underneath, so the street names are there.
+    hasLabels: true,
   },
   {
     id: "streets",
     label: "خیابانی",
     icon: "🛣",
-    hint: "نام کامل خیابان‌ها و محله‌ها به فارسی. روشن است و رنگ‌های نقشه را کم‌رنگ‌تر نشان می‌دهد.",
+    hint: "نام کامل خیابان‌ها و محله‌ها به فارسی، با رنگ کامل.",
     url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
     attribution: OSM_ATTRIBUTION,
     maxZoom: 19,
@@ -74,17 +107,20 @@ export function isBasemapId(v: unknown): v is BasemapId {
   return typeof v === "string" && BASEMAPS.some((b) => b.id === v);
 }
 
-/** Persian street and place names as a transparent overlay.
+/** Persian street and place names as a transparent overlay, for satellite.
  *
- *  CARTO's own "light" label tiles are slate grey and its "dark" ones are near-black --
- *  both drawn to sit on a pale basemap, and both unreadable on this app's dark map or on
- *  satellite imagery. Inverting the near-black set in CSS turns the text near-white and
- *  leaves the transparency alone, which is what `.tiles-inverted` in globals.css does. */
+ *  Only satellite needs it now: both other basemaps are OpenStreetMap and carry their own
+ *  names. CARTO's label tiles are watermarked like the rest of their unkeyed service, so
+ *  this is Esri's reference layer, which is drawn light for a dark ground and therefore
+ *  reads over imagery without the CSS inversion the CARTO set needed.
+ *
+ *  It stops at z18 where the imagery goes to z19; Leaflet simply draws no names on that
+ *  last step rather than erroring. */
 export const LABELS_TILE = {
-  url: "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
-  attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`,
-  subdomains: "abcd",
-  maxZoom: 20,
+  url: "https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Reference/MapServer/tile/{z}/{y}/{x}",
+  attribution: "Labels &copy; Esri",
+  subdomains: undefined as string | undefined,
+  maxZoom: 18,
 };
 
 export type OverlayId =

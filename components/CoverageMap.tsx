@@ -67,6 +67,7 @@ import {
   BASEMAP_KEY,
   LABELS_TILE,
   LAYERS_KEY,
+  QUIET_NEEDS_TONING,
   basemapDef,
   changedFromDefault,
   isBasemapId,
@@ -1969,14 +1970,20 @@ export default function CoverageMap({
             url={activeBasemap.url}
             subdomains={activeBasemap.subdomains ?? "abc"}
             maxZoom={activeBasemap.maxZoom}
+            /* Toned per skin -- see .tiles-quiet. Only the quiet basemap: the streets one
+               is meant to be full colour, and satellite imagery must not be recoloured. */
+            className={
+              activeBasemap.id === "dark" && QUIET_NEEDS_TONING ? "tiles-quiet" : undefined
+            }
           />
 
           {/* Names go in their own pane above the district fills (overlayPane, 400) and
               below the markers (600). In the tile pane they would be tinted by every
               coverage colour drawn over them, which is most of the city.
 
-              The tiles are CARTO's near-black label set, inverted in CSS -- see
-              lib/mapLayers.ts for why neither of their ready-made sets works here. */}
+              Esri's reference labels, drawn light for a dark ground -- see
+              lib/mapLayers.ts. Only satellite still needs them; the other two basemaps
+              are OpenStreetMap and carry their own names. */}
           {showLabels && (
             <Pane name="labels" style={{ zIndex: 450, pointerEvents: "none" }}>
               <TileLayer
@@ -1984,7 +1991,7 @@ export default function CoverageMap({
                 attribution={LABELS_TILE.attribution}
                 subdomains={LABELS_TILE.subdomains}
                 maxZoom={LABELS_TILE.maxZoom}
-                className="tiles-inverted"
+                className="tiles-labels"
               />
             </Pane>
           )}

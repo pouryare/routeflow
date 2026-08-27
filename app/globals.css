@@ -923,21 +923,31 @@ body {
   text-align: center;
 }
 
-/* ---- Street names over a dark map.
+/* ---- Toning the quiet basemap.
 
-   CARTO publish two label-only tile sets and neither is usable here as shipped: the
-   "light" one is slate grey and the "dark" one near-black, both drawn to sit on a pale
-   basemap. Inverting the near-black set turns the text near-white and leaves the
-   transparency untouched, since `invert()` works on colour channels and not on alpha --
-   so the halo inverts with it and keeps the text legible over satellite imagery too.
+   The quiet basemap is OpenStreetMap, which is full-colour: left alone it competes with
+   the customer pins and district fills that are the entire point of this map. Filtering
+   it down is what makes it a backdrop.
 
-   Cheaper and more honest than the alternative, which was to render our own label tiles
-   from vector data for the sake of one colour. ---- */
-/* Dark only. The inversion exists to turn a near-black label set white for a dark
-   basemap; in light mode that same set is already the correct one, and inverting it
-   would produce white text on a pale map. */
-:root:not([data-theme="light"]) .tiles-inverted {
-  filter: invert(1);
+   Two tones, because the app has two skins:
+   - light: desaturated and warmed slightly, so it sits in the کارگاه palette instead of
+     arriving as a second, cooler one.
+   - dark:  inverted and hue-rotated back, the standard way to darken raster tiles. The
+     hue-rotate is what stops inversion turning every green park magenta.
+
+   Applied only when the tiles actually need it -- with a CARTO key set, the tiles are
+   already a quiet dark set and filtering them again would wash them out. ---- */
+.tiles-quiet {
+  filter: saturate(0.32) sepia(0.16) brightness(1.03) contrast(0.94);
+}
+:root:not([data-theme="light"]) .tiles-quiet {
+  filter: invert(1) hue-rotate(180deg) saturate(0.45) brightness(0.88) contrast(1.06);
+}
+
+/* Esri's reference labels are drawn light for a dark ground, which is right over
+   satellite imagery. On a light skin they need turning dark again. */
+:root[data-theme="light"] .tiles-labels {
+  filter: invert(1) brightness(0.85);
 }
 
 /* ---- Marker cluster bubble: identity-neutral (accent hue), matches the me-marker/

@@ -71,9 +71,13 @@ describe("the catalogue", () => {
     expect(new Set(BASEMAPS.map((b) => b.id)).size).toBe(BASEMAPS.length);
   });
 
-  it("marks exactly the basemap that carries its own names", () => {
+  it("marks satellite as the only basemap without its own names", () => {
     // The panel uses this to stop offering a names overlay that would be drawn twice.
-    expect(BASEMAPS.filter((b) => b.hasLabels).map((b) => b.id)).toEqual(["streets"]);
+    // Stated as "which one lacks names" rather than a list of which have them: both the
+    // quiet and the streets basemap are OpenStreetMap now and carry Persian labels, and
+    // an equality check against a list turns every future basemap into a failing test
+    // rather than a decision.
+    expect(BASEMAPS.filter((b) => !b.hasLabels).map((b) => b.id)).toEqual(["satellite"]);
   });
 
   it("puts {z}/{x}/{y} in every tile URL, and {s} only where subdomains are set", () => {
