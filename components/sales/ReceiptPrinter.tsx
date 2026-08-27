@@ -319,7 +319,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
       )}
 
       {!can.bluetooth && (
-        <p className="m-0 text-[length:var(--text-xs)] leading-5 text-[var(--text-faint)]">
+        <p className="m-0 text-[length:var(--text-xs)] leading-5 text-[var(--text-muted)]">
           این مرورگر چاپ مستقیم بلوتوث را پشتیبانی نمی‌کند. با «ارسال به پرینتر» تصویر
           رسید را به برنامه پرینتر بدهید.
         </p>

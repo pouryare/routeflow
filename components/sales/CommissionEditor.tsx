@@ -64,7 +64,7 @@ export default function CommissionEditor({
   const parsedPay = toToman(payAmount);
 
   return (
-    <section className="flex flex-col gap-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+    <section className="flex flex-col gap-[var(--space-4)] card p-[var(--space-4)]">
       <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
         نرخ و پرداخت
       </h2>
@@ -128,7 +128,7 @@ export default function CommissionEditor({
             required
           />
           {rateValue !== "" && (
-            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-faint)]">
+            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
               {parsedRate === null ? "عدد معتبر نیست" : faToman(parsedRate)}
             </span>
           )}
@@ -193,7 +193,7 @@ export default function CommissionEditor({
             required
           />
           {payAmount !== "" && (
-            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-faint)]">
+            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
               {parsedPay === null ? "عدد معتبر نیست" : faToman(parsedPay)}
             </span>
           )}

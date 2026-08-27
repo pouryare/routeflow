@@ -8,6 +8,7 @@ import { readOrders } from "@/lib/orders";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import OrderPocketCard, { OrderDoc } from "@/components/sales/OrderPocketCard";
+import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ const STATUS_LABEL: Record<string, string> = {
 };
 
 const STATUS_TONE: Record<string, string> = {
-  draft: "var(--text-faint)",
+  draft: "var(--text-muted)",
   confirmed: "var(--accent)",
   delivered: "var(--good)",
   cancelled: "var(--crit)",
@@ -116,7 +117,7 @@ export default async function OrdersPage({
       </div>
 
       {focused && (
-        <div className="flex flex-wrap items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-raised)] px-[var(--space-3)] py-[var(--space-2)]">
+        <div className="flex flex-wrap items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-2)] px-[var(--space-3)] py-[var(--space-2)]">
           <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
             فقط سفارش‌های <strong className="font-medium text-[var(--text)]">{focused.business_name}</strong>
           </span>
@@ -130,49 +131,57 @@ export default async function OrdersPage({
       )}
 
       {orders.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-faint)]">
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-muted)]">
           {focused
             ? `برای ${focused.business_name} هنوز سفارشی ثبت نشده است.`
             : "اولین سفارش را ثبت کنید. از همان لحظه، بدهی و تاریخ آخرین خرید مشتری‌ها روی نقشه هم به‌روز می‌شود."}
         </p>
       ) : (
-        <ul className="flex list-none flex-col gap-[var(--space-2)] p-0">
-          {orders.map((order) => (
-            <li key={order.id}>
-              <OrderPocketCard
-                href={`/sales/orders/${order.id}`}
-                tone={STATUS_TONE[order.status] ?? "var(--neutral)"}
-                docs={
-                  [
-                    // A draft has not been invoiced, so there is no receipt to file.
-                    order.status !== "draft" && "receipt",
-                    onARun.has(order.id) && "delivery",
-                  ].filter(Boolean) as OrderDoc[]
-                }
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                  <span className="text-[length:var(--text-base)] text-[var(--text)]">
-                    {order.customer_name}
-                  </span>
-                  <span className="tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
-                    {faToman(order.total_toman)}
-                  </span>
-                </div>
+        <Reveal replayKey={String(focused?.id ?? "all")} select="li">
+          <ul className="flex list-none flex-col gap-[var(--space-4)] p-0 pt-[var(--space-2)]">
+            {orders.map((order) => (
+              <li key={order.id}>
+                <OrderPocketCard
+                  href={`/sales/orders/${order.id}`}
+                  tone={STATUS_TONE[order.status] ?? "var(--neutral)"}
+                  docs={
+                    [
+                      // A draft has not been invoiced, so there is no receipt to file.
+                      order.status !== "draft" && "receipt",
+                      onARun.has(order.id) && "delivery",
+                    ].filter(Boolean) as OrderDoc[]
+                  }
+                  /* Each paper prints the figure that document is actually about, so
+                     pulling the fan open answers a question rather than showing a prop. */
+                  docNote={{
+                    receipt: faToman(order.total_toman),
+                    delivery: `${faNum(order.kg)} کیلو`,
+                  }}
+                >
+                  <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
+                    <span className="text-[length:var(--text-base)] text-[var(--text)]">
+                      {order.customer_name}
+                    </span>
+                    <span className="tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
+                      {faToman(order.total_toman)}
+                    </span>
+                  </div>
 
-                <div className="mt-[var(--space-2)] flex flex-wrap items-center gap-x-[var(--space-3)] gap-y-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                  <span className="tabular-nums">{faNum(Number(order.order_no.split("-")[1]))}#</span>
-                  <span>{faJalaliDate(order.order_date)}</span>
-                  <span style={{ color: STATUS_TONE[order.status] }}>
-                    {STATUS_LABEL[order.status] ?? order.status}
-                  </span>
-                  <span>{PAYMENT_LABEL[order.payment_status] ?? order.payment_status}</span>
-                  <span className="tabular-nums">{faNum(order.kg)} کیلو</span>
-                  {order.salesperson_name && <span>{order.salesperson_name}</span>}
-                </div>
-              </OrderPocketCard>
-            </li>
-          ))}
-        </ul>
+                  <div className="mt-[var(--space-2)] flex flex-wrap items-center gap-x-[var(--space-3)] gap-y-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    <span className="tabular-nums">{faNum(Number(order.order_no.split("-")[1]))}#</span>
+                    <span>{faJalaliDate(order.order_date)}</span>
+                    <span style={{ color: STATUS_TONE[order.status] }}>
+                      {STATUS_LABEL[order.status] ?? order.status}
+                    </span>
+                    <span>{PAYMENT_LABEL[order.payment_status] ?? order.payment_status}</span>
+                    <span className="tabular-nums">{faNum(order.kg)} کیلو</span>
+                    {order.salesperson_name && <span>{order.salesperson_name}</span>}
+                  </div>
+                </OrderPocketCard>
+              </li>
+            ))}
+          </ul>
+        </Reveal>
       )}
     </div>
   );

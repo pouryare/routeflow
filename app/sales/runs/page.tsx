@@ -7,6 +7,7 @@ import { readOrders } from "@/lib/orders";
 import RunPlanner from "@/components/sales/RunPlanner";
 import AssignmentBoard from "@/components/sales/AssignmentBoard";
 import RunTimeline, { TimelineStop } from "@/components/sales/RunTimeline";
+import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -99,7 +100,7 @@ export default async function RunsPage() {
   });
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
+    <Reveal replayKey="runs" className="flex flex-col gap-[var(--space-6)]">
       <RunPlanner drivers={drivers} />
       <AssignmentBoard
         runs={runs}
@@ -116,6 +117,6 @@ export default async function RunsPage() {
           .filter((r) => r.status !== "done")
           .map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}
       />
-    </div>
+    </Reveal>
   );
 }

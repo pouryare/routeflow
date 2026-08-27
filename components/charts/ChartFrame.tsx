@@ -43,7 +43,7 @@ export default function ChartFrame({
   const isEmpty = rows !== undefined && rows.length === 0;
 
   return (
-    <figure className="m-0 rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+    <figure className="card m-0 p-[var(--space-4)]">
       <figcaption className="mb-[var(--space-3)]">
         <h3 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">{title}</h3>
         {subtitle && (
@@ -54,7 +54,7 @@ export default function ChartFrame({
       </figcaption>
 
       {isEmpty ? (
-        <p className="my-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-faint)]">
+        <p className="my-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
           {empty ?? "هنوز داده‌ای ثبت نشده است"}
         </p>
       ) : (
@@ -71,7 +71,7 @@ export default function ChartFrame({
                     style={{ background: entry.color }}
                   />
                   <span className="text-[var(--text-muted)]">{entry.label}</span>
-                  {entry.value && <span className="text-[var(--text-faint)]">{entry.value}</span>}
+                  {entry.value && <span className="text-[var(--text-muted)]">{entry.value}</span>}
                 </li>
               ))}
             </ul>
@@ -79,12 +79,12 @@ export default function ChartFrame({
 
           {rows && rows.length > 0 && (
             <details className="mt-[var(--space-3)]">
-              <summary className="cursor-pointer text-[length:var(--text-xs)] text-[var(--text-faint)] hover:text-[var(--text-muted)]">
+              <summary className="cursor-pointer text-[length:var(--text-xs)] text-[var(--text-muted)] hover:text-[var(--text)]">
                 جدول داده‌ها
               </summary>
               <table className="mt-[var(--space-2)] w-full border-collapse text-[length:var(--text-xs)]">
                 <thead>
-                  <tr className="text-[var(--text-faint)]">
+                  <tr className="text-[var(--text-muted)]">
                     <th className="border-b border-[var(--border)] py-[var(--space-1)] text-right font-medium">
                       عنوان
                     </th>

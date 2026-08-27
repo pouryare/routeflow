@@ -8,11 +8,13 @@ import { stockPosition } from "@/lib/purchases";
 import { allStatements, statementFor } from "@/lib/commissionLedger";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
-import StatCard, { StatRow } from "@/components/charts/StatCard";
+import { movingAverage } from "@/lib/chartScale";
 import BarChart from "@/components/charts/BarChart";
-import LineChart from "@/components/charts/LineChart";
+import SplineChart from "@/components/charts/SplineChart";
 import DonutChart from "@/components/charts/DonutChart";
 import CollapsibleSection from "@/components/CollapsibleSection";
+import Reveal from "@/components/kargah/Reveal";
+import GradientStat from "@/components/kargah/GradientStat";
 
 export const dynamic = "force-dynamic";
 
@@ -78,40 +80,65 @@ export default async function DashboardPage() {
         همه ارقام بر اساس مقدار تحویل‌شده است — نه سفارش‌شده. تا {faJalaliDate(period.to)}.
       </p>
 
-      {/* `wash` here is decoration and grouping, nothing more: it gives the four tiles
-          distinct identities so the row scans as four things rather than one grey block.
-          It deliberately does not encode good or bad -- `tone` does that, and letting two
-          different systems both colour the same tile is how a dashboard ends up saying
+      {/* The wash is decoration and grouping, nothing more: it gives the four tiles
+          distinct identities so the row scans as four things rather than one block. It
+          deliberately does NOT encode good or bad -- the note says that in words, and
+          letting two systems both grade the same tile is how a dashboard ends up saying
           two contradictory things at once. */}
-      <StatRow>
-        <StatCard label="فروش (تحویل‌شده)" value={faToman(d.revenue_toman)} wash={0} />
-        <StatCard
+      <Reveal
+        replayKey="dash-stats"
+        className="grid gap-[var(--space-3)] sm:grid-cols-2 xl:grid-cols-4"
+      >
+        <GradientStat
+          tone="peach"
+          icon="₪"
+          label="فروش (تحویل‌شده)"
+          value={faToman(d.revenue_toman)}
+        />
+        <GradientStat
+          tone="sand"
+          icon="▤"
           label="سفارش‌ها"
           value={faNum(d.order_count)}
-          hint={`میانگین ${faToman(d.average_order_toman)}`}
-          wash={2}
+          note={`میانگین ${faToman(d.average_order_toman)}`}
         />
-        <StatCard
+        <GradientStat
+          tone="sky"
+          icon="⇄"
           label="نرخ تحویل"
           value={pct(d.fill_rate)}
-          tone={d.fill_rate > 0 && d.fill_rate < 0.9 ? "warn" : "plain"}
-          hint="تحویل‌شده به سفارش‌شده"
-          wash={3}
+          note={
+            d.fill_rate > 0 && d.fill_rate < 0.9
+              ? "زیر ۹۰٪ — تحویل‌شده به سفارش‌شده"
+              : "تحویل‌شده به سفارش‌شده"
+          }
         />
-        <StatCard
+        <GradientStat
+          tone="mint"
+          icon="⌂"
           label="مانده حساب مشتریان"
           value={faToman(d.debt.total)}
-          tone={d.debt.over_30 > 0 ? "crit" : "plain"}
-          hint={d.debt.over_30 > 0 ? `${faToman(d.debt.over_30)} بالای ۳۰ روز` : undefined}
-          wash={4}
+          note={
+            d.debt.over_30 > 0 ? `${faToman(d.debt.over_30)} بالای ۳۰ روز` : "چیزی بالای ۳۰ روز نمانده"
+          }
         />
-      </StatRow>
+      </Reveal>
 
       <div className="grid gap-[var(--space-4)] md:grid-cols-2">
-        <LineChart
+        <SplineChart
           title="فروش روزانه"
           subtitle="۳۰ روز اخیر"
-          points={d.revenue_by_day.map((p) => ({ label: faJalaliDate(p.key), value: p.value }))}
+          labels={d.revenue_by_day.map((p) => faJalaliDate(p.key))}
+          series={[
+            { label: "فروش روز", values: d.revenue_by_day.map((p) => p.value) },
+            // Same unit and the same axis: the line each day is doing better or worse
+            // than, not a second measure smuggled onto one chart.
+            {
+              label: "میانگین ۷ روزه",
+              values: movingAverage(d.revenue_by_day.map((p) => p.value), 7),
+              dashed: true,
+            },
+          ]}
           formatValue={faToman}
           empty={empty}
         />

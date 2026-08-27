@@ -171,7 +171,7 @@ export default function OrderForm({
         </p>
       )}
 
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+      <section className="card p-[var(--space-4)]">
         <label className={LABEL} htmlFor="customer-search">
           مشتری
         </label>
@@ -216,14 +216,14 @@ export default function OrderForm({
                     className="w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-2)] text-right text-[length:var(--text-sm)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"
                   >
                     {c.business_name}
-                    <span className="ms-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
+                    <span className="ms-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
                       {c.customer_code}
                     </span>
                   </button>
                 </li>
               ))}
               {matches.length === 0 && (
-                <li className="px-[var(--space-2)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-faint)]">
+                <li className="px-[var(--space-2)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
                   مشتری‌ای پیدا نشد
                 </li>
               )}
@@ -232,7 +232,7 @@ export default function OrderForm({
         )}
       </section>
 
-      <section className="grid gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)] md:grid-cols-3">
+      <section className="grid gap-[var(--space-3)] card p-[var(--space-4)] md:grid-cols-3">
         <JalaliDatePicker id="order-date" label="تاریخ سفارش" value={orderDate} onChange={setOrderDate} />
         {sellers.length > 0 && (
           <div>
@@ -267,7 +267,7 @@ export default function OrderForm({
         </div>
       </section>
 
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+      <section className="card p-[var(--space-4)]">
         <h2 className="m-0 mb-[var(--space-3)] text-[length:var(--text-base)] font-medium text-[var(--text)]">
           اقلام سفارش
         </h2>
@@ -283,7 +283,7 @@ export default function OrderForm({
                   <span className="block truncate text-[length:var(--text-sm)] text-[var(--text)]">
                     {line.product.name} · {line.packaging.name}
                   </span>
-                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-faint)]">
+                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
                     {faNum(line.packs)} بسته · {faNum(line.kg)} کیلو
                   </span>
                 </div>
@@ -295,7 +295,7 @@ export default function OrderForm({
                     type="button"
                     aria-label="حذف قلم"
                     onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
-                    className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-faint)] hover:bg-white/5 hover:text-[var(--crit)]"
+                    className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
                   >
                     ✕
                   </button>
@@ -367,7 +367,7 @@ export default function OrderForm({
         </p>
       )}
 
-      <div className="sticky bottom-0 flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-raised)] p-[var(--space-4)]">
+      <div className="sticky bottom-0 flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-2)] p-[var(--space-4)]">
         <div>
           <strong className="block text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
             {faToman(total)}

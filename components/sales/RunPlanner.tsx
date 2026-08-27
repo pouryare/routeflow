@@ -60,12 +60,12 @@ export default function RunPlanner({
         </p>
       )}
 
-      <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+      <section className="card p-[var(--space-4)]">
         <h2 className="m-0 mb-[var(--space-3)] text-[length:var(--text-base)] font-medium text-[var(--text)]">
           مسیر تازه
         </h2>
         {drivers.length === 0 ? (
-          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-faint)]">
+          <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
             هنوز حساب راننده‌ای ساخته نشده است.
           </p>
         ) : (

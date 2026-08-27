@@ -6,6 +6,7 @@ import {
   linePath,
   barLayout,
   smoothLinePath,
+  movingAverage,
 } from "@/lib/chartScale";
 
 describe("niceTicks", () => {
@@ -193,5 +194,29 @@ describe("smoothLinePath", () => {
     const d = smoothLinePath([40, 40, 40, 40], 200, 80);
     const { lo, hi } = curveExtent(d);
     expect(hi - lo).toBeLessThan(0.5);
+  });
+});
+
+describe("movingAverage", () => {
+  test("averages each reading with the ones BEFORE it in time", () => {
+    // newest first: index 0 is today, index 3 is three days ago
+    expect(movingAverage([10, 20, 30, 40], 2)).toEqual([15, 25, 35, 40]);
+  });
+
+  test("shortens the window at the old end instead of dropping points", () => {
+    const out = movingAverage([9, 3, 6], 3);
+    expect(out).toHaveLength(3);
+    expect(out[2]).toBe(6);
+  });
+
+  test("a window of one is the series itself", () => {
+    expect(movingAverage([4, 8, 1], 1)).toEqual([4, 8, 1]);
+  });
+
+  test("lags rather than leads: a spike today does not move the oldest reading", () => {
+    const flat = movingAverage([0, 0, 0, 0], 3);
+    const spike = movingAverage([120, 0, 0, 0], 3);
+    expect(spike[0]).toBeGreaterThan(flat[0]);
+    expect(spike[3]).toBe(flat[3]);
   });
 });

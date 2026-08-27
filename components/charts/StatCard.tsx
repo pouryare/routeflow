@@ -118,7 +118,7 @@ export default function StatCard({
       )}
 
       {hint && (
-        <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-faint)]">
+        <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
           {hint}
         </span>
       )}

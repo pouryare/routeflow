@@ -33,25 +33,50 @@ also have board, table and schedule views. Design the record first; the map rend
 
 ## Visual thesis `CHANGED`
 
-A precise, information-dense operations console that reads as instrument panel rather
-than consumer app. Thin borders, tabular numbers, status that glows in the dark and
-prints crisply in the light. One accent for interaction, three for status, never
-crossed. Persian text in Vazirmatn carries every label and name; a monospace face
-carries every number, so a column of figures lines up and a customer code is never
-mistaken for prose.
+**کارگاه — a warm workshop, not an instrument panel.**
 
-**Dual-world commitment.** Dark is the default and the identity — it is what the app
-looks like in a vehicle at night, and the map, markers and glows are tuned for it.
-Light is a first-class equal, not an afterthought inversion: it has its own palette,
-its own elevation model, and its own contrast budget. A component is not done until it
-has been looked at in both.
+The MVP called this "a precise, information-dense operations console that reads as
+instrument panel." That was built and shipped and is exactly what got rejected: three
+successive redesigns handed back the same dark-navy-and-cyan console, because every one
+of them was executed faithfully against the sentence above. A redesign that does not
+replace the thesis cannot happen. This is the replacement.
 
-## Interaction thesis `SHIPPED`
+The sales section is a **workshop bench**, not a cockpit. Warm off-white ground, white
+surfaces lifted by real shadow, generous radii, and a terracotta accent — warm where
+every other operations tool in the category is cold blue-grey. Numbers stay tabular and
+figures stay honest; what changes is that the app stops performing seriousness at the
+reader and starts being comfortable to stand in front of for eight hours.
 
-Fast, precise transitions (120–300ms, one sharp ease-out, no bounce). Interactive
-elements answer with a glow-intensify (dark) or shadow-lift (light) plus a 1.03 scale.
-Customer markers carry a recurring radar-ping as their idle state so the map reads as
-live. Everything degrades cleanly under `prefers-reduced-motion`.
+**Light is the default and the identity.** This inverts the MVP. The people who use
+`/sales` are standing in a shop in daylight with a phone, or at a desk; a near-black
+screen is worst exactly where the work happens. Dark is a first-class equal — same
+tokens, own palette, own contrast budget, its own gradient mixes — and it is what the
+app looks like at night. The map keeps its own dark identity and is out of scope here.
+
+Three devices carry the personality, and they are the reason this reads as designed
+rather than themed:
+
+1. **Documents live in pockets.** An order is not a row; it is a card with its receipt
+   and invoice tucked behind it, their colour glowing through a frosted face. Hover and
+   they fan out.
+2. **Cards have bays cut out of them.** A rounded rectangle is *subtracted* from a card's
+   corner and the avatars of the people involved sit in the space it opens.
+3. **Everything arrives.** Sections enter in a staggered sequence; a chart draws its own
+   line and drops its points one at a time.
+
+## Interaction thesis `CHANGED`
+
+Warm and physical. Surfaces lift toward the pointer on a soft spring rather than
+snapping; a dragged card tilts and casts a real shadow; a state change is announced by
+the island rather than by a colour quietly changing under the reader.
+
+Two rules keep it from becoming a toy. **Choreography over animation** — twenty elements
+entering in sequence reads as expensive, a hundred springing independently reads as
+cheap. And **the stagger is capped**: past ten items a sequence stops reading as rhythm
+and starts reading as lag, so item eleven onward shares item ten's delay.
+
+Everything degrades cleanly under `prefers-reduced-motion`: the entrance becomes an
+immediate paint, not a slow one.
 
 ---
 
@@ -83,132 +108,144 @@ Rules:
 - **The map is themed too** — light mode uses a light tile set, and `.tiles-inverted`
   (the CSS filter that darkens tiles) is dark-only.
 
-## Color `SHIPPED`
+## Color `CHANGED`
 
 Same semantic roles in both themes; different values. Status meaning never moves.
+Every figure below is computed, not eyeballed — see `scripts/check-contrast.mjs`.
 
-### Dark (default)
+### Light (default)
 
-| Token | Hex | Contrast vs `--bg` | Role |
-|---|---|---|---|
-| `--bg` | `#0A0E14` | — | App canvas |
-| `--surface` | `#121A24` | — | Sidebar, panels, cards |
-| `--surface-raised` | `#182230` | — | Popups, modals, dropdowns |
-| `--border` | `#1E2A38` | — | Hairlines, dividers |
-| `--border-strong` | `#2A3A4C` | — | Emphasized borders |
-| `--accent` | `#2DE0E6` | 11.90:1 | Interactive UI only |
-| `--accent-dim` | `#1B8A8F` | — | Accent at rest on large fills |
-| `--accent-ink` | `#04191C` | 11.13:1 on accent | Text on an `--accent` fill |
-| `--sweep-opacity` | `0.12` | — | Ambient sweep alpha |
-| `--text` | `#E7EEF5` | 16.53:1 | Primary text |
-| `--text-muted` | `#8697A8` | 6.45:1 | Secondary text, labels |
-| `--text-faint` | `#71808F` | 4.78:1 | Tertiary — timestamps |
-| `--good` | `#3DDC84` | 10.84:1 | بازدید شده / فعال |
-| `--warn` | `#F5A623` | 9.54:1 | نیاز به پوشش / سرنخ |
-| `--crit` | `#F0475B` | 5.30:1 | اجازه ورود ندارم / بدهی بحرانی |
-| `--neutral` | `#78889A` | 5.33:1 | نامشخص / غیرفعال |
-| `--facility` | `#D6E6F5` | 15.19:1 | Our own sites |
+| Token | Hex | vs `--bg` | vs `--surface` | Role |
+|---|---|---|---|---|
+| `--bg` | `#F4F0E9` | — | — | Warm ground. Never pure white, never cool grey. |
+| `--surface` | `#FFFFFF` | — | — | Cards lift *off* the ground |
+| `--surface-2` | `#FDFBF8` | — | — | Inset rows, quiet fills |
+| `--surface-sunk` | `#EFE9E0` | — | — | Tab trough, progress track |
+| `--border` | `#EAE2D7` | — | — | Hairlines |
+| `--border-strong` | `#DED4C6` | — | — | Emphasized borders |
+| `--text` | `#231C16` | 14.80 | 16.81 | Primary text |
+| `--text-muted` | `#776C60` | 4.51 | 5.12 | Secondary text |
+| `--text-faint` | `#91887C` | 3.07 | 3.49 | **Non-text only** — see below |
+| `--accent` | `#C0532B` | 4.10 | 4.65 | Terracotta. **Fills only** |
+| `--accent-text` | `#B44E28` | 4.55 | 5.17 | Accent *as text* — links, amounts due |
+| `--accent-ink` | `#FFFFFF` | 4.65 on accent | — | Text on an accent fill |
+| `--good` | `#4F6B4A` | 5.23 | 5.94 | تحویل‌شده / پرداخت‌شده |
+| `--warn` | `#7A5409` | 5.96 | 6.78 | تأییدشده / بخشی |
+| `--crit` | `#A11B3F` | 6.74 | 7.65 | بدهی بحرانی / لغوشده |
+| `--info` | `#2E6382` | 5.74 | 6.52 | در مسیر |
+| `--tint-plum` | `#6B4FA0` | 5.69 | 6.46 | Avatar tint only — carries no status |
 
-### Light
+### Dark
 
-| Token | Hex | Contrast vs `--bg` | Note |
-|---|---|---|---|
-| `--bg` | `#F1F4F7` | — | Cool-tinted, never pure `#FFFFFF` |
-| `--surface` | `#FFFFFF` | — | Cards lift *off* the ground, not into it |
-| `--surface-raised` | `#FFFFFF` | — | Separated from `--surface` by elevation, not tint |
-| `--border` | `#DDE3EA` | — | |
-| `--border-strong` | `#C2CCD6` | — | |
-| `--accent` | `#0B7C82` | 4.51:1 | Same hue, darkened — cyan cannot pass on white |
-| `--accent-dim` | `#6BC4C8` | — | |
-| `--accent-ink` | `#FFFFFF` | 4.98:1 on accent | Not an inversion -- see below |
-| `--sweep-opacity` | `0.05` | — | 0.12 over a pale canvas is a grey wedge |
-| `--text` | `#0F1922` | 16.09:1 | Near-black, cool-tinted |
-| `--text-muted` | `#56636F` | 5.58:1 | |
-| `--text-faint` | `#616D79` | 4.79:1 | |
-| `--good` | `#147D4B` | 4.68:1 | |
-| `--warn` | `#8A5300` | 5.73:1 | Amber darkens to bronze; there is no light amber that passes |
-| `--crit` | `#BE2637` | 5.40:1 | |
-| `--neutral` | `#5F6C79` | 4.87:1 | |
-| `--facility` | `#2B4A66` | 8.37:1 | Inverted — pale blue is invisible on white |
+| Token | Hex | vs `--bg` | vs `--surface` | Note |
+|---|---|---|---|---|
+| `--bg` | `#141110` | — | — | Warm near-black, **not** the map's blue-black |
+| `--surface` | `#1E1A17` | — | — | |
+| `--surface-2` | `#242019` | — | — | |
+| `--surface-sunk` | `#2B241E` | — | — | |
+| `--border` | `#312A22` | — | — | |
+| `--border-strong` | `#3E352B` | — | — | |
+| `--text` | `#F3EEE7` | 16.28 | 14.97 | |
+| `--text-muted` | `#9B8F81` | 5.94 | 5.46 | |
+| `--text-faint` | `#8A8278` | 4.96 | 4.56 | Clears text here; light's cannot |
+| `--accent` | `#E8734A` | 6.25 | 5.75 | Lifted — light's brick vanishes on black |
+| `--accent-text` | `#E8734A` | 6.25 | 5.75 | Same value; dark needs no split |
+| `--accent-ink` | `#241009` | 6.06 on accent | — | **Near-black, not white** |
+| `--good` | `#93C289` | 9.23 | 8.49 | |
+| `--warn` | `#E0A64A` | 8.70 | 8.00 | |
+| `--crit` | `#F2789B` | 7.10 | 6.53 | |
+| `--info` | `#83B9DC` | 8.89 | 8.18 | |
+| `--tint-plum` | `#B79EEA` | 8.14 | 7.48 | |
 
-**All 18 text values clear 4.5:1 against their own canvas**, verified by computation, not
-by eye. Two MVP values did not and have been raised: `--text-faint` (`#546271`, 3.10:1)
-and `--neutral` (`#5B6B7C`, 3.54:1). Both were absent from the MVP contrast table.
+Four findings from computing this table rather than trusting the prototype:
+
+- **`--text-faint` cannot be a text colour in light.** The prototype's `#B3A899` sits at
+  2.06:1. Solved to 4.5 it becomes `#736C62`, which is indistinguishable from
+  `--text-muted` — the two roles collapse. So light's faint is demoted to a **non-text**
+  token (out-of-month day numbers, placeholder glyphs, decorative separators) and answers
+  to 3:1. Anything a reader must actually read uses `--text-muted`.
+- **The accent needs a text variant in light and not in dark.** `#C0532B` is a fine fill
+  (white on it clears 4.65) but only 4.10 as text on the warm ground. `--accent-text`
+  darkens it until it passes. Dark's `#E8734A` clears both, so there the two tokens hold
+  the same value — the split exists in the API, not in the palette.
+- **`--accent-ink` does not invert.** White on light's brick is 4.65; white on dark's
+  lifted terracotta is **3.01 and fails**. Dark's button ink is near-black `#241009`
+  (6.06). This is the same trap the MVP hit with cyan, in the opposite direction.
+- **Critical had to move off red.** With a terracotta accent, an orange-red `--crit`
+  (`#B3261E`) sits ΔE 17 from it — near-indistinguishable, and worse under protanopia.
+  `--crit` is now a crimson (`#A11B3F`, ΔE 35; dark `#F2789B`, ΔE 41), separated by
+  **hue**, not merely by lightness.
 
 Rules that hold in both themes:
 
 - **A color means one thing.** `--accent` is interaction and never status; status colors
-  are never borrowed for interactive chrome; `--facility` is infrastructure and is
-  neither. Our own depots carry no coverage reading, so they may not wear a status color.
-- **Color is never the only signal.** The Persian status word sits beside every dot.
-- **Status fills** (dots, pills, marker bodies) are non-text and answer to the 3:1
-  threshold, so light mode may keep a brighter fill than its text token — but a bright
-  fill on white takes a 1px darkened ring to hold its edge.
-- **Primary button text** comes from `--accent-ink`, never a literal. It is a token
-  precisely because it does not invert cleanly: dark's bright cyan needs near-black ink,
-  light's darkened teal needs white. This value was hardcoded as `#04191c` in 55 places
-  across 34 files, every one of which broke the moment a second theme existed -- which is
-  the clearest argument in this document for why the token layer is the whole system.
+  are never borrowed for chrome; `--tint-plum` and its siblings are avatar identity and
+  are neither.
+- **Color is never the only signal.** The Persian status word sits beside every dot, and
+  the pipeline column a card sits in says its status independently of any colour.
+- **Status fills** (dots, pills) are non-text and answer to 3:1 against the surface they
+  sit on, verified per pair — a soft-tinted pill's text answers to 4.5 against the pill,
+  not against the page.
 
-## Elevation `SHIPPED`
+## Elevation `CHANGED`
 
-The MVP rule was "glow, never shadow — a dark console has no light source above." That
-is right in dark and wrong in light, where a glow reads as a blur or a rendering
-artifact rather than as lift. So elevation is now **one API with two implementations**.
+One API, two implementations — the MVP's structure survives; its values do not.
 
-| Token | Meaning | Dark | Light |
+| Token | Meaning | Light | Dark |
 |---|---|---|---|
-| `--elev-1` | Resting card, list row | `0 0 0 1px var(--border)` | + `0 1px 2px rgba(15,25,34,.06)` |
-| `--elev-2` | Raised: popup, dropdown, drag ghost | `--border-strong` + `0 8px 24px -8px rgba(2,5,9,.9)` | `0 4px 12px rgba(15,25,34,.10)` |
-| `--elev-3` | Modal, island, bottom sheet | `--border-strong` + `0 16px 48px -12px rgba(2,5,9,.95)` | `0 12px 32px rgba(15,25,34,.16)` |
+| `--sh-1` | Resting card, list row | `0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10)` | `0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6)` |
+| `--sh-2` | Hover lift, dropdown | `0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17)` | `0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7)` |
+| `--sh-3` | Modal, island, bottom sheet | `0 4px 10px rgba(62,44,28,.07), 0 28px 60px -18px rgba(62,44,28,.28)` | `0 4px 10px rgba(0,0,0,.6), 0 28px 60px -18px rgba(0,0,0,.8)` |
+| `--sh-lift` | Fanned document, drag ghost | `0 10px 22px -8px rgba(62,44,28,.24), 0 30px 60px -24px rgba(62,44,28,.30)` | as `--sh-3` |
 
-The dark values are a halo of near-black around a lighter surface. That is technically a
-shadow, and the MVP's "no drop shadows, a dark console has no light source" rule was
-pointing at something real but stated too broadly: what does not work on `#0A0E14` is a
-shadow that implies *lighting from above*. A dark halo implies occlusion instead, which
-is how a raised panel actually separates from a near-black ground. A neutral-white glow
-was the alternative and looks like a rendering fault; an accent-tinted one would have
-broken the rule that `--accent` means interaction and nothing else.
+Two changes of substance:
 
-Shadows in light are **tinted to the canvas hue** — `rgba(15, 25, 34, …)`, never neutral
-black — and every shadow in the app implies the same single light source, directly above.
+- **Light shadows are tinted warm** (`rgba(62,44,28,…)`), matching the ground's hue.
+  A neutral-black shadow on a warm ground reads as dirt.
+- **Borders are no longer part of elevation.** The MVP's `--elev-1` was a 1px ring; here
+  a resting card carries shadow only, and `--border` is reserved for genuine dividers.
+  A card that has both a hairline and a shadow reads as two competing edges.
 
-The three *status* glow classes (`.elevate-good` / `-warn` / `-crit`) become a **2px
-`border-inline-start` plus a 4% tinted fill** in light -- logical property, not
-`border-left`, so the bar lands under the first word in an RTL row. "This row is critical"
-must survive the theme change.
-
-`.elevate-accent` is deliberately excluded from that treatment and becomes a **soft 3px
-ring** instead. A bar down the leading edge is a status device, and accent is interaction:
-it marks focus and the card you are working in. Giving it the bar put a teal stripe down
-the edge of the login card, which read as a rendering fault rather than as emphasis.
+**A clipped shape takes `filter: drop-shadow(...)`, not `box-shadow`.** The carved bay
+card (below) is cut with `clip-path`, and a box-shadow is drawn on the border box, which
+the clip then removes — the card loses its shadow entirely. `--card-drop` is the
+drop-shadow form of `--sh-1` and exists for exactly this case.
 
 ## Typography `CHANGED`
 
-- **UI / Persian:** Vazirmatn (`--font-vazirmatn`). Every label, name, sentence.
-- **Data / telemetry:** JetBrains Mono (`--font-mono`). Every number — coordinates,
-  amounts, customer codes, counts, compact dates. Weight 400 only.
-  **`font-variant-numeric: tabular-nums` is mandatory** on any number that sits in a
-  column or animates, so figures do not shift width as they change.
+Vazirmatn and JetBrains Mono are retired from `/sales`. Vazirmatn is the safe Persian
+default and reads as such; the console voice it carried is the thing being replaced.
+
+- **UI / Persian:** IBM Plex Sans Arabic (`--font-fa`). Every label, name, sentence.
+  Humanist rather than geometric, and it has a genuine 300–700 range, which the density
+  of a CRM row actually needs.
+- **Data / Latin:** Plus Jakarta Sans (`--font-en`). Every number — amounts, weights,
+  codes, counts, percentages — plus Latin eyebrows. Weights 400–800.
+  **`font-variant-numeric: tabular-nums` is mandatory** on any number in a column or
+  animating.
+
+A note on why the data face is a *sans* and not a mono. Persian digits (`۰-۹`) are drawn
+by the Arabic font, not the Latin one, so a Latin monospace never touched the figures it
+was chosen for — it only ever styled the separators and the Latin labels beside them.
+Tabular figures do the aligning; the mono was decoration.
 
 | Token | Size | Use |
 |---|---|---|
-| `--text-xs` | 0.6875rem / 11px | Eyebrow labels, badges (mono, tracked) |
-| `--text-sm` | 0.8125rem / 13px | Secondary UI text, filters |
-| `--text-base` | 0.875rem / 14px | Default body/UI text |
-| `--text-md` | 1rem / 16px | Popup titles, emphasized rows |
-| `--text-lg` | 1.25rem / 20px | Section headers |
+| `--text-xs` | 0.6875rem / 11px | Eyebrow labels, badges |
+| `--text-sm` | 0.8125rem / 13px | Meta rows, captions |
+| `--text-base` | 0.9375rem / 15px | Default body/UI text |
+| `--text-md` | 1.0625rem / 17px | Emphasized rows, card titles |
+| `--text-lg` | 1.3125rem / 21px | Section headers |
 | `--text-xl` | 1.5rem / 24px | Page title |
-| `--text-2xl` | 2rem / 32px | `TARGET` KPI figure on a stat tile |
-| `--text-3xl` | 2.75rem / 44px | `TARGET` The single headline number on a dashboard |
+| `--text-2xl` | 2rem / 32px | KPI figure on a stat tile |
+| `--text-3xl` | 2.875rem / 46px | The one headline number on a dashboard |
 
-The two display sizes are new and exist for one reason: a dashboard's primary figure
-should be readable across a desk. They are **mono, weight 400, tracking `-0.02em`** —
-a large number is the one place the console voice gets to be loud, and it stays loud
-through size, not weight.
+Display sizes are **`--font-en`, weight 700–800, tracking `-0.03em`**. This reverses the
+MVP, which set them at weight 400 on the argument that "a large number gets loud through
+size, not weight." On a warm ground with soft shadows a 400-weight 46px figure reads as
+washed out rather than as restrained.
 
-Line-height 1.5 for Persian body (Vazirmatn needs the room), 1.3 for mono data rows.
-Body copy caps at ~65 characters. `text-wrap: balance` on headings, `pretty` on paragraphs.
+Line-height 1.8 for Persian body, 1.3 for figures. Body copy caps at ~65 characters.
 
 ## Spacing `SHIPPED`
 
@@ -218,20 +255,21 @@ regions of a CRM page. The map gets no forced padding — it fills.
 
 ## Radii `CHANGED`
 
-The MVP used one tight scale (4 / 6 / 10) because "sharp reads console." That still
-holds for dense controls, but a 420px-wide bento tile with a 6px radius reads as a table
-cell, not a card. **Radius scales with surface size.**
+Scaled up across the board. The MVP's 4/6/10 said "sharp reads console"; this system is
+not a console. Radius still scales with surface size — a 420px tile and a 32px chip
+cannot share a value.
 
 | Token | Value | Use |
 |---|---|---|
-| `--radius-sm` | 4px | Pills, badges, status chips |
-| `--radius-md` | 6px | Buttons, inputs, dense rows |
-| `--radius-lg` | 10px | Panels, modals, side sheets |
-| `--radius-xl` | 14px | `TARGET` Bento tiles, stat cards, board columns |
-| `--radius-2xl` | 20px | `TARGET` Notification island, bottom detail strip |
+| `--radius-sm` | 9px | Badges, small chips |
+| `--radius-md` | 12px | Dense rows, inputs, board cards |
+| `--radius-lg` | 16px | Inner panels, list blocks |
+| `--radius-xl` | 20px | Document cards, tiles |
+| `--radius-2xl` | 26px | Cards, blocks, modals, the bottom sheet |
+| `--radius-pill` | 999px | Buttons, tabs, status pills, avatars |
 
-Nothing is fully rounded except status pills and avatars. Inner elements always take a
-smaller radius than the container holding them.
+Buttons and tabs are **fully rounded** — the single loudest signal that this is not the
+old console. Inner elements always take a smaller radius than the container holding them.
 
 ## Motion `CHANGED`
 
@@ -272,21 +310,26 @@ three places where the extra weight is actually felt.
 | `--sweep-duration` | 4000ms | Ambient radar sweep |
 | `--drift-duration` | 12000ms | Gradient wash drift |
 
-### Tier 1 -- Direct manipulation. Spring belongs here.
+### Tier 0 -- Entrance. The section arrives; it does not appear.
 
-Anything the user physically moved, or that changes shape rather than position. Overshoot
-is correct because real objects carry momentum, and its absence is what makes an
-interface feel like a slideshow.
+Opening a tab plays the section in. Cards rise 16px and fade, `--stagger-base` apart,
+**capped at ten items** — item eleven onward shares item ten's delay. A chart draws its
+line over `--dur-draw`, fades its fill and comparison series in behind it, then lands its
+points one at a time.
 
-| What | Curve | Duration |
-|---|---|---|
-| Island collapse - expand | `--spring-pop` | `--dur-morph` |
-| Drag lift (card leaves the column) | `--spring-snap` | `--dur-fast` |
-| Drop settle (card lands) | `--spring-drop` | `--dur-settle` |
-| Board column reflow after a drop | `--spring-snap` | 300ms |
-| Bottom sheet / detail strip entry | `--spring-pop` | 380ms |
-| Toggle knobs, including sun/moon | `--spring-snap` | `--dur-base` |
-| Reorder / FLIP list moves | `--spring-snap` | 280ms |
+Only `opacity` and `transform` animate. Nothing reflows.
+
+**The reset is the hard part, and it is a trap worth writing down.** To replay an
+entrance you must first put the element back to its start state. If the stagger delay is
+still on the element at that moment, the reset inherits it — and *a zero-duration
+transition that carries a delay still holds the old value for the length of that delay*.
+The element does not reset; it waits, and by the time it would have, the entrance has
+already been switched back on. Only the first item (delay 0) ever animates.
+
+So the sequence is fixed: `transition: none` + clear the delay → force a style flush
+(read a layout property) → restore the transition, set the delay, add the class. Getting
+this wrong is silent — no error, just an entrance that mysteriously only plays for one
+element.
 
 ### Tier 2 -- Choreography. Stagger, not spring.
 
@@ -381,103 +424,108 @@ dimensions), and scroll-driven parallax.
 ## CRM / ERP patterns `TARGET`
 
 The vocabulary the redesign adds. Each exists to serve a specific record in the schema.
+Prototype: the کارگاه artifact (four screens, both themes, all interactions live).
+
+### Document pocket card `TARGET` — replaces `OrderPocketCard`
+An order rendered as a card with its documents tucked *behind* it: receipt, invoice,
+route sheet. The face is frosted (`backdrop-filter: blur(16px) saturate(1.5)`) so the
+documents' colour bleeds through as a soft wash. At rest they sit low, peeking ~30px.
+On hover or focus they **fan apart and rise above the face** (`z-index`, not clipping),
+tilting outward, and both become fully readable.
+
+Two constraints, both learned the hard way:
+- The documents move *down* at rest and rise to `y: 0` on hover, so they never leave the
+  card's own box. Moving them up instead puts them outside it, where the section's
+  `overflow: hidden` shaves the top row.
+- Two 138px documents do not fit inside a ~270px card. The fan deliberately **overhangs
+  the card's edges**; the raised `z-index` on the hovered pocket is what makes that legal.
+
+### Carved bay card `TARGET`
+A rounded rectangle **subtracted** from a card's top inline-start corner, leaving a
+stepped edge with a rounded inner corner. The avatars of the people on the record sit in
+the bay it opens. Cut with `clip-path: path()` computed from the card's measured size —
+a mask sized in percentages stretches the corner radii as the card grows — recomputed on
+`ResizeObserver`, and dropped entirely below 360px.
+
+The avatars must live in a **sibling** of the carved element. `clip-path` and `mask` clip
+descendants too, so avatars placed inside the card are erased by the very bay meant to
+hold them.
+
+### Travelling tab pill `TARGET`
+One pill that slides and resizes to the selected tab, `--spring-pop`. It is positioned
+before its transition is enabled, so it does not fly in from x=0 on first paint, and it
+re-measures on `ResizeObserver` and on `document.fonts.ready`.
+
+### Order pipeline `TARGET` — extends `AssignmentBoard`
+Columns are **statuses** (پیش‌نویس / تأییدشده / در مسیر / تحویل‌شده), not people; the
+assignee is a property shown on the card. Dragging moves the order between statuses.
+
+Pointer events, never HTML5 drag-and-drop — the native API does not fire on touch, and
+this board is used on a phone in a shop. Two rules the implementation must keep:
+- **Capture on the card, not the container.** `setPointerCapture` retargets the whole
+  gesture, click included; capturing on the board makes every tap report the board as its
+  target, so a tap can never tell which card it hit.
+- **Never `preventDefault()` on `pointerdown`** — it suppresses the compatibility mouse
+  events, so the card's own click never fires. Guard selection with `user-select: none`
+  on the board and `touch-action: none` on the card instead.
+
+### Processing modal `TARGET`
+Opened by tapping a pipeline card. Creator (read-only), assignee as avatar chips, and a
+**range slider for the amount collected** against the order total, with هیچ / نصف /
+تسویهٔ کامل shortcuts. The filled part of the track is painted by hand as a linear
+gradient — a range input offers no pseudo-element for it — and the input takes
+`direction: rtl` so it fills from the right.
+
+### Order journey `TARGET`
+Swimlanes for the order lifecycle: ثبت سفارش → تأیید و قیمت‌گذاری → بارگیری و مسیر →
+تحویل و تسویه. Each lane holds task nodes with the responsible person's avatar and a tick
+that toggles. Lanes are joined by a dotted connector that points along the reading
+direction.
+
+### Gradient stat card `TARGET`
+The dashboard's headline figures on soft multi-stop mesh gradients, mixed **warm** so
+they sit in the same room as the accent rather than arriving from a different palette.
+Dark carries its own mixes — the light pastels glare on a dark ground.
+
+### Spline chart `TARGET` — extends the chart kit
+Catmull-Rom through the points converted to cubic béziers, an area fill under the current
+series, the comparison series as a dotted line, and a tooltip that follows the nearest
+point. In RTL **the oldest day sits on the right**.
 
 ### Notification island `SHIPPED`
-Built as `components/Island.tsx`; `ToastProvider` renders through it. A pill that lives
-collapsed and expands to detail. Collapsed: 40px tall, `--radius-2xl`,
-mono label + status dot. Expanded: up to 420px wide, same radius, `--elev-3`.
-Morphs on `--spring-pop` / `--dur-morph`; content cross-fades at half duration, delayed by
-a third of it, so the box is visibly travelling before the text lands.
-
-The morph animates `width` and `height`, which the Motion section forbids in general. The
-exemption is narrow and mechanical: the island is `position: fixed` so it has no siblings
-to re-lay-out, and it carries `contain: layout paint size` so nothing outside its box can
-be affected by what happens inside. The banned-in-general rule is about layout thrash, and
-neither half of it reaches here. `transform: scale` was the alternative and is worse -- it
-scales the text with the box, and counter-scaling it back visibly breaks the joins on a
-connected Persian face through the whole transit. Replaces the toast stack, the geofence arrival prompt and the next-stop
-bar with one primitive — they are the same object at different sizes. Under
-`prefers-reduced-motion` it cross-fades between the two states with no morph.
+Unchanged in behaviour; re-skinned. Still the one primitive behind toasts, the geofence
+prompt and the next-stop bar. The `width`/`height` exemption documented under Motion
+still applies and still has the same justification.
 
 ### Bento detail strip `SHIPPED`
-The record detail view: a horizontal strip of unequal tiles rather than a column of
-fields. Identity tile (name, code, status) + 2–4 mini stat tiles (debt, last visit,
-order count) + a media tile (`photos`) + one gauge. `--radius-2xl` on the strip,
-`--radius-xl` on the tiles inside it. On phones it becomes the existing bottom sheet.
+Unchanged in structure; re-skinned. On phones it is the bottom sheet, which is now also
+the customer detail view opened by tapping a pocket card.
 
 ### Assignment board `SHIPPED`
-Built as `components/sales/AssignmentBoard.tsx`, against the existing
-`POST /api/sales/runs/[id]/stops` -- new interaction, no new endpoint and no new
-authorisation surface. Records as cards in status columns. **Drag a card onto a person or a run to assign it.**
-The drag ghost takes `--elev-2` and 3° of tilt; valid targets lift and take an accent
-ring; the drop opens a confirm sheet (record, assignee with avatar and role, target run,
-amount, note) before anything is written. Nothing is assigned by drop alone — a
-mis-drop must not silently reassign a delivery. Serves `orders` → `delivery_stops`; `lead_list_items` → `users` is not built yet.
-
-Keyboard parity is not a fallback bolted on afterwards -- clicking a card and dragging it
-open the *same* confirm sheet, the only difference being whether the run arrives
-preselected. `touch-action: none` on the card is what makes the pointer-based drag work on
-a phone at all; without it the browser claims the gesture for scrolling on the first
-touchmove and the feature simply does not exist for the people using it in a vehicle.
-
-The drag ghost is positioned with physical `top`/`left`, deliberately against this
-codebase's logical-property convention: its transform is built from pointer `clientX`,
-which is measured from the viewport's left edge regardless of direction, so anchoring it
-to `inset-inline-start` put it off the right edge of an RTL screen -- in the DOM, invisible
-on screen.
-
-### Document-pocket card `SHIPPED`
-A record card whose attached documents peek above its top edge — receipt, delivery note,
-commission statement — each a small rotated preview with 12–16px showing. The card is
-the pocket. A status-keyed color wash bleeds up through the surface behind the papers.
-Serves `orders`, which already generate all three.
-
-### Stat tile `SHIPPED`
-KPI figure at `--text-2xl`/`--text-3xl` in mono, label beneath at `--text-xs`, optional
-delta chip (arrow + percent, `--good`/`--crit`). Tiles may carry a **soft gradient wash**
-keyed to their metric via `chartPalette` — a diffuse radial in the corner at low alpha,
-never a hard 45° linear fade, and never the purple-to-blue AI gradient.
-
-### Line chart `SHIPPED`
-Smooth curves via `smoothLinePath`, and specifically **monotone cubic**
-(Fritsch-Carlson) rather than Catmull-Rom or a plain spline. Those overshoot: given
-10, 90, 90 they draw a curve that rises above 90 between the second and third point. On
-this app's charts the y-axis is money and stock, so a curve bulging past the highest
-reading is the plot claiming a figure that never happened. `tests/chartScale.test.ts`
-evaluates the emitted beziers and asserts the curve never leaves the data's range. Hovering pins a floating pill above the
-point — label, value, delta — with a vertical hairline down to the axis. Series colors
-come from `chartPalette` only. Dotted grid, never solid.
-
-### Schedule: run timeline `SHIPPED` · gantt + calendar `TARGET`
-Two views over the same rows. **Gantt**: `delivery_runs` as rows, `delivery_stops` as
-segments across the day; drag a segment sideways to re-time, onto another row to
-reassign driver — the assignment board's interaction in time form. **Calendar**: month
-grid of `visit_plans` and `reminders`, day cells carrying status dots. Both Jalali via
-`lib/jalali.ts`; both RTL, which means time runs **right to left** — a gantt that grows
-leftward is correct here and reviewers will flag it as a bug, so it is written down.
-
-### Avatar stack `SHIPPED`
-Assigned people as a row of 28px avatars straddling the top edge of the card they belong
-to, overlapping by 8px, capped at 5 with a `+N` chip. Squircle, not circle. Each carries
-a count badge when it has a load to report.
-
----
+Superseded by **Order pipeline** above. Same endpoint, same authorisation surface.
 
 ## Anti-patterns
 
-- No purple/pink AI-gradient anything.
+- No purple/pink AI-gradient anything. (Warm mesh gradients are specified above and are
+  not this: they are warm, low-contrast, and carry a figure.)
 - No emoji as icon.
 - No token defined in only one theme block.
 - No component that branches on theme in JS.
-- No glow used as elevation in light mode; no drop shadow in dark.
 - No `--accent` carrying status, no status color carrying interaction.
 - No color as the only signal.
+- **No `--text-faint` on anything a reader must read** — it does not clear 4.5:1 in light.
+- **No white text on the dark theme's accent fill** — it is 3.01:1. Use `--accent-ink`.
+- **No `box-shadow` on a `clip-path`ed element** — use `--card-drop`.
+- **No stagger delay left on an element while resetting its entrance** — see Tier 0.
+- **No `setPointerCapture` on a drag container**, and no `preventDefault()` on
+  `pointerdown` — both silently destroy the click.
+- **No `inset-inline-start` for centring a fixed overlay.** Under RTL it is the *right*
+  edge, so `translate(-50%)` walks the element off toward the left. Centred overlays use
+  physical `left: 50%`.
 - No spring easing in Tier 3 (data), on hover targets, on map layers, or in driver mode.
 - No stagger that runs past its cap; no motion that survives `prefers-reduced-motion`.
-- No animation on `width`/`height`/`top`/`left`.
-- No map tile obscured by decoration — sweep and glows live in chrome and marker layers.
+- No animation on `width`/`height`/`top`/`left` outside the island's documented exemption.
 - No spinner where a skeleton fits.
-- No three-equal-column feature row; no accordion where a list works.
 - No proportional figures in a column of numbers.
 
 ## Not yet decided

@@ -103,7 +103,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
   }
 
   return (
-    <section className="flex flex-col gap-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+    <section className="flex flex-col gap-[var(--space-4)] card p-[var(--space-4)]">
       <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
         ثبت خرید
       </h2>
@@ -159,7 +159,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
             >
               <span className="min-w-0 truncate text-[length:var(--text-sm)] text-[var(--text)]">
                 {line.product.name}
-                <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-faint)]">
+                <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
                   {" "}
                   · {faNum(line.base_qty)} {line.product.base_unit} ×{" "}
                   {faToman(line.unit_cost_toman)}
@@ -173,7 +173,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
                   type="button"
                   aria-label="حذف قلم"
                   onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
-                  className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-faint)] hover:bg-white/5 hover:text-[var(--crit)]"
+                  className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
                 >
                   ✕
                 </button>
@@ -228,7 +228,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           <strong className="block text-[length:var(--text-base)] font-medium tabular-nums text-[var(--text)]">
             {faToman(total)}
           </strong>
-          <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
+          <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
             ثبت خرید، میانگین قیمت کالاها را تغییر می‌دهد.
           </span>
         </div>
