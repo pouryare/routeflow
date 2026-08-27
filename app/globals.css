@@ -227,6 +227,22 @@
   --ease-spring-snap: var(--spring-snap);
   --ease-spring-pop: var(--spring-pop);
   --ease-spring-drop: var(--spring-drop);
+
+  /* کارگاه names. Additive: the entries above still serve the map, and these
+     resolve per element from whichever scope wins. */
+  --color-surface-2: var(--surface-2);
+  --color-surface-sunk: var(--surface-sunk);
+  --color-accent-text: var(--accent-text);
+  --color-info: var(--info);
+  --color-tint-plum: var(--tint-plum);
+  --color-accent-soft: var(--accent-soft);
+  --color-good-soft: var(--good-soft);
+  --color-warn-soft: var(--warn-soft);
+  --color-crit-soft: var(--crit-soft);
+  --color-info-soft: var(--info-soft);
+  --radius-pill: var(--radius-pill);
+  --font-fa: var(--font-fa);
+  --font-en: var(--font-en);
 }
 
 body {
@@ -1353,4 +1369,125 @@ body {
     font-size: 14pt;
     line-height: 1;
   }
+}
+
+/* ═════════════════════════════════════════════════════════════════════════════
+   کارگاه — the /sales design system.
+
+   Scoped to `.kargah`, never to `:root`. Twenty-one files outside /sales read
+   --bg, --surface and --accent from the :root block above — the map among them —
+   so redefining those globally would silently re-skin the map, which is out of
+   scope. The app deliberately carries two design systems until the other CRM
+   surfaces get their own pass. See MASTER.md "Visual thesis".
+   ═══════════════════════════════════════════════════════════════════════════ */
+.kargah {
+  /* ---- Colour: light is the default and the identity ---------------------- */
+  --bg: #F4F0E9;
+  --surface: #FFFFFF;
+  --surface-2: #FDFBF8;
+  --surface-sunk: #EFE9E0;
+  --border: #EAE2D7;
+  --border-strong: #DED4C6;
+  --text: #231C16;
+  --text-muted: #776C60;
+  /* Non-text only (3.07:1). Solved to 4.5 it collapses into --text-muted and the
+     two roles stop being distinguishable, so anything readable uses --text-muted. */
+  --text-faint: #91887C;
+  --accent: #C0532B;        /* fills only in light */
+  --accent-text: #B44E28;   /* accent as text: 4.55 on --bg */
+  --accent-ink: #FFFFFF;    /* on an --accent fill: 4.65 */
+  --good: #4F6B4A;
+  --warn: #7A5409;
+  --crit: #A11B3F;          /* crimson, not orange-red: ΔE 35 from --accent */
+  --info: #2E6382;
+  --tint-plum: #6B4FA0;
+
+  /* Soft pill fills. The status word answers to the pill, not to the page. */
+  --accent-soft: #FBEDE6;
+  --good-soft: #E9F0E6;
+  --warn-soft: #FBF1DD;
+  --crit-soft: #FBE9EE;
+  --info-soft: #E5F0F6;
+  --plum-soft: #F2ECFA;
+
+  /* ---- Elevation. Warm-tinted; a neutral shadow on a warm ground reads as dirt. */
+  --sh-1: 0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10);
+  --sh-2: 0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17);
+  --sh-3: 0 4px 10px rgba(62,44,28,.07), 0 28px 60px -18px rgba(62,44,28,.28);
+  --sh-lift: 0 10px 22px -8px rgba(62,44,28,.24), 0 30px 60px -24px rgba(62,44,28,.30);
+  /* drop-shadow form: a clip-path'd element loses box-shadow entirely */
+  --card-drop: drop-shadow(0 1px 2px rgba(62,44,28,.07)) drop-shadow(0 12px 26px rgba(62,44,28,.13));
+
+  /* ---- Radii. Scaled up; this system is not a console. -------------------- */
+  --radius-sm: 9px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 26px;
+  --radius-pill: 999px;
+
+  /* ---- Type -------------------------------------------------------------- */
+  --text-xs: 0.6875rem;
+  --text-sm: 0.8125rem;
+  --text-base: 0.9375rem;
+  --text-md: 1.0625rem;
+  --text-lg: 1.3125rem;
+  --text-xl: 1.5rem;
+  --text-2xl: 2rem;
+  --text-3xl: 2.875rem;
+
+  --stagger-base: 55ms;
+
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-fa), system-ui, sans-serif;
+  font-size: var(--text-base);
+  line-height: 1.8;
+}
+
+/* ---- Dark ------------------------------------------------------------------
+   Not an inversion. The ground is warm-black rather than the map's blue-black, the
+   terracotta is lifted because light's brick disappears against it, and every
+   "soft" tint is re-solved as a deep tone rather than a pale one.
+
+   The attribute is data-skin, NOT data-theme: /sales carries its own toggle and
+   must not fight the map's theme switch.                                       */
+:root[data-skin="dark"] .kargah {
+  --bg: #141110;
+  --surface: #1E1A17;
+  --surface-2: #242019;
+  --surface-sunk: #2B241E;
+  --border: #312A22;
+  --border-strong: #3E352B;
+  --text: #F3EEE7;
+  --text-muted: #9B8F81;
+  --text-faint: #8A8278;
+  --accent: #E8734A;
+  --accent-text: #E8734A;
+  --accent-ink: #241009;   /* NOT white — white on this accent is 3.01:1 */
+  --good: #93C289;
+  --warn: #E0A64A;
+  --crit: #F2789B;
+  --info: #83B9DC;
+  --tint-plum: #B79EEA;
+
+  --accent-soft: #3B241A;
+  --good-soft: #22301F;
+  --warn-soft: #33280F;
+  --crit-soft: #3A1B25;
+  --info-soft: #1B2A34;
+  --plum-soft: #2A2337;
+
+  --sh-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6);
+  --sh-2: 0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7);
+  --sh-3: 0 4px 10px rgba(0,0,0,.6), 0 28px 60px -18px rgba(0,0,0,.8);
+  --sh-lift: 0 4px 10px rgba(0,0,0,.6), 0 28px 60px -18px rgba(0,0,0,.8);
+  --card-drop: drop-shadow(0 1px 2px rgba(0,0,0,.5)) drop-shadow(0 14px 30px rgba(0,0,0,.6));
+}
+
+/* Figures line up or they are not figures. */
+.kargah .num {
+  font-family: var(--font-en), system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
 }

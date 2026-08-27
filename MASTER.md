@@ -130,8 +130,8 @@ Every figure below is computed, not eyeballed — see `scripts/check-contrast.mj
 | `--accent-text` | `#B44E28` | 4.55 | 5.17 | Accent *as text* — links, amounts due |
 | `--accent-ink` | `#FFFFFF` | 4.65 on accent | — | Text on an accent fill |
 | `--good` | `#4F6B4A` | 5.23 | 5.94 | تحویل‌شده / پرداخت‌شده |
-| `--warn` | `#91650F` | 4.54 | 5.16 | تأییدشده / بخشی |
-| `--crit` | `#A11B3F` | 6.74 | 7.66 | بدهی بحرانی / لغوشده |
+| `--warn` | `#7A5409` | 5.96 | 6.78 | تأییدشده / بخشی |
+| `--crit` | `#A11B3F` | 6.74 | 7.65 | بدهی بحرانی / لغوشده |
 | `--info` | `#2E6382` | 5.74 | 6.52 | در مسیر |
 | `--tint-plum` | `#6B4FA0` | 5.69 | 6.46 | Avatar tint only — carries no status |
 
@@ -153,7 +153,7 @@ Every figure below is computed, not eyeballed — see `scripts/check-contrast.mj
 | `--accent-ink` | `#241009` | 6.06 on accent | — | **Near-black, not white** |
 | `--good` | `#93C289` | 9.23 | 8.49 | |
 | `--warn` | `#E0A64A` | 8.70 | 8.00 | |
-| `--crit` | `#F2789B` | 7.10 | 6.52 | |
+| `--crit` | `#F2789B` | 7.10 | 6.53 | |
 | `--info` | `#83B9DC` | 8.89 | 8.18 | |
 | `--tint-plum` | `#B79EEA` | 8.14 | 7.48 | |
 
