@@ -7,6 +7,7 @@ import { stockPosition, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
+import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function StockPage() {
   const negatives = stock.filter((row) => row.negative);
 
   return (
-    <div className="flex flex-col gap-[var(--space-5)]">
+    <Reveal replayKey="stock" className="flex flex-col gap-[var(--space-5)]">
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
           موجودی از خرید منهای تحویل حساب می‌شود — نه سفارش.
@@ -48,14 +49,14 @@ export default async function StockPage() {
       )}
 
       {stock.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-faint)]">
+        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
           هنوز کالایی ثبت نشده است.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
+        <div className="overflow-x-auto card">
           <table className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
-              <tr className="text-[var(--text-faint)]">
+              <tr className="text-[var(--text-muted)]">
                 <th className="border-b border-[var(--border)] p-[var(--space-3)] text-right font-medium">
                   کالا
                 </th>
@@ -110,7 +111,7 @@ export default async function StockPage() {
       {session.role === "owner" && <PurchaseEntry products={products} />}
 
       {purchases.length > 0 && (
-        <section className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+        <section className="card p-[var(--space-4)]">
           <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
             خریدهای اخیر
           </h2>
@@ -122,7 +123,7 @@ export default async function StockPage() {
               >
                 <span className="text-[var(--text)]">
                   {p.supplier ?? "بدون تأمین‌کننده"}
-                  <span className="text-[var(--text-faint)]">
+                  <span className="text-[var(--text-muted)]">
                     {" "}
                     · {faNum(p.line_count)} قلم
                   </span>
@@ -135,6 +136,6 @@ export default async function StockPage() {
           </ul>
         </section>
       )}
-    </div>
+    </Reveal>
   );
 }

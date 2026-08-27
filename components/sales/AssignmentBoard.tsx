@@ -179,7 +179,7 @@ export default function AssignmentBoard({
           </p>
 
           {orders.length === 0 ? (
-            <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-faint)]">
+            <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
               همهٔ سفارش‌های تأییدشده روی مسیر هستند.
             </p>
           ) : (
@@ -203,7 +203,7 @@ export default function AssignmentBoard({
                       <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
                         {o.customer_name}
                       </span>
-                      <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-[var(--text-faint)]">
+                      <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
                         {o.order_no}
                       </span>
                     </span>
@@ -232,7 +232,7 @@ export default function AssignmentBoard({
           </h2>
 
           {openRuns.length === 0 ? (
-            <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-faint)]">
+            <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
               مسیر بازی وجود ندارد. اول یک مسیر بسازید.
             </p>
           ) : (
@@ -285,7 +285,7 @@ export default function AssignmentBoard({
             <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
               {drag.order.customer_name}
             </span>
-            <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-[var(--text-faint)]">
+            <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
               {drag.order.order_no}
             </span>
           </span>
@@ -303,7 +303,7 @@ export default function AssignmentBoard({
             aria-modal="true"
             aria-labelledby="assign-title"
             onClick={(e) => e.stopPropagation()}
-            className="modal-card-enter w-full max-w-md rounded-[var(--radius-2xl)] border border-[var(--border-strong)] bg-[var(--surface-raised)] p-[var(--space-5)] shadow-[var(--elev-3)]"
+            className="modal-card-enter w-full max-w-md rounded-[var(--radius-2xl)] border border-[var(--border-strong)] bg-[var(--surface-2)] p-[var(--space-5)] shadow-[var(--sh-3)]"
           >
             <h3
               id="assign-title"

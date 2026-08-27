@@ -73,7 +73,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
   const packagingsOf = products.find((p) => String(p.id) === rProduct)?.packagings ?? [];
 
   return (
-    <section className="flex flex-col gap-[var(--space-4)] rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]">
+    <section className="flex flex-col gap-[var(--space-4)] card p-[var(--space-4)]">
       <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
         افزودن و قیمت‌گذاری
       </h2>
@@ -292,7 +292,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
             required
           />
           {rPrice !== "" && (
-            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-faint)]">
+            <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
               {parsedPrice === null ? "عدد معتبر نیست" : faToman(parsedPrice)}
             </span>
           )}
@@ -305,7 +305,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
           <button className={BUTTON} disabled={busy || parsedPrice === null} type="submit">
             ثبت قیمت
           </button>
-          <span className="text-[length:var(--text-xs)] leading-5 text-[var(--text-faint)]">
+          <span className="text-[length:var(--text-xs)] leading-5 text-[var(--text-muted)]">
             قیمت قبلی پاک نمی‌شود؛ سفارش‌های گذشته با قیمت خودشان می‌مانند.
           </span>
         </div>

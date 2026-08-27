@@ -86,7 +86,7 @@ export default function RunTimeline({ runs }: { runs: TimelineRun[] }) {
             </header>
 
             {run.stops.length === 0 ? (
-              <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-faint)]">
+              <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
                 هنوز ایستگاهی روی این مسیر نیست.
               </p>
             ) : (

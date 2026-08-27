@@ -98,7 +98,7 @@ export default function DonutChart({
               x={0}
               y={14}
               textAnchor="middle"
-              className="fill-[var(--text-faint)]"
+              className="fill-[var(--text-muted)]"
               style={{ fontSize: 10 }}
             >
               {centreLabel}

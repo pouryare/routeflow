@@ -2166,3 +2166,21 @@ body {
     border-bottom: 0;
   }
 }
+
+/* ---- The section card -------------------------------------------------------
+   One class for the chrome every section on /sales wears, so a change of radius or
+   elevation is one edit rather than thirteen.
+
+   Named `.card` and NOT `.block`: `block` is a Tailwind display utility that appears
+   twenty times across these pages, and defining a rule for it would put card chrome
+   round every inline span that only wanted display:block.
+
+   ChartFrame keeps its own chrome. It is the only consumer of the chart kit and it is
+   inside this scope, but it also sets its own figure/figcaption structure, and giving it
+   this class as well would double the border.                                    */
+.kargah .card {
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+}

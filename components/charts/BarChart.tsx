@@ -136,7 +136,7 @@ export default function BarChart({
             x={centres[i]}
             y={height + 16}
             textAnchor="middle"
-            className="fill-[var(--text-faint)] text-[length:var(--text-xs)]"
+            className="fill-[var(--text-muted)] text-[length:var(--text-xs)]"
             style={{ fontSize: 10 }}
           >
             {datum.label.length > 10 ? `${datum.label.slice(0, 9)}…` : datum.label}

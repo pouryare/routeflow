@@ -14,6 +14,7 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
+import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -50,7 +51,7 @@ export default async function OrderDetailPage({
   if (!order) notFound();
 
   return (
-    <div className="flex flex-col gap-[var(--space-4)]">
+    <Reveal replayKey="order" className="flex flex-col gap-[var(--space-4)]">
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <div>
           <h2 className="m-0 text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
@@ -118,7 +119,7 @@ export default async function OrderDetailPage({
 
       <table className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
         <thead>
-          <tr className="text-[var(--text-faint)]">
+          <tr className="text-[var(--text-muted)]">
             <th className="border-b border-[var(--border)] py-[var(--space-2)] text-right font-medium">
               کالا
             </th>
@@ -138,7 +139,7 @@ export default async function OrderDetailPage({
             <tr key={line.id}>
               <td className="border-b border-[var(--border)] py-[var(--space-2)] text-[var(--text)]">
                 {line.product_name}
-                <span className="block text-[length:var(--text-xs)] text-[var(--text-faint)]">
+                <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">
                   {line.packaging_name} · {faNum(line.kg)} کیلو
                 </span>
               </td>
@@ -157,12 +158,12 @@ export default async function OrderDetailPage({
       </table>
 
       {order.status === "draft" ? (
-        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-faint)]">
+        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-muted)]">
           تا وقتی پیش‌نویس است می‌شود تغییرش داد. بعد از تأیید، اصلاح فقط با ثبت قلم
           برگشتی انجام می‌شود — چون پورسانت از همین عددها حساب می‌شود.
         </p>
       ) : (
-        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-faint)]">
+        <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-muted)]">
           این سفارش تأیید شده و عددهایش ثابت است. قیمت‌ها همان‌هایی هستند که روز ثبت
           سفارش اعمال شده‌اند، حتی اگر قیمت کالا بعداً تغییر کرده باشد.
         </p>
@@ -174,9 +175,9 @@ export default async function OrderDetailPage({
         </p>
       )}
 
-      <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-faint)]">
+      <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
         ثبت‌شده در {faJalaliDateTime(order.created_at)}
       </p>
-    </div>
+    </Reveal>
   );
 }

@@ -143,10 +143,10 @@ export default function LinePlot({
 
         {points.length > 0 && (
           <>
-            <text x={width} y={height + 14} textAnchor="end" className="fill-[var(--text-faint)]" style={{ fontSize: 10 }}>
+            <text x={width} y={height + 14} textAnchor="end" className="fill-[var(--text-muted)]" style={{ fontSize: 10 }}>
               {points[0].label}
             </text>
-            <text x={0} y={height + 14} textAnchor="start" className="fill-[var(--text-faint)]" style={{ fontSize: 10 }}>
+            <text x={0} y={height + 14} textAnchor="start" className="fill-[var(--text-muted)]" style={{ fontSize: 10 }}>
               {points[points.length - 1].label}
             </text>
           </>
