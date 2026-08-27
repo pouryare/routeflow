@@ -941,7 +941,12 @@ body {
   filter: saturate(0.32) sepia(0.16) brightness(1.03) contrast(0.94);
 }
 :root:not([data-theme="light"]) .tiles-quiet {
-  filter: invert(1) hue-rotate(180deg) saturate(0.45) brightness(0.88) contrast(1.06);
+  /* brightness well under 1, and it is load-bearing rather than taste: inverting a raster
+     map turns the densest streets into the BRIGHTEST area, so a city centre becomes a
+     glowing slab exactly where the most data is drawn. The sepia pulls the result toward
+     the warm black this scope sits on instead of the blue-grey inversion leaves behind. */
+  filter: invert(1) hue-rotate(180deg) saturate(0.3) brightness(0.62) contrast(1.05)
+          sepia(0.22);
 }
 
 /* Esri's reference labels are drawn light for a dark ground, which is right over
@@ -1432,6 +1437,16 @@ body {
   --wash-ink-muted: #6A6055;
   --wash-edge: rgba(62, 44, 28, .10);
 
+  /* Aliases for tokens the map's chrome still reads.
+     کارگاه replaced --surface-raised with --surface-2 and retired --accent-dim, but the
+     main page renders CoverageMap, whose chrome references the originals across two
+     thousand lines. Defining warm equivalents here re-skins that chrome without
+     rewriting it. Every one of them is a background or a border, never text, so there is
+     no contrast pair to solve. */
+  --surface-raised: #FFFFFF;
+  --accent-dim: #E3A184;
+  --neutral: #8A7F72;
+
   /* ---- Elevation. Warm-tinted; a neutral shadow on a warm ground reads as dirt. */
   --sh-1: 0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10);
   --sh-2: 0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17);
@@ -1515,6 +1530,10 @@ body {
   --wash-ink: var(--text);
   --wash-ink-muted: #A99C8D;
   --wash-edge: rgba(0, 0, 0, .38);
+
+  --surface-raised: #242019;
+  --accent-dim: #8A4227;
+  --neutral: #6E6357;
 
   --sh-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6);
   --sh-2: 0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7);

@@ -8,7 +8,12 @@ export const STATUS_COLOR: Record<CoverageStatus, string> = {
   visited: "#3DDC84",
   needs_coverage: "#F5A623",
   not_allowed: "#F0475B",
-  unknown: "#5B6B7C",
+  /* Warm grey, not the slate it used to be. This is the fill covering most of the city,
+     and against the کارگاه cream ground a cool grey read as a different palette arriving.
+     Solved to clear 3:1 on BOTH grounds -- 4.18 on the cream, 3.96 on the warm black --
+     because unlike the district strokes this constant is shared with /report and
+     /analytics and cannot follow the skin. Still deltaE 66+ from all three signal colours. */
+  unknown: "#7D7166",
 };
 
 export const STATUS_LABEL: Record<CoverageStatus, string> = {

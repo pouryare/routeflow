@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ComponentProps } from "react";
+import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
@@ -180,7 +181,30 @@ const ADMIN_LINKS = [
   { href: "/admin/groups", icon: "🗂", label: "گروه‌ها و محدوده‌ها" },
   { href: "/admin/users", icon: "👥", label: "حساب‌های کاربری" },
 ] as const;
-const DISTRICT_STROKE = { mantaghe: "#2A3A4C", mahalle: "#546271" };
+/** Map geometry colours, per skin.
+ *
+ *  Literal hex and not CSS tokens, for the reason lib/types.ts gives: the map runs with
+ *  `preferCanvas`, and Leaflet writes these straight onto a canvas, where var() does not
+ *  resolve. So the skin has to be resolved in JS and handed down.
+ *
+ *  Unlike STATUS_COLOR these are used nowhere else, which is what makes it safe to give
+ *  them one value per skin instead of one value that has to survive both. Each clears 3:1
+ *  against its own ground: the light strokes sit at 5.7 and 3.7 on the cream, the dark
+ *  ones at 5.6 and 4.5 on the warm black. */
+const MAP_INK = {
+  light: {
+    strokeMajor: "#6B5B4C",
+    strokeMinor: "#8A7A69",
+    selected: "#C0532B",
+    boundary: "#9C8B79",
+  },
+  dark: {
+    strokeMajor: "#9A8A78",
+    strokeMinor: "#8A7A69",
+    selected: "#E8734A",
+    boundary: "#6E6055",
+  },
+} as const;
 
 // Three presets rather than a slider: this gets used one-handed in a moving vehicle,
 // where a slider thumb is unusable.
@@ -805,6 +829,13 @@ export default function CoverageMap({
 
   const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
 
+  /* The skin, resolved in JS because the canvas renderer cannot read CSS custom
+     properties -- see MAP_INK. useTheme starts at the default and corrects itself in an
+     effect, so this changes once shortly after mount; the restyle effect below lists it
+     as a dependency, which is what repaints the already-drawn district layers. */
+  const [theme] = useTheme();
+  const ink = MAP_INK[theme];
+
   function toggleBulkSelect(id: number) {
     setBulkSelectedIds((prev) => {
       const next = new Set(prev);
@@ -844,8 +875,11 @@ export default function CoverageMap({
         (layer as unknown as { setStyle: (s: object) => void }).setStyle(districtStyle(feature));
       }
     });
+    // `ink` is here because the skin changes the stroke and selection colours, and these
+    // polygons are already drawn: without it, flipping the theme leaves 419 districts
+    // outlined in the other skin's ink until something else happens to restyle them.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bulkSelectedIds, districtColorMode, groupColors]);
+  }, [bulkSelectedIds, districtColorMode, groupColors, ink]);
 
 
 
@@ -1097,7 +1131,7 @@ export default function CoverageMap({
     const dim = corridorDistrictIds && !inCorridor ? 0.25 : 1;
 
     return {
-      color: selected ? "#2DE0E6" : DISTRICT_STROKE[level],
+      color: selected ? ink.selected : level === "mantaghe" ? ink.strokeMajor : ink.strokeMinor,
       weight: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
       fillColor: fill,
       // Territory reads as a filled area rather than a tint: in group mode the fill is the
@@ -1158,7 +1192,11 @@ export default function CoverageMap({
   }, [layers.traffic_zone, layers.low_emission]);
 
   return (
-    <div className="map-viewport relative w-full overflow-hidden bg-bg">
+    /* `kargah` is the scope the whole design system hangs off -- the same class /sales
+       wears. Everything below reads --surface, --border, --accent and the rest from it,
+       so the chrome is re-skinned by this one word rather than by rewriting two thousand
+       lines of Tailwind. See app/globals.css, "کارگاه". */
+    <div className="kargah map-viewport relative w-full overflow-hidden bg-bg">
       {/* Stood down in two cases, both while the sidebar is shut -- when it is open this
           button is the only way to close it and has to stay reachable.
 
@@ -2018,7 +2056,7 @@ export default function CoverageMap({
             <GeoJSON
               data={cityBoundary as unknown as GeoJSONProps["data"]}
               interactive={false}
-              style={{ color: "#8697A8", weight: 2, dashArray: "6 5", fill: false, opacity: 0.85 }}
+              style={{ color: ink.boundary, weight: 2, dashArray: "6 5", fill: false, opacity: 0.85 }}
             />
           )}
 
@@ -2061,7 +2099,7 @@ export default function CoverageMap({
             showCoverageOnHover={false}
             maxClusterRadius={(zoom: number) => (zoom >= 16 ? 15 : 60)}
             spiderfyOnMaxZoom
-            spiderLegPolylineOptions={{ weight: 1.5, color: "#546271", opacity: 0.9 }}
+            spiderLegPolylineOptions={{ weight: 1.5, color: ink.strokeMinor, opacity: 0.9 }}
             iconCreateFunction={
             clusterIcon as unknown as ComponentProps<typeof MarkerClusterGroup>["iconCreateFunction"]
           }
