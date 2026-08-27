@@ -530,6 +530,23 @@ export default function PlannerPage() {
    *  switched off simply shows nothing rather than an invented figure. Distance covered
    *  counts only the stops actually marked done -- what was planned is not what was
    *  driven. */
+  /* "Now", as state rather than a Date.now() call inside the memo below.
+   *
+   * Calling it during render is impure -- react-hooks/purity -- and it was also quietly
+   * wrong: inside a useMemo it only re-read when one of the memo's other dependencies
+   * changed, so an open day's elapsed time sat frozen at whatever it was when the memo
+   * last ran. Ticking it makes the figure do what the comment beside it already claims.
+   *
+   * The interval is only armed while a day really is open, so no other page state or
+   * date change causes a timer to run. */
+  const [now, setNow] = useState(() => Date.now());
+  const dayOpen = siteEvents.length === 1 && selectedDate === toDateStr(new Date(now));
+  useEffect(() => {
+    if (!dayOpen) return;
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, [dayOpen]);
+
   const dayLog = useMemo(() => {
     if (siteEvents.length === 0) return null;
     const times = siteEvents.map((e) => new Date(e.created_at).getTime()).filter((t) => Number.isFinite(t)).sort((a, b) => a - b);
@@ -541,8 +558,8 @@ export default function PlannerPage() {
 
     // A single arrival means the day is still open: measure to now, not to that one
     // event, which would read as a zero-length day.
-    const isToday = selectedDate === toDateStr(new Date());
-    const end = times.length > 1 ? last : isToday ? Date.now() : last;
+    const isToday = selectedDate === toDateStr(new Date(now));
+    const end = times.length > 1 ? last : isToday ? now : last;
     const minutes = Math.max(0, Math.round((end - first) / 60000));
 
     const drivenKm =
@@ -562,7 +579,7 @@ export default function PlannerPage() {
       drivenKm,
       stopCount: siteEvents.length,
     };
-  }, [siteEvents, dayPlans, origin, returnToOrigin, selectedDate]);
+  }, [siteEvents, dayPlans, origin, returnToOrigin, selectedDate, now]);
 
   const routeStops = useMemo<RouteStop[]>(() => {
     if (orderedStops.length === 0) return [];

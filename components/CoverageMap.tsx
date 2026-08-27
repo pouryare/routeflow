@@ -407,8 +407,14 @@ export default function CoverageMap({
   // every other preference on this page.
   const [pinnedIds, setPinnedIds] = useState<number[]>([]);
   const [recentIds, setRecentIds] = useState<number[]>([]);
+  /* Read only inside the Leaflet click handler registered in onEachDistrict, which runs
+     long after render -- so this is the "latest value" ref, not render state. Written in
+     an effect because a ref mutated in the render body is not a pure render: StrictMode's
+     double render and any render React discards both write anyway. */
   const bulkModeRef = useRef(bulkMode);
-  bulkModeRef.current = bulkMode;
+  useEffect(() => {
+    bulkModeRef.current = bulkMode;
+  }, [bulkMode]);
 
   const districtLayersRef = useRef(new Map<number, Layer>());
   const mapRef = useRef<LeafletMap | null>(null);
@@ -787,33 +793,6 @@ export default function CoverageMap({
 
   const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
 
-  function districtStyle(feature?: DistrictFeature) {
-    const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
-    const fill =
-      districtColorMode === "group"
-        ? districtGroupColor(feature?.properties.group_id ?? null, groupColors)
-        : STATUS_COLOR[status];
-    const level = feature?.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
-    const selected = !!feature && bulkSelectedIds.has(feature.properties.id);
-
-    // With the corridor on, districts off it recede rather than disappear: the point is
-    // to show what sits near the drive *in context*, and a map that hides everything
-    // else can't be read as a map any more.
-    const inCorridor = !corridorDistrictIds || (!!feature && corridorDistrictIds.has(feature.properties.id));
-    const dim = corridorDistrictIds && !inCorridor ? 0.25 : 1;
-
-    return {
-      color: selected ? "#2DE0E6" : DISTRICT_STROKE[level],
-      weight: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
-      fillColor: fill,
-      // Territory reads as a filled area rather than a tint: in group mode the fill is the
-      // whole point, where in status mode it sits under markers that have to stay legible.
-      fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
-      opacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
-      dashArray: selected ? "4 3" : undefined,
-    };
-  }
-
   function toggleBulkSelect(id: number) {
     setBulkSelectedIds((prev) => {
       const next = new Set(prev);
@@ -1083,6 +1062,41 @@ export default function CoverageMap({
     }
     return ids;
   }, [corridorOn, corridorPath, corridorWidthKm, districtProps]);
+
+  /* Declared after corridorDistrictIds, not before it.
+   *
+   * This is only ever called by react-leaflet while rendering the GeoJSON layers, by
+   * which point the memo above has been evaluated -- but read top-down it referenced a
+   * const from further down the file, which react-hooks/immutability flags and which
+   * made the compiler skip optimising this whole component. Moving the declaration is
+   * pure code motion: function declarations hoist, so nothing about when it can be
+   * called changes. */
+  function districtStyle(feature?: DistrictFeature) {
+    const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
+    const fill =
+      districtColorMode === "group"
+        ? districtGroupColor(feature?.properties.group_id ?? null, groupColors)
+        : STATUS_COLOR[status];
+    const level = feature?.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
+    const selected = !!feature && bulkSelectedIds.has(feature.properties.id);
+
+    // With the corridor on, districts off it recede rather than disappear: the point is
+    // to show what sits near the drive *in context*, and a map that hides everything
+    // else can't be read as a map any more.
+    const inCorridor = !corridorDistrictIds || (!!feature && corridorDistrictIds.has(feature.properties.id));
+    const dim = corridorDistrictIds && !inCorridor ? 0.25 : 1;
+
+    return {
+      color: selected ? "#2DE0E6" : DISTRICT_STROKE[level],
+      weight: selected ? 3 : level === "mantaghe" ? 1.5 : 1,
+      fillColor: fill,
+      // Territory reads as a filled area rather than a tint: in group mode the fill is the
+      // whole point, where in status mode it sits under markers that have to stay legible.
+      fillOpacity: (selected ? 0.55 : districtColorMode === "group" ? 0.45 : level === "mantaghe" ? 0.08 : 0.35) * dim,
+      opacity: (selected ? 1 : level === "mantaghe" ? 0.5 : 0.8) * dim,
+      dashArray: selected ? "4 3" : undefined,
+    };
+  }
 
   const corridorUncovered = useMemo(() => {
     if (!corridorDistrictIds) return 0;

@@ -166,7 +166,7 @@ export default function SearchBox({
     setGeoResults(null);
   }
 
-  function useCoords() {
+  function goToCoords() {
     if (!coordMatch) return;
     onLocationFound(Number(coordMatch[1]), Number(coordMatch[2]), "مختصات وارد شده");
     reset();
@@ -212,7 +212,7 @@ export default function SearchBox({
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
     if (isUrl) decodeLink();
-    else if (coordMatch) useCoords();
+    else if (coordMatch) goToCoords();
     else if (results.length === 0 && trimmed) runGeosearch();
   }
 
@@ -297,7 +297,7 @@ export default function SearchBox({
           ) : coordMatch ? (
             <div className="p-2">
               <button
-                onClick={useCoords}
+                onClick={goToCoords}
                 className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
               >
                 📍 نمایش این مختصات روی نقشه ({coordMatch[1]}, {coordMatch[2]})

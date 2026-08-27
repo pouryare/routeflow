@@ -43,12 +43,24 @@ export default function GeofenceWatcher({
   const [saving, setSaving] = useState(false);
   const toast = useToast();
   const snoozedRef = useRef(new Map<string, number>());
+  /* The "latest value" refs: the watch effect below re-subscribes only on
+     [enabled, position], and reads these to see the current lists without tearing the
+     subscription down every time a customer row changes. */
   const customersRef = useRef(customers);
-  customersRef.current = customers;
   const facilitiesRef = useRef(facilities);
-  facilitiesRef.current = facilities;
   const facilitiesEnabledRef = useRef(facilitiesEnabled);
-  facilitiesEnabledRef.current = facilitiesEnabled;
+
+  /* Written in an effect rather than during render. A ref mutated in the render body is
+     not a pure render -- under StrictMode's double render and under a render React throws
+     away, it writes anyway -- which is what react-hooks/refs objects to.
+     This effect is declared BEFORE the watch effect on purpose: effects run in
+     declaration order within a commit, so the refs are already fresh by the time the
+     watch reads them, exactly as they were with the render-time assignment. */
+  useEffect(() => {
+    customersRef.current = customers;
+    facilitiesRef.current = facilities;
+    facilitiesEnabledRef.current = facilitiesEnabled;
+  });
   // Reads the app-wide watch rather than opening a second one. Two watches meant two
   // wake-ups of the same GPS chip for the same answer, and left this component as the
   // only thing that knew where the user was -- which is why the position vanished from
