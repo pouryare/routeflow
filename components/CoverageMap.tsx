@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import type { ComponentProps } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
+/* This app carries its own DistrictFeature shape, which is not structurally the
+   GeoJsonObject react-leaflet declares. Casting to GeoJSONProps' own field types says
+   exactly which boundary is being crossed; `as any` said nothing and switched off
+   checking for the rest of the prop as well. */
+import type { GeoJSONProps } from "react-leaflet";
 import { LatLngBounds, divIcon, geoJSON } from "leaflet";
 import type { DivIcon, Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -1957,22 +1963,22 @@ export default function CoverageMap({
           {layers.districts && mantagheFeatures && (
             <GeoJSON
               key={`mantaghe-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
-              data={mantagheFeatures as any}
-              style={districtStyle as any}
-              onEachFeature={onEachDistrict as any}
+              data={mantagheFeatures as unknown as GeoJSONProps["data"]}
+              style={districtStyle as unknown as GeoJSONProps["style"]}
+              onEachFeature={onEachDistrict as unknown as GeoJSONProps["onEachFeature"]}
             />
           )}
           {layers.districts && mahalleFeatures && (
             <GeoJSON
               key={`mahalle-${districtsVersion}-${activeTier}-${corridorOn ? corridorWidthKm : "off"}`}
-              data={mahalleFeatures as any}
-              style={districtStyle as any}
-              onEachFeature={onEachDistrict as any}
+              data={mahalleFeatures as unknown as GeoJSONProps["data"]}
+              style={districtStyle as unknown as GeoJSONProps["style"]}
+              onEachFeature={onEachDistrict as unknown as GeoJSONProps["onEachFeature"]}
             />
           )}
           {cityBoundary && (
             <GeoJSON
-              data={cityBoundary as any}
+              data={cityBoundary as unknown as GeoJSONProps["data"]}
               interactive={false}
               style={{ color: "#8697A8", weight: 2, dashArray: "6 5", fill: false, opacity: 0.85 }}
             />
@@ -2018,7 +2024,9 @@ export default function CoverageMap({
             maxClusterRadius={(zoom: number) => (zoom >= 16 ? 15 : 60)}
             spiderfyOnMaxZoom
             spiderLegPolylineOptions={{ weight: 1.5, color: "#546271", opacity: 0.9 }}
-            iconCreateFunction={clusterIcon as any}
+            iconCreateFunction={
+            clusterIcon as unknown as ComponentProps<typeof MarkerClusterGroup>["iconCreateFunction"]
+          }
           >
             {(layers.customers ? filteredCustomers : [])
               // The selected customer is drawn outside this group, below.
@@ -2165,7 +2173,6 @@ export default function CoverageMap({
       {selectedDistrict && (
         <DistrictEditor
           district={selectedDistrict}
-          salespeople={salespeople}
           onClose={() => setSelectedDistrict(null)}
           onReminderAdded={loadReminders}
           onSaved={() => {

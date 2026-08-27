@@ -88,11 +88,21 @@ export function parseDeliveryText(text: string): DeliveryLine[] {
   return out;
 }
 
+/** Narrows an ExcelJS cell to the shape carrying `key`. The union it comes from does not
+ *  narrow on `in` alone, and the predicate intersects rather than replaces so it stays a
+ *  subtype of CellValue. */
+function isShape<T>(v: ExcelJS.CellValue, key: string): v is ExcelJS.CellValue & T {
+  return typeof v === "object" && v !== null && key in v;
+}
+
 // Parses an uploaded .xlsx containing an "ارسال امروز" sheet (or, if that name isn't
 // found, the first worksheet -- covers a workbook saved with just this one sheet in it).
 export async function parseDeliveryWorkbook(buffer: Buffer): Promise<DeliveryLine[]> {
   const workbook = new ExcelJS.Workbook();
-  await workbook.xlsx.load(buffer as any);
+  /* See the note in lib/importExcel.ts: Node 24's Buffer<ArrayBufferLike> and exceljs's
+     older non-generic Buffer are structurally incompatible even though the value is
+     right. Cast to the parameter's own type, not to `any`. */
+  await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   const sheet = workbook.getWorksheet("ارسال امروز") ?? workbook.worksheets[0];
   if (!sheet) return [];
 
@@ -100,12 +110,14 @@ export async function parseDeliveryWorkbook(buffer: Buffer): Promise<DeliveryLin
     if (v === null || v === undefined) return null;
     if (typeof v === "string") return v.trim() || null;
     if (typeof v === "number") return String(v);
-    if (v && typeof v === "object" && "result" in v) {
-      const r = (v as any).result;
+    // ExcelJS's CellValue union does not narrow on a plain `in` check; these say which
+    // shape is being reached for without reaching for `any`.
+    if (isShape<{ result: unknown }>(v, "result")) {
+      const r = v.result;
       return r === null || r === undefined ? null : String(r).trim() || null;
     }
-    if (v && typeof v === "object" && "richText" in v) {
-      return (v as any).richText.map((rt: any) => rt.text).join("").trim() || null;
+    if (isShape<{ richText: { text?: unknown }[] }>(v, "richText")) {
+      return v.richText.map((rt) => String(rt.text ?? "")).join("").trim() || null;
     }
     if (v instanceof Date) return v.toISOString().slice(0, 10);
     return String(v).trim() || null;

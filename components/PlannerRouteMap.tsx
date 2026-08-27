@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
@@ -12,6 +12,7 @@ import MyLocationMarker from "./MyLocationMarker";
 import { facilityIcon } from "./facilityIcon";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
+import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 
 export interface RouteStop {
   lat: number;
@@ -39,7 +40,7 @@ function RoutingLayer({
       onSummary(null);
       return;
     }
-    const control = (L as any).Routing.control({
+    const control = (L as unknown as WithRouting).Routing.control({
       waypoints: stops.map((s) => L.latLng(s.lat, s.lng)),
       routeWhileDragging: false,
       addWaypoints: false,
@@ -62,7 +63,7 @@ function RoutingLayer({
         }).bindTooltip(stops[i].label);
       },
     });
-    control.on("routesfound", (e: any) => {
+    control.on("routesfound", (e: RoutesFoundEvent) => {
       const r = e.routes?.[0];
       if (!r) return;
       onSummary({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });

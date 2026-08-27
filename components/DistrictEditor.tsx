@@ -13,13 +13,11 @@ const EXIT_MS = 180;
 
 export default function DistrictEditor({
   district,
-  salespeople,
   onClose,
   onSaved,
   onReminderAdded,
 }: {
   district: DistrictFeature;
-  salespeople: string[];
   onClose: () => void;
   onSaved: () => void;
   onReminderAdded?: () => void;

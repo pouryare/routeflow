@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, VisitPlan, EntityType, PLAN_ENTITY_TYPES, PlanEntityType, logActivity } from "@/lib/db";
+import { getDb, VisitPlan, PLAN_ENTITY_TYPES, PlanEntityType, logActivity } from "@/lib/db";
 
 const PLAN_STATUSES: VisitPlan["status"][] = ["planned", "done", "skipped"];
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";

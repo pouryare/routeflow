@@ -12,6 +12,7 @@ import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
+import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 
 export interface LeadPoint {
   id: number;
@@ -67,7 +68,7 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
       onSummary(null);
       return;
     }
-    const control = (L as any).Routing.control({
+    const control = (L as unknown as WithRouting).Routing.control({
       waypoints: points.map(([lat, lng]) => L.latLng(lat, lng)),
       routeWhileDragging: false,
       addWaypoints: false,
@@ -81,7 +82,7 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
       },
       createMarker: () => null,
     });
-    control.on("routesfound", (e: any) => {
+    control.on("routesfound", (e: RoutesFoundEvent) => {
       const r = e.routes?.[0];
       if (r) onSummary({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });
     });

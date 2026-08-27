@@ -59,7 +59,6 @@ export default function HeatmapLayer({
       layerRef.current?.remove();
       layerRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [map]);
 
   return null;

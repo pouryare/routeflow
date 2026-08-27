@@ -171,11 +171,26 @@ export interface ImportResult {
   preview?: ImportPreview;
 }
 
+/** ExcelJS's CellValue union does not narrow on a plain `in` check, which is why every
+ *  one of these reads used to end in an `as any`. A guard says exactly which shape is
+ *  being reached for, and `unknown` on the payload means a wrong guess fails at the use
+ *  site rather than spreading silently through the caller. */
+function hasResult(v: ExcelJS.CellValue): v is ExcelJS.CellValue & { result: unknown } {
+  return typeof v === "object" && v !== null && "result" in v;
+}
+function hasHyperlink(v: ExcelJS.CellValue): v is ExcelJS.CellValue & { hyperlink: unknown } {
+  return typeof v === "object" && v !== null && "hyperlink" in v;
+}
+function hasRichText(v: ExcelJS.CellValue): v is ExcelJS.CellValue & { richText: { text?: unknown }[] } {
+  return typeof v === "object" && v !== null && "richText" in v;
+}
+function hasText(v: ExcelJS.CellValue): v is ExcelJS.CellValue & { text: ExcelJS.CellValue } {
+  return typeof v === "object" && v !== null && "text" in v;
+}
+
 function cellNumber(v: ExcelJS.CellValue): number {
   if (typeof v === "number") return v;
-  if (v && typeof v === "object" && "result" in v && typeof (v as any).result === "number") {
-    return (v as any).result;
-  }
+  if (hasResult(v) && typeof v.result === "number") return v.result;
   return 0;
 }
 
@@ -183,9 +198,7 @@ function cellNumber(v: ExcelJS.CellValue): number {
 // falls back to a value computed independently when no cached result exists.
 function cellNumberOrFallback(v: ExcelJS.CellValue, fallback: number): number {
   if (typeof v === "number") return v;
-  if (v && typeof v === "object" && "result" in v && typeof (v as any).result === "number") {
-    return (v as any).result;
-  }
+  if (hasResult(v) && typeof v.result === "number") return v.result;
   return fallback;
 }
 
@@ -209,9 +222,7 @@ function cellNumberOrFallbackAt(row: ExcelJS.Row, col: number | undefined, fallb
 function cellUrlAt(row: ExcelJS.Row, col: number | undefined): string | null {
   if (col === undefined) return null;
   const v = row.getCell(col).value;
-  if (v && typeof v === "object" && "hyperlink" in v && typeof (v as any).hyperlink === "string") {
-    return (v as any).hyperlink;
-  }
+  if (hasHyperlink(v) && typeof v.hyperlink === "string") return v.hyperlink;
   return cellText(v);
 }
 
@@ -220,17 +231,17 @@ function cellText(v: ExcelJS.CellValue): string | null {
   if (typeof v === "string") return v.trim() || null;
   if (typeof v === "number") return String(v);
   if (v instanceof Date) return v.toISOString();
-  if (v && typeof v === "object" && "result" in v) {
-    const r = (v as any).result;
+  if (hasResult(v)) {
+    const r = v.result;
     if (r === null || r === undefined) return null;
-    return typeof r === "object" ? cellText(r) : String(r).trim() || null;
+    return typeof r === "object" ? cellText(r as ExcelJS.CellValue) : String(r).trim() || null;
   }
-  if (v && typeof v === "object" && "richText" in v) {
-    return (v as any).richText.map((rt: any) => rt.text).join("").trim() || null;
+  if (hasRichText(v)) {
+    return v.richText.map((rt) => String(rt.text ?? "")).join("").trim() || null;
   }
-  if (v && typeof v === "object" && "text" in v) {
+  if (hasText(v)) {
     // Hyperlink-shaped cell ({ text, hyperlink }) -- use the visible text, not the URL.
-    return cellText((v as any).text);
+    return cellText(v.text);
   }
   // An object shape we don't recognize (e.g. an uncomputed formula with no cached
   // result) -- returning null is far safer than the literal string "[object Object]"
@@ -353,7 +364,11 @@ export async function importCustomersFromWorkbook(
   const dryRun = opts.dryRun ?? false;
   const workbook = new ExcelJS.Workbook();
   try {
-    await workbook.xlsx.load(buffer as any);
+    /* Node 24 types Buffer as Buffer<ArrayBufferLike>; exceljs's bundled types still
+       want the older non-generic Buffer, so the two are structurally incompatible even
+       though the value is exactly right. Cast to the parameter's own type rather than to
+       `any`, so this stays wrong only about the one thing it is actually wrong about. */
+    await workbook.xlsx.load(buffer as unknown as Parameters<typeof workbook.xlsx.load>[0]);
   } catch {
     return { ok: false, error: "فایل اکسل قابل خواندن نبود. مطمئن شوید فرمت .xlsx است." };
   }

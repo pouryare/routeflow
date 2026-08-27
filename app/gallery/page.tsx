@@ -93,7 +93,6 @@ export default function GalleryPage() {
                 className="group flex flex-col overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface-raised text-right transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
               >
                 <div className="aspect-square w-full overflow-hidden">
-                  {/* eslint-disable-next-line @next/next/no-img-element -- dynamic per-photo API route, format-negotiated via <picture> */}
                   <picture>
                     <source srcSet={`/api/photos/${p.id}/file?format=avif`} type="image/avif" />
                     <img
@@ -123,7 +122,6 @@ export default function GalleryPage() {
           onClick={() => setLightbox(null)}
         >
           <div className="relative max-h-full max-w-full" onClick={(e) => e.stopPropagation()}>
-            {/* eslint-disable-next-line @next/next/no-img-element -- dynamic per-photo API route, format-negotiated via <picture> */}
             <picture>
               <source srcSet={`/api/photos/${lightbox.id}/file?format=avif`} type="image/avif" />
               <img
