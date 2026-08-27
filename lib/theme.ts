@@ -8,6 +8,13 @@
 export type Theme = "dark" | "light";
 
 export const THEME_KEY = "coverage-theme";
+/** The same stored preference, surfaced to /sales under its own attribute.
+ *
+ *  The map reads `data-theme`, where dark is the ABSENCE of the attribute. The کارگاه
+ *  scope needs a positive signal for dark instead, because `.kargah` defaults to light
+ *  and its dark block is selected by `:root[data-skin="dark"] .kargah`. Writing both
+ *  from one place is what stops the two scopes drifting apart. */
+export const SKIN_KEY = THEME_KEY;
 export const DEFAULT_THEME: Theme = "dark";
 export const THEME_CHANGE_EVENT = "coverage-theme-change";
 
@@ -31,6 +38,7 @@ export function isTheme(v: unknown): v is Theme {
 export const THEME_INIT_SCRIPT = `(function(){try{
 var k=${JSON.stringify(THEME_KEY)},s=localStorage.getItem(k);
 if(s!=="dark"&&s!=="light"){s=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark";localStorage.setItem(k,s);}
+document.documentElement.setAttribute("data-skin",s);
 if(s==="light"){document.documentElement.setAttribute("data-theme","light");
 var m=document.querySelector('meta[name="theme-color"]');if(m)m.setAttribute("content","#f1f4f7");}
 }catch(e){}})();`;
@@ -48,6 +56,9 @@ const THEME_COLOR: Record<Theme, string> = { dark: "#0a0e14", light: "#f1f4f7" }
 export function applyTheme(theme: Theme) {
   if (theme === "light") document.documentElement.setAttribute("data-theme", "light");
   else document.documentElement.removeAttribute("data-theme");
+
+  // Positive on both sides, unlike data-theme -- see SKIN_KEY.
+  document.documentElement.setAttribute("data-skin", theme);
 
   // Keeps the phone's status bar and the PWA's title bar in step. Installed to the home
   // screen this is the difference between the app filling the notch area and a black band
