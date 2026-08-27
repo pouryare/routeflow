@@ -5,6 +5,8 @@ import { getSessionFromCookies, groupFilter, orderFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import RunPlanner from "@/components/sales/RunPlanner";
+import AssignmentBoard from "@/components/sales/AssignmentBoard";
+import RunTimeline, { TimelineStop } from "@/components/sales/RunTimeline";
 
 export const dynamic = "force-dynamic";
 
@@ -58,6 +60,35 @@ export default async function RunsPage() {
     remaining: number;
   }[];
 
+  // Every stop on the runs above, in delivery order, with the order total each carries.
+  // One query for all runs rather than one per run: at 30 runs the per-run version is 30
+  // round trips to answer a question SQLite can answer once.
+  const stopScope = groupFilter(session, "dr.group_id");
+  const stopRows = plain(
+    db
+      .prepare(
+        `SELECT ds.id, ds.run_id, ds.status, o.order_no,
+                COALESCE(c.business_name, '—') AS customer_name,
+                COALESCE(SUM(ol.packs_ordered * ol.unit_price_toman), 0) AS total_toman
+           FROM delivery_stops ds
+           JOIN delivery_runs dr ON dr.id = ds.run_id
+           JOIN orders o ON o.id = ds.order_id
+           LEFT JOIN customers c ON c.id = o.customer_id
+           LEFT JOIN order_lines ol ON ol.order_id = o.id
+          WHERE 1 = 1${stopScope.sql}
+          GROUP BY ds.id
+          ORDER BY ds.run_id, ds.sort_order, ds.id`
+      )
+      .all(...stopScope.params)
+  ) as unknown as (TimelineStop & { run_id: number })[];
+
+  const stopsByRun = new Map<number, TimelineStop[]>();
+  for (const row of stopRows) {
+    const { run_id, ...stop } = row;
+    if (!stopsByRun.has(run_id)) stopsByRun.set(run_id, []);
+    stopsByRun.get(run_id)!.push(stop);
+  }
+
   // Confirmed orders not already on a run -- the pool a manager is choosing from.
   const scope = orderFilter(session);
   const unassigned = readOrders(db, scope, { status: "confirmed", limit: 200 }).filter((order) => {
@@ -68,16 +99,23 @@ export default async function RunsPage() {
   });
 
   return (
-    <RunPlanner
-      drivers={drivers}
-      runs={runs}
-      orders={unassigned.map((o) => ({
-        id: o.id,
-        order_no: o.order_no,
-        customer_name: o.customer_name,
-        total_toman: o.total_toman,
-        order_date: o.order_date,
-      }))}
-    />
+    <div className="flex flex-col gap-[var(--space-6)]">
+      <RunPlanner drivers={drivers} />
+      <AssignmentBoard
+        runs={runs}
+        orders={unassigned.map((o) => ({
+          id: o.id,
+          order_no: o.order_no,
+          customer_name: o.customer_name,
+          total_toman: o.total_toman,
+          order_date: o.order_date,
+        }))}
+      />
+      <RunTimeline
+        runs={runs
+          .filter((r) => r.status !== "done")
+          .map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}
+      />
+    </div>
   );
 }

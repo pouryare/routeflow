@@ -9,6 +9,11 @@ import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { buildMapLink } from "@/lib/deepLink";
 import ConfirmOrderButton from "@/components/sales/ConfirmOrderButton";
+import BentoStrip, {
+  BentoIdentity,
+  BentoTile,
+  BentoGauge,
+} from "@/components/BentoStrip";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +80,42 @@ export default async function OrderDetailPage({
         </Link>
       </div>
 
+      <BentoStrip>
+        <BentoIdentity
+          eyebrow={order.order_no}
+          title={order.customer_name}
+          meta={
+            <>
+              {faJalaliDate(order.order_date)} · {STATUS_LABEL[order.status] ?? order.status}
+              {order.salesperson_name && ` · ${order.salesperson_name}`}
+            </>
+          }
+        >
+          {order.status === "draft" && <ConfirmOrderButton orderId={order.id} />}
+        </BentoIdentity>
+
+        <BentoTile
+          label="جمع سفارش"
+          value={faToman(order.total_toman)}
+          hint={`${faNum(order.lines.length)} قلم · ${faNum(order.kg)} کیلو`}
+        />
+
+        {/* Payment is the one reading on this page that can be bad news, so it is the one
+            that gets a gauge rather than another figure in a row of figures. Overpayment
+            clamps to a full arc but keeps its real number in the caption -- a gauge that
+            drew past its own track would look broken rather than informative. */}
+        <BentoGauge
+          label="پرداخت‌شده"
+          fraction={order.total_toman > 0 ? order.paid_toman / order.total_toman : 0}
+          caption={`${faToman(order.paid_toman)} از ${faToman(order.total_toman)}`}
+          tone={
+            order.paid_toman >= order.total_toman && order.total_toman > 0
+              ? "var(--good)"
+              : "var(--warn)"
+          }
+        />
+      </BentoStrip>
+
       <table className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
         <thead>
           <tr className="text-[var(--text-faint)]">
@@ -114,19 +155,6 @@ export default async function OrderDetailPage({
           ))}
         </tbody>
       </table>
-
-      <div className="flex flex-wrap items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-raised)] p-[var(--space-4)]">
-        <div>
-          <strong className="block text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
-            {faToman(order.total_toman)}
-          </strong>
-          <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
-            {faNum(order.lines.length)} قلم · {faNum(order.kg)} کیلو
-            {order.salesperson_name && ` · ${order.salesperson_name}`}
-          </span>
-        </div>
-        {order.status === "draft" && <ConfirmOrderButton orderId={order.id} />}
-      </div>
 
       {order.status === "draft" ? (
         <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-faint)]">

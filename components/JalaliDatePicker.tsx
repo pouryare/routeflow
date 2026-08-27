@@ -166,7 +166,7 @@ export default function JalaliDatePicker({
                   aria-current={isSelected ? "date" : undefined}
                   className={`rounded-[var(--radius-sm)] py-[var(--space-1)] text-[length:var(--text-sm)] tabular-nums transition-colors duration-[var(--dur-fast)] ${
                     isSelected
-                      ? "bg-[var(--accent)] text-[#04191c]"
+                      ? "bg-[var(--accent)] text-accent-ink"
                       : isToday
                         ? "border border-[var(--accent-dim)] text-[var(--text)] hover:bg-white/5"
                         : "text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"

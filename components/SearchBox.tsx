@@ -285,7 +285,7 @@ export default function SearchBox({
               <button
                 onClick={decodeLink}
                 disabled={linkLoading}
-                className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-[#04191c] disabled:opacity-60"
+                className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-60"
               >
                 {linkLoading ? "در حال شناسایی لینک…" : "🔗 نمایش این لینک روی نقشه"}
               </button>
@@ -298,7 +298,7 @@ export default function SearchBox({
             <div className="p-2">
               <button
                 onClick={useCoords}
-                className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-[#04191c]"
+                className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
               >
                 📍 نمایش این مختصات روی نقشه ({coordMatch[1]}, {coordMatch[2]})
               </button>

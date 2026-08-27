@@ -202,7 +202,7 @@ export default function LayersPanel({
                 aria-pressed={basemap === b.id}
                 className={`flex-1 rounded-[var(--radius-sm)] px-1 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                   basemap === b.id
-                    ? "bg-accent font-medium text-[#04191c]"
+                    ? "bg-accent font-medium text-accent-ink"
                     : "text-text-muted hover:bg-white/5 hover:text-text"
                 }`}
               >

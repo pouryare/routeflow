@@ -148,7 +148,7 @@ export default function AdminGroupsPage() {
           <button
             type="submit"
             disabled={busy || !name.trim()}
-            className="cursor-pointer rounded-md border border-accent bg-accent px-4 py-2 text-sm font-medium text-[#04191c] transition-[filter,opacity] hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="cursor-pointer rounded-md border border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-[filter,opacity] hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
             ساخت گروه
           </button>

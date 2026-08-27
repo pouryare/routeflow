@@ -257,7 +257,7 @@ export default function FacilitiesPage() {
                         />
                         <button
                           type="submit"
-                          className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c]"
+                          className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink"
                         >
                           ذخیره
                         </button>
@@ -385,7 +385,7 @@ export default function FacilitiesPage() {
             </select>
             <button
               onClick={() => setPicker(picker?.mode === "create" ? null : { mode: "create" })}
-              className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
+              className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
             >
               {picker?.mode === "create" ? "بستن نقشه" : "انتخاب موقعیت روی نقشه"}
             </button>

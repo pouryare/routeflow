@@ -96,7 +96,7 @@ function RestockHint({
       <button
         onClick={onAdd}
         disabled={busy}
-        className="mr-auto rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-[#04191c] disabled:opacity-50"
+        className="mr-auto rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
       >
         {busy ? "در حال افزودن…" : "افزودن توقف"}
       </button>
@@ -634,7 +634,7 @@ export default function PlannerPage() {
                 key={ds}
                 onClick={() => setSelectedDate(ds)}
                 className={`flex shrink-0 flex-col items-center gap-0.5 rounded-[var(--radius-sm)] px-3 py-2 text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  active ? "bg-accent font-medium text-[#04191c]" : "text-text-muted hover:bg-white/5 hover:text-text"
+                  active ? "bg-accent font-medium text-accent-ink" : "text-text-muted hover:bg-white/5 hover:text-text"
                 }`}
               >
                 <span>{dayLabel(d)}</span>
@@ -642,7 +642,7 @@ export default function PlannerPage() {
                 {count > 0 && (
                   <span
                     className={`mt-0.5 rounded-full px-1.5 text-[length:var(--text-xs)] font-mono ${
-                      active ? "bg-[#04191c]/20 text-[#04191c]" : "bg-white/10 text-text-faint"
+                      active ? "bg-accent-ink/20 text-accent-ink" : "bg-white/10 text-text-faint"
                     }`}
                   >
                     {count}
@@ -708,7 +708,7 @@ export default function PlannerPage() {
                   href={googleRoute.url}
                   target="_blank"
                   rel="noreferrer"
-                  className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-[#04191c] transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
+                  className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
                 >
                   {googleRoute.singleLeg ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label} ↗` : "شروع مسیر بهینه ↗"}
                 </a>
@@ -841,7 +841,7 @@ export default function PlannerPage() {
                 <button
                   onClick={applyOptimalOrder}
                   disabled={optimising}
-                  className="w-fit rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-[#04191c] disabled:opacity-50"
+                  className="w-fit rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
                 >
                   {optimising
                     ? "در حال اعمال…"

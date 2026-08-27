@@ -78,20 +78,32 @@ export default async function DashboardPage() {
         همه ارقام بر اساس مقدار تحویل‌شده است — نه سفارش‌شده. تا {faJalaliDate(period.to)}.
       </p>
 
+      {/* `wash` here is decoration and grouping, nothing more: it gives the four tiles
+          distinct identities so the row scans as four things rather than one grey block.
+          It deliberately does not encode good or bad -- `tone` does that, and letting two
+          different systems both colour the same tile is how a dashboard ends up saying
+          two contradictory things at once. */}
       <StatRow>
-        <StatCard label="فروش (تحویل‌شده)" value={faToman(d.revenue_toman)} />
-        <StatCard label="سفارش‌ها" value={faNum(d.order_count)} hint={`میانگین ${faToman(d.average_order_toman)}`} />
+        <StatCard label="فروش (تحویل‌شده)" value={faToman(d.revenue_toman)} wash={0} />
+        <StatCard
+          label="سفارش‌ها"
+          value={faNum(d.order_count)}
+          hint={`میانگین ${faToman(d.average_order_toman)}`}
+          wash={2}
+        />
         <StatCard
           label="نرخ تحویل"
           value={pct(d.fill_rate)}
           tone={d.fill_rate > 0 && d.fill_rate < 0.9 ? "warn" : "plain"}
           hint="تحویل‌شده به سفارش‌شده"
+          wash={3}
         />
         <StatCard
           label="مانده حساب مشتریان"
           value={faToman(d.debt.total)}
           tone={d.debt.over_30 > 0 ? "crit" : "plain"}
           hint={d.debt.over_30 > 0 ? `${faToman(d.debt.over_30)} بالای ۳۰ روز` : undefined}
+          wash={4}
         />
       </StatRow>
 

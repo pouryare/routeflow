@@ -14,13 +14,45 @@
   --border-strong: #2a3a4c;
   --accent: #2de0e6;
   --accent-dim: #1b8a8f;
+  /* Ink on an --accent fill. A separate token because it does not merely invert between
+     themes: on dark's bright cyan the readable ink is near-black, on light's darkened
+     teal it is white. Every primary button in the app had this value hardcoded, which is
+     precisely why it broke the moment a second theme existed. */
+  --accent-ink: #04191c;
+  /* Ambient sweep. Barely-there on a near-black ground at 0.12; the same figure over a
+     pale canvas is a grey wedge across the page, so light dials it down. */
+  --sweep-opacity: 0.12;
+  /* ---- Chart series ---------------------------------------------------------------
+     Validated, not chosen. Each set was checked against its own chart surface for five
+     things: every hue inside the lightness band that surface needs, none so grey it stops
+     reading as a colour, adjacent pairs apart under protanopia/deuteranopia/tritanopia and
+     for normal vision, and 3:1 contrast against the surface. Adjacent is the criterion
+     that matters because colours are assigned by position, so series 1 and 2 share every
+     legend while 1 and 7 rarely do.
+
+     The dark set's worst adjacent separation is 7.9 (yellow/magenta under deuteranopia).
+     The light set was searched to meet that same figure rather than a looser one, and
+     lands at 7.9 (aqua/yellow under protanopia). Do not reorder or extend either by eye.
+
+     Exposed as variables rather than imported hex so a theme change re-colours every
+     chart without re-rendering it -- SVG stroke and fill both accept var().           */
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-other: #5b6b7c;
+  /* One series, so nothing to be told apart from: it wears the app's accent. */
+  --series-single: #2de0e6;
   --text: #e7eef5;
   --text-muted: #8697a8;
-  --text-faint: #546271;
+  --text-faint: #71808f;
   --good: #3ddc84;
   --warn: #f5a623;
   --crit: #f0475b;
-  --neutral: #5b6b7c;
+  --neutral: #78889a;
   /* Own sites (warehouse / home base). Not a status and not the interactive accent --
      see MASTER.md "Facility marker". */
   --facility: #d6e6f5;
@@ -62,6 +94,10 @@
   --text-md: 1rem;
   --text-lg: 1.25rem;
   --text-xl: 1.5rem;
+  /* Display sizes exist for one reason: a dashboard's primary figure should be readable
+     across a desk. Mono, weight 400 -- a large number gets loud through size, not weight. */
+  --text-2xl: 2rem;
+  --text-3xl: 2.75rem;
 
   /* spacing (4px base) */
   --space-1: 4px;
@@ -77,15 +113,91 @@
   --radius-sm: 4px;
   --radius-md: 6px;
   --radius-lg: 10px;
+  /* Radius scales with surface size -- see MASTER.md "Radii". A 420px bento tile with a
+     6px radius reads as a table cell, and a 32px control with a 20px radius loses its
+     affordance, so the two ends of the scale are not interchangeable. */
+  --radius-xl: 14px;
+  --radius-2xl: 20px;
+
+  /* ---- Elevation: one API, two implementations -----------------------------------
+     Components consume --elev-N and never learn which theme they are in. In dark the
+     lift comes from a lighter surface plus a cool halo of near-black; on a #0A0E14
+     ground that halo reads as occlusion rather than as a lit-from-above shadow, which
+     is the distinction MASTER.md's "glow, not shadow" rule was actually protecting.
+     In light it is a genuine shadow, tinted to the canvas hue -- never neutral black. */
+  --elev-1: 0 0 0 1px var(--border);
+  --elev-2: 0 0 0 1px var(--border-strong), 0 8px 24px -8px rgba(2, 5, 9, 0.9);
+  --elev-3: 0 0 0 1px var(--border-strong), 0 16px 48px -12px rgba(2, 5, 9, 0.95);
 
   /* motion */
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  /* Spring curves. Legal in Tier 1 (direct manipulation) only -- never on data, hover
+     targets, map layers, or in driver mode. See MASTER.md "Motion". */
+  --spring-snap: cubic-bezier(0.34, 1.26, 0.64, 1);
+  --spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-drop: cubic-bezier(0.22, 1.61, 0.36, 1);
   --dur-fast: 120ms;
   --dur-base: 180ms;
   --dur-slow: 300ms;
+  --dur-morph: 420ms;
+  --dur-settle: 320ms;
+  --dur-draw: 700ms;
+  --stagger-tight: 20ms;
+  --stagger-base: 40ms;
+  --stagger-loose: 60ms;
+  --drift-duration: 12000ms;
   --pulse-duration: 2400ms;
   --pulse-stagger: 800ms;
   --sweep-duration: 4000ms;
+}
+
+/* ---- Light theme --------------------------------------------------------------------
+   Every token from the dark :root is redefined here. None inherit: a token defined only
+   in the dark block shows up in light mode as an invisible element, so the rule is
+   absolute rather than a convention.
+
+   This is not an inversion. The accent is the same cyan hue darkened until it clears
+   4.5:1 on the light ground (bright cyan cannot); --facility flips from pale to deep,
+   because a near-white marker is invisible on a near-white canvas; and --warn darkens to
+   bronze, because no amber that still reads as amber passes 4.5:1 on white. All eighteen
+   text values are computed against their own canvas, not eyeballed -- see MASTER.md.
+
+   Dark stays the default. This block only applies once something sets data-theme.       */
+:root[data-theme="light"] {
+  --bg: #f1f4f7;
+  --surface: #ffffff;
+  --surface-raised: #ffffff;
+  --border: #dde3ea;
+  --border-strong: #c2ccd6;
+  --accent: #0b7c82;
+  --accent-dim: #6bc4c8;
+  --accent-ink: #ffffff;
+  --sweep-opacity: 0.05;
+  /* Same hues, re-solved for a white chart surface. Bright cyan cannot be the single-series
+     colour here for the same reason it cannot be the accent: it glares and fails contrast. */
+  --series-1: #0068cb;
+  --series-2: #b63e00;
+  --series-3: #018058;
+  --series-4: #9c6600;
+  --series-5: #ac0258;
+  --series-6: #008d00;
+  --series-7: #6a3fe9;
+  --series-other: #5f6c79;
+  --series-single: #0b7c82;
+  --text: #0f1922;
+  --text-muted: #56636f;
+  --text-faint: #616d79;
+  --good: #147d4b;
+  --warn: #8a5300;
+  --crit: #be2637;
+  --neutral: #5f6c79;
+  --facility: #2b4a66;
+
+  /* --surface and --surface-raised are the same white on purpose: in light mode a raised
+     surface separates by shadow, not by tint. Tinting it grey would read as disabled. */
+  --elev-1: 0 0 0 1px var(--border), 0 1px 2px rgba(15, 25, 34, 0.06);
+  --elev-2: 0 0 0 1px var(--border), 0 4px 12px rgba(15, 25, 34, 0.10);
+  --elev-3: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 25, 34, 0.16);
 }
 
 @theme inline {
@@ -96,6 +208,7 @@
   --color-border-strong: var(--border-strong);
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
+  --color-accent-ink: var(--accent-ink);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
@@ -106,6 +219,14 @@
   --color-facility: var(--facility);
   --font-sans: var(--font-vazirmatn);
   --font-mono: var(--font-jetbrains-mono);
+  --radius-xl: var(--radius-xl);
+  --radius-2xl: var(--radius-2xl);
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
+  --ease-spring-snap: var(--spring-snap);
+  --ease-spring-pop: var(--spring-pop);
+  --ease-spring-drop: var(--spring-drop);
 }
 
 body {
@@ -123,11 +244,445 @@ a:focus-visible {
   border-radius: var(--radius-sm);
 }
 
-/* Elevation is glow, never a drop shadow -- a dark console has no light source above. */
+/* ---- Semantic elevation: "this row is critical" has to survive the theme change ------
+   In dark the status reads as a glow, which is the console's whole visual language. On a
+   white ground the same glow reads as a blur or a rendering artifact rather than as
+   emphasis, so light mode states the status structurally instead: a 2px bar on the
+   inline-start edge plus a 4% wash of the same color.
+
+   border-inline-start, not border-left. The app is RTL, and a bar that renders down the
+   left edge of a Persian row is on the trailing side -- the far edge from where the eye
+   starts. The logical property puts it under the first word in both directions.        */
 .elevate-good { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--good); }
 .elevate-warn { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--warn); }
 .elevate-crit { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--crit); }
 .elevate-accent { box-shadow: 0 0 0 1px var(--border), 0 0 16px -4px var(--accent); }
+
+:root[data-theme="light"] .elevate-good,
+:root[data-theme="light"] .elevate-warn,
+:root[data-theme="light"] .elevate-crit {
+  box-shadow: var(--elev-1);
+  border-inline-start: 2px solid var(--status-color);
+  background-color: color-mix(in srgb, var(--status-color) 4%, var(--surface));
+}
+:root[data-theme="light"] .elevate-good { --status-color: var(--good); }
+:root[data-theme="light"] .elevate-warn { --status-color: var(--warn); }
+:root[data-theme="light"] .elevate-crit { --status-color: var(--crit); }
+
+/* .elevate-accent deliberately does NOT get the bar. The other three are status, and a
+   bar down the leading edge is a status device; accent is interaction -- it marks focus
+   and the card you are working in. Giving it the same bar put a teal stripe down the edge
+   of the login card, which read as a rendering fault rather than as emphasis. In light it
+   is a soft ring instead, which is what a focus affordance should look like. */
+:root[data-theme="light"] .elevate-accent {
+  box-shadow: var(--elev-1), 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent);
+}
+
+/* ---- Theme change ------------------------------------------------------------------
+   Only the two properties that actually carry the theme, and only for 200ms. Transitioning
+   everything makes the switch look like a slow wipe, and transitioning box-shadow on a
+   page full of cards drops frames on a phone. Marked so it never fights a reduced-motion
+   preference -- the global block below already zeroes it, this is the intent in one place. */
+:root,
+body {
+  transition: background-color 200ms var(--ease-out), color 200ms var(--ease-out);
+}
+
+/* ---- Stat tile ----------------------------------------------------------------------
+   The figure sizes itself against the tile, not the viewport.
+
+   A flat --text-2xl looked right on «۳ سفارش» and wrapped «۲۰٬۳۱۲٬۸۱۵ تومان» onto two
+   lines, which left «تومان» stranded on its own row and made one tile in a four-up row
+   twice the height of its neighbours. cqi resolves against this tile's own inline size, so
+   the same component reads large in a wide tile and merely large-ish in a narrow one --
+   which is the behaviour a display size actually needs in a responsive grid.             */
+.stat-tile {
+  container-type: inline-size;
+}
+
+.stat-tile__value {
+  font-size: clamp(var(--text-lg), 11cqi, var(--text-2xl));
+  line-height: 1.15;
+  /* A money figure and its unit are one thing; breaking between them is never the right
+     line break, and there is always another break point earlier in the string. */
+  text-wrap: balance;
+}
+
+/* ---- Document-pocket card -----------------------------------------------------------
+   The card is a pocket and its attachments peek over the top edge. The wrapper carries the
+   top padding that the papers occupy, so they overlap the card without being clipped by it
+   and without the list having to know they exist.                                        */
+.pocket {
+  position: relative;
+  padding-top: 14px;
+}
+
+.pocket__papers {
+  position: absolute;
+  inset-inline-start: var(--space-5);
+  top: 0;
+  height: 20px;
+  pointer-events: none;
+}
+
+/* A sheet of paper, seen edge-on. Only the top ~14px is ever visible; the rest is behind
+   the card, which is what makes it read as tucked in rather than stuck on. */
+.pocket__paper {
+  position: absolute;
+  top: 0;
+  width: 46px;
+  height: 34px;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  background: var(--surface-raised);
+  border: 1px solid var(--border-strong);
+  border-bottom: none;
+  transform-origin: bottom center;
+}
+
+.pocket__card {
+  position: relative;
+  z-index: 5;
+  display: block;
+  padding: var(--space-4);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  text-decoration: none;
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--spring-snap);
+}
+
+/* The wash. A radial bleeding up from the top edge in the status colour, so the card is
+   tinted by its own state without the state becoming the whole surface. */
+.pocket__card {
+  background-image: radial-gradient(
+    120% 90% at 50% 0%,
+    color-mix(in srgb, var(--pocket-tone) 14%, transparent) 0%,
+    transparent 58%
+  );
+}
+
+.pocket__card:hover {
+  border-color: var(--border-strong);
+  box-shadow: var(--elev-2);
+  transform: translateY(-1px);
+}
+/* The papers lift a touch further than the card, so the stack separates on hover instead
+   of moving as one slab. */
+.pocket:hover .pocket__paper {
+  transform: translateX(calc(var(--paper-i) * 26px)) translateY(-3px)
+    rotate(calc((var(--paper-i) - 0.5) * -7deg));
+  transition: transform var(--dur-base) var(--spring-snap);
+}
+
+/* ---- Run timeline blocks ------------------------------------------------------------
+   One block per stop, in sequence. The bar is a child rather than the <li> itself so the
+   hover target stays full height while the bar can be short.                            */
+.run-block { min-width: 6px; }
+
+.run-block__bar {
+  display: block;
+  height: 26px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--block-tone) 26%, transparent);
+  border: 1px solid color-mix(in srgb, var(--block-tone) 55%, transparent);
+  transition:
+    background-color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--spring-snap);
+}
+.run-block:hover .run-block__bar {
+  background: color-mix(in srgb, var(--block-tone) 46%, transparent);
+  transform: scaleY(1.12);
+}
+
+/* Centred on its block and clamped inside the viewport by max-width rather than by
+   measurement -- a stop name is short and this never needs to be smart. */
+.run-block__tip {
+  position: absolute;
+  inset-inline-start: 50%;
+  bottom: calc(100% + 6px);
+  z-index: 3;
+  transform: translateX(50%) translateY(4px);
+  max-width: 220px;
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  box-shadow: var(--elev-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+.run-block:hover .run-block__tip { opacity: 1; transform: translateX(50%) translateY(0); }
+
+/* ---- Chart tooltip pill -------------------------------------------------------------
+   Floats above the active reading. Translated by -50%/-120% of its own size rather than
+   positioned by a measured offset, so it stays centred on its point at any chart width
+   without JavaScript having to measure the pill.                                        */
+.chart-pill {
+  position: absolute;
+  z-index: 2;
+  transform: translate(-50%, -120%);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-raised);
+  box-shadow: var(--elev-2);
+  /* The pointer is already inside the plot; a pill that could be hovered would flicker
+     the value it is reporting as the cursor crossed onto it. */
+  pointer-events: none;
+  white-space: nowrap;
+}
+
+/* ---- Assignment board ---------------------------------------------------------------
+   Drag an order onto a run. MASTER.md Tier 1: the card lifts on --spring-snap and the
+   ghost settles on --spring-drop, because this is direct manipulation and the overshoot
+   is what closes the loop between the hand and the thing being moved.                   */
+
+.order-card {
+  display: block;
+  width: 100%;
+  text-align: start;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  background: var(--surface-raised);
+  box-shadow: var(--elev-1);
+  cursor: grab;
+  /* Without this the browser claims the gesture for scrolling on the first touchmove and
+     pointermove stops firing -- the drag simply does not exist on a phone. It is the one
+     line that decides whether this feature works for the people using it in a vehicle. */
+  touch-action: none;
+  transition:
+    box-shadow var(--dur-base) var(--ease-out),
+    opacity var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--spring-snap);
+}
+.order-card:hover { box-shadow: var(--elev-2); transform: scale(1.01); }
+.order-card:active { cursor: grabbing; }
+
+/* The original stays in place, dimmed, rather than being removed: pulling the card out of
+   the list would collapse everything below it upward, so the column would reflow under
+   the cursor mid-drag and the drop target the user was aiming at would move. */
+.order-card--lifted { opacity: 0.35; box-shadow: none; }
+
+.drag-ghost {
+  position: fixed;
+  /* Physical top/left, deliberately -- not the logical properties used everywhere else in
+     this file. The transform that positions this element is built from pointer clientX/
+     clientY, which are measured from the viewport's left edge in every direction mode. In
+     RTL `inset-inline-start` resolves to `right`, so the ghost anchored there and then
+     translated by a positive clientX flew off the right edge of the screen: present in the
+     DOM, invisible on screen. Logical properties are correct for text-directional layout
+     and wrong for a box being placed at a physical pointer coordinate. */
+  top: 0;
+  left: 0;
+  z-index: var(--z-toast);
+  pointer-events: none;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent);
+  background: var(--surface-raised);
+  box-shadow: var(--elev-2);
+  transition: transform var(--dur-settle) var(--spring-drop);
+}
+
+.run-column {
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  transition:
+    border-color var(--dur-base) var(--ease-out),
+    box-shadow var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--spring-snap);
+}
+
+/* Armed: a drag is in flight, so every column shows it will accept one. Dashed rather
+   than coloured -- colouring all of them at once would say every column is the target. */
+.run-column--armed { border-style: dashed; border-color: var(--border-strong); }
+
+.run-column--target {
+  border-style: solid;
+  border-color: var(--accent);
+  box-shadow: var(--elev-2), 0 0 0 3px color-mix(in srgb, var(--accent) 18%, transparent);
+  transform: scale(1.02);
+}
+
+.run-column__hint {
+  opacity: 0;
+  color: var(--text-faint);
+  transition: opacity var(--dur-base) var(--ease-out), color var(--dur-base) var(--ease-out);
+}
+.run-column--armed .run-column__hint { opacity: 1; }
+.run-column--target .run-column__hint { opacity: 1; color: var(--accent); }
+
+/* Tier 2 choreography. Capped at eight: past that a cascade stops reading as sequence and
+   starts reading as the page being slow to draw. */
+@keyframes board-item-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.board-stagger > * { animation: board-item-in 260ms var(--ease-out) both; }
+.board-stagger > *:nth-child(1) { animation-delay: 0ms; }
+.board-stagger > *:nth-child(2) { animation-delay: 40ms; }
+.board-stagger > *:nth-child(3) { animation-delay: 80ms; }
+.board-stagger > *:nth-child(4) { animation-delay: 120ms; }
+.board-stagger > *:nth-child(5) { animation-delay: 160ms; }
+.board-stagger > *:nth-child(6) { animation-delay: 200ms; }
+.board-stagger > *:nth-child(7) { animation-delay: 240ms; }
+.board-stagger > *:nth-child(8) { animation-delay: 280ms; }
+.board-stagger > *:nth-child(n + 9) { animation-delay: 320ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .board-stagger > * { animation: none; }
+  .drag-ghost, .order-card, .run-column { transition: none; }
+}
+
+/* ---- Island: a pill that widens into a panel ----------------------------------------
+   One DOM node throughout -- the icon column is the fixed point the morph happens around.
+
+   `contain: layout paint size` is what makes animating the box legitimate here. Layout
+   containment promises the browser that nothing outside can be affected by what happens
+   inside, paint containment clips the content that has not been revealed yet, and size
+   containment says the box takes its dimensions from the inline style rather than from
+   the content it holds. Without the last one the measured content would fight the
+   animation for control of the width every frame.                                       */
+.island {
+  position: relative;
+  overflow: hidden;
+  border-radius: var(--radius-2xl);
+  background: var(--surface-raised);
+  box-shadow: var(--elev-3);
+  contain: layout paint size;
+  transition:
+    width var(--dur-morph) var(--spring-pop),
+    height var(--dur-morph) var(--spring-pop);
+}
+
+/* The constant. Anchored to the top so a two-line message grows downward past it rather
+   than dragging the glyph to the middle of a panel it is supposed to be labelling. */
+.island__icon {
+  position: absolute;
+  inset-inline-start: 0;
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 52px;
+  height: 40px;
+  color: var(--island-tone);
+  font-size: var(--text-md);
+  line-height: 1;
+}
+
+/* Fixed width, not a percentage of the island: the content has to report its natural size
+   while the island is still 52px wide, or the first measurement comes back as the width of
+   the collapsed pill and the island never opens past it. */
+.island__content {
+  position: absolute;
+  inset-inline-start: 52px;
+  top: 0;
+  width: 368px; /* MAX_W - icon column, mirrored in Island.tsx */
+  opacity: 0;
+  transition: opacity calc(var(--dur-morph) / 2) var(--ease-out);
+}
+
+/* Delayed by a third of the morph so the box is visibly travelling before the text lands.
+   Cross-fading them together reads as a panel that was always there and merely faded in. */
+.island--open .island__content {
+  opacity: 1;
+  transition-delay: calc(var(--dur-morph) / 3);
+}
+
+.island__measure {
+  width: max-content;
+  max-width: 100%;
+  padding: var(--space-2) var(--space-3) var(--space-2) var(--space-2);
+  font-size: var(--text-sm);
+  line-height: 1.5;
+  color: var(--text);
+}
+
+/* A 1px inner hairline in the tone, so the island reads as belonging to the status it
+   carries without the tone becoming the whole surface. */
+.island::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid color-mix(in srgb, var(--island-tone) 32%, transparent);
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* The global block already zeroes the duration. Stated again because a morph that
+     snaps between two sizes is the correct reduced-motion behaviour, not a bug. */
+  .island {
+    transition: none;
+  }
+}
+
+/* ---- Theme toggle: one disc, morphed ------------------------------------------------
+   Dark is a crescent -- the bite circle sits over the disc and punches it out of the mask.
+   Light slides the bite clear of the glyph entirely, shrinks the disc to a sun core and
+   springs the rays back out. Nothing swaps; the same three nodes move.
+
+   Keyed on :root[data-theme] rather than on React state so the glyph is already in the
+   right shape on first paint, before hydration. Tier 1 in MASTER.md's motion system, so
+   --spring-snap is the correct curve here; the global reduced-motion block flattens it. */
+.theme-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition:
+    color var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    transform var(--dur-base) var(--spring-snap);
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--accent);
+  transform: scale(1.03);
+}
+.theme-toggle:active {
+  transform: scale(0.98);
+  transition-duration: var(--dur-fast);
+}
+
+/* fill-box, not the default view-box: these are SVG children, and without it the
+   transform-origin resolves against the whole 24x24 canvas and the disc scales off-centre. */
+.theme-toggle__disc,
+.theme-toggle__bite,
+.theme-toggle__rays {
+  transform-box: fill-box;
+  transform-origin: center;
+  transition:
+    transform var(--dur-base) var(--spring-snap),
+    opacity var(--dur-base) var(--ease-out);
+}
+
+/* Dark -- the default, no attribute needed. */
+.theme-toggle__disc { transform: scale(1); }
+.theme-toggle__bite { transform: translate(-26%, -26%); }
+.theme-toggle__rays { opacity: 0; transform: scale(0.4); }
+
+/* Light. The bite travels far enough to clear the disc completely; anything less leaves
+   a flat edge on the sun that reads as a rendering fault rather than as a shape. */
+:root[data-theme="light"] .theme-toggle__disc { transform: scale(0.82); }
+:root[data-theme="light"] .theme-toggle__bite { transform: translate(110%, -110%); }
+:root[data-theme="light"] .theme-toggle__rays { opacity: 1; transform: scale(1); }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
@@ -362,7 +917,10 @@ a:focus-visible {
 
    Cheaper and more honest than the alternative, which was to render our own label tiles
    from vector data for the sake of one colour. ---- */
-.tiles-inverted {
+/* Dark only. The inversion exists to turn a near-black label set white for a dark
+   basemap; in light mode that same set is already the correct one, and inverting it
+   would produce white text on a pale map. */
+:root:not([data-theme="light"]) .tiles-inverted {
   filter: invert(1);
 }
 

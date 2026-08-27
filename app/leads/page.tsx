@@ -657,7 +657,7 @@ export default function LeadsPage() {
               <button
                 type="submit"
                 disabled={busy}
-                className="rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-[#04191c] disabled:opacity-50"
+                className="rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50"
               >
                 ذخیره به‌عنوان لیست
               </button>
@@ -691,7 +691,7 @@ export default function LeadsPage() {
               </label>
               <button
                 onClick={proposeDays}
-                className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-[#04191c]"
+                className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
               >
                 پیشنهاد بده ({faNum(daysNeeded(routable.length, stopsPerDay))} روز)
               </button>
@@ -723,7 +723,7 @@ export default function LeadsPage() {
                         <div className="flex flex-wrap gap-1.5">
                           <button
                             onClick={() => updateRun(day.map((d) => d.id))}
-                            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-[#04191c]"
+                            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
                           >
                             بردن به مسیر
                           </button>
@@ -760,7 +760,7 @@ export default function LeadsPage() {
                   onClick={() => setSortMode(m)}
                   disabled={m === "nearest" && !sortAnchor}
                   className={`rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
-                    sortMode === m ? "bg-accent font-medium text-[#04191c]" : "text-text-muted hover:bg-white/5 hover:text-text"
+                    sortMode === m ? "bg-accent font-medium text-accent-ink" : "text-text-muted hover:bg-white/5 hover:text-text"
                   }`}
                 >
                   {SORT_LABEL[m]}
@@ -818,7 +818,7 @@ export default function LeadsPage() {
                         aria-label={inRun ? `حذف ${l.name} از مسیر` : `افزودن ${l.name} به مسیر`}
                         className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-30 ${
                           inRun
-                            ? "border-accent bg-accent text-[#04191c]"
+                            ? "border-accent bg-accent text-accent-ink"
                             : "border-border text-text-muted hover:border-accent hover:text-accent"
                         }`}
                       >

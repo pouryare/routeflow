@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
+import ThemeToggle from "@/components/ThemeToggle";
 
 export const dynamic = "force-dynamic";
 
@@ -48,12 +49,15 @@ export default async function SalesLayout({ children }: { children: ReactNode })
             {session.user.display_name} · {ROLE_LABEL[session.role]}
           </p>
         </div>
-        <Link
-          href="/"
-          className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-        >
-          ← نقشه
-        </Link>
+        <div className="flex items-center gap-[var(--space-2)]">
+          <ThemeToggle />
+          <Link
+            href="/"
+            className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+          >
+            ← نقشه
+          </Link>
+        </div>
       </header>
 
       <nav className="mb-[var(--space-5)] flex flex-wrap gap-[var(--space-2)]">
