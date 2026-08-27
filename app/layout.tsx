@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Vazirmatn, JetBrains_Mono } from "next/font/google";
+import { Vazirmatn, JetBrains_Mono, IBM_Plex_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ToastProvider } from "@/components/ToastProvider";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
@@ -15,6 +15,24 @@ const jetbrainsMono = JetBrains_Mono({
   variable: "--font-jetbrains-mono",
   subsets: ["latin"],
   weight: ["400"],
+});
+
+/* The کارگاه pair, for /sales only. Declared here because next/font must be called at
+   module scope, but consumed only inside `.kargah` -- the map keeps Vazirmatn. Both
+   families are subsetted, so a page that never uses them costs a preload hint and no
+   font bytes. See MASTER.md "Typography". */
+const plexArabic = IBM_Plex_Sans_Arabic({
+  variable: "--font-fa",
+  subsets: ["arabic", "latin"],
+  weight: ["300", "400", "500", "600", "700"],
+  display: "swap",
+});
+
+const jakarta = Plus_Jakarta_Sans({
+  variable: "--font-en",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -45,7 +63,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="fa"
       dir="rtl"
       suppressHydrationWarning
-      className={`${vazirmatn.variable} ${jetbrainsMono.variable} h-full antialiased`}
+      className={`${vazirmatn.variable} ${jetbrainsMono.variable} ${plexArabic.variable} ${jakarta.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         {/* Blocking and inline, ahead of everything. next/script's beforeInteractive is
