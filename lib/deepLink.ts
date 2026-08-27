@@ -116,7 +116,7 @@ export function replaceUrlQuery(query: string): void {
 }
 
 /** The absolute URL for a state -- what the share button puts on the clipboard. */
-export function absoluteMapLink(state: MapLinkState, pathname = "/"): string {
+export function absoluteMapLink(state: MapLinkState, pathname = "/map"): string {
   if (typeof window === "undefined") return `${pathname}${buildMapLink(state)}`;
   return `${window.location.origin}${pathname}${buildMapLink(state)}`;
 }

@@ -19,7 +19,7 @@ export default async function DriverPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "driver") redirect("/");
+  if (session.role !== "driver") redirect("/map");
 
   const db = getDb();
   const runs = readDriverRuns(db, session.user.id);

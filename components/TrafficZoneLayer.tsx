@@ -10,6 +10,7 @@ import {
   type ZoneStatus,
 } from "@/lib/trafficZones";
 import { faDigits } from "@/lib/format";
+import { useTheme } from "@/components/ThemeToggle";
 
 export interface ZoneFeature {
   properties: TrafficZoneProperties;
@@ -75,10 +76,29 @@ export function useTrafficZones(enabled: boolean): {
  *
  *  Red for the permit zone and amber for the quota zone, matching the crit/warn pair the
  *  rest of the app uses: one turns you back, the other charges you. */
-const ZONE_COLOR: Record<string, string> = {
-  limited_traffic: "#FF5C5C",
-  low_emission: "#E8B93B",
+const ZONE_COLOR: Record<"light" | "dark", Record<string, string>> = {
+  /* Per skin, and the light set is much darker than the dark one rather than the same
+     colour reused. Measured: the old #FF5C5C and #E8B93B, composited at the inactive
+     0.55 opacity over the کارگاه cream ground, came to 1.76:1 and 1.30:1 -- the borders
+     were invisible in light mode, which is the bug this fixes. */
+  light: {
+    limited_traffic: "#8E1026",
+    low_emission: "#7A5409",
+  },
+  dark: {
+    limited_traffic: "#FF7A7A",
+    low_emission: "#F0C64E",
+  },
 };
+
+/* The inactive stroke's opacity, per skin.
+ *
+ * 0.55 was chosen against a near-black map, where a bright line at 55% still carries. On
+ * a pale ground it is what made even a near-black red fail -- no colour reaches 3:1 at
+ * that opacity over cream. Raising it in light keeps the line readable; the distinction
+ * between "biting" and "not" is still carried by weight and by the dash, which is where
+ * it belonged anyway. */
+const INACTIVE_OPACITY: Record<"light" | "dark", number> = { light: 0.85, dark: 0.55 };
 
 /** The rings themselves.
  *
@@ -97,6 +117,11 @@ export default function TrafficZoneLayer({
   /** Which zone ids to draw, by the panel's toggles. */
   show: Set<string>;
 }) {
+  /* Leaflet writes these onto a canvas path, so the colour has to be resolved in JS --
+     var() does not reach the canvas renderer. Same reason MAP_INK exists. */
+  const [theme] = useTheme();
+  const palette = ZONE_COLOR[theme];
+
   if (!zones) return null;
 
   return (
@@ -105,7 +130,7 @@ export default function TrafficZoneLayer({
         .filter((z) => show.has(z.properties.id))
         .map((z) => {
           const state = status?.[z.properties.id]?.state ?? "unknown";
-          const color = ZONE_COLOR[z.properties.id] ?? ZONE_COLOR.low_emission;
+          const color = palette[z.properties.id] ?? palette.low_emission;
           const until = status?.[z.properties.id]?.until;
           const biting = state === "restricted";
           return (
@@ -117,7 +142,7 @@ export default function TrafficZoneLayer({
               pathOptions={{
                 color,
                 weight: biting ? 3 : 2,
-                opacity: biting ? 0.95 : 0.55,
+                opacity: biting ? 0.95 : INACTIVE_OPACITY[theme],
                 fill: false,
                 // Solid while it is enforced, dashed while it is not -- the same grammar
                 // the rest of this map uses for "definite" against "provisional".

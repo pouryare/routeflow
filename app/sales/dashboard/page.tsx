@@ -85,42 +85,42 @@ export default async function DashboardPage() {
           deliberately does NOT encode good or bad -- the note says that in words, and
           letting two systems both grade the same tile is how a dashboard ends up saying
           two contradictory things at once. */}
-      <Reveal
-        replayKey="dash-stats"
-        className="grid gap-[var(--space-3)] sm:grid-cols-2 xl:grid-cols-4"
-      >
+      {/* The headline figures live on /sales now — this tab is the deeper cut. The row is
+          kept because the breakdowns below are read against it. */}
+      <Reveal replayKey="dash-stats" className="statrow">
         <GradientStat
           tone="peach"
-          icon="₪"
           label="فروش (تحویل‌شده)"
-          value={faToman(d.revenue_toman)}
+          value={faNum(d.revenue_toman)}
+          unit="تومان"
+          chip={`${faNum(d.order_count)} سفارش · میانگین ${faToman(d.average_order_toman)}`}
         />
         <GradientStat
-          tone="sand"
-          icon="▤"
-          label="سفارش‌ها"
-          value={faNum(d.order_count)}
-          note={`میانگین ${faToman(d.average_order_toman)}`}
-        />
-        <GradientStat
-          tone="sky"
+          tone="mint"
+          small
           icon="⇄"
           label="نرخ تحویل"
           value={pct(d.fill_rate)}
-          note={
+          chip={
             d.fill_rate > 0 && d.fill_rate < 0.9
               ? "زیر ۹۰٪ — تحویل‌شده به سفارش‌شده"
               : "تحویل‌شده به سفارش‌شده"
           }
+          chipTone="sky"
         />
         <GradientStat
-          tone="mint"
-          icon="⌂"
+          tone="sand"
+          small
+          icon="₸"
           label="مانده حساب مشتریان"
-          value={faToman(d.debt.total)}
-          note={
-            d.debt.over_30 > 0 ? `${faToman(d.debt.over_30)} بالای ۳۰ روز` : "چیزی بالای ۳۰ روز نمانده"
+          value={faNum(d.debt.total)}
+          unit="تومان"
+          chip={
+            d.debt.over_30 > 0
+              ? `${faToman(d.debt.over_30)} بالای ۳۰ روز`
+              : "چیزی بالای ۳۰ روز نمانده"
           }
+          chipTone="amber"
         />
       </Reveal>
 

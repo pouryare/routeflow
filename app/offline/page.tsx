@@ -9,7 +9,7 @@ export default function OfflinePage() {
         نقشه و اطلاعات ذخیره‌شده قبلی ممکن است همچنان قابل مشاهده باشند. وقتی اتصال اینترنت برقرار شد دوباره تلاش کنید.
       </p>
       <Link
-        href="/"
+        href="/map"
         className="mt-2 rounded-[var(--radius-md)] border border-accent bg-accent px-4 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
       >
         بازگشت به نقشه

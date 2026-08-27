@@ -106,7 +106,7 @@ export default function AdminGroupsPage() {
           <div className="mb-1 font-mono text-xs tracking-[0.12em] text-accent uppercase">Admin</div>
           <h1 className="text-xl font-bold text-text">گروه‌ها و محدوده‌ها</h1>
         </div>
-        <Link href="/" className="text-sm text-text-muted transition-colors hover:text-accent">
+        <Link href="/map" className="text-sm text-text-muted transition-colors hover:text-accent">
           بازگشت به نقشه
         </Link>
       </header>

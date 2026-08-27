@@ -63,7 +63,7 @@ export default async function OrderDetailPage({
                 needs no new plumbing on the receiving side. */}
             <Link
               /* buildMapLink already includes the leading "?" -- see lib/deepLink.ts. */
-              href={`/${buildMapLink({ customerId: order.customer_id })}`}
+              href={`/map${buildMapLink({ customerId: order.customer_id })}`}
               className="text-[var(--text)] no-underline underline-offset-2 hover:text-[var(--accent)] hover:underline"
               title="نمایش روی نقشه"
             >

@@ -105,7 +105,7 @@ export default function AdminUsersPage() {
         </div>
         <div className="flex gap-3 text-sm text-text-muted">
           <Link href="/admin/groups" className="transition-colors hover:text-accent">گروه‌ها</Link>
-          <Link href="/" className="transition-colors hover:text-accent">بازگشت به نقشه</Link>
+          <Link href="/map" className="transition-colors hover:text-accent">بازگشت به نقشه</Link>
         </div>
       </header>
 

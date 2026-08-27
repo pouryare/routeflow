@@ -42,7 +42,7 @@ export default function TabPill({ tabs }: { tabs: Tab[] }) {
     move();
     const id = requestAnimationFrame(() => {
       move();
-      seg.current?.classList.add("seg-ready");
+      seg.current?.classList.add("ready");
     });
 
     const ro = new ResizeObserver(move);

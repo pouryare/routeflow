@@ -1,11 +1,11 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { faToman, faNum } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
-import { Avatar } from "@/components/AvatarStack";
 import ProcessingModal from "./ProcessingModal";
 import { STAGES, stageOf, moveRefusal, type StageKey } from "./orderStage";
 
@@ -33,6 +33,9 @@ const DRAG_THRESHOLD = 6;
  *  same gesture, so without this a successful drag also opens the modal. */
 const CLICK_GUARD_MS = 60;
 
+/** The artifact's avatar tones, picked from the name so one person keeps one colour. */
+const AV_TONE = ["plum", "sage", "sky", "amber"] as const;
+
 /** Cards drawn per lane before the rest are summarised.
  *
  *  Without it the تحویل‌شده lane grows without limit -- it is the only lane nothing ever
@@ -40,7 +43,7 @@ const CLICK_GUARD_MS = 60;
  *  being a board: the four stages can no longer be seen against each other, which is the
  *  entire reason for drawing them side by side. The lane header keeps the TRUE total, and
  *  the overflow is stated in words with a link to the full list, never silently dropped. */
-const LANE_CAP = 12;
+const LANE_CAP = 8;
 
 type Drag = { order: PipelineOrder; from: StageKey; x: number; y: number; width: number };
 
@@ -163,36 +166,37 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
 
   return (
     <>
-      <div className="board">
+      <div className="board pipe">
         {STAGES.map((stage) => {
           const rows = laneOrders(stage.key);
           const refusal = drag ? moveRefusal(drag.from, stage.key) : null;
           const armed = Boolean(drag) && stage.key !== drag?.from;
           const locked = armed && refusal !== null;
+          const over = hover === stage.key && armed && !locked;
           return (
             <section
               key={stage.key}
               data-stage={stage.key}
               aria-label={stage.label}
-              className={`lane${armed ? " lane--armed" : ""}${locked ? " lane--locked" : ""}${
-                hover === stage.key && !locked && armed ? " lane--target" : ""
-              }`}
-              style={{ ["--lane-tone" as string]: stage.tone }}
+              className={`col${over ? " over" : ""}`}
+              style={locked ? { opacity: 0.55 } : undefined}
             >
-              <header className="lane__head">
-                <span className="lane__dot" aria-hidden />
-                <span className="lane__name">{stage.label}</span>
-                <span className="lane__count num">{faNum(rows.length)}</span>
-              </header>
+              <div className="colhead">
+                <div className="t">
+                  <span className="st" style={{ background: stage.tone }} aria-hidden />
+                  {stage.label}
+                </div>
+                <span className="c">{faNum(rows.length)}</span>
+              </div>
 
-              <div className="lane__cards">
               {rows.slice(0, LANE_CAP).map((o) => {
                 const movable = stage.key === "draft";
+                const tone = AV_TONE[(o.salesperson_name ?? "").length % AV_TONE.length];
                 return (
                   <button
                     key={o.id}
                     type="button"
-                    className={`task${drag?.order.id === o.id ? " task--lifted" : ""}`}
+                    className={`task${drag?.order.id === o.id ? " dragging" : ""}`}
                     onPointerDown={movable ? (e) => onPointerDown(e, o, stage.key) : undefined}
                     onPointerMove={movable ? onPointerMove : undefined}
                     onPointerUp={movable ? onPointerUp : undefined}
@@ -203,42 +207,46 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                     }}
                     aria-label={`سفارش ${o.order_no} برای ${o.customer_name}`}
                   >
-                    <span className="task__row">
-                      <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
-                        {o.customer_name}
-                      </span>
-                      <span className="num shrink-0 text-[length:var(--text-sm)] text-[var(--text)]">
-                        {faToman(o.total_toman)}
-                      </span>
-                    </span>
-                    <span className="task__meta flex items-center gap-[var(--space-2)]">
-                      {o.salesperson_name && <Avatar name={o.salesperson_name} size={20} />}
-                      <span className="num">{faJalaliDate(o.order_date)}</span>
-                      <span className="num">{faNum(o.kg)} کیلو</span>
-                    </span>
+                    <div className="top">
+                      <span className="n">{o.customer_name}</span>
+                      <span className="amt">{faNum(o.total_toman)}</span>
+                    </div>
+                    <div className="m">
+                      <span>{faNum(Number(o.order_no.split("-")[1] ?? 0))}#</span>
+                      <span className="kg">{faNum(o.kg)} کیلو</span>
+                      <span>{faJalaliDate(o.order_date)}</span>
+                    </div>
+                    {o.salesperson_name && (
+                      <div className="asg">
+                        <span
+                          className="av"
+                          style={{ background: `var(--${tone}-soft)`, color: `var(--${tone})` }}
+                        >
+                          {o.salesperson_name.trim()[0]}
+                        </span>
+                        {o.salesperson_name}
+                      </div>
+                    )}
                   </button>
                 );
               })}
 
               {rows.length === 0 && (
-                <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                  خالی
-                </p>
+                <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>خالی</p>
               )}
-              </div>
 
               {rows.length > LANE_CAP && (
-                <a
-                  href={`/sales/orders`}
-                  className="m-0 text-[length:var(--text-xs)] text-[var(--accent-text)] no-underline hover:underline"
+                <Link
+                  href="/sales/orders"
+                  style={{ fontSize: 12, color: "var(--accent)", textDecoration: "none" }}
                 >
                   {faNum(rows.length - LANE_CAP)} سفارش دیگر در این مرحله ←
-                </a>
+                </Link>
               )}
 
-              <p className="lane__hint">
-                {refusal ?? (stage.key === drag?.from ? "" : "رها کنید تا تأیید شود")}
-              </p>
+              {locked && refusal && (
+                <p style={{ margin: "8px 0 0", fontSize: 11.5, color: "var(--muted)" }}>{refusal}</p>
+              )}
             </section>
           );
         })}
@@ -246,18 +254,24 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
 
       {drag && (
         <div
-          className="task-ghost"
-          style={{ left: drag.x + 14, top: drag.y - 18, width: drag.width }}
+          className="task"
+          style={{
+            position: "fixed",
+            zIndex: 90,
+            pointerEvents: "none",
+            left: drag.x + 14,
+            top: drag.y - 18,
+            width: drag.width,
+            boxShadow: "var(--sh-3)",
+            transform: "rotate(-2deg) scale(1.03)",
+            margin: 0,
+          }}
           aria-hidden
         >
-          <span className="task__row">
-            <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
-              {drag.order.customer_name}
-            </span>
-            <span className="num shrink-0 text-[length:var(--text-sm)] text-[var(--text)]">
-              {faToman(drag.order.total_toman)}
-            </span>
-          </span>
+          <div className="top">
+            <span className="n">{drag.order.customer_name}</span>
+            <span className="amt">{faNum(drag.order.total_toman)}</span>
+          </div>
         </div>
       )}
 

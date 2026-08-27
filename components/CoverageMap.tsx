@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ComponentProps } from "react";
 import { useTheme } from "@/components/ThemeToggle";
+import SkinToggle from "@/components/kargah/SkinToggle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
@@ -1208,6 +1209,18 @@ export default function CoverageMap({
           -- covering the name of what you are looking at with a menu button that would
           only bury it further. With a panel owning the screen there is nothing here worth
           reaching, so it stands down until the panel is closed. */}
+      {/* The skin toggle, in the map's own chrome.
+          Below the sidebar button rather than beside it: the top-centre belongs to the
+          search box, which on a phone takes the whole row. It stands down with the
+          sidebar button for the same reasons, so an open panel never has two floating
+          controls parked on its title. */}
+      <div
+        hidden={!sidebarOpen && (searchExpanded || panelOwnsScreen)}
+        className="absolute right-4 top-[68px] z-[var(--z-sidebar-toggle)]"
+      >
+        <SkinToggle />
+      </div>
+
       <button
         onClick={() => setSidebarOpen((v) => !v)}
         aria-label={sidebarOpen ? "بستن پنل" : "باز کردن پنل"}

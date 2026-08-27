@@ -71,7 +71,7 @@ export default function GalleryPage() {
             </h1>
           </div>
           <Link
-            href="/"
+            href="/map"
             className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
           >
             بازگشت به نقشه ←

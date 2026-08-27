@@ -1,33 +1,25 @@
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+import { getSessionFromCookies, orderFilter } from "@/lib/session";
+import { getDb, plain } from "@/lib/db";
 import { salesDashboard } from "@/lib/dashboard";
-import { movingAverage } from "@/lib/chartScale";
 import { faToman, faNum } from "@/lib/format";
-import { faJalaliLong, faJalaliDate } from "@/lib/jalali";
+import { faJalaliDate } from "@/lib/jalali";
 import Reveal from "@/components/kargah/Reveal";
 import GradientStat from "@/components/kargah/GradientStat";
-import SplineChart from "@/components/charts/SplineChart";
+import SalesSpark, { type SparkPoint } from "@/components/kargah/SalesSpark";
+import CarvedCard from "@/components/kargah/CarvedCard";
 
 export const dynamic = "force-dynamic";
 
-const SHORTCUTS = [
-  { href: "/sales/orders/new", label: "ثبت سفارش تازه", note: "قیمت و وزن همان لحظه ثبت می‌شود" },
-  { href: "/sales/journey", label: "تابلوی سفارش‌ها", note: "پیش‌نویس‌ها را تأیید کنید" },
-  { href: "/sales/runs", label: "مسیر تحویل", note: "سفارش‌ها را روی وانت بچینید" },
-  { href: "/sales/stock", label: "انبار و خرید", note: "موجودی و بهای تمام‌شده" },
-];
+/** «۱۲٫۴» — one decimal, Persian digits, Persian decimal separator. */
+const fa1 = (n: number) => faNum(Math.round(n * 10) / 10).replace(".", "٫");
 
-/** The سالن of the sales section: the four figures somebody wants before they have
- *  decided what they came here to do, and the shortest route to each of the four things
- *  they might have come to do.
+/** The dashboard — the artifact's first screen, on real figures.
  *
- *  Everything is read from the same salesDashboard the داشبورد tab uses, so the two
- *  cannot disagree -- a summary computing its own totals is how a system ends up with
- *  two answers to "what did we sell today".
+ *  Reads the same salesDashboard the deeper analytics tab uses, so the two cannot answer
+ *  "what did we sell today" differently.
  */
 export default async function SalesHomePage() {
   const jar = await cookies();
@@ -38,103 +30,154 @@ export default async function SalesHomePage() {
   const db = getDb();
   const d = salesDashboard(db, session);
 
-  const todayIso = new Date().toISOString().slice(0, 10);
+  /* Both dates from ONE clock read. Two separate reads can straddle midnight and make
+     "yesterday" the same day as "today". */
+  const now = new Date();
+  const todayIso = now.toISOString().slice(0, 10);
   const today = d.revenue_by_day.find((p) => p.key === todayIso)?.value ?? 0;
+  const yesterdayIso = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const yesterday = d.revenue_by_day.find((p) => p.key === yesterdayIso)?.value ?? 0;
+  const delta = yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null;
 
   const byStatus = new Map(d.status_mix.map((s) => [s.key, s.value]));
-  const drafts = byStatus.get("draft") ?? 0;
   const awaiting = byStatus.get("confirmed") ?? 0;
 
-  // Newest first, which is the order the chart wants: index 0 is drawn at the right edge.
-  const days = d.revenue_by_day;
-  const labels = days.map((p) => faJalaliDate(p.key));
-  const values = days.map((p) => p.value);
+  /* Seven days, oldest first — SalesSpark draws index 0 on the right. `revenue_by_day`
+     arrives newest-first, so it is reversed once here rather than inside the chart. */
+  const recent = d.revenue_by_day.slice(0, 7).reverse();
+  const prior = d.revenue_by_day.slice(7, 14).reverse();
+  const M = 1_000_000;
+  const spark: SparkPoint[] = recent.map((p, i) => {
+    const a = p.value / M;
+    const b = (prior[i]?.value ?? 0) / M;
+    return {
+      label: faJalaliDate(p.key).slice(-5),
+      a,
+      b,
+      aLabel: `${fa1(a)} میلیون`,
+      sub: `${faJalaliDate(p.key)} · هفتهٔ پیش ${fa1(b)}`,
+    };
+  });
+  const sparkMax = Math.max(1, ...spark.map((p) => Math.max(p.a, p.b))) * 1.15;
+
+  /* Who took today's orders, and how many each. The cradle's avatars are people, so this
+     is the one figure on the screen that is about the team rather than the money. */
+  const scope = orderFilter(session);
+  const team = plain(
+    db
+      .prepare(
+        `SELECT COALESCE(u.display_name, 'بدون فروشنده') AS name, COUNT(*) AS n
+           FROM orders o
+           LEFT JOIN users u ON u.id = o.salesperson_user_id
+          WHERE o.order_date = ?${scope.sql}
+          GROUP BY o.salesperson_user_id
+          ORDER BY n DESC
+          LIMIT 5`
+      )
+      .all(todayIso, ...scope.params)
+  ) as unknown as { name: string; n: number }[];
+  const todayOrders = team.reduce((sum, t) => sum + t.n, 0);
+
+  const AV_TONE = ["plum", "sage", "sky", "amber", "accent"] as const;
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
-      <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-        امروز، {faJalaliLong(new Date().toISOString())}
-      </p>
-
-      <Reveal
-        replayKey="home-stats"
-        className="grid gap-[var(--space-3)] sm:grid-cols-2 xl:grid-cols-4"
-      >
+    <>
+      <Reveal replayKey="dash-stats" className="statrow">
         <GradientStat
           tone="peach"
-          icon="☀"
           label="فروش امروز"
-          value={faToman(today)}
-          note={`از ابتدا ${faToman(d.revenue_toman)}`}
-        />
-        <GradientStat
-          tone="sand"
-          icon="✎"
-          label="پیش‌نویس‌ها"
-          value={faNum(drafts)}
-          note={drafts > 0 ? "منتظر تأیید و قیمت‌گذاری" : "چیزی معطل نمانده"}
-        />
-        <GradientStat
-          tone="sky"
-          icon="⇄"
-          label="در انتظار تحویل"
-          value={faNum(awaiting)}
-          note={`نرخ تحویل ${faNum(Math.round(d.fill_rate * 100))}٪`}
+          value={faNum(today)}
+          unit="تومان"
+          chip={
+            delta === null
+              ? `از ابتدا ${faToman(d.revenue_toman)}`
+              : `${delta >= 0 ? "▲" : "▼"} ${faNum(Math.abs(delta))}٪ نسبت به دیروز`
+          }
         />
         <GradientStat
           tone="mint"
-          icon="⌂"
+          small
+          icon="◷"
+          label="در انتظار تحویل"
+          value={`${faNum(awaiting)} سفارش`}
+          chip={`${faNum(Math.round(d.kg))} کیلو · نرخ تحویل ${faNum(Math.round(d.fill_rate * 100))}٪`}
+          chipTone="sky"
+        />
+        <GradientStat
+          tone="sand"
+          small
+          icon="₸"
           label="مانده حساب مشتریان"
-          value={faToman(d.debt.total)}
-          note={
+          value={fa1(d.debt.total / M)}
+          unit="میلیون"
+          chip={
             d.debt.over_30 > 0
               ? `${faToman(d.debt.over_30)} بالای ۳۰ روز`
-              /* customer_count is COUNT(*) over the territory's customers, NOT the ones
-                 in debt -- a shop with no orders yet is still in it. Calling it
-                 «مشتری بدهکار» printed "141 customers in debt" beside a balance of zero. */
               : `${faNum(d.customer_count)} مشتری در منطقه`
           }
+          chipTone="amber"
         />
       </Reveal>
 
-      <SplineChart
-        title="فروش روزانه"
-        subtitle="۳۰ روز اخیر · بر اساس مقدار تحویل‌شده"
-        labels={labels}
-        series={[
-          { label: "فروش روز", values },
-          // Same unit, same axis, and a genuine comparison rather than a second measure:
-          // the line the day is doing better or worse than.
-          { label: "میانگین ۷ روزه", values: movingAverage(values, 7), dashed: true },
-        ]}
-        formatValue={faToman}
-        empty="هنوز تحویلی ثبت نشده است"
-      />
+      <Reveal replayKey="dash-body">
+        <div className="block">
+          <div className="bhead">
+            <div>
+              <h2>روند فروش</h2>
+              <div className="n">میلیون تومان در روز · نقطه‌ها را لمس کنید</div>
+            </div>
+            <div className="acts">
+              <span className="btn ghost">هفت روز</span>
+            </div>
+          </div>
+          {spark.length > 1 ? (
+            <>
+              <SalesSpark points={spark} max={sparkMax} ariaLabel="نمودار فروش هفت روز گذشته" />
+              <div className="legend">
+                <span><i className="sw-a" />این هفته</span>
+                <span><i className="sw-b" />هفتهٔ پیش</span>
+              </div>
+            </>
+          ) : (
+            <div className="chartbox">
+              <p className="m-0 py-10 text-center" style={{ color: "var(--muted)" }}>
+                هنوز فروش تحویل‌شده‌ای برای رسم نمودار ثبت نشده است.
+              </p>
+            </div>
+          )}
+        </div>
 
-      <section>
-        <h2 className="m-0 mb-[var(--space-3)] text-[length:var(--text-md)] font-medium text-[var(--text)]">
-          کارهای همیشگی
-        </h2>
-        <Reveal
-          replayKey="home-links"
-          className="grid gap-[var(--space-3)] sm:grid-cols-2 xl:grid-cols-4"
+        <CarvedCard
+          shoulder={<>امروز <b className="mono">{faNum(todayOrders)}</b> سفارش</>}
+          avatars={
+            team.length === 0 ? null : (
+              <>
+                {team.map((t, i) => (
+                  <div
+                    key={t.name}
+                    className="av"
+                    title={t.name}
+                    style={{
+                      background: `var(--${AV_TONE[i % AV_TONE.length]}-soft)`,
+                      color: `var(--${AV_TONE[i % AV_TONE.length]})`,
+                    }}
+                  >
+                    {t.name.trim()[0]}
+                    <span className="badge mono">{faNum(t.n)}</span>
+                  </div>
+                ))}
+              </>
+            )
+          }
         >
-          {SHORTCUTS.map((s) => (
-            <Link
-              key={s.href}
-              href={s.href}
-              className="block rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)] no-underline shadow-[var(--sh-1)] transition-[box-shadow,transform] duration-[var(--dur-base)] hover:-translate-y-px hover:shadow-[var(--sh-2)]"
-            >
-              <span className="block text-[length:var(--text-base)] font-medium text-[var(--text)]">
-                {s.label}
-              </span>
-              <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                {s.note}
-              </span>
-            </Link>
-          ))}
-        </Reveal>
-      </section>
-    </div>
+          <h2>تیم فروش امروز</h2>
+          <p>
+            {todayOrders === 0
+              ? "امروز هنوز سفارشی ثبت نشده است."
+              : `${faNum(todayOrders)} سفارش بین ${faNum(team.length)} نفر پخش شده — عدد روی هر نفر، تعداد سفارش‌های اوست.`}
+          </p>
+        </CarvedCard>
+      </Reveal>
+    </>
   );
 }

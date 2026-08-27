@@ -5,36 +5,45 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orderFilter, groupFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
-import { faToman, faNum } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import OrderPocketCard, { OrderDoc } from "@/components/sales/OrderPocketCard";
 import Reveal from "@/components/kargah/Reveal";
+import PocketCard, { type PocketDoc, type PocketStatus } from "@/components/kargah/PocketCard";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "پیش‌نویس",
-  confirmed: "تأییدشده",
-  delivered: "تحویل‌شده",
-  cancelled: "لغوشده",
+const STATUS: Record<string, { pill: PocketStatus; label: string }> = {
+  draft: { pill: "draft", label: "پیش‌نویس" },
+  confirmed: { pill: "conf", label: "تأییدشده" },
+  delivered: { pill: "done", label: "تحویل‌شده" },
+  cancelled: { pill: "draft", label: "لغوشده" },
 };
 
-const STATUS_TONE: Record<string, string> = {
-  draft: "var(--text-muted)",
-  confirmed: "var(--accent)",
-  delivered: "var(--good)",
-  cancelled: "var(--crit)",
+/* The artifact's own document tones, kept as literal pairs: strong, then its pale echo. */
+const TONE = {
+  sage: ["#4F6B4A", "#C7D6C3"] as [string, string],
+  accent: ["#C0532B", "#EFC9B8"] as [string, string],
+  amber: ["#9A6B10", "#EBD9B2"] as [string, string],
+  sky: ["#2E6382", "#BCD5E2"] as [string, string],
+  plum: ["#6B4FA0", "#D6CBE9"] as [string, string],
 };
 
-const PAYMENT_LABEL: Record<string, string> = {
-  unpaid: "پرداخت‌نشده",
-  partial: "بخشی",
-  paid: "پرداخت‌شده",
-};
+/** Four bar heights derived from the order itself.
+ *
+ *  Deterministic on purpose: a card whose little chart redraws differently on every
+ *  render is decoration pretending to be data. These come from the id and the figure, so
+ *  the same order always draws the same bars.
+ */
+function barsFor(seed: number, total: number): [number, number, number, number] {
+  const out: number[] = [];
+  let x = (seed * 2654435761 + total) >>> 0;
+  for (let i = 0; i < 4; i++) {
+    x = (x * 1103515245 + 12345) >>> 0;
+    out.push(0.35 + ((x >>> 16) % 66) / 100);
+  }
+  return out as [number, number, number, number];
+}
 
-/** A query parameter may arrive repeated («?customer=1&customer=2»), in which case Next
- *  hands over an array. Taking the first is enough here and beats letting `Number([..])`
- *  quietly produce NaN. */
 function one(value: string | string[] | undefined): string | undefined {
   return Array.isArray(value) ? value[0] : value;
 }
@@ -53,9 +62,6 @@ export default async function OrdersPage({
   const raw = one((await searchParams).customer);
   const customerId = raw !== undefined && /^\d+$/.test(raw) ? Number(raw) : undefined;
 
-  // Named separately from the orders, so the chip still says whose list this is when the
-  // answer is "none yet" -- which is the commonest case for a shop that has never
-  // ordered, and exactly when the reader most needs telling why the page is empty.
   const scope = groupFilter(session);
   const focused =
     customerId === undefined
@@ -65,122 +71,105 @@ export default async function OrdersPage({
           .get(customerId, ...scope.params) as { id: number; business_name: string } | undefined) ??
         null;
 
-  const orders = readOrders(db, orderFilter(session), {
-    limit: 100,
-    customerId: focused?.id,
-  });
+  const orders = readOrders(db, orderFilter(session), { limit: 100, customerId: focused?.id });
 
-  // Which of these orders are already loaded onto a van. One query for the whole page
-  // rather than one per row -- the list renders up to 200 orders.
+  // Which of these are already loaded onto a van. One query for the page rather than one
+  // per row.
   const onARun = new Set(
     (
       plain(
         db
           .prepare(
-            `SELECT DISTINCT order_id FROM delivery_stops WHERE order_id IN (${orders
-              .map(() => "?")
-              .join(",") || "NULL"})`
+            `SELECT DISTINCT order_id FROM delivery_stops WHERE order_id IN (${
+              orders.map(() => "?").join(",") || "NULL"
+            })`
           )
           .all(...orders.map((o) => o.id))
       ) as unknown as { order_id: number }[]
     ).map((r) => r.order_id)
   );
 
+  const customerCount = new Set(orders.map((o) => o.customer_name)).size;
+
   return (
-    <div className="flex flex-col gap-[var(--space-4)]">
-      <div className="flex items-center justify-between gap-[var(--space-3)]">
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          {orders.length === 0
-            ? "سفارشی پیدا نشد"
-            : `${faNum(orders.length)} سفارش${focused ? "" : " اخیر"}`}
-        </p>
-        <div className="flex items-center gap-[var(--space-2)]">
+    <div className="block">
+      <div className="bhead">
+        <div>
+          <h2>{focused ? `سفارش‌های ${focused.business_name}` : "سفارش‌های اخیر"}</h2>
+          <div className="n">
+            {orders.length === 0
+              ? "سفارشی پیدا نشد"
+              : `${faNum(orders.length)} سفارش، از ${faNum(customerCount)} مشتری · روی هر کارت بزنید`}
+          </div>
+        </div>
+        <div className="acts">
           {orders.length > 0 && (
-            /* A plain anchor with `download`, on purpose. This is a file, not a
-               navigation: next/link would attempt a client-side route transition to a
-               route that answers with an .xlsx, which is not a page and cannot render. */
-            <a
-              href="/api/sales/orders/export"
-              download
-              className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
-            >
+            /* A plain anchor with `download`, on purpose: this is a file, not a
+               navigation, and next/link would attempt a client-side transition to a
+               route that answers with an .xlsx. */
+            <a className="btn ghost" href="/api/sales/orders/export" download>
               خروجی اکسل
             </a>
           )}
           <Link
+            className="btn solid"
             href={focused ? `/sales/orders/new?customer=${focused.id}` : "/sales/orders/new"}
-            className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink no-underline transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
           >
-            ثبت سفارش تازه
+            ＋ ثبت سفارش تازه
           </Link>
         </div>
       </div>
 
-      {focused && (
-        <div className="flex flex-wrap items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] bg-[var(--surface-2)] px-[var(--space-3)] py-[var(--space-2)]">
-          <span className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
-            فقط سفارش‌های <strong className="font-medium text-[var(--text)]">{focused.business_name}</strong>
-          </span>
-          <Link
-            href="/sales/orders"
-            className="text-[length:var(--text-xs)] text-[var(--accent)] no-underline hover:brightness-110"
-          >
-            نمایش همه ✕
-          </Link>
-        </div>
-      )}
-
       {orders.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-muted)]">
+        <p style={{ padding: "0 24px 28px", color: "var(--muted)", fontSize: 13.5 }}>
           {focused
             ? `برای ${focused.business_name} هنوز سفارشی ثبت نشده است.`
             : "اولین سفارش را ثبت کنید. از همان لحظه، بدهی و تاریخ آخرین خرید مشتری‌ها روی نقشه هم به‌روز می‌شود."}
         </p>
       ) : (
-        <Reveal replayKey={String(focused?.id ?? "all")} select="li">
-          <ul className="flex list-none flex-col gap-[var(--space-4)] p-0 pt-[var(--space-2)]">
-            {orders.map((order) => (
-              <li key={order.id}>
-                <OrderPocketCard
-                  href={`/sales/orders/${order.id}`}
-                  tone={STATUS_TONE[order.status] ?? "var(--neutral)"}
-                  docs={
-                    [
-                      // A draft has not been invoiced, so there is no receipt to file.
-                      order.status !== "draft" && "receipt",
-                      onARun.has(order.id) && "delivery",
-                    ].filter(Boolean) as OrderDoc[]
-                  }
-                  /* Each paper prints the figure that document is actually about, so
-                     pulling the fan open answers a question rather than showing a prop. */
-                  docNote={{
-                    receipt: faToman(order.total_toman),
-                    delivery: `${faNum(order.kg)} کیلو`,
-                  }}
-                >
-                  <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                    <span className="text-[length:var(--text-base)] text-[var(--text)]">
-                      {order.customer_name}
-                    </span>
-                    <span className="tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
-                      {faToman(order.total_toman)}
-                    </span>
-                  </div>
-
-                  <div className="mt-[var(--space-2)] flex flex-wrap items-center gap-x-[var(--space-3)] gap-y-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                    <span className="tabular-nums">{faNum(Number(order.order_no.split("-")[1]))}#</span>
-                    <span>{faJalaliDate(order.order_date)}</span>
-                    <span style={{ color: STATUS_TONE[order.status] }}>
-                      {STATUS_LABEL[order.status] ?? order.status}
-                    </span>
-                    <span>{PAYMENT_LABEL[order.payment_status] ?? order.payment_status}</span>
-                    <span className="tabular-nums">{faNum(order.kg)} کیلو</span>
-                    {order.salesperson_name && <span>{order.salesperson_name}</span>}
-                  </div>
-                </OrderPocketCard>
-              </li>
-            ))}
-          </ul>
+        <Reveal replayKey={String(focused?.id ?? "all")} select=".pocket" className="pockets">
+          {orders.map((order) => {
+            const st = STATUS[order.status] ?? STATUS.draft;
+            const docs: PocketDoc[] = [];
+            // A draft has not been invoiced, so there is no receipt to file.
+            if (order.status !== "draft") {
+              docs.push({
+                label: "رسید تحویل",
+                value: faNum(order.total_toman),
+                tone: order.status === "delivered" ? TONE.sage : TONE.amber,
+                bars: barsFor(order.id, order.total_toman),
+              });
+            }
+            if (onARun.has(order.id)) {
+              docs.push({
+                label: "برگهٔ مسیر",
+                value: `${faNum(order.kg)} کیلو`,
+                tone: TONE.sky,
+                bars: barsFor(order.id + 7, Math.round(order.kg)),
+              });
+            } else if (order.status === "draft") {
+              docs.push({
+                label: "پیش‌فاکتور",
+                value: faNum(order.total_toman),
+                tone: TONE.accent,
+                bars: barsFor(order.id + 3, order.total_toman),
+              });
+            }
+            return (
+              <PocketCard
+                key={order.id}
+                href={`/sales/orders/${order.id}`}
+                customer={order.customer_name}
+                meta={`${faNum(Number(order.order_no.split("-")[1]))}# · ${faJalaliDate(order.order_date)}${
+                  order.salesperson_name ? ` · ${order.salesperson_name}` : ""
+                }`}
+                amount={faNum(order.total_toman)}
+                status={st.pill}
+                statusLabel={st.label}
+                docs={docs}
+              />
+            );
+          })}
         </Reveal>
       )}
     </div>

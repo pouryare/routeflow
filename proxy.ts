@@ -53,8 +53,8 @@ export function proxy(req: NextRequest) {
   const isAdmin = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
   const isDriver = pathname.startsWith("/driver") || pathname.startsWith("/api/driver");
 
-  if (isAdmin && claims.role !== "owner") return deny("/");
-  if (isDriver && claims.role !== "driver") return deny("/");
+  if (isAdmin && claims.role !== "owner") return deny("/sales");
+  if (isDriver && claims.role !== "driver") return deny("/sales");
 
   // /analytics and /report aggregate a whole group's revenue, debt and coverage, and
   // /report hands the reader a CSV of every row behind the totals. A salesperson is
