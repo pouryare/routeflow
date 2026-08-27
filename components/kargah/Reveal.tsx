@@ -9,6 +9,10 @@ type RevealProps = {
   replayKey?: string | number;
   step?: number;
   className?: string;
+  /** A selector for the elements to stagger, when they are not the direct children.
+   *  A list is the case that needs it: the wrapper cannot BE the <ul>, because the
+   *  children of a list have to be <li>, so the items sit one level down. */
+  select?: string;
 };
 
 /** Staggers its direct element children in. See MASTER.md, Motion, Tier 0.
@@ -17,15 +21,21 @@ type RevealProps = {
  *  about: the sales pages are RSC, and their cards never reach the client as React
  *  elements this component could add a prop to.
  */
-export default function Reveal({ children, replayKey, step = 55, className }: RevealProps) {
+export default function Reveal({
+  children,
+  replayKey,
+  step = 55,
+  className,
+  select,
+}: RevealProps) {
   const host = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     const root = host.current;
     if (!root) return;
-    const items = Array.from(root.children).filter(
-      (el): el is HTMLElement => el instanceof HTMLElement
-    );
+    const items = Array.from(
+      select ? root.querySelectorAll(select) : root.children
+    ).filter((el): el is HTMLElement => el instanceof HTMLElement);
     if (!items.length) return;
 
     const reduced =
@@ -56,7 +66,7 @@ export default function Reveal({ children, replayKey, step = 55, className }: Re
       el.style.transitionDelay = `${delays[i]}ms`;
       el.classList.add("rev-in");
     });
-  }, [replayKey, step]);
+  }, [replayKey, step, select]);
 
   return (
     <div ref={host} className={className}>

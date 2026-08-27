@@ -1824,3 +1824,345 @@ body {
   .kargah .spline__area { opacity: 1; }
   .kargah .dot-p { r: 4.6px; }
 }
+
+/* ---- Order pipeline (MASTER.md, "Order pipeline") ---------------------------
+   Columns are statuses; the assignee is a property on the card.
+
+   `user-select: none` on the board and `touch-action: none` on the card are what guard
+   the gesture. The alternative -- preventDefault() in pointerdown -- also suppresses the
+   compatibility mouse events, so the card's own click never fires and a tap can never
+   open anything.                                                                */
+.kargah .board {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(228px, 1fr));
+  user-select: none;
+  -webkit-user-select: none;
+}
+.kargah .lane {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-height: 148px;
+  padding: var(--space-3);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  transition: border-color 200ms var(--ease-out), background-color 200ms var(--ease-out);
+}
+.kargah .lane__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.kargah .lane__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: var(--radius-pill);
+  background: var(--lane-tone, var(--text-faint));
+  flex: none;
+}
+.kargah .lane__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.kargah .lane__count {
+  margin-inline-start: auto;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.kargah .lane__hint {
+  margin: auto 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+  opacity: 0;
+  transition: opacity 200ms var(--ease-out);
+}
+/* Armed = a drag is in progress. Only the lanes that can actually accept the card light
+   up, so an impossible drop is visible as impossible before it is attempted rather than
+   being refused after. */
+.kargah .lane--armed { border-style: dashed; border-color: var(--border-strong); }
+.kargah .lane--armed .lane__hint { opacity: 1; }
+.kargah .lane--target {
+  border-style: solid;
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.kargah .lane--locked.lane--armed { opacity: .55; }
+
+.kargah .task {
+  touch-action: none;
+  display: block;
+  width: 100%;
+  text-align: start;
+  cursor: pointer;
+  padding: var(--space-3);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: var(--sh-1);
+  transition: box-shadow 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.kargah .task:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
+.kargah .task:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kargah .task--lifted { opacity: .35; box-shadow: none; }
+.kargah .task--static { cursor: default; }
+.kargah .task__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-2);
+}
+.kargah .task__meta {
+  margin-top: var(--space-1);
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+
+/* The ghost follows the pointer and must never be hit-tested: elementFromPoint is how
+   the drop target is found, and a ghost under the cursor would answer every time. */
+.kargah .task-ghost {
+  position: fixed;
+  z-index: 60;
+  pointer-events: none;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--accent);
+  background: var(--surface);
+  box-shadow: var(--sh-3);
+  padding: var(--space-3);
+  transform: rotate(-1.5deg) scale(1.02);
+}
+
+/* ---- Processing modal (MASTER.md, "Processing modal") ----------------------- */
+.kargah .proc {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  background: color-mix(in srgb, #1A120C 62%, transparent);
+  backdrop-filter: blur(3px);
+  animation: proc-veil 200ms var(--ease-out) both;
+}
+@keyframes proc-veil { from { opacity: 0; } to { opacity: 1; } }
+
+.kargah .proc__sheet {
+  position: absolute;
+  /* PHYSICAL left, not inset-inline-start: under RTL the logical property resolves to
+     the RIGHT edge, and translate(-50%) then walks the sheet off the side of the page. */
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(560px, calc(100vw - 2 * var(--space-4)));
+  max-height: min(88vh, 760px);
+  overflow-y: auto;
+  border-radius: var(--radius-2xl);
+  background: var(--surface);
+  box-shadow: var(--sh-3);
+  padding: var(--space-5);
+  animation: proc-rise 320ms var(--spring-pop) both;
+}
+@keyframes proc-rise {
+  from { opacity: 0; transform: translate(-50%, -46%) scale(.96); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+
+.kargah .proc__grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+}
+.kargah .proc__cell {
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunk);
+  padding: var(--space-3);
+}
+.kargah .proc__cell dt {
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.kargah .proc__cell dd {
+  margin: var(--space-1) 0 0;
+  font-size: var(--text-md);
+  color: var(--text);
+}
+
+/* The collected-against-total track. Painted by hand because a range input offers no
+   pseudo-element for its filled part, and `direction: rtl` so it fills from the right --
+   the side the reading starts on. */
+.kargah .paytrack {
+  direction: rtl;
+  width: 100%;
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to left,
+    var(--accent) 0 var(--pay, 0%),
+    var(--surface-sunk) var(--pay, 0%) 100%
+  );
+}
+.kargah input.paytrack {
+  appearance: none;
+  -webkit-appearance: none;
+  height: 22px;
+  background: transparent;
+  cursor: pointer;
+}
+.kargah input.paytrack::-webkit-slider-runnable-track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to left,
+    var(--accent) 0 var(--pay, 0%),
+    var(--surface-sunk) var(--pay, 0%) 100%
+  );
+}
+.kargah input.paytrack::-moz-range-track {
+  height: 10px;
+  border-radius: var(--radius-pill);
+  background: linear-gradient(
+    to left,
+    var(--accent) 0 var(--pay, 0%),
+    var(--surface-sunk) var(--pay, 0%) 100%
+  );
+}
+.kargah input.paytrack::-webkit-slider-thumb {
+  appearance: none;
+  -webkit-appearance: none;
+  margin-top: -6px;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 3px solid var(--accent);
+  box-shadow: var(--sh-2);
+}
+.kargah input.paytrack::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-pill);
+  background: var(--surface);
+  border: 3px solid var(--accent);
+  box-shadow: var(--sh-2);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kargah .proc,
+  .kargah .proc__sheet { animation-duration: 1ms; }
+  .kargah .task { transition-duration: 1ms; }
+  .kargah .task:hover { transform: none; }
+}
+
+/* ---- Order journey (MASTER.md, "Order journey") -----------------------------
+   Four lanes for the lifecycle, joined by a dotted connector.
+
+   The connector hangs off each lane's inline-END, because the NEXT lane is the one in
+   the reading direction: under RTL that is the left. Its head is a triangle made from a
+   border on the inline-START side, which points the other way -- so the whole thing
+   flips correctly if this is ever rendered LTR, with no physical values anywhere. */
+.kargah .journey {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fit, minmax(212px, 1fr));
+}
+.kargah .jlane {
+  position: relative;
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  padding: var(--space-3);
+  box-shadow: var(--sh-1);
+}
+.kargah .jlane::after {
+  content: "";
+  position: absolute;
+  top: 34px;
+  inset-inline-end: calc(-1 * var(--space-4));
+  width: var(--space-4);
+  border-top: 2px dotted var(--border-strong);
+}
+.kargah .jlane::before {
+  content: "";
+  position: absolute;
+  top: 30px;
+  inset-inline-end: calc(-1 * var(--space-4));
+  border-block: 4px solid transparent;
+  border-inline-start: 6px solid var(--border-strong);
+  border-inline-end: 0;
+}
+.kargah .jlane:last-child::after,
+.kargah .jlane:last-child::before { content: none; }
+
+.kargah .jlane__head {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-3);
+}
+.kargah .jlane__name {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text);
+}
+.kargah .jtick {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-pill);
+  border: 2px solid var(--border-strong);
+  background: var(--surface);
+  color: transparent;
+  font-size: 13px;
+  line-height: 1;
+  transition: background-color 240ms var(--ease-out), border-color 240ms var(--ease-out),
+              color 240ms var(--ease-out);
+}
+.kargah .jtick--done {
+  background: var(--good);
+  border-color: var(--good);
+  color: var(--surface);
+}
+:root[data-skin="dark"] .kargah .jtick--done { color: var(--bg); }
+
+.kargah .jnode {
+  border-radius: var(--radius-lg);
+  background: var(--surface-sunk);
+  padding: var(--space-3);
+}
+.kargah .jnode__who {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text);
+}
+.kargah .jnode__meta {
+  margin: var(--space-2) 0 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.kargah .jlane--pending { opacity: .72; }
+
+/* Stacked: the connector turns to point down the column instead of across the row. */
+@media (max-width: 700px) {
+  .kargah .jlane::after {
+    top: auto;
+    inset-inline-end: 50%;
+    bottom: calc(-1 * var(--space-4));
+    width: 0;
+    height: var(--space-4);
+    border-top: 0;
+    border-inline-start: 2px dotted var(--border-strong);
+  }
+  .kargah .jlane::before {
+    top: auto;
+    inset-inline-end: calc(50% - 4px);
+    bottom: calc(-1 * var(--space-4) - 1px);
+    border-inline: 4px solid transparent;
+    border-top: 6px solid var(--border-strong);
+    border-bottom: 0;
+  }
+}
