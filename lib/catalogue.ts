@@ -25,6 +25,10 @@ export interface ProductRow {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  /** Reorder policy, in base_unit -- both null until an owner sets them. See
+   *  lib/purchases.ts's advancedStockPosition for what a null one means on screen. */
+  reorder_point: number | null;
+  target_stock: number | null;
 }
 
 export interface PackagingRow {
@@ -179,4 +183,41 @@ export function setPrice(
     new Date().toISOString()
   );
   return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+}
+
+/** Sets a product's reorder policy. A plain UPDATE, unlike setPrice and setRate --
+ *  there is no invoice or commission statement that has to keep reading yesterday's
+ *  reorder point, so there is nothing an INSERT-only history would protect here that a
+ *  live value does not already give for free.
+ *
+ *  Either field passed as null CLEARS it -- undefined leaves it alone. That distinction
+ *  is what lets an owner clear a threshold without the API forcing a bogus value into
+ *  the other one just to keep the call shaped the same.
+ */
+export function setStockThresholds(
+  db: DatabaseSync,
+  productId: number,
+  input: { reorder_point?: number | null; target_stock?: number | null }
+): void {
+  for (const [key, value] of Object.entries(input)) {
+    if (value !== null && value !== undefined && (!Number.isFinite(value) || value < 0)) {
+      throw new TypeError(`${key} باید عددی نامنفی یا خالی باشد: ${value}`);
+    }
+  }
+  const sets: string[] = [];
+  const params: (number | null)[] = [];
+  if ("reorder_point" in input) {
+    sets.push("reorder_point = ?");
+    params.push(input.reorder_point ?? null);
+  }
+  if ("target_stock" in input) {
+    sets.push("target_stock = ?");
+    params.push(input.target_stock ?? null);
+  }
+  if (sets.length === 0) return;
+  db.prepare(`UPDATE products SET ${sets.join(", ")}, updated_at = ? WHERE id = ?`).run(
+    ...params,
+    new Date().toISOString(),
+    productId
+  );
 }

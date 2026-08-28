@@ -168,6 +168,106 @@ export function stockPosition(db: DatabaseSync): StockRow[] {
   });
 }
 
+const VELOCITY_WINDOW_DAYS = 14;
+
+export type StockStatus = "crit" | "low" | "ok" | "over";
+
+/** بحرانی below the reorder point, کم within 35% of it, مازاد above the target, سالم
+ *  otherwise -- and سالم, never بحرانی or مازاد, for a threshold nobody has set. A
+ *  product the owner has not configured yet has no policy to be measured against, and
+ *  reading that as an alarm would train the owner to ignore the alarm. */
+export function stockStatus(onHand: number, reorderPoint: number | null, targetStock: number | null): StockStatus {
+  if (reorderPoint !== null && onHand < reorderPoint) return "crit";
+  if (reorderPoint !== null && onHand < reorderPoint * 1.35) return "low";
+  if (targetStock !== null && onHand > targetStock) return "over";
+  return "ok";
+}
+
+export interface AdvancedStockRow extends StockRow {
+  reorder_point: number | null;
+  target_stock: number | null;
+  status: StockStatus;
+  /** Average base_unit delivered per day over the last VELOCITY_WINDOW_DAYS. */
+  daily_rate: number;
+  /** on_hand / daily_rate, in days. Null rather than Infinity when nothing has moved
+   *  recently -- a chart cannot draw Infinity, and "unknown" is the honest answer for a
+   *  product with stock but no recent delivery to time it against. */
+  days_left: number | null;
+  /** VELOCITY_WINDOW_DAYS entries, oldest first -- same convention SalesSpark uses,
+   *  because this app's charts put index 0 on the right under RTL. */
+  spark: number[];
+  last_purchase_date: string | null;
+}
+
+/** stockPosition plus everything the advanced انبار screen draws on top of it: the
+ *  owner's reorder policy, how fast each product has actually been moving, and when it
+ *  was last restocked. Kept separate from stockPosition rather than folded into it --
+ *  the dashboard's plain stock bar chart has no use for a driver's worth of extra
+ *  columns and three more queries it would otherwise pay for on every render.
+ */
+export function advancedStockPosition(db: DatabaseSync): AdvancedStockRow[] {
+  const base = stockPosition(db);
+
+  const thresholds = db
+    .prepare("SELECT id, reorder_point, target_stock FROM products WHERE active = 1")
+    .all() as unknown as { id: number; reorder_point: number | null; target_stock: number | null }[];
+  const thresholdById = new Map(thresholds.map((t) => [t.id, t]));
+
+  const windowStart = new Date(Date.now() - VELOCITY_WINDOW_DAYS * 86_400_000).toISOString().slice(0, 10);
+  const dailyRows = db
+    .prepare(
+      `SELECT ol.product_id, substr(o.delivered_at, 1, 10) AS day,
+              SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack) AS qty
+         FROM order_lines ol
+         JOIN orders o ON o.id = ol.order_id
+        WHERE o.status = 'delivered' AND o.delivered_at IS NOT NULL AND o.delivered_at >= ?
+        GROUP BY ol.product_id, day`
+    )
+    .all(windowStart) as unknown as { product_id: number; day: string; qty: number }[];
+  const dailyByProduct = new Map<number, Map<string, number>>();
+  for (const row of dailyRows) {
+    if (!dailyByProduct.has(row.product_id)) dailyByProduct.set(row.product_id, new Map());
+    dailyByProduct.get(row.product_id)!.set(row.day, row.qty);
+  }
+
+  const lastPurchaseRows = db
+    .prepare(
+      `SELECT pl.product_id, MAX(pu.purchase_date) AS last_date
+         FROM purchase_lines pl JOIN purchases pu ON pu.id = pl.purchase_id
+        GROUP BY pl.product_id`
+    )
+    .all() as unknown as { product_id: number; last_date: string }[];
+  const lastPurchaseById = new Map(lastPurchaseRows.map((r) => [r.product_id, r.last_date]));
+
+  // Every day in the window, oldest first, regardless of whether anything moved on it --
+  // a day with no deliveries is a real zero, not a gap the chart should skip over.
+  const days: string[] = [];
+  for (let i = VELOCITY_WINDOW_DAYS - 1; i >= 0; i--) {
+    days.push(new Date(Date.now() - i * 86_400_000).toISOString().slice(0, 10));
+  }
+
+  return base.map((row) => {
+    const t = thresholdById.get(row.product_id);
+    const reorderPoint = t?.reorder_point ?? null;
+    const targetStock = t?.target_stock ?? null;
+
+    const byDay = dailyByProduct.get(row.product_id);
+    const spark = days.map((d) => byDay?.get(d) ?? 0);
+    const dailyRate = spark.reduce((a, b) => a + b, 0) / VELOCITY_WINDOW_DAYS;
+
+    return {
+      ...row,
+      reorder_point: reorderPoint,
+      target_stock: targetStock,
+      status: stockStatus(row.on_hand, reorderPoint, targetStock),
+      daily_rate: dailyRate,
+      days_left: dailyRate > 0 ? row.on_hand / dailyRate : null,
+      spark,
+      last_purchase_date: lastPurchaseById.get(row.product_id) ?? null,
+    };
+  });
+}
+
 export interface PurchaseSummary {
   id: number;
   supplier: string | null;

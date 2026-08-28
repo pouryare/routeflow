@@ -58,6 +58,8 @@ describe("products", () => {
         "notes",
         "created_at",
         "updated_at",
+        "reorder_point",
+        "target_stock",
       ].sort()
     );
   });

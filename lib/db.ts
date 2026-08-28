@@ -573,6 +573,19 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE customers ADD COLUMN credit_limit_toman INTEGER");
   }
 
+  /* Reorder policy, per product -- in the product's own base_unit, same as on_hand.
+     Both null until an owner sets them: a product nobody has configured yet must read
+     as "no threshold set", not as "zero stock is fine" or "already critical". Stock
+     itself stays derived (see lib/purchases.ts); these two are the one thing about
+     inventory that is not a fact to compute but a decision to store. */
+  const productStockCols = db.prepare("PRAGMA table_info(products)").all() as { name: string }[];
+  if (!productStockCols.some((c) => c.name === "reorder_point")) {
+    db.exec("ALTER TABLE products ADD COLUMN reorder_point REAL");
+  }
+  if (!productStockCols.some((c) => c.name === "target_stock")) {
+    db.exec("ALTER TABLE products ADD COLUMN target_stock REAL");
+  }
+
   // saved_locations shipped with CHECK constraints that lagged the valid resolution
   // values over time ('nominatim', then 'manual') -- CREATE TABLE IF NOT EXISTS never
   // re-applies a constraint change to an already-created table, and SQLite has no ALTER

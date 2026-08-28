@@ -20,14 +20,63 @@ const DB_PATH = process.env.COVERAGE_DB_PATH ?? path.join(process.cwd(), "data",
 const db = new DatabaseSync(DB_PATH);
 const REMOVE = process.argv.includes("--remove");
 
-/* This script opens the database directly, so lib/db.ts's migrations have not run. The
-   one column it depends on is added here too — the same statement, and idempotent, so it
-   does not matter which of the two gets there first. */
+/* This script opens the database directly, so lib/db.ts's migrations have not run. Every
+   column it depends on that might not exist yet is added here too — the same statement
+   lib/db.ts uses, and idempotent, so it does not matter which of the two gets there
+   first. */
 const hasCol = (table, col) =>
   db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
 if (!hasCol("visit_plans", "purpose")) {
   db.exec("ALTER TABLE visit_plans ADD COLUMN purpose TEXT");
 }
+if (!hasCol("products", "reorder_point")) {
+  db.exec("ALTER TABLE products ADD COLUMN reorder_point REAL");
+}
+if (!hasCol("products", "target_stock")) {
+  db.exec("ALTER TABLE products ADD COLUMN target_stock REAL");
+}
+// Same reasoning, for tables rather than columns: CREATE TABLE IF NOT EXISTS is already
+// idempotent against lib/db.ts running first, so these are safe to repeat verbatim.
+db.exec(`
+  CREATE TABLE IF NOT EXISTS driver_commission_rates (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    driver_user_id INTEGER REFERENCES users(id),
+    rate_per_kg_toman INTEGER NOT NULL,
+    valid_from TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS driver_commission_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    driver_user_id INTEGER NOT NULL REFERENCES users(id),
+    amount_toman INTEGER NOT NULL,
+    paid_on TEXT NOT NULL,
+    period_from TEXT,
+    period_to TEXT,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS manager_commission_overrides (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_user_id INTEGER REFERENCES users(id),
+    override_pct REAL NOT NULL,
+    valid_from TEXT NOT NULL,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+  CREATE TABLE IF NOT EXISTS manager_commission_payments (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    manager_user_id INTEGER NOT NULL REFERENCES users(id),
+    amount_toman INTEGER NOT NULL,
+    paid_on TEXT NOT NULL,
+    period_from TEXT,
+    period_to TEXT,
+    notes TEXT,
+    created_by INTEGER REFERENCES users(id),
+    created_at TEXT NOT NULL
+  );
+`);
 const now = new Date().toISOString();
 
 const plain = (rows) => rows.map((r) => ({ ...r }));
@@ -219,6 +268,27 @@ try {
       `INSERT INTO manager_commission_overrides (manager_user_id, override_pct, valid_from, created_by, created_at)
        VALUES (?, ?, ?, ?, ?)`
     ).run(manager, 8, iso(400), owner.id, now);
+  }
+
+  /* ── reorder policy, so انبار پیشرفته has a real spread of بحرانی/کم‌موجود/سالم/مازاد
+     to show rather than "سالم" on every card -- chosen against each product's actual
+     on-hand position at seed time, not round numbers picked blind. Only set once: an
+     owner who has since edited these through the UI must not have their change undone
+     by a later reseed. */
+  const THRESHOLDS = {
+    "DEMO-PN400": { reorder: 800, target: 2000 }, // usually overstocked -- مازاد
+    "DEMO-MS2K": { reorder: 300, target: 900 }, // سالم
+    "DEMO-KH200": { reorder: 1000, target: 3000 }, // سالم
+    "DEMO-KR250": { reorder: 300, target: 800 }, // usually close to the line -- کم‌موجود
+    "DEMO-DG15": { reorder: 200, target: 500 }, // usually below it -- بحرانی
+    "DEMO-SH1L": { reorder: 200, target: 700 }, // سالم
+  };
+  const updateThresholds = db.prepare(
+    "UPDATE products SET reorder_point = ?, target_stock = ? WHERE id = ? AND reorder_point IS NULL AND target_stock IS NULL"
+  );
+  for (const m of made) {
+    const t = THRESHOLDS[m.sku];
+    if (t) updateThresholds.run(t.reorder, t.target, m.pid);
   }
 
   /* ── customers to sell to ────────────────────────────────────────────────── */

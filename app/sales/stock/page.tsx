@@ -3,13 +3,19 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
-import { stockPosition, readPurchases } from "@/lib/purchases";
+import { advancedStockPosition, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
-import { faJalaliDate } from "@/lib/jalali";
+import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
+import InventoryBoard from "@/components/kargah/InventoryBoard";
+import GradientStat from "@/components/kargah/GradientStat";
 
 export const dynamic = "force-dynamic";
 
+/** انبار پیشرفته -- the advanced inventory board (MASTER: the approved artifact,
+ *  favicon 📦). Everything a plain موجودی table could not show at a glance: which
+ *  products are about to run out, how fast each is actually moving, and what buying
+ *  more of it now would cost. */
 export default async function StockPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
@@ -17,7 +23,7 @@ export default async function StockPage() {
   if (session.role === "driver") redirect("/driver");
 
   const db = getDb();
-  const stock = stockPosition(db);
+  const stock = advancedStockPosition(db);
   const purchases = session.role === "owner" ? readPurchases(db, 15) : [];
   const products =
     session.role === "owner"
@@ -27,17 +33,57 @@ export default async function StockPage() {
       : [];
 
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
+  const critCount = stock.filter((r) => r.status === "crit").length;
+  const lowCount = stock.filter((r) => r.status === "low").length;
   const negatives = stock.filter((row) => row.negative);
+
+  const today = toJalali(new Date().toISOString())!;
+  const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
+  const monthPurchases = db
+    .prepare(
+      `SELECT COUNT(DISTINCT pu.id) AS n, COALESCE(SUM(pl.base_qty * pl.unit_cost_toman), 0) AS total
+         FROM purchases pu LEFT JOIN purchase_lines pl ON pl.purchase_id = pu.id
+        WHERE pu.purchase_date >= ?`
+    )
+    .get(monthFrom) as { n: number; total: number };
+
+  const rows = stock.map((r) => ({
+    product_id: r.product_id,
+    name: r.name,
+    base_unit: r.base_unit,
+    on_hand: r.on_hand,
+    value_toman: r.value_toman,
+    reorder_point: r.reorder_point,
+    target_stock: r.target_stock,
+    status: r.status,
+    daily_rate: r.daily_rate,
+    days_left: r.days_left,
+    spark: r.spark,
+    last_purchase_date: r.last_purchase_date ? faJalaliDate(r.last_purchase_date) : null,
+  }));
 
   return (
     <div className="flex flex-col gap-[var(--space-5)]">
-      <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-        <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          موجودی از خرید منهای تحویل حساب می‌شود — نه سفارش.
-        </p>
-        <span className="tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
-          ارزش انبار {faToman(totalValue)}
-        </span>
+      <div className="statrow">
+        <GradientStat tone="peach" label="ارزش کل انبار" value={faNum(totalValue)} unit="تومان" chip={`از ${faNum(stock.length)} کالای فعال`} />
+        <GradientStat
+          tone="sand"
+          small
+          icon="⚠"
+          label="کالای بحرانی"
+          value={faNum(critCount)}
+          chip={critCount > 0 ? "زیر نقطهٔ سفارش -- نیاز به خرید فوری" : "چیزی زیر نقطهٔ سفارش نیست"}
+          chipTone="amber"
+        />
+        <GradientStat
+          tone="mint"
+          small
+          icon="↷"
+          label="خرید این ماه"
+          value={`${faNum(monthPurchases.n)} فقره`}
+          chip={`به ارزش ${faToman(monthPurchases.total)}`}
+          chipTone="sky"
+        />
       </div>
 
       {negatives.length > 0 && (
@@ -47,64 +93,18 @@ export default async function StockPage() {
         </p>
       )}
 
+      {lowCount > 0 && critCount === 0 && (
+        <p className="m-0 rounded-[var(--radius-md)] border border-[var(--amber)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6" style={{ color: "var(--amber)" }}>
+          {faNum(lowCount)} کالا به نقطهٔ سفارش نزدیک می‌شود -- وقت خوبی برای برنامه‌ریزی خرید بعدی است.
+        </p>
+      )}
+
       {stock.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
           هنوز کالایی ثبت نشده است.
         </p>
       ) : (
-        <div className="overflow-x-auto card">
-          <table className="w-full border-collapse text-[length:var(--text-sm)]">
-            <thead>
-              <tr className="text-[var(--text-muted)]">
-                <th className="border-b border-[var(--border)] p-[var(--space-3)] text-right font-medium">
-                  کالا
-                </th>
-                <th className="border-b border-[var(--border)] p-[var(--space-3)] text-left font-medium">
-                  خرید
-                </th>
-                <th className="border-b border-[var(--border)] p-[var(--space-3)] text-left font-medium">
-                  تحویل
-                </th>
-                <th className="border-b border-[var(--border)] p-[var(--space-3)] text-left font-medium">
-                  موجودی
-                </th>
-                <th className="border-b border-[var(--border)] p-[var(--space-3)] text-left font-medium">
-                  میانگین قیمت
-                </th>
-                <th className="border-b border-[var(--border)] p-[var(--space-3)] text-left font-medium">
-                  ارزش
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {stock.map((row) => (
-                <tr key={row.product_id}>
-                  <td className="border-b border-[var(--border)] p-[var(--space-3)] text-[var(--text)]">
-                    {row.name}
-                  </td>
-                  <td className="border-b border-[var(--border)] p-[var(--space-3)] text-left tabular-nums text-[var(--text-muted)]">
-                    {faNum(row.purchased_qty)}
-                  </td>
-                  <td className="border-b border-[var(--border)] p-[var(--space-3)] text-left tabular-nums text-[var(--text-muted)]">
-                    {faNum(row.delivered_qty)}
-                  </td>
-                  <td
-                    className="border-b border-[var(--border)] p-[var(--space-3)] text-left tabular-nums"
-                    style={{ color: row.negative ? "var(--warn)" : "var(--text)" }}
-                  >
-                    {faNum(row.on_hand)} {row.base_unit}
-                  </td>
-                  <td className="border-b border-[var(--border)] p-[var(--space-3)] text-left tabular-nums text-[var(--text-muted)]">
-                    {faToman(row.avg_cost_toman)}
-                  </td>
-                  <td className="border-b border-[var(--border)] p-[var(--space-3)] text-left tabular-nums text-[var(--text)]">
-                    {faToman(row.value_toman)}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <InventoryBoard rows={rows} canEdit={session.role === "owner"} />
       )}
 
       {session.role === "owner" && <PurchaseEntry products={products} />}

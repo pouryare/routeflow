@@ -14,9 +14,9 @@ const { getDb } = await import("@/lib/db");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop, readRun, recordDelivery } = await import("@/lib/delivery");
-const { recordPurchase, readPurchases, stockPosition, PurchaseError } = await import(
-  "@/lib/purchases"
-);
+const { recordPurchase, readPurchases, stockPosition, advancedStockPosition, stockStatus, PurchaseError } =
+  await import("@/lib/purchases");
+const { setStockThresholds } = await import("@/lib/catalogue");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
@@ -244,5 +244,125 @@ describe("readPurchases", () => {
     const rows = readPurchases(getDb());
     const first = rows.find((r) => r.total_toman > 0)!;
     expect(first.line_count).toBeGreaterThan(0);
+  });
+});
+
+describe("stockStatus", () => {
+  it("is سالم for a product with no policy set at all", () => {
+    expect(stockStatus(0, null, null)).toBe("ok");
+    expect(stockStatus(-40, null, null)).toBe("ok"); // even negative -- see the note above
+  });
+
+  it("is بحرانی below the reorder point", () => {
+    expect(stockStatus(40, 50, 200)).toBe("crit");
+  });
+
+  it("is کم‌موجود within 35% above the reorder point", () => {
+    expect(stockStatus(60, 50, 200)).toBe("low"); // 50 x 1.35 = 67.5
+    expect(stockStatus(70, 50, 200)).toBe("ok");
+  });
+
+  it("is مازاد above the target with no reorder point at all", () => {
+    expect(stockStatus(500, null, 200)).toBe("over");
+  });
+
+  it("is سالم strictly between the two", () => {
+    expect(stockStatus(100, 50, 200)).toBe("ok");
+  });
+});
+
+describe("advancedStockPosition", () => {
+  it("carries stockPosition's own figures untouched", () => {
+    const advanced = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.product)!;
+    const plain = stockPosition(getDb()).find((r) => r.product_id === ctx.product)!;
+    expect(advanced.on_hand).toBe(plain.on_hand);
+    expect(advanced.value_toman).toBe(plain.value_toman);
+  });
+
+  it("reflects the reorder policy an owner has set, and reacts to on-hand changes", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "کالای آستانه‌دار", kg_per_base_unit: 1 });
+    setStockThresholds(db, p, { reorder_point: 100, target_stock: 500 });
+    // Never purchased, so on_hand is 0 -- below its own reorder point.
+    expect(advancedStockPosition(db).find((r) => r.product_id === p)!.status).toBe("crit");
+
+    recordPurchase(db, {
+      purchase_date: "2026-08-01",
+      created_by: ctx.owner,
+      lines: [{ product_id: p, base_qty: 300, unit_cost_toman: 1000 }],
+    });
+    expect(advancedStockPosition(db).find((r) => r.product_id === p)!.status).toBe("ok");
+  });
+
+  it("is null-thresholded and سالم for a product nobody has configured", () => {
+    const row = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    expect(row.reorder_point).toBeNull();
+    expect(row.target_stock).toBeNull();
+    expect(row.status).toBe("ok");
+  });
+
+  it("counts today's delivery into the velocity window and gives a finite days_left", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "کالای سرعت‌دار", kg_per_base_unit: 1 });
+    const pack = createPackaging(db, { product_id: p, name: "ک", qty_per_pack: 50 });
+    setPrice(db, { product_id: p, price_toman: 1000, valid_from: "2026-01-01" });
+    recordPurchase(db, {
+      purchase_date: "2026-08-01",
+      created_by: ctx.owner,
+      lines: [{ product_id: p, base_qty: 1000, unit_cost_toman: 500 }],
+    });
+
+    const order = createOrder(db, {
+      customer_id: ctx.customer,
+      order_date: "2026-08-01",
+      created_by: ctx.owner,
+      lines: [{ product_id: p, packaging_id: pack, packs: 2 }],
+    });
+    confirmOrder(db, order.id);
+    const run = createRun(db, { driver_user_id: ctx.driver, run_date: "2026-08-01", created_by: ctx.owner });
+    const stopId = addStop(db, run, order.id);
+    const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
+    // recordDelivery stamps delivered_at with the real current instant, which always
+    // falls inside advancedStockPosition's own trailing window -- no need to control it.
+    recordDelivery(db, stopId, {
+      lines: [{ line_id: stop.lines[0].id, packs_delivered: 2 }],
+      collected_toman: 0,
+      by: ctx.driver,
+    });
+
+    const row = advancedStockPosition(db).find((r) => r.product_id === p)!;
+    expect(row.spark).toHaveLength(14);
+    expect(row.spark[13]).toBe(100); // today, the last entry -- 2 packs x 50
+    expect(row.daily_rate).toBeCloseTo(100 / 14, 5);
+    expect(row.days_left).not.toBeNull();
+    expect(row.days_left!).toBeCloseTo(900 / (100 / 14), 5); // on_hand 900 / daily_rate
+  });
+
+  it("is null, not Infinity, when nothing has moved recently", () => {
+    const row = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    expect(row.daily_rate).toBe(0);
+    expect(row.days_left).toBeNull();
+  });
+
+  it("carries the date of the most recent purchase", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "کالای خرید اخیر", kg_per_base_unit: 1 });
+    recordPurchase(db, {
+      purchase_date: "2026-06-01",
+      created_by: ctx.owner,
+      lines: [{ product_id: p, base_qty: 10, unit_cost_toman: 1000 }],
+    });
+    recordPurchase(db, {
+      purchase_date: "2026-07-15",
+      created_by: ctx.owner,
+      lines: [{ product_id: p, base_qty: 10, unit_cost_toman: 1200 }],
+    });
+    const row = advancedStockPosition(db).find((r) => r.product_id === p)!;
+    expect(row.last_purchase_date).toBe("2026-07-15");
+  });
+
+  it("is null for a product that has never been bought", () => {
+    const row = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    expect(row.last_purchase_date).toBeNull();
   });
 });

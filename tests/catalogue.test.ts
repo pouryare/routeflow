@@ -11,9 +11,8 @@ process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { readCatalogue, resolvePrice, createProduct, createPackaging, setPrice } = await import(
-  "@/lib/catalogue"
-);
+const { readCatalogue, resolvePrice, createProduct, createPackaging, setPrice, setStockThresholds } =
+  await import("@/lib/catalogue");
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
@@ -128,5 +127,50 @@ describe("setPrice", () => {
     expect(() =>
       setPrice(db, { product_id: p, price_toman: 12500.5, valid_from: "2026-01-01" })
     ).toThrow();
+  });
+});
+
+describe("setStockThresholds", () => {
+  it("is null on a freshly created product -- no policy set, not zero", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "کالای بدون آستانه", kg_per_base_unit: 1 });
+    const row = db.prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(p) as {
+      reorder_point: number | null;
+      target_stock: number | null;
+    };
+    expect(row.reorder_point).toBeNull();
+    expect(row.target_stock).toBeNull();
+  });
+
+  it("sets one field without disturbing the other", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "آستانهٔ جزئی", kg_per_base_unit: 1 });
+    setStockThresholds(db, p, { reorder_point: 50 });
+    setStockThresholds(db, p, { target_stock: 200 });
+    const row = db.prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(p) as {
+      reorder_point: number;
+      target_stock: number;
+    };
+    expect(row.reorder_point).toBe(50);
+    expect(row.target_stock).toBe(200);
+  });
+
+  it("clears a threshold when passed null explicitly", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "آستانهٔ پاک‌شدنی", kg_per_base_unit: 1 });
+    setStockThresholds(db, p, { reorder_point: 30, target_stock: 100 });
+    setStockThresholds(db, p, { reorder_point: null });
+    const row = db.prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(p) as {
+      reorder_point: number | null;
+      target_stock: number;
+    };
+    expect(row.reorder_point).toBeNull();
+    expect(row.target_stock).toBe(100); // untouched -- reorder_point was the only key passed
+  });
+
+  it("rejects a negative threshold", () => {
+    const db = getDb();
+    const p = createProduct(db, { name: "آستانهٔ منفی", kg_per_base_unit: 1 });
+    expect(() => setStockThresholds(db, p, { reorder_point: -5 })).toThrow(TypeError);
   });
 });

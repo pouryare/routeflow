@@ -24,7 +24,7 @@ const REVEAL: Record<string, string[]> = {
   "/sales/dashboard": [".gcard", ".dash-top > .card", ".sect"],
   "/sales/products": [".card", ".kblock"],
   "/sales/commission": [".card", ".kblock"],
-  "/sales/stock": [".card", ".kblock"],
+  "/sales/stock": [".gcard", ".stalert", ".stcard", ".card"],
   "/sales/runs": [".card", ".kblock", ".run-column"],
   "/sales/admin/users": [".card", ".kblock"],
   "/sales/admin/groups": [".card", ".kblock"],
