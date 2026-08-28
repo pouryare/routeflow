@@ -7,7 +7,6 @@ import { readCatalogue } from "@/lib/catalogue";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
-import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -54,7 +53,7 @@ export default async function ProductsPage() {
           {session.role === "owner" && " با فرم پایین اولین کالا را اضافه کنید."}
         </p>
       ) : (
-        <Reveal replayKey="products" select="li">
+        <div>
           <ul className="flex list-none flex-col gap-[var(--space-3)] p-0">
             {products.map((product) => (
               <li
@@ -124,7 +123,7 @@ export default async function ProductsPage() {
               </li>
             ))}
           </ul>
-        </Reveal>
+        </div>
       )}
 
       {session.role === "owner" && (

@@ -19,14 +19,29 @@ export interface JourneyNode {
   key: JourneyKey;
   label: string;
   done: boolean;
+  /** Where the order actually IS. Exactly one node is "current": the first thing not yet
+   *  done. Without it every unfinished step looks equally pending and the screen answers
+   *  "what has happened" but never "what is it waiting on", which is the question anyone
+   *  opening this page is actually asking. */
+  state: "done" | "current" | "todo";
   /** ISO date, or null when the step has not happened or carries no timestamp. */
   at: string | null;
   /** The person the step belongs to, when the schema records one. */
   person: string | null;
+  /** What that person's role is at this step — «فروشنده», «راننده». */
+  role: string;
+  /** What this step MEANS, in a sentence. The lane titles are jargon to anyone who did
+   *  not build the thing. */
+  what: string;
+  /** The concrete fact this step produced, or what it is waiting for. */
   note: string | null;
 }
 
 export interface JourneyInput {
+  order_no: string;
+  customer_name: string;
+  kg: number;
+  line_count: number;
   status: string;
   created_at: string;
   order_date: string;
@@ -47,15 +62,18 @@ export function buildJourney(o: JourneyInput): JourneyNode[] {
   const cancelled = o.status === "cancelled";
   const confirmed = o.status === "confirmed" || o.status === "delivered";
   const delivered = o.status === "delivered" && o.delivered_at !== null;
+  const owed = Math.max(0, o.total_toman - o.paid_toman);
 
-  return [
+  const base: Omit<JourneyNode, "state">[] = [
     {
       key: "placed",
       label: "ثبت سفارش",
       done: true,
       at: o.order_date,
       person: o.created_by_name,
-      note: null,
+      role: "ثبت‌کننده",
+      what: "مشتری سفارش داد و اقلام و مقدارها وارد سیستم شد.",
+      note: `${TOMAN(o.line_count)} قلم · ${TOMAN(Math.round(o.kg))} کیلو`,
     },
     {
       key: "confirmed",
@@ -63,7 +81,13 @@ export function buildJourney(o: JourneyInput): JourneyNode[] {
       done: confirmed,
       at: null,
       person: o.salesperson_name,
-      note: confirmed ? "قیمت‌ها قفل شد" : cancelled ? "سفارش لغو شد" : "در انتظار تأیید",
+      role: "فروشنده",
+      what: "قیمت روز روی سفارش قفل می‌شود. بعد از این، اقلام و قیمت‌ها دیگر ویرایش نمی‌شوند.",
+      note: confirmed
+        ? `قیمت‌ها قفل شد · ${TOMAN(o.total_toman)} تومان`
+        : cancelled
+          ? "سفارش لغو شد"
+          : "منتظر تأیید — تا تأیید نشود روی هیچ مسیری نمی‌رود",
     },
     {
       key: "loaded",
@@ -71,7 +95,13 @@ export function buildJourney(o: JourneyInput): JourneyNode[] {
       done: o.run !== null,
       at: o.run?.date ?? null,
       person: o.run?.driver_name ?? null,
-      note: o.run ? null : "هنوز روی هیچ مسیری نیست",
+      role: "راننده",
+      what: "سفارش روی یک مسیر تحویل چیده می‌شود تا راننده ببرد.",
+      note: o.run
+        ? `روی مسیر ${o.run.driver_name ?? "بدون راننده"}`
+        : confirmed
+          ? "هنوز روی هیچ مسیری نیست — از صفحهٔ «مسیر تحویل» اضافه شود"
+          : "اول باید تأیید شود",
     },
     {
       key: "settled",
@@ -79,13 +109,24 @@ export function buildJourney(o: JourneyInput): JourneyNode[] {
       done: delivered,
       at: o.delivered_at,
       person: o.delivered_by_name,
+      role: "راننده",
+      what: "راننده کالا را دم در تحویل می‌دهد و همان‌جا وجه را می‌گیرد. مبلغ دریافتی فقط از همین‌جا ثبت می‌شود.",
       note: delivered
-        ? `${TOMAN(o.paid_toman)} از ${TOMAN(o.total_toman)} تومان وصول شد`
-        : o.payment_status === "unpaid"
-          ? "پرداخت‌نشده"
-          : null,
+        ? owed > 0
+          ? `${TOMAN(o.paid_toman)} از ${TOMAN(o.total_toman)} گرفته شد · ${TOMAN(owed)} تومان مانده`
+          : `${TOMAN(o.paid_toman)} تومان تسویه شد`
+        : "هنوز تحویل نشده",
     },
   ];
+
+  /* Exactly one "current": the first step not yet done. Everything after it is "todo",
+     which is what lets the screen say where the order is stuck rather than only what has
+     already happened. */
+  const firstOpen = base.findIndex((n) => !n.done);
+  return base.map((n, i) => ({
+    ...n,
+    state: n.done ? "done" : i === firstOpen ? "current" : "todo",
+  }));
 }
 
 /** Gathers the rows `buildJourney` needs for one order.
@@ -126,6 +167,10 @@ export function readJourney(db: DatabaseSync, orderId: number): JourneyInput | n
     | undefined;
 
   return {
+    order_no: order.order_no,
+    customer_name: order.customer_name,
+    kg: order.kg,
+    line_count: order.lines.length,
     status: order.status,
     created_at: order.created_at,
     order_date: order.order_date,

@@ -2,6 +2,10 @@ import { describe, expect, test } from "vitest";
 import { buildJourney, type JourneyInput } from "@/lib/orderJourney";
 
 const base: JourneyInput = {
+  order_no: "1404-00012",
+  customer_name: "سوپرمارکت رضایی",
+  kg: 42,
+  line_count: 3,
   status: "draft",
   created_at: "2026-08-01T09:00:00.000Z",
   order_date: "2026-08-01",
@@ -76,5 +80,44 @@ describe("buildJourney", () => {
     for (const status of ["draft", "confirmed", "delivered"]) {
       expect(buildJourney({ ...base, status })[1].at).toBeNull();
     }
+  });
+});
+
+describe("journey state", () => {
+  test("exactly one step is current, and it is the first unfinished one", () => {
+    const nodes = buildJourney({ ...base, status: "confirmed" });
+    expect(nodes.filter((n) => n.state === "current")).toHaveLength(1);
+    expect(nodes.find((n) => n.state === "current")!.key).toBe("loaded");
+    expect(nodes.map((n) => n.state)).toEqual(["done", "done", "current", "todo"]);
+  });
+
+  test("a finished order has no current step at all", () => {
+    const nodes = buildJourney({
+      ...base,
+      status: "delivered",
+      delivered_at: "2026-08-03T14:20:00.000Z",
+      run: { date: "2026-08-03", driver_name: "مهدی" },
+      paid_toman: 1_000_000,
+      payment_status: "paid",
+    });
+    expect(nodes.every((n) => n.state === "done")).toBe(true);
+  });
+
+  test("every step explains itself, so the lane title is never the only words", () => {
+    for (const n of buildJourney(base)) {
+      expect(n.what.length).toBeGreaterThan(20);
+      expect(n.role.length).toBeGreaterThan(2);
+    }
+  });
+
+  test("a partly-paid delivery states what is still owed", () => {
+    const nodes = buildJourney({
+      ...base,
+      status: "delivered",
+      delivered_at: "2026-08-03T14:20:00.000Z",
+      paid_toman: 400_000,
+      payment_status: "partial",
+    });
+    expect(nodes[3].note).toContain("مانده");
   });
 });

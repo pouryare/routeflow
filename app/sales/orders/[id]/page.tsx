@@ -14,7 +14,6 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
-import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -51,7 +50,7 @@ export default async function OrderDetailPage({
   if (!order) notFound();
 
   return (
-    <Reveal replayKey="order" className="flex flex-col gap-[var(--space-4)]">
+    <div className="flex flex-col gap-[var(--space-4)]">
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <div>
           <h2 className="m-0 text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
@@ -178,6 +177,6 @@ export default async function OrderDetailPage({
       <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
         ثبت‌شده در {faJalaliDateTime(order.created_at)}
       </p>
-    </Reveal>
+    </div>
   );
 }

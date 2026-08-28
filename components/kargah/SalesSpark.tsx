@@ -122,7 +122,10 @@ export default function SalesSpark({
     cmp?.classList.add("in");
     dots.forEach((c, i) => {
       c.style.transition = "";
-      c.style.transitionDelay = `${420 + i * 90}ms`;
+      /* The line finishes its draw at 620ms; the points start landing behind it at 200ms
+         and are all down by ~470ms, so the two read as one gesture rather than as a
+         chart that keeps arriving after you have started reading it. */
+      c.style.transitionDelay = `${200 + i * 45}ms`;
       c.classList.add("in");
     });
   }, [dA]);

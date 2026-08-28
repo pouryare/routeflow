@@ -1215,7 +1215,10 @@ export default function CoverageMap({
           sidebar button for the same reasons, so an open panel never has two floating
           controls parked on its title. */}
       <div
-        hidden={!sidebarOpen && (searchExpanded || panelOwnsScreen)}
+        /* Also stands down while the sidebar is OPEN: it floats above the sidebar in the
+           stacking scale, so with the panel out it sat on top of the panel's own title.
+           The sidebar carries its own copy in the brand row instead. */
+        hidden={sidebarOpen || searchExpanded || panelOwnsScreen}
         className="absolute right-4 top-[68px] z-[var(--z-sidebar-toggle)]"
       >
         <SkinToggle />
@@ -1260,10 +1263,16 @@ export default function CoverageMap({
         }`}
       >
         <div>
-          <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
-            Coverage Map
+          {/* The same brand row the sales header wears, so the two halves of the app
+              introduce themselves the same way. */}
+          <div className="side__brand">
+            <div className="side__mark">ن</div>
+            <div className="min-w-0 flex-1">
+              <h1>نقشه پوشش</h1>
+              <div className="s">مشتری‌ها، مناطق و مسیرها</div>
+            </div>
+            <SkinToggle />
           </div>
-          <h1 className="text-[length:var(--text-xl)] font-bold text-text">نقشه پوشش مشتریان</h1>
 
           {/* Silent while the data is current. Every figure on this map -- debts,
               statuses, last-purchase dates -- comes from a spreadsheet somebody has to
@@ -1322,7 +1331,6 @@ export default function CoverageMap({
           <CollapsibleSection
             title="یادآوری‌های امروز" icon="🔔"
             count={dueReminders.length}
-            titleClassName="text-crit"
             defaultOpen
           >
             <div className="flex flex-col gap-1.5">
@@ -1550,7 +1558,6 @@ export default function CoverageMap({
         <CollapsibleSection
           title="مشتریان راکد" icon="💤"
           count={hasPurchaseHistory ? dormantCustomers.length : undefined}
-          titleClassName={dormantCustomers.length > 0 ? "text-warn" : undefined}
           storageKey="dormant"
           keywords="بی‌خرید قدیمی سفارش"
         >

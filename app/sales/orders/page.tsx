@@ -7,8 +7,8 @@ import { getDb, plain } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import Reveal from "@/components/kargah/Reveal";
-import PocketCard, { type PocketDoc, type PocketStatus } from "@/components/kargah/PocketCard";
+import type { PocketDoc, PocketStatus } from "@/components/kargah/PocketCard";
+import OrdersPockets, { type PocketRow } from "@/components/kargah/OrdersPockets";
 
 export const dynamic = "force-dynamic";
 
@@ -127,8 +127,8 @@ export default async function OrdersPage({
             : "اولین سفارش را ثبت کنید. از همان لحظه، بدهی و تاریخ آخرین خرید مشتری‌ها روی نقشه هم به‌روز می‌شود."}
         </p>
       ) : (
-        <Reveal replayKey={String(focused?.id ?? "all")} select=".pocket" className="pockets">
-          {orders.map((order) => {
+        <OrdersPockets
+          rows={orders.map((order): PocketRow => {
             const st = STATUS[order.status] ?? STATUS.draft;
             const docs: PocketDoc[] = [];
             // A draft has not been invoiced, so there is no receipt to file.
@@ -155,22 +155,21 @@ export default async function OrdersPage({
                 bars: barsFor(order.id + 3, order.total_toman),
               });
             }
-            return (
-              <PocketCard
-                key={order.id}
-                href={`/sales/orders/${order.id}`}
-                customer={order.customer_name}
-                meta={`${faNum(Number(order.order_no.split("-")[1]))}# · ${faJalaliDate(order.order_date)}${
-                  order.salesperson_name ? ` · ${order.salesperson_name}` : ""
-                }`}
-                amount={faNum(order.total_toman)}
-                status={st.pill}
-                statusLabel={st.label}
-                docs={docs}
-              />
-            );
+            return {
+              id: order.id,
+              href: `/sales/orders/${order.id}`,
+              customerId: order.customer_id,
+              customer: order.customer_name,
+              meta: `${faNum(Number(order.order_no.split("-")[1]))}# · ${faJalaliDate(order.order_date)}${
+                order.salesperson_name ? ` · ${order.salesperson_name}` : ""
+              }`,
+              amount: faNum(order.total_toman),
+              status: st.pill,
+              statusLabel: st.label,
+              docs,
+            };
           })}
-        </Reveal>
+        />
       )}
     </div>
   );

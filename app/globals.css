@@ -1653,11 +1653,16 @@ body {
    Opacity and transform only, staggered, and CAPPED -- past ten items a stagger
    stops reading as choreography and starts reading as lag. The reset order is
    the fragile part; see components/kargah/Reveal.tsx.                          */
-.kargah .rev { opacity: 0; transform: translateY(16px); }
+/* Shorter travel, quicker, and NO overshoot.
+   The artifact's 16px + 620ms --spring reads as bouncy on a page of eight cards: the
+   spring's 1.32 control point overshoots, so every card visibly passes its resting place
+   and comes back. At this size that is not liveliness, it is wobble. Half the travel, a
+   plain decelerating curve, and roughly half the duration. */
+.kargah .rev { opacity: 0; transform: translateY(8px); }
 .kargah .rev.rev-in {
   opacity: 1;
   transform: none;
-  transition: opacity 460ms var(--ease), transform 620ms var(--spring);
+  transition: opacity 220ms var(--ease), transform 300ms var(--ease);
 }
 @media (prefers-reduced-motion: reduce) {
   .kargah .rev { opacity: 1; transform: none; }
@@ -1851,11 +1856,14 @@ body {
 }
 .kargah .dot-p {
   fill: var(--card); stroke: var(--accent); stroke-width: 2.6;
-  r: 0px; transition: r 460ms var(--spring);
+  /* 460ms --spring per dot, with the last of seven starting at 960ms, put the chart's
+     last point on screen about 1.4s after the page. Halved, and the overshoot dropped —
+     a point that springs past its own radius reads as a wobble, not as landing. */
+  r: 0px; transition: r 240ms var(--ease);
 }
 .kargah .dot-p.in { r: 4.6px; }
-.kargah .ser-a { transition: stroke-dashoffset 1100ms var(--ease); }
-.kargah .fill-a, .kargah .ser-b { opacity: 0; transition: opacity 700ms var(--ease); }
+.kargah .ser-a { transition: stroke-dashoffset 620ms var(--ease); }
+.kargah .fill-a, .kargah .ser-b { opacity: 0; transition: opacity 380ms var(--ease); }
 .kargah .fill-a.in, .kargah .ser-b.in { opacity: 1; }
 .kargah .pt.on { opacity: 1; }
 .kargah .vline {
@@ -1960,8 +1968,14 @@ body {
 .kargah .face {
   position: relative; z-index: 1; border-radius: var(--r-xl); padding: 20px 20px 18px;
   background: var(--frost);
-  backdrop-filter: blur(16px) saturate(1.5);
+  /* Prefixed FIRST, standard LAST, and the order is load-bearing.
+     Written the other way round the minifier treats the standard declaration as shadowed
+     by the later prefixed one and drops it -- leaving only -webkit-backdrop-filter, which
+     Chromium rejects outright (it is not an alias there). The face then rendered as flat
+     translucent white with no blur at all, which is what "the cards are transparent"
+     was. */
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
   box-shadow: inset 0 1px 0 var(--frost-edge), var(--sh-1);
   transition: transform 300ms var(--ease), box-shadow 300ms var(--ease);
 }
@@ -2165,6 +2179,22 @@ body {
   content: ""; position: absolute; top: 11px; inset-inline-start: -14px;
   width: 14px; border-top: 2px dotted var(--line-2);
 }
+/* The step the order is actually sitting in. Everything before it is finished and
+   everything after is not started, so only this one gets the accent. */
+.kargah .lane2 .lh .now {
+  font-size: 11px; font-weight: 700; color: var(--accent);
+  background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
+}
+.kargah .lane2--todo { opacity: .62; }
+.kargah .lane2--current .node { box-shadow: var(--sh-2), inset 0 0 0 1.5px var(--accent); }
+.kargah .lane2__what {
+  margin: 0 4px 10px; font-size: 12px; line-height: 1.65; color: var(--muted);
+}
+.kargah .lane2__note {
+  margin: 8px 4px 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-2);
+}
+.kargah .lane2--current .lane2__note { color: var(--accent); font-weight: 600; }
+
 .kargah .node {
   background: var(--card); border-radius: var(--r-lg); box-shadow: var(--sh-1);
   padding: 12px 13px; margin-bottom: 9px; display: flex; align-items: center;
@@ -2198,6 +2228,40 @@ body {
   font-family: var(--fa); font-size: 13px; cursor: pointer;
 }
 .kargah .addnode:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ---- the journey's order picker and summary ------------------------------ */
+.kargah .picker { padding: 0 24px 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.kargah .picker__label { font-size: 12.5px; color: var(--muted); flex: none; }
+.kargah .picker__row { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.kargah .picker__row::-webkit-scrollbar { display: none; }
+.kargah .picker__chip {
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  border: 1px solid var(--line); background: var(--card-2); color: var(--ink-2);
+  border-radius: 999px; padding: 6px 13px; font-size: 12.5px; text-decoration: none;
+  transition: border-color 160ms var(--ease), background 160ms var(--ease);
+}
+.kargah .picker__chip:hover { border-color: var(--line-2); }
+.kargah .picker__chip.on {
+  border-color: var(--accent); background: var(--accent-soft); color: var(--ink); font-weight: 600;
+}
+.kargah .picker__who { max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.kargah .jsum {
+  margin: 6px 24px 0; padding: 14px 16px; border-radius: var(--r-lg);
+  background: var(--card-2); border: 1px solid var(--line);
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px 18px;
+}
+.kargah .jsum dt { margin: 0; font-size: 11.5px; color: var(--muted); }
+.kargah .jsum dd { margin: 2px 0 0; font-size: 14px; color: var(--ink); font-weight: 600; }
+.kargah .jnow {
+  margin: 12px 24px 0; padding: 12px 16px; border-radius: var(--r-lg);
+  background: var(--accent-soft); color: var(--ink); font-size: 13px; line-height: 1.7;
+}
+.kargah .jnow b { color: var(--accent); font-weight: 700; }
+@media (max-width: 620px) {
+  .kargah .picker, .kargah .jsum, .kargah .jnow { margin-inline: 16px; padding-inline: 16px; }
+  .kargah .picker { padding-inline: 16px; }
+}
 
 /* ---- 6 · schedule: month + day rail -------------------------------------- */
 .kargah .sched { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; align-items: start; }
@@ -2279,6 +2343,12 @@ body {
 }
 .kargah .x:hover { background: var(--sunk); }
 .kargah .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; }
+/* The map's customer panel is 320px wide: three tiles across would be 90px each, which
+   is narrower than the figures they carry. */
+.kargah .bento--compact { grid-template-columns: 1fr; gap: 10px; padding: 0 0 14px; }
+.kargah .bento--compact .tile { padding: 13px 15px; }
+.kargah .bento--compact .tile .v { font-size: 21px; }
+.kargah .bento--compact .arc svg { width: 116px; height: 68px; }
 .kargah .tile { background: var(--card); border-radius: var(--r-xl); padding: 18px 20px; box-shadow: var(--sh-1); }
 .kargah .tile .k { font-size: 12.5px; color: var(--muted); }
 .kargah .tile .v { font-size: 26px; font-weight: 700; letter-spacing: -.025em; margin-top: 2px; }
@@ -2305,6 +2375,9 @@ body {
   padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
 }
 .kargah .ordline:last-child { border-bottom: 0; }
+/* The recent-orders rows are links; without this they arrive underlined and blue. */
+.kargah a.ordline { text-decoration: none; color: var(--ink); }
+.kargah a.ordline:hover { color: var(--accent); }
 .kargah .ordline .mono { font-weight: 600; }
 
 /* ---- responsive, exactly as the artifact draws it ------------------------ */
@@ -2343,3 +2416,58 @@ body {
   background: var(--card);
   box-shadow: var(--sh-1);
 }
+
+/* ---- the map sidebar, in the کارگاه vocabulary ---------------------------
+   It used to be the dark-console language: monospace uppercase headings, and hover
+   states painted as `bg-white/5` — five per cent white, which on a cream ground is
+   nothing at all. Sections are cards now, headings are ordinary sentence-case text, and
+   every surface comes from a token so both skins work.                        */
+.kargah .side {
+  background: var(--bg);
+  border-inline-start: 1px solid var(--line);
+}
+.kargah .side__brand {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 4px;
+}
+.kargah .side__mark {
+  width: 40px; height: 40px; border-radius: 13px; flex: none;
+  background: linear-gradient(145deg, #D9663A, #B0431C);
+  color: #fff; display: grid; place-items: center; font-size: 17px; font-weight: 600;
+  box-shadow: 0 6px 16px -6px rgba(176,67,28,.55);
+}
+.kargah .side__brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.015em; color: var(--ink); }
+.kargah .side__brand .s { font-size: 12px; color: var(--muted); margin-top: -3px; }
+
+.kargah .sect {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-lg);
+  box-shadow: var(--sh-1);
+  overflow: hidden;
+}
+.kargah .sect__head { display: flex; align-items: center; gap: 6px; }
+.kargah .sect__btn {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+  padding: 11px 13px; border: 0; background: transparent; cursor: pointer;
+  font-family: var(--fa); font-size: 13.5px; color: var(--ink); text-align: start;
+  transition: background 160ms var(--ease);
+}
+.kargah .sect__btn:hover { background: var(--card-2); }
+.kargah .sect__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.kargah .sect__icon {
+  width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+  border-radius: var(--r-sm); background: var(--sunk); font-size: 14px;
+  transition: background 160ms var(--ease);
+}
+.kargah .sect__btn.on .sect__icon { background: var(--accent-soft); }
+.kargah .sect__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kargah .sect__count {
+  flex: none; font-size: 11.5px; font-weight: 700; color: var(--muted);
+  background: var(--sunk); border-radius: 999px; padding: 2px 8px;
+}
+.kargah .sect__chev {
+  flex: none; color: var(--faint); font-size: 13px; line-height: 1;
+  transition: transform 240ms var(--spring);
+}
+.kargah .sect__btn.on .sect__chev { transform: rotate(180deg); color: var(--accent); }
+.kargah .sect__body { padding: 0 13px 13px; }

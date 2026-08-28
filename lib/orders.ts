@@ -315,6 +315,8 @@ export function readOrder(db: DatabaseSync, orderId: number): OrderDetail | null
 export interface OrderSummary {
   id: number;
   order_no: string;
+  /** Carried so a card can open the customer sheet without a second lookup per row. */
+  customer_id: number;
   customer_name: string;
   salesperson_name: string | null;
   status: string;
@@ -350,7 +352,7 @@ export function readOrders(
   const orders = db
     .prepare(
       `SELECT o.id, o.order_no, o.status, o.order_date, o.payment_status, o.paid_toman,
-              c.business_name AS customer_name, u.display_name AS salesperson_name
+              o.customer_id, c.business_name AS customer_name, u.display_name AS salesperson_name
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
          LEFT JOIN users u ON u.id = o.salesperson_user_id

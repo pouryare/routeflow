@@ -8,6 +8,7 @@ import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import SkinToggle from "@/components/kargah/SkinToggle";
 import TabPill from "@/components/kargah/TabPill";
+import RevealRoute from "@/components/kargah/RevealRoute";
 
 export const dynamic = "force-dynamic";
 
@@ -66,6 +67,9 @@ export default async function SalesLayout({ children }: { children: ReactNode })
 
         <TabPill tabs={tabs} />
 
+        {/* One entrance for every sales screen — see RevealRoute for why it is not
+            wired per page. */}
+        <RevealRoute />
         {children}
       </div>
     </div>

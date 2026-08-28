@@ -13,7 +13,6 @@ import BarChart from "@/components/charts/BarChart";
 import SplineChart from "@/components/charts/SplineChart";
 import DonutChart from "@/components/charts/DonutChart";
 import CollapsibleSection from "@/components/CollapsibleSection";
-import Reveal from "@/components/kargah/Reveal";
 import GradientStat from "@/components/kargah/GradientStat";
 
 export const dynamic = "force-dynamic";
@@ -87,7 +86,7 @@ export default async function DashboardPage() {
           two contradictory things at once. */}
       {/* The headline figures live on /sales now — this tab is the deeper cut. The row is
           kept because the breakdowns below are read against it. */}
-      <Reveal replayKey="dash-stats" className="statrow">
+      <div className="statrow">
         <GradientStat
           tone="peach"
           label="فروش (تحویل‌شده)"
@@ -122,7 +121,7 @@ export default async function DashboardPage() {
           }
           chipTone="amber"
         />
-      </Reveal>
+      </div>
 
       <div className="grid gap-[var(--space-4)] md:grid-cols-2">
         <SplineChart

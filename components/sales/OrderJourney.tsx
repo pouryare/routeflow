@@ -1,16 +1,19 @@
 import { faJalaliDate } from "@/lib/jalali";
 import type { JourneyNode } from "@/lib/orderJourney";
 
-/* The artifact's avatar tones, in its own order. */
 const TONE = ["plum", "sage", "sky", "amber"] as const;
 
-/** One order's lifecycle as four lanes — the artifact's `.lanes`.
+/** One order's lifecycle as four lanes — the artifact's `.lanes`, carrying enough to be
+ *  read by someone who did not build the system.
  *
- *  Read-only, and that is the design rather than an omission: every tick is derived from
- *  a column another surface writes — the confirm action, a delivery_stops row, the
- *  driver's settlement. A tick anyone could toggle here would be a second record of
- *  whether the goods went out, and it would disagree with the invoice the first time it
- *  was used. So the tick shows state; it does not take input.
+ *  Every lane now says three things instead of one: what the step MEANS, who owns it and
+ *  in what role, and the concrete fact it produced or is waiting for. The lane the order
+ *  is actually sitting in is marked, because "where is this stuck" is the question this
+ *  screen exists to answer and a row of identical pending ticks never answered it.
+ *
+ *  Read-only, and that is the design: every tick is derived from a column another surface
+ *  writes. A tick anyone could toggle here would be a second record of whether the goods
+ *  went out, and it would disagree with the invoice the first time it was used.
  */
 export default function OrderJourney({ nodes }: { nodes: JourneyNode[] }) {
   return (
@@ -19,12 +22,16 @@ export default function OrderJourney({ nodes }: { nodes: JourneyNode[] }) {
         const tone = TONE[i % TONE.length];
         const initial = n.person?.trim()[0] ?? "—";
         return (
-          <div className="lane2" key={n.key}>
+          <div className={`lane2 lane2--${n.state}`} key={n.key}>
             <div className="lh">
               <span className="idx mono">{["۱", "۲", "۳", "۴"][i] ?? String(i + 1)}</span>
               <span className="t">{n.label}</span>
+              {n.state === "current" && <span className="now">اینجاست</span>}
             </div>
-            <div className={`node${n.done ? " done" : ""}`}>
+
+            <p className="lane2__what">{n.what}</p>
+
+            <div className="node">
               <span
                 className="av"
                 style={{ background: `var(--${tone}-soft)`, color: `var(--${tone})` }}
@@ -35,12 +42,10 @@ export default function OrderJourney({ nodes }: { nodes: JourneyNode[] }) {
               <span className="nb">
                 <b>{n.person ?? "هنوز کسی ثبت نشده"}</b>
                 <span>
-                  {n.at ? faJalaliDate(n.at) : ""}
-                  {n.at && n.note ? " · " : ""}
-                  {n.note}
+                  {n.role}
+                  {n.at ? ` · ${faJalaliDate(n.at)}` : ""}
                 </span>
               </span>
-              {/* A span, not a button: this reports state, it does not accept it. */}
               <span
                 className="tick"
                 data-done={n.done}
@@ -50,6 +55,8 @@ export default function OrderJourney({ nodes }: { nodes: JourneyNode[] }) {
                 ✓
               </span>
             </div>
+
+            {n.note && <p className="lane2__note">{n.note}</p>}
           </div>
         );
       })}

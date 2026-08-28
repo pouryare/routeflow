@@ -7,7 +7,6 @@ import { statementFor, allStatements, readRates } from "@/lib/commissionLedger";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import CommissionEditor from "@/components/sales/CommissionEditor";
-import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -62,7 +61,7 @@ export default async function CommissionPage() {
           هنوز فروشنده‌ای ثبت نشده است.
         </p>
       ) : (
-        <Reveal replayKey="commission" select="li">
+        <div>
           <ul className="flex list-none flex-col gap-[var(--space-3)] p-0">
             {statements.map((s) => (
               <li
@@ -140,7 +139,7 @@ export default async function CommissionPage() {
               </li>
             ))}
           </ul>
-        </Reveal>
+        </div>
       )}
 
       {session.role === "owner" && <CommissionEditor sellers={sellers} />}

@@ -22,7 +22,6 @@ export default function CollapsibleSection({
   title,
   icon,
   count,
-  titleClassName,
   storageKey,
   defaultOpen = false,
   keywords,
@@ -39,7 +38,6 @@ export default function CollapsibleSection({
   icon?: string;
   /** Rendered as "title (count)" when given. Omit for sections that aren't a list. */
   count?: number;
-  titleClassName?: string;
   /** localStorage suffix. Omitted means the section does not remember its state --
    *  correct for sections that only appear under some condition. */
   storageKey?: string;
@@ -90,50 +88,27 @@ export default function CollapsibleSection({
   }
 
   return (
-    <section>
-      <div className="mb-2 flex items-center justify-between gap-2">
+    <section className="sect">
+      <div className="sect__head">
         <button
           onClick={toggle}
           aria-expanded={expanded}
-          className={`group flex min-w-0 flex-1 items-center gap-2.5 rounded-[var(--radius-md)] py-1 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/[0.03] ${
-            titleClassName ?? "text-text-muted"
-          }`}
+          className={`sect__btn${expanded ? " on" : ""}`}
         >
           {icon && (
-            <span
-              aria-hidden="true"
-              className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                expanded ? "bg-accent/15" : "bg-white/5 group-hover:bg-accent/15"
-              }`}
-            >
+            <span aria-hidden="true" className="sect__icon">
               {icon}
             </span>
           )}
-          <span className="min-w-0 flex-1 truncate font-mono text-[length:var(--text-xs)] uppercase tracking-wide transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:text-accent">
-            {title}
-          </span>
-          {count !== undefined && (
-            /* Its own chip rather than "(12)" appended to the label: the count is the
-               part you are actually reading when you scan the panel for what needs
-               attention, and inside the title it is just more monospace text. */
-            <span
-              className={`shrink-0 rounded-full px-1.5 py-0.5 font-mono text-[10px] leading-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                count > 0 ? "bg-white/10 text-text" : "text-text-faint"
-              }`}
-            >
-              {faNum(count)}
-            </span>
-          )}
-          <span
-            className="shrink-0 text-text-faint transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
-            style={{ transform: expanded ? "rotate(180deg)" : "rotate(0deg)" }}
-          >
-            ▾
+          <span className="sect__title">{title}</span>
+          {count !== undefined && <span className="sect__count mono">{faNum(count)}</span>}
+          <span aria-hidden="true" className="sect__chev">
+            ⌄
           </span>
         </button>
-        {right && <div className="shrink-0">{right}</div>}
+        {right}
       </div>
-      {expanded && children}
+      {expanded && <div className="sect__body">{children}</div>}
     </section>
   );
 }

@@ -6,7 +6,6 @@ import { getDb, plain } from "@/lib/db";
 import { salesDashboard } from "@/lib/dashboard";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import Reveal from "@/components/kargah/Reveal";
 import GradientStat from "@/components/kargah/GradientStat";
 import SalesSpark, { type SparkPoint } from "@/components/kargah/SalesSpark";
 import CarvedCard from "@/components/kargah/CarvedCard";
@@ -82,7 +81,7 @@ export default async function SalesHomePage() {
 
   return (
     <>
-      <Reveal replayKey="dash-stats" className="statrow">
+      <div className="statrow">
         <GradientStat
           tone="peach"
           label="فروش امروز"
@@ -117,9 +116,9 @@ export default async function SalesHomePage() {
           }
           chipTone="amber"
         />
-      </Reveal>
+      </div>
 
-      <Reveal replayKey="dash-body">
+      <div>
         <div className="block">
           <div className="bhead">
             <div>
@@ -177,7 +176,7 @@ export default async function SalesHomePage() {
               : `${faNum(todayOrders)} سفارش بین ${faNum(team.length)} نفر پخش شده — عدد روی هر نفر، تعداد سفارش‌های اوست.`}
           </p>
         </CarvedCard>
-      </Reveal>
+      </div>
     </>
   );
 }

@@ -7,7 +7,6 @@ import { stockPosition, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
-import Reveal from "@/components/kargah/Reveal";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +30,7 @@ export default async function StockPage() {
   const negatives = stock.filter((row) => row.negative);
 
   return (
-    <Reveal replayKey="stock" className="flex flex-col gap-[var(--space-5)]">
+    <div className="flex flex-col gap-[var(--space-5)]">
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
           موجودی از خرید منهای تحویل حساب می‌شود — نه سفارش.
@@ -136,6 +135,6 @@ export default async function StockPage() {
           </ul>
         </section>
       )}
-    </Reveal>
+    </div>
   );
 }

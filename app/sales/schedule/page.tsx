@@ -5,7 +5,6 @@ import { getSessionFromCookies, groupFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { faNum } from "@/lib/format";
 import { toJalali, JALALI_MONTHS, jalaliToIsoDate, faJalaliDate } from "@/lib/jalali";
-import Reveal from "@/components/kargah/Reveal";
 import ScheduleMonth from "@/components/kargah/ScheduleMonth";
 
 export const dynamic = "force-dynamic";
@@ -71,7 +70,7 @@ export default async function SchedulePage() {
         دربارهٔ این صفحه — تا آن تصمیم گرفته نشود، اینجا چیزی از خودش نمی‌سازد.
       </div>
 
-      <Reveal replayKey="sched" select=".block" className="sched">
+      <div className="sched">
         <div className="block">
           <div className="bhead">
             <div>
@@ -129,7 +128,7 @@ export default async function SchedulePage() {
             )}
           </div>
         </div>
-      </Reveal>
+      </div>
     </>
   );
 }

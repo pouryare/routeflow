@@ -6,9 +6,9 @@ import { getSessionFromCookies, orderFilter } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import { readJourney, buildJourney } from "@/lib/orderJourney";
-import { faNum } from "@/lib/format";
-import Reveal from "@/components/kargah/Reveal";
+import { faNum, faToman } from "@/lib/format";
 import OrderJourney from "@/components/sales/OrderJourney";
+import { faJalaliDate } from "@/lib/jalali";
 
 export const dynamic = "force-dynamic";
 
@@ -40,15 +40,30 @@ export default async function JourneyPage({
   const focus = orders.find((o) => o.id === wanted) ?? orders[0];
   const journey = focus ? readJourney(db, focus.id) : null;
 
+  const STATUS: Record<string, string> = {
+    draft: "پیش‌نویس",
+    confirmed: "تأییدشده",
+    delivered: "تحویل‌شده",
+    cancelled: "لغوشده",
+  };
+  const PAY: Record<string, string> = {
+    unpaid: "پرداخت‌نشده",
+    partial: "بخشی پرداخت‌شده",
+    paid: "تسویه‌شده",
+  };
+
+  const nodes = journey ? buildJourney(journey) : [];
+  const current = nodes.find((n) => n.state === "current");
+
   return (
     <div className="block">
       <div className="bhead">
         <div>
-          <h2>
-            {focus ? `مسیر سفارش ${faNum(Number(focus.order_no.split("-")[1] ?? 0))} — ${focus.customer_name}` : "مسیر سفارش"}
-          </h2>
+          <h2>مسیر سفارش</h2>
           <div className="n">
-            از ثبت تا تسویه · هر مرحله از روی همان چیزی خوانده می‌شود که ثبت شده
+            {focus
+              ? "یک سفارش از لحظهٔ ثبت تا لحظهٔ تسویه — هر مرحله از روی همان چیزی خوانده می‌شود که ثبت شده، نه از روی یک تیک دستی."
+              : "هنوز سفارشی برای نمایش نیست."}
           </div>
         </div>
         {focus && (
@@ -60,10 +75,51 @@ export default async function JourneyPage({
         )}
       </div>
 
+      {orders.length > 0 && (
+        <div className="picker">
+          <span className="picker__label">سفارش:</span>
+          <div className="picker__row">
+            {orders.slice(0, 12).map((o) => (
+              <Link
+                key={o.id}
+                href={`/sales/journey?order=${o.id}`}
+                className={`picker__chip${o.id === focus?.id ? " on" : ""}`}
+              >
+                <span className="mono">{faNum(Number(o.order_no.split("-")[1] ?? 0))}#</span>
+                <span className="picker__who">{o.customer_name}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
       {focus && journey ? (
-        <Reveal replayKey={focus.id} select=".lane2" className="lanes">
-          <OrderJourney nodes={buildJourney(journey)} />
-        </Reveal>
+        <>
+          {/* What this order IS, before how far along it is. Without it the four lanes
+              describe a process with no subject. */}
+          <dl className="jsum">
+            <div><dt>مشتری</dt><dd>{focus.customer_name}</dd></div>
+            <div><dt>مبلغ</dt><dd className="mono">{faToman(focus.total_toman)}</dd></div>
+            <div><dt>وزن</dt><dd className="mono">{faNum(focus.kg)} کیلو</dd></div>
+            <div><dt>تاریخ ثبت</dt><dd className="mono">{faJalaliDate(focus.order_date)}</dd></div>
+            <div><dt>وضعیت</dt><dd>{STATUS[focus.status] ?? focus.status}</dd></div>
+            <div><dt>پرداخت</dt><dd>{PAY[focus.payment_status] ?? focus.payment_status}</dd></div>
+          </dl>
+
+          <p className="jnow">
+            {current ? (
+              <>
+                این سفارش الان روی مرحلهٔ <b>{current.label}</b> است — {current.note}
+              </>
+            ) : (
+              <>این سفارش کامل شده: تحویل داده و تسویه شده است.</>
+            )}
+          </p>
+
+          <div className="lanes">
+            <OrderJourney nodes={nodes} />
+          </div>
+        </>
       ) : (
         <p style={{ padding: "0 24px 28px", color: "var(--muted)", fontSize: 13.5 }}>
           هنوز سفارشی برای نمایش مسیرش ثبت نشده است.

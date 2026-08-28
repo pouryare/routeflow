@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 export interface PocketDoc {
   /** The document's name — «رسید تحویل», «فاکتور», «برگهٔ مسیر». */
   label: string;
@@ -25,7 +23,7 @@ export type PocketStatus = "done" | "conf" | "draft";
  *  up instead puts them outside the card's own box, where the grid's top row gets shaved.
  */
 export default function PocketCard({
-  href,
+  onOpen,
   customer,
   meta,
   amount,
@@ -34,7 +32,8 @@ export default function PocketCard({
   statusLabel,
   docs,
 }: {
-  href: string;
+  /** Tapping the card opens the customer sheet — see OrdersPockets. */
+  onOpen: () => void;
   customer: string;
   meta: string;
   amount: string;
@@ -44,7 +43,7 @@ export default function PocketCard({
   docs: PocketDoc[];
 }) {
   return (
-    <Link className="pocket" href={href} aria-label={`${customer} — ${statusLabel}`}>
+    <button type="button" className="pocket" onClick={onOpen} aria-label={`${customer} — ${statusLabel}`}>
       <div className="docs" aria-hidden>
         {docs.map((d) => (
           <div className="doc" key={d.label}>
@@ -75,6 +74,6 @@ export default function PocketCard({
           </span>
         </div>
       </div>
-    </Link>
+    </button>
   );
 }
