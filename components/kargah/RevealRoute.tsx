@@ -15,21 +15,29 @@ import { useEffect } from "react";
  *  Longest-prefix match, so /sales/orders/12 uses the orders list.
  */
 const REVEAL: Record<string, string[]> = {
-  "/sales": [".gcard", ".block", ".cradlewrap"],
+  "/sales": [".gcard", ".kblock", ".cradlewrap"],
   "/sales/orders": [".bhead", ".pocket"],
-  "/sales/orders/new": [".card", ".block"],
+  "/sales/orders/new": [".card", ".kblock"],
   "/sales/board": [".hint", ".col"],
   "/sales/journey": [".bhead", ".lane2"],
-  "/sales/schedule": [".notice", ".sched > .block"],
-  "/sales/dashboard": [".gcard", ".block"],
-  "/sales/products": [".card", ".block"],
-  "/sales/commission": [".card", ".block"],
-  "/sales/stock": [".card", ".block"],
-  "/sales/runs": [".card", ".block", ".run-column"],
+  "/sales/schedule": [".notice", ".sched > .kblock"],
+  "/sales/dashboard": [".gcard", ".kblock"],
+  "/sales/products": [".card", ".kblock"],
+  "/sales/commission": [".card", ".kblock"],
+  "/sales/stock": [".card", ".kblock"],
+  "/sales/runs": [".card", ".kblock", ".run-column"],
+  "/admin/users": [".card", ".kblock"],
+  "/admin/groups": [".card", ".kblock"],
 };
 
 /** Milliseconds between one card and the next. */
 const STAGGER = 38;
+/** Above this many cards the lift is dropped for a plain fade.
+ *
+ *  The spring overshoots by design — each card passes its resting place and settles back.
+ *  On three headline cards that is liveliness; on a grid of twelve order pockets it is
+ *  twelve things wobbling at once. Six is where it stops reading as one gesture. */
+const LIFT_MAX = 6;
 /** Past this many the stagger stops reading as rhythm and starts reading as lag, so the
  *  delay stops growing rather than the cards stopping. */
 const CAP = 8;
@@ -72,8 +80,10 @@ export default function RevealRoute() {
      * moment the entrance is switched back on, so the element never leaves its finished
      * state and only the first card — the one with delay 0 — ever animates. It fails
      * silently: no error, just a stagger of one. */
+    const lift = items.length <= LIFT_MAX;
     for (const el of items) {
       el.classList.add("rev");
+      el.classList.toggle("rev-lift", lift);
       el.classList.remove("rev-in");
       el.style.transition = "none";
       el.style.transitionDelay = "";

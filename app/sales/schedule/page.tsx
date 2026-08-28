@@ -6,6 +6,7 @@ import { getDb, plain } from "@/lib/db";
 import { faNum } from "@/lib/format";
 import { toJalali, JALALI_MONTHS, jalaliToIsoDate, faJalaliDate } from "@/lib/jalali";
 import ScheduleMonth from "@/components/kargah/ScheduleMonth";
+import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 
 export const dynamic = "force-dynamic";
 
@@ -46,32 +47,65 @@ export default async function SchedulePage() {
       .all(from, to, ...scope.params)
   ) as unknown as { id: number; run_date: string; status: string; driver: string; stops: number }[];
 
+  /* Planned visits, with what each is FOR. Joined to the customer so the rail can name
+     the shop rather than an id — a plan that says "visit #418" is not a plan anyone can
+     follow out of the door. */
+  const visits = plain(
+    db
+      .prepare(
+        `SELECT v.id, v.planned_date, v.status, v.purpose, v.entity_type, v.entity_id,
+                COALESCE(c.business_name, d.name, 'بدون نام') AS who,
+                c.city AS where_
+           FROM visit_plans v
+           LEFT JOIN customers c ON v.entity_type = 'customer' AND c.id = v.entity_id
+           LEFT JOIN districts d ON v.entity_type = 'district' AND d.id = v.entity_id
+          WHERE v.planned_date >= ? AND v.planned_date <= ?
+          ORDER BY v.planned_date, v.sort_order, v.id`
+      )
+      .all(from, to)
+  ) as unknown as {
+    id: number;
+    planned_date: string;
+    status: string;
+    purpose: string | null;
+    who: string;
+    where_: string | null;
+  }[];
+
   const todayIso = jalaliToIsoDate(today.jy, today.jm, today.jd);
   const forToday = runs.filter((r) => r.run_date === todayIso);
+  const visitsToday = visits.filter((v) => v.planned_date === todayIso);
 
   // Which day-of-month carries work, for the calendar dots.
   const marks: Record<number, string[]> = {};
   for (const r of runs) {
     const j = toJalali(r.run_date);
     if (!j) continue;
-    (marks[j.jd] ??= []).push(
-      r.status === "done" ? "var(--sage)" : r.status === "in_progress" ? "var(--accent)" : "var(--sky)"
-    );
+    (marks[j.jd] ??= []).push("var(--accent)");
   }
-
-  const EV = ["a", "b", "c"] as const;
+  /* A visit's dot is the colour of what it is FOR, so a month reads as a pattern of
+     purposes before it reads as a count of appointments. */
+  for (const v of visits) {
+    const j = toJalali(v.planned_date);
+    if (!j) continue;
+    (marks[j.jd] ??= []).push(tripPurpose(v.purpose)?.dot ?? "var(--muted)");
+  }
 
   return (
     <>
-      <div className="notice">
-        <b>این صفحه فقط مسیرهای تحویل را نشان می‌دهد.</b> جدول{" "}
-        <span className="mono">visit_plans</span> هم در دیتابیس هست، ولی اینکه «برنامهٔ
-        روز» ویزیت مشتری‌ها را هم دربر بگیرد یا نه، یک تصمیم دربارهٔ خودِ قابلیت است، نه
-        دربارهٔ این صفحه — تا آن تصمیم گرفته نشود، اینجا چیزی از خودش نمی‌سازد.
+      <div className="legend2">
+        <span className="legend2__t">هدف سفر:</span>
+        {TRIP_PURPOSES.map((p) => (
+          <span key={p.id} className="legend2__i" style={{ background: p.soft, color: p.ink }}>
+            <span aria-hidden>{p.icon}</span>
+            {p.label}
+          </span>
+        ))}
+        <span className="legend2__i legend2__i--none">بدون هدف</span>
       </div>
 
       <div className="sched">
-        <div className="block">
+        <div className="kblock">
           <div className="bhead">
             <div>
               <h2>
@@ -85,46 +119,77 @@ export default async function SchedulePage() {
           </div>
         </div>
 
-        <div className="block">
+        <div className="kblock">
           <div className="bhead">
             <div>
               <h2>{faJalaliDate(todayIso)}</h2>
               <div className="n">
-                {forToday.length === 0
-                  ? "امروز مسیری ثبت نشده"
-                  : `${faNum(forToday.length)} مسیر تحویل · ${faNum(
-                      forToday.reduce((s, r) => s + r.stops, 0)
-                    )} توقف`}
+                {faNum(visitsToday.length)} ویزیت · {faNum(forToday.length)} مسیر تحویل
               </div>
             </div>
           </div>
           <div className="rail">
-            {forToday.length === 0 ? (
+            {visitsToday.length === 0 && forToday.length === 0 ? (
               <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5 }}>
-                برای امروز مسیری در دفتر نیست.
+                برای امروز نه ویزیتی برنامه‌ریزی شده و نه مسیری در دفتر است.
               </p>
             ) : (
-              forToday.map((r, i) => (
-                <div className="slot" key={r.id}>
-                  <div className="h">{["۰۸:۰۰", "۱۱:۰۰", "۱۳:۰۰", "۱۶:۰۰"][i] ?? "—"}</div>
-                  <div className="lane">
-                    <div className={`ev ${EV[i % EV.length]}`}>
-                      <span className="dot">🚚</span>
-                      <div>
-                        <div className="t">مسیر {r.driver}</div>
-                        <div className="s">
-                          {faNum(r.stops)} توقف ·{" "}
-                          {r.status === "done"
-                            ? "تمام شد"
-                            : r.status === "in_progress"
-                              ? "در حال اجرا"
-                              : "برنامه‌ریزی‌شده"}
+              <>
+                {visitsToday.map((v) => {
+                  const p = tripPurpose(v.purpose);
+                  return (
+                    <div className="slot" key={`v${v.id}`}>
+                      <div className="h">{p ? p.icon : "•"}</div>
+                      <div className="lane">
+                        <div
+                          className="ev"
+                          style={{
+                            background: p?.soft ?? "var(--sunk)",
+                            color: p?.ink ?? "var(--muted)",
+                          }}
+                        >
+                          <span
+                            className="dot"
+                            style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
+                          >
+                            {p ? p.icon : "•"}
+                          </span>
+                          <div>
+                            <div className="t">{v.who}</div>
+                            <div className="s">
+                              {p ? p.label : "بدون هدف"}
+                              {v.where_ ? ` · ${v.where_}` : ""}
+                              {v.status === "done" ? " · انجام شد" : v.status === "skipped" ? " · رد شد" : ""}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {forToday.map((r) => (
+                  <div className="slot" key={`r${r.id}`}>
+                    <div className="h">🚚</div>
+                    <div className="lane">
+                      <div className="ev a">
+                        <span className="dot">🚚</span>
+                        <div>
+                          <div className="t">مسیر {r.driver}</div>
+                          <div className="s">
+                            {faNum(r.stops)} توقف ·{" "}
+                            {r.status === "done"
+                              ? "تمام شد"
+                              : r.status === "in_progress"
+                                ? "در حال اجرا"
+                                : "برنامه‌ریزی‌شده"}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ))
+                ))}
+              </>
             )}
           </div>
         </div>

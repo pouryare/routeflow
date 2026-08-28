@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import GroupTerritoryEditor from "@/components/GroupTerritoryEditor";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
@@ -100,16 +99,7 @@ export default function AdminGroupsPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <div className="mb-1 font-mono text-xs tracking-[0.12em] text-accent uppercase">Admin</div>
-          <h1 className="text-xl font-bold text-text">گروه‌ها و محدوده‌ها</h1>
-        </div>
-        <Link href="/map" className="text-sm text-text-muted transition-colors hover:text-accent">
-          بازگشت به نقشه
-        </Link>
-      </header>
+    <div className="flex flex-col gap-[var(--space-4)]">
 
       {error && (
         <p role="alert" className="rounded-md border border-crit/40 bg-crit/10 px-3 py-2 text-sm text-crit">
@@ -212,6 +202,6 @@ export default function AdminGroupsPage() {
       {groups && groups.length > 0 && (
         <GroupTerritoryEditor districts={districts} groups={groups} onSaved={load} />
       )}
-    </main>
+    </div>
   );
 }

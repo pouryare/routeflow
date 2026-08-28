@@ -4,9 +4,10 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { readCatalogue } from "@/lib/catalogue";
-import { faToman, faNum } from "@/lib/format";
+import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
+import ProductsView from "@/components/kargah/ProductsView";
 
 export const dynamic = "force-dynamic";
 
@@ -53,77 +54,21 @@ export default async function ProductsPage() {
           {session.role === "owner" && " با فرم پایین اولین کالا را اضافه کنید."}
         </p>
       ) : (
-        <div>
-          <ul className="flex list-none flex-col gap-[var(--space-3)] p-0">
-            {products.map((product) => (
-              <li
-                key={product.id}
-                className="card p-[var(--space-4)]"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                  <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
-                    {product.name}
-                    {product.active === 0 && (
-                      <span className="ms-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                        (غیرفعال)
-                      </span>
-                    )}
-                  </h2>
-                  <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                    هر {product.base_unit} = {faNum(product.kg_per_base_unit)} کیلوگرم
-                  </span>
-                </div>
-
-                {product.packagings.length === 0 ? (
-                  <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                    بسته‌بندی ندارد — تا وقتی اضافه نشود قابل فروش نیست.
-                  </p>
-                ) : (
-                  <table className="mt-[var(--space-3)] w-full border-collapse text-[length:var(--text-sm)]">
-                    <thead>
-                      <tr className="text-[var(--text-muted)]">
-                        <th className="border-b border-[var(--border)] py-[var(--space-1)] text-right font-medium">
-                          بسته‌بندی
-                        </th>
-                        <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                          تعداد
-                        </th>
-                        <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                          وزن
-                        </th>
-                        <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                          قیمت امروز
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {product.packagings.map((pack) => (
-                        <tr key={pack.id}>
-                          <td className="border-b border-[var(--border)] py-[var(--space-2)] text-[var(--text)]">
-                            {pack.name}
-                          </td>
-                          <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--text-muted)]">
-                            {faNum(pack.qty_per_pack)} {product.base_unit}
-                          </td>
-                          <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums text-[var(--text-muted)]">
-                            {faNum(pack.qty_per_pack * product.kg_per_base_unit)} کیلو
-                          </td>
-                          <td className="border-b border-[var(--border)] py-[var(--space-2)] text-left tabular-nums">
-                            {pack.price_toman === null ? (
-                              <span className="text-[var(--warn)]">قیمت ندارد</span>
-                            ) : (
-                              <span className="text-[var(--text)]">{faToman(pack.price_toman)}</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
+        <ProductsView
+          products={products.map((p) => ({
+            id: p.id,
+            name: p.name,
+            base_unit: p.base_unit,
+            kg_per_base_unit: p.kg_per_base_unit,
+            active: p.active,
+            packagings: p.packagings.map((k) => ({
+              id: k.id,
+              name: k.name,
+              qty_per_pack: k.qty_per_pack,
+              price_toman: k.price_toman,
+            })),
+          }))}
+        />
       )}
 
       {session.role === "owner" && (

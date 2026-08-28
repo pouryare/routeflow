@@ -66,7 +66,10 @@ function LayersButton({ open, count, onClick }: { open: boolean; count: number; 
     button.title = label;
     button.setAttribute("aria-label", label);
     button.setAttribute("aria-expanded", open ? "true" : "false");
-    button.innerHTML = count > 0 ? `▤<span class="layers-badge">${faDigits(String(count))}</span>` : "▤";
+    /* No count badge. It reported "how many layers differ from their defaults", which is
+       a number nobody was keeping in their head — and on a control that already says what
+       it opens, a numeral just asks a question the panel answers. */
+    button.innerHTML = "▤";
     button.classList.toggle("is-open", open);
   }, [open, count]);
 

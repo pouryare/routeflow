@@ -10,6 +10,9 @@ import CommissionEditor from "@/components/sales/CommissionEditor";
 
 export const dynamic = "force-dynamic";
 
+/** One tone per person, picked from the name so a person keeps a colour between visits. */
+const AV_TONE = ["plum", "sage", "sky", "amber"] as const;
+
 /** The commission ledger.
  *
  *  Defaults to the current Jalali month rather than the Gregorian one -- everyone here
@@ -61,84 +64,74 @@ export default async function CommissionPage() {
           هنوز فروشنده‌ای ثبت نشده است.
         </p>
       ) : (
-        <div>
-          <ul className="flex list-none flex-col gap-[var(--space-3)] p-0">
-            {statements.map((s) => (
-              <li
-                key={s.salesperson_user_id}
-                className="card p-[var(--space-4)]"
-              >
-                <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
-                  <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
-                    {s.display_name}
-                  </h2>
-                  <span className="tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
-                    {faToman(s.accrued_toman)}
+        <div className="pcards">
+          {statements.map((s) => {
+            const tone = AV_TONE[s.display_name.length % AV_TONE.length];
+            /* How much of what has accrued is still owed. The bar is the point of the
+               card: two people can accrue the same and be settled very differently. */
+            const settled =
+              s.accrued_toman > 0
+                ? Math.max(0, Math.min(100, ((s.accrued_toman - s.owed_toman) / s.accrued_toman) * 100))
+                : 100;
+            return (
+              <article className="pcard" key={s.salesperson_user_id}>
+                <header className="pcard__head">
+                  <span
+                    className="pcard__av"
+                    style={{ background: `var(--${tone}-soft)`, color: `var(--${tone})` }}
+                    aria-hidden
+                  >
+                    {s.display_name.trim()[0]}
                   </span>
+                  <div className="min-w-0">
+                    <h2>{s.display_name}</h2>
+                    <div className="pcard__sub mono">{faNum(s.kg)} کیلو در این دوره</div>
+                  </div>
+                </header>
+
+                <div className="pcard__big mono">
+                  {faNum(s.accrued_toman)}
+                  <small>تومان پورسانت</small>
                 </div>
 
-                <div className="mt-[var(--space-2)] flex flex-wrap gap-x-[var(--space-4)] gap-y-[var(--space-1)] text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
-                  <span>{faNum(s.kg)} کیلو در این دوره</span>
-                  <span>پرداختی این دوره {faToman(s.paid_toman)}</span>
-                  <span
-                    style={{ color: s.owed_toman > 0 ? "var(--warn)" : "var(--text-muted)" }}
-                  >
-                    مانده کل {faToman(s.owed_toman)}
-                  </span>
+                <div className="pcard__bar" role="img"
+                     aria-label={`${Math.round(settled)} درصد تسویه‌شده`}>
+                  <i style={{ width: `${settled}%` }} />
                 </div>
+
+                <dl className="pcard__grid">
+                  <div><dt>پرداخت‌شده</dt><dd className="mono">{faToman(s.paid_toman)}</dd></div>
+                  <div>
+                    <dt>مانده</dt>
+                    <dd className="mono" style={{ color: s.owed_toman > 0 ? "var(--accent)" : "var(--sage)" }}>
+                      {faToman(s.owed_toman)}
+                    </dd>
+                  </div>
+                  <div><dt>سفارش</dt><dd className="mono">{faNum(s.orders.length)}</dd></div>
+                </dl>
 
                 {s.orders.length > 0 && (
-                  <details className="mt-[var(--space-3)]">
-                    <summary className="cursor-pointer text-[length:var(--text-xs)] text-[var(--text-muted)] hover:text-[var(--text)]">
-                      {faNum(s.orders.length)} سفارش پشت این عدد
-                    </summary>
-                    <table className="mt-[var(--space-2)] w-full border-collapse text-[length:var(--text-xs)]">
-                      <thead>
-                        <tr className="text-[var(--text-muted)]">
-                          <th className="border-b border-[var(--border)] py-[var(--space-1)] text-right font-medium">
-                            مشتری
-                          </th>
-                          <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                            تاریخ
-                          </th>
-                          <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                            وزن
-                          </th>
-                          <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                            نرخ
-                          </th>
-                          <th className="border-b border-[var(--border)] py-[var(--space-1)] text-left font-medium">
-                            پورسانت
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {s.orders.map((o) => (
-                          <tr key={o.order_id}>
-                            <td className="border-b border-[var(--border)] py-[var(--space-1)] text-[var(--text-muted)]">
-                              {o.customer_name}
-                            </td>
-                            <td className="border-b border-[var(--border)] py-[var(--space-1)] text-left tabular-nums text-[var(--text-muted)]">
-                              {faJalaliDate(o.order_date)}
-                            </td>
-                            <td className="border-b border-[var(--border)] py-[var(--space-1)] text-left tabular-nums text-[var(--text-muted)]">
-                              {faNum(o.kg)}
-                            </td>
-                            <td className="border-b border-[var(--border)] py-[var(--space-1)] text-left tabular-nums text-[var(--text-muted)]">
-                              {faToman(o.rate_per_kg_toman)}
-                            </td>
-                            <td className="border-b border-[var(--border)] py-[var(--space-1)] text-left tabular-nums text-[var(--text)]">
-                              {faToman(o.accrual_toman)}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <details className="pcard__more">
+                    <summary>{faNum(s.orders.length)} سفارش پشت این عدد</summary>
+                    <div className="pcard__rows">
+                      {s.orders.slice(0, 8).map((o) => (
+                        <div className="pcard__row" key={o.order_id}>
+                          <span className="pcard__who">{o.customer_name}</span>
+                          <span className="mono">{faNum(o.kg)} کیلو</span>
+                          <span className="mono pcard__amt">{faToman(o.accrual_toman)}</span>
+                        </div>
+                      ))}
+                      {s.orders.length > 8 && (
+                        <p className="pcard__rest">
+                          و {faNum(s.orders.length - 8)} سفارش دیگر
+                        </p>
+                      )}
+                    </div>
                   </details>
                 )}
-              </li>
-            ))}
-          </ul>
+              </article>
+            );
+          })}
         </div>
       )}
 

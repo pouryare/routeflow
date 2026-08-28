@@ -92,7 +92,7 @@ export default async function OrdersPage({
   const customerCount = new Set(orders.map((o) => o.customer_name)).size;
 
   return (
-    <div className="block">
+    <div className="kblock">
       <div className="bhead">
         <div>
           <h2>{focused ? `سفارش‌های ${focused.business_name}` : "سفارش‌های اخیر"}</h2>

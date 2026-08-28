@@ -2031,7 +2031,11 @@ export default function CoverageMap({
             /* Toned per skin -- see .tiles-quiet. Only the quiet basemap: the streets one
                is meant to be full colour, and satellite imagery must not be recoloured. */
             className={
-              activeBasemap.id === "dark" && QUIET_NEEDS_TONING ? "tiles-quiet" : undefined
+              activeBasemap.id === "radar"
+                ? "tiles-radar"
+                : activeBasemap.id === "dark" && QUIET_NEEDS_TONING
+                  ? "tiles-quiet"
+                  : undefined
             }
           />
 

@@ -49,7 +49,7 @@ export default async function BoardPage() {
   }));
 
   return (
-    <div className="block">
+    <div className="kblock">
       <div className="bhead">
         <div>
           <h2>خط سفارش‌ها</h2>

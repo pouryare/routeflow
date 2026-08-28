@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { faDate } from "@/lib/format";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 
@@ -97,17 +96,7 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <main className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-4">
-      <header className="flex items-center justify-between">
-        <div>
-          <div className="mb-1 font-mono text-xs tracking-[0.12em] text-accent uppercase">Admin</div>
-          <h1 className="text-xl font-bold text-text">حساب‌های کاربری</h1>
-        </div>
-        <div className="flex gap-3 text-sm text-text-muted">
-          <Link href="/admin/groups" className="transition-colors hover:text-accent">گروه‌ها</Link>
-          <Link href="/map" className="transition-colors hover:text-accent">بازگشت به نقشه</Link>
-        </div>
-      </header>
+    <div className="flex flex-col gap-[var(--space-4)]">
 
       {error && (
         <p role="alert" className="rounded-md border border-crit/40 bg-crit/10 px-3 py-2 text-sm text-crit">
@@ -275,6 +264,6 @@ export default function AdminUsersPage() {
           بی‌اعتبار می‌شوند.
         </p>
       </section>
-    </main>
+    </div>
   );
 }

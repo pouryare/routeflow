@@ -137,12 +137,37 @@ export default function CustomerDetailPanel({
 
   const bento = useCustomerSummary(customer.id);
 
+  /* Upright beside the map, or lying across the bottom. Which one suits depends on what
+     is being read: the upright panel keeps the map's width for the map, the wide one
+     keeps its height — and on a laptop the second is often the better trade when the
+     shops are spread east-west. Remembered, because it is a preference about the screen,
+     not about the customer. */
+  const [orient, setOrient] = useState<"side" | "bottom">("side");
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("coverage_panel_orient");
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      if (saved === "bottom" || saved === "side") setOrient(saved);
+    } catch {
+      // Private-window storage denial; the default orientation is still correct.
+    }
+  }, []);
+  function flip() {
+    const next = orient === "side" ? "bottom" : "side";
+    setOrient(next);
+    try {
+      localStorage.setItem("coverage_panel_orient", next);
+    } catch {
+      /* see above */
+    }
+  }
+
   return (
     <div
       ref={panelRef}
       key={customer.id}
       dir="rtl"
-      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} sheet-on-mobile absolute bottom-4 left-4 top-20 z-[var(--z-panel)] w-[320px] max-w-[calc(100vw-2rem)] overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 ${elevateClass(statusColor)}`}
+      className={`${leaving ? "customer-panel-exit" : "customer-panel-enter"} sheet-on-mobile cpanel cpanel--${orient} z-[var(--z-panel)] overflow-y-auto ${elevateClass(statusColor)}`}
     >
       <div className="mb-1 flex items-start justify-between gap-2">
         <h2 className="text-[length:var(--text-md)] font-bold leading-snug text-text">{customer.business_name}</h2>
@@ -159,6 +184,14 @@ export default function CustomerDetailPanel({
             {pinned ? "★" : "☆"}
           </button>
         )}
+        <button
+          onClick={flip}
+          aria-label={orient === "side" ? "نمایش افقی در پایین صفحه" : "نمایش عمودی در کنار صفحه"}
+          title={orient === "side" ? "نمایش افقی" : "نمایش عمودی"}
+          className="shrink-0 rounded-[var(--radius-sm)] p-1 text-[length:var(--text-md)] leading-none text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+        >
+          {orient === "side" ? "▤" : "▥"}
+        </button>
         <button
           onClick={handleClose}
           aria-label="بستن"

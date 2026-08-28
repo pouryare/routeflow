@@ -56,7 +56,7 @@ export default async function JourneyPage({
   const current = nodes.find((n) => n.state === "current");
 
   return (
-    <div className="block">
+    <div className="kblock">
       <div className="bhead">
         <div>
           <h2>مسیر سفارش</h2>

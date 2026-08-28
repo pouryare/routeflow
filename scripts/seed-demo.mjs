@@ -19,6 +19,15 @@ import crypto from "node:crypto";
 const DB_PATH = process.env.COVERAGE_DB_PATH ?? path.join(process.cwd(), "data", "coverage.db");
 const db = new DatabaseSync(DB_PATH);
 const REMOVE = process.argv.includes("--remove");
+
+/* This script opens the database directly, so lib/db.ts's migrations have not run. The
+   one column it depends on is added here too — the same statement, and idempotent, so it
+   does not matter which of the two gets there first. */
+const hasCol = (table, col) =>
+  db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === col);
+if (!hasCol("visit_plans", "purpose")) {
+  db.exec("ALTER TABLE visit_plans ADD COLUMN purpose TEXT");
+}
 const now = new Date().toISOString();
 
 const plain = (rows) => rows.map((r) => ({ ...r }));
@@ -44,6 +53,7 @@ if (REMOVE) {
     db.exec("DELETE FROM purchases WHERE id NOT IN (SELECT DISTINCT purchase_id FROM purchase_lines)");
     db.exec("DELETE FROM products WHERE sku LIKE 'DEMO-%'");
     db.exec("DELETE FROM commission_rates WHERE salesperson_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
+    db.exec("DELETE FROM visit_plans WHERE purpose IS NOT NULL");
     db.exec("DELETE FROM users WHERE username LIKE 'demo.%'");
     db.exec("COMMIT");
   } catch (e) {
@@ -134,7 +144,7 @@ try {
               `INSERT INTO product_prices (product_id, packaging_id, price_toman, valid_from, created_by, created_at)
                VALUES (?, ?, ?, ?, ?, ?)`
             )
-            .run(pid, packId, p.price, "1404-01-01", owner.id, now).lastInsertRowid
+            .run(pid, packId, p.price, iso(400), owner.id, now).lastInsertRowid
         );
     made.push({ ...p, pid, packId, priceId });
   }
@@ -232,6 +242,30 @@ try {
     ).run(runId, o.id, i, o.status === "delivered" ? "delivered" : "pending", now);
   });
 
+  /* ── planned visits, so برنامهٔ روز has something to colour ───────────────── */
+  const PURPOSES = ["first_visit", "sample", "delivery", "collect"];
+  {
+    const insVisit = db.prepare(
+      `INSERT INTO visit_plans (entity_type, entity_id, planned_date, status, sort_order, purpose, created_at)
+       VALUES ('customer', ?, ?, ?, ?, ?, ?)`
+    );
+    for (let day = 6; day >= -3; day--) {
+      const date = iso(day);
+      const howMany = day === 0 ? 4 : 1 + (Math.abs(day) % 3);
+      for (let k = 0; k < howMany; k++) {
+        const cust = customers[(day * 5 + k * 2 + 20) % customers.length];
+        insVisit.run(
+          cust.id,
+          date,
+          day > 0 ? (k % 4 === 0 ? "skipped" : "done") : "planned",
+          k,
+          PURPOSES[(day + k + 4) % PURPOSES.length],
+          now
+        );
+      }
+    }
+  }
+
   /* ── commission rates, so the پورسانت page has statements ────────────────── */
   for (const uid of sellers) {
     const has = plain(
@@ -241,7 +275,7 @@ try {
       db.prepare(
         `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, created_by, created_at)
          VALUES (?, ?, ?, ?, ?)`
-      ).run(uid, 1500, "1404-01-01", owner.id, now);
+      ).run(uid, 1500, iso(400), owner.id, now);
     }
   }
 
@@ -275,4 +309,5 @@ console.log("  demo staff    ", n("SELECT COUNT(*) c FROM users WHERE username L
 console.log("  orders        ", n("SELECT COUNT(*) c FROM orders WHERE order_no LIKE '1404-9%'"));
 console.log("  order lines   ", n("SELECT COUNT(*) c FROM order_lines"));
 console.log("  delivery stops", n("SELECT COUNT(*) c FROM delivery_stops"));
+console.log("  planned visits", n("SELECT COUNT(*) c FROM visit_plans WHERE purpose IS NOT NULL"));
 console.log("\nclear it again with:  node scripts/seed-demo.mjs --remove");

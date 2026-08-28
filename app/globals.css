@@ -949,6 +949,16 @@ body {
           sepia(0.22);
 }
 
+/* ---- رادار: the pre-redesign reading of the city ------------------------
+   Cold rather than warm, and harder. hue-rotate past 180° is what pushes the inverted
+   greens and greys toward the blue-black the old map used, instead of the neutral grey a
+   plain inversion leaves. Independent of the skin: someone picking «رادار» has asked for
+   the dark look, and flipping it to cream in light mode would be answering a different
+   question. */
+.tiles-radar {
+  filter: invert(1) hue-rotate(198deg) saturate(0.55) brightness(0.52) contrast(1.2);
+}
+
 /* Esri's reference labels are drawn light for a dark ground, which is right over
    satellite imagery. On a light skin they need turning dark again. */
 :root[data-theme="light"] .tiles-labels {
@@ -1653,16 +1663,21 @@ body {
    Opacity and transform only, staggered, and CAPPED -- past ten items a stagger
    stops reading as choreography and starts reading as lag. The reset order is
    the fragile part; see components/kargah/Reveal.tsx.                          */
-/* Shorter travel, quicker, and NO overshoot.
-   The artifact's 16px + 620ms --spring reads as bouncy on a page of eight cards: the
-   spring's 1.32 control point overshoots, so every card visibly passes its resting place
-   and comes back. At this size that is not liveliness, it is wobble. Half the travel, a
-   plain decelerating curve, and roughly half the duration. */
-.kargah .rev { opacity: 0; transform: translateY(8px); }
+/* Two entrances, and which one a screen gets is decided by how many cards it has.
+   
+   The spring's 1.32 control point overshoots: every card visibly passes its resting place
+   and comes back. On three big cards that reads as liveliness; on twelve it reads as the
+   whole page wobbling. So the lift is used where cards are few and the plain fade where
+   they are many — RevealRoute counts them and picks. */
+.kargah .rev { opacity: 0; }
+.kargah .rev.rev-lift { transform: translateY(16px); }
 .kargah .rev.rev-in {
   opacity: 1;
   transform: none;
-  transition: opacity 220ms var(--ease), transform 300ms var(--ease);
+  transition: opacity 300ms var(--ease);
+}
+.kargah .rev.rev-lift.rev-in {
+  transition: opacity 460ms var(--ease), transform 620ms var(--spring);
 }
 @media (prefers-reduced-motion: reduce) {
   .kargah .rev { opacity: 1; transform: none; }
@@ -1750,7 +1765,11 @@ body {
 .kargah .seg > span[aria-disabled] { color: var(--faint); cursor: default; }
 
 /* ---- generic blocks ------------------------------------------------------ */
-.kargah .block {
+/* NOT `.block`: that is a Tailwind display utility this app uses 65 times, and a rule
+   for it painted every one of those elements as a card — a hint paragraph in the layers
+   panel arrived as a white pill with its text clipped. The artifact calls this `.block`;
+   here it has to carry a prefix. */
+.kargah .kblock {
   background: var(--card); border-radius: var(--r-2xl);
   box-shadow: var(--sh-1); overflow: hidden;
 }
@@ -2439,6 +2458,11 @@ body {
 .kargah .side__brand .s { font-size: 12px; color: var(--muted); margin-top: -3px; }
 
 .kargah .sect {
+  /* The sidebar is a flex column, so a section is a flex ITEM and shrinks by default.
+     Collapsed, that squashed a 50px header into 22px and the card clipped its own title —
+     ten blank bars down the panel. It never showed before the redesign because sections
+     had no background of their own to clip against. */
+  flex: none;
   background: var(--card);
   border: 1px solid var(--line);
   border-radius: var(--r-lg);
@@ -2471,3 +2495,199 @@ body {
 }
 .kargah .sect__btn.on .sect__chev { transform: rotate(180deg); color: var(--accent); }
 .kargah .sect__body { padding: 0 13px 13px; }
+
+/* ---- catalogue: two readings, and the switch between them ----------------- */
+.kargah .viewbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
+}
+.kargah .viewbar__seg {
+  display: inline-flex; gap: 4px; background: var(--sunk);
+  border-radius: 999px; padding: 4px;
+}
+.kargah .viewbar__seg button {
+  border: 0; background: transparent; cursor: pointer; font-family: var(--fa);
+  font-size: 13px; color: var(--ink-2); padding: 7px 15px; border-radius: 999px;
+  transition: background 200ms var(--ease), color 200ms var(--ease), box-shadow 200ms var(--ease);
+}
+.kargah .viewbar__seg button.on {
+  background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--sh-1);
+}
+.kargah .viewbar__seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kargah .viewbar__n { font-size: 12.5px; color: var(--muted); }
+
+/* ---- فهرست: the dense reading -------------------------------------------- */
+.kargah .plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.kargah .prow {
+  background: var(--card); border-radius: var(--r-xl); box-shadow: var(--sh-1);
+  padding: 16px 18px; position: relative; overflow: hidden;
+  transition: box-shadow 260ms var(--ease), transform 260ms var(--ease);
+}
+/* The hover effect. A rail that grows from the inline-start edge rather than a colour
+   wash: the row is mostly figures, and tinting the whole card tints them too. */
+.kargah .prow::before {
+  content: ""; position: absolute; inset-block: 0; inset-inline-start: 0;
+  width: 3px; background: var(--accent); transform: scaleY(0); transform-origin: center;
+  transition: transform 320ms var(--spring);
+}
+.kargah .prow:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.kargah .prow:hover::before { transform: scaleY(1); }
+.kargah .prow__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.kargah .prow__head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.kargah .prow__unit { font-size: 11.5px; color: var(--muted); }
+.kargah .prow__none { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.kargah .prow__packs { margin-top: 11px; display: flex; flex-direction: column; gap: 2px; }
+.kargah .pk {
+  display: grid; grid-template-columns: minmax(0,1fr) 92px 92px 130px; gap: 10px;
+  align-items: center; padding: 8px 10px; border-radius: var(--r-sm); font-size: 13px;
+  transition: background 180ms var(--ease);
+}
+.kargah .pk:hover { background: var(--card-2); }
+.kargah .pk__n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kargah .pk__q, .kargah .pk__w { text-align: end; color: var(--muted); font-size: 12px; }
+.kargah .pk__p { text-align: end; font-weight: 700; }
+
+/* ---- کاشی: the scannable reading ----------------------------------------- */
+.kargah .ptiles {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 12px;
+}
+.kargah .ptile {
+  background: var(--card); border-radius: var(--r-lg); box-shadow: var(--sh-1);
+  padding: 15px 16px 14px; position: relative; overflow: hidden; isolation: isolate;
+  display: flex; flex-direction: column; gap: 2px;
+  transition: box-shadow 260ms var(--ease), transform 260ms var(--ease);
+}
+.kargah .ptile::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0;
+  background: radial-gradient(120% 130% at 88% 8%, var(--accent-soft) 0%, transparent 72%);
+  transition: opacity 300ms var(--ease);
+}
+.kargah .ptile:hover { box-shadow: var(--sh-2); transform: translateY(-3px); }
+.kargah .ptile:hover::before { opacity: 1; }
+.kargah .ptile--off { opacity: .62; }
+/* Name first and quiet, price second and loud — the order the artifact's tile had the
+   other way round, which is what made it read as a label with a number attached. */
+.kargah .ptile__name {
+  font-size: 12.5px; color: var(--muted); line-height: 1.5;
+  display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
+}
+.kargah .ptile__price {
+  font-family: var(--en); font-variant-numeric: tabular-nums;
+  font-size: 23px; font-weight: 700; letter-spacing: -.03em; color: var(--ink);
+  line-height: 1.25; margin-top: 3px;
+}
+.kargah .ptile__price small { font-family: var(--fa); font-size: 11.5px; font-weight: 500; color: var(--muted); margin-inline-start: 5px; }
+.kargah .ptile__meta {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
+  font-size: 11.5px; color: var(--muted); margin-top: 4px;
+}
+
+@media (max-width: 620px) {
+  .kargah .pk { grid-template-columns: minmax(0,1fr) 110px; }
+  .kargah .pk__q, .kargah .pk__w { display: none; }
+  .kargah .ptiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+}
+
+/* ---- the schedule's purpose legend --------------------------------------
+   Colour is never the only carrier: every chip has its glyph and its words beside it,
+   because a legend that reads as four coloured squares is unusable to anyone who cannot
+   separate two of them.                                                        */
+.kargah .legend2 {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
+}
+.kargah .legend2__t { font-size: 12.5px; color: var(--muted); }
+.kargah .legend2__i {
+  display: inline-flex; align-items: center; gap: 6px;
+  border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600;
+}
+.kargah .legend2__i--none { background: var(--sunk); color: var(--muted); }
+.kargah .rail .slot .h { font-size: 15px; text-align: center; padding-top: 12px; }
+
+/* ---- پورسانت: a card per person ------------------------------------------ */
+.kargah .pcards {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(288px, 1fr)); gap: 14px;
+}
+.kargah .pcard {
+  background: var(--card); border-radius: var(--r-xl); box-shadow: var(--sh-1);
+  padding: 18px 19px 16px; display: flex; flex-direction: column; gap: 12px;
+  transition: box-shadow 260ms var(--ease), transform 260ms var(--ease);
+}
+.kargah .pcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.kargah .pcard__head { display: flex; align-items: center; gap: 12px; }
+.kargah .pcard__av {
+  width: 46px; height: 46px; border-radius: 999px; flex: none;
+  display: grid; place-items: center; font-size: 18px; font-weight: 700;
+  box-shadow: var(--sh-1);
+}
+.kargah .pcard__head h2 { margin: 0; font-size: 15.5px; font-weight: 600; }
+.kargah .pcard__sub { font-size: 11.5px; color: var(--muted); margin-top: -2px; }
+.kargah .pcard__big {
+  font-size: 27px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2;
+}
+.kargah .pcard__big small {
+  font-family: var(--fa); font-size: 12px; font-weight: 500;
+  color: var(--muted); margin-inline-start: 7px; letter-spacing: 0;
+}
+/* How much of what accrued has actually been paid. Two people can accrue the same and be
+   settled very differently, and that difference is the reason to open this page. */
+.kargah .pcard__bar { height: 6px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+.kargah .pcard__bar i { display: block; height: 100%; background: var(--sage); border-radius: 999px; }
+.kargah .pcard__grid { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.kargah .pcard__grid dt { margin: 0; font-size: 11px; color: var(--muted); }
+.kargah .pcard__grid dd { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; }
+.kargah .pcard__more summary {
+  cursor: pointer; font-size: 12px; color: var(--muted); list-style: none;
+}
+.kargah .pcard__more summary::-webkit-details-marker { display: none; }
+.kargah .pcard__more summary::before { content: "⌄ "; color: var(--faint); }
+.kargah .pcard__more[open] summary::before { content: "⌃ "; }
+.kargah .pcard__more summary:hover { color: var(--accent); }
+.kargah .pcard__rows { margin-top: 8px; display: flex; flex-direction: column; }
+.kargah .pcard__row {
+  display: grid; grid-template-columns: minmax(0,1fr) 74px 96px; gap: 8px;
+  padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted);
+}
+.kargah .pcard__row:last-child { border-bottom: 0; }
+.kargah .pcard__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.kargah .pcard__amt { text-align: end; color: var(--ink); font-weight: 600; }
+.kargah .pcard__rest { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
+
+/* ---- the map's customer panel, in two orientations -----------------------
+   Upright it keeps the map's WIDTH for the map; lying across the bottom it keeps the
+   map's HEIGHT — which is the better trade when the shops are spread east-west and the
+   useful part of the map is a wide band. The reader picks; neither is right for every
+   map.
+
+   `top` is 48px rather than 80: at 80 the panel started below the search box even when
+   the search box was nowhere near it, and the gap read as the panel being short of
+   content rather than as clearance.                                            */
+.kargah .cpanel {
+  position: absolute;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  padding: 16px 18px;
+  box-shadow: var(--sh-2);
+}
+.kargah .cpanel--side {
+  inset-block: 48px 16px;
+  /* Physical left: this sits opposite the sidebar, which is pinned right under RTL. */
+  left: 28px;
+  width: 340px;
+  max-width: calc(100vw - 3rem);
+}
+.kargah .cpanel--bottom {
+  inset-inline: 28px;
+  inset-block-end: 16px;
+  top: auto;
+  max-height: 46vh;
+  width: auto;
+}
+/* Lying down, the bento runs three across and the rest flows in columns rather than
+   stacking — otherwise a wide panel is one narrow column with a lot of empty air. */
+.kargah .cpanel--bottom .bento--compact { grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; }
+.kargah .cpanel--bottom .bento--compact .tile .v { font-size: 24px; }
+@media (max-width: 900px) {
+  .kargah .cpanel--side { left: 16px; width: 320px; }
+  .kargah .cpanel--bottom .bento--compact { grid-template-columns: 1fr; }
+}

@@ -9,7 +9,7 @@
  *  ordering and the storage shape can be read and tested without a browser.
  */
 
-export type BasemapId = "dark" | "streets" | "satellite";
+export type BasemapId = "dark" | "radar" | "streets" | "satellite";
 
 export interface BasemapDef {
   id: BasemapId;
@@ -74,6 +74,21 @@ export const BASEMAPS: BasemapDef[] = [
     subdomains: QUIET_TILES.subdomains,
     maxZoom: QUIET_TILES.maxZoom,
     // Toned down but still OSM underneath, so the street names are there.
+    hasLabels: true,
+  },
+  {
+    /* The pre-redesign look, kept as a choice rather than as the default.
+       CARTO's dark tiles are watermarked now (see above), so this is the same OSM data
+       under a colder, harder filter: inverted, pushed toward blue-black, contrast up.
+       It is not pixel-identical to the old basemap and does not claim to be — it is that
+       reading of the city, on tiles that still load. */
+    id: "radar",
+    label: "رادار",
+    icon: "◎",
+    hint: "نمای تیرهٔ قبلی — زمینهٔ سرد و پرکنتراست. برای شب و برای دیده‌شدن رنگ وضعیت‌ها.",
+    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+    attribution: OSM_ATTRIBUTION,
+    maxZoom: 19,
     hasLabels: true,
   },
   {

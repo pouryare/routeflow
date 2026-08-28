@@ -119,7 +119,7 @@ export default async function SalesHomePage() {
       </div>
 
       <div>
-        <div className="block">
+        <div className="kblock">
           <div className="bhead">
             <div>
               <h2>روند فروش</h2>

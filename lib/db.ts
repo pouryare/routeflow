@@ -490,6 +490,19 @@ export function getDb(): DatabaseSync {
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
      not have one, and a default of 0 would refuse every sale on the day it shipped. */
+  /* What a planned visit is FOR. Nullable, because every row written before this column
+     existed has no answer and inventing one would be a fabricated record — the schedule
+     shows those as «بدون هدف» rather than guessing.
+
+     No CHECK constraint: SQLite cannot ALTER one in, so a constrained column here would
+     mean rebuilding the table, and the vocabulary is young enough that it is likely to
+     gain a value. lib/tripPurpose.ts is the single place that defines what is valid, and
+     it is what the UI and the API both read. */
+  const visitPlanCols = db.prepare("PRAGMA table_info(visit_plans)").all() as { name: string }[];
+  if (!visitPlanCols.some((c) => c.name === "purpose")) {
+    db.exec("ALTER TABLE visit_plans ADD COLUMN purpose TEXT");
+  }
+
   const customerCreditCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
   if (!customerCreditCols.some((c) => c.name === "credit_limit_toman")) {
     db.exec("ALTER TABLE customers ADD COLUMN credit_limit_toman INTEGER");
