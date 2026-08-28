@@ -105,8 +105,13 @@ Rules:
   retract as the disc slides and a shadow bite crescents it into a moon, on
   `--spring-snap` / `--dur-base`. It carries `aria-pressed` and a text label for screen
   readers -- the icon alone does not say which mode you are about to enter.
-- **The map is themed too** — light mode uses a light tile set, and `.tiles-inverted`
-  (the CSS filter that darkens tiles) is dark-only.
+- **The map follows its basemap, not the skin.** The two used to be the same thing. With
+  a basemap catalogue holding both near-black and cream styles they are not: each basemap
+  declares a `ground` (`dark`/`light`), and that — not `data-theme` — decides the district
+  strokes (`MAP_INK`), the zone rings, the corridor band, the cluster bubbles and the
+  names overlay. Choosing a cream basemap on the dark skin lightens the map's ink and
+  leaves the surrounding UI alone. Status hues (`--good`/`--warn`/`--crit`) never move:
+  they mean the same thing on `/report`, and only their opacity is tuned per ground.
 
 ## Color `CHANGED`
 
@@ -535,4 +540,7 @@ Superseded by **Order pipeline** above. Same endpoint, same authorisation surfac
   mode now.
 - Icon set. The app currently has no consistent one; Lucide and Feather are the AI
   defaults and are excluded. Phosphor is the leading candidate.
-- Whether the map's light tile set is a hosted style or a CSS filter on the dark one.
+Decided since: the map's tile sets are hosted styles, not CSS filters. «رادار» is CARTO
+Dark Matter drawn as vector through MapLibre — the pre-redesign basemap itself rather than
+an inversion of a light one, which is what made every filtered attempt look wrong. A CSS
+tone survives only as the no-WebGL fallback. See `lib/mapLayers.ts`.

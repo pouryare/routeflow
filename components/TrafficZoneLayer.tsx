@@ -10,7 +10,6 @@ import {
   type ZoneStatus,
 } from "@/lib/trafficZones";
 import { faDigits } from "@/lib/format";
-import { useTheme } from "@/components/ThemeToggle";
 
 export interface ZoneFeature {
   properties: TrafficZoneProperties;
@@ -111,16 +110,19 @@ export default function TrafficZoneLayer({
   zones,
   status,
   show,
+  ground,
 }: {
   zones: ZoneFeature[] | null;
   status: Record<string, ZoneStatus> | null;
   /** Which zone ids to draw, by the panel's toggles. */
   show: Set<string>;
+  /** What the chosen basemap's ground looks like. These rings are drawn on the basemap,
+   *  not on the page, so they follow it rather than the skin -- see MAP_INK. */
+  ground: "light" | "dark";
 }) {
   /* Leaflet writes these onto a canvas path, so the colour has to be resolved in JS --
      var() does not reach the canvas renderer. Same reason MAP_INK exists. */
-  const [theme] = useTheme();
-  const palette = ZONE_COLOR[theme];
+  const palette = ZONE_COLOR[ground];
 
   if (!zones) return null;
 
@@ -142,7 +144,7 @@ export default function TrafficZoneLayer({
               pathOptions={{
                 color,
                 weight: biting ? 3 : 2,
-                opacity: biting ? 0.95 : INACTIVE_OPACITY[theme],
+                opacity: biting ? 0.95 : INACTIVE_OPACITY[ground],
                 fill: false,
                 // Solid while it is enforced, dashed while it is not -- the same grammar
                 // the rest of this map uses for "definite" against "provisional".

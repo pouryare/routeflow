@@ -969,9 +969,31 @@ body {
 }
 
 /* Esri's reference labels are drawn light for a dark ground, which is right over
-   satellite imagery. On a light skin they need turning dark again. */
-:root[data-theme="light"] .tiles-labels {
+   satellite imagery. Over a pale basemap they need turning dark again.
+
+   Keyed on the basemap's ground rather than the page skin: the labels sit on the map, and
+   the catalogue now has cream basemaps that can be chosen on a dark skin and vice versa.
+   Same reason MAP_INK moved -- see lib/mapLayers.ts. */
+[data-ground="light"] .tiles-labels {
   filter: invert(1) brightness(0.85);
+}
+
+/* ---- Overlays follow the basemap's ground -----------------------------------------
+   The app's own drawing sits on the basemap, not on the page, so a cream basemap has to
+   lighten what is drawn over it however dark the surrounding UI is.
+
+   Only lightness and opacity move here. The status hues -- good/warn/crit -- are
+   deliberately untouched, because they mean the same thing on /report and /analytics and
+   a colour that shifts per basemap would stop being a shared language. ---- */
+
+/* Cluster bubbles: the accent-tinted surface is nearly invisible over a pale basemap, so
+   over one it becomes an opaque light chip with a darker accent rim. */
+[data-ground="light"] .cluster-marker {
+  background: color-mix(in srgb, var(--accent) 16%, #fff);
+  border-color: color-mix(in srgb, var(--accent) 78%, #000);
+  color: color-mix(in srgb, var(--accent) 82%, #000);
+  /* The dark ground's glow reads as smudge on cream; a contact shadow reads as a chip. */
+  box-shadow: 0 1px 3px rgb(0 0 0 / 0.28);
 }
 
 /* ---- Marker cluster bubble: identity-neutral (accent hue), matches the me-marker/

@@ -17,9 +17,14 @@ const CSP = [
   "default-src 'self'",
   "script-src 'self' 'unsafe-inline'",
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com",
+  "img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com",
   "font-src 'self' data:",
-  "connect-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://router.project-osrm.org https://nominatim.openstreetmap.org",
+  /* MapLibre compiles its shaders in a web worker created from a blob: URL, so worker-src
+     has to allow blob: or every vector basemap fails to initialise. It is not a general
+     script-src loosening -- worker-src is its own directive and does not fall back to
+     script-src once stated. */
+  "worker-src 'self' blob:",
+  "connect-src 'self' https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com https://router.project-osrm.org https://nominatim.openstreetmap.org",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

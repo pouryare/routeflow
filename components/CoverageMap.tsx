@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ComponentProps } from "react";
-import { useTheme } from "@/components/ThemeToggle";
 import SkinToggle from "@/components/kargah/SkinToggle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -69,6 +68,7 @@ import {
   BASEMAP_KEY,
   LABELS_TILE,
   LAYERS_KEY,
+  QUIET_TILES,
   basemapDef,
   changedFromDefault,
   isBasemapId,
@@ -97,6 +97,9 @@ import CopyButton from "./CopyButton";
 // Splitting them out keeps that weight off the chunk that has to arrive before the map
 // can draw anything. CoverageMap is itself ssr:false, so none of these need an SSR pass.
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
+/* MapLibre and its Leaflet bridge are ~250KB: loaded only once a vector basemap is
+   actually chosen, so the raster styles -- including the default -- cost nothing. */
+const VectorBasemap = dynamic(() => import("./VectorBasemap"), { ssr: false });
 const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
@@ -190,7 +193,12 @@ const ADMIN_LINKS = [
  *  Unlike STATUS_COLOR these are used nowhere else, which is what makes it safe to give
  *  them one value per skin instead of one value that has to survive both. Each clears 3:1
  *  against its own ground: the light strokes sit at 5.7 and 3.7 on the cream, the dark
- *  ones at 5.6 and 4.5 on the warm black. */
+ *  ones at 5.6 and 4.5 on the warm black.
+ *
+ *  Keyed on the BASEMAP's ground rather than on the page theme. The two used to be the
+ *  same thing; with a catalogue that has both cream and near-black basemaps they are not,
+ *  and picking «سپید» on a dark skin used to draw dark strokes onto a white map. What the
+ *  strokes sit on is the basemap, so that is what they follow. */
 const MAP_INK = {
   light: {
     strokeMajor: "#6B5B4C",
@@ -829,12 +837,13 @@ export default function CoverageMap({
 
   const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
 
-  /* The skin, resolved in JS because the canvas renderer cannot read CSS custom
-     properties -- see MAP_INK. useTheme starts at the default and corrects itself in an
-     effect, so this changes once shortly after mount; the restyle effect below lists it
-     as a dependency, which is what repaints the already-drawn district layers. */
-  const [theme] = useTheme();
-  const ink = MAP_INK[theme];
+  /* Resolved in JS because the canvas renderer cannot read CSS custom properties -- see
+     MAP_INK. Keyed on the basemap's own ground, not the page skin: the strokes are drawn
+     on the basemap, so a cream basemap needs dark strokes whatever the skin is. The
+     restyle effect below lists `ink` as a dependency, which is what repaints the
+     already-drawn district layers when the basemap changes. */
+  const activeBasemap = basemapDef(basemap);
+  const ink = MAP_INK[activeBasemap.ground];
 
   function toggleBulkSelect(id: number) {
     setBulkSelectedIds((prev) => {
@@ -1180,10 +1189,31 @@ export default function CoverageMap({
   /** A panel is up and is the thing being read. Map chrome stands down for it. */
   const panelOwnsScreen = selectedCustomer !== null || selectedDistrict !== null || layersOpen;
 
-  const activeBasemap = basemapDef(basemap);
   // Redundant over a basemap that already prints its own names, and drawing both puts two
   // slightly different label sets on top of each other.
   const showLabels = layers.labels && !activeBasemap.hasLabels;
+
+  /* Which basemaps have had their vector renderer fail this session. Kept per id rather
+     than as one flag so a single broken style does not condemn the others, and not
+     persisted: a WebGL context lost to a backgrounded tab comes back on reload. */
+  const [vectorFailed, setVectorFailed] = useState<ReadonlySet<BasemapId>>(new Set());
+  const vectorStyle =
+    activeBasemap.styleUrl && !vectorFailed.has(activeBasemap.id) ? activeBasemap.styleUrl : null;
+  const handleVectorError = useCallback(() => {
+    setVectorFailed((prev) => (prev.has(basemap) ? prev : new Set(prev).add(basemap)));
+  }, [basemap]);
+  /* The raster to draw when this basemap is not being drawn as vector -- either it never
+     was one, or its renderer failed and the fallback is standing in. */
+  const rasterTiles = activeBasemap.styleUrl
+    ? { ...(activeBasemap.rasterFallback ?? QUIET_TILES), key: `${activeBasemap.id}-raster` }
+    : {
+        url: activeBasemap.url,
+        attribution: activeBasemap.attribution,
+        subdomains: activeBasemap.subdomains,
+        maxZoom: activeBasemap.maxZoom,
+        toneClass: activeBasemap.toneClass,
+        key: activeBasemap.id,
+      };
   const shownZones = useMemo(() => {
     const on = new Set<string>();
     if (layers.traffic_zone) on.add("limited_traffic");
@@ -1196,7 +1226,15 @@ export default function CoverageMap({
        wears. Everything below reads --surface, --border, --accent and the rest from it,
        so the chrome is re-skinned by this one word rather than by rewriting two thousand
        lines of Tailwind. See app/globals.css, "کارگاه". */
-    <div className="kargah map-viewport relative w-full overflow-hidden bg-bg">
+    /* data-ground says what the chosen basemap's ground looks like, so the overlays drawn
+       through CSS -- cluster bubbles, the corridor band, the zone fills, the names layer
+       -- can be tuned for it the way MAP_INK tunes the ones drawn through Leaflet. It
+       tracks the basemap, not the skin: those used to be the same thing and no longer
+       are. */
+    <div
+      data-ground={activeBasemap.ground}
+      className="kargah map-viewport relative w-full overflow-hidden bg-bg"
+    >
       {/* Stood down in two cases, both while the sidebar is shut -- when it is open this
           button is the only way to close it and has to stay reachable.
 
@@ -2018,20 +2056,33 @@ export default function CoverageMap({
           // polygons are styled entirely through Leaflet's own style options.
           preferCanvas
         >
-          {/* Keyed on the basemap: react-leaflet updates a TileLayer's url in place, and
+          {/* A vector style draws through MapLibre; everything else is a raster tile
+              layer. If MapLibre cannot run -- no WebGL, or the chunk fails -- the style's
+              declared raster fallback takes over, so the ground is never empty.
+
+              Keyed on the basemap: react-leaflet updates a TileLayer's url in place, and
               swapping between providers with different subdomain rules leaves the old
               rotation behind. Remounting is cheap and always right. */}
-          <TileLayer
-            key={activeBasemap.id}
-            attribution={activeBasemap.attribution}
-            url={activeBasemap.url}
-            subdomains={activeBasemap.subdomains ?? "abc"}
-            maxZoom={activeBasemap.maxZoom}
-            /* A tone is baked on only for the three fallback styles that have no hosted
-               tiles of their own (see globals.css). Hosted styles arrive already
-               designed and must not be recoloured. */
-            className={activeBasemap.toneClass}
-          />
+          {vectorStyle ? (
+            <VectorBasemap
+              key={activeBasemap.id}
+              styleUrl={vectorStyle}
+              attribution={activeBasemap.attribution}
+              onError={handleVectorError}
+            />
+          ) : (
+            <TileLayer
+              key={rasterTiles.key}
+              attribution={rasterTiles.attribution}
+              url={rasterTiles.url}
+              subdomains={rasterTiles.subdomains ?? "abc"}
+              maxZoom={rasterTiles.maxZoom}
+              /* A tone is baked on only for the styles that have no hosted tiles of their
+                 own (see globals.css). Hosted styles arrive already designed and must not
+                 be recoloured. */
+              className={rasterTiles.toneClass}
+            />
+          )}
 
           {/* Names go in their own pane above the district fills (overlayPane, 400) and
               below the markers (600). In the tile pane they would be tinted by every
@@ -2052,7 +2103,12 @@ export default function CoverageMap({
             </Pane>
           )}
 
-          <TrafficZoneLayer zones={trafficZones} status={zoneStatus} show={shownZones} />
+          <TrafficZoneLayer
+            zones={trafficZones}
+            status={zoneStatus}
+            show={shownZones}
+            ground={activeBasemap.ground}
+          />
 
           {layers.districts && mantagheFeatures && (
             <GeoJSON
@@ -2083,15 +2139,29 @@ export default function CoverageMap({
               never swallows a click meant for a district underneath. */}
           {corridorOn && corridorEnds && corridorBand.length > 0 && (
             <>
+              {/* A 7% fill and a half-opacity edge were tuned against a near-black
+                  ground; over a cream basemap the band all but disappears. Same colour,
+                  carried harder -- the corridor still reads as one thing on both. */}
               <Polygon
                 positions={corridorBand}
                 interactive={false}
-                pathOptions={{ color: FACILITY_COLOR, weight: 1, opacity: 0.5, fillColor: FACILITY_COLOR, fillOpacity: 0.07 }}
+                pathOptions={{
+                  color: FACILITY_COLOR,
+                  weight: 1,
+                  opacity: activeBasemap.ground === "light" ? 0.75 : 0.5,
+                  fillColor: FACILITY_COLOR,
+                  fillOpacity: activeBasemap.ground === "light" ? 0.13 : 0.07,
+                }}
               />
               <Polyline
                 positions={corridorPath.map((p) => [p.lat, p.lng] as [number, number])}
                 interactive={false}
-                pathOptions={{ color: FACILITY_COLOR, weight: 2, opacity: 0.75, dashArray: "8 6" }}
+                pathOptions={{
+                  color: FACILITY_COLOR,
+                  weight: 2,
+                  opacity: activeBasemap.ground === "light" ? 0.9 : 0.75,
+                  dashArray: "8 6",
+                }}
               />
             </>
           )}

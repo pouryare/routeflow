@@ -144,7 +144,10 @@ self.addEventListener("fetch", (event) => {
     url.hostname === "tile.openstreetmap.org" ||
     url.hostname.endsWith(".tile.openstreetmap.fr") ||
     url.hostname === "tiles.stadiamaps.com" ||
-    url.hostname === "api.maptiler.com"
+    url.hostname === "api.maptiler.com" ||
+    // CARTO's vector styles: the style JSON, the .mvt tiles off tiles-{a..d}, and the
+    // glyph/sprite files the renderer needs before it can draw any text.
+    url.hostname.endsWith("basemaps.cartocdn.com")
   ) {
     event.respondWith(cacheFirst(request, TILE_CACHE));
     return;
