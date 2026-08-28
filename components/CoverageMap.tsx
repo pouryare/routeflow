@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ComponentProps } from "react";
 import SkinToggle from "@/components/kargah/SkinToggle";
+import AccentPicker, { useAccent } from "@/components/AccentPicker";
+import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
@@ -184,35 +186,58 @@ const ADMIN_LINKS = [
   { href: "/sales/admin/groups", icon: "🗂", label: "گروه‌ها و محدوده‌ها" },
   { href: "/sales/admin/users", icon: "👥", label: "حساب‌های کاربری" },
 ] as const;
-/** Map geometry colours, per skin.
+/** Map geometry colours.
  *
- *  Literal hex and not CSS tokens, for the reason lib/types.ts gives: the map runs with
- *  `preferCanvas`, and Leaflet writes these straight onto a canvas, where var() does not
- *  resolve. So the skin has to be resolved in JS and handed down.
+ *  These cannot be `var(--map-stroke-major)`: the map runs with `preferCanvas`, and
+ *  Leaflet writes the value straight onto a canvas 2D context, where var() is just an
+ *  unrecognised string and the path silently draws black. So the value has to be a real
+ *  hex by the time Leaflet sees it.
  *
- *  Unlike STATUS_COLOR these are used nowhere else, which is what makes it safe to give
- *  them one value per skin instead of one value that has to survive both. Each clears 3:1
- *  against its own ground: the light strokes sit at 5.7 and 3.7 on the cream, the dark
- *  ones at 5.6 and 4.5 on the warm black.
+ *  It is still defined in CSS -- app/globals.css, per accent theme, per skin -- and read
+ *  back out here with getComputedStyle. Ten themes times two skins times two grounds is
+ *  forty palettes; duplicating those in TypeScript would guarantee the stylesheet and the
+ *  map disagreed within a release. One definition, resolved at the point of use.
  *
- *  Keyed on the BASEMAP's ground rather than on the page theme. The two used to be the
- *  same thing; with a catalogue that has both cream and near-black basemaps they are not,
- *  and picking «سپید» on a dark skin used to draw dark strokes onto a white map. What the
- *  strokes sit on is the basemap, so that is what they follow. */
-const MAP_INK = {
-  light: {
-    strokeMajor: "#6B5B4C",
-    strokeMinor: "#8A7A69",
-    selected: "#C0532B",
-    boundary: "#9C8B79",
-  },
-  dark: {
-    strokeMajor: "#9A8A78",
-    strokeMinor: "#8A7A69",
-    selected: "#E8734A",
-    boundary: "#6E6055",
-  },
+ *  The fallbacks are the shipping terracotta, and they matter: getComputedStyle returns
+ *  "" for a property that has not been applied yet, which on the very first paint would
+ *  otherwise hand Leaflet an empty string. */
+const MAP_INK_FALLBACK = {
+  light: { strokeMajor: "#6B5B4C", strokeMinor: "#8A7A69", selected: "#C0532B", boundary: "#998876", unknown: "#7D7166" },
+  dark:  { strokeMajor: "#9A8A78", strokeMinor: "#8A7A69", selected: "#E8734A", boundary: "#6E6055", unknown: "#7D7166" },
 } as const;
+
+export interface MapInk {
+  strokeMajor: string;
+  strokeMinor: string;
+  selected: string;
+  boundary: string;
+  /** The fill for a district whose coverage is unknown -- 429 of 439 of them, so this is
+   *  the colour the map mostly IS, and the reason the theme has to reach it. */
+  unknown: string;
+}
+
+/** Resolves the map ink for a ground out of the live stylesheet.
+ *
+ *  `ground` and not the page skin: the strokes sit on the basemap, so a cream basemap
+ *  needs dark strokes whatever the surrounding UI is doing. The dark set is read by
+ *  temporarily asking for the dark-skin values -- see useMapInk, which does this by
+ *  reading from an element that carries the right attributes rather than by guessing. */
+function readMapInk(el: HTMLElement | null, ground: "light" | "dark"): MapInk {
+  const fb = MAP_INK_FALLBACK[ground];
+  if (!el || typeof window === "undefined") return { ...fb };
+  const cs = getComputedStyle(el);
+  const get = (name: string, fallback: string) => {
+    const v = cs.getPropertyValue(name).trim();
+    return v || fallback;
+  };
+  return {
+    strokeMajor: get("--map-stroke-major", fb.strokeMajor),
+    strokeMinor: get("--map-stroke-minor", fb.strokeMinor),
+    selected: get("--map-selected", fb.selected),
+    boundary: get("--map-boundary", fb.boundary),
+    unknown: get("--map-unknown", fb.unknown),
+  };
+}
 
 // Three presets rather than a slider: this gets used one-handed in a moving vehicle,
 // where a slider thumb is unusable.
@@ -837,13 +862,27 @@ export default function CoverageMap({
 
   const groupColors = useMemo(() => new Map(groups.map((g) => [g.id, g.color])), [groups]);
 
-  /* Resolved in JS because the canvas renderer cannot read CSS custom properties -- see
-     MAP_INK. Keyed on the basemap's own ground, not the page skin: the strokes are drawn
-     on the basemap, so a cream basemap needs dark strokes whatever the skin is. The
-     restyle effect below lists `ink` as a dependency, which is what repaints the
-     already-drawn district layers when the basemap changes. */
   const activeBasemap = basemapDef(basemap);
-  const ink = MAP_INK[activeBasemap.ground];
+  /* Read out of the live stylesheet rather than held as constants -- see readMapInk. Keyed
+     on the basemap's own ground, not the page skin: the strokes are drawn on the basemap,
+     so a cream basemap needs dark strokes whatever the skin is.
+
+     Re-read whenever the accent, the skin or the ground changes, because all three move
+     these values and none of them is observable from inside a canvas paint. The restyle
+     effect below lists `ink` as a dependency, which is what repaints the already-drawn
+     district layers once a new one arrives. */
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const [accent] = useAccent();
+  const [skin] = useTheme();
+  const [ink, setInk] = useState<MapInk>(() => MAP_INK_FALLBACK[activeBasemap.ground]);
+  useEffect(() => {
+    // A frame later than the attribute write, so getComputedStyle sees the new cascade
+    // rather than the one being replaced.
+    const id = requestAnimationFrame(() =>
+      setInk(readMapInk(viewportRef.current, activeBasemap.ground)),
+    );
+    return () => cancelAnimationFrame(id);
+  }, [accent, skin, activeBasemap.ground]);
 
   function toggleBulkSelect(id: number) {
     setBulkSelectedIds((prev) => {
@@ -1126,10 +1165,18 @@ export default function CoverageMap({
    * called changes. */
   function districtStyle(feature?: DistrictFeature) {
     const status = (feature?.properties.coverage_status ?? "unknown") as CoverageStatus;
+    /* "unknown" takes the themed neutral rather than the fixed one. It is 429 of the 439
+       districts, so it is not really a status colour at all -- it is what the map looks
+       like, and it is the single biggest reason the map read as warm regardless of which
+       accent was chosen. visited/needs_coverage/not_allowed keep STATUS_COLOR untouched:
+       those three carry meaning shared with /report and /analytics.
+       The legend follows the same rule -- see the swatch in the districts panel. */
     const fill =
       districtColorMode === "group"
         ? districtGroupColor(feature?.properties.group_id ?? null, groupColors)
-        : STATUS_COLOR[status];
+        : status === "unknown"
+          ? ink.unknown
+          : STATUS_COLOR[status];
     const level = feature?.properties.level === "mantaghe" ? "mantaghe" : "mahalle";
     const selected = !!feature && bulkSelectedIds.has(feature.properties.id);
 
@@ -1232,6 +1279,7 @@ export default function CoverageMap({
        tracks the basemap, not the skin: those used to be the same thing and no longer
        are. */
     <div
+      ref={viewportRef}
       data-ground={activeBasemap.ground}
       className="kargah map-viewport relative w-full overflow-hidden bg-bg"
     >
@@ -1259,6 +1307,16 @@ export default function CoverageMap({
         className="absolute right-4 top-[68px] z-[var(--z-sidebar-toggle)]"
       >
         <SkinToggle />
+      </div>
+
+      {/* The accent picker, directly under the skin toggle: the two are the same kind of
+          decision -- what the app looks like -- and stand down together for the same
+          reasons. 116px is 68 plus the toggle's 40px and the 8px gap. */}
+      <div
+        hidden={sidebarOpen || searchExpanded || panelOwnsScreen}
+        className="absolute right-4 top-[116px] z-[var(--z-sidebar-toggle)]"
+      >
+        <AccentPicker variant="map" />
       </div>
 
       <button

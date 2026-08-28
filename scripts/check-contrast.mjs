@@ -123,6 +123,80 @@ for (const [theme, selector] of [
   }
 }
 
+/* ── The accent themes ────────────────────────────────────────────────────────
+   Everything above checks the ONE palette written by hand into the .kargah blocks. The
+   ten accent themes are generated into the same file by scripts/gen-accent-themes.mjs,
+   and a generator that verifies its own output is only half a test -- the values that
+   matter are the ones that actually landed in the stylesheet, read back the same way the
+   browser reads them.
+
+   Two pairs here are not in the block above because they are not plain token pairs: the
+   cluster bubble and the layers badge compose their colours in CSS, and both were failing
+   for every theme INCLUDING the shipping one until this check was written. */
+
+/** color-mix(in srgb, a p%, b) as the browser computes it. */
+function mix(a, b, p) {
+  const g = (hex, i) => parseInt(hex.replace("#", "").slice(i, i + 2), 16);
+  const c = (i) => Math.round(g(a, i) * p + g(b, i) * (1 - p));
+  return `#${[0, 2, 4].map((i) => c(i).toString(16).padStart(2, "0")).join("")}`;
+}
+
+const THEME_IDS = [
+  "terracotta", "gold", "olive", "emerald", "teal",
+  "ocean", "indigo", "purple", "raspberry", "graphite",
+];
+
+/* The grounds these themes are solved against, from the .kargah blocks. --surface-raised
+   is what a cluster bubble sits on; it differs from --surface in dark. */
+const THEME_GROUND = {
+  light: { bg: "#F4F0E9", surface: "#FFFFFF", raised: "#FFFFFF", text: "#231C16", washMuted: "#6A6055", map: "#F4F0E9" },
+  dark:  { bg: "#141110", surface: "#1E1A17", raised: "#242019", text: "#F3EEE7", washMuted: "#A99C8D", map: "#12100F" },
+};
+
+let themeChecks = 0;
+for (const id of THEME_IDS) {
+  for (const [skin, selector] of [
+    ["light", `:root[data-accent="${id}"] .kargah, :root[data-accent="${id}"]`],
+    ["dark", `:root[data-accent="${id}"][data-skin="dark"] .kargah, :root[data-accent="${id}"][data-skin="dark"]`],
+  ]) {
+    let t;
+    try {
+      t = block(selector);
+    } catch {
+      say(false, `${id}/${skin}: no generated block — re-run scripts/gen-accent-themes.mjs`);
+      continue;
+    }
+    const G = THEME_GROUND[skin];
+    const need = (a, b, min, label) => {
+      themeChecks++;
+      if (!t[a] && !a.startsWith("#")) {
+        say(false, `${id}/${skin} ${label}: ${a} MISSING`);
+        return;
+      }
+      const r = ratio(a.startsWith("#") ? a : t[a], b);
+      say(r >= min, `${id}/${skin} ${label}: ${r.toFixed(2)} (need ${min})`);
+    };
+
+    need("--accent-ink", t["--accent"], 4.5, "--accent-ink on --accent");
+    need("--accent-text", G.bg, 4.5, "--accent-text on --bg");
+    need("--accent-text", G.surface, 4.5, "--accent-text on --surface");
+    need("--accent-text", t["--accent-soft"], 4.5, "--accent-text on --accent-soft");
+    need("--ev-a-ink", G.surface, 4.5, "--ev-a-ink on --surface");
+    need(G.text, t["--wash-peach"], 4.5, "--text on --wash-peach");
+    need(G.washMuted, t["--wash-peach"], 4.5, "--wash-ink-muted on --wash-peach");
+
+    // Composed pairs — see the note above.
+    need("--accent-ink", t["--accent"], 4.5, "cluster count on cluster fill");
+    need("--accent-ink", t["--accent"], 4.5, "layers badge digits on badge fill");
+
+    // Map ink is non-text: 3:1 against the ground the basemap paints.
+    for (const m of ["--map-stroke-major", "--map-stroke-minor", "--map-boundary", "--map-selected"]) {
+      need(m, G.map, 3, `${m} on the map ground`);
+    }
+  }
+}
+console.log(`\nchecked ${themeChecks} pairs across ${THEME_IDS.length} accent themes`);
+
 if (failures) {
   console.error(`\n${failures} contrast failure(s) — see MASTER.md "Color"`);
   process.exit(1);

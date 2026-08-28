@@ -4,6 +4,7 @@ import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ToastProvider } from "@/components/ToastProvider";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
+import { ACCENT_INIT_SCRIPT } from "@/lib/accent";
 import "./globals.css";
 
 const vazirmatn = Vazirmatn({
@@ -57,8 +58,9 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    // suppressHydrationWarning because the inline script below sets data-theme on this
-    // element before React ever sees it. The mismatch is the entire point of the script.
+    // suppressHydrationWarning because the inline scripts below set data-theme and
+    // data-accent on this element before React ever sees it. The mismatch is the entire
+    // point of the scripts.
     <html
       lang="fa"
       dir="rtl"
@@ -71,6 +73,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             than this needs: the attribute has to exist before the first paint, not before
             hydration, or a light-mode load starts with a black flash. */}
         <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+        {/* Same reasoning, separate key: the accent is what you like, the theme is where
+            you are. See lib/accent.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />
         <ServiceWorkerRegister />
         {/* One geolocation watch for the whole app, mounted at the root so every page --
             map, planner, leads -- reads the same live position instead of each opening

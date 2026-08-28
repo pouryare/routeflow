@@ -7,6 +7,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import SkinToggle from "@/components/kargah/SkinToggle";
+import AccentPicker from "@/components/AccentPicker";
 import TabPill from "@/components/kargah/TabPill";
 import RevealRoute from "@/components/kargah/RevealRoute";
 
@@ -63,6 +64,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
           <div className="topright">
             <Link className="chip" href="/map">↗ نقشه</Link>
             <SkinToggle />
+            <AccentPicker />
             <div className="me" title={`${session.user.display_name} · ${ROLE_LABEL[session.role]}`}>
               {initial}
             </div>
