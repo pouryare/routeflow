@@ -3,9 +3,11 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
-import { salesDashboard, fillRateByDriver } from "@/lib/dashboard";
+import { salesDashboard, fillRateByDriver, jalaliMonthKey } from "@/lib/dashboard";
 import { stockPosition } from "@/lib/purchases";
 import { allStatements, statementFor } from "@/lib/commissionLedger";
+import { allDriverStatements } from "@/lib/driverCommissionLedger";
+import { allManagerStatements, managerStatementFor } from "@/lib/managerCommissionLedger";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { movingAverage } from "@/lib/chartScale";
@@ -57,19 +59,33 @@ export default async function DashboardPage() {
     to: jalaliToIsoDate(today.jy, today.jm, today.jd),
   };
 
+  const groupId = session.role === "owner" ? undefined : session.groupId;
+
   const commission =
     session.role === "salesperson"
       ? [statementFor(db, session.user.id, period)]
-      : allStatements(db, period, {
-          groupId: session.role === "owner" ? undefined : session.groupId,
-        });
-  const owedTotal = commission.reduce((sum, c) => sum + c.owed_toman, 0);
+      : allStatements(db, period, { groupId });
+  // A فروشنده sees none of this -- someone else's earnings, driver or manager, are
+  // none of their business, the same boundary /sales/commission itself draws.
+  const driverCommission = session.role === "salesperson" ? [] : allDriverStatements(db, period, { groupId });
+  const managerCommission =
+    session.role === "owner"
+      ? allManagerStatements(db, period)
+      : session.role === "group_manager"
+        ? [managerStatementFor(db, session.user.id, period)]
+        : [];
+  const owedTotal =
+    commission.reduce((sum, c) => sum + c.owed_toman, 0) +
+    driverCommission.reduce((sum, c) => sum + c.owed_toman, 0) +
+    managerCommission.reduce((sum, c) => sum + c.owed_toman, 0);
 
   const stock = session.role === "salesperson" ? [] : stockPosition(db);
   const stockValue = stock.reduce((sum, r) => sum + r.value_toman, 0);
   const negatives = stock.filter((r) => r.negative);
 
   const drivers = session.role === "salesperson" ? [] : fillRateByDriver(db, session);
+
+  const newThisMonth = d.new_customers_by_month.find((p) => p.key === jalaliMonthKey(period.to))?.value ?? 0;
 
   const empty = "هنوز داده‌ای برای این نمودار نیست";
 
@@ -141,6 +157,59 @@ export default async function DashboardPage() {
           />
         </div>
       )}
+
+      {/* Two operational figures a revenue chart cannot answer: how long a customer
+          waits, and whether the customer base is actually growing or just repeating.
+          Visible to everyone -- neither is cost, so there is nothing here a فروشنده
+          should not see. */}
+      <div className="statrow" style={{ gridTemplateColumns: "1fr 1fr", marginTop: -4 }}>
+        <GradientStat
+          tone="sand"
+          small
+          icon="⏱"
+          label="میانگین زمان تحویل"
+          value={d.avg_lead_days === null ? "—" : `${faNum(Math.round(d.avg_lead_days * 10) / 10)}`}
+          unit={d.avg_lead_days === null ? undefined : "روز"}
+          chip={d.avg_lead_days === null ? "هنوز سفارش تحویل‌شده‌ای با تاریخ تحویل ثبت نشده" : "از ثبت سفارش تا تحویل"}
+        />
+        <GradientStat
+          tone="mint"
+          small
+          icon="✦"
+          label="مشتریان جدید این ماه"
+          value={`${faNum(newThisMonth)} مشتری`}
+          chip="اولین سفارش عمر مشتری در این ماه بوده"
+        />
+      </div>
+
+      <CollapsibleSection title="روند فروش و مشتریان" icon="📈" storageKey="dash-trends">
+        <div className="grid gap-[var(--space-4)] md:grid-cols-2">
+          <BarChart
+            title="فروش به تفکیک روز هفته"
+            barLabel={compactToman}
+            subtitle="شنبه تا جمعه"
+            data={d.revenue_by_weekday.map((p) => ({ label: p.label, value: p.value }))}
+            formatValue={faToman}
+            colorful
+            empty={empty}
+          />
+          <BarChart
+            title="پرفروش‌ترین کالاها بر اساس وزن"
+            subtitle="کیلوگرم، نه تومان -- ترتیب می‌تواند با «فروش هر کالا» فرق کند"
+            data={d.top_products_by_kg.map((p) => ({ label: p.label, value: p.value }))}
+            formatValue={(v) => `${faNum(v)} کیلو`}
+            colorful
+            empty={empty}
+          />
+          <BarChart
+            title="مشتریان جدید"
+            subtitle="بر اساس ماه شمسیِ اولین سفارش"
+            data={d.new_customers_by_month.map((p) => ({ label: p.label, value: p.value }))}
+            formatValue={(v) => faNum(v)}
+            empty={empty}
+          />
+        </div>
+      </CollapsibleSection>
 
       {/* dash-top: a marker for RevealRoute, not a style hook. These two charts sit
           outside any CollapsibleSection, but the ones further down do not -- an
@@ -216,6 +285,9 @@ export default async function DashboardPage() {
       </CollapsibleSection>
 
       <CollapsibleSection title="بدهی و پورسانت" icon="💰" storageKey="dash-money">
+        <p className="m-0 mb-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          مانده کل پورسانت -- فروشنده، راننده و مدیر گروه با هم -- {faToman(owedTotal)}.
+        </p>
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <DonutChart
             title="سن بدهی"
@@ -229,14 +301,36 @@ export default async function DashboardPage() {
             empty={empty}
           />
           <BarChart
-            title="پورسانت این ماه"
-          barLabel={compactToman}
-            subtitle={`مانده کل ${faToman(owedTotal)}`}
+            title="پورسانت فروشنده‌ها"
+            barLabel={compactToman}
+            subtitle={`مانده ${faToman(commission.reduce((sum, c) => sum + c.owed_toman, 0))}`}
             data={commission.map((c) => ({ label: c.display_name, value: c.accrued_toman }))}
             formatValue={faToman}
             colorful
             empty={empty}
           />
+          {driverCommission.length > 0 && (
+            <BarChart
+              title="پورسانت راننده‌ها"
+              barLabel={compactToman}
+              subtitle={`مانده ${faToman(driverCommission.reduce((sum, c) => sum + c.owed_toman, 0))}`}
+              data={driverCommission.map((c) => ({ label: c.display_name, value: c.accrued_toman }))}
+              formatValue={faToman}
+              colorful
+              empty={empty}
+            />
+          )}
+          {managerCommission.length > 0 && (
+            <BarChart
+              title="پورسانت مدیران گروه"
+              barLabel={compactToman}
+              subtitle={`مانده ${faToman(managerCommission.reduce((sum, c) => sum + c.owed_toman, 0))}`}
+              data={managerCommission.map((c) => ({ label: c.display_name, value: c.accrued_toman }))}
+              formatValue={faToman}
+              colorful
+              empty={empty}
+            />
+          )}
         </div>
       </CollapsibleSection>
 

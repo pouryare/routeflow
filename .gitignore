@@ -58,6 +58,9 @@ next-env.d.ts
 # git worktrees created for feature work: a whole second checkout, node_modules and all
 /.claude/worktrees/
 
+# local memory-search index state -- per-machine tool cache, not project source
+/.memsearch/
+
 # raw cloned source repos used only to generate mahalle.geojson once
 /data/tehran-map-src
 /data/tehran-districts-src

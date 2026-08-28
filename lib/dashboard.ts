@@ -13,7 +13,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { orderFilter, groupFilter, type Session } from "./session";
 import { lineTotalToman, lineCostToman, lineKg, type LineSnapshot } from "./orderMath";
-import { toJalali, JALALI_MONTHS } from "./jalali";
+import { toJalali, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
 
 export interface Series {
   key: string;
@@ -40,6 +40,20 @@ export interface SalesDashboard {
   revenue_by_salesperson: Series[];
   top_customers: Series[];
   status_mix: Series[];
+  /** Saturday first, matching the week every other date on this app already reads in. */
+  revenue_by_weekday: Series[];
+  /** Same products as revenue_by_product, ranked by kilogram instead of toman -- a
+   *  cheap, heavy product and an expensive, light one can trade places between the two,
+   *  and which one that is is itself worth seeing. */
+  top_products_by_kg: Series[];
+  /** New customers per month -- their first order ever, not their first in the window,
+   *  so a customer who has bought for years does not look "new" just because the chart
+   *  only looked back 12 months. */
+  new_customers_by_month: Series[];
+  /** Days from order_date to delivered_at, averaged over delivered orders that have
+   *  both. Null rather than 0 when nothing qualifies -- 0 days would read as same-day
+   *  delivery being the norm, which "no data yet" is not the same claim as. */
+  avg_lead_days: number | null;
 }
 
 /** «1405-06» -- the Persian year and month an ISO date falls in.
@@ -120,8 +134,10 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   const byDay = new Map<string, number>();
   const byMonth = new Map<string, number>();
   const byProduct = new Map<string, number>();
+  const byProductKg = new Map<string, number>();
   const bySalesperson = new Map<string, number>();
   const byCustomer = new Map<string, number>();
+  const byWeekday = new Map<number, number>();
   const orderTotals = new Map<number, number>();
 
   let revenue = 0;
@@ -130,9 +146,10 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
 
   for (const line of lines) {
     const total = lineTotalToman(line);
+    const lineWeight = lineKg(line);
     revenue += total;
     cost += lineCostToman(line);
-    kg += lineKg(line);
+    kg += lineWeight;
 
     const day = line.order_date.slice(0, 10);
     byDay.set(day, (byDay.get(day) ?? 0) + total);
@@ -141,6 +158,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     byMonth.set(month, (byMonth.get(month) ?? 0) + total);
 
     byProduct.set(line.product_name, (byProduct.get(line.product_name) ?? 0) + total);
+    byProductKg.set(line.product_name, (byProductKg.get(line.product_name) ?? 0) + lineWeight);
     byCustomer.set(line.customer_name, (byCustomer.get(line.customer_name) ?? 0) + total);
     if (line.salesperson_name) {
       bySalesperson.set(
@@ -148,6 +166,16 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
         (bySalesperson.get(line.salesperson_name) ?? 0) + total
       );
     }
+
+    // Saturday-first, from the civil date rather than a Date parsed from a full ISO
+    // instant -- day is already just the calendar date, and constructing the Date at
+    // UTC midnight is what jalaliMonthGrid does for the same reason: a local-timezone
+    // parse can land on the wrong side of midnight and shift every bar by one day.
+    const [gy, gm, gd] = day.split("-").map(Number);
+    const jsDow = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
+    const weekday = (jsDow + 1) % 7;
+    byWeekday.set(weekday, (byWeekday.get(weekday) ?? 0) + total);
+
     orderTotals.set(line.order_id, (orderTotals.get(line.order_id) ?? 0) + total);
   }
 
@@ -168,6 +196,40 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     over_30: number;
     n: number;
   };
+
+  // Lead time: one row per ORDER, not per line -- a five-line order counted once per
+  // line would weight itself five times into the average for no reason connected to how
+  // long it took to arrive.
+  const leadRows = db
+    .prepare(
+      `SELECT o.order_date, o.delivered_at
+         FROM orders o
+        WHERE o.status = 'delivered' AND o.delivered_at IS NOT NULL${scope.sql}`
+    )
+    .all(...scope.params) as unknown as { order_date: string; delivered_at: string }[];
+  const leadDays = leadRows
+    .map((r) => (new Date(r.delivered_at).getTime() - new Date(r.order_date).getTime()) / 86_400_000)
+    // A delivery logged before its own order date is a data-entry problem, not a
+    // negative lead time -- excluded rather than let it pull the average below zero.
+    .filter((d) => d >= 0);
+  const avgLeadDays = leadDays.length === 0 ? null : leadDays.reduce((a, b) => a + b, 0) / leadDays.length;
+
+  // First order ever per customer, not first in the reporting window -- a customer who
+  // has bought for years must not look "new" just because revenue_by_day only looks
+  // back 30 days. Scoped the same way orders are everywhere else on this page.
+  const firstOrderRows = db
+    .prepare(
+      `SELECT c.id, MIN(o.order_date) AS first_date
+         FROM orders o JOIN customers c ON c.id = o.customer_id
+        WHERE 1 = 1${scope.sql}
+        GROUP BY c.id`
+    )
+    .all(...scope.params) as unknown as { id: number; first_date: string }[];
+  const byNewCustomerMonth = new Map<string, number>();
+  for (const row of firstOrderRows) {
+    const month = jalaliMonthKey(row.first_date);
+    byNewCustomerMonth.set(month, (byNewCustomerMonth.get(month) ?? 0) + 1);
+  }
 
   const orderCount = orderTotals.size;
 
@@ -204,6 +266,19 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
       label: row.status,
       value: row.n,
     })),
+    // Saturday first (index 0), all seven days even when one sold nothing -- a missing
+    // Friday would otherwise look like a six-day week rather than a zero-revenue one.
+    revenue_by_weekday: JALALI_WEEKDAYS.map((label, i) => ({
+      key: String(i),
+      label,
+      value: byWeekday.get(i) ?? 0,
+    })),
+    top_products_by_kg: rank(byProductKg),
+    new_customers_by_month: [...byNewCustomerMonth.entries()]
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, 12)
+      .map(([key, value]) => ({ key, label: monthLabel(key), value })),
+    avg_lead_days: avgLeadDays,
   };
 }
 

@@ -53,8 +53,15 @@ if (REMOVE) {
     db.exec("DELETE FROM purchases WHERE id NOT IN (SELECT DISTINCT purchase_id FROM purchase_lines)");
     db.exec("DELETE FROM products WHERE sku LIKE 'DEMO-%'");
     db.exec("DELETE FROM commission_rates WHERE salesperson_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
+    db.exec("DELETE FROM driver_commission_rates WHERE driver_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
+    db.exec("DELETE FROM driver_commission_payments WHERE driver_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
+    db.exec("DELETE FROM manager_commission_overrides WHERE manager_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
+    db.exec("DELETE FROM manager_commission_payments WHERE manager_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
     db.exec("DELETE FROM visit_plans WHERE purpose IS NOT NULL");
     db.exec("DELETE FROM users WHERE username LIKE 'demo.%'");
+    // The group only ever exists to hold those users -- deleted after them, so nothing
+    // still references it, and guarded by the same slug it was created under.
+    db.exec("DELETE FROM groups WHERE slug = 'demo-team'");
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
@@ -77,15 +84,34 @@ const PEOPLE = [
   { username: "demo.reza", name: "رضا مرادی", role: "salesperson" },
   { username: "demo.sara", name: "سارا نجفی", role: "salesperson" },
   { username: "demo.hossein", name: "حسین فلاح", role: "driver" },
+  // A مدیر گروه to demonstrate the third پورسانت ledger. Needs a real group with real
+  // فروشنده‌ها in it -- a manager's override is a percentage of their group's total, so
+  // one attached to owner.group_id (usually null) would always show zero.
+  { username: "demo.manager", name: "الهام صادقی", role: "group_manager" },
 ];
 
 db.exec("BEGIN IMMEDIATE");
 try {
+  const demoGroup = plain(db.prepare("SELECT id FROM groups WHERE slug = 'demo-team'").all())[0];
+  const demoGroupId = demoGroup
+    ? demoGroup.id
+    : Number(
+        db
+          .prepare(
+            "INSERT INTO groups (name, slug, color, active, created_at) VALUES ('تیم دمو', 'demo-team', '#8b6fd6', 1, ?)"
+          )
+          .run(now).lastInsertRowid
+      );
+
   const staff = {};
   for (const p of PEOPLE) {
     const found = plain(db.prepare("SELECT id FROM users WHERE username = ?").all(p.username))[0];
     if (found) {
       staff[p.username] = found.id;
+      // Reassigned every run, not just on creation -- an earlier version of this script
+      // put these accounts under owner.group_id, and a stale group_id would leave the
+      // مدیر گروه ledger seeing an empty team on a database seeded before this existed.
+      db.prepare("UPDATE users SET group_id = ? WHERE id = ?").run(demoGroupId, found.id);
       continue;
     }
     const { lastInsertRowid } = db
@@ -93,11 +119,12 @@ try {
         `INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at)
          VALUES (?, ?, ?, ?, ?, 1, ?)`
       )
-      .run(p.username, LOCKED, p.name, p.role, owner.group_id, now);
+      .run(p.username, LOCKED, p.name, p.role, demoGroupId, now);
     staff[p.username] = Number(lastInsertRowid);
   }
   const sellers = [staff["demo.mehdi"], staff["demo.reza"], staff["demo.sara"]];
   const driver = staff["demo.hossein"];
+  const manager = staff["demo.manager"];
 
   /* ── catalogue ───────────────────────────────────────────────────────────── */
   const PRODUCTS = [
@@ -159,6 +186,39 @@ try {
             .run(pid, packId, p.price, iso(400), owner.id, now).lastInsertRowid
         );
     made.push({ ...p, pid, packId, priceId });
+  }
+
+  /* ── commission rates for all four ledgers, so every پورسانت card has something to
+     show -- placed here, before the order-count check below can exit the process, so
+     it still runs (idempotently) on a database that already has its 45 demo orders. */
+  for (const uid of sellers) {
+    const has = plain(
+      db.prepare("SELECT id FROM commission_rates WHERE salesperson_user_id = ? LIMIT 1").all(uid)
+    )[0];
+    if (!has) {
+      db.prepare(
+        `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?)`
+      ).run(uid, 1500, iso(400), owner.id, now);
+    }
+  }
+  const hasDriverRate = plain(
+    db.prepare("SELECT id FROM driver_commission_rates WHERE driver_user_id = ? LIMIT 1").all(driver)
+  )[0];
+  if (!hasDriverRate) {
+    db.prepare(
+      `INSERT INTO driver_commission_rates (driver_user_id, rate_per_kg_toman, valid_from, created_by, created_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(driver, 800, iso(400), owner.id, now);
+  }
+  const hasOverride = plain(
+    db.prepare("SELECT id FROM manager_commission_overrides WHERE manager_user_id = ? LIMIT 1").all(manager)
+  )[0];
+  if (!hasOverride) {
+    db.prepare(
+      `INSERT INTO manager_commission_overrides (manager_user_id, override_pct, valid_from, created_by, created_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).run(manager, 8, iso(400), owner.id, now);
   }
 
   /* ── customers to sell to ────────────────────────────────────────────────── */
@@ -275,19 +335,6 @@ try {
           now
         );
       }
-    }
-  }
-
-  /* ── commission rates, so the پورسانت page has statements ────────────────── */
-  for (const uid of sellers) {
-    const has = plain(
-      db.prepare("SELECT id FROM commission_rates WHERE salesperson_user_id = ? LIMIT 1").all(uid)
-    )[0];
-    if (!has) {
-      db.prepare(
-        `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman, valid_from, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?)`
-      ).run(uid, 1500, iso(400), owner.id, now);
     }
   }
 

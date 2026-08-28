@@ -205,4 +205,99 @@ describe("salesDashboard", () => {
     expect(d.top_customers[0].label).toBe("رستوران غرب"); // 20 packs x 1000
     expect(d.top_customers[0].value).toBe(20000);
   });
+
+  it("buckets revenue by Persian weekday, Saturday first", () => {
+    // 2026-08-20 is پنجشنبه (index 5); 2026-08-25 is سه‌شنبه (index 3).
+    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    expect(d.revenue_by_weekday).toHaveLength(7);
+    expect(d.revenue_by_weekday[5].value).toBe(8000);
+    expect(d.revenue_by_weekday[3].value).toBe(5000);
+    // Every other day genuinely sold nothing -- present as zero, not absent.
+    expect(d.revenue_by_weekday[0].value).toBe(0);
+  });
+
+  it("includes the west order's weekday for the owner but not the east manager", () => {
+    const owner = salesDashboard(getDb(), session("owner", ctx.owner, null));
+    const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    expect(owner.revenue_by_weekday[3].value).toBe(east.revenue_by_weekday[3].value + 20000);
+  });
+
+  it("ranks products by kilogram, not by toman", () => {
+    // 13 packs x 100 x 0.25kg = 325kg for the east manager's scope.
+    const d = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    expect(d.top_products_by_kg[0]).toEqual({ key: "کره گیاهی", label: "کره گیاهی", value: 325 });
+  });
+
+  it("counts a customer as new in the month of their FIRST order, not every month they bought in", () => {
+    const d = salesDashboard(getDb(), session("owner", ctx.owner, null));
+    const mordad = d.new_customers_by_month.find((p) => p.key === "1405-05");
+    const shahrivar = d.new_customers_by_month.find((p) => p.key === "1405-06");
+    expect(mordad?.value).toBe(1); // رستوران شرق's first order
+    expect(shahrivar?.value).toBe(1); // رستوران غرب's first (and only) order
+  });
+
+  it("scopes new-customer counting to the caller, same as everything else", () => {
+    const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    // رستوران غرب never enters east's scope, so Shahrivar has no new customer there --
+    // رستوران شرق's SECOND order that month is not a new customer either.
+    expect(east.new_customers_by_month.find((p) => p.key === "1405-06")).toBeUndefined();
+  });
+
+  it("averages lead time in whole days from order_date to delivered_at", () => {
+    // A dedicated group and customer, isolated from every other order in this file --
+    // recordDelivery stamps delivered_at with the real current instant (not the fixed
+    // order_date the rest of this file uses), so mixing this into the shared east/west
+    // scope would make the average drift with whatever day the test happens to run on.
+    // Isolating it to a scope containing only this one controlled order is what makes
+    // an exact assertion possible at all.
+    const db = getDb();
+    const now = new Date().toISOString();
+    const leadGroup = Number(
+      db
+        .prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+        .run("سرعت", "lead-test", "#0f0", now).lastInsertRowid
+    );
+    const leadManager = Number(
+      db
+        .prepare(
+          "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, 'group_manager', ?, 1, ?)"
+        )
+        .run("leadmgr", "مدیر سرعت", leadGroup, now).lastInsertRowid
+    );
+    const leadCustomer = Number(
+      db
+        .prepare(
+          "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
+        )
+        .run("LEAD1", "مشتری سرعت", leadGroup, now).lastInsertRowid
+    );
+
+    const order = createOrder(db, {
+      customer_id: leadCustomer,
+      order_date: "2026-08-01",
+      created_by: ctx.owner,
+      salesperson_user_id: null,
+      lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
+    });
+    confirmOrder(db, order.id);
+    const run = runFor("2026-08-01");
+    const stopId = addStop(db, run, order.id);
+    const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
+    recordDelivery(db, stopId, {
+      lines: [{ line_id: stop.lines[0].id, packs_delivered: 1 }],
+      collected_toman: 0,
+      by: ctx.driver,
+    });
+    // Overwritten with a controlled value so the assertion is an exact number of days
+    // rather than however long this test suite happened to take to reach this line.
+    db.prepare("UPDATE orders SET delivered_at = ? WHERE id = ?").run("2026-08-04T00:00:00.000Z", order.id);
+
+    const d = salesDashboard(getDb(), session("group_manager", leadManager, leadGroup));
+    expect(d.avg_lead_days).toBe(3);
+  });
+
+  it("is null, not zero, when nothing has a lead time yet", () => {
+    const d = salesDashboard(getDb(), session("group_manager", 999, null));
+    expect(d.avg_lead_days).toBeNull();
+  });
 });
