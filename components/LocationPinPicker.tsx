@@ -7,6 +7,7 @@ import "leaflet/dist/leaflet.css";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import { faNum } from "@/lib/format";
+import { QUIET_TILES } from "@/lib/mapLayers";
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.4];
 
@@ -47,9 +48,10 @@ export default function LocationPinPicker({
           className="h-full w-full"
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
-            maxZoom={20}
+            url={QUIET_TILES.url}
+            attribution={QUIET_TILES.attribution}
+            className="tiles-quiet"
+            maxZoom={QUIET_TILES.maxZoom}
           />
           <ClickCatcher onPick={(lat, lng) => setPos([lat, lng])} />
           {pos && <Marker position={pos} icon={pinIcon} />}

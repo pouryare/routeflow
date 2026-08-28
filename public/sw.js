@@ -137,11 +137,14 @@ self.addEventListener("fetch", (event) => {
   const url = new URL(request.url);
 
   // OSM's own tile server asks that clients cache heavily rather than re-request, so this
-  // is politeness as much as offline support.
+  // is politeness as much as offline support. The list mirrors the basemap providers in
+  // lib/mapLayers.ts -- every host a chosen style can pull tiles from.
   if (
-    url.hostname.endsWith("basemaps.cartocdn.com") ||
     url.hostname === "server.arcgisonline.com" ||
-    url.hostname === "tile.openstreetmap.org"
+    url.hostname === "tile.openstreetmap.org" ||
+    url.hostname.endsWith(".tile.openstreetmap.fr") ||
+    url.hostname === "tiles.stadiamaps.com" ||
+    url.hostname === "api.maptiler.com"
   ) {
     event.respondWith(cacheFirst(request, TILE_CACHE));
     return;

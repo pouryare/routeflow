@@ -5,10 +5,13 @@ import {
   OVERLAYS,
   OVERLAY_GROUPS,
   basemapDef,
+  buildBasemaps,
   changedFromDefault,
   isBasemapId,
   parseLayerPrefs,
 } from "@/lib/mapLayers";
+
+const ALL_KEYS = { maptiler: "MT_TEST", stadia: "ST_TEST" };
 
 describe("parseLayerPrefs", () => {
   it("falls back to the defaults for nothing stored", () => {
@@ -68,20 +71,25 @@ describe("the catalogue", () => {
 
   it("gives every overlay and basemap a distinct id", () => {
     expect(new Set(OVERLAYS.map((o) => o.id)).size).toBe(OVERLAYS.length);
-    expect(new Set(BASEMAPS.map((b) => b.id)).size).toBe(BASEMAPS.length);
+    for (const keys of [{}, { maptiler: "M" }, { stadia: "S" }, ALL_KEYS]) {
+      const ids = buildBasemaps(keys).map((b) => b.id);
+      expect(new Set(ids).size).toBe(ids.length);
+    }
   });
 
-  it("marks satellite as the only basemap without its own names", () => {
-    // The panel uses this to stop offering a names overlay that would be drawn twice.
-    // Stated as "which one lacks names" rather than a list of which have them: both the
-    // quiet and the streets basemap are OpenStreetMap now and carry Persian labels, and
-    // an equality check against a list turns every future basemap into a failing test
-    // rather than a decision.
-    expect(BASEMAPS.filter((b) => !b.hasLabels).map((b) => b.id)).toEqual(["satellite"]);
+  it("ties the names overlay to kind, not to a hard-coded list of basemaps", () => {
+    // The panel offers the names overlay only over imagery, because every "base" style
+    // draws its own names. Checked as a rule so a new basemap is a decision about its
+    // kind, not an automatically failing test.
+    for (const b of buildBasemaps(ALL_KEYS)) {
+      if (b.kind === "imagery") expect(b.hasLabels).toBe(false);
+      else expect(b.hasLabels).toBe(true);
+    }
+    expect(buildBasemaps(ALL_KEYS).some((b) => b.kind === "imagery")).toBe(true);
   });
 
   it("puts {z}/{x}/{y} in every tile URL, and {s} only where subdomains are set", () => {
-    for (const b of BASEMAPS) {
+    for (const b of buildBasemaps(ALL_KEYS)) {
       expect(b.url).toContain("{z}");
       expect(b.url).toContain("{x}");
       expect(b.url).toContain("{y}");
@@ -95,5 +103,60 @@ describe("the catalogue", () => {
     expect(basemapDef("nope" as never)).toBe(BASEMAPS[0]);
     expect(isBasemapId("dark")).toBe(true);
     expect(isBasemapId("nope")).toBe(false);
+  });
+});
+
+describe("buildBasemaps", () => {
+  const NO_KEY_IDS = ["dark", "radar", "apple", "streets", "satellite", "topo", "hot"];
+
+  it("with no keys, offers only the styles that need none", () => {
+    expect(buildBasemaps().map((b) => b.id)).toEqual(NO_KEY_IDS);
+    expect(buildBasemaps({}).map((b) => b.id)).toEqual(NO_KEY_IDS);
+  });
+
+  it("with no keys, radar and apple are a CSS tone on OpenStreetMap", () => {
+    const byId = Object.fromEntries(buildBasemaps().map((b) => [b.id, b]));
+    expect(byId.radar.toneClass).toBe("tiles-radar");
+    expect(byId.apple.toneClass).toBe("tiles-apple");
+    expect(byId.dark.toneClass).toBe("tiles-quiet");
+    for (const id of ["radar", "apple", "dark"]) {
+      expect(byId[id].url).toBe("https://tile.openstreetmap.org/{z}/{x}/{y}.png");
+    }
+  });
+
+  it("upgrades radar and apple to Stadia when the Stadia key is set", () => {
+    const byId = Object.fromEntries(buildBasemaps({ stadia: "K" }).map((b) => [b.id, b]));
+    expect(byId.radar.url).toContain("stadiamaps.com");
+    expect(byId.radar.url).toContain("alidade_smooth_dark");
+    expect(byId.radar.toneClass).toBeUndefined();
+    expect(byId.apple.url).toContain("alidade_smooth");
+    expect(byId.apple.toneClass).toBeUndefined();
+    // and adds the Stamen styles
+    expect(buildBasemaps({ stadia: "K" }).map((b) => b.id)).toEqual(
+      expect.arrayContaining(["toner", "terrain", "watercolor"]),
+    );
+  });
+
+  it("upgrades radar and apple to MapTiler when only the MapTiler key is set", () => {
+    const byId = Object.fromEntries(buildBasemaps({ maptiler: "K" }).map((b) => [b.id, b]));
+    expect(byId.radar.url).toContain("api.maptiler.com");
+    expect(byId.apple.url).toContain("api.maptiler.com");
+    expect(buildBasemaps({ maptiler: "K" }).map((b) => b.id)).toEqual(
+      expect.arrayContaining(["mt-basic", "mt-streets", "mt-outdoor", "mt-satellite"]),
+    );
+  });
+
+  it("prefers Stadia over MapTiler for radar and apple when both keys are set", () => {
+    const byId = Object.fromEntries(buildBasemaps(ALL_KEYS).map((b) => [b.id, b]));
+    expect(byId.radar.url).toContain("stadiamaps.com");
+    expect(byId.apple.url).toContain("stadiamaps.com");
+    expect(buildBasemaps(ALL_KEYS)).toHaveLength(14);
+  });
+
+  it("never leaks a key into a label or hint", () => {
+    for (const b of buildBasemaps({ maptiler: "SECRET_MT", stadia: "SECRET_ST" })) {
+      expect(b.label).not.toMatch(/SECRET_/);
+      expect(b.hint).not.toMatch(/SECRET_/);
+    }
   });
 });

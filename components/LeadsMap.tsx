@@ -12,6 +12,7 @@ import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
+import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 
 export interface LeadPoint {
@@ -159,9 +160,10 @@ export default function LeadsMap({
           className="h-full w-full"
         >
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
-            maxZoom={20}
+            url={QUIET_TILES.url}
+            attribution={QUIET_TILES.attribution}
+            className="tiles-quiet"
+            maxZoom={QUIET_TILES.maxZoom}
           />
 
           <FitOnce points={allPoints} />

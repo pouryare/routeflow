@@ -12,6 +12,7 @@ import MyLocationMarker from "./MyLocationMarker";
 import { facilityIcon } from "./facilityIcon";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
+import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 
 export interface RouteStop {
@@ -96,9 +97,10 @@ export default function PlannerRouteMap({
       <div className="h-64 w-full">
         <MapContainer bounds={bounds} className="h-full w-full" boundsOptions={{ padding: [30, 30] }}>
           <TileLayer
-            url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
-            subdomains="abcd"
-            maxZoom={20}
+            url={QUIET_TILES.url}
+            attribution={QUIET_TILES.attribution}
+            className="tiles-quiet"
+            maxZoom={QUIET_TILES.maxZoom}
           />
           <RoutingLayer stops={stops} onSummary={setSummary} />
           {/* Below the route markers (zIndexOffset 900): a stop the user is reading off

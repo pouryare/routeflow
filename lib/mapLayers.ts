@@ -9,7 +9,29 @@
  *  ordering and the storage shape can be read and tested without a browser.
  */
 
-export type BasemapId = "dark" | "radar" | "streets" | "satellite";
+export type BasemapId =
+  | "dark"
+  | "radar"
+  | "apple"
+  | "streets"
+  | "satellite"
+  | "topo"
+  | "hot"
+  | "toner"
+  | "terrain"
+  | "watercolor"
+  | "mt-basic"
+  | "mt-streets"
+  | "mt-outdoor"
+  | "mt-satellite";
+
+/** "base" carries street and place names; "imagery" is photography and never does. The
+ *  panel offers the names overlay only over imagery. */
+export type BasemapKind = "base" | "imagery";
+
+/** A CSS class the map puts on the tile layer to tone raw OpenStreetMap into a look it
+ *  has no hosted tiles for. Only the three fallback styles use one -- see globals.css. */
+export type ToneClass = "tiles-quiet" | "tiles-radar" | "tiles-apple";
 
 export interface BasemapDef {
   id: BasemapId;
@@ -24,95 +46,191 @@ export interface BasemapDef {
   /** Whether the tiles already carry street and place names. When they do, the separate
    *  names overlay is redundant and the panel says so instead of offering it twice. */
   hasLabels: boolean;
+  kind: BasemapKind;
+  toneClass?: ToneClass;
 }
 
+const OSM_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png";
 const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
+const ESRI_ATTRIBUTION = "Tiles &copy; Esri";
+const STADIA_ATTRIBUTION =
+  '&copy; <a href="https://stadiamaps.com/">Stadia Maps</a> &copy; <a href="https://openmaptiles.org/">OpenMapTiles</a> &copy; OpenStreetMap contributors';
+const STAMEN_ATTRIBUTION =
+  `${STADIA_ATTRIBUTION} &copy; <a href="https://stamen.com/">Stamen Design</a>`;
+const MAPTILER_ATTRIBUTION =
+  '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; OpenStreetMap contributors';
 
-/** CARTO's basemaps stopped serving unkeyed tiles in the open: they still return real
- *  geometry, but with "API KEY REQUIRED" stamped diagonally across every tile, which is
- *  what the map had been showing. Their free tier is a signup away, so the URL is kept
- *  behind an env var -- set NEXT_PUBLIC_CARTO_API_KEY and the original quiet dark tiles
- *  come back untouched. Without it the app uses OpenStreetMap, which is unkeyed, carries
- *  Persian labels, and goes to z19.
+const stadia = (style: string, key: string, ext = "png") =>
+  `https://tiles.stadiamaps.com/tiles/${style}/{z}/{x}/{y}.${ext}?api_key=${key}`;
+/** MapTiler serves 512px tiles at the bare path; the /256/ path is what Leaflet's default
+ *  tile grid expects, so every other basemap here lines up without a tileSize override. */
+const maptiler = (style: string, key: string, ext = "png") =>
+  `https://api.maptiler.com/maps/${style}/256/{z}/{x}/{y}.${ext}?key=${key}`;
+
+/** Tile-provider API keys, read from NEXT_PUBLIC_ env at build time. Each is optional:
+ *  a style that needs a missing key is dropped from the catalogue, never shown broken.
  *
- *  Esri's Canvas "Dark Gray" was the other candidate and is the reason this is not it:
- *  it stops at z16 and returns a blank placeholder above that, and this app is used to
- *  find a shop's door. */
-const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY;
+ *  CARTO is deliberately absent. Its dark_all/voyager raster tiles are the pre-redesign
+ *  look, but carto.com now stamps "API KEY REQUIRED" across every unkeyed tile, and the
+ *  token their free signup issues authorises the CARTO data API -- not the basemap CDN,
+ *  which ignores it and keeps stamping. Getting the real tiles back needs a paid CARTO
+ *  basemap plan. Stadia's alidade_smooth_dark is the closest hosted stand-in and is what
+ *  «رادار» now uses. */
+export interface ProviderKeys {
+  maptiler?: string;
+  stadia?: string;
+}
 
-const QUIET_TILES = CARTO_KEY
-  ? {
-      url: `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${CARTO_KEY}`,
-      attribution: `${OSM_ATTRIBUTION} &copy; <a href="https://carto.com/attributions">CARTO</a>`,
-      subdomains: "abcd",
-      maxZoom: 20,
-    }
-  : {
-      url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-      attribution: OSM_ATTRIBUTION,
-      subdomains: undefined,
-      maxZoom: 19,
-    };
+export function envProviderKeys(): ProviderKeys {
+  return {
+    maptiler: process.env.NEXT_PUBLIC_MAPTILER_KEY || undefined,
+    stadia: process.env.NEXT_PUBLIC_STADIA_KEY || undefined,
+  };
+}
 
-/** Whether the quiet basemap is OSM being toned down by CSS rather than a purpose-built
- *  quiet tile set. The map applies `.tiles-quiet` only in that case -- filtering CARTO's
- *  already-muted tiles a second time would wash them out. */
-export const QUIET_NEEDS_TONING = !CARTO_KEY;
+/** The quiet OpenStreetMap basemap, shared with the small maps elsewhere (lead map, pin
+ *  picker, route preview) so they stop pulling CARTO's watermarked dark tiles. */
+export const QUIET_TILES = {
+  url: OSM_URL,
+  attribution: OSM_ATTRIBUTION,
+  subdomains: undefined as string | undefined,
+  maxZoom: 19,
+};
 
-export const BASEMAPS: BasemapDef[] = [
-  {
-    /* The id stays "dark" even though the tiles no longer are: it is the value written to
-       localStorage under BASEMAP_KEY, and renaming it would silently reset the basemap
-       for everyone who has ever chosen one. The label is what people read. */
-    id: "dark",
-    label: "آرام",
-    icon: "🌙",
-    hint: "کم‌رنگ، تا رنگ‌های مشتری‌ها و مناطق دیده شوند. با تم روشن و تیره هماهنگ می‌شود.",
-    url: QUIET_TILES.url,
-    attribution: QUIET_TILES.attribution,
-    subdomains: QUIET_TILES.subdomains,
-    maxZoom: QUIET_TILES.maxZoom,
-    // Toned down but still OSM underneath, so the street names are there.
-    hasLabels: true,
-  },
-  {
-    /* The pre-redesign look, kept as a choice rather than as the default.
-       CARTO's dark tiles are watermarked now (see above), so this is the same OSM data
-       under a colder, harder filter: inverted, pushed toward blue-black, contrast up.
-       It is not pixel-identical to the old basemap and does not claim to be — it is that
-       reading of the city, on tiles that still load. */
-    id: "radar",
-    label: "رادار",
-    icon: "◎",
-    hint: "نمای تیرهٔ قبلی — زمینهٔ سرد و پرکنتراست. برای شب و برای دیده‌شدن رنگ وضعیت‌ها.",
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: OSM_ATTRIBUTION,
-    maxZoom: 19,
-    hasLabels: true,
-  },
-  {
-    id: "streets",
-    label: "خیابانی",
-    icon: "🛣",
-    hint: "نام کامل خیابان‌ها و محله‌ها به فارسی، با رنگ کامل.",
-    url: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
-    attribution: OSM_ATTRIBUTION,
-    maxZoom: 19,
-    hasLabels: true,
-  },
-  {
-    id: "satellite",
-    label: "ماهواره‌ای",
-    icon: "🛰",
-    hint: "برای شناختن ساختمان و ورودی. هیچ نامی روی خودش ندارد — لایه نام‌ها را روشن کنید.",
-    url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-    attribution:
-      "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
-    maxZoom: 19,
-    hasLabels: false,
-  },
-];
+/** Build the basemap catalogue for a given set of provider keys. Pure and key-driven so
+ *  the ordering, labels and per-key gating can be tested without a browser or env.
+ *
+ *  The ids `dark`, `radar` and `apple` are stable across key changes -- they are what is
+ *  written to localStorage under BASEMAP_KEY -- while the tiles behind `radar` and
+ *  `apple` upgrade from a CSS tone on OSM to a hosted style as keys become available. */
+export function buildBasemaps(keys: ProviderKeys = {}): BasemapDef[] {
+  const { maptiler: mt, stadia: st } = keys;
+
+  // «رادار»: the pre-redesign dark map. Stadia's dark cartography first, MapTiler's next,
+  // and a CSS inversion of OSM as the last resort -- that inversion is the reason «رادار»
+  // ever looked wrong, so it is only ever the fallback now.
+  const radar: BasemapDef = st
+    ? {
+        id: "radar", label: "رادار", icon: "◎", kind: "base", hasLabels: true, maxZoom: 20,
+        url: stadia("alidade_smooth_dark", st), attribution: STADIA_ATTRIBUTION,
+        hint: "نمای تیرهٔ کارتوگرافی — زمینهٔ آرام و پرکنتراست، برای شب و برای دیده‌شدن رنگ وضعیت‌ها.",
+      }
+    : mt
+      ? {
+          id: "radar", label: "رادار", icon: "◎", kind: "base", hasLabels: true, maxZoom: 20,
+          url: maptiler("dataviz-dark", mt), attribution: MAPTILER_ATTRIBUTION,
+          hint: "نمای تیرهٔ کارتوگرافی — زمینهٔ آرام و پرکنتراست، برای شب و برای دیده‌شدن رنگ وضعیت‌ها.",
+        }
+      : {
+          id: "radar", label: "رادار", icon: "◎", kind: "base", hasLabels: true, maxZoom: 19,
+          url: OSM_URL, attribution: OSM_ATTRIBUTION, toneClass: "tiles-radar",
+          hint: "نمای تیرهٔ قبلی — وارونه‌سازی نقشهٔ روشن. برای نمای کارتوگرافی واقعی، کلید نقشه لازم است.",
+        };
+
+  // «روشن»: the Apple-Maps-like soft light look. Stadia's Alidade Smooth is near-identical
+  // to it; MapTiler Basic is the next best; a warm CSS tone on OSM is the fallback.
+  const apple: BasemapDef = st
+    ? {
+        id: "apple", label: "روشن", icon: "▤", kind: "base", hasLabels: true, maxZoom: 20,
+        url: stadia("alidade_smooth", st), attribution: STADIA_ATTRIBUTION,
+        hint: "روشن، نرم و کم‌رنگ — شبیه نقشهٔ اپل. برای روز و برای چاپ.",
+      }
+    : mt
+      ? {
+          id: "apple", label: "روشن", icon: "▤", kind: "base", hasLabels: true, maxZoom: 20,
+          url: maptiler("basic-v2", mt), attribution: MAPTILER_ATTRIBUTION,
+          hint: "روشن، نرم و کم‌رنگ — شبیه نقشهٔ اپل. برای روز و برای چاپ.",
+        }
+      : {
+          id: "apple", label: "روشن", icon: "▤", kind: "base", hasLabels: true, maxZoom: 19,
+          url: OSM_URL, attribution: OSM_ATTRIBUTION, toneClass: "tiles-apple",
+          hint: "روشن و کم‌رنگ. برای نمای نرم‌تر شبیه اپل، کلید نقشه لازم است.",
+        };
+
+  const list: BasemapDef[] = [
+    {
+      /* The id stays "dark" even though the tiles are not: renaming it would silently
+         reset the basemap for everyone who has ever chosen one. */
+      id: "dark", label: "آرام", icon: "🌙", kind: "base", hasLabels: true, maxZoom: 19,
+      url: OSM_URL, attribution: OSM_ATTRIBUTION, toneClass: "tiles-quiet",
+      hint: "کم‌رنگ، تا رنگ‌های مشتری‌ها و مناطق دیده شوند. با تم روشن و تیره هماهنگ می‌شود.",
+    },
+    radar,
+    apple,
+    {
+      id: "streets", label: "خیابانی", icon: "🛣", kind: "base", hasLabels: true, maxZoom: 19,
+      url: OSM_URL, attribution: OSM_ATTRIBUTION,
+      hint: "نام کامل خیابان‌ها و محله‌ها به فارسی، با رنگ کامل.",
+    },
+    {
+      id: "satellite", label: "ماهواره‌ای", icon: "🛰", kind: "imagery", hasLabels: false, maxZoom: 19,
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution:
+        "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
+      hint: "برای شناختن ساختمان و ورودی. هیچ نامی روی خودش ندارد — لایه نام‌ها را روشن کنید.",
+    },
+    {
+      id: "topo", label: "توپوگرافی", icon: "⛰", kind: "base", hasLabels: true, maxZoom: 19,
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
+      attribution: `${ESRI_ATTRIBUTION} — Esri, HERE, Garmin, USGS, NGA`,
+      hint: "خطوط ارتفاع و ناهمواری، با نام خیابان‌ها. برای دامنه‌های شمال شهر.",
+    },
+    {
+      id: "hot", label: "بشردوستانه", icon: "✚", kind: "base", hasLabels: true, maxZoom: 19,
+      url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", subdomains: "ab",
+      attribution: `${OSM_ATTRIBUTION} — tiles courtesy of <a href="https://www.hotosm.org/">HOT</a>`,
+      hint: "پرکنتراست، با تأکید بر جزئیات شهری. خوانا روی اینترنت ضعیف.",
+    },
+  ];
+
+  if (st) {
+    list.push(
+      {
+        id: "toner", label: "سیاه‌وسفید", icon: "◐", kind: "base", hasLabels: true, maxZoom: 20,
+        url: stadia("stamen_toner", st), attribution: STAMEN_ATTRIBUTION,
+        hint: "کنتراست بالا و بدون رنگ — برای وقتی رنگِ داده‌ها باید تنها رنگِ صفحه باشد.",
+      },
+      {
+        id: "terrain", label: "زمین", icon: "⛰", kind: "base", hasLabels: true, maxZoom: 18,
+        url: stadia("stamen_terrain", st), attribution: STAMEN_ATTRIBUTION,
+        hint: "ناهمواری و پوشش گیاهی با سایه‌پردازی. برای حاشیهٔ کوهستانی شهر.",
+      },
+      {
+        id: "watercolor", label: "آبرنگ", icon: "❋", kind: "base", hasLabels: true, maxZoom: 16,
+        url: stadia("stamen_watercolor", st, "jpg"), attribution: STAMEN_ATTRIBUTION,
+        hint: "نمای هنری، برای ارائه و تصویر — نه برای پیدا کردن یک در.",
+      },
+    );
+  }
+  if (mt) {
+    list.push(
+      {
+        id: "mt-basic", label: "ساده", icon: "▢", kind: "base", hasLabels: true, maxZoom: 20,
+        url: maptiler("basic-v2", mt), attribution: MAPTILER_ATTRIBUTION,
+        hint: "روشن و مینیمال، با رنگ‌های ملایم.",
+      },
+      {
+        id: "mt-streets", label: "خیابانی روشن", icon: "🛣", kind: "base", hasLabels: true, maxZoom: 20,
+        url: maptiler("streets-v2", mt), attribution: MAPTILER_ATTRIBUTION,
+        hint: "خیابان‌ها با رنگ‌بندی کامل و برچسب‌های واضح.",
+      },
+      {
+        id: "mt-outdoor", label: "طبیعت‌گردی", icon: "🌲", kind: "base", hasLabels: true, maxZoom: 20,
+        url: maptiler("outdoor-v2", mt), attribution: MAPTILER_ATTRIBUTION,
+        hint: "مسیرها، ارتفاع و پوشش گیاهی — برای بیرون از بافت شهری.",
+      },
+      {
+        id: "mt-satellite", label: "ماهواره‌ای (نو)", icon: "🛰", kind: "imagery", hasLabels: false, maxZoom: 20,
+        url: maptiler("satellite", mt, "jpg"), attribution: MAPTILER_ATTRIBUTION,
+        hint: "تصویر ماهواره‌ای مپ‌تایلر — در برخی نواحی تازه‌تر از نسخهٔ Esri.",
+      },
+    );
+  }
+  return list;
+}
+
+export const BASEMAPS: BasemapDef[] = buildBasemaps(envProviderKeys());
 
 export function basemapDef(id: BasemapId): BasemapDef {
   return BASEMAPS.find((b) => b.id === id) ?? BASEMAPS[0];
@@ -122,12 +240,11 @@ export function isBasemapId(v: unknown): v is BasemapId {
   return typeof v === "string" && BASEMAPS.some((b) => b.id === v);
 }
 
-/** Persian street and place names as a transparent overlay, for satellite.
+/** Persian street and place names as a transparent overlay, for the imagery basemaps.
  *
- *  Only satellite needs it now: both other basemaps are OpenStreetMap and carry their own
- *  names. CARTO's label tiles are watermarked like the rest of their unkeyed service, so
- *  this is Esri's reference layer, which is drawn light for a dark ground and therefore
- *  reads over imagery without the CSS inversion the CARTO set needed.
+ *  Only "imagery" kinds need it: every "base" style carries its own names. This is Esri's
+ *  reference layer, drawn light for a dark ground, so it reads over photography without
+ *  any CSS inversion.
  *
  *  It stops at z18 where the imagery goes to z19; Leaflet simply draws no names on that
  *  last step rather than erroring. */

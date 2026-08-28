@@ -959,6 +959,15 @@ body {
   filter: invert(1) hue-rotate(198deg) saturate(0.55) brightness(0.52) contrast(1.2);
 }
 
+/* ---- روشن: an Apple-Maps-like reading of OpenStreetMap, for when no tile key is set.
+   Apple's basemap is warm, soft and low-contrast: parks and roads present but never
+   loud. This desaturates and warms OSM toward that, dropping contrast so nothing on the
+   basemap competes with the pins and district fills. Skin-independent, like رادار --
+   someone choosing «روشن» has asked for the light look regardless of theme. ---- */
+.tiles-apple {
+  filter: saturate(0.6) brightness(1.05) contrast(0.9) sepia(0.1) hue-rotate(-8deg);
+}
+
 /* Esri's reference labels are drawn light for a dark ground, which is right over
    satellite imagery. On a light skin they need turning dark again. */
 :root[data-theme="light"] .tiles-labels {

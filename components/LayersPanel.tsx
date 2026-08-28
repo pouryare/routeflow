@@ -179,7 +179,7 @@ export default function LayersPanel({
       dir="rtl"
       role="dialog"
       aria-label="لایه‌های نقشه"
-      className="modal-card-enter sheet-on-mobile absolute bottom-4 left-4 top-20 z-[var(--z-panel)] flex w-72 flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised/97 backdrop-blur elevate-accent"
+      className="modal-card-enter sheet-on-mobile absolute bottom-4 left-4 top-20 z-[var(--z-panel)] flex w-80 flex-col overflow-y-auto rounded-[var(--radius-lg)] border border-border bg-surface-raised/97 backdrop-blur elevate-accent"
     >
       <div className="sticky top-0 z-10 flex items-center justify-between gap-2 border-b border-border bg-surface-raised/97 px-3 py-2.5 backdrop-blur">
         <h2 className="text-[length:var(--text-md)] font-bold text-text">لایه‌های نقشه</h2>
@@ -197,24 +197,46 @@ export default function LayersPanel({
           <h3 className="mb-1.5 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
             نقشه پایه
           </h3>
-          <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-            {BASEMAPS.map((b) => (
-              <button
-                key={b.id}
-                onClick={() => onBasemap(b.id)}
-                aria-pressed={basemap === b.id}
-                className={`flex-1 rounded-[var(--radius-sm)] px-1 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  basemap === b.id
-                    ? "bg-accent font-medium text-accent-ink"
-                    : "text-text-muted hover:bg-white/5 hover:text-text"
-                }`}
-              >
-                <span aria-hidden="true" className="me-1">
-                  {b.icon}
-                </span>
-                {b.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-3 gap-1.5">
+            {BASEMAPS.map((b) => {
+              const on = basemap === b.id;
+              return (
+                <button
+                  key={b.id}
+                  onClick={() => onBasemap(b.id)}
+                  aria-pressed={on}
+                  title={b.hint}
+                  className={`group relative overflow-hidden rounded-[var(--radius-sm)] border text-right transition-[border-color,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] active:scale-[0.97] ${
+                    on
+                      ? "border-accent ring-1 ring-accent"
+                      : "border-border hover:border-text-faint"
+                  }`}
+                >
+                  {/* Pre-rendered in public/basemap-thumbs by scripts/gen-basemap-thumbs.mjs.
+                      The tone is already baked into the PNG, so no filter class here.
+                      Wrapped in <picture> to match the codebase's other raster thumbs and
+                      keep next/lint's no-img-element rule quiet. */}
+                  <picture>
+                    <img
+                      src={`/basemap-thumbs/${b.id}.png`}
+                      alt=""
+                      aria-hidden="true"
+                      loading="lazy"
+                      decoding="async"
+                      className="h-12 w-full bg-surface object-cover"
+                    />
+                  </picture>
+                  <span
+                    className={`flex items-center gap-1 px-1.5 py-1 text-[length:var(--text-xs)] leading-4 ${
+                      on ? "bg-accent font-medium text-accent-ink" : "bg-surface text-text-muted"
+                    }`}
+                  >
+                    <span aria-hidden="true">{b.icon}</span>
+                    <span className="truncate">{b.label}</span>
+                  </span>
+                </button>
+              );
+            })}
           </div>
           <p className="mt-1.5 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">{base.hint}</p>
         </section>

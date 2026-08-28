@@ -69,7 +69,6 @@ import {
   BASEMAP_KEY,
   LABELS_TILE,
   LAYERS_KEY,
-  QUIET_NEEDS_TONING,
   basemapDef,
   changedFromDefault,
   isBasemapId,
@@ -2028,15 +2027,10 @@ export default function CoverageMap({
             url={activeBasemap.url}
             subdomains={activeBasemap.subdomains ?? "abc"}
             maxZoom={activeBasemap.maxZoom}
-            /* Toned per skin -- see .tiles-quiet. Only the quiet basemap: the streets one
-               is meant to be full colour, and satellite imagery must not be recoloured. */
-            className={
-              activeBasemap.id === "radar"
-                ? "tiles-radar"
-                : activeBasemap.id === "dark" && QUIET_NEEDS_TONING
-                  ? "tiles-quiet"
-                  : undefined
-            }
+            /* A tone is baked on only for the three fallback styles that have no hosted
+               tiles of their own (see globals.css). Hosted styles arrive already
+               designed and must not be recoloured. */
+            className={activeBasemap.toneClass}
           />
 
           {/* Names go in their own pane above the district fills (overlayPane, 400) and
