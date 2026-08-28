@@ -48,8 +48,12 @@ next-env.d.ts
 # separate disk/host to protect against this machine's own failure, not in git
 /backups/
 # a database backup left anywhere under data/ is the same real customer data as the
-# runtime db above -- ignore the path too, not just the canonical one
+# runtime db above -- ignore the path too, not just the canonical one, and not just the
+# backups/ subdirectory. Five ad-hoc backup-*.db snapshots slipped into a commit before
+# this line existed (see git log) precisely because the old pattern only caught the one
+# blessed location -- this one catches any .db file dropped anywhere under data/.
 /data/backups/
+/data/*.db*
 
 # git worktrees created for feature work: a whole second checkout, node_modules and all
 /.claude/worktrees/

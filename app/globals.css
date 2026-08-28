@@ -2538,14 +2538,21 @@ body {
 .kargah .prow__none { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
 .kargah .prow__packs { margin-top: 11px; display: flex; flex-direction: column; gap: 2px; }
 .kargah .pk {
-  display: grid; grid-template-columns: minmax(0,1fr) 92px 92px 130px; gap: 10px;
+  display: grid; grid-template-columns: minmax(0,1fr) 92px 92px 110px 130px; gap: 10px;
   align-items: center; padding: 8px 10px; border-radius: var(--r-sm); font-size: 13px;
   transition: background 180ms var(--ease);
 }
 .kargah .pk:hover { background: var(--card-2); }
 .kargah .pk__n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kargah .pk__q, .kargah .pk__w { text-align: end; color: var(--muted); font-size: 12px; }
+.kargah .pk__q, .kargah .pk__w, .kargah .pk__k { text-align: end; color: var(--muted); font-size: 12px; }
 .kargah .pk__p { text-align: end; font-weight: 700; }
+/* The column header — same grid so its labels sit directly over the figures below. */
+.kargah .pk--head {
+  padding: 0 10px 6px; margin-bottom: 4px; font-size: 11px; font-weight: 600;
+  color: var(--muted); text-transform: none; border-bottom: 1px solid var(--border);
+}
+.kargah .pk--head span { text-align: end; }
+.kargah .pk--head span:first-child { text-align: start; }
 
 /* ---- کاشی: the scannable reading ----------------------------------------- */
 .kargah .ptiles {
@@ -2584,7 +2591,7 @@ body {
 
 @media (max-width: 620px) {
   .kargah .pk { grid-template-columns: minmax(0,1fr) 110px; }
-  .kargah .pk__q, .kargah .pk__w { display: none; }
+  .kargah .pk__q, .kargah .pk__w, .kargah .pk__k { display: none; }
   .kargah .ptiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 

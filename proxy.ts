@@ -50,7 +50,7 @@ export function proxy(req: NextRequest) {
       ? NextResponse.json({ ok: false, error: "دسترسی لازم را ندارید" }, { status: 403 })
       : NextResponse.redirect(new URL(to, req.url));
 
-  const isAdmin = pathname.startsWith("/admin") || pathname.startsWith("/api/admin");
+  const isAdmin = pathname.startsWith("/sales/admin") || pathname.startsWith("/api/admin");
   const isDriver = pathname.startsWith("/driver") || pathname.startsWith("/api/driver");
 
   if (isAdmin && claims.role !== "owner") return deny("/sales");

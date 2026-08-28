@@ -3,9 +3,8 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
-import { faNum } from "@/lib/format";
-import { toJalali, JALALI_MONTHS, jalaliToIsoDate, faJalaliDate } from "@/lib/jalali";
-import ScheduleMonth from "@/components/kargah/ScheduleMonth";
+import { toJalali, jalaliToIsoDate, jalaliMonthGrid } from "@/lib/jalali";
+import ScheduleBoard from "@/components/kargah/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 
 export const dynamic = "force-dynamic";
@@ -28,10 +27,11 @@ export default async function SchedulePage() {
   const db = getDb();
   const scope = groupFilter(session);
   const today = toJalali(new Date().toISOString())!;
+  const grid = jalaliMonthGrid(today.jy, today.jm);
 
   // The whole Persian month, so the calendar's marks and the rail agree.
   const from = jalaliToIsoDate(today.jy, today.jm, 1);
-  const to = jalaliToIsoDate(today.jy, today.jm, 31);
+  const to = jalaliToIsoDate(today.jy, today.jm, grid.days.length);
 
   const runs = plain(
     db
@@ -72,10 +72,6 @@ export default async function SchedulePage() {
     where_: string | null;
   }[];
 
-  const todayIso = jalaliToIsoDate(today.jy, today.jm, today.jd);
-  const forToday = runs.filter((r) => r.run_date === todayIso);
-  const visitsToday = visits.filter((v) => v.planned_date === todayIso);
-
   // Which day-of-month carries work, for the calendar dots.
   const marks: Record<number, string[]> = {};
   for (const r of runs) {
@@ -104,96 +100,16 @@ export default async function SchedulePage() {
         <span className="legend2__i legend2__i--none">بدون هدف</span>
       </div>
 
-      <div className="sched">
-        <div className="kblock">
-          <div className="bhead">
-            <div>
-              <h2>
-                {JALALI_MONTHS[today.jm - 1]} {faNum(today.jy)}
-              </h2>
-              <div className="n">نقطه‌ها یعنی آن روز مسیری ثبت شده</div>
-            </div>
-          </div>
-          <div className="cal">
-            <ScheduleMonth today={today.jd} marks={marks} />
-          </div>
-        </div>
-
-        <div className="kblock">
-          <div className="bhead">
-            <div>
-              <h2>{faJalaliDate(todayIso)}</h2>
-              <div className="n">
-                {faNum(visitsToday.length)} ویزیت · {faNum(forToday.length)} مسیر تحویل
-              </div>
-            </div>
-          </div>
-          <div className="rail">
-            {visitsToday.length === 0 && forToday.length === 0 ? (
-              <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5 }}>
-                برای امروز نه ویزیتی برنامه‌ریزی شده و نه مسیری در دفتر است.
-              </p>
-            ) : (
-              <>
-                {visitsToday.map((v) => {
-                  const p = tripPurpose(v.purpose);
-                  return (
-                    <div className="slot" key={`v${v.id}`}>
-                      <div className="h">{p ? p.icon : "•"}</div>
-                      <div className="lane">
-                        <div
-                          className="ev"
-                          style={{
-                            background: p?.soft ?? "var(--sunk)",
-                            color: p?.ink ?? "var(--muted)",
-                          }}
-                        >
-                          <span
-                            className="dot"
-                            style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
-                          >
-                            {p ? p.icon : "•"}
-                          </span>
-                          <div>
-                            <div className="t">{v.who}</div>
-                            <div className="s">
-                              {p ? p.label : "بدون هدف"}
-                              {v.where_ ? ` · ${v.where_}` : ""}
-                              {v.status === "done" ? " · انجام شد" : v.status === "skipped" ? " · رد شد" : ""}
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-
-                {forToday.map((r) => (
-                  <div className="slot" key={`r${r.id}`}>
-                    <div className="h">🚚</div>
-                    <div className="lane">
-                      <div className="ev a">
-                        <span className="dot">🚚</span>
-                        <div>
-                          <div className="t">مسیر {r.driver}</div>
-                          <div className="s">
-                            {faNum(r.stops)} توقف ·{" "}
-                            {r.status === "done"
-                              ? "تمام شد"
-                              : r.status === "in_progress"
-                                ? "در حال اجرا"
-                                : "برنامه‌ریزی‌شده"}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
-          </div>
-        </div>
-      </div>
+      <ScheduleBoard
+        jy={today.jy}
+        jm={today.jm}
+        today={today.jd}
+        leadingBlanks={grid.leadingBlanks}
+        days={grid.days.length}
+        runs={runs}
+        visits={visits}
+        marks={marks}
+      />
     </>
   );
 }

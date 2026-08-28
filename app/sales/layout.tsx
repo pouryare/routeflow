@@ -31,6 +31,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   // before anyone touches it, and 404s under the reader who does.
   const tabs = [
     { href: "/sales", label: "داشبورد", ready: true },
+    { href: "/sales/dashboard", label: "تحلیل و KPI", ready: true },
     { href: "/sales/orders", label: "سفارش‌ها", ready: true },
     { href: "/sales/board", label: "تخصیص کارها", ready: true },
     { href: "/sales/journey", label: "مسیر سفارش", ready: true },
@@ -40,7 +41,8 @@ export default async function SalesLayout({ children }: { children: ReactNode })
     { href: "/sales/commission", label: "پورسانت", ready: true },
     { href: "/sales/stock", label: "انبار و خرید", ready: true },
     // Owner only: the proxy refuses everyone else, so a tab for them would 404 on click.
-    { href: "/admin/users", label: "مدیریت", ready: session.role === "owner" },
+    { href: "/sales/admin/users", label: "کاربران", ready: session.role === "owner" },
+    { href: "/sales/admin/groups", label: "گروه‌ها", ready: session.role === "owner" },
   ];
 
   const initial = session.user.display_name.trim()[0] ?? "؟";

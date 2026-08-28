@@ -15,6 +15,7 @@ const { setRate } = await import("@/lib/commissionLedger");
 const { GET } = await import("@/app/api/sales/commission/route");
 const { POST: POST_RATE } = await import("@/app/api/sales/commission/rates/route");
 const { POST: POST_PAYMENT } = await import("@/app/api/sales/commission/payments/route");
+const { POST: POST_OVERRIDE } = await import("@/app/api/sales/commission/manager-overrides/route");
 const { NextRequest } = await import("next/server");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
 import type { Role } from "@/lib/db";
@@ -197,5 +198,135 @@ describe("POST /api/sales/commission/payments", () => {
       post("/api/sales/commission/payments", AS.owner(), { ...body(), amount_toman: 1.5 })
     );
     expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/sales/commission/rates -- kind: driver", () => {
+  const body = { kind: "driver", rate_per_kg_toman: 700, valid_from: "2026-06-01" };
+
+  it("lets an owner set a driver rate", async () => {
+    const res = await POST_RATE(post("/api/sales/commission/rates", AS.owner(), body));
+    expect(res.status).toBe(201);
+  });
+
+  it("refuses a manager", async () => {
+    expect((await POST_RATE(post("/api/sales/commission/rates", AS.eastManager(), body))).status).toBe(403);
+  });
+
+  it("rejects a driver rate aimed at a سالسپرسون account", async () => {
+    const res = await POST_RATE(
+      post("/api/sales/commission/rates", AS.owner(), { ...body, driver_user_id: ctx.nazanin })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("does not write into the فروشنده rate table", async () => {
+    const before = (getDb().prepare("SELECT COUNT(*) AS n FROM commission_rates").get() as { n: number }).n;
+    await POST_RATE(post("/api/sales/commission/rates", AS.owner(), body));
+    const after = (getDb().prepare("SELECT COUNT(*) AS n FROM commission_rates").get() as { n: number }).n;
+    expect(after).toBe(before);
+  });
+});
+
+describe("POST /api/sales/commission/manager-overrides", () => {
+  const body = { override_pct: 12, valid_from: "2026-06-01" };
+
+  it("lets an owner set a manager override", async () => {
+    const res = await POST_OVERRIDE(post("/api/sales/commission/manager-overrides", AS.owner(), body));
+    expect(res.status).toBe(201);
+  });
+
+  it("refuses a manager setting their own override", async () => {
+    expect(
+      (await POST_OVERRIDE(post("/api/sales/commission/manager-overrides", AS.eastManager(), body))).status
+    ).toBe(403);
+  });
+
+  it("rejects a percentage outside 0-100", async () => {
+    const res = await POST_OVERRIDE(
+      post("/api/sales/commission/manager-overrides", AS.owner(), { ...body, override_pct: 150 })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("rejects an override aimed at a فروشنده account", async () => {
+    const res = await POST_OVERRIDE(
+      post("/api/sales/commission/manager-overrides", AS.owner(), { ...body, manager_user_id: ctx.nazanin })
+    );
+    expect(res.status).toBe(400);
+  });
+});
+
+describe("POST /api/sales/commission/payments -- kind: driver and manager", () => {
+  it("lets an owner pay a driver", async () => {
+    const res = await POST_PAYMENT(
+      post("/api/sales/commission/payments", AS.owner(), {
+        kind: "driver",
+        driver_user_id: ctx.driver,
+        amount_toman: 200000,
+        paid_on: "2026-08-01",
+      })
+    );
+    expect(res.status).toBe(201);
+  });
+
+  it("lets an owner pay a manager", async () => {
+    const res = await POST_PAYMENT(
+      post("/api/sales/commission/payments", AS.owner(), {
+        kind: "manager",
+        manager_user_id: ctx.eastManager,
+        amount_toman: 300000,
+        paid_on: "2026-08-01",
+      })
+    );
+    expect(res.status).toBe(201);
+  });
+
+  it("rejects a driver payment aimed at a فروشنده account", async () => {
+    const res = await POST_PAYMENT(
+      post("/api/sales/commission/payments", AS.owner(), {
+        kind: "driver",
+        driver_user_id: ctx.nazanin,
+        amount_toman: 100000,
+        paid_on: "2026-08-01",
+      })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("writes a driver payment into the driver table, not the فروشنده one", async () => {
+    const before = (getDb().prepare("SELECT COUNT(*) AS n FROM driver_commission_payments").get() as { n: number }).n;
+    await POST_PAYMENT(
+      post("/api/sales/commission/payments", AS.owner(), {
+        kind: "driver",
+        driver_user_id: ctx.driver,
+        amount_toman: 50000,
+        paid_on: "2026-08-02",
+      })
+    );
+    const after = (getDb().prepare("SELECT COUNT(*) AS n FROM driver_commission_payments").get() as { n: number }).n;
+    expect(after).toBe(before + 1);
+  });
+});
+
+describe("GET /api/sales/commission -- the driver and manager ledgers", () => {
+  it("includes driver and manager statements for an owner", async () => {
+    const json = await (await GET(get(AS.owner()))).json();
+    const driverNames = json.driver_statements.map((s: { display_name: string }) => s.display_name);
+    const managerNames = json.manager_statements.map((s: { display_name: string }) => s.display_name);
+    expect(driverNames).toContain("راننده");
+    expect(managerNames).toContain("مدیر شرق");
+  });
+
+  it("gives a salesperson no driver or manager statements", async () => {
+    const json = await (await GET(get(AS.nazanin()))).json();
+    expect(json.driver_statements).toEqual([]);
+    expect(json.manager_statements).toEqual([]);
+  });
+
+  it("gives a manager only their own override statement, not another manager's", async () => {
+    const json = await (await GET(get(AS.eastManager()))).json();
+    expect(json.manager_statements).toHaveLength(1);
+    expect(json.manager_statements[0].display_name).toBe("مدیر شرق");
   });
 });

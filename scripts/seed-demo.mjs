@@ -135,7 +135,19 @@ try {
             )
             .run(pid, p.pack, p.per, now).lastInsertRowid
         );
-    let price = plain(db.prepare("SELECT id FROM product_prices WHERE packaging_id = ? LIMIT 1").all(packId))[0];
+    // A second, earlier row at a lower price -- so تاریخچه قیمت‌ها has an actual history
+    // to chart rather than one point sitting alone. Guarded on its own valid_from, same
+    // as the current price below, so re-running the seed does not duplicate it.
+    const olderFrom = iso(600);
+    const olderPrice = Math.round((p.price * 0.88) / 1000) * 1000;
+    if (!plain(db.prepare("SELECT id FROM product_prices WHERE packaging_id = ? AND valid_from = ?").all(packId, olderFrom))[0]) {
+      db.prepare(
+        `INSERT INTO product_prices (product_id, packaging_id, price_toman, valid_from, created_by, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).run(pid, packId, olderPrice, olderFrom, owner.id, now);
+    }
+
+    let price = plain(db.prepare("SELECT id FROM product_prices WHERE packaging_id = ? AND valid_from = ?").all(packId, iso(400)))[0];
     const priceId = price
       ? price.id
       : Number(

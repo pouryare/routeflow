@@ -123,7 +123,31 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <div className="grid gap-[var(--space-4)] md:grid-cols-2">
+      {/* Cost is never shown anywhere a فروشنده can reach -- PurchaseEntry gates entering
+          it the same way. Profit is exactly the number a stakeholder wants that a revenue
+          figure alone cannot answer, so it gets a card of its own rather than a clause
+          buried in the revenue chip. Sized 1fr rather than sharing .statrow's validated
+          1.5fr/1fr/1fr split, which assumes exactly three cards. */}
+      {session.role !== "salesperson" && (
+        <div className="statrow" style={{ gridTemplateColumns: "1fr", marginTop: -4 }}>
+          <GradientStat
+            tone="peach"
+            small
+            icon="◎"
+            label="سود ناخالص (تحویل‌شده)"
+            value={faNum(d.margin_toman)}
+            unit="تومان"
+            chip={`حاشیهٔ سود ${pct(d.revenue_toman > 0 ? d.margin_toman / d.revenue_toman : 0)} از فروش`}
+          />
+        </div>
+      )}
+
+      {/* dash-top: a marker for RevealRoute, not a style hook. These two charts sit
+          outside any CollapsibleSection, but the ones further down do not -- an
+          unqualified `.card` selector would catch a chart nested inside a `.sect` too,
+          animating it on a second clock the instant its section opens. Scoping to this
+          wrapper is the same combinator trick /sales/schedule uses for `.sched > .kblock`. */}
+      <div className="dash-top grid gap-[var(--space-4)] md:grid-cols-2">
         <SplineChart
           title="فروش روزانه"
           subtitle="۳۰ روز اخیر"

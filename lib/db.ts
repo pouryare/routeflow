@@ -456,6 +456,71 @@ export function getDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_commission_payments_person
       ON commission_payments(salesperson_user_id, paid_on);
 
+    /* ---- Commission, راننده -------------------------------------------------------
+       A driver earns on what they PERSONALLY handed over, not on what was ordered --
+       the same delivered-not-ordered rule سفارش commission follows, just measured
+       against delivery_stops instead of orders.salesperson_user_id. A separate table
+       rather than reusing commission_rates: the two are both "toman per kilogram", but
+       a rate row that could belong to either a فروشنده or a راننده would need a second
+       column just to say which, and every reader would have to filter on it -- two
+       small tables are simpler than one table with a discriminator nobody can forget
+       to check. */
+    CREATE TABLE IF NOT EXISTS driver_commission_rates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      driver_user_id INTEGER REFERENCES users(id),
+      rate_per_kg_toman INTEGER NOT NULL,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_driver_commission_rates_lookup
+      ON driver_commission_rates(driver_user_id, valid_from);
+
+    CREATE TABLE IF NOT EXISTS driver_commission_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      driver_user_id INTEGER NOT NULL REFERENCES users(id),
+      amount_toman INTEGER NOT NULL,
+      paid_on TEXT NOT NULL,
+      period_from TEXT,
+      period_to TEXT,
+      notes TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_driver_commission_payments_person
+      ON driver_commission_payments(driver_user_id, paid_on);
+
+    /* ---- Commission, مدیر گروه -----------------------------------------------------
+       Not a per-kilogram rate at all -- a مدیر گروه does not deliver or sell a kilogram
+       themself, they run the people who do. Their incentive is a share of what their
+       whole group accrued, so the number here is a percentage, resolved the same
+       effective-dated way every other rate in this file is, and applied to the group's
+       total from commissionLedger.allStatements rather than to any order of their own. */
+    CREATE TABLE IF NOT EXISTS manager_commission_overrides (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      manager_user_id INTEGER REFERENCES users(id),
+      override_pct REAL NOT NULL,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_manager_overrides_lookup
+      ON manager_commission_overrides(manager_user_id, valid_from);
+
+    CREATE TABLE IF NOT EXISTS manager_commission_payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      manager_user_id INTEGER NOT NULL REFERENCES users(id),
+      amount_toman INTEGER NOT NULL,
+      paid_on TEXT NOT NULL,
+      period_from TEXT,
+      period_to TEXT,
+      notes TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_manager_commission_payments_person
+      ON manager_commission_payments(manager_user_id, paid_on);
+
     /* ---- Purchases and stock ------------------------------------------------------
        A receipt of goods into the warehouse. Replaces the خرید sheet.
 
@@ -773,7 +838,8 @@ export function getDb(): DatabaseSync {
           planned_date TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')),
           sort_order INTEGER NOT NULL DEFAULT 0,
-          created_at TEXT NOT NULL
+          created_at TEXT NOT NULL,
+          purpose TEXT
         );
         INSERT INTO visit_plans_new SELECT * FROM visit_plans;
         DROP TABLE visit_plans;

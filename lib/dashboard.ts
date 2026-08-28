@@ -12,7 +12,7 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import { orderFilter, groupFilter, type Session } from "./session";
-import { lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
+import { lineTotalToman, lineCostToman, lineKg, type LineSnapshot } from "./orderMath";
 import { toJalali, JALALI_MONTHS } from "./jalali";
 
 export interface Series {
@@ -23,6 +23,10 @@ export interface Series {
 
 export interface SalesDashboard {
   revenue_toman: number;
+  /** Charged less cost, both on delivered quantities. Not meaningful for a فروشنده, who
+   *  never sees a product's cost anywhere else in the app -- callers gate its display on
+   *  role, the same way PurchaseEntry gates entering a cost in the first place. */
+  margin_toman: number;
   order_count: number;
   average_order_toman: number;
   kg: number;
@@ -121,11 +125,13 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   const orderTotals = new Map<number, number>();
 
   let revenue = 0;
+  let cost = 0;
   let kg = 0;
 
   for (const line of lines) {
     const total = lineTotalToman(line);
     revenue += total;
+    cost += lineCostToman(line);
     kg += lineKg(line);
 
     const day = line.order_date.slice(0, 10);
@@ -167,6 +173,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
 
   return {
     revenue_toman: revenue,
+    margin_toman: revenue - cost,
     order_count: orderCount,
     // Guarded: an empty dashboard is the normal state for months, and a NaN in an SVG
     // path attribute makes the entire chart vanish with no error anywhere.

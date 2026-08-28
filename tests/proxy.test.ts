@@ -71,16 +71,16 @@ describe("the retired shared-password session", () => {
 });
 
 describe("role prefixes", () => {
-  it("lets an owner into /admin", () => {
-    expect(proxy(req("/admin/users", "owner")).status).toBe(200);
+  it("lets an owner into /sales/admin", () => {
+    expect(proxy(req("/sales/admin/users", "owner")).status).toBe(200);
   });
-  it("keeps a group manager out of /admin", () => {
-    const res = proxy(req("/admin/users", "group_manager"));
+  it("keeps a group manager out of /sales/admin", () => {
+    const res = proxy(req("/sales/admin/users", "group_manager"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/");
   });
-  it("keeps a driver out of /admin", () => {
-    expect(proxy(req("/admin/users", "driver")).status).toBe(307);
+  it("keeps a driver out of /sales/admin", () => {
+    expect(proxy(req("/sales/admin/users", "driver")).status).toBe(307);
   });
   it("403s a non-driver hitting a driver API route", () => {
     expect(proxy(req("/api/driver/run", "group_manager")).status).toBe(403);
@@ -107,8 +107,8 @@ describe("a salesperson", () => {
     expect(proxy(req("/", "salesperson")).status).toBe(200);
   });
 
-  it("is kept out of /admin", () => {
-    const res = proxy(req("/admin/users", "salesperson"));
+  it("is kept out of /sales/admin", () => {
+    const res = proxy(req("/sales/admin/users", "salesperson"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/");
   });

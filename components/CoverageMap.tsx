@@ -179,8 +179,8 @@ const GROUP_WIDE_LINKS = [
 // bounce a manager or driver off these anyway, and a link that exists only to refuse you
 // is worse than no link.
 const ADMIN_LINKS = [
-  { href: "/admin/groups", icon: "🗂", label: "گروه‌ها و محدوده‌ها" },
-  { href: "/admin/users", icon: "👥", label: "حساب‌های کاربری" },
+  { href: "/sales/admin/groups", icon: "🗂", label: "گروه‌ها و محدوده‌ها" },
+  { href: "/sales/admin/users", icon: "👥", label: "حساب‌های کاربری" },
 ] as const;
 /** Map geometry colours, per skin.
  *

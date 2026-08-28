@@ -2,12 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { statementFor, allStatements, readRates } from "@/lib/commissionLedger";
+import { allDriverStatements, readDriverRates } from "@/lib/driverCommissionLedger";
+import {
+  allManagerStatements,
+  managerStatementFor,
+  readManagerOverrides,
+} from "@/lib/managerCommissionLedger";
 
 /** Who may see whose commission.
  *
  *  A فروشنده sees their own statement and nobody else's -- somebody else's earnings are
  *  the clearest example of data that is inside your own group and still none of your
- *  business. A manager sees the people in their group. The owner sees everyone.
+ *  business. A manager sees the people (and drivers) in their group, plus their own
+ *  override statement. The owner sees everyone, in every ledger.
  */
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
@@ -26,18 +33,36 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       ok: true,
       statements: [statementFor(db, session.user.id, period)],
+      driver_statements: [],
+      manager_statements: [],
       rates: [],
+      driver_rates: [],
+      manager_overrides: [],
     });
   }
 
-  const statements = allStatements(db, period, {
-    groupId: session.role === "owner" ? undefined : session.groupId,
-  });
+  const groupId = session.role === "owner" ? undefined : session.groupId;
+  const statements = allStatements(db, period, { groupId });
+  const driverStatements = allDriverStatements(db, period, { groupId });
+  // A manager's own override statement, or every manager's for the owner -- a manager
+  // does not see another manager's override, the same "own group only" boundary their
+  // فروشنده statements already draw.
+  const managerStatements =
+    session.role === "owner"
+      ? allManagerStatements(db, period)
+      : session.role === "group_manager"
+        ? [managerStatementFor(db, session.user.id, period)]
+        : [];
 
-  // Rates are payroll policy, so only the owner reads the table behind the figures.
+  // Rates and overrides are payroll policy, so only the owner reads the tables behind
+  // the figures -- same rule the original فروشنده rates already followed.
   return NextResponse.json({
     ok: true,
     statements,
+    driver_statements: driverStatements,
+    manager_statements: managerStatements,
     rates: session.role === "owner" ? readRates(db) : [],
+    driver_rates: session.role === "owner" ? readDriverRates(db) : [],
+    manager_overrides: session.role === "owner" ? readManagerOverrides(db) : [],
   });
 }

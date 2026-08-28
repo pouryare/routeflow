@@ -2,21 +2,39 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { recordPayment } from "@/lib/commissionLedger";
+import { recordDriverPayment } from "@/lib/driverCommissionLedger";
+import { recordManagerPayment } from "@/lib/managerCommissionLedger";
 import { isToman } from "@/lib/money";
 
-/** Owner only. Recording a commission payment is recording that money left. */
+const ROLE_FOR_KIND = { sales: "salesperson", driver: "driver", manager: "group_manager" } as const;
+const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager: "مدیر گروه" } as const;
+
+/** Owner only. Recording a commission payment is recording that money left.
+ *
+ *  `kind` picks which of the three ledgers the payment belongs to. Money paid to a
+ *  فروشنده, a راننده and a مدیر گروه are the same ACT -- someone left with cash -- even
+ *  though what earned it is computed three different ways, so one endpoint with a
+ *  discriminator beats three endpoints that would otherwise be identical apart from
+ *  which table they insert into.
+ */
 export async function POST(req: NextRequest) {
   const guard = requireRole(req, ["owner"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {
+    kind?: unknown;
     salesperson_user_id?: unknown;
+    driver_user_id?: unknown;
+    manager_user_id?: unknown;
     amount_toman?: unknown;
     paid_on?: unknown;
     period_from?: unknown;
     period_to?: unknown;
     notes?: unknown;
   } | null;
+
+  const kind: keyof typeof ROLE_FOR_KIND =
+    body?.kind === "driver" ? "driver" : body?.kind === "manager" ? "manager" : "sales";
 
   const amount = Number(body?.amount_toman);
   if (!isToman(amount) || amount === 0) {
@@ -32,23 +50,29 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const personId = Number(body?.salesperson_user_id);
-  const person = db
-    .prepare("SELECT id FROM users WHERE id = ? AND role = 'salesperson'")
-    .get(personId);
+  const rawId =
+    kind === "driver" ? body?.driver_user_id : kind === "manager" ? body?.manager_user_id : body?.salesperson_user_id;
+  const personId = Number(rawId);
+  const person = db.prepare("SELECT id FROM users WHERE id = ? AND role = ?").get(personId, ROLE_FOR_KIND[kind]);
   if (!person) {
-    return NextResponse.json({ ok: false, error: "این حساب فروشنده نیست" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: `این حساب ${NOT_THIS_KIND[kind]} نیست` }, { status: 400 });
   }
 
-  const id = recordPayment(db, {
-    salesperson_user_id: personId,
+  const shared = {
     amount_toman: amount,
     paid_on: paidOn,
     period_from: typeof body?.period_from === "string" ? body.period_from : null,
     period_to: typeof body?.period_to === "string" ? body.period_to : null,
     notes: typeof body?.notes === "string" ? body.notes : null,
     created_by: guard.session.user.id,
-  });
+  };
+
+  const id =
+    kind === "driver"
+      ? recordDriverPayment(db, { driver_user_id: personId, ...shared })
+      : kind === "manager"
+        ? recordManagerPayment(db, { manager_user_id: personId, ...shared })
+        : recordPayment(db, { salesperson_user_id: personId, ...shared });
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

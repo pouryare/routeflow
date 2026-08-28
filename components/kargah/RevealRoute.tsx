@@ -21,13 +21,13 @@ const REVEAL: Record<string, string[]> = {
   "/sales/board": [".hint", ".col"],
   "/sales/journey": [".bhead", ".lane2"],
   "/sales/schedule": [".notice", ".sched > .kblock"],
-  "/sales/dashboard": [".gcard", ".kblock"],
+  "/sales/dashboard": [".gcard", ".dash-top > .card", ".sect"],
   "/sales/products": [".card", ".kblock"],
   "/sales/commission": [".card", ".kblock"],
   "/sales/stock": [".card", ".kblock"],
   "/sales/runs": [".card", ".kblock", ".run-column"],
-  "/admin/users": [".card", ".kblock"],
-  "/admin/groups": [".card", ".kblock"],
+  "/sales/admin/users": [".card", ".kblock"],
+  "/sales/admin/groups": [".card", ".kblock"],
 };
 
 /** Milliseconds between one card and the next. */
