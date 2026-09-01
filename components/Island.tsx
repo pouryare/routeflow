@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useLayoutEffect, useRef, useState } from "react";
 
 export type IslandTone = "good" | "warn" | "crit" | "accent" | "neutral";
 
@@ -20,6 +20,11 @@ interface IslandProps {
   icon: ReactNode;
   /** Revealed only when open. Measured, so it may be any height. */
   children: ReactNode;
+  /** Pinned to the bottom edge, spanning the full width including under the icon.
+   *  A sibling of the content rather than part of it, because the content column is
+   *  inset past the icon and padded -- a bar rendered inside it would stop short at
+   *  both ends. */
+  footer?: ReactNode;
   className?: string;
 }
 
@@ -53,6 +58,7 @@ export default function Island({
   tone = "accent",
   icon,
   children,
+  footer,
   className = "",
 }: IslandProps) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -101,31 +107,8 @@ export default function Island({
           {children}
         </div>
       </div>
+
+      {footer}
     </div>
   );
-}
-
-/** Drives the mount → expand → collapse → unmount cycle on a timer.
- *
- *  Split out because every caller wants the same shape: appear as a pill, widen almost
- *  immediately so the arrival reads as one motion rather than two, hold, then collapse
- *  before leaving. Only the durations differ.
- */
-export function useIslandCycle(lifetimeMs: number, onDone: () => void) {
-  const [open, setOpen] = useState(false);
-
-  useEffect(() => {
-    // One frame as a pill. Long enough that the widening is visibly a morph and not just
-    // a box appearing at full size; short enough that it never delays reading.
-    const opening = window.setTimeout(() => setOpen(true), 30);
-    const closing = window.setTimeout(() => setOpen(false), lifetimeMs);
-    const done = window.setTimeout(onDone, lifetimeMs + 260);
-    return () => {
-      window.clearTimeout(opening);
-      window.clearTimeout(closing);
-      window.clearTimeout(done);
-    };
-  }, [lifetimeMs, onDone]);
-
-  return open;
 }

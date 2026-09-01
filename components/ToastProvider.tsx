@@ -1,7 +1,24 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Island, { IslandTone } from "./Island";
+import {
+  Countdown,
+  isElapsed,
+  pauseCountdown,
+  progressAt,
+  quantise,
+  resumeCountdown,
+  secondsLeft,
+  startCountdown,
+} from "@/lib/countdown";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -22,8 +39,6 @@ interface ToastItem {
   message: string;
   variant: ToastVariant;
   action?: ToastAction;
-  running: boolean;
-  open: boolean;
 }
 
 type ShowToast = (message: string, variant?: ToastVariant, action?: ToastAction) => void;
@@ -62,77 +77,209 @@ const ICON: Record<ToastVariant, React.ReactNode> = {
 
 const LIFETIME_MS: Record<ToastVariant, number> = { success: 3500, error: 6500, info: 4000 };
 
-// An actionable toast is a deadline, not a notification: once it goes, so does the only
-// undo. Three and a half seconds is enough to notice a message; it is not enough to read
-// it, decide the delete was a mistake, and move a thumb across a phone screen.
-const ACTION_LIFETIME_MS = 9000;
+/** An actionable toast is a deadline, not a notification: once it goes, so does the only
+ *  undo. Three and a half seconds is enough to notice a message; it is not enough to read
+ *  it, decide the delete was a mistake, and move a thumb across a phone screen.
+ *
+ *  This is also the value the offline outbox will hold a mutation for before handing it to
+ *  the sync engine, so the bar below measures something real rather than counting down for
+ *  decoration -- see docs/crm-erp-plan.md 4.6. One constant, so the two cannot drift. */
+export const ACTION_LIFETIME_MS = 9000;
 
 // One pill-frame before widening, so the arrival reads as a single motion.
 const OPEN_DELAY_MS = 30;
 // Long enough for the collapse to finish before the node leaves. --dur-morph plus slack.
 const COLLAPSE_MS = 460;
+// Bands the bar snaps to under prefers-reduced-motion. Enough to read as draining,
+// few enough that nothing appears to move continuously.
+const REDUCED_STEPS = 8;
+
+function usePrefersReducedMotion(): boolean {
+  const [reduced, setReduced] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const apply = () => setReduced(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  return reduced;
+}
+
+interface ToastCardProps {
+  toast: ToastItem;
+  onDone: (id: number) => void;
+}
+
+/** One toast, owning its own clock.
+ *
+ *  The lifetime used to be a `setTimeout` in the provider. It moved in here because a
+ *  pausable countdown is per-toast state, and because the same clock now drives two
+ *  things that must agree: when the toast leaves, and how full the bar is. Two timers for
+ *  one deadline is how a bar ends up empty while the button still works.
+ */
+function ToastCard({ toast, onDone }: ToastCardProps) {
+  const [open, setOpen] = useState(false);
+  const [running, setRunning] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const [srSeconds, setSrSeconds] = useState<number | null>(null);
+
+  const barRef = useRef<HTMLDivElement>(null);
+  const clock = useRef<Countdown | null>(null);
+  const reduced = usePrefersReducedMotion();
+
+  const lifetime = toast.action ? ACTION_LIFETIME_MS : LIFETIME_MS[toast.variant];
+  // Any one of these holds the clock. Pointer and focus because the reader is engaging
+  // with it; hidden because a deadline that expires in a tab nobody is looking at was
+  // never offered; running because the action is already under way.
+  const paused = hovered || focused || hidden || running;
+
+  const exit = useCallback(() => {
+    // Collapse to a pill first, then leave. Vanishing at full width skips the half of
+    // the morph that makes the island read as one object rather than a box that blinked.
+    setOpen(false);
+    window.setTimeout(() => onDone(toast.id), COLLAPSE_MS);
+  }, [onDone, toast.id]);
+
+  useEffect(() => {
+    clock.current = startCountdown(lifetime, Date.now());
+    const id = window.setTimeout(() => setOpen(true), OPEN_DELAY_MS);
+    return () => window.clearTimeout(id);
+  }, [lifetime]);
+
+  useEffect(() => {
+    const onVisibility = () => setHidden(document.visibilityState === "hidden");
+    onVisibility();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => document.removeEventListener("visibilitychange", onVisibility);
+  }, []);
+
+  useEffect(() => {
+    if (!clock.current) return;
+    clock.current = paused
+      ? pauseCountdown(clock.current, Date.now())
+      : resumeCountdown(clock.current, Date.now());
+  }, [paused]);
+
+  // The bar is written straight to the node rather than through state: at 60fps a
+  // setState per frame would re-render the message, the buttons and the island's
+  // ResizeObserver callback, to move one composited transform.
+  useEffect(() => {
+    let frame = 0;
+    let lastDrawn = -1;
+    let done = false;
+
+    const tick = () => {
+      const cd = clock.current;
+      if (!cd || done) return;
+      const now = Date.now();
+
+      const raw = progressAt(cd, now);
+      const next = reduced ? quantise(raw, REDUCED_STEPS) : raw;
+      if (next !== lastDrawn) {
+        lastDrawn = next;
+        if (barRef.current) barRef.current.style.transform = `scaleX(${next})`;
+      }
+      // Only published while paused, so the accessible name is a stable "you have N
+      // seconds" rather than a label that renames itself sixty times a second.
+      setSrSeconds(cd.startedAt === null ? secondsLeft(cd, now) : null);
+
+      if (isElapsed(cd, now)) {
+        done = true;
+        exit();
+        return;
+      }
+      frame = requestAnimationFrame(tick);
+    };
+
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [reduced, exit]);
+
+  const runAction = useCallback(async () => {
+    if (!toast.action || running) return;
+    setRunning(true);
+    try {
+      await toast.action.onClick();
+    } finally {
+      // Dismissed either way. A failed undo reports itself with its own error toast;
+      // leaving this one up would offer a second attempt at an action whose outcome
+      // the user can no longer predict.
+      exit();
+    }
+  }, [toast.action, running, exit]);
+
+  const actionLabel =
+    toast.action && srSeconds !== null
+      ? `${toast.action.label} — ${srSeconds} ثانیه فرصت`
+      : toast.action?.label;
+
+  return (
+    <Island
+      open={open}
+      tone={TONE[toast.variant]}
+      icon={ICON[toast.variant]}
+      className="pointer-events-auto"
+      footer={
+        // Only on toasts that carry an action. On a plain message the countdown is not
+        // something the reader can act on, so it would be chrome; on this one it is the
+        // deadline for the only undo there is.
+        toast.action ? (
+          <div className="island__timer" aria-hidden="true">
+            <div ref={barRef} className="island__timer-fill" />
+          </div>
+        ) : undefined
+      }
+    >
+      <div
+        role="status"
+        className="flex items-start gap-2"
+        onPointerEnter={() => setHovered(true)}
+        onPointerLeave={() => setHovered(false)}
+        onFocusCapture={() => setFocused(true)}
+        onBlurCapture={() => setFocused(false)}
+      >
+        <span className="block min-w-0 flex-1 leading-5">{toast.message}</span>
+
+        {toast.action && (
+          <button
+            onClick={runAction}
+            disabled={running}
+            aria-label={actionLabel}
+            className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
+          >
+            {running ? "…" : toast.action.label}
+          </button>
+        )}
+
+        <button
+          onClick={exit}
+          aria-label="بستن اعلان"
+          className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+        >
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
+            <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
+          </svg>
+        </button>
+      </div>
+    </Island>
+  );
+}
 
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);
   const idRef = useRef(0);
-  const timers = useRef<number[]>([]);
-
-  // Every timer this provider opens, cancelled on unmount. Without it a toast scheduled
-  // just before a route change calls setState on a component that is gone.
-  useEffect(() => {
-    const owned = timers.current;
-    return () => owned.forEach(window.clearTimeout);
-  }, []);
-
-  const later = useCallback((fn: () => void, ms: number) => {
-    timers.current.push(window.setTimeout(fn, ms));
-  }, []);
 
   const remove = useCallback((id: number) => {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
-  const startExit = useCallback(
-    (id: number) => {
-      // Collapse to a pill first, then leave. Vanishing at full width skips the half of
-      // the morph that makes the island read as one object rather than a box that blinked.
-      setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, open: false } : t)));
-      later(() => remove(id), COLLAPSE_MS);
-    },
-    [later, remove]
-  );
-
-  const showToast = useCallback<ShowToast>(
-    (message, variant = "info", action) => {
-      const id = ++idRef.current;
-      setToasts((prev) => [
-        ...prev,
-        { id, message, variant, action, running: false, open: false },
-      ]);
-      later(
-        () => setToasts((prev) => prev.map((t) => (t.id === id ? { ...t, open: true } : t))),
-        OPEN_DELAY_MS
-      );
-      later(() => startExit(id), action ? ACTION_LIFETIME_MS : LIFETIME_MS[variant]);
-    },
-    [later, startExit]
-  );
-
-  const runAction = useCallback(
-    async (t: ToastItem) => {
-      if (!t.action || t.running) return;
-      setToasts((prev) => prev.map((x) => (x.id === t.id ? { ...x, running: true } : x)));
-      try {
-        await t.action.onClick();
-      } finally {
-        // Dismissed either way. A failed undo reports itself with its own error toast;
-        // leaving this one up would offer a second attempt at an action whose outcome
-        // the user can no longer predict.
-        startExit(t.id);
-      }
-    },
-    [startExit]
-  );
+  const showToast = useCallback<ShowToast>((message, variant = "info", action) => {
+    const id = ++idRef.current;
+    setToasts((prev) => [...prev, { id, message, variant, action }]);
+  }, []);
 
   return (
     <ToastContext.Provider value={showToast}>
@@ -147,37 +294,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
         className="pointer-events-none fixed left-1/2 top-4 z-[var(--z-toast)] flex -translate-x-1/2 flex-col items-center gap-2"
       >
         {toasts.map((t) => (
-          <Island
-            key={t.id}
-            open={t.open}
-            tone={TONE[t.variant]}
-            icon={ICON[t.variant]}
-            className="pointer-events-auto"
-          >
-            <div role="status" className="flex items-start gap-2">
-              <span className="block min-w-0 flex-1 leading-5">{t.message}</span>
-
-              {t.action && (
-                <button
-                  onClick={() => runAction(t)}
-                  disabled={t.running}
-                  className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
-                >
-                  {t.running ? "…" : t.action.label}
-                </button>
-              )}
-
-              <button
-                onClick={() => startExit(t.id)}
-                aria-label="بستن اعلان"
-                className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
-              >
-                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-                  <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
-                </svg>
-              </button>
-            </div>
-          </Island>
+          <ToastCard key={t.id} toast={t} onDone={remove} />
         ))}
       </div>
     </ToastContext.Provider>

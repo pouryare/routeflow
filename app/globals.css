@@ -626,6 +626,38 @@ body {
 
 /* A 1px inner hairline in the tone, so the island reads as belonging to the status it
    carries without the tone becoming the whole surface. */
+/* The undo deadline, drawn.
+   Not a progress animation: the width of this bar is how long the action behind the toast
+   is still free to reverse -- once it empties, the mutation has left the outbox and undo
+   costs a compensating write. See docs/crm-erp-plan.md 4.6.
+   scaleX rather than width, because width drives layout and MASTER.md bans animating it;
+   the fill is a composited transform on an element the island already contains. */
+.island__timer {
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity calc(var(--dur-morph) / 2) var(--ease-out);
+}
+.island--open .island__timer {
+  opacity: 1;
+  transition-delay: calc(var(--dur-morph) / 3);
+}
+.island__timer-fill {
+  width: 100%;
+  height: 100%;
+  background: var(--island-tone);
+  /* The remaining time stays anchored to the start of the reading direction, so the bar
+     drains the way the eye leaves the sentence. */
+  transform-origin: right;
+  will-change: transform;
+}
+[dir="ltr"] .island__timer-fill {
+  transform-origin: left;
+}
+
 .island::after {
   content: "";
   position: absolute;
