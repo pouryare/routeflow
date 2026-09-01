@@ -159,6 +159,21 @@ export function getDb(): DatabaseSync {
       sales_json TEXT NOT NULL
     );
 
+    /* A tenant. RouteFlow is sold to other distributors, so one database holds several
+       independent companies; organization_id on every business table is the boundary
+       between them, and lib/session.ts is where it is enforced. Seeded with exactly one
+       row for the company this database was built for -- see the migration below. */
+    CREATE TABLE IF NOT EXISTS organizations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      slug TEXT UNIQUE NOT NULL,
+      plan TEXT NOT NULL DEFAULT 'standard',
+      active INTEGER NOT NULL DEFAULT 1,
+      contact_name TEXT,
+      contact_phone TEXT,
+      created_at TEXT NOT NULL
+    );
+
     /* A group is one management team covering part of Tehran province. Territory is
        expressed by assigning districts to a group (districts.group_id), not by drawing
        new geometry -- the 22 منطقه and 369 محله polygons are already surveyed, and a
@@ -178,8 +193,9 @@ export function getDb(): DatabaseSync {
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'group_manager'
-        CHECK (role IN ('owner', 'group_manager', 'salesperson', 'driver')),
+        CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'salesperson', 'driver')),
       group_id INTEGER REFERENCES groups(id),
+      organization_id INTEGER REFERENCES organizations(id),
       staff_code TEXT,
       phone TEXT,
       active INTEGER NOT NULL DEFAULT 1,
@@ -792,6 +808,85 @@ export function getDb(): DatabaseSync {
     }
   }
 
+  // ---- Tenancy (RouteFlow Phase 0a, Task 1) -------------------------------------------
+  //
+  // One database, several companies. The boundary is organization_id, and it is enforced
+  // in lib/session.ts rather than at every call site: scopeGroupIds already funnels every
+  // scoped read, and redefining what `owner` means there covers the group-scoped tables
+  // without touching them.
+
+  // Seeded rather than left to a UI. Every backfill below needs an id to point at, and
+  // there is exactly one company in this database at the moment the column appears.
+  const orgCount = db.prepare("SELECT COUNT(*) AS n FROM organizations").get() as unknown as {
+    n: number;
+  };
+  if (orgCount.n === 0) {
+    db.prepare(
+      `INSERT INTO organizations (id, name, slug, plan, active, created_at)
+       VALUES (1, ?, ?, 'standard', 1, ?)`
+    ).run("طعمینو", "tameeno", new Date().toISOString());
+  }
+
+  // users first: every scoping decision reads the organisation off the session, which
+  // reads it off the user row.
+  const userOrgCols = db.prepare("PRAGMA table_info(users)").all() as unknown as { name: string }[];
+  if (!userOrgCols.some((c) => c.name === "organization_id")) {
+    db.exec("ALTER TABLE users ADD COLUMN organization_id INTEGER REFERENCES organizations(id)");
+  }
+  // Backfilled on every boot rather than only alongside the ALTER. During a rolling
+  // deploy an older build is still inserting rows that know nothing about the column, and
+  // a row with a null tenant is invisible to every scoped query -- an account that cannot
+  // see anything and cannot be told why.
+  db.exec("UPDATE users SET organization_id = 1 WHERE organization_id IS NULL");
+
+  // Widen users.role to admit platform_owner: the vendor account, which reads across
+  // tenants so support is possible at all. Guarded on the constraint text rather than on
+  // a column, because the columns are unchanged -- it is the CHECK that has to move.
+  // Same rebuild dance, and the same reasons, as the salesperson widening above.
+  const usersPlatformSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql: string } | undefined;
+  if (usersPlatformSchema && !usersPlatformSchema.sql.includes("platform_owner")) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE users_platform_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'group_manager'
+            CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'salesperson', 'driver')),
+          group_id INTEGER REFERENCES groups(id),
+          organization_id INTEGER REFERENCES organizations(id),
+          staff_code TEXT,
+          phone TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          location_consent_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO users_platform_new
+          (id, username, password_hash, display_name, role, group_id, organization_id,
+           staff_code, phone, active, token_version, location_consent_at, created_at)
+          SELECT id, username, password_hash, display_name, role, group_id, organization_id,
+                 staff_code, phone, active, token_version, location_consent_at, created_at
+            FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_platform_new RENAME TO users;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      // Always, including on the failure path: leaving a connection with enforcement off
+      // would silently drop referential integrity for every write that followed.
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+
   // Territory. Nullable rather than NOT NULL: a district nobody has claimed yet is a
   // real state, and it is different from one deliberately given to a group.
   const districtGroupCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
@@ -1027,6 +1122,17 @@ export interface GroupRow {
   created_at: string;
 }
 
+export interface OrganizationRow {
+  id: number;
+  name: string;
+  slug: string;
+  plan: string;
+  active: number;
+  contact_name: string | null;
+  contact_phone: string | null;
+  created_at: string;
+}
+
 export interface UserRow {
   id: number;
   username: string;
@@ -1034,6 +1140,7 @@ export interface UserRow {
   display_name: string;
   role: Role;
   group_id: number | null;
+  organization_id: number;
   staff_code: string | null;
   phone: string | null;
   active: number;

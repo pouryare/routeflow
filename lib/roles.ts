@@ -10,12 +10,24 @@
  *  a role is now one edit that the type checker propagates everywhere.
  */
 
-export type Role = "owner" | "group_manager" | "salesperson" | "driver";
+export type Role =
+  | "platform_owner"
+  | "owner"
+  | "group_manager"
+  | "salesperson"
+  | "driver";
 
 /** Ordered widest access first, which is also the order they read best in a dropdown. */
-export const ROLES: Role[] = ["owner", "group_manager", "salesperson", "driver"];
+export const ROLES: Role[] = [
+  "platform_owner",
+  "owner",
+  "group_manager",
+  "salesperson",
+  "driver",
+];
 
 export const ROLE_LABEL: Record<Role, string> = {
+  platform_owner: "مدیر سامانه",
   owner: "مالک",
   group_manager: "مدیر گروه",
   salesperson: "فروشنده",
@@ -25,7 +37,8 @@ export const ROLE_LABEL: Record<Role, string> = {
 /** What each role is for, shown beside the picker when creating an account -- the labels
  *  alone do not say that a فروشنده sees only their own orders. */
 export const ROLE_DESCRIPTION: Record<Role, string> = {
-  owner: "دسترسی کامل به همه گروه‌ها، حساب‌ها و گزارش‌ها",
+  platform_owner: "دسترسی به همه سازمان‌ها — فقط برای پشتیبانی سامانه",
+  owner: "دسترسی کامل به همه گروه‌ها، حساب‌ها و گزارش‌های سازمان خودش",
   group_manager: "همه مشتریان، مناطق و سفارش‌های گروه خودش",
   salesperson: "فقط سفارش‌هایی که خودش ثبت کرده و پورسانت خودش",
   driver: "فقط مسیر و تحویل‌های امروز خودش",

@@ -17,7 +17,7 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(ROOT, "data", "coverage.db");
 // Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
 // node with no build step, so it cannot import the TypeScript definition.
-const ROLES = ["owner", "group_manager", "salesperson", "driver"];
+const ROLES = ["platform_owner", "owner", "group_manager", "salesperson", "driver"];
 const USAGE =
   'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|salesperson|driver> [group_id]';
 

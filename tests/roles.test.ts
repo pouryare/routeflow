@@ -2,8 +2,11 @@ import { describe, expect, test } from "vitest";
 import { ROLES, ROLE_LABEL, type Role } from "@/lib/roles";
 
 describe("the role list", () => {
-  test("is the four roles the app has", () => {
-    expect(ROLES).toEqual(["owner", "group_manager", "salesperson", "driver"]);
+  test("is the five roles the app has, widest access first", () => {
+    // platform_owner is the vendor account: RouteFlow is sold to other distributors, so
+    // somebody has to be able to read across tenants to support them. Every other role
+    // stops at the edge of its own organisation.
+    expect(ROLES).toEqual(["platform_owner", "owner", "group_manager", "salesperson", "driver"]);
   });
 
   test("gives every role a Persian label", () => {
@@ -52,7 +55,7 @@ describe("the bootstrap script", () => {
 
 describe("Role", () => {
   test("accepts each member of ROLES", () => {
-    const roles: Role[] = ["owner", "group_manager", "salesperson", "driver"];
-    expect(roles).toHaveLength(4);
+    const roles: Role[] = ["platform_owner", "owner", "group_manager", "salesperson", "driver"];
+    expect(roles).toHaveLength(5);
   });
 });
