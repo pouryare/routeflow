@@ -108,8 +108,20 @@ export default function AccentPicker({
           dir="rtl"
           role="dialog"
           aria-label="انتخاب رنگ ظاهر"
-          className={`absolute z-[var(--z-panel)] w-[16.5rem] rounded-[var(--radius-lg)] border border-border bg-surface-raised p-2.5 shadow-[var(--elev-2)] ${
-            variant === "map" ? "left-0 top-12" : "end-0 top-11"
+          /* The map trigger is pinned to the PHYSICAL right edge (right-4 on the
+             viewport), so its popover has to hang leftward from that edge or it opens
+             straight off the screen -- which is what `left-0` did. Physical `right-0`
+             and not logical `end-0`, because the anchor is physical: in this RTL
+             document `end` resolves to left, which is the bug.
+
+             The header trigger is the opposite case. `.top` is space-between in RTL, so
+             `.topright` sits at the visual LEFT and its popover correctly opens rightward
+             into the page -- hence `end-0` there.
+
+             max-w is the backstop: 264px + the 16px inset still fits a 320px screen, but
+             a narrower one clamps instead of overflowing. */
+          className={`absolute z-[var(--z-panel)] w-[16.5rem] max-w-[calc(100vw-2rem)] rounded-[var(--radius-lg)] border border-border bg-surface-raised p-2.5 shadow-[var(--elev-2)] ${
+            variant === "map" ? "right-0 top-12" : "end-0 top-11"
           }`}
         >
           <p className="mb-2 px-1 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
