@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
   const orders = readOrders(getDb(), orderFilter(guard.session), { limit: 5000 });
 
   const book = new ExcelJS.Workbook();
-  book.creator = "coverage-map";
+  book.creator = "routeflow";
   book.created = new Date();
   const sheet = book.addWorksheet("سفارش‌ها", {
     views: [{ rightToLeft: true, state: "frozen", ySplit: 1 }],

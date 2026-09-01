@@ -170,7 +170,7 @@ async function main() {
             const r = await fetch(fill(s.url, x, y), {
               headers: {
                 "User-Agent":
-                  "coverage-map basemap-thumbnail generator (+https://github.com/, lightlines.dev@gmail.com)",
+                  "routeflow basemap-thumbnail generator (+https://github.com/, lightlines.dev@gmail.com)",
               },
             });
             const buf = Buffer.from(await r.arrayBuffer());

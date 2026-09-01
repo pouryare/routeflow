@@ -71,7 +71,7 @@ function LoginForm() {
         className="relative w-full max-w-sm rounded-lg border border-border bg-surface-raised p-8 elevate-accent"
       >
         <div className="mb-1 font-mono text-xs tracking-[0.12em] text-accent uppercase">
-          Coverage Map
+          RouteFlow
         </div>
         <h1 className="mb-1 text-xl font-bold text-text">نقشه پوشش مشتریان</h1>
         <p className="mb-6 text-sm text-text-muted">

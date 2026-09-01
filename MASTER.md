@@ -1,4 +1,4 @@
-# MASTER — Coverage Map Design System
+# MASTER — RouteFlow Design System
 
 Canonical source of truth. Every color, font, spacing, radius, elevation and motion
 value in the app comes from this file. No magic numbers in components.

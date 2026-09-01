@@ -1,4 +1,4 @@
-# نقشه پوشش مشتریان (Customer Coverage Map)
+# RouteFlow — سامانه فروش، پخش و مدیریت مسیر
 
 A private, password-gated web app showing customers and Tehran-province delivery
 territory (visited / needs coverage / not allowed) on an interactive OpenStreetMap
@@ -126,6 +126,10 @@ workbook changes. District/coverage data is a separate table and is never touche
 this import.
 
 ## Deployment (already set up on this server)
+
+> The systemd unit, the working directory and `COVERAGE_DB_PATH` are still named
+> `coverage-map`. Renaming those means touching a live service and is deliberately
+> not done here — see `docs/crm-erp-plan.md` §2.4.
 
 Runs as systemd service `coverage-map` on port **3003**, bound to `127.0.0.1` only
 (not reachable from outside the machine directly — only through Caddy):

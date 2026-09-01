@@ -7,7 +7,6 @@ import ExcelJS from "exceljs";
 const testDbPath = path.join(os.tmpdir(), `coverage-test-import-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-process.env.APP_PASSWORD = "test-password";
 
 const { importCustomersFromWorkbook } = await import("@/lib/importExcel");
 

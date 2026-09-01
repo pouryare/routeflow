@@ -6,7 +6,6 @@ import os from "node:os";
 const testDbPath = path.join(os.tmpdir(), `coverage-test-fac-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-process.env.APP_PASSWORD = "test-password";
 
 const { getDb, seedFacilities } = await import("@/lib/db");
 

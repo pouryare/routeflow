@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "نقشه پوشش مشتریان",
-    short_name: "Coverage Map",
-    description: "نقشه پوشش مناطق و مشتریان",
+    name: "RouteFlow — پخش و فروش",
+    short_name: "RouteFlow",
+    description: "سامانه فروش، پخش و مدیریت مسیر",
     start_url: "/",
     display: "standalone",
     background_color: "#0A0E14",
