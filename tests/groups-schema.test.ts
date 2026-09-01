@@ -23,7 +23,10 @@ function cols(table: string): string[] {
 
 describe("groups schema", () => {
   it("creates a groups table with the expected columns", () => {
-    expect(cols("groups").sort()).toEqual(["active", "color", "created_at", "id", "name", "slug"].sort());
+    // organization_id joined the list when the app became multi-tenant.
+    expect(cols("groups").sort()).toEqual(
+      ["active", "color", "created_at", "id", "name", "organization_id", "slug"].sort()
+    );
   });
 
   it("requires group names and slugs to be unique", () => {

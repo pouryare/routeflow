@@ -48,6 +48,8 @@ describe("products", () => {
   it("has the columns the sales module needs", () => {
     expect(cols("products").sort()).toEqual(
       [
+        // organization_id joined every tenant table once RouteFlow became multi-tenant.
+        "organization_id",
         "id",
         "name",
         "sku",

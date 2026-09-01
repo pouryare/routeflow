@@ -44,6 +44,8 @@ describe("commission_rates", () => {
   it("has the columns the module needs", () => {
     expect(cols("commission_rates").sort()).toEqual(
       [
+        // organization_id joined every tenant table once RouteFlow became multi-tenant.
+        "organization_id",
         "id",
         "salesperson_user_id",
         "rate_per_kg_toman",
@@ -88,6 +90,8 @@ describe("commission_payments", () => {
   it("has the columns the module needs", () => {
     expect(cols("commission_payments").sort()).toEqual(
       [
+        // organization_id joined every tenant table once RouteFlow became multi-tenant.
+        "organization_id",
         "id",
         "salesperson_user_id",
         "amount_toman",

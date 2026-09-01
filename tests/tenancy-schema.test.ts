@@ -20,7 +20,7 @@ const testDbPath =
 process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-const { getDb } = await import("@/lib/db");
+const { getDb, TENANT_TABLES } = await import("@/lib/db");
 
 afterAll(() => {
   // Only the fixture this file created. A caller-supplied copy of production is theirs
@@ -102,5 +102,64 @@ describe("platform_owner", () => {
         )
         .run()
     ).toThrow();
+  });
+});
+
+describe("organization_id backfill", () => {
+  it("covers every business table", () => {
+    const db = getDb();
+    for (const table of TENANT_TABLES) {
+      const tableCols = (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as {
+        name: string;
+      }[]).map((c) => c.name);
+      expect(tableCols, `${table} is missing organization_id`).toContain("organization_id");
+    }
+  });
+
+  it("leaves no row without an organisation", () => {
+    const db = getDb();
+    for (const table of TENANT_TABLES) {
+      const row = db
+        .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE organization_id IS NULL`)
+        .get() as unknown as { n: number };
+      expect(row.n, `${table} has ${row.n} rows with no organization_id`).toBe(0);
+    }
+  });
+
+  it("names every table that actually holds business rows", () => {
+    // A table added later without a tenant column is the exact failure this catches: it
+    // would be readable by every organisation, and would look like nothing at all until
+    // a second tenant is on the system.
+    const db = getDb();
+    const all = (
+      db
+        .prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`)
+        .all() as unknown as { name: string }[]
+    ).map((r) => r.name);
+
+    // Tables that legitimately carry no tenant of their own: the tenant list itself,
+    // rows that reach a tenant through their parent, and infrastructure that is not
+    // business data.
+    const exempt = new Set([
+      "organizations",
+      "users",              // carries organization_id, but is not scoped *by* TENANT_TABLES
+      "order_lines",        // reaches a tenant through orders
+      "purchase_lines",     // through purchases
+      "delivery_stops",     // through delivery_runs
+      "lead_list_items",    // through lead_lists
+      "packagings",         // through products
+      "product_prices",     // through products
+      "photos",             // through (entity_type, entity_id)
+      "reminders",          // through (entity_type, entity_id)
+      "visit_plans",        // through (entity_type, entity_id)
+      "activity_log",       // through (entity_type, entity_id)
+      "push_subscriptions", // a browser endpoint, not business data
+      "import_log",
+      "import_snapshots",
+      "sales",              // the legacy imported ledger, read-only and being retired
+    ]);
+
+    const unaccounted = all.filter((t) => !exempt.has(t) && !(TENANT_TABLES as readonly string[]).includes(t));
+    expect(unaccounted, "these tables are neither tenant-scoped nor exempt").toEqual([]);
   });
 });

@@ -30,6 +30,35 @@ export function plain<T>(rows: T[]): T[] {
   return rows.map((row) => ({ ...row }));
 }
 
+/** Tables whose rows belong to exactly one tenant and are scoped by organization_id.
+ *
+ *  A table not on this list and not in the exemption set in
+ *  tests/tenancy-schema.test.ts fails the build. That is deliberate: the failure mode
+ *  this list prevents is a table added later with no tenant column, which is readable
+ *  by every organisation and looks like nothing at all until a second tenant is on the
+ *  system.
+ *
+ *  Child tables are absent on purpose -- order_lines reaches its tenant through orders,
+ *  and a second copy of the answer is a second thing to keep in step. */
+export const TENANT_TABLES = [
+  "groups",
+  "customers",
+  "districts",
+  "facilities",
+  "saved_locations",
+  "lead_lists",
+  "products",
+  "orders",
+  "purchases",
+  "delivery_runs",
+  "commission_rates",
+  "commission_payments",
+  "driver_commission_rates",
+  "driver_commission_payments",
+  "manager_commission_overrides",
+  "manager_commission_payments",
+] as const satisfies readonly string[];
+
 export function getDb(): DatabaseSync {
   if (_db) return _db;
 
@@ -887,6 +916,18 @@ export function getDb(): DatabaseSync {
     }
   }
 
+  // ALTER each table now, up front -- every later migration step in this function may
+  // insert or seed rows (seedFacilities is the concrete case), and those inserts must
+  // find the column already there.
+  for (const table of TENANT_TABLES) {
+    const tenantCols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as {
+      name: string;
+    }[];
+    if (!tenantCols.some((c) => c.name === "organization_id")) {
+      db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
+    }
+  }
+
   // Territory. Nullable rather than NOT NULL: a district nobody has claimed yet is a
   // real state, and it is different from one deliberately given to a group.
   const districtGroupCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
@@ -974,6 +1015,15 @@ export function getDb(): DatabaseSync {
   }
 
   seedFacilities(db);
+
+  // The backfill half, run last and every boot: several steps above -- seedFacilities
+  // chief among them -- insert or update rows of their own, and any of them can leave a
+  // fresh row with a null tenant if this ran before they did. Running it after every
+  // other migration step, rather than folded into the ALTER loop, is what makes this
+  // safe regardless of what gets added between here and there in the future.
+  for (const table of TENANT_TABLES) {
+    db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
+  }
 
   _db = db;
   return db;
