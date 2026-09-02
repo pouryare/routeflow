@@ -116,19 +116,35 @@ Plan file: `docs/superpowers/plans/2026-09-01-phase-0a-tenancy-foundation.md`
   (`app/api/lead-lists/route.ts`), Excel importer (`lib/importExcel.ts`,
   pinned to `IMPORT_ORGANIZATION_ID = 1`).
 
-- **Task 6 — NOT STARTED**: `platform_access_log` table + logging every
-  cross-tenant read a `platform_owner` performs.
-- **Task 7 — NOT STARTED**: the two-org leak suite. Seed two full
-  organizations with deliberately colliding natural keys (same customer
-  code, same product SKU, etc.) and assert neither can see the other's
-  data, across every `TENANT_TABLES` entry. This is the test meant to fail
-  the build automatically if a future table is added without its tenant
-  column. `tests/tenancy-writers.test.ts` already sets up a second org
-  (`ORG2 = 2`) and an owner/driver in it — reuse that shape.
+- **Task 6 — DONE** (`6206da2`): `platform_access_log` table +
+  `logPlatformAccess(db, session, path, organizationId)` in
+  `lib/platformAccess.ts`. Writes one row only when a `platform_owner`
+  reads an organisation that is not their own; never throws (a failed
+  audit write is `console.error`'d, not fatal). **Per-endpoint wiring is
+  deliberately deferred** — `requireRole` cannot know which tenant a
+  handler will touch until it resolves the resource, so the
+  `logPlatformAccess` call belongs at each cross-tenant read site and gets
+  added as those support views are built. The table + mechanism + unit
+  test exist now. `platform_access_log` is on the `tenancy-schema` exempt
+  list (its `organization_id` is the tenant looked *at*, not an owner).
+- **Task 7 — DONE** (`8b519c6`): the two-org leak suite.
+  `tests/helpers/twoOrgs.ts` seeds two full companies with colliding
+  natural keys (`SHARED-001`, `SHARED-SKU`, order `1001` in both);
+  `tests/tenancy-isolation.test.ts` asserts neither owner's filters return
+  the other's rows — generically over every `TENANT_TABLES` entry, so a
+  new table without its `organization_id` column fails this build. Also
+  verified against a copy of real pre-tenancy production data
+  (`ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run
+  tests/tenancy-schema.test.ts`): 141 customers / 45 orders / 70 order
+  lines migrate clean, empty `foreign_key_check`, no NULL `organization_id`.
 
-**Immediate next step when resuming implementation:** Task 6, same TDD
-pattern (see `superpowers:executing-plans`). Then Task 7. After Task 7,
-Phase 0a is done — see "How to resume" for the master-plan-doc decision.
+## Phase 0a is COMPLETE (2026-09-02)
+
+All 7 tasks done on `phase-0-tenancy` (11 commits ahead of `main`), full
+suite **87 files / 1120 tests green**. **Not merged, not deployed** — that
+is a deliberate separate step (fresh backup first; the migration rebuilds
+six tables in place). Next decisions: (1) merge/deploy Phase 0a, (2) the
+`docs/crm-erp-plan.md` reconstruction question below, (3) Phase 0b.
 
 ## Bugs found and fixed this phase (read before touching `lib/session.ts` or `lib/db.ts` migrations)
 
