@@ -2,7 +2,14 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CustomerRow, customerLifecycleColor, LIFECYCLE_LABEL, STATUS_COLOR } from "@/lib/types";
+import {
+  CustomerRow,
+  CustomerLifecycle,
+  customerLifecycleColor,
+  LIFECYCLE_LABEL,
+  STATUS_COLOR,
+} from "@/lib/types";
+import { LIFECYCLE_TRANSITIONS } from "@/lib/customerLifecycle";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import StatusPill from "./StatusPill";
@@ -48,6 +55,7 @@ export default function CustomerDetailPanel({
   onTogglePin,
   onClose,
   onReminderAdded,
+  onUpdated,
 }: {
   customer: CustomerRow;
   facilities?: FacilityRow[];
@@ -57,6 +65,9 @@ export default function CustomerDetailPanel({
   onTogglePin?: () => void;
   onClose: () => void;
   onReminderAdded?: () => void;
+  /** Fired after a field on this customer is changed (e.g. lifecycle) so the caller
+   *  can refetch. The panel also updates its own pill optimistically. */
+  onUpdated?: () => void;
 }) {
   const panelRef = useRef<HTMLDivElement>(null);
   const toast = useToast();
@@ -132,7 +143,35 @@ export default function CustomerDetailPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [handleClose]);
 
-  const statusColor = customerLifecycleColor(customer.lifecycle);
+  // An optimistic override for the moment between the PATCH and the parent's refetch.
+  // null means "show whatever the customer prop says".
+  const [pendingLifecycle, setPendingLifecycle] = useState<CustomerLifecycle | null>(null);
+  const [lifecycleBusy, setLifecycleBusy] = useState(false);
+  const lifecycle: CustomerLifecycle = pendingLifecycle ?? customer.lifecycle;
+
+  const changeLifecycle = useCallback(
+    async (next: CustomerLifecycle) => {
+      if (next === lifecycle || lifecycleBusy) return;
+      setLifecycleBusy(true);
+      setPendingLifecycle(next); // optimistic
+      const res = await fetch(`/api/customers/${customer.id}/lifecycle`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lifecycle: next }),
+      });
+      setLifecycleBusy(false);
+      if (res.ok) {
+        onUpdated?.();
+      } else {
+        setPendingLifecycle(null);
+        const body = (await res.json().catch(() => null)) as { error?: string } | null;
+        toast(body?.error ?? "تغییر وضعیت انجام نشد", "error");
+      }
+    },
+    [customer.id, lifecycle, lifecycleBusy, onUpdated, toast]
+  );
+
+  const statusColor = customerLifecycleColor(lifecycle);
   const debt = debtTier(customer);
 
   const bento = useCustomerSummary(customer.id);
@@ -209,7 +248,27 @@ export default function CustomerDetailPanel({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        <StatusPill color={statusColor} label={LIFECYCLE_LABEL[customer.lifecycle]} />
+        <StatusPill color={statusColor} label={LIFECYCLE_LABEL[lifecycle]} />
+        <label className="sr-only" htmlFor="lifecycle-select">
+          تغییر وضعیت مشتری
+        </label>
+        <select
+          id="lifecycle-select"
+          value=""
+          disabled={lifecycleBusy || LIFECYCLE_TRANSITIONS[lifecycle].length === 0}
+          onChange={(e) => {
+            const next = e.target.value as CustomerLifecycle;
+            if (next) void changeLifecycle(next);
+          }}
+          className="rounded-[var(--radius-sm)] border border-border bg-surface px-1.5 py-0.5 text-[length:var(--text-xs)] text-text-muted"
+        >
+          <option value="">تغییر وضعیت…</option>
+          {LIFECYCLE_TRANSITIONS[lifecycle].map((s) => (
+            <option key={s} value={s}>
+              {LIFECYCLE_LABEL[s]}
+            </option>
+          ))}
+        </select>
         <span className="font-mono text-[length:var(--text-xs)] text-text-faint">{customer.customer_code}</span>
         <div className="mr-auto flex items-center gap-1.5">
           {/* A link straight back to this customer on this map -- the thing you send

@@ -2373,6 +2373,7 @@ export default function CoverageMap({
             onTogglePin={() => togglePinned(selectedCustomer.id)}
             onClose={() => setSelectedCustomer(null)}
             onReminderAdded={loadReminders}
+            onUpdated={loadCustomers}
           />
         )}
       </div>
