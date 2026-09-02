@@ -49,7 +49,7 @@ describe("users rebuild", () => {
     expect(cols("users").sort()).toEqual(
       // organization_id joined the list when the app became multi-tenant: a user belongs
       // to exactly one company, and every scoping decision reads it off this row.
-      ["active", "created_at", "display_name", "group_id", "id", "location_consent_at", "organization_id", "password_hash", "phone", "role", "staff_code", "token_version", "username"].sort()
+      ["active", "created_at", "display_name", "group_id", "id", "location_consent_at", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "token_version", "username"].sort()
     );
   });
 

@@ -90,6 +90,7 @@ export const TENANT_TABLES = [
   "forecasts",
   "churn_models",
   "churn_scores",
+  "task_recurrences",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1698,6 +1699,32 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, user_id, group_id, period, metric)
     );
 
+    /* Board & Pocket: a template that spawns a task on a schedule. The sweep
+       (spawnRecurringTasks in lib/repo/rules.ts, run from /api/rules/run) inserts a
+       tasks row when rrule matches today and last_spawned_on is not today. rrule is one
+       of daily, weekly:<sat..fri>, or monthly:<1-28> -- validated in
+       lib/tasks/recurrence.ts, no CHECK because the vocabulary may still grow. */
+    CREATE TABLE IF NOT EXISTS task_recurrences (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      title TEXT NOT NULL,
+      kind TEXT NOT NULL,
+      assignee_user_id INTEGER REFERENCES users(id),
+      role_hint TEXT,
+      group_id INTEGER REFERENCES groups(id),
+      entity_type TEXT, entity_id INTEGER,
+      priority TEXT NOT NULL DEFAULT 'NORMAL'
+        CHECK (priority IN ('CRITICAL', 'HIGH', 'NORMAL', 'LOW')),
+      rrule TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      last_spawned_on TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_task_recurrences_active
+      ON task_recurrences(organization_id, active);
+
     /* Phase 8 (Academy): objection-response cards keyed to the outcome_code a
        salesperson picks on a task. organization_id NULL = a shipped starter; a tenant
        overrides by (outcome_code, customer_type). */
@@ -2855,6 +2882,19 @@ export function getDb(): DatabaseSync {
     db.exec(
       `CREATE UNIQUE INDEX IF NOT EXISTS ix_${t}_client_uuid ON ${t}(client_uuid) WHERE client_uuid IS NOT NULL`
     );
+  }
+
+  // Board & Pocket: two nullable columns. tasks.stage is the per-kind pipeline stage
+  // for the board's workflow lens -- NULL means "derive from status" (lib/tasks/lenses).
+  // users.prefs_json holds { board_mobile_mode, board_default_view } -- server-side so a
+  // member's board choice follows them across devices.
+  const bpTaskCols = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+  if (!bpTaskCols.some((c) => c.name === "stage")) {
+    db.exec("ALTER TABLE tasks ADD COLUMN stage TEXT");
+  }
+  const bpUserCols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
+  if (!bpUserCols.some((c) => c.name === "prefs_json")) {
+    db.exec("ALTER TABLE users ADD COLUMN prefs_json TEXT");
   }
 
   _db = db;
