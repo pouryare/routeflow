@@ -14,6 +14,7 @@ export type Role =
   | "platform_owner"
   | "owner"
   | "group_manager"
+  | "rep_manager"
   | "salesperson"
   | "driver";
 
@@ -22,6 +23,7 @@ export const ROLES: Role[] = [
   "platform_owner",
   "owner",
   "group_manager",
+  "rep_manager",
   "salesperson",
   "driver",
 ];
@@ -30,6 +32,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   platform_owner: "مدیر سامانه",
   owner: "مالک",
   group_manager: "مدیر گروه",
+  rep_manager: "مدیر نمایندگان",
   salesperson: "فروشنده",
   driver: "راننده",
 };
@@ -40,6 +43,7 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   platform_owner: "دسترسی به همه سازمان‌ها — فقط برای پشتیبانی سامانه",
   owner: "دسترسی کامل به همه گروه‌ها، حساب‌ها و گزارش‌های سازمان خودش",
   group_manager: "همه مشتریان، مناطق و سفارش‌های گروه خودش",
+  rep_manager: "نمایندگان سازمان خودش — پروفایل، مراحل پذیرش و اهداف؛ بدون دسترسی به مناطق گروه‌ها",
   salesperson: "فقط سفارش‌هایی که خودش ثبت کرده و پورسانت خودش",
   driver: "فقط مسیر و تحویل‌های امروز خودش",
 };

@@ -313,7 +313,7 @@ export function getDb(): DatabaseSync {
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'group_manager'
-        CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'salesperson', 'driver')),
+        CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'salesperson', 'driver')),
       group_id INTEGER REFERENCES groups(id),
       organization_id INTEGER REFERENCES organizations(id),
       staff_code TEXT,
@@ -1003,6 +1003,51 @@ export function getDb(): DatabaseSync {
     } finally {
       // Always, including on the failure path: leaving a connection with enforcement off
       // would silently drop referential integrity for every write that followed.
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+
+  // Phase 0b: widen users.role again to admit rep_manager -- the person who runs the
+  // representative network for one organisation. Same rebuild dance and reasons as the
+  // platform_owner widening above, guarded on the constraint text.
+  const usersRepMgrSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql: string } | undefined;
+  if (usersRepMgrSchema && !usersRepMgrSchema.sql.includes("rep_manager")) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE users_repmgr_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'group_manager'
+            CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'salesperson', 'driver')),
+          group_id INTEGER REFERENCES groups(id),
+          organization_id INTEGER REFERENCES organizations(id),
+          staff_code TEXT,
+          phone TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          location_consent_at TEXT,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO users_repmgr_new
+          (id, username, password_hash, display_name, role, group_id, organization_id,
+           staff_code, phone, active, token_version, location_consent_at, created_at)
+          SELECT id, username, password_hash, display_name, role, group_id, organization_id,
+                 staff_code, phone, active, token_version, location_consent_at, created_at
+            FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_repmgr_new RENAME TO users;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
       db.exec("PRAGMA foreign_keys = ON");
     }
   }

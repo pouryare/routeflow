@@ -17,9 +17,9 @@ const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(ROOT, "data", "coverage.db");
 // Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
 // node with no build step, so it cannot import the TypeScript definition.
-const ROLES = ["platform_owner", "owner", "group_manager", "salesperson", "driver"];
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"];
 const USAGE =
-  'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|salesperson|driver> [group_id]';
+  'Usage: node scripts/create-user.mjs <username> <password> "<Display Name>" <owner|group_manager|rep_manager|salesperson|driver> [group_id]';
 
 const [username, password, displayName, role, groupArg] = process.argv.slice(2);
 if (!username || !password || !displayName || !role) {
@@ -34,8 +34,9 @@ if (!ROLES.includes(role)) {
 // An owner is unscoped by design. A non-owner with no group can reach nothing at all --
 // groupFilter() becomes " AND 1 = 0" -- so the account would log in and then show an
 // empty app, which looks like a broken deployment rather than a misconfigured account.
-const groupId = role === "owner" ? null : Number(groupArg);
-if (role !== "owner" && !Number.isInteger(groupId)) {
+const UNSCOPED = role === "owner" || role === "rep_manager";
+const groupId = UNSCOPED ? null : Number(groupArg);
+if (!UNSCOPED && !Number.isInteger(groupId)) {
   console.error(`[create-user] role "${role}" needs a group_id as the fifth argument.`);
   console.error(USAGE);
   process.exit(1);
