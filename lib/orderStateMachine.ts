@@ -1,0 +1,187 @@
+/** The lifecycle of an order, as one explicit transition table.
+ *
+ *  `orders.status` used to have four values advanced by `UPDATE orders SET status = …`
+ *  scattered across five files. This replaces that: every legal move is a row below, and
+ *  everything else -- which buttons a role sees, which API calls exist, what the audit
+ *  trail records, which side-effects fire -- is derived from it. An illegal move is a
+ *  409 with the legal options listed, never a silent no-op.
+ *
+ *  `roles` lists who may fire a transition. `"system"` in the list means an internal
+ *  caller (an effect, a migration, `recordDelivery`) is allowed to fire it while passing
+ *  `role: "system"`; a real user still needs their own role named. `effects` run in
+ *  order inside the caller's transaction.
+ *
+ *  Pure module -- no `lib/db` / `lib/repo` import, so it unit-tests in isolation and is
+ *  safe to pull into anything.
+ */
+
+export type OrderStatus =
+  | "DRAFT"
+  | "PENDING_REVIEW"
+  | "PENDING_CREDIT"
+  | "ON_HOLD"
+  | "CONFIRMED"
+  | "PLANNED"
+  | "READY"
+  | "OUT_FOR_DELIVERY"
+  | "DELIVERED"
+  | "PARTIALLY_DELIVERED"
+  | "DELIVERY_FAILED"
+  | "CLOSED"
+  | "CANCELLED"
+  | "RETURNED";
+
+export type OrderAction =
+  | "submit"
+  | "passReview"
+  | "flagCredit"
+  | "approveCredit"
+  | "rejectCredit"
+  | "releaseHold"
+  | "plan"
+  | "unplan"
+  | "freeze"
+  | "startRoute"
+  | "deliver"
+  | "deliverPartial"
+  | "failDelivery"
+  | "retryDelivery"
+  | "settle"
+  | "cancel"
+  | "returnOrder";
+
+export type OrderRole = "salesperson" | "group_manager" | "owner" | "driver" | "system";
+
+/** Side-effects a transition may carry. Each is a named handler in lib/repo/orders.ts,
+ *  run in listed order inside the caller's transaction. */
+export type OrderEffect =
+  | "reserveStock"
+  | "releaseReservations"
+  | "consumeReservations"
+  | "createCreditApprovalTask"
+  | "clearCreditHold"
+  | "spawnBackorder"
+  | "stampDelivered";
+
+export interface OrderTransition {
+  from: OrderStatus;
+  action: OrderAction;
+  to: OrderStatus;
+  roles: OrderRole[];
+  effects?: OrderEffect[];
+}
+
+/** One row per legal edge. Anything not here is illegal. */
+export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
+  { from: "DRAFT", action: "submit", to: "PENDING_REVIEW", roles: ["salesperson", "group_manager", "owner"] },
+  { from: "DRAFT", action: "cancel", to: "CANCELLED", roles: ["salesperson", "group_manager", "owner"], effects: ["releaseReservations"] },
+
+  { from: "PENDING_REVIEW", action: "passReview", to: "CONFIRMED", roles: ["group_manager", "owner", "system"], effects: ["reserveStock"] },
+  { from: "PENDING_REVIEW", action: "flagCredit", to: "PENDING_CREDIT", roles: ["system"], effects: ["createCreditApprovalTask"] },
+  { from: "PENDING_REVIEW", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
+
+  { from: "PENDING_CREDIT", action: "approveCredit", to: "CONFIRMED", roles: ["group_manager", "owner"], effects: ["clearCreditHold", "reserveStock"] },
+  { from: "PENDING_CREDIT", action: "rejectCredit", to: "ON_HOLD", roles: ["group_manager", "owner"] },
+  { from: "PENDING_CREDIT", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
+
+  { from: "ON_HOLD", action: "releaseHold", to: "CONFIRMED", roles: ["group_manager", "owner"], effects: ["clearCreditHold", "reserveStock"] },
+  { from: "ON_HOLD", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
+
+  { from: "CONFIRMED", action: "plan", to: "PLANNED", roles: ["group_manager", "owner", "system"] },
+  { from: "CONFIRMED", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
+
+  { from: "PLANNED", action: "unplan", to: "CONFIRMED", roles: ["group_manager", "owner", "system"] },
+  { from: "PLANNED", action: "freeze", to: "READY", roles: ["group_manager", "owner", "system"] },
+
+  { from: "READY", action: "startRoute", to: "OUT_FOR_DELIVERY", roles: ["driver", "group_manager", "owner", "system"] },
+  { from: "READY", action: "unplan", to: "CONFIRMED", roles: ["group_manager", "owner"] },
+
+  { from: "OUT_FOR_DELIVERY", action: "deliver", to: "DELIVERED", roles: ["driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
+  { from: "OUT_FOR_DELIVERY", action: "deliverPartial", to: "PARTIALLY_DELIVERED", roles: ["driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
+  { from: "OUT_FOR_DELIVERY", action: "failDelivery", to: "DELIVERY_FAILED", roles: ["driver", "system"], effects: ["releaseReservations"] },
+
+  { from: "DELIVERY_FAILED", action: "retryDelivery", to: "PLANNED", roles: ["group_manager", "owner", "system"] },
+  { from: "DELIVERY_FAILED", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },
+
+  { from: "DELIVERED", action: "settle", to: "CLOSED", roles: ["system", "group_manager", "owner"] },
+  { from: "DELIVERED", action: "returnOrder", to: "RETURNED", roles: ["group_manager", "owner"] },
+
+  { from: "PARTIALLY_DELIVERED", action: "settle", to: "CLOSED", roles: ["system", "group_manager", "owner"], effects: ["spawnBackorder"] },
+  { from: "PARTIALLY_DELIVERED", action: "returnOrder", to: "RETURNED", roles: ["group_manager", "owner"] },
+] as const;
+
+/** The transition for a (from, action) pair, or undefined if the move is illegal. */
+export function orderTransition(
+  from: OrderStatus,
+  action: OrderAction
+): OrderTransition | undefined {
+  return ORDER_TRANSITIONS.find((t) => t.from === from && t.action === action);
+}
+
+/** Every action legal from `from` for `role`. `role` "system" sees every internal edge. */
+export function legalOrderActions(from: OrderStatus, role: OrderRole): OrderAction[] {
+  return ORDER_TRANSITIONS.filter(
+    (t) => t.from === from && t.roles.includes(role)
+  ).map((t) => t.action);
+}
+
+/** Whether `role` may fire `action` from `from`. Distinguishes "no such edge" (handled by
+ *  the caller as 409) from "edge exists, wrong role" -- this returns false for both, so
+ *  callers that need the distinction check `orderTransition` first. */
+export function canAdvanceOrder(
+  from: OrderStatus,
+  action: OrderAction,
+  role: OrderRole
+): boolean {
+  const t = orderTransition(from, action);
+  return !!t && t.roles.includes(role);
+}
+
+export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
+  DRAFT: "پیش‌نویس",
+  PENDING_REVIEW: "در انتظار بررسی",
+  PENDING_CREDIT: "در انتظار تأیید اعتبار",
+  ON_HOLD: "متوقف",
+  CONFIRMED: "تأییدشده",
+  PLANNED: "برنامه‌ریزی‌شده",
+  READY: "آمادهٔ ارسال",
+  OUT_FOR_DELIVERY: "در مسیر",
+  DELIVERED: "تحویل‌شده",
+  PARTIALLY_DELIVERED: "تحویل ناقص",
+  DELIVERY_FAILED: "تحویل ناموفق",
+  CLOSED: "بسته‌شده",
+  CANCELLED: "لغوشده",
+  RETURNED: "مرجوعی",
+};
+
+/** Colour role names from MASTER.md -- callers map to CSS vars. */
+export const ORDER_STATUS_TONE: Record<OrderStatus, "good" | "warn" | "crit" | "info" | "faint"> = {
+  DRAFT: "faint",
+  PENDING_REVIEW: "info",
+  PENDING_CREDIT: "crit",
+  ON_HOLD: "crit",
+  CONFIRMED: "info",
+  PLANNED: "info",
+  READY: "info",
+  OUT_FOR_DELIVERY: "warn",
+  DELIVERED: "good",
+  PARTIALLY_DELIVERED: "warn",
+  DELIVERY_FAILED: "crit",
+  CLOSED: "good",
+  CANCELLED: "faint",
+  RETURNED: "warn",
+};
+
+/** Nothing moves out of these. */
+export const TERMINAL_ORDER_STATUSES: ReadonlySet<OrderStatus> = new Set<OrderStatus>([
+  "CLOSED",
+  "CANCELLED",
+  "RETURNED",
+]);
+
+export function isTerminalOrderStatus(s: OrderStatus): boolean {
+  return TERMINAL_ORDER_STATUSES.has(s);
+}
+
+/** All 14 statuses, for schema checks and iteration. */
+export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
