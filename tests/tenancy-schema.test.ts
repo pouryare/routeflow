@@ -149,6 +149,7 @@ describe("organization_id backfill", () => {
       "order_events",       // through orders (carries organization_id for cheap filtering)
       "purchase_lines",     // through purchases
       "delivery_stops",     // through delivery_runs
+      "route_schedules",    // through route_templates
       "delivery_lines",     // through deliveries
       "lead_list_items",    // through lead_lists
       "packagings",         // through products

@@ -72,6 +72,8 @@ export const TENANT_TABLES = [
   "stock_reservations",
   "sync_mutations",
   "deleted_rows",
+  "vehicles",
+  "route_templates",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -111,6 +113,47 @@ function rebuildForTenantUnique(
   } finally {
     db.exec("PRAGMA foreign_keys = ON;");
   }
+}
+
+/** Phase 5: add 'ready' to delivery_runs.status. SQLite cannot ALTER a CHECK, and by the
+ *  time this runs delivery_runs has picked up ten Phase-5 columns, so rather than
+ *  hard-code a createSql this reads the live CREATE, rewrites just the CHECK list, and
+ *  copies every column via PRAGMA table_info. Guarded on the CHECK already naming
+ *  'ready'. */
+function rebuildDeliveryRunsStatus(db: DatabaseSync): void {
+  const schema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='delivery_runs'")
+    .get() as { sql: string } | undefined;
+  if (!schema || schema.sql.includes("'ready'")) return;
+
+  const newSql = schema.sql
+    .replace(/CREATE TABLE\s+delivery_runs/i, "CREATE TABLE delivery_runs_dr_new")
+    .replace(
+      "CHECK (status IN ('planned', 'in_progress', 'done'))",
+      "CHECK (status IN ('planned', 'ready', 'in_progress', 'done'))"
+    );
+  const cols = (db.prepare("PRAGMA table_info(delivery_runs)").all() as { name: string }[])
+    .map((c) => `"${c.name}"`)
+    .join(", ");
+
+  db.exec("PRAGMA foreign_keys = OFF;");
+  db.exec("BEGIN");
+  try {
+    db.exec(`
+      ${newSql};
+      INSERT INTO delivery_runs_dr_new (${cols}) SELECT ${cols} FROM delivery_runs;
+      DROP TABLE delivery_runs;
+      ALTER TABLE delivery_runs_dr_new RENAME TO delivery_runs;
+      CREATE INDEX IF NOT EXISTS idx_delivery_runs_driver ON delivery_runs(driver_user_id, run_date);
+    `);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
+  }
+  console.info("[migrate] delivery_runs.status gained 'ready'");
 }
 
 /** Phase 3: rebuild `orders` so `status` carries the 12+2-state machine instead of the
@@ -1466,6 +1509,62 @@ export function getDb(): DatabaseSync {
       deleted_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_deleted_rows_since ON deleted_rows(organization_id, deleted_at);
+
+    /* Phase 5 (Routing / M7): the fleet. has_refrigeration is a hard skill -- above 30 C
+       (Phase 6) an unrefrigerated van has a maximum time before quality is at risk, so
+       the router treats a refrigerated vehicle as a required skill on hot days. */
+    CREATE TABLE IF NOT EXISTS vehicles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      plate TEXT,
+      name TEXT NOT NULL,
+      driver_default_id INTEGER REFERENCES users(id),
+      max_weight_kg REAL,
+      max_volume_m3 REAL,
+      max_stops INTEGER,
+      has_refrigeration INTEGER NOT NULL DEFAULT 0,
+      cost_per_km_toman INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, plate)
+    );
+
+    /* A recurring delivery route: a territory, a default driver+vehicle, capacity ceilings
+       and a per-stop service time the planner uses to estimate duration. */
+    CREATE TABLE IF NOT EXISTS route_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      territory_id INTEGER REFERENCES districts(id),
+      default_driver_id INTEGER REFERENCES users(id),
+      default_vehicle_id INTEGER REFERENCES vehicles(id),
+      max_stops INTEGER,
+      max_weight_kg REAL,
+      max_volume_m3 REAL,
+      max_duration_min INTEGER,
+      service_time_min INTEGER NOT NULL DEFAULT 8,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, code)
+    );
+
+    /* When each template runs. cutoff_time: after this, adding an order to that day's run
+       needs an explicit decision (see lib/repo/routing.freezeRun + addStop force). */
+    CREATE TABLE IF NOT EXISTS route_schedules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      route_template_id INTEGER NOT NULL REFERENCES route_templates(id) ON DELETE CASCADE,
+      day_of_week INTEGER NOT NULL,
+      start_time TEXT,
+      end_time TEXT,
+      cutoff_time TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      UNIQUE (route_template_id, day_of_week)
+    );
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
@@ -2375,6 +2474,37 @@ export function getDb(): DatabaseSync {
   // Phase 3: give every legacy order a synthetic 'create' event so its timeline is not
   // blank. After backfillStockLedger so a fresh boot has done all its table rebuilds.
   backfillOrderEvents(db);
+
+  // Phase 5 (Routing): delivery_runs gains the planning + optimisation record. Plain ADD
+  // COLUMN, guarded per column.
+  const drCols = (db.prepare("PRAGMA table_info(delivery_runs)").all() as { name: string }[]).map(
+    (c) => c.name
+  );
+  const drAdds: [string, string][] = [
+    ["vehicle_id", "INTEGER REFERENCES vehicles(id)"],
+    ["route_template_id", "INTEGER REFERENCES route_templates(id)"],
+    ["planned_distance_km", "REAL"],
+    ["actual_distance_km", "REAL"],
+    ["planned_duration_min", "INTEGER"],
+    ["actual_duration_min", "INTEGER"],
+    ["capacity_stops", "INTEGER"],
+    ["weather_json", "TEXT"],
+    ["optimisation_json", "TEXT"],
+    ["frozen_at", "TEXT"],
+  ];
+  for (const [col, type] of drAdds) {
+    if (!drCols.includes(col)) db.exec(`ALTER TABLE delivery_runs ADD COLUMN ${col} ${type}`);
+  }
+  // A 'ready' status between 'planned' and 'in_progress' -- the run is frozen but the
+  // driver has not started. CHECK change -> a guarded rebuild.
+  rebuildDeliveryRunsStatus(db);
+
+  const prodVolCols = (db.prepare("PRAGMA table_info(products)").all() as { name: string }[]).map(
+    (c) => c.name
+  );
+  if (!prodVolCols.includes("volume_m3_per_base_unit")) {
+    db.exec("ALTER TABLE products ADD COLUMN volume_m3_per_base_unit REAL");
+  }
 
   // Phase 4 (Offline-first): client_uuid on every offline-writable table. No CHECK, so a
   // plain ADD COLUMN + a *partial* UNIQUE index (WHERE client_uuid IS NOT NULL) -- every

@@ -64,6 +64,8 @@ describe("products", () => {
         "target_stock",
         // Phase 2 (Stock & Batches): shelf life in days, for batch expiry defaulting.
         "shelf_life_days",
+        // Phase 5 (Routing): m³ per base unit, for vehicle volume capacity.
+        "volume_m3_per_base_unit",
       ].sort()
     );
   });
