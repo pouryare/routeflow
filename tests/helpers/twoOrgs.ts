@@ -18,6 +18,8 @@ export interface OrgFixture {
   reasonCodeId: number;
   deliveryId: number;
   syncMutationId: number;
+  vehicleId: number;
+  routeTemplateId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -238,6 +240,24 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 5: a vehicle (colliding plate to prove the per-tenant UNIQUE) + a template.
+    const vehicleId = insert(
+      `INSERT INTO vehicles (organization_id, name, plate, created_at, updated_at)
+       VALUES (?, ?, 'SHARED-PLATE', ?, ?)`,
+      orgId,
+      `وانت ${tag}`,
+      NOW,
+      NOW
+    );
+    const routeTemplateId = insert(
+      `INSERT INTO route_templates (organization_id, code, name, created_at, updated_at)
+       VALUES (?, 'SHARED-RT', ?, ?, ?)`,
+      orgId,
+      `شرق ${tag}`,
+      NOW,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -256,6 +276,8 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       reasonCodeId,
       deliveryId,
       syncMutationId,
+      vehicleId,
+      routeTemplateId,
     };
   };
 

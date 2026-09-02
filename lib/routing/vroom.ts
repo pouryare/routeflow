@@ -137,8 +137,7 @@ export function applyVroomSolution(response: VroomResponse): SolveResult {
  *  order, respect capacity, overflow to `unassigned`. */
 export function greedyAssign(
   deliveries: RoutableDelivery[],
-  vehicles: RoutableVehicle[],
-  _matrix?: { durations: number[][] }
+  vehicles: RoutableVehicle[]
 ): SolveResult {
   const assignments: Assignment[] = [];
   const unassigned: number[] = [];

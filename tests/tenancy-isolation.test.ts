@@ -179,6 +179,29 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(shared.n).toBe(2);
   });
 
+  it("keeps vehicles and route templates apart; the plate UNIQUE is per-tenant", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      for (const [table, selfId, otherId] of [
+        ["vehicles", self.vehicleId, other.vehicleId],
+        ["route_templates", self.routeTemplateId, other.routeTemplateId],
+      ] as const) {
+        const rows = db
+          .prepare(`SELECT id FROM ${table} WHERE organization_id = ?`)
+          .all(self.orgId) as { id: number }[];
+        expect(rows.map((r) => r.id)).toContain(selfId);
+        expect(rows.map((r) => r.id)).not.toContain(otherId);
+      }
+    }
+    const plates = db
+      .prepare("SELECT COUNT(*) AS n FROM vehicles WHERE plate = 'SHARED-PLATE'")
+      .get() as { n: number };
+    expect(plates.n).toBe(2);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [
