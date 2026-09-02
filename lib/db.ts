@@ -68,6 +68,7 @@ export const TENANT_TABLES = [
   "delivery_line_batches",
   "quality_complaints",
   "reason_codes",
+  "deliveries",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1058,6 +1059,53 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_delivery_stops_run ON delivery_stops(run_id, sort_order);
     CREATE INDEX IF NOT EXISTS idx_delivery_stops_order ON delivery_stops(order_id);
+
+    /* Phase 3 (M6): delivery as its own entity, between the order and the route stop.
+       One stop may carry several deliveries (two orders for one customer, one visit);
+       one order may have several deliveries (a retry after a failed attempt is seq 2).
+       actual_arrival and completed_at are SERVER timestamps, set on receipt -- the
+       device's own clock goes to device_time so a divergence is visible, not trusted. */
+    CREATE TABLE IF NOT EXISTS deliveries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      seq INTEGER NOT NULL DEFAULT 1,
+      status TEXT NOT NULL DEFAULT 'PLANNED' CHECK (status IN
+        ('PLANNED', 'ASSIGNED', 'LOADED', 'IN_TRANSIT', 'DELIVERED', 'PARTIAL',
+         'FAILED', 'RETURNED', 'CANCELLED')),
+      route_stop_id INTEGER REFERENCES delivery_stops(id),
+      planned_date TEXT,
+      planned_arrival TEXT,
+      actual_arrival TEXT,
+      completed_at TEXT,
+      fail_reason_id INTEGER REFERENCES reason_codes(id),
+      delay_reason_id INTEGER REFERENCES reason_codes(id),
+      receiver_name TEXT,
+      signature_path TEXT,
+      photo_path TEXT,
+      gps_lat REAL,
+      gps_lng REAL,
+      collected_toman INTEGER NOT NULL DEFAULT 0,
+      payment_id INTEGER REFERENCES payments(id),
+      device_time TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      UNIQUE (order_id, seq)
+    );
+    CREATE INDEX IF NOT EXISTS idx_deliveries_order ON deliveries(order_id, seq);
+    CREATE INDEX IF NOT EXISTS idx_deliveries_stop ON deliveries(route_stop_id);
+
+    /* What was planned vs. what was actually handed over / brought back, per order line.
+       Child of deliveries for tenancy. */
+    CREATE TABLE IF NOT EXISTS delivery_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      delivery_id INTEGER NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE,
+      order_line_id INTEGER NOT NULL REFERENCES order_lines(id),
+      qty_planned REAL NOT NULL DEFAULT 0,
+      qty_delivered REAL NOT NULL DEFAULT 0,
+      qty_returned REAL NOT NULL DEFAULT 0
+    );
+    CREATE INDEX IF NOT EXISTS idx_delivery_lines_delivery ON delivery_lines(delivery_id);
 
     /* ---- Commission ---------------------------------------------------------------
        Paid per kilogram of goods delivered. Effective-dated and INSERT-only, like
@@ -2054,6 +2102,14 @@ export function getDb(): DatabaseSync {
   // ADD COLUMN above, so the rebuild's value map can read credit_hold on every path.
   // Guarded on the CHECK already naming PENDING_REVIEW.
   rebuildOrdersStatusMachine(db);
+
+  // Phase 3 (M6): delivery_line_batches gains a link to the deliveries row. Plain ADD,
+  // nullable -- Phase 2's backfilled rows keep only delivery_stop_id; new code writes
+  // both.
+  const dlbCols = db.prepare("PRAGMA table_info(delivery_line_batches)").all() as { name: string }[];
+  if (!dlbCols.some((c) => c.name === "delivery_id")) {
+    db.exec("ALTER TABLE delivery_line_batches ADD COLUMN delivery_id INTEGER REFERENCES deliveries(id)");
+  }
 
   const districtCentroidCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
   if (!districtCentroidCols.some((c) => c.name === "centroid_lat")) {
