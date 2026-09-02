@@ -6,11 +6,20 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
+import { getDb } from "./db";
 import { resolvePrice } from "./catalogue";
 import { toJalali } from "./jalali";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
 import { PRICED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
+import type { OrderRole, OrderStatus } from "./orderStateMachine";
+import {
+  advanceOrder,
+  appendOrderEvent,
+  OrderError,
+  OrderTransitionError,
+  OrderRoleError,
+} from "./repo/orders";
 import {
   formatOrderNo,
   orderTotalToman,
@@ -22,8 +31,7 @@ import {
   type LineSnapshot,
 } from "./orderMath";
 
-/** A refusal the caller is expected to show the user, rather than a bug. */
-export class OrderError extends Error {}
+export { OrderError, OrderTransitionError, OrderRoleError };
 
 export interface LineInput {
   product_id: number;
@@ -201,23 +209,17 @@ export function createOrder(
       insertLine(db, orderId, input.order_date, line, now);
     }
 
-    // Credit control for direct customers: if the order would take the customer past a
-    // set limit, park it (credit_hold = 1) and file an approval request. A rep is
-    // exempt; a customer with no limit set is never held.
-    if (!isRepresentative && customer.credit_limit_toman !== null) {
-      const orderTotal = orderTotalToman(linesOf(db, orderId));
-      const balance = customerDebt(input.organization_id, input.customer_id).total;
-      if (balance + orderTotal > customer.credit_limit_toman) {
-        db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ?").run(orderId);
-        requestApproval(input.organization_id, {
-          order_id: orderId,
-          requested_by: input.created_by,
-          customer_id: input.customer_id,
-          customer_balance_toman: balance,
-          credit_limit_toman: customer.credit_limit_toman,
-        });
-      }
-    }
+    // Phase 3: an order is born a DRAFT. Credit control moved to submitOrder -- it is a
+    // property of *submitting* for review, not of typing the slip. Record the birth so
+    // the order_events timeline is never blank.
+    appendOrderEvent(db, {
+      organization_id: input.organization_id,
+      order_id: orderId,
+      from_status: null,
+      to_status: "DRAFT",
+      action: "create",
+      actor_user_id: input.created_by,
+    });
 
     db.exec("COMMIT");
     return { id: orderId, order_no: orderNo };
@@ -270,9 +272,82 @@ export function addLine(db: DatabaseSync, orderId: number, line: LineInput): voi
   touch(db, orderId);
 }
 
+/** Whether a DRAFT is complete enough to submit: at least one non-reversal line and a
+ *  positive total. */
+function orderComplete(db: DatabaseSync, orderId: number): boolean {
+  const lines = linesOf(db, orderId);
+  const real = lines.filter((l) => !l.is_reversal);
+  return real.length > 0 && orderTotalToman(lines) > 0;
+}
+
+/** Submit a DRAFT for review, then apply credit control.
+ *
+ *  - A representative or a `SAMPLE` order carries no receivable, so it is auto-passed to
+ *    CONFIRMED on submit (reserving stock).
+ *  - A direct customer with a credit limit whose balance + this order would breach it is
+ *    flagged: `credit_hold = 1`, an approval request is filed, and the order moves to
+ *    PENDING_CREDIT. `createCreditApprovalTask` (registered by lib/repo/creditApprovals)
+ *    raises the manager's reminder.
+ *  - Otherwise it waits at PENDING_REVIEW for a human `passReview`.
+ */
+export function submitOrder(
+  organizationId: number,
+  orderId: number,
+  actor: { id: number | null; role: OrderRole }
+): OrderStatus {
+  const db = getDb();
+  const order = db
+    .prepare(
+      "SELECT id, customer_id, order_type, status FROM orders WHERE id = ? AND organization_id = ?"
+    )
+    .get(orderId, organizationId) as
+    | { id: number; customer_id: number; order_type: string; status: OrderStatus }
+    | undefined;
+  if (!order) throw new OrderError("سفارش پیدا نشد");
+  if (!orderComplete(db, orderId)) throw new OrderError("سفارش بدون قلم یا با جمع صفر ثبت نمی‌شود");
+
+  advanceOrder(organizationId, orderId, "submit", actor);
+
+  const isRepresentative = !!db
+    .prepare("SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?")
+    .get(order.customer_id, organizationId);
+
+  if (isRepresentative || order.order_type === "SAMPLE") {
+    return advanceOrder(organizationId, orderId, "passReview", { id: actor.id, role: "system" });
+  }
+
+  const customer = db
+    .prepare("SELECT credit_limit_toman FROM customers WHERE id = ?")
+    .get(order.customer_id) as { credit_limit_toman: number | null } | undefined;
+
+  if (customer?.credit_limit_toman != null) {
+    const total = orderTotalToman(linesOf(db, orderId));
+    const balance = customerDebt(organizationId, order.customer_id).total;
+    if (balance + total > customer.credit_limit_toman) {
+      db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ? AND organization_id = ?").run(
+        orderId,
+        organizationId
+      );
+      requestApproval(organizationId, {
+        order_id: orderId,
+        requested_by: actor.id ?? order.customer_id,
+        customer_id: order.customer_id,
+        customer_balance_toman: balance,
+        credit_limit_toman: customer.credit_limit_toman,
+      });
+      return advanceOrder(organizationId, orderId, "flagCredit", { id: actor.id, role: "system" });
+    }
+  }
+
+  return "PENDING_REVIEW";
+}
+
+/** The manager's one-click "confirm this draft": submit for review and, if it did not
+ *  divert to PENDING_CREDIT, pass review straight away. Kept for the board / PATCH route
+ *  and the many tests that just want a confirmed order. */
 export function confirmOrder(db: DatabaseSync, orderId: number): void {
-  const order = db.prepare("SELECT status FROM orders WHERE id = ?").get(orderId) as
-    | { status: string }
+  const order = db.prepare("SELECT organization_id, status FROM orders WHERE id = ?").get(orderId) as
+    | { organization_id: number; status: string }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
   if (order.status !== "DRAFT") throw new OrderError("این سفارش قبلاً تأیید شده است");
@@ -282,10 +357,11 @@ export function confirmOrder(db: DatabaseSync, orderId: number): void {
     .get(orderId) as { n: number };
   if (lines.n === 0) throw new OrderError("سفارش بدون قلم تأیید نمی‌شود");
 
-  db.prepare("UPDATE orders SET status = 'CONFIRMED', updated_at = ? WHERE id = ?").run(
-    new Date().toISOString(),
-    orderId
-  );
+  const orgId = order.organization_id ?? 1;
+  const after = submitOrder(orgId, orderId, { id: null, role: "owner" });
+  if (after === "PENDING_REVIEW") {
+    advanceOrder(orgId, orderId, "passReview", { id: null, role: "owner" });
+  }
 
   stampLastPurchase(db, orderId);
 }

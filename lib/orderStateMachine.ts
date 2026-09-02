@@ -73,7 +73,7 @@ export interface OrderTransition {
 
 /** One row per legal edge. Anything not here is illegal. */
 export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
-  { from: "DRAFT", action: "submit", to: "PENDING_REVIEW", roles: ["salesperson", "group_manager", "owner"] },
+  { from: "DRAFT", action: "submit", to: "PENDING_REVIEW", roles: ["salesperson", "group_manager", "owner", "system"] },
   { from: "DRAFT", action: "cancel", to: "CANCELLED", roles: ["salesperson", "group_manager", "owner"], effects: ["releaseReservations"] },
 
   { from: "PENDING_REVIEW", action: "passReview", to: "CONFIRMED", roles: ["group_manager", "owner", "system"], effects: ["reserveStock"] },

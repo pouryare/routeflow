@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
-const { createOrder, confirmOrder, OrderError } = await import("@/lib/orders");
+const { createOrder, confirmOrder, submitOrder, OrderError } = await import("@/lib/orders");
 const { createRun, addStop, DeliveryError } = await import("@/lib/delivery");
 const { decide } = await import("@/lib/repo/creditApprovals");
 
@@ -33,7 +33,7 @@ function line(packs: number) {
 beforeEach(() => {
   const db = getDb();
   db.exec(
-    "DELETE FROM credit_approvals; DELETE FROM representative_profiles; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
+    "DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM credit_approvals; DELETE FROM representative_profiles; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM deliveries; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id > 0;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
@@ -67,7 +67,7 @@ function deliveredUnpaidOrder(packs: number): number {
   return o.id;
 }
 
-describe("createOrder credit hold", () => {
+describe("submitOrder credit hold", () => {
   it("holds a direct order that breaches the limit and files an approval", () => {
     const db = getDb();
     deliveredUnpaidOrder(2); // 40_000 outstanding, limit 50_000
@@ -78,10 +78,15 @@ describe("createOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)], // +20_000 -> 60_000 > 50_000
     });
-    expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(1);
+    // born clean; the breach is caught on submit
+    expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
+    const after = submitOrder(1, id, { id: owner, role: "salesperson" });
+    expect(after).toBe("PENDING_CREDIT");
+    expect(
+      db.prepare("SELECT credit_hold, status FROM orders WHERE id=?").get(id)
+    ).toMatchObject({ credit_hold: 1, status: "PENDING_CREDIT" });
     expect(db.prepare("SELECT COUNT(*) n FROM credit_approvals WHERE order_id=?").get(id)).toEqual({ n: 1 });
 
-    confirmOrder(db, id);
     const run = createRun(db, { driver_user_id: driver, run_date: "2026-02-02", created_by: owner, organization_id: 1 });
     expect(() => addStop(db, run, id)).toThrow(DeliveryError);
   });
@@ -95,11 +100,12 @@ describe("createOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)], // 20_000 < 50_000
     });
+    expect(submitOrder(1, id, { id: owner, role: "salesperson" })).toBe("PENDING_REVIEW");
     expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
     expect(db.prepare("SELECT COUNT(*) n FROM credit_approvals").get()).toEqual({ n: 0 });
   });
 
-  it("never holds a representative's order", () => {
+  it("never holds a representative's order -- it goes straight to CONFIRMED", () => {
     const db = getDb();
     const now = new Date().toISOString();
     db.prepare(
@@ -113,6 +119,7 @@ describe("createOrder credit hold", () => {
       organization_id: 1,
       lines: [line(2)],
     });
+    expect(submitOrder(1, id, { id: owner, role: "salesperson" })).toBe("CONFIRMED");
     expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
     expect(db.prepare("SELECT COUNT(*) n FROM credit_approvals").get()).toEqual({ n: 0 });
   });
@@ -142,6 +149,7 @@ describe("createOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)],
     });
+    submitOrder(1, id, { id: owner, role: "salesperson" });
     const approvalId = (db.prepare("SELECT id FROM credit_approvals WHERE order_id=?").get(id) as { id: number }).id;
     decide(1, approvalId, "approved", owner);
     expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
