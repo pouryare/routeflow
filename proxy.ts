@@ -83,6 +83,22 @@ export function proxy(req: NextRequest) {
     return deny("/sales");
   }
 
+  // Board & Pocket: the task Board and the recurrence editor are a manager + rep_manager
+  // tool. The Pocket (/sales/pocket, /api/pocket) is opener -- a salesperson's own home --
+  // so it is deliberately NOT here. The routes re-check.
+  const isTaskBoard =
+    pathname.startsWith("/sales/tasks") ||
+    pathname.startsWith("/api/board") ||
+    pathname.startsWith("/api/task-recurrences");
+  if (
+    isTaskBoard &&
+    claims.role !== "owner" &&
+    claims.role !== "group_manager" &&
+    claims.role !== "rep_manager"
+  ) {
+    return deny("/sales");
+  }
+
   if (isAdmin && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
