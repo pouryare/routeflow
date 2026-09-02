@@ -372,6 +372,13 @@ export default function CustomerDetailPanel({
         </div>
       )}
 
+      <a
+        href={`/sales/payments?customer_id=${customer.id}`}
+        className="mt-3 block rounded-[var(--radius-md)] border border-border px-3 py-2 text-center text-[length:var(--text-sm)] text-text-muted transition-colors hover:border-accent hover:text-accent"
+      >
+        دریافت وجه
+      </a>
+
       {customer.notes && (
         <div className="mt-4 border-t border-border pt-3 text-[length:var(--text-sm)] leading-6 text-text-muted">
           {customer.notes}

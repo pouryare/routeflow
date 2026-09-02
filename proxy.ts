@@ -70,6 +70,14 @@ export function proxy(req: NextRequest) {
   const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
   if (isGroupWide && claims.role === "salesperson") return deny("/sales");
 
+  // The cheque board and its API are a manager/owner tool -- a salesperson records a
+  // cheque as a payment via /sales/payments, but does not run the deposit/bounce
+  // lifecycle. The API re-checks; this keeps the bundle and the tab off their screen.
+  const isCheques = pathname.startsWith("/sales/cheques") || pathname.startsWith("/api/cheques");
+  if (isCheques && claims.role !== "owner" && claims.role !== "group_manager") {
+    return deny("/sales");
+  }
+
   // A driver has one screen. Sending them anywhere else back to it keeps the whole
   // customer/coverage surface off a device that spends the day in a vehicle, and means a
   // mistyped URL is not the thing standing between a driver and the debt ledger.
