@@ -10,6 +10,7 @@ import SkinToggle from "@/components/kargah/SkinToggle";
 import AccentPicker from "@/components/AccentPicker";
 import TabPill from "@/components/kargah/TabPill";
 import RevealRoute from "@/components/kargah/RevealRoute";
+import SyncStatus from "@/components/SyncStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -88,6 +89,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
         <RevealRoute />
         {children}
       </div>
+      <SyncStatus />
     </div>
   );
 }

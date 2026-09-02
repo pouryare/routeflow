@@ -1,14 +1,21 @@
-// Hand-written service worker (no build-step dependency): read-only offline support.
-// Caches map tiles + the two main data endpoints so the map stays viewable with weak
-// or no signal. Writes (status changes, photo uploads, etc.) are NOT queued while
-// offline -- that's a deliberate scope boundary, not an oversight.
-// Bumped from v1: district geometry moved to its own version-stamped endpoint, so the
-// old DATA_CACHE holds entries in a shape this worker no longer understands. The
-// activate handler below deletes any cache not named here.
-const SHELL_CACHE = "shell-v2";
-const TILE_CACHE = "map-tiles-v2";
-const DATA_CACHE = "map-data-v2";
-const GEOMETRY_CACHE = "map-geometry-v2";
+// Hand-written service worker (no build-step dependency).
+//
+// Reads: caches map tiles + two data endpoints + the app shell so the map stays
+// viewable with weak or no signal.
+//
+// Writes (Phase 4): the offline outbox lives in the PAGE (lib/offline/*), not here --
+// every write goes through lib/offline/net.postJSON, which enqueues to IndexedDB when
+// navigator.onLine is false. This worker's only write-side job is to wake a client on a
+// Background Sync event so the queue drains without the user re-opening the tab. See
+// docs/HANDOFF-2026-09-02-phase-4-offline-first.md for why the SW does not intercept the
+// POST bodies itself.
+//
+// Cache names bumped to v3 for the Phase 4 shell change; activate() below deletes any
+// cache not named here.
+const SHELL_CACHE = "shell-v3";
+const TILE_CACHE = "map-tiles-v3";
+const DATA_CACHE = "map-data-v3";
+const GEOMETRY_CACHE = "map-geometry-v3";
 const OFFLINE_URL = "/offline";
 
 self.addEventListener("install", (event) => {
@@ -127,6 +134,18 @@ self.addEventListener("notificationclick", (event) => {
         if ("focus" in client) return client.focus();
       }
       return self.clients.openWindow(url);
+    })
+  );
+});
+
+// Background Sync: the browser fires this when it regains connectivity, even if no tab
+// is open. Wake every client so its SyncEngine drains the outbox; if none is open, the
+// next app start does it.
+self.addEventListener("sync", (event) => {
+  if (event.tag !== "routeflow-sync") return;
+  event.waitUntil(
+    self.clients.matchAll({ includeUncontrolled: true }).then((clients) => {
+      for (const client of clients) client.postMessage({ type: "flush" });
     })
   );
 });

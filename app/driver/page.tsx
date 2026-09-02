@@ -8,6 +8,7 @@ import { driverStatementFor } from "@/lib/driverCommissionLedger";
 import { faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { faToman, faNum } from "@/lib/format";
 import DriverRun from "@/components/driver/DriverRun";
+import SyncStatus from "@/components/SyncStatus";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,7 @@ export default async function DriverPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]">
+      <SyncStatus />
       <header className="mb-[var(--space-4)] flex items-start justify-between gap-[var(--space-3)]">
         <div>
           <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">
