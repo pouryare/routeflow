@@ -119,8 +119,9 @@ describe("organization_id backfill", () => {
   it("leaves no row without an organisation", () => {
     const db = getDb();
     for (const table of TENANT_TABLES) {
-      // reason_codes deliberately keeps NULL-org rows: the shared system defaults.
-      if (table === "reason_codes") continue;
+      // reason_codes and capacity_factors deliberately keep NULL-org rows: the shared
+      // system/default rows every tenant sees.
+      if (table === "reason_codes" || table === "capacity_factors") continue;
       const row = db
         .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE organization_id IS NULL`)
         .get() as unknown as { n: number };
@@ -150,6 +151,7 @@ describe("organization_id backfill", () => {
       "purchase_lines",     // through purchases
       "delivery_stops",     // through delivery_runs
       "route_schedules",    // through route_templates
+      "weather_snapshots",  // a forecast for a lat/lng is not tenant data
       "delivery_lines",     // through deliveries
       "lead_list_items",    // through lead_lists
       "packagings",         // through products

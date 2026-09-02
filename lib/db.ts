@@ -74,6 +74,7 @@ export const TENANT_TABLES = [
   "deleted_rows",
   "vehicles",
   "route_templates",
+  "capacity_factors",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1551,6 +1552,39 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, code)
     );
 
+    /* Phase 6 (Weather): one forecast row per ~1 km cell per day. NOT tenant data -- a
+       forecast for a lat/lng is the same for every company. */
+    CREATE TABLE IF NOT EXISTS weather_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lat_r REAL NOT NULL,
+      lng_r REAL NOT NULL,
+      forecast_date TEXT NOT NULL,
+      temp_min REAL, temp_max REAL,
+      precip_prob INTEGER, precip_mm REAL, snow_mm REAL,
+      wind_kmh REAL, gust_kmh REAL,
+      visibility_m INTEGER, weather_code INTEGER,
+      fetched_at TEXT NOT NULL,
+      raw_json TEXT,
+      UNIQUE (lat_r, lng_r, forecast_date)
+    );
+
+    /* The measured effect of each weather condition on route capacity. organization_id
+       NULL = the shipped defaults (seedCapacityFactors); a tenant may tune its own.
+       Phase 10 replaces the constants with values regressed from a season of actuals. */
+    CREATE TABLE IF NOT EXISTS capacity_factors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      condition_code TEXT NOT NULL,
+      stop_factor REAL NOT NULL DEFAULT 1,
+      service_time_factor REAL NOT NULL DEFAULT 1,
+      speed_factor REAL NOT NULL DEFAULT 1,
+      max_duration_factor REAL NOT NULL DEFAULT 1,
+      note_fa TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, condition_code)
+    );
+
     /* When each template runs. cutoff_time: after this, adding an order to that day's run
        needs an explicit decision (see lib/repo/routing.freezeRun + addStop force). */
     CREATE TABLE IF NOT EXISTS route_schedules (
@@ -1955,7 +1989,7 @@ export function getDb(): DatabaseSync {
       db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
     }
     // reason_codes keeps its NULL rows -- they are the shared system defaults.
-    if (table === "reason_codes") continue;
+    if (table === "reason_codes" || table === "capacity_factors") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2453,6 +2487,7 @@ export function getDb(): DatabaseSync {
 
   seedFacilities(db);
   seedReasonCodes(db);
+  seedCapacityFactors(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
@@ -2464,7 +2499,7 @@ export function getDb(): DatabaseSync {
     // reason_codes is the one exception: a NULL organization_id there is deliberate --
     // it marks a system-default row every tenant shares -- not a row that missed the
     // tenancy backfill.
-    if (table === "reason_codes") continue;
+    if (table === "reason_codes" || table === "capacity_factors") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2902,6 +2937,41 @@ export const REASON_CODE_SEED: { domain: string; code: string; label_fa: string 
   { domain: "order_return", code: "QUALITY_ISSUE", label_fa: "مشکل کیفی کالا" },
   { domain: "order_return", code: "WRONG_ITEM", label_fa: "کالای اشتباه" },
 ];
+
+/** Phase 6: the six §4.1 conditions with their measured capacity effect, as NULL-org
+ *  defaults. INSERT ... WHERE NOT EXISTS per row (NULL != NULL under SQLite's UNIQUE, so
+ *  OR IGNORE would re-insert). A tenant overrides by writing its own (org, code) row. */
+export const CAPACITY_FACTOR_SEED: {
+  code: string;
+  stop: number;
+  service: number;
+  speed: number;
+  duration: number;
+  note: string;
+}[] = [
+  { code: "heavy_rain", stop: 0.8, service: 1.2, speed: 0.85, duration: 1, note: "باران شدید — پارک و تحویل کندتر" },
+  { code: "snow_ice", stop: 0.55, service: 1.3, speed: 0.6, duration: 1, note: "برف و یخ‌بندان" },
+  { code: "extreme_heat", stop: 0.85, service: 1.15, speed: 1, duration: 0.7, note: "گرمای شدید — سقف زمان مسیر برای زنجیرهٔ سرد" },
+  { code: "high_wind", stop: 0.85, service: 1.1, speed: 0.9, duration: 1, note: "باد شدید" },
+  { code: "dust_storm", stop: 0.7, service: 1.1, speed: 0.7, duration: 1, note: "گرد و خاک — دید کم" },
+  { code: "fog", stop: 0.8, service: 1.05, speed: 0.75, duration: 1, note: "مه — دید کم" },
+];
+
+export function seedCapacityFactors(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO capacity_factors
+       (organization_id, condition_code, stop_factor, service_time_factor, speed_factor,
+        max_duration_factor, note_fa, active, updated_at)
+     SELECT NULL, ?, ?, ?, ?, ?, ?, 1, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM capacity_factors WHERE organization_id IS NULL AND condition_code = ?
+      )`
+  );
+  for (const r of CAPACITY_FACTOR_SEED) {
+    insert.run(r.code, r.stop, r.service, r.speed, r.duration, r.note, now, r.code);
+  }
+}
 
 export function seedReasonCodes(db: DatabaseSync): void {
   const now = new Date().toISOString();
