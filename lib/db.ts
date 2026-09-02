@@ -99,6 +99,53 @@ function rebuildForTenantUnique(
   }
 }
 
+/** Phase 0b: a pin that made it into a lead list is a relationship worth tracking, not
+ *  just a dot on the map. Promote each such saved_location to a `customers` row
+ *  (`lifecycle='lead'`, code `LEAD-<id>` -- the same scheme /api/locations/[id]/convert
+ *  uses, so it cannot collide with a manually-converted pin) and delete the pin and its
+ *  list membership. Pins in no list stay as pins. Idempotent: `ON CONFLICT DO NOTHING`
+ *  on the code, so a second run is a no-op. */
+export function foldLeadPinsIntoCustomers(db: DatabaseSync): void {
+  const pins = db
+    .prepare(
+      `SELECT DISTINCT s.id, s.name, s.address, s.lat, s.lng, s.notes, s.group_id, s.organization_id
+         FROM saved_locations s
+         JOIN lead_list_items i ON i.location_id = s.id`
+    )
+    .all() as Array<{
+    id: number;
+    name: string;
+    address: string | null;
+    lat: number | null;
+    lng: number | null;
+    notes: string | null;
+    group_id: number | null;
+    organization_id: number;
+  }>;
+  if (pins.length === 0) return;
+
+  const insert = db.prepare(
+    `INSERT INTO customers (customer_code, business_name, address, lat, lng, notes,
+                            lifecycle, group_id, organization_id, synced_at)
+     VALUES (?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?)
+     ON CONFLICT (organization_id, customer_code) DO NOTHING`
+  );
+  const now = new Date().toISOString();
+
+  db.exec("BEGIN");
+  try {
+    for (const p of pins) {
+      insert.run(`LEAD-${p.id}`, p.name, p.address, p.lat, p.lng, p.notes, p.group_id, p.organization_id, now);
+      db.prepare("DELETE FROM lead_list_items WHERE location_id = ?").run(p.id);
+      db.prepare("DELETE FROM saved_locations WHERE id = ?").run(p.id);
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 export function getDb(): DatabaseSync {
   if (_db) return _db;
 
@@ -140,6 +187,12 @@ export function getDb(): DatabaseSync {
       is_custom INTEGER NOT NULL DEFAULT 0,
       updated_at TEXT NOT NULL,
       UNIQUE(name, level, parent_name)
+    );
+
+    /* Tiny key/value store for one-shot migration markers and the like. Not tenant data. */
+    CREATE TABLE IF NOT EXISTS app_meta (
+      key TEXT PRIMARY KEY,
+      value TEXT
     );
 
     CREATE TABLE IF NOT EXISTS activity_log (
@@ -1322,6 +1375,18 @@ export function getDb(): DatabaseSync {
       db.exec("PRAGMA foreign_keys = ON;");
     }
     console.info("[migrate] customers.status -> lifecycle applied; unknown values defaulted to 'lead'");
+  }
+
+  // Phase 0b: pins that reached a lead list become customers. Once, guarded on a marker,
+  // but foldLeadPinsIntoCustomers is idempotent so a stray re-run is harmless.
+  const foldDone = db
+    .prepare("SELECT value FROM app_meta WHERE key = 'lead_pin_foldin_done'")
+    .get() as { value: string } | undefined;
+  if (!foldDone) {
+    foldLeadPinsIntoCustomers(db);
+    db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('lead_pin_foldin_done', ?)").run(
+      new Date().toISOString()
+    );
   }
 
   seedFacilities(db);
