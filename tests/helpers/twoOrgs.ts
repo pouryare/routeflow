@@ -8,6 +8,8 @@ export interface OrgFixture {
   customerId: number;
   productId: number;
   orderId: number;
+  repId: number;
+  creditApprovalId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -88,7 +90,46 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       orgId
     );
 
-    return { orgId, groupId, ownerId, managerId, customerId, productId, orderId };
+    // A representative sharing a rep_code with the other org, to prove per-tenant
+    // uniqueness on representative_profiles.
+    const repCustomerId = insert(
+      `INSERT INTO customers (customer_code, business_name, customer_type, lifecycle, synced_at, group_id, organization_id)
+       VALUES ('SHARED-REP-CUST', ?, 'WHOLESALE', 'active', ?, ?, ?)`,
+      `نماینده ${tag}`,
+      NOW,
+      groupId,
+      orgId
+    );
+    const repId = insert(
+      `INSERT INTO representative_profiles (organization_id, customer_id, rep_code, stage, credit_terms_days, created_at, updated_at)
+       VALUES (?, ?, 'SHARED-REP', 'active', 0, ?, ?)`,
+      orgId,
+      repCustomerId,
+      NOW,
+      NOW
+    );
+
+    const creditApprovalId = insert(
+      `INSERT INTO credit_approvals (organization_id, order_id, requested_by, requested_at,
+                                     customer_balance_toman, credit_limit_toman, overage_toman, status)
+       VALUES (?, ?, ?, ?, 1000, 0, 1000, 'pending')`,
+      orgId,
+      orderId,
+      managerId,
+      NOW
+    );
+
+    return {
+      orgId,
+      groupId,
+      ownerId,
+      managerId,
+      customerId,
+      productId,
+      orderId,
+      repId,
+      creditApprovalId,
+    };
   };
 
   return { a: build(1, "a"), b: build(2, "b") };

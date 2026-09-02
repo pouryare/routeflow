@@ -141,10 +141,64 @@ Plan file: `docs/superpowers/plans/2026-09-01-phase-0a-tenancy-foundation.md`
 ## Phase 0a is COMPLETE (2026-09-02)
 
 All 7 tasks done on `phase-0-tenancy` (11 commits ahead of `main`), full
-suite **87 files / 1120 tests green**. **Not merged, not deployed** — that
-is a deliberate separate step (fresh backup first; the migration rebuilds
-six tables in place). Next decisions: (1) merge/deploy Phase 0a, (2) the
-`docs/crm-erp-plan.md` reconstruction question below, (3) Phase 0b.
+suite **87 files / 1120 tests green**. **Not merged, not deployed.**
+
+## Phase 0b is COMPLETE (2026-09-02) — branch `phase-0b-foundations`
+
+Off `crm-erp-master-plan` off `phase-0-tenancy`. 12 tasks (see
+`docs/superpowers/plans/2026-09-02-phase-0b-foundations.md` and the spec
+alongside it). Full suite **~98 files / ~1155 tests green**; migration
+verified against the real 141-customer / 45-order backup (empty
+`foreign_key_check`, lifecycle mapped, new tables present, `import_log`
+gone). Highlights:
+
+- **Excel customer import + delivery-parse subsystems removed entirely**
+  (plan Risk 1). `customers` is app-owned now, no upstream. Build a run by
+  `POST /api/sales/runs` then `POST /api/sales/runs/[id]/stops` until
+  Phase 3. `exceljs` kept for order export.
+- **`lib/repo/`** — `makeRepo(table, { tenant })` wraps `getDb().prepare`
+  with a required `organizationId`. `tests/repo-boundary.test.ts` blocks
+  new raw SQL in `app/`/`lib/` outside `lib/repo/`; ~69 grandfathered
+  files on `tests/fixtures/raw-sql-allowlist.txt`, which **only shrinks**.
+- **customers M2**: `customer_type`, `lifecycle` (enum, `status` dropped
+  and mapped), `parent_customer_id`, `payment_terms_days`,
+  `hard_credit_block`, `qualified_at`, `first_order_at`. Lifecycle behind
+  `lib/repo/customers.ts` + `lib/customerLifecycle.ts` transition table;
+  `PATCH /api/customers/[id]/lifecycle`; a control in `CustomerDetailPanel`.
+- **Lead-pin fold-in**: pins in a `lead_list` become `customers`
+  (`LEAD-<id>`, `lifecycle='lead'`); once, guarded on `app_meta`
+  (`lead_pin_foldin_done`). 0 rows on the current backup.
+- **`rep_manager` role** (roles.ts, create-user.mjs, `users.role` CHECK).
+  Sees no group territory.
+- **representatives**: `representative_profiles` (TENANT_TABLES) +
+  `representative_onboarding_steps` (exempt, through the profile).
+  `lib/repStages.ts` stage machine (`-> active` blocked until required
+  steps ticked), `lib/repOnboarding.ts` step set, `lib/repo/
+  representatives.ts`. `/api/admin/representatives` (+`[id]`) and
+  `/sales/admin/representatives`, open to `owner` + `rep_manager`
+  (`proxy.ts` widened for that one path).
+- **`credit_approvals`** (TENANT_TABLES) — direct customers only
+  (`requestApproval` refuses a rep customer). Table + `lib/repo/
+  creditApprovals.ts` + `/api/admin/credit-approvals` (+`[id]/decide`).
+  The auto `order -> PENDING_CREDIT` trigger is Phase 3.
+- **demo purge**: `seed-demo.mjs` refuses `NODE_ENV=production` / a DB
+  with real orders unless `--force`; `--remove` covers the new tables;
+  seeds one `DEMO-REP-01`.
+- **exempt list now**: `push_subscriptions`, `app_meta`,
+  `representative_onboarding_steps`, `platform_access_log`, `sales`,
+  `import_snapshots`? (no — dropped). `import_log`/`import_snapshots`
+  removed from the list.
+
+**Not merged, not deployed** — the whole stack (Phases 0a + master-plan
+docs + 0b) merges and deploys together after Phase 10 (user decision).
+Fresh backup first; the migration rebuilds `customers` and `users` in
+place and drops two tables.
+
+## Known environment issue
+
+Full `npx eslint` OOM-kills (exit 137) in this sandbox from ~Task 8 on.
+`npx eslint app/ lib/` passes, and every changed file lints clean when
+named directly. `tsc` and the full vitest suite are the reliable gates.
 
 ## Bugs found and fixed this phase (read before touching `lib/session.ts` or `lib/db.ts` migrations)
 

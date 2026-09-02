@@ -64,5 +64,29 @@ describe("organisation A and organisation B cannot see each other", () => {
       .prepare("SELECT customer_code, COUNT(*) AS n FROM customers GROUP BY customer_code")
       .all() as { customer_code: string; n: number }[];
     expect(codes.find((c) => c.customer_code === "SHARED-001")?.n).toBe(2);
+    const reps = db
+      .prepare("SELECT rep_code, COUNT(*) AS n FROM representative_profiles GROUP BY rep_code")
+      .all() as { rep_code: string; n: number }[];
+    expect(reps.find((r) => r.rep_code === "SHARED-REP")?.n).toBe(2);
+  });
+
+  it("keeps representatives and credit approvals apart", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const reps = db
+        .prepare("SELECT id FROM representative_profiles WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(reps.map((r) => r.id)).toContain(self.repId);
+      expect(reps.map((r) => r.id)).not.toContain(other.repId);
+
+      const ca = db
+        .prepare("SELECT id FROM credit_approvals WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(ca.map((r) => r.id)).toContain(self.creditApprovalId);
+      expect(ca.map((r) => r.id)).not.toContain(other.creditApprovalId);
+    }
   });
 });

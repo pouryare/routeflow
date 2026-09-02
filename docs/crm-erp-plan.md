@@ -701,7 +701,7 @@ animation that happens to look like one.
 
 | Phase | Contents | Gate |
 |---|---|---|
-| **0. Foundations** | `lib/repo` layer (the condition on staying with SQLite) · M1 tenancy · `platform_owner` + access log · M2 customers/reps/credit · demo-data separation and purge | Nothing else starts until this lands. Both tenancy and the repo layer cost multiples later. |
+| **0. Foundations — ✅ DONE** (branches `phase-0-tenancy` + `phase-0b-foundations`, 2026-09-02, unmerged) | M1 tenancy + `platform_owner` + access log (Phase 0a). `lib/repo` layer **scoped** — infra + new M2 tables through it + a boundary test blocking new raw SQL; the existing ~69 raw-SQL files pay down incrementally (the full 314-site rewrite is its own pre-Postgres phase). M2 customers (type/lifecycle/credit, `status` retired), representatives (`representative_profiles` + onboarding stage machine, `rep_manager` role), `credit_approvals` (direct customers, manual decide; auto trigger deferred to Phase 3). Excel customer-import + delivery-parse **removed entirely** (Risk 1 killed at the root). Demo purge hardened. | Landed. |
 | **1. Money** | M3 payments, allocations, cheques · POS / card-to-card UI · derived debt ageing replacing the imported columns · credit-approval workflow | Makes the app trustworthy for cash |
 | **2. Stock + batches** | M4 movements, warehouses, batches, FEFO · expiry alerts · forward/backward trace · complaints | Food-safety floor |
 | **3. Order pipeline** | M5 12-state machine · M6 `deliveries` · reason codes · sample orders end-to-end | The spine everything else hangs on |
