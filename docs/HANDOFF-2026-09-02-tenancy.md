@@ -5,33 +5,33 @@ anything from chat history. Repo: `github.com/pouryare/routeflow` (renamed
 from coverage-map on 2026-09-01). Working dir: `/root/pourya/coverage-map`.
 Branch: `phase-0-tenancy` (not merged to `main`).
 
-## ⚠️ Known gap: two planning docs were lost, never actually saved to disk
+## ✅ RESOLVED 2026-09-02: the "lost" planning docs were never lost
 
-Earlier in this project I produced (in conversation only, describing them as
-written) two documents that were supposed to live at:
-- `docs/crm-erp-plan.md` — the full 10-phase RouteFlow plan (money/payments,
-  stock/batches, order pipeline, offline-first, routing/VROOM, weather,
-  spine/briefing, reps/academy, analysis, prediction)
-- `docs/crm-erp-source-extract.md` — facts/proposals/gaps extracted from the
-  original ChatGPT brainstorm
+This section previously claimed `docs/crm-erp-plan.md` and
+`docs/crm-erp-source-extract.md` had never been written. **They had** —
+they were sitting at `/root/pourya/docs/` (one directory *above* the
+repo), so `git log --all` and a search inside `coverage-map/` both missed
+them. They are now copied into `coverage-map/docs/` and committed, so
+they are version-controlled and discoverable from here on.
 
-**Neither file exists on disk or anywhere in git history (checked `git log
---all` across every branch).** They were likely described as written in a
-prior summarized conversation turn but the `Write` call never actually
-landed, or landed and was lost before a commit. Do not assume their content
-is recoverable. The only surviving record of what was in them is the
-"Full 10-phase plan (reconstructed from memory)" section below, which is
-a compressed recollection, not the original text — it is good enough to
-resume work from, but treat specifics (exact table names, exact API shapes)
-as needing re-derivation, not as settled fact.
+- **`docs/crm-erp-plan.md`** — the real v2 plan. 771 lines: Part 0
+  decisions-locked table, Part 1 already-executed, Part 2 storage
+  (SQLite + offline-first + repo layer), Part 3 data model M1–M8, Part 4
+  features designed (4.1 weather→stops, 4.2 VROOM routing, 4.3 briefing,
+  4.4 academy, 4.5 offline-first, 4.6 undo bar), **Part 5 Build order**
+  (the authoritative phase list, 0–10, with gates), Part 6 not-built,
+  Part 7 risks. This supersedes the "Full 10-phase plan (reconstructed
+  from memory)" section lower in this handoff — **trust the plan doc, not
+  the recollection.**
+- **`docs/crm-erp-source-extract.md`** — the distilled ChatGPT input.
+  425 lines: §1 business facts, §2–§7 proposals, §8 the ten open
+  questions. Source conversation
+  `chatgpt.com/share/6a91bcc0-b388-83e9-b1b4-c2dd81cdef7a`.
 
-**First real task for the next conversation, if the 10-phase plan matters
-before Phase 0a is finished:** decide whether to reconstruct
-`docs/crm-erp-plan.md` properly (re-run the brainstorming skill against the
-summary below) or just proceed phase-by-phase without a master doc. I'd
-lean toward reconstructing it once Phase 0a is done, not before — the
-tenancy foundation is infrastructure every later phase depends on, so it's
-the right thing to finish first regardless.
+**Phase numbering note:** the plan doc calls it one "Phase 0.
+Foundations". This handoff split it into 0a (tenancy — DONE) and 0b (the
+rest: `lib/repo` layer, M2 customers/reps/credit, credit-approval
+workflow, demo-data separation/purge). Same work, different labels.
 
 The tenancy implementation plan itself is real and on disk, unaffected by
 this gap: `docs/superpowers/plans/2026-09-01-phase-0a-tenancy-foundation.md`
@@ -267,19 +267,29 @@ six tables in place). Next decisions: (1) merge/deploy Phase 0a, (2) the
   outbox hold time once that phase starts, that's why it's exported rather
   than inlined.
 
-## Full 10-phase plan (reconstructed from memory — see the warning at top of this file)
+## Full 10-phase plan — SUPERSEDED by `docs/crm-erp-plan.md` Part 5
 
-Order was: Phase 1 money/payments, Phase 2 stock/batches & traceability,
-Phase 3 order pipeline (12-state machine), Phase 4 offline-first (defines
-safe/unsafe mutation rules, see above), Phase 5 routing/VROOM +
-route optimisation, Phase 6 weather → capacity, Phase 7 spine/briefing
-screen, Phase 8 representatives + academy, Phase 9 analysis/reporting,
-Phase 10 prediction. Phase 0a (tenancy, this doc) and Phase 0b (customer
-type/lifecycle, representative profiles, credit approval workflow, demo-
-data purge) come before all of them. Treat this ordering as a starting
-point to re-validate with the user, not a committed sequence — it was
-never re-confirmed after the offline-first pivot in message 4 of the
-original planning conversation.
+The recollection below is kept only as a diff against the real doc. **Use
+`docs/crm-erp-plan.md` Part 5 "Build order" as the authority.** It agrees
+with this recollection on the sequence:
+
+Phase 0 Foundations (repo layer · M1 tenancy `[0a DONE]` · platform_owner
++ access log `[DONE]` · M2 customers/reps/credit `[0b, not started]` ·
+demo-data purge `[0b]`) → 1 Money (payments/allocations/cheques,
+credit-approval workflow, derived debt ageing) → 2 Stock + batches (FEFO,
+expiry, forward/backward trace, complaints) → 3 Order pipeline (12-state
+machine, `deliveries` entity, reason codes, samples) → 4 Offline-first
+(`client_uuid` + `sync_mutations` + tombstones, IndexedDB outbox, sync
+engine, undo bar wired to outbox hold, conflict surface) → 5 Routing
+(vehicles/templates/schedules, OSRM+VROOM, planner UI, route freeze) →
+6 Weather (Open-Meteo, `capacity_factors`, weather-adjusted VROOM input,
+map layer) → 7 Spine + briefing (`events`/`tasks`/`alerts`/`rules` with
+cooldown+escalation, `/today` for six roles) → 8 Reps + academy → 9
+Analysis (why-drilldown, health scores, contribution margin, Action
+Center, precomputed KPI snapshots) → 10 Prediction.
+
+Merge/deploy of the whole `phase-0-tenancy` branch is deferred until
+after Phase 10 (user decision, 2026-09-02).
 
 ## Session/config state (2026-09-02)
 
