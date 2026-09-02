@@ -19,6 +19,7 @@ import {
   secondsLeft,
   startCountdown,
 } from "@/lib/countdown";
+import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -81,10 +82,11 @@ const LIFETIME_MS: Record<ToastVariant, number> = { success: 3500, error: 6500, 
  *  undo. Three and a half seconds is enough to notice a message; it is not enough to read
  *  it, decide the delete was a mistake, and move a thumb across a phone screen.
  *
- *  This is also the value the offline outbox will hold a mutation for before handing it to
+ *  This is also the value the offline outbox holds a mutation for before handing it to
  *  the sync engine, so the bar below measures something real rather than counting down for
- *  decoration -- see docs/crm-erp-plan.md 4.6. One constant, so the two cannot drift. */
-export const ACTION_LIFETIME_MS = 9000;
+ *  decoration -- see docs/crm-erp-plan.md 4.6. One constant (lib/offline/constants.ts),
+ *  so the visible bar and the invisible hold cannot drift. */
+export const ACTION_LIFETIME_MS = OUTBOX_HOLD_MS;
 
 // One pill-frame before widening, so the arrival reads as a single motion.
 const OPEN_DELAY_MS = 30;
