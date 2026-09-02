@@ -89,7 +89,13 @@ export function proxy(req: NextRequest) {
     // order-transition route is open to salesperson+/driver -- it gates itself by the
     // transition's own roles.
     pathname.startsWith("/sales/deliveries") ||
-    pathname.startsWith("/api/sales/deliveries");
+    pathname.startsWith("/api/sales/deliveries") ||
+    // Phase 5: routing is a desk job.
+    pathname.startsWith("/sales/routing") ||
+    pathname.startsWith("/api/sales/routing") ||
+    pathname.startsWith("/api/sales/vehicles") ||
+    pathname.startsWith("/api/sales/route-templates") ||
+    pathname.startsWith("/api/sales/runs/");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
     return deny("/sales");
   }
