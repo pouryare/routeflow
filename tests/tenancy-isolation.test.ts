@@ -68,6 +68,30 @@ describe("organisation A and organisation B cannot see each other", () => {
       .prepare("SELECT rep_code, COUNT(*) AS n FROM representative_profiles GROUP BY rep_code")
       .all() as { rep_code: string; n: number }[];
     expect(reps.find((r) => r.rep_code === "SHARED-REP")?.n).toBe(2);
+    const cheques = db
+      .prepare("SELECT cheque_no, COUNT(*) AS n FROM cheques GROUP BY cheque_no")
+      .all() as { cheque_no: string; n: number }[];
+    expect(cheques.find((c) => c.cheque_no === "SHARED-CHQ")?.n).toBe(2);
+  });
+
+  it("keeps payments and cheques apart", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const pays = db
+        .prepare("SELECT id FROM payments WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(pays.map((r) => r.id)).toContain(self.paymentId);
+      expect(pays.map((r) => r.id)).not.toContain(other.paymentId);
+
+      const cheques = db
+        .prepare("SELECT id FROM cheques WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(cheques.map((r) => r.id)).toContain(self.chequeId);
+      expect(cheques.map((r) => r.id)).not.toContain(other.chequeId);
+    }
   });
 
   it("keeps representatives and credit approvals apart", () => {

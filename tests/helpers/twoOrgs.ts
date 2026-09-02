@@ -10,6 +10,8 @@ export interface OrgFixture {
   orderId: number;
   repId: number;
   creditApprovalId: number;
+  paymentId: number;
+  chequeId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -119,6 +121,30 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // A payment and a cheque per org, the cheque_no colliding across tenants to prove
+    // the per-tenant UNIQUE holds.
+    const paymentId = insert(
+      `INSERT INTO payments (organization_id, customer_id, amount_toman, method, received_at, received_by, created_at)
+       VALUES (?, ?, 10000, 'CASH', ?, ?, ?)`,
+      orgId,
+      customerId,
+      NOW,
+      ownerId,
+      NOW
+    );
+    const chequeId = insert(
+      `INSERT INTO cheques (organization_id, customer_id, amount_toman, cheque_no, due_date, status,
+                            received_at, received_by, created_at, updated_at)
+       VALUES (?, ?, 20000, 'SHARED-CHQ', ?, 'in_hand', ?, ?, ?, ?)`,
+      orgId,
+      customerId,
+      NOW,
+      NOW,
+      ownerId,
+      NOW,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -129,6 +155,8 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       orderId,
       repId,
       creditApprovalId,
+      paymentId,
+      chequeId,
     };
   };
 
