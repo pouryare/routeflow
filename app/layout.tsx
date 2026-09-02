@@ -1,40 +1,12 @@
 import type { Metadata, Viewport } from "next";
-import { Vazirmatn, JetBrains_Mono, IBM_Plex_Sans_Arabic, Plus_Jakarta_Sans } from "next/font/google";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ToastProvider } from "@/components/ToastProvider";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { ACCENT_INIT_SCRIPT } from "@/lib/accent";
+import { FONT_INIT_SCRIPT } from "@/lib/font";
+import { ALL_FONT_VARS } from "@/app/fonts";
 import "./globals.css";
-
-const vazirmatn = Vazirmatn({
-  variable: "--font-vazirmatn",
-  subsets: ["arabic"],
-});
-
-const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
-  weight: ["400"],
-});
-
-/* The کارگاه pair, for /sales only. Declared here because next/font must be called at
-   module scope, but consumed only inside `.kargah` -- the map keeps Vazirmatn. Both
-   families are subsetted, so a page that never uses them costs a preload hint and no
-   font bytes. See MASTER.md "Typography". */
-const plexArabic = IBM_Plex_Sans_Arabic({
-  variable: "--font-fa",
-  subsets: ["arabic", "latin"],
-  weight: ["300", "400", "500", "600", "700"],
-  display: "swap",
-});
-
-const jakarta = Plus_Jakarta_Sans({
-  variable: "--font-en",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   title: "نقشه پوشش مشتریان",
@@ -65,7 +37,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="fa"
       dir="rtl"
       suppressHydrationWarning
-      className={`${vazirmatn.variable} ${jetbrainsMono.variable} ${plexArabic.variable} ${jakarta.variable} h-full antialiased`}
+      className={`${ALL_FONT_VARS} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         {/* Blocking and inline, ahead of everything. next/script's beforeInteractive is
@@ -76,6 +48,8 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         {/* Same reasoning, separate key: the accent is what you like, the theme is where
             you are. See lib/accent.ts. */}
         <script dangerouslySetInnerHTML={{ __html: ACCENT_INIT_SCRIPT }} />
+        {/* And the letterforms you read best. See lib/font.ts. */}
+        <script dangerouslySetInnerHTML={{ __html: FONT_INIT_SCRIPT }} />
         <ServiceWorkerRegister />
         {/* One geolocation watch for the whole app, mounted at the root so every page --
             map, planner, leads -- reads the same live position instead of each opening

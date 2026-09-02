@@ -6,6 +6,19 @@
   See /MASTER.md at project root.
 */
 :root {
+  /* Font-family aliases. app/fonts.ts injects --font-ui / --font-num / --font-damavand
+     (and the picker's --font-yekan / --font-sansx / --font-iran + -num) as custom
+     properties on <html>; components/FontPicker.tsx writes data-font and the rules below
+     remap --font-ui / --font-num per choice. Every other rule reads these stable names.
+     --font-en resolves to the NUMERAL face on purpose: inside .kargah it is almost
+     always carrying tabular figures (.mono, .num, amounts), and Peyda FaNum still has
+     full Latin + Arabic letters for the odd label. */
+  --font-vazirmatn: var(--font-ui);
+  --font-jetbrains-mono: var(--font-num);
+  --font-fa: var(--font-ui);
+  --font-en: var(--font-num);
+  --font-display: var(--font-damavand), var(--font-ui), system-ui, sans-serif;
+
   /* color */
   --bg: #0a0e14;
   --surface: #121a24;
@@ -200,6 +213,12 @@
   --elev-3: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 25, 34, 0.16);
 }
 
+/* Font picker. Peyda is the bare :root default (aliases above); each other choice remaps
+   only the body + numeral family. Damavand (--font-display) never changes. */
+:root[data-font="yekan"] { --font-ui: var(--font-yekan); --font-num: var(--font-yekan-num); }
+:root[data-font="sans"]  { --font-ui: var(--font-sansx); --font-num: var(--font-sansx-num); }
+:root[data-font="iran"]  { --font-ui: var(--font-iran);  --font-num: var(--font-iran-num); }
+
 @theme inline {
   --color-bg: var(--bg);
   --color-surface: var(--surface);
@@ -217,8 +236,9 @@
   --color-crit: var(--crit);
   --color-neutral: var(--neutral);
   --color-facility: var(--facility);
-  --font-sans: var(--font-vazirmatn);
-  --font-mono: var(--font-jetbrains-mono);
+  --font-sans: var(--font-ui);
+  --font-mono: var(--font-num);
+  --font-display: var(--font-display);
   --radius-xl: var(--radius-xl);
   --radius-2xl: var(--radius-2xl);
   --shadow-elev-1: var(--elev-1);
@@ -1709,7 +1729,7 @@ body {
    the port use it, and they are the same rule. */
 .kargah .mono,
 .kargah .num {
-  font-family: var(--font-en), system-ui, sans-serif;
+  font-family: var(--font-num), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
 }
@@ -1769,10 +1789,10 @@ body {
   width: 46px; height: 46px; border-radius: 15px;
   background: linear-gradient(145deg, #D9663A, #B0431C);
   color: #fff; display: grid; place-items: center;
-  font-size: 20px; font-weight: 600;
+  font-family: var(--font-display); font-size: 20px; font-weight: 800;
   box-shadow: 0 6px 16px -6px rgba(176,67,28,.55); flex: none;
 }
-.kargah .top h1 { margin: 0; font-size: 21px; font-weight: 600; letter-spacing: -.015em; }
+.kargah .top h1 { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.015em; }
 .kargah .top .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
 .kargah .topright { display: flex; align-items: center; gap: 9px; }
 .kargah .chip {
@@ -2527,7 +2547,7 @@ body {
   color: #fff; display: grid; place-items: center; font-size: 17px; font-weight: 600;
   box-shadow: 0 6px 16px -6px rgba(176,67,28,.55);
 }
-.kargah .side__brand h1 { margin: 0; font-size: 17px; font-weight: 600; letter-spacing: -.015em; color: var(--ink); }
+.kargah .side__brand h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -.015em; color: var(--ink); }
 .kargah .side__brand .s { font-size: 12px; color: var(--muted); margin-top: -3px; }
 
 .kargah .sect {
