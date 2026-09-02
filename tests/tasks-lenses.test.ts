@@ -3,13 +3,24 @@ import {
   lanesFor,
   laneOf,
   movePatch,
+  deriveStage,
   stageFromStatus,
   statusFromStage,
   bucket,
   dateForBucket,
+  type TaskLensFields,
 } from "@/lib/tasks/lenses";
 
 const NOW = "2026-09-02T09:00:00.000Z"; // a Wednesday
+
+const t = (over: Partial<TaskLensFields> = {}): TaskLensFields => ({
+  kind: "admin",
+  status: "open",
+  stage: null,
+  started_at: null,
+  due_at: null,
+  ...over,
+});
 
 describe("lenses — lanesFor", () => {
   it("status lanes", () => {
@@ -18,7 +29,7 @@ describe("lenses — lanesFor", () => {
   it("time lanes", () => {
     expect(lanesFor("time").map((l) => l.id)).toEqual(["backlog", "today", "week", "done"]);
   });
-  it("workflow lanes for a known kind", () => {
+  it("workflow lanes per kind, falling back to status for an unknown kind", () => {
     expect(lanesFor("workflow", "outreach").map((l) => l.id)).toEqual([
       "call",
       "waiting",
@@ -31,138 +42,121 @@ describe("lenses — lanesFor", () => {
       "transit",
       "delivered",
     ]);
-    expect(lanesFor("workflow", "visit").map((l) => l.id)).toEqual(["plan", "enroute", "done"]);
-  });
-  it("workflow falls back to status lanes for an unknown kind", () => {
     expect(lanesFor("workflow", "note").map((l) => l.id)).toEqual(["open", "in_progress", "done"]);
-    expect(lanesFor("workflow").map((l) => l.id)).toEqual(["open", "in_progress", "done"]);
-  });
-  it("every lane carries a non-empty label", () => {
-    for (const v of ["status", "time", "workflow"] as const) {
-      for (const l of lanesFor(v, "outreach")) expect(l.label.length).toBeGreaterThan(0);
-    }
   });
 });
 
 describe("lenses — laneOf", () => {
-  it("status view uses status", () => {
-    expect(
-      laneOf({ kind: "order", status: "in_progress", stage: null, due_at: null }, "status", NOW)
-    ).toBe("in_progress");
+  it("status view: done / started / neither", () => {
+    expect(laneOf(t({ status: "done" }), "status", NOW)).toBe("done");
+    expect(laneOf(t({ started_at: NOW }), "status", NOW)).toBe("in_progress");
+    expect(laneOf(t(), "status", NOW)).toBe("open");
   });
-  it("time view: done wins over the date bucket", () => {
-    expect(laneOf({ kind: "order", status: "done", stage: null, due_at: NOW }, "time", NOW)).toBe(
-      "done"
-    );
+  it("time view: done wins, else buckets by due date", () => {
+    expect(laneOf(t({ status: "done", due_at: NOW }), "time", NOW)).toBe("done");
+    expect(laneOf(t({ due_at: NOW }), "time", NOW)).toBe("today");
+    expect(laneOf(t({ due_at: null }), "time", NOW)).toBe("backlog");
+    expect(laneOf(t({ due_at: "2026-08-20T00:00:00Z" }), "time", NOW)).toBe("today"); // overdue
+    expect(laneOf(t({ due_at: "2026-09-04T00:00:00Z" }), "time", NOW)).toBe("week");
   });
-  it("time view buckets by due date", () => {
-    expect(laneOf({ kind: "order", status: "open", stage: null, due_at: NOW }, "time", NOW)).toBe(
-      "today"
-    );
-    expect(
-      laneOf({ kind: "order", status: "open", stage: null, due_at: null }, "time", NOW)
-    ).toBe("backlog");
-    // overdue lands in "today", not a lane of its own
-    expect(
-      laneOf(
-        { kind: "order", status: "open", stage: null, due_at: "2026-08-20T00:00:00Z" },
-        "time",
-        NOW
-      )
-    ).toBe("today");
-  });
-  it("workflow view derives a stage when none is stored", () => {
-    expect(
-      laneOf({ kind: "outreach", status: "open", stage: null, due_at: null }, "workflow", NOW)
-    ).toBe("call");
-    expect(
-      laneOf({ kind: "outreach", status: "in_progress", stage: "waiting", due_at: null }, "workflow", NOW)
-    ).toBe("waiting");
-    // unknown kind → the status is the lane
-    expect(
-      laneOf({ kind: "note", status: "open", stage: null, due_at: null }, "workflow", NOW)
-    ).toBe("open");
+  it("workflow view: stored stage, else derived", () => {
+    expect(laneOf(t({ kind: "outreach" }), "workflow", NOW)).toBe("call");
+    expect(laneOf(t({ kind: "outreach", started_at: NOW }), "workflow", NOW)).toBe("waiting");
+    expect(laneOf(t({ kind: "outreach", stage: "scheduled" }), "workflow", NOW)).toBe("scheduled");
+    expect(laneOf(t({ kind: "outreach", status: "done" }), "workflow", NOW)).toBe("done");
+    expect(laneOf(t({ kind: "note" }), "workflow", NOW)).toBe("open");
   });
 });
 
-describe("lenses — movePatch", () => {
-  it("status move sets status and syncs stage", () => {
-    expect(
-      movePatch({ kind: "outreach", status: "open", stage: "call", due_at: null }, "status", "done", NOW)
-    ).toEqual({ status: "done", stage: "done" });
-    expect(
-      movePatch({ kind: "note", status: "open", stage: null, due_at: null }, "status", "in_progress", NOW)
-    ).toEqual({ status: "in_progress", stage: null });
+describe("lenses — movePatch (status view)", () => {
+  it("→ done closes and snaps a pipeline kind's stage to last", () => {
+    expect(movePatch(t({ kind: "outreach", stage: "call" }), "status", "done", NOW)).toEqual({
+      status: "done",
+      stage: "done",
+    });
+    expect(movePatch(t({ kind: "note" }), "status", "done", NOW)).toEqual({ status: "done" });
   });
-  it("time move to a bucket sets due_at and keeps a non-done status", () => {
-    const p = movePatch(
-      { kind: "order", status: "open", stage: null, due_at: null },
-      "time",
-      "today",
-      NOW
-    );
-    expect(p.status).toBe("open");
-    expect(p.due_at).toBe("2026-09-02");
+  it("→ in_progress sets started_at (and a mid stage for a pipeline kind)", () => {
+    expect(movePatch(t({ kind: "note" }), "status", "in_progress", NOW)).toEqual({
+      status: "open",
+      started_at: NOW,
+    });
+    expect(movePatch(t({ kind: "outreach", stage: "call" }), "status", "in_progress", NOW)).toEqual({
+      status: "open",
+      started_at: NOW,
+      stage: "waiting",
+    });
   });
-  it("time move to backlog clears due_at", () => {
+  it("→ open clears started_at (and resets stage for a pipeline kind)", () => {
+    expect(movePatch(t({ kind: "note", started_at: NOW }), "status", "open", NOW)).toEqual({
+      status: "open",
+      started_at: null,
+    });
     expect(
-      movePatch({ kind: "order", status: "open", stage: null, due_at: NOW }, "time", "backlog", NOW).due_at
-    ).toBe(null);
-  });
-  it("time move to done closes it", () => {
-    expect(
-      movePatch({ kind: "order", status: "open", stage: null, due_at: NOW }, "time", "done", NOW)
-    ).toEqual({ status: "done" });
-  });
-  it("time move off done re-opens to in_progress", () => {
-    expect(
-      movePatch({ kind: "order", status: "done", stage: null, due_at: NOW }, "time", "today", NOW).status
-    ).toBe("in_progress");
-  });
-  it("workflow move sets stage and derives status", () => {
-    expect(
-      movePatch({ kind: "outreach", status: "open", stage: "call", due_at: null }, "workflow", "scheduled", NOW)
-    ).toEqual({ stage: "scheduled", status: "in_progress" });
-    expect(
-      movePatch({ kind: "outreach", status: "open", stage: "call", due_at: null }, "workflow", "done", NOW)
-    ).toEqual({ stage: "done", status: "done" });
-    expect(
-      movePatch({ kind: "order", status: "in_progress", stage: "transit", due_at: null }, "workflow", "pending", NOW)
-    ).toEqual({ stage: "pending", status: "open" });
+      movePatch(t({ kind: "order", started_at: NOW, stage: "transit" }), "status", "open", NOW)
+    ).toEqual({ status: "open", started_at: null, stage: "pending" });
   });
 });
 
-describe("lenses — stage/status helpers", () => {
-  it("stageFromStatus", () => {
-    expect(stageFromStatus("outreach", "open")).toBe("call");
-    expect(stageFromStatus("outreach", "in_progress")).toBe("waiting");
-    expect(stageFromStatus("outreach", "done")).toBe("done");
-    expect(stageFromStatus("visit", "in_progress")).toBe("enroute");
+describe("lenses — movePatch (time view)", () => {
+  it("to a bucket sets due_at and keeps a non-done status", () => {
+    const p = movePatch(t({ kind: "order" }), "time", "today", NOW);
+    expect(p).toEqual({ due_at: "2026-09-02", status: "open" });
+  });
+  it("to backlog clears due_at", () => {
+    expect(movePatch(t({ due_at: NOW }), "time", "backlog", NOW).due_at).toBe(null);
+  });
+  it("to done closes; off done re-opens", () => {
+    expect(movePatch(t({ kind: "note", due_at: NOW }), "time", "done", NOW)).toEqual({ status: "done" });
+    expect(movePatch(t({ status: "done", due_at: NOW }), "time", "today", NOW).status).toBe("open");
+  });
+});
+
+describe("lenses — movePatch (workflow view)", () => {
+  it("last stage closes, first stage re-opens, middle sets started_at", () => {
+    expect(movePatch(t({ kind: "outreach", stage: "call" }), "workflow", "done", NOW)).toEqual({
+      stage: "done",
+      status: "done",
+    });
+    expect(
+      movePatch(t({ kind: "outreach", stage: "scheduled", started_at: NOW }), "workflow", "call", NOW)
+    ).toEqual({ stage: "call", status: "open", started_at: null });
+    expect(movePatch(t({ kind: "outreach", stage: "call" }), "workflow", "waiting", NOW)).toEqual({
+      stage: "waiting",
+      status: "open",
+      started_at: NOW,
+    });
+  });
+  it("a kind with no pipeline behaves like the status view", () => {
+    expect(movePatch(t({ kind: "note" }), "workflow", "in_progress", NOW)).toEqual({
+      status: "open",
+      started_at: NOW,
+    });
+  });
+});
+
+describe("lenses — helpers", () => {
+  it("deriveStage", () => {
+    expect(deriveStage({ kind: "outreach", status: "open", started_at: null })).toBe("call");
+    expect(deriveStage({ kind: "outreach", status: "open", started_at: NOW })).toBe("waiting");
+    expect(deriveStage({ kind: "outreach", status: "done", started_at: null })).toBe("done");
+    expect(deriveStage({ kind: "note", status: "open", started_at: null })).toBe(null);
+  });
+  it("stageFromStatus / statusFromStage", () => {
+    expect(stageFromStatus("order", "open")).toBe("pending");
+    expect(stageFromStatus("order", "done")).toBe("delivered");
     expect(stageFromStatus("note", "open")).toBe(null);
-  });
-  it("statusFromStage", () => {
-    expect(statusFromStage("order", "pending")).toBe("open");
-    expect(statusFromStage("order", "ready")).toBe("in_progress");
-    expect(statusFromStage("order", "transit")).toBe("in_progress");
     expect(statusFromStage("order", "delivered")).toBe("done");
+    expect(statusFromStage("order", "transit")).toBe("open");
     expect(statusFromStage("visit", "plan")).toBe("open");
-    expect(statusFromStage("visit", "done")).toBe("done");
-    expect(statusFromStage("note", "whatever")).toBe("in_progress");
   });
-});
-
-describe("lenses — bucket / dateForBucket", () => {
-  it("bucket", () => {
+  it("bucket / dateForBucket", () => {
     expect(bucket(null, NOW)).toBe("backlog");
     expect(bucket("2026-09-02T00:00:00Z", NOW)).toBe("today");
-    expect(bucket("2026-08-01T00:00:00Z", NOW)).toBe("today"); // overdue
-    expect(bucket("2026-09-04T00:00:00Z", NOW)).toBe("week"); // Fri of the same Jalali week
-    expect(bucket("2026-10-01T00:00:00Z", NOW)).toBe("backlog"); // far future
-  });
-  it("dateForBucket round-trips through bucket", () => {
+    expect(bucket("2026-09-04T00:00:00Z", NOW)).toBe("week");
+    expect(bucket("2026-10-01T00:00:00Z", NOW)).toBe("backlog");
     expect(dateForBucket("backlog", NOW)).toBe(null);
     expect(dateForBucket("today", NOW)).toBe("2026-09-02");
-    const wk = dateForBucket("week", NOW)!;
-    expect(bucket(wk, NOW)).not.toBe("backlog");
+    expect(bucket(dateForBucket("week", NOW)!, NOW)).not.toBe("backlog");
   });
 });

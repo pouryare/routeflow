@@ -16,11 +16,13 @@ afterAll(() => {
 });
 
 describe("board & pocket schema", () => {
-  it("tasks has a nullable stage column", () => {
+  it("tasks has nullable stage + started_at columns", () => {
     const cols = getDb().prepare("PRAGMA table_info(tasks)").all() as { name: string; notnull: number }[];
-    const stage = cols.find((c) => c.name === "stage");
-    expect(stage).toBeTruthy();
-    expect(stage!.notnull).toBe(0);
+    for (const name of ["stage", "started_at"]) {
+      const c = cols.find((x) => x.name === name);
+      expect(c, name).toBeTruthy();
+      expect(c!.notnull, name).toBe(0);
+    }
   });
 
   it("users has a nullable prefs_json column", () => {

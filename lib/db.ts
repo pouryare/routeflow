@@ -2935,6 +2935,13 @@ export function getDb(): DatabaseSync {
   if (!bpTaskCols.some((c) => c.name === "stage")) {
     db.exec("ALTER TABLE tasks ADD COLUMN stage TEXT");
   }
+  // Phase 7 status is open|done|dismissed -- no "in progress". The Board's status lens
+  // needs a middle column that works for every kind, so a task is "in progress" when
+  // started_at is set and it is not yet done. Plain ADD COLUMN; status semantics for
+  // listTasks / the briefing are unchanged (a started task is still status='open').
+  if (!bpTaskCols.some((c) => c.name === "started_at")) {
+    db.exec("ALTER TABLE tasks ADD COLUMN started_at TEXT");
+  }
   const bpUserCols = db.prepare("PRAGMA table_info(users)").all() as { name: string }[];
   if (!bpUserCols.some((c) => c.name === "prefs_json")) {
     db.exec("ALTER TABLE users ADD COLUMN prefs_json TEXT");

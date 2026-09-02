@@ -43,9 +43,12 @@ describe.skipIf(!dbPath)("Board & Pocket migration on real data", () => {
     ).toBe(true);
     expect((db.prepare("SELECT COUNT(*) n FROM task_recurrences").get() as { n: number }).n).toBe(0);
 
-    // no pre-existing row got a stage or a pref
+    // no pre-existing row got a stage, a started marker, or a pref
     expect(
       (db.prepare("SELECT COUNT(*) n FROM tasks WHERE stage IS NOT NULL").get() as { n: number }).n
+    ).toBe(0);
+    expect(
+      (db.prepare("SELECT COUNT(*) n FROM tasks WHERE started_at IS NOT NULL").get() as { n: number }).n
     ).toBe(0);
     expect(
       (db.prepare("SELECT COUNT(*) n FROM users WHERE prefs_json IS NOT NULL").get() as { n: number }).n
