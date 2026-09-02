@@ -49,11 +49,20 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[
   db.exec("BEGIN");
   try {
     const insert = db.prepare(`
-      INSERT INTO customers (customer_code, business_name, address, city, province, lat, lng, notes, synced_at)
-      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?)
-      ON CONFLICT(customer_code) DO NOTHING
+      INSERT INTO customers (customer_code, business_name, address, city, province, lat, lng, notes, synced_at, organization_id)
+      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?)
+      ON CONFLICT(organization_id, customer_code) DO NOTHING
     `);
-    const result = insert.run(customerCode, location.name, location.address, location.lat, location.lng, notes, now);
+    const result = insert.run(
+      customerCode,
+      location.name,
+      location.address,
+      location.lat,
+      location.lng,
+      notes,
+      now,
+      guard.session.organizationId
+    );
     if (result.changes === 0) {
       db.exec("ROLLBACK");
       return NextResponse.json({ ok: false, error: "این مکان قبلاً به مشتری تبدیل شده است" }, { status: 409 });

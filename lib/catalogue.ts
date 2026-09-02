@@ -118,6 +118,10 @@ export function createProduct(
   input: {
     name: string;
     kg_per_base_unit: number;
+    /** Required, not optional: the catalogue is per-tenant now, and a product inserted
+     *  with a NULL organisation is invisible to readCatalogue and impossible to spot on
+     *  screen. A missing stamp should fail to compile, not fail silently. */
+    organization_id: number;
     base_unit?: string;
     sku?: string | null;
     notes?: string | null;
@@ -125,8 +129,8 @@ export function createProduct(
 ): number {
   const now = new Date().toISOString();
   db.prepare(
-    `INSERT INTO products (name, sku, base_unit, kg_per_base_unit, notes, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO products (name, sku, base_unit, kg_per_base_unit, notes, created_at, updated_at, organization_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     input.name.trim(),
     input.sku?.trim() || null,
@@ -134,7 +138,8 @@ export function createProduct(
     input.kg_per_base_unit,
     input.notes?.trim() || null,
     now,
-    now
+    now,
+    input.organization_id
   );
   return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }

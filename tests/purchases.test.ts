@@ -45,11 +45,11 @@ beforeAll(() => {
       .run("C1", "رستوران نمونه", ctx.group, now).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "جعبه", qty_per_pack: 100 });
   setPrice(db, { product_id: ctx.product, price_toman: 440000, valid_from: "2026-01-01" });
 
-  ctx.other = createProduct(db, { name: "دوغ لیوانی", kg_per_base_unit: 0.3 });
+  ctx.other = createProduct(db, { name: "دوغ لیوانی", kg_per_base_unit: 0.3, organization_id: 1 });
 });
 
 describe("recordPurchase", () => {
@@ -58,6 +58,7 @@ describe("recordPurchase", () => {
       supplier: "کارخانه مرحبا",
       purchase_date: "2026-05-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, base_qty: 1000, unit_cost_toman: 3000 }],
     });
     const lines = getDb()
@@ -80,6 +81,7 @@ describe("recordPurchase", () => {
       supplier: "کارخانه مرحبا",
       purchase_date: "2026-05-10",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, base_qty: 1000, unit_cost_toman: 5000 }],
     });
     const row = getDb()
@@ -94,6 +96,7 @@ describe("recordPurchase", () => {
         supplier: "x",
         purchase_date: "2026-05-01",
         created_by: ctx.owner,
+        organization_id: 1,
         lines: [],
       })
     ).toThrow(PurchaseError);
@@ -105,6 +108,7 @@ describe("recordPurchase", () => {
         supplier: "x",
         purchase_date: "2026-05-01",
         created_by: ctx.owner,
+        organization_id: 1,
         lines: [{ product_id: 999999, base_qty: 1, unit_cost_toman: 1 }],
       })
     ).toThrow(PurchaseError);
@@ -116,6 +120,7 @@ describe("recordPurchase", () => {
         supplier: "x",
         purchase_date: "2026-05-01",
         created_by: ctx.owner,
+        organization_id: 1,
         lines: [{ product_id: ctx.product, base_qty: 1, unit_cost_toman: 1.5 }],
       })
     ).toThrow();
@@ -129,6 +134,7 @@ describe("recordPurchase", () => {
         supplier: "x",
         purchase_date: "2026-05-01",
         created_by: ctx.owner,
+        organization_id: 1,
         lines: [
           { product_id: ctx.product, base_qty: 1, unit_cost_toman: 1000 },
           { product_id: 999999, base_qty: 1, unit_cost_toman: 1000 },
@@ -161,6 +167,7 @@ describe("stockPosition", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-06-01",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
@@ -203,7 +210,7 @@ describe("stockPosition", () => {
 
   it("flags a negative position rather than hiding it", () => {
     const db = getDb();
-    const bare = createProduct(db, { name: "کالای منفی", kg_per_base_unit: 1 });
+    const bare = createProduct(db, { name: "کالای منفی", kg_per_base_unit: 1, organization_id: 1 });
     const barePack = createPackaging(db, { product_id: bare, name: "ک", qty_per_pack: 10 });
     setPrice(db, { product_id: bare, price_toman: 1000, valid_from: "2026-01-01" });
 
@@ -219,6 +226,7 @@ describe("stockPosition", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-07-01",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
@@ -235,12 +243,6 @@ describe("stockPosition", () => {
 });
 
 describe("readPurchases", () => {
-  // readPurchases is now tenant-scoped, but recordPurchase does not stamp
-  // organization_id until Task 5b -- pin the receipts these tests read to org 1.
-  beforeAll(() => {
-    getDb().exec("UPDATE purchases SET organization_id = 1 WHERE organization_id IS NULL");
-  });
-
   it("returns the newest receipt first", () => {
     const rows = readPurchases(getDb(), 1);
     expect(rows.length).toBeGreaterThan(0);
@@ -290,7 +292,7 @@ describe("advancedStockPosition", () => {
 
   it("reflects the reorder policy an owner has set, and reacts to on-hand changes", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "کالای آستانه‌دار", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "کالای آستانه‌دار", kg_per_base_unit: 1, organization_id: 1 });
     setStockThresholds(db, p, { reorder_point: 100, target_stock: 500 });
     // Never purchased, so on_hand is 0 -- below its own reorder point.
     expect(advancedStockPosition(db).find((r) => r.product_id === p)!.status).toBe("crit");
@@ -298,6 +300,7 @@ describe("advancedStockPosition", () => {
     recordPurchase(db, {
       purchase_date: "2026-08-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: p, base_qty: 300, unit_cost_toman: 1000 }],
     });
     expect(advancedStockPosition(db).find((r) => r.product_id === p)!.status).toBe("ok");
@@ -312,12 +315,13 @@ describe("advancedStockPosition", () => {
 
   it("counts today's delivery into the velocity window and gives a finite days_left", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "کالای سرعت‌دار", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "کالای سرعت‌دار", kg_per_base_unit: 1, organization_id: 1 });
     const pack = createPackaging(db, { product_id: p, name: "ک", qty_per_pack: 50 });
     setPrice(db, { product_id: p, price_toman: 1000, valid_from: "2026-01-01" });
     recordPurchase(db, {
       purchase_date: "2026-08-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: p, base_qty: 1000, unit_cost_toman: 500 }],
     });
 
@@ -329,7 +333,7 @@ describe("advancedStockPosition", () => {
       lines: [{ product_id: p, packaging_id: pack, packs: 2 }],
     });
     confirmOrder(db, order.id);
-    const run = createRun(db, { driver_user_id: ctx.driver, run_date: "2026-08-01", created_by: ctx.owner });
+    const run = createRun(db, { driver_user_id: ctx.driver, run_date: "2026-08-01", created_by: ctx.owner, organization_id: 1 });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
     // recordDelivery stamps delivered_at with the real current instant, which always
@@ -356,15 +360,17 @@ describe("advancedStockPosition", () => {
 
   it("carries the date of the most recent purchase", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "کالای خرید اخیر", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "کالای خرید اخیر", kg_per_base_unit: 1, organization_id: 1 });
     recordPurchase(db, {
       purchase_date: "2026-06-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: p, base_qty: 10, unit_cost_toman: 1000 }],
     });
     recordPurchase(db, {
       purchase_date: "2026-07-15",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: p, base_qty: 10, unit_cost_toman: 1200 }],
     });
     const row = advancedStockPosition(db).find((r) => r.product_id === p)!;

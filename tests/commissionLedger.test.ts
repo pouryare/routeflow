@@ -50,6 +50,7 @@ function sellAndDeliver(packs: number, orderDate: string, seller: number | null)
     driver_user_id: ctx.driver,
     run_date: orderDate,
     created_by: ctx.owner,
+    organization_id: 1,
   });
   const stopId = addStop(db, run, order.id);
   const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
@@ -86,7 +87,7 @@ beforeAll(() => {
       .run("C1", "رستوران نمونه", ctx.group, now).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "جعبه", qty_per_pack: 100 });
   setPrice(db, { product_id: ctx.product, price_toman: 440000, valid_from: "2026-01-01" });
 
@@ -161,6 +162,7 @@ describe("statementFor", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-09-05",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;

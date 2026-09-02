@@ -62,7 +62,7 @@ beforeAll(() => {
   ctx.eastCustomer = Number(customer.run("C1", "رستوران شرق", ctx.east, now).lastInsertRowid);
   ctx.westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, now).lastInsertRowid);
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, {
     product_id: ctx.product,
     name: "جعبه",
@@ -170,7 +170,7 @@ describe("POST /api/sales/orders", () => {
 
   it("reports an unpriced product as a message rather than a crash", async () => {
     const db = getDb();
-    const bare = createProduct(db, { name: "بی‌قیمت", kg_per_base_unit: 1 });
+    const bare = createProduct(db, { name: "بی‌قیمت", kg_per_base_unit: 1, organization_id: 1 });
     const barePack = createPackaging(db, { product_id: bare, name: "ک", qty_per_pack: 1 });
     const res = await POST(
       post(AS.eastManager(), orderBody({ lines: [{ product_id: bare, packaging_id: barePack, packs: 1 }] }))

@@ -82,8 +82,8 @@ export async function POST(req: NextRequest) {
   // makes in the editor, not a side effect of adding a location.
   const result = db
     .prepare(
-      `INSERT INTO facilities (id, slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?)`
+      `INSERT INTO facilities (id, slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at, organization_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`
     )
     .run(
       restore?.id ?? null, // NULL on an INTEGER PRIMARY KEY still autoincrements
@@ -98,7 +98,8 @@ export async function POST(req: NextRequest) {
       // A site a manager adds is theirs. An owner adds one for the company, with no group.
       guard.session.groupId,
       now,
-      now
+      now,
+      guard.session.organizationId
     );
 
   return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid), restored: restore !== null });

@@ -69,7 +69,7 @@ beforeAll(() => {
       .run("C2", "کافه بی‌منطقه", now).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "کره گیاهی مرحبا", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی مرحبا", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, {
     product_id: ctx.product,
     name: "جعبه بچه",
@@ -78,7 +78,7 @@ beforeAll(() => {
   setPrice(db, { product_id: ctx.product, price_toman: 440000, valid_from: "2026-01-01" });
   db.prepare("UPDATE products SET avg_cost_toman = 300000 WHERE id = ?").run(ctx.product);
 
-  ctx.unpriced = createProduct(db, { name: "بدون قیمت", kg_per_base_unit: 1 });
+  ctx.unpriced = createProduct(db, { name: "بدون قیمت", kg_per_base_unit: 1, organization_id: 1 });
   ctx.unpricedPack = createPackaging(db, {
     product_id: ctx.unpriced,
     name: "کارتن",
@@ -154,7 +154,7 @@ describe("createOrder", () => {
     // Its own product on purpose. Adding a second price to the shared one would leak
     // into every later test in this file, and the first version of this test did.
     const db = getDb();
-    const product = createProduct(db, { name: "کالای تاریخ‌دار", kg_per_base_unit: 1 });
+    const product = createProduct(db, { name: "کالای تاریخ‌دار", kg_per_base_unit: 1, organization_id: 1 });
     const packaging = createPackaging(db, {
       product_id: product,
       name: "کارتن",

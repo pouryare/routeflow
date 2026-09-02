@@ -39,7 +39,7 @@ beforeAll(() => {
       )
       .run(now).lastInsertRowid
   );
-  ctx.product = createProduct(db, { name: "کالای نمونه", kg_per_base_unit: 1 });
+  ctx.product = createProduct(db, { name: "کالای نمونه", kg_per_base_unit: 1, organization_id: 1 });
 });
 
 function cookieFor(uid: number, role: "owner" | "group_manager") {

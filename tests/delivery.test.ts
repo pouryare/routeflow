@@ -69,7 +69,7 @@ beforeAll(() => {
       .run("C1", "رستوران نمونه", ctx.group, now).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, {
     product_id: ctx.product,
     name: "جعبه",
@@ -91,6 +91,7 @@ beforeAll(() => {
     driver_user_id: ctx.driver,
     run_date: "2026-08-26",
     created_by: ctx.owner,
+    organization_id: 1,
   });
   addStop(db, ctx.run, ctx.order);
 });
@@ -102,6 +103,7 @@ describe("createRun", () => {
         driver_user_id: ctx.driver,
         run_date: "2026-08-26",
         created_by: ctx.owner,
+        organization_id: 1,
       })
     ).toThrow();
   });
@@ -112,6 +114,7 @@ describe("createRun", () => {
         driver_user_id: ctx.owner,
         run_date: "2026-09-01",
         created_by: ctx.owner,
+        organization_id: 1,
       })
     ).toThrow(DeliveryError);
   });
@@ -228,6 +231,7 @@ describe("recordDelivery", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-08-27",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops[0];
@@ -259,6 +263,7 @@ describe("recordDelivery", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-08-28",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops[0];
@@ -296,6 +301,7 @@ describe("recordDelivery", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-09-02",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops[0];
@@ -347,6 +353,7 @@ describe("recordDelivery", () => {
       driver_user_id: ctx.driver,
       run_date: "2026-08-29",
       created_by: ctx.owner,
+      organization_id: 1,
     });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops[0];

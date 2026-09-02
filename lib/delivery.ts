@@ -52,7 +52,15 @@ export interface RunDetail {
 
 export function createRun(
   db: DatabaseSync,
-  input: { driver_user_id: number; run_date: string; created_by: number; group_id?: number | null }
+  input: {
+    driver_user_id: number;
+    run_date: string;
+    created_by: number;
+    /** Required, not optional: delivery_runs is a tenant table, and a run with a NULL
+     *  organisation slips past every owner/organisation filter unnoticed. */
+    organization_id: number;
+    group_id?: number | null;
+  }
 ): number {
   const driver = db
     .prepare("SELECT id, role, group_id FROM users WHERE id = ? AND active = 1")
@@ -67,8 +75,8 @@ export function createRun(
   return Number(
     db
       .prepare(
-        `INSERT INTO delivery_runs (driver_user_id, group_id, run_date, created_by, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
+        `INSERT INTO delivery_runs (driver_user_id, group_id, run_date, created_by, created_at, updated_at, organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.driver_user_id,
@@ -76,7 +84,8 @@ export function createRun(
         input.run_date.slice(0, 10),
         input.created_by,
         now,
-        now
+        now,
+        input.organization_id
       ).lastInsertRowid
   );
 }

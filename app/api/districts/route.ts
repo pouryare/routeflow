@@ -48,12 +48,21 @@ export async function POST(req: NextRequest) {
   try {
     const result = db
       .prepare(
-        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, group_id, updated_at)
-         VALUES (?, 'mahalle', NULL, ?, ?, ?, 1, ?, ?)`
+        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, group_id, updated_at, organization_id)
+         VALUES (?, 'mahalle', NULL, ?, ?, ?, 1, ?, ?, ?)`
       )
       // A custom district belongs to whoever drew it. An owner draws for nobody in
-      // particular, so theirs is left unowned until territory is assigned explicitly.
-      .run(name.trim(), JSON.stringify(geometry), status, notes ?? null, guard.session.groupId, now);
+      // particular, so theirs is left unowned until territory is assigned explicitly --
+      // but it still belongs to the drawer's organisation.
+      .run(
+        name.trim(),
+        JSON.stringify(geometry),
+        status,
+        notes ?? null,
+        guard.session.groupId,
+        now,
+        guard.session.organizationId
+      );
     return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";

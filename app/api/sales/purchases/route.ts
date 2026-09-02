@@ -34,6 +34,7 @@ export async function POST(req: NextRequest) {
       invoice_no: typeof body?.invoice_no === "string" ? body.invoice_no : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
       created_by: guard.session.user.id,
+      organization_id: guard.session.organizationId,
       lines: lines.map((line) => ({
         product_id: Number(line.product_id),
         base_qty: Number(line.base_qty),

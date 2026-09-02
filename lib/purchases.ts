@@ -29,6 +29,9 @@ export interface PurchaseInput {
   invoice_no?: string | null;
   notes?: string | null;
   created_by: number;
+  /** Required, not optional: readPurchases is per-tenant now, and a receipt with a NULL
+   *  organisation drops out of its own owner's purchase history without an error. */
+  organization_id: number;
   lines: PurchaseLineInput[];
 }
 
@@ -56,8 +59,8 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
     const purchaseId = Number(
       db
         .prepare(
-          `INSERT INTO purchases (supplier, purchase_date, invoice_no, notes, created_by, created_at)
-           VALUES (?, ?, ?, ?, ?, ?)`
+          `INSERT INTO purchases (supplier, purchase_date, invoice_no, notes, created_by, created_at, organization_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           input.supplier?.trim() || null,
@@ -65,7 +68,8 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
           input.invoice_no?.trim() || null,
           input.notes?.trim() || null,
           input.created_by,
-          now
+          now,
+          input.organization_id
         ).lastInsertRowid
     );
 

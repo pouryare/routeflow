@@ -58,9 +58,9 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const now = new Date().toISOString();
   const insert = db.prepare(`
-    INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, group_id, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(maps_url) DO NOTHING
+    INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, group_id, created_at, updated_at, organization_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(organization_id, maps_url) DO NOTHING
   `);
 
   const VALID_RESOLUTIONS = new Set<LocationResolution>(["direct", "pluscode", "nominatim", "manual"]);
@@ -82,7 +82,8 @@ export async function POST(req: NextRequest) {
         // An owner's pin is unowned until territory says otherwise; a manager's is theirs.
         guard.session.groupId,
         now,
-        now
+        now,
+        guard.session.organizationId
       );
       if (result.changes > 0) added++;
     }

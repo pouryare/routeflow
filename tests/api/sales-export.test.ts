@@ -47,7 +47,7 @@ beforeAll(() => {
   const eastCustomer = Number(customer.run("C1", "رستوران شرق", ctx.east, now).lastInsertRowid);
   const westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, now).lastInsertRowid);
 
-  const product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  const product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   const packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 100 });
   setPrice(db, { product_id: product, price_toman: 440000, valid_from: "2026-01-01" });
 

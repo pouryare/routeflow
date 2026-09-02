@@ -18,20 +18,13 @@ afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
-// readCatalogue is now tenant-scoped, but createProduct does not stamp
-// organization_id until Task 5b -- pin every fixture product to org 1 so the
-// catalogue reads still see them. Task 5b removes the need for this.
-function pinProductsToOrg1() {
-  getDb().exec("UPDATE products SET organization_id = 1 WHERE organization_id IS NULL");
-}
-
 let marhaba = 0;
 let boxOf100 = 0;
 let boxOf12 = 0;
 
 beforeAll(() => {
   const db = getDb();
-  marhaba = createProduct(db, { name: "کره گیاهی مرحبا", kg_per_base_unit: 0.25 });
+  marhaba = createProduct(db, { name: "کره گیاهی مرحبا", kg_per_base_unit: 0.25, organization_id: 1 });
   boxOf100 = createPackaging(db, { product_id: marhaba, name: "جعبه بچه", qty_per_pack: 100 });
   boxOf12 = createPackaging(db, { product_id: marhaba, name: "کارتن کوچک", qty_per_pack: 12 });
 
@@ -44,7 +37,6 @@ beforeAll(() => {
     price_toman: 60000,
     valid_from: "2026-05-01",
   });
-  pinProductsToOrg1();
 });
 
 describe("readCatalogue", () => {
@@ -71,18 +63,16 @@ describe("readCatalogue", () => {
 
   it("reports no price rather than zero when nothing has been set", () => {
     const db = getDb();
-    const unpriced = createProduct(db, { name: "دوغ لیوانی", kg_per_base_unit: 0.3 });
+    const unpriced = createProduct(db, { name: "دوغ لیوانی", kg_per_base_unit: 0.3, organization_id: 1 });
     createPackaging(db, { product_id: unpriced, name: "شیرینک ۶ تایی", qty_per_pack: 6 });
-    pinProductsToOrg1();
     const row = readCatalogue(db, 1, { onDate: "2026-08-26" }).find((p) => p.id === unpriced)!;
     expect(row.packagings[0].price_toman).toBeNull();
   });
 
   it("hides an inactive product unless asked for it", () => {
     const db = getDb();
-    const gone = createProduct(db, { name: "محصول بازنشسته", kg_per_base_unit: 1 });
+    const gone = createProduct(db, { name: "محصول بازنشسته", kg_per_base_unit: 1, organization_id: 1 });
     db.prepare("UPDATE products SET active = 0 WHERE id = ?").run(gone);
-    pinProductsToOrg1();
 
     expect(readCatalogue(db, 1).some((p) => p.id === gone)).toBe(false);
     expect(readCatalogue(db, 1, { includeInactive: true }).some((p) => p.id === gone)).toBe(true);
@@ -109,7 +99,7 @@ describe("resolvePrice", () => {
 
   it("returns null for a product with no price at all", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "بدون قیمت", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "بدون قیمت", kg_per_base_unit: 1, organization_id: 1 });
     expect(resolvePrice(db, p, null, "2026-08-26")).toBeNull();
   });
 });
@@ -117,7 +107,7 @@ describe("resolvePrice", () => {
 describe("setPrice", () => {
   it("inserts rather than updating, so history survives", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "ماست موسیر زیتون", kg_per_base_unit: 0.5 });
+    const p = createProduct(db, { name: "ماست موسیر زیتون", kg_per_base_unit: 0.5, organization_id: 1 });
     setPrice(db, { product_id: p, price_toman: 100000, valid_from: "2026-01-01" });
     setPrice(db, { product_id: p, price_toman: 120000, valid_from: "2026-06-01" });
 
@@ -133,7 +123,7 @@ describe("setPrice", () => {
 
   it("refuses a fractional price rather than rounding it silently", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "قیمت اعشاری", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "قیمت اعشاری", kg_per_base_unit: 1, organization_id: 1 });
     expect(() =>
       setPrice(db, { product_id: p, price_toman: 12500.5, valid_from: "2026-01-01" })
     ).toThrow();
@@ -143,7 +133,7 @@ describe("setPrice", () => {
 describe("setStockThresholds", () => {
   it("is null on a freshly created product -- no policy set, not zero", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "کالای بدون آستانه", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "کالای بدون آستانه", kg_per_base_unit: 1, organization_id: 1 });
     const row = db.prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(p) as {
       reorder_point: number | null;
       target_stock: number | null;
@@ -154,7 +144,7 @@ describe("setStockThresholds", () => {
 
   it("sets one field without disturbing the other", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "آستانهٔ جزئی", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "آستانهٔ جزئی", kg_per_base_unit: 1, organization_id: 1 });
     setStockThresholds(db, p, { reorder_point: 50 });
     setStockThresholds(db, p, { target_stock: 200 });
     const row = db.prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(p) as {
@@ -167,7 +157,7 @@ describe("setStockThresholds", () => {
 
   it("clears a threshold when passed null explicitly", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "آستانهٔ پاک‌شدنی", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "آستانهٔ پاک‌شدنی", kg_per_base_unit: 1, organization_id: 1 });
     setStockThresholds(db, p, { reorder_point: 30, target_stock: 100 });
     setStockThresholds(db, p, { reorder_point: null });
     const row = db.prepare("SELECT reorder_point, target_stock FROM products WHERE id = ?").get(p) as {
@@ -180,7 +170,7 @@ describe("setStockThresholds", () => {
 
   it("rejects a negative threshold", () => {
     const db = getDb();
-    const p = createProduct(db, { name: "آستانهٔ منفی", kg_per_base_unit: 1 });
+    const p = createProduct(db, { name: "آستانهٔ منفی", kg_per_base_unit: 1, organization_id: 1 });
     expect(() => setStockThresholds(db, p, { reorder_point: -5 })).toThrow(TypeError);
   });
 });

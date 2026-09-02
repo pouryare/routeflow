@@ -52,6 +52,7 @@ function runFor(date: string): number {
     driver_user_id: ctx.driver,
     run_date: date,
     created_by: ctx.owner,
+    organization_id: 1,
   });
   runs.set(date, id);
   return id;
@@ -116,7 +117,7 @@ beforeAll(() => {
     customer.run("C2", "رستوران غرب", ctx.west, 0, 0, 0, now).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "جعبه", qty_per_pack: 100 });
   setPrice(db, { product_id: ctx.product, price_toman: 1000, valid_from: "2026-01-01" });
 

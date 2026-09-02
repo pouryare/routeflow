@@ -39,7 +39,7 @@ beforeAll(() => {
   ctx.manager = Number(user.run("m", "مدیر", "group_manager", ctx.group, now).lastInsertRowid);
   ctx.seller = Number(user.run("s", "نازنین", "salesperson", ctx.group, now).lastInsertRowid);
   ctx.driver = Number(user.run("d", "راننده", "driver", ctx.group, now).lastInsertRowid);
-  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25 });
+  ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
 });
 
 const cookieFor = (uid: number, role: Role, gid: number | null) =>

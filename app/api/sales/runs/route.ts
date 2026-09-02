@@ -61,6 +61,7 @@ export async function POST(req: NextRequest) {
       driver_user_id: driver.id,
       run_date: runDate,
       created_by: guard.session.user.id,
+      organization_id: guard.session.organizationId,
       group_id: driver.group_id,
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });

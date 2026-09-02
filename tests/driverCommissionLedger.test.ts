@@ -49,7 +49,7 @@ function deliverFor(driverId: number, packs: number, orderDate: string): number 
   });
   confirmOrder(db, order.id);
 
-  const run = createRun(db, { driver_user_id: driverId, run_date: orderDate, created_by: ctx.owner });
+  const run = createRun(db, { driver_user_id: driverId, run_date: orderDate, created_by: ctx.owner, organization_id: 1 });
   const stopId = addStop(db, run, order.id);
   const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
   recordDelivery(db, stopId, {
@@ -84,7 +84,7 @@ beforeAll(() => {
       .run("C1", "رستوران نمونه", ctx.east, now).lastInsertRowid
   );
 
-  ctx.product = createProduct(db, { name: "ماست", kg_per_base_unit: 0.5 });
+  ctx.product = createProduct(db, { name: "ماست", kg_per_base_unit: 0.5, organization_id: 1 });
   ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "کارتن", qty_per_pack: 20 });
   setPrice(db, { product_id: ctx.product, price_toman: 220000, valid_from: "2026-01-01" });
 
@@ -140,7 +140,7 @@ describe("driverStatementFor", () => {
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 4 }],
     });
     confirmOrder(db, order.id);
-    const run = createRun(db, { driver_user_id: ctx.eastDriver, run_date: "2026-08-05", created_by: ctx.owner });
+    const run = createRun(db, { driver_user_id: ctx.eastDriver, run_date: "2026-08-05", created_by: ctx.owner, organization_id: 1 });
     const stopId = addStop(db, run, order.id);
     const stop = readRun(db, run)!.stops.find((s) => s.id === stopId)!;
     recordDelivery(db, stopId, {

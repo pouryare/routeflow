@@ -51,6 +51,7 @@ export async function POST(req: NextRequest) {
     const id = createProduct(getDb(), {
       name,
       kg_per_base_unit: kg,
+      organization_id: guard.session.organizationId,
       base_unit: typeof body?.base_unit === "string" ? body.base_unit : undefined,
       sku: typeof body?.sku === "string" ? body.sku : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
