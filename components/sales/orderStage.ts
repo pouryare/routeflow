@@ -1,11 +1,14 @@
-/** Which column of the pipeline an order belongs in.
+/** Which column of the pipeline board an order belongs in.
  *
- *  A stage is DERIVED, not stored: `orders.status` has four values and one of them --
- *  confirmed -- covers both "priced and waiting" and "loaded onto a van", which are the
- *  two states anybody standing at the board actually wants told apart. The van is a row
- *  in delivery_stops, so the split is made here rather than by adding a fifth status and
- *  a migration to a table that already carries financial records.
+ *  Phase 3 gave `orders.status` a 14-value machine (lib/orderStateMachine.ts). The board
+ *  keeps its four human lanes -- پیش‌نویس / تأییدشده / در مسیر / تحویل‌شده -- and this maps
+ *  the machine's states onto them. The detailed per-state view lives on the order page.
  */
+import {
+  ORDER_STATUS_LABEL,
+  type OrderStatus,
+} from "@/lib/orderStateMachine";
+
 export type StageKey = "draft" | "confirmed" | "on_route" | "delivered";
 
 export const STAGES: { key: StageKey; label: string; tone: string }[] = [
@@ -15,22 +18,35 @@ export const STAGES: { key: StageKey; label: string; tone: string }[] = [
   { key: "delivered", label: "تحویل‌شده", tone: "var(--good)" },
 ];
 
+const PRE_CONFIRM: ReadonlySet<string> = new Set([
+  "DRAFT",
+  "PENDING_REVIEW",
+  "PENDING_CREDIT",
+  "ON_HOLD",
+]);
+const PRICED_NOT_OUT: ReadonlySet<string> = new Set(["CONFIRMED", "PLANNED", "READY"]);
+const FULFILLED: ReadonlySet<string> = new Set([
+  "DELIVERED",
+  "PARTIALLY_DELIVERED",
+  "CLOSED",
+  "RETURNED",
+]);
+
+/** The board lane for a status, or null for anything that does not belong on it
+ *  (CANCELLED, and a failed attempt waiting to be retried or cancelled). `onRun` still
+ *  splits a priced-but-not-yet-dispatched order from one already on a van. */
 export function stageOf(status: string, onRun: boolean): StageKey | null {
-  if (status === "draft") return "draft";
-  if (status === "delivered") return "delivered";
-  if (status === "confirmed") return onRun ? "on_route" : "confirmed";
-  // cancelled — off the board entirely. A lane for it would be a column of dead records
-  // that never empties.
-  return null;
+  if (PRE_CONFIRM.has(status)) return "draft";
+  if (status === "OUT_FOR_DELIVERY") return "on_route";
+  if (PRICED_NOT_OUT.has(status)) return onRun ? "on_route" : "confirmed";
+  if (FULFILLED.has(status)) return "delivered";
+  return null; // CANCELLED, DELIVERY_FAILED
 }
 
-/** Whether dragging from one lane to another may be carried out at all.
+/** Whether a card may be dragged from one lane to another on this board.
  *
- *  Exactly one transition in this system is a sales-side write: a draft becomes
- *  confirmed through PATCH /api/sales/orders/[id]. Loading onto a van is a delivery_stops
- *  row and settling is the driver's stop, both of which belong to other surfaces with
- *  their own authorisation. So the board refuses the rest WITH A REASON rather than
- *  accepting the drop and quietly reverting it on the next refresh.
+ *  Exactly one transition here is a sales-side write: submitting a draft (the board
+ *  labels it «تأیید»). Everything else belongs to other surfaces (route desk, driver).
  */
 export function moveRefusal(from: StageKey, to: StageKey): string | null {
   if (from === to) return null;
@@ -41,7 +57,20 @@ export function moveRefusal(from: StageKey, to: StageKey): string | null {
   return "این جابه‌جایی از اینجا انجام نمی‌شود.";
 }
 
-/** The lanes a card may legally be dropped into right now. */
 export function allowedTargets(from: StageKey): StageKey[] {
   return STAGES.map((s) => s.key).filter((k) => moveRefusal(from, k) === null && k !== from);
+}
+
+/** A status with no invoice / receipt yet -- used to decide which document rows to show. */
+export function isPreConfirm(status: string): boolean {
+  return PRE_CONFIRM.has(status);
+}
+
+/** A status where the goods have reached (or came back from) the customer. */
+export function isFulfilled(status: string): boolean {
+  return FULFILLED.has(status);
+}
+
+export function statusLabel(status: string): string {
+  return ORDER_STATUS_LABEL[status as OrderStatus] ?? status;
 }

@@ -9,15 +9,19 @@ import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import type { PocketDoc, PocketStatus } from "@/components/kargah/PocketCard";
 import OrdersPockets, { type PocketRow } from "@/components/kargah/OrdersPockets";
+import { statusLabel, isPreConfirm, isFulfilled } from "@/components/sales/orderStage";
 
 export const dynamic = "force-dynamic";
 
-const STATUS: Record<string, { pill: PocketStatus; label: string }> = {
-  draft: { pill: "draft", label: "پیش‌نویس" },
-  confirmed: { pill: "conf", label: "تأییدشده" },
-  delivered: { pill: "done", label: "تحویل‌شده" },
-  cancelled: { pill: "draft", label: "لغوشده" },
-};
+/** Map the 14-state machine onto the card's three pills. */
+function statusPill(status: string): { pill: PocketStatus; label: string } {
+  const pill: PocketStatus = isFulfilled(status)
+    ? "done"
+    : isPreConfirm(status) || status === "CANCELLED"
+      ? "draft"
+      : "conf";
+  return { pill, label: statusLabel(status) };
+}
 
 /* The artifact's own document tones, kept as literal pairs: strong, then its pale echo. */
 const TONE = {
@@ -129,14 +133,14 @@ export default async function OrdersPage({
       ) : (
         <OrdersPockets
           rows={orders.map((order): PocketRow => {
-            const st = STATUS[order.status] ?? STATUS.draft;
+            const st = statusPill(order.status);
             const docs: PocketDoc[] = [];
             // A draft has not been invoiced, so there is no receipt to file.
-            if (order.status !== "draft") {
+            if (!isPreConfirm(order.status)) {
               docs.push({
                 label: "رسید تحویل",
                 value: faNum(order.total_toman),
-                tone: order.status === "delivered" ? TONE.sage : TONE.amber,
+                tone: isFulfilled(order.status) ? TONE.sage : TONE.amber,
                 bars: barsFor(order.id, order.total_toman),
               });
             }
@@ -147,7 +151,7 @@ export default async function OrdersPage({
                 tone: TONE.sky,
                 bars: barsFor(order.id + 7, Math.round(order.kg)),
               });
-            } else if (order.status === "draft") {
+            } else if (isPreConfirm(order.status)) {
               docs.push({
                 label: "پیش‌فاکتور",
                 value: faNum(order.total_toman),

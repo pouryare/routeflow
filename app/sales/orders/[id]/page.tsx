@@ -91,7 +91,7 @@ export default async function OrderDetailPage({
             </>
           }
         >
-          {order.status === "draft" && <ConfirmOrderButton orderId={order.id} />}
+          {order.status === "DRAFT" && <ConfirmOrderButton orderId={order.id} />}
         </BentoIdentity>
 
         <BentoTile
@@ -156,7 +156,7 @@ export default async function OrderDetailPage({
         </tbody>
       </table>
 
-      {order.status === "draft" ? (
+      {order.status === "DRAFT" ? (
         <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-muted)]">
           تا وقتی پیش‌نویس است می‌شود تغییرش داد. بعد از تأیید، اصلاح فقط با ثبت قلم
           برگشتی انجام می‌شود — چون پورسانت از همین عددها حساب می‌شود.

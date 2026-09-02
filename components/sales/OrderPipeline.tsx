@@ -279,7 +279,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
         order={open}
         busy={busy}
         onClose={() => setOpen(null)}
-        onConfirm={open?.status === "draft" ? () => void confirmOrder(open) : undefined}
+        onConfirm={open?.status === "DRAFT" ? () => void confirmOrder(open) : undefined}
       />
     </>
   );

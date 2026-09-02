@@ -40,7 +40,7 @@ export default async function SalesHomePage() {
   const delta = yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null;
 
   const byStatus = new Map(d.status_mix.map((s) => [s.key, s.value]));
-  const awaiting = byStatus.get("confirmed") ?? 0;
+  const awaiting = byStatus.get("CONFIRMED") ?? 0;
 
   /* Seven days, oldest first — SalesSpark draws index 0 on the right. `revenue_by_day`
      arrives newest-first, so it is reversed once here rather than inside the chart. */

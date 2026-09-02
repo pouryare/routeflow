@@ -91,7 +91,7 @@ export default async function RunsPage() {
 
   // Confirmed orders not already on a run -- the pool a manager is choosing from.
   const scope = orderFilter(session);
-  const unassigned = readOrders(db, scope, { status: "confirmed", limit: 200 }).filter((order) => {
+  const unassigned = readOrders(db, scope, { status: "CONFIRMED", limit: 200 }).filter((order) => {
     const on = db
       .prepare("SELECT 1 FROM delivery_stops WHERE order_id = ?")
       .get(order.id);
