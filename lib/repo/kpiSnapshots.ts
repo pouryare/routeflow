@@ -146,7 +146,7 @@ export function snapshotRows(
       `SELECT metric, scope_type, scope_id, period, value, numerator, denominator, sample_size, computed_at
          FROM kpi_snapshots WHERE ${where.join(" AND ")}`
     )
-    .all(...(params as never[])) as SnapshotRow[];
+    .all(...(params as never[])) as unknown as SnapshotRow[];
 }
 
 /** The newest `computed_at` across a period's snapshots — the page's "as of …" line. */
@@ -222,7 +222,7 @@ function fulfilledLineTotals(
           AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
           AND o.order_date >= ? AND o.order_date < ?${sc.sql}`
     )
-    .all(organizationId, from, toExcl, ...sc.params) as (LineAgg & { oid: number })[];
+    .all(organizationId, from, toExcl, ...sc.params) as unknown as (LineAgg & { oid: number })[];
 
   let revenue = 0;
   let cost = 0;

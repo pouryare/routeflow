@@ -112,7 +112,11 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/sales/capacity-factors") ||
     // Phase 7: targets + rule tuning are manager tools.
     pathname.startsWith("/api/targets") ||
-    pathname.startsWith("/api/rules");
+    pathname.startsWith("/api/rules") ||
+    // Phase 9: the analysis sweep is a manager/scheduler hook. The read routes gate
+    // themselves (kpis/action-center open to salesperson at own scope; why/margin
+    // manager-only inside the route).
+    pathname.startsWith("/api/analysis/refresh");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
     return deny("/sales");
   }
