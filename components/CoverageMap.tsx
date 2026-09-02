@@ -1204,7 +1204,7 @@ export default function CoverageMap({
   /** A customer's marker colour under the active mode. Extracted because the selected
    *  customer is rendered separately from the rest and both must agree. */
   function markerColor(c: CustomerRow): string {
-    if (colorMode === "debt") return debtColor(c);
+    if (colorMode === "debt") return debtColor(c.debt);
     if (colorMode === "salesperson") return salespersonColor(c.salesperson, salesIndex);
     if (colorMode === "inactivity") return inactivityColor(c);
     if (colorMode === "distance") return distanceColor(c, colourOrigin);

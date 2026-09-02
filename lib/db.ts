@@ -1561,6 +1561,75 @@ export function getDb(): DatabaseSync {
     console.info("[migrate] customers.status -> lifecycle applied; unknown values defaulted to 'lead'");
   }
 
+  // Phase 1 (Money): customer debt is computed from orders now, not stored. The three
+  // debt_* columns held demo figures (confirmed 2026-09-02), so they are dropped
+  // outright -- no backfill. opening_balance_toman replaces them at 0 for every row; a
+  // real pre-app balance is entered per customer through the normal patch path. SQLite
+  // cannot DROP a column with an index/constraint cleanly across versions, so this is
+  // the same rebuild the m2 block above uses, guarded on debt_0_7 still being present.
+  const custDebtCols = (
+    db.prepare("PRAGMA table_info(customers)").all() as { name: string }[]
+  ).map((c) => c.name);
+  if (custDebtCols.includes("debt_0_7")) {
+    db.exec("PRAGMA foreign_keys = OFF;");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE customers_ob_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_code TEXT NOT NULL,
+          business_name TEXT NOT NULL,
+          contact_person TEXT,
+          phone TEXT,
+          address TEXT,
+          city TEXT,
+          province TEXT,
+          lat REAL,
+          lng REAL,
+          salesperson TEXT,
+          notes TEXT,
+          synced_at TEXT NOT NULL,
+          last_purchase_date TEXT,
+          group_id INTEGER REFERENCES groups(id),
+          credit_limit_toman INTEGER,
+          organization_id INTEGER REFERENCES organizations(id),
+          customer_type TEXT CHECK (customer_type IN
+            ('RESTAURANT','HOTEL','CATERING','CAFE','RETAIL','WHOLESALE','OTHER')),
+          lifecycle TEXT NOT NULL DEFAULT 'lead' CHECK (lifecycle IN
+            ('lead','qualified','sampled','active','dormant','lost','blocked')),
+          parent_customer_id INTEGER REFERENCES customers(id),
+          payment_terms_days INTEGER NOT NULL DEFAULT 0,
+          hard_credit_block INTEGER NOT NULL DEFAULT 0,
+          qualified_at TEXT,
+          first_order_at TEXT,
+          opening_balance_toman INTEGER NOT NULL DEFAULT 0,
+          UNIQUE (organization_id, customer_code)
+        );
+        INSERT INTO customers_ob_new
+          (id, customer_code, business_name, contact_person, phone, address, city, province,
+           lat, lng, salesperson, notes, synced_at, last_purchase_date, group_id,
+           credit_limit_toman, organization_id, customer_type, lifecycle, parent_customer_id,
+           payment_terms_days, hard_credit_block, qualified_at, first_order_at)
+        SELECT
+          id, customer_code, business_name, contact_person, phone, address, city, province,
+          lat, lng, salesperson, notes, synced_at, last_purchase_date, group_id,
+          credit_limit_toman, organization_id, customer_type, lifecycle, parent_customer_id,
+          payment_terms_days, hard_credit_block, qualified_at, first_order_at
+        FROM customers;
+        DROP TABLE customers;
+        ALTER TABLE customers_ob_new RENAME TO customers;
+        CREATE INDEX IF NOT EXISTS idx_customers_business_name ON customers(business_name);
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON;");
+    }
+    console.info("[migrate] customers.debt_* dropped; opening_balance_toman added (0)");
+  }
+
   // Phase 0b: pins that reached a lead list become customers. Once, guarded on a marker,
   // but foldLeadPinsIntoCustomers is idempotent so a stray re-run is harmless.
   const foldDone = db
@@ -1611,9 +1680,7 @@ export interface Customer {
   qualified_at: string | null;
   first_order_at: string | null;
   salesperson: string | null;
-  debt_0_7: number;
-  debt_8_30: number;
-  debt_30_plus: number;
+  opening_balance_toman: number;
   notes: string | null;
   synced_at: string;
   last_purchase_date: string | null;

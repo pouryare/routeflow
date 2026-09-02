@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { plain } from "./db";
 import { lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
+import { customerDebt } from "./repo/payments";
 
 /** Everything the customer sheet (پنجرهٔ مشتری) puts on screen, in one read.
  *
@@ -55,8 +56,8 @@ export function readCustomerSummary(
   const customer = plain(
     db
       .prepare(
-        `SELECT id, business_name, city, province, address, status, salesperson,
-                debt_0_7, debt_8_30, debt_30_plus, last_purchase_date
+        `SELECT id, business_name, city, province, address, lifecycle, salesperson,
+                organization_id, last_purchase_date
            FROM customers WHERE id = ?`
       )
       .all(customerId)
@@ -67,15 +68,15 @@ export function readCustomerSummary(
         city: string | null;
         province: string | null;
         address: string | null;
-        status: string | null;
+        lifecycle: string;
         salesperson: string | null;
-        debt_0_7: number;
-        debt_8_30: number;
-        debt_30_plus: number;
+        organization_id: number;
         last_purchase_date: string | null;
       }
     | undefined;
   if (!customer) return null;
+
+  const debt = customerDebt(customer.organization_id, customer.id);
 
   const since = new Date(Date.now() - windowDays * 86_400_000).toISOString().slice(0, 10);
 
@@ -125,7 +126,7 @@ export function readCustomerSummary(
     customer_id: customer.id,
     business_name: customer.business_name,
     where,
-    status: customer.status,
+    status: customer.lifecycle,
     salesperson: customer.salesperson,
     spend,
     order_count: orders.size,
@@ -138,8 +139,8 @@ export function readCustomerSummary(
        anything created inside the app, so trusting it alone shows "—" beside a customer
        whose orders are listed two tiles across. */
     last_purchase_date: customer.last_purchase_date ?? recent[0]?.order_date ?? null,
-    balance: customer.debt_0_7 + customer.debt_8_30 + customer.debt_30_plus,
-    balance_over_30: customer.debt_30_plus,
+    balance: debt.total,
+    balance_over_30: debt.bucket_30_plus,
     recent,
     share_of_book: book > 0 ? spend / book : 0,
     window_days: windowDays,

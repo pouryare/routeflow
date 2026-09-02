@@ -31,7 +31,7 @@ export default async function Home() {
 
   const db = getDb();
   const districts = readDistrictProperties(db, scope);
-  const customers = readCustomers(db, scope);
+  const customers = readCustomers(db, scope, { organizationId: session.organizationId });
   const facilities = readFacilities(db, groupFilterWithShared(session));
   // Only the groups this caller can actually see: an owner gets all of them, a manager
   // gets their own, which is the only one any district they can see belongs to.

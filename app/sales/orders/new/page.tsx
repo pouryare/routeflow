@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { readCatalogue } from "@/lib/catalogue";
+import { customerDebtsForOrg } from "@/lib/repo/payments";
 import OrderForm from "@/components/sales/OrderForm";
 
 export const dynamic = "force-dynamic";
@@ -33,25 +34,25 @@ export default async function NewOrderPage({
   const scope = groupFilter(session);
 
   // plain() because these cross into a client component -- see lib/db.ts.
-  const customers = plain(
-    db
-    .prepare(
-      `SELECT id, customer_code, business_name, phone,
-              COALESCE(debt_0_7, 0) + COALESCE(debt_8_30, 0) + COALESCE(debt_30_plus, 0) AS debt,
-              credit_limit_toman
-         FROM customers
-        WHERE 1 = 1${scope.sql}
-        ORDER BY business_name`
-    )
-    .all(...scope.params)
-  ) as unknown as {
-    id: number;
-    customer_code: string;
-    business_name: string;
-    phone: string | null;
-    debt: number;
-    credit_limit_toman: number | null;
-  }[];
+  const debtByCustomer = customerDebtsForOrg(session.organizationId);
+  const customers = (
+    plain(
+      db
+        .prepare(
+          `SELECT id, customer_code, business_name, phone, credit_limit_toman
+             FROM customers
+            WHERE 1 = 1${scope.sql}
+            ORDER BY business_name`
+        )
+        .all(...scope.params)
+    ) as unknown as {
+      id: number;
+      customer_code: string;
+      business_name: string;
+      phone: string | null;
+      credit_limit_toman: number | null;
+    }[]
+  ).map((c) => ({ ...c, debt: debtByCustomer.get(c.id)?.total ?? 0 }));
 
   const products = readCatalogue(db, session.organizationId).map((product) => ({
     id: product.id,

@@ -11,6 +11,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
+import { customerDebtsForOrg } from "@/lib/repo/payments";
 
 export const dynamic = "force-dynamic";
 
@@ -44,11 +45,16 @@ export default async function AnalyticsPage() {
     .all(...f.params) as unknown as Customer[];
 
   const districtCounts = countBy(districts.map((d) => d.coverage_status));
+  // Debt is computed from delivered orders now, not stored on the customer row.
+  const debtByCustomer = customerDebtsForOrg(session.organizationId);
   const totalDebt = customers.reduce(
     (acc, c) => {
-      acc.d0_7 += c.debt_0_7;
-      acc.d8_30 += c.debt_8_30;
-      acc.d30 += c.debt_30_plus;
+      const d = debtByCustomer.get(c.id);
+      if (d) {
+        acc.d0_7 += d.bucket_0_7;
+        acc.d8_30 += d.bucket_8_30;
+        acc.d30 += d.bucket_30_plus;
+      }
       return acc;
     },
     { d0_7: 0, d8_30: 0, d30: 0 }

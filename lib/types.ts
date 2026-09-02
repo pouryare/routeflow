@@ -105,12 +105,22 @@ export interface CustomerRow {
   qualified_at: string | null;
   first_order_at: string | null;
   salesperson: string | null;
-  debt_0_7: number;
-  debt_8_30: number;
-  debt_30_plus: number;
+  opening_balance_toman: number;
+  /** Aged balance, computed by lib/repo/payments.customerDebt and attached by the read
+   *  layer where a view needs it. Absent on payloads that never ask for it. */
+  debt?: CustomerDebt;
   notes: string | null;
   synced_at: string;
   last_purchase_date: string | null;
+}
+
+/** A customer's live balance: a headline total plus three ageing buckets, all whole
+ *  Toman. Computed from delivered orders and payment allocations -- never stored. */
+export interface CustomerDebt {
+  total: number;
+  bucket_0_7: number;
+  bucket_8_30: number;
+  bucket_30_plus: number;
 }
 
 export type CustomerLifecycle =
@@ -178,10 +188,12 @@ export function customerLifecycleColor(lifecycle: CustomerLifecycle): string {
   }
 }
 
-export function debtColor(c: CustomerRow): string {
-  if (c.debt_30_plus > 0) return STATUS_COLOR.not_allowed;
-  if (c.debt_8_30 > 0) return STATUS_COLOR.needs_coverage;
-  return STATUS_COLOR.visited;
+export function debtColor(debt: CustomerDebt | undefined): string {
+  if (!debt) return STATUS_COLOR.unknown;
+  if (debt.bucket_30_plus > 0) return STATUS_COLOR.not_allowed;
+  if (debt.bucket_8_30 > 0) return STATUS_COLOR.needs_coverage;
+  if (debt.total > 0) return STATUS_COLOR.visited;
+  return STATUS_COLOR.unknown;
 }
 
 // Days since last purchase, or null if the customer has never bought anything (no

@@ -13,6 +13,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { orderFilter, groupFilter, type Session } from "./session";
 import { lineTotalToman, lineCostToman, lineKg, type LineSnapshot } from "./orderMath";
+import { customerDebtsForOrg } from "./repo/payments";
 import { toJalali, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
 
 export interface Series {
@@ -181,21 +182,22 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
 
   // Customers and debt come from the customer table, which is group-scoped rather than
   // order-scoped -- a shop with no orders yet is still in the territory.
+  // Debt is computed from delivered orders and payment allocations now, not stored on
+  // the customer row. customerDebtsForOrg does the whole organisation in one pass; this
+  // page then keeps only the customers the viewer's territory can reach.
   const customerScope = groupFilter(session);
-  const debt = db
-    .prepare(
-      `SELECT COALESCE(SUM(debt_0_7), 0) AS d0_7,
-              COALESCE(SUM(debt_8_30), 0) AS d8_30,
-              COALESCE(SUM(debt_30_plus), 0) AS over_30,
-              COUNT(*) AS n
-         FROM customers WHERE 1 = 1${customerScope.sql}`
-    )
-    .get(...customerScope.params) as {
-    d0_7: number;
-    d8_30: number;
-    over_30: number;
-    n: number;
-  };
+  const scopedCustomers = db
+    .prepare(`SELECT id FROM customers WHERE 1 = 1${customerScope.sql}`)
+    .all(...customerScope.params) as unknown as { id: number }[];
+  const debtByCustomer = customerDebtsForOrg(session.organizationId);
+  const debt = { d0_7: 0, d8_30: 0, over_30: 0, n: scopedCustomers.length };
+  for (const { id } of scopedCustomers) {
+    const d = debtByCustomer.get(id);
+    if (!d) continue;
+    debt.d0_7 += d.bucket_0_7;
+    debt.d8_30 += d.bucket_8_30;
+    debt.over_30 += d.bucket_30_plus;
+  }
 
   // Lead time: one row per ORDER, not per line -- a five-line order counted once per
   // line would weight itself five times into the average for no reason connected to how

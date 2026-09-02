@@ -33,9 +33,7 @@ function customer(overrides: Partial<CustomerRow> = {}): CustomerRow {
     qualified_at: null,
     first_order_at: null,
     salesperson: null,
-    debt_0_7: 0,
-    debt_8_30: 0,
-    debt_30_plus: 0,
+    opening_balance_toman: 0,
     notes: null,
     synced_at: "2026-01-01T00:00:00.000Z",
     last_purchase_date: null,
@@ -62,15 +60,26 @@ describe("customerLifecycleColor", () => {
 });
 
 describe("debtColor", () => {
-  it("is not_allowed (crit) when debt_30_plus > 0, regardless of other buckets", () => {
-    expect(debtColor(customer({ debt_30_plus: 1, debt_8_30: 1, debt_0_7: 1 }))).toBe(STATUS_COLOR.not_allowed);
+  it("is not_allowed (crit) when bucket_30_plus > 0, regardless of other buckets", () => {
+    expect(
+      debtColor({ total: 3, bucket_30_plus: 1, bucket_8_30: 1, bucket_0_7: 1 })
+    ).toBe(STATUS_COLOR.not_allowed);
   });
-  it("is needs_coverage (warn) when only debt_8_30 > 0", () => {
-    expect(debtColor(customer({ debt_8_30: 1 }))).toBe(STATUS_COLOR.needs_coverage);
+  it("is needs_coverage (warn) when only bucket_8_30 > 0", () => {
+    expect(debtColor({ total: 1, bucket_30_plus: 0, bucket_8_30: 1, bucket_0_7: 0 })).toBe(
+      STATUS_COLOR.needs_coverage
+    );
   });
-  it("is visited (good) when there's no debt at all, even with debt_0_7 > 0", () => {
-    expect(debtColor(customer({ debt_0_7: 500 }))).toBe(STATUS_COLOR.visited);
-    expect(debtColor(customer())).toBe(STATUS_COLOR.visited);
+  it("is visited (good) when only the young bucket has debt", () => {
+    expect(debtColor({ total: 500, bucket_30_plus: 0, bucket_8_30: 0, bucket_0_7: 500 })).toBe(
+      STATUS_COLOR.visited
+    );
+  });
+  it("is unknown when there is no debt object or no debt at all", () => {
+    expect(debtColor(undefined)).toBe(STATUS_COLOR.unknown);
+    expect(debtColor({ total: 0, bucket_30_plus: 0, bucket_8_30: 0, bucket_0_7: 0 })).toBe(
+      STATUS_COLOR.unknown
+    );
   });
 });
 

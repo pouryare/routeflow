@@ -15,6 +15,7 @@ const { createProduct, createPackaging, setPrice } = await import("@/lib/catalog
 const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop, readRun, recordDelivery } = await import("@/lib/delivery");
 const { salesDashboard, jalaliMonthKey } = await import("@/lib/dashboard");
+const { recordPayment } = await import("@/lib/repo/payments");
 import type { Session } from "@/lib/session";
 import type { Role, UserRow } from "@/lib/db";
 
@@ -108,14 +109,16 @@ beforeAll(() => {
   ctx.driver = Number(user.run("dr", "راننده", "driver", ctx.east, now).lastInsertRowid);
 
   const customer = db.prepare(
-    "INSERT INTO customers (customer_code, business_name, group_id, debt_0_7, debt_8_30, debt_30_plus, synced_at) VALUES (?, ?, ?, ?, ?, ?, ?)"
+    "INSERT INTO customers (customer_code, business_name, group_id, lifecycle, opening_balance_toman, synced_at, organization_id) VALUES (?, ?, ?, 'active', ?, ?, 1)"
   );
+  // Debt is computed now (Phase 1). The east customer carries a fixed pre-app opening
+  // balance; its two delivered orders below add 13000 of unpaid debt on top, which a
+  // payment in beforeAll then settles so the total stays a round, date-independent
+  // 175000 for the assertion.
   ctx.eastCustomer = Number(
-    customer.run("C1", "رستوران شرق", ctx.east, 100000, 50000, 25000, now).lastInsertRowid
+    customer.run("C1", "رستوران شرق", ctx.east, 175000, now).lastInsertRowid
   );
-  ctx.westCustomer = Number(
-    customer.run("C2", "رستوران غرب", ctx.west, 0, 0, 0, now).lastInsertRowid
-  );
+  ctx.westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, 0, now).lastInsertRowid);
 
   ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
   ctx.packaging = createPackaging(db, { product_id: ctx.product, name: "جعبه", qty_per_pack: 100 });
@@ -125,6 +128,16 @@ beforeAll(() => {
   sell({ customer: ctx.eastCustomer, ordered: 10, delivered: 8, date: "2026-08-20", seller: ctx.nazanin });
   sell({ customer: ctx.eastCustomer, ordered: 5, delivered: 5, date: "2026-08-25", seller: ctx.nazanin });
   sell({ customer: ctx.westCustomer, ordered: 20, delivered: 20, date: "2026-08-25" });
+
+  // Settle the east customer's 13000 of delivered orders so only the 175000 opening
+  // balance remains -- a figure that does not drift with the calendar.
+  recordPayment(1, {
+    customer_id: ctx.eastCustomer,
+    amount_toman: 13_000,
+    method: "CASH",
+    received_at: "2026-08-26",
+    received_by: ctx.owner,
+  });
 });
 
 describe("jalaliMonthKey", () => {
@@ -176,10 +189,17 @@ describe("salesDashboard", () => {
     expect(row.value).toBe(13000);
   });
 
-  it("sums debt from the customer ledger, scoped", () => {
+  it("sums computed debt, scoped to the manager's group", () => {
     const east = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.east));
+    // 175000 opening balance; the 13000 of delivered orders was paid in beforeAll.
     expect(east.debt.total).toBe(175000);
-    expect(east.debt.over_30).toBe(25000);
+    // An opening balance is old by definition -- it ages straight into the 30-plus bucket.
+    expect(east.debt.over_30).toBe(175000);
+
+    // The west group sees only its own customer's unpaid delivered order (20 x 1000),
+    // never the east customer's 175000 -- proof the scope holds.
+    const west = salesDashboard(getDb(), session("group_manager", ctx.eastManager, ctx.west));
+    expect(west.debt.total).toBe(20000);
   });
 
   it("gives a salesperson only their own figures", () => {

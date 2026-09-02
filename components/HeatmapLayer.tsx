@@ -33,9 +33,9 @@ export default function HeatmapLayer({
       .filter((c) => c.lat && c.lng)
       .map((c) => {
         const weight = weightByDebt
-          ? c.debt_30_plus > 0
+          ? (c.debt?.bucket_30_plus ?? 0) > 0
             ? 1
-            : c.debt_8_30 > 0
+            : (c.debt?.bucket_8_30 ?? 0) > 0
               ? 0.6
               : 0.25
           : 0.5;

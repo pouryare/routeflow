@@ -1,6 +1,9 @@
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
 import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
+import type { CustomerDebt } from "@/lib/types";
+
+export type { CustomerDebt };
 
 /** A refusal the caller shows the user, not a bug. */
 export class PaymentError extends Error {}
@@ -339,13 +342,6 @@ export function voidPayment(
     db.exec("ROLLBACK");
     throw e;
   }
-}
-
-export interface CustomerDebt {
-  total: number;
-  bucket_0_7: number;
-  bucket_8_30: number;
-  bucket_30_plus: number;
 }
 
 const ZERO_DEBT = (): CustomerDebt => ({

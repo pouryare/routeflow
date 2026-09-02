@@ -35,9 +35,11 @@ function customerLink(id: number): string {
 const EXIT_MS = 180;
 
 function debtTier(c: CustomerRow): { label: string; color: string; amount: number } | null {
-  if (c.debt_30_plus > 0) return { label: "بدهی بیش از ۳۰ روز", color: STATUS_COLOR.not_allowed, amount: c.debt_30_plus };
-  if (c.debt_8_30 > 0) return { label: "بدهی ۸ تا ۳۰ روز", color: STATUS_COLOR.needs_coverage, amount: c.debt_8_30 };
-  if (c.debt_0_7 > 0) return { label: "بدهی زیر ۸ روز", color: STATUS_COLOR.visited, amount: c.debt_0_7 };
+  const d = c.debt;
+  if (!d) return null;
+  if (d.bucket_30_plus > 0) return { label: "بدهی بیش از ۳۰ روز", color: STATUS_COLOR.not_allowed, amount: d.bucket_30_plus };
+  if (d.bucket_8_30 > 0) return { label: "بدهی ۸ تا ۳۰ روز", color: STATUS_COLOR.needs_coverage, amount: d.bucket_8_30 };
+  if (d.bucket_0_7 > 0) return { label: "بدهی زیر ۸ روز", color: STATUS_COLOR.visited, amount: d.bucket_0_7 };
   return null;
 }
 
