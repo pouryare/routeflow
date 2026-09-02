@@ -38,7 +38,7 @@ function ctxFor(id: number) {
 
 beforeEach(() => {
   const db = getDb();
-  db.exec("DELETE FROM tasks; DELETE FROM alerts; DELETE FROM targets; DELETE FROM rule_runs; DELETE FROM users WHERE id>0;");
+  db.exec("PRAGMA foreign_keys=OFF; DELETE FROM tasks; DELETE FROM alerts; DELETE FROM targets; DELETE FROM rule_runs; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;");
   const now = new Date().toISOString();
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
@@ -85,6 +85,32 @@ describe("spine routes", () => {
     expect(
       (getDb().prepare("SELECT status FROM tasks WHERE id = ?").get(id) as { status: string }).status
     ).toBe("done");
+  });
+
+  it("PATCH with an outcome_code returns the matching objection card", async () => {
+    const db = getDb();
+    const cust = Number(
+      db.prepare("INSERT INTO customers (customer_code,business_name,customer_type,lifecycle,synced_at,organization_id) VALUES ('C1','x','RESTAURANT','active',?,1)").run(new Date().toISOString()).lastInsertRowid
+    );
+    const post = await TASKS_POST(
+      new NextRequest("http://localhost/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", cookie: cookie(owner, "owner") },
+        body: JSON.stringify({ title: "تماس", kind: "call", assignee_user_id: seller, entity_type: "customer", entity_id: cust }),
+      })
+    );
+    const { id } = await post.json();
+    const res = await TASK_PATCH(
+      new NextRequest(`http://localhost/api/tasks/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json", cookie: cookie(seller, "salesperson") },
+        body: JSON.stringify({ status: "done", outcome_code: "PRICE_OBJECTION" }),
+      }),
+      ctxFor(id)
+    );
+    const j = await res.json();
+    expect(res.status).toBe(200);
+    expect(j.objection_card.script_fa).toContain("قیمت");
   });
 
   it("alerts GET works and rules/run returns a count", async () => {

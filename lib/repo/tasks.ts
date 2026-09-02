@@ -108,6 +108,32 @@ export function completeTask(
   }
 }
 
+/** The customer_type behind a task, resolved from its entity: 'customer' directly, or
+ *  'order' -> orders.customer_id -> customers.customer_type. */
+export function taskCustomerType(organizationId: number, id: number): string | null {
+  const t = tasksRepo.get(organizationId, id);
+  if (!t?.entity_type || !t.entity_id) return null;
+  const db = tasksRepo.db();
+  if (t.entity_type === "customer") {
+    return (
+      (db.prepare("SELECT customer_type FROM customers WHERE id = ? AND organization_id = ?").get(t.entity_id, organizationId) as
+        | { customer_type: string | null }
+        | undefined)?.customer_type ?? null
+    );
+  }
+  if (t.entity_type === "order") {
+    return (
+      (db
+        .prepare(
+          `SELECT c.customer_type FROM orders o JOIN customers c ON c.id = o.customer_id
+            WHERE o.id = ? AND o.organization_id = ?`
+        )
+        .get(t.entity_id, organizationId) as { customer_type: string | null } | undefined)?.customer_type ?? null
+    );
+  }
+  return null;
+}
+
 export function dismissTask(organizationId: number, id: number): void {
   const row = tasksRepo.get(organizationId, id);
   if (!row) throw new TaskError("کار پیدا نشد");
