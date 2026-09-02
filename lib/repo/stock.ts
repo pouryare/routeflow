@@ -213,19 +213,30 @@ export function allocateFEFO(
 }
 
 /** The facility stock lands at and leaves from: a warehouse if there is one, else the
- *  home base, else the lowest-id facility. Throws if the org has none. */
+ *  home base, else the lowest-id facility. A tenant that somehow has none gets a
+ *  synthetic warehouse created for it -- stock has to live somewhere, and the source
+ *  brief wants the warehouse independent even when there is only one. */
 export function defaultFacilityId(organizationId: number): number {
-  const rows = stockMovementsRepo
-    .db()
+  const db = stockMovementsRepo.db();
+  const rows = db
     .prepare(
       "SELECT id, kind FROM facilities WHERE organization_id = ? OR organization_id IS NULL ORDER BY id"
     )
     .all(organizationId) as unknown as { id: number; kind: string }[];
-  if (rows.length === 0) throw new StockError("هیچ انباری تعریف نشده است");
-  return (
+  const chosen =
     rows.find((r) => r.kind === "warehouse")?.id ??
     rows.find((r) => r.kind === "home_base")?.id ??
-    rows[0].id
+    rows[0]?.id;
+  if (chosen !== undefined) return chosen;
+
+  const now = new Date().toISOString();
+  return Number(
+    db
+      .prepare(
+        `INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at)
+         VALUES (?, 'warehouse', 'انبار', 0, 0, ?, ?, ?)`
+      )
+      .run(`wh-org${organizationId}-${Date.now()}`, now, organizationId, now).lastInsertRowid
   );
 }
 

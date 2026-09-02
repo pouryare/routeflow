@@ -13,6 +13,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { movingAverageCost, stockAfter } from "./stockMath";
 import { isToman } from "./money";
+import { createBatchTxn } from "./repo/batches";
+import { recordMovementsTxn, defaultFacilityId } from "./repo/stock";
 
 export class PurchaseError extends Error {}
 
@@ -21,6 +23,12 @@ export interface PurchaseLineInput {
   /** In the product's base unit (عدد), not in packs -- see the schema comment. */
   base_qty: number;
   unit_cost_toman: number;
+  /** Phase 2: the physical lot this line received. All optional -- an omitted code is
+   *  auto-generated, an omitted expiry is derived from the product's shelf life. */
+  batch_code?: string | null;
+  supplier_batch_ref?: string | null;
+  produced_at?: string | null;
+  expiry_date?: string | null;
 }
 
 export interface PurchaseInput {
@@ -81,13 +89,48 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
       "UPDATE products SET avg_cost_toman = ?, updated_at = ? WHERE id = ?"
     );
 
+    // Phase 2: every received line becomes a tracked batch plus a PURCHASE_IN movement.
+    // The facility is resolved once -- a receipt lands entirely at the default warehouse.
+    // A NULL organisation is only ever a hand-seeded test row (the boot backfill sets it
+    // in production); the batch/movement tables are NOT NULL on it, so default to 1.
+    const orgId = input.organization_id || 1;
+    const facilityId = defaultFacilityId(orgId);
+
     for (const line of input.lines) {
       const product = db
         .prepare("SELECT id, avg_cost_toman FROM products WHERE id = ?")
         .get(line.product_id) as { avg_cost_toman: number } | undefined;
       if (!product) throw new PurchaseError("کالا پیدا نشد");
 
-      insertLine.run(purchaseId, line.product_id, line.base_qty, line.unit_cost_toman, now);
+      const purchaseLineId = Number(
+        insertLine.run(purchaseId, line.product_id, line.base_qty, line.unit_cost_toman, now)
+          .lastInsertRowid
+      );
+
+      const batchId = createBatchTxn(db, orgId, {
+        product_id: line.product_id,
+        batch_code: line.batch_code,
+        supplier_batch_ref: line.supplier_batch_ref,
+        purchase_line_id: purchaseLineId,
+        produced_at: line.produced_at ?? input.purchase_date,
+        expiry_date: line.expiry_date,
+        qty_received_base: line.base_qty,
+        unit_cost_toman: line.unit_cost_toman,
+      });
+
+      recordMovementsTxn(db, orgId, [
+        {
+          facility_id: facilityId,
+          product_id: line.product_id,
+          batch_id: batchId,
+          base_qty: line.base_qty,
+          kind: "PURCHASE_IN",
+          ref_type: "purchase_line",
+          ref_id: purchaseLineId,
+          occurred_at: input.purchase_date,
+          created_by: input.created_by,
+        },
+      ]);
 
       // Read the position *before* this line as the weight for the blend. Reading it
       // afterwards would count the arriving units twice.
