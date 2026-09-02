@@ -100,7 +100,13 @@ export function createRun(
  *
  *  Draft orders are refused: a draft is a shopping list somebody is still editing, and
  *  loading a van from one means the quantities can change after it has left. */
-export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOrder = 0): number {
+export function addStop(
+  db: DatabaseSync,
+  runId: number,
+  orderId: number,
+  sortOrder = 0,
+  opts: { force?: boolean } = {}
+): number {
   const order = db
     .prepare("SELECT id, status, credit_hold, organization_id FROM orders WHERE id = ?")
     .get(orderId) as
@@ -114,6 +120,14 @@ export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOr
     throw new DeliveryError("سفارش تأییدنشده روی مسیر قرار نمی‌گیرد؛ اول تأییدش کنید");
   }
 
+  // Phase 5: after a route is frozen, adding to it is a deliberate act.
+  const run = db.prepare("SELECT frozen_at FROM delivery_runs WHERE id = ?").get(runId) as
+    | { frozen_at: string | null }
+    | undefined;
+  if (run?.frozen_at && !opts.force) {
+    throw new DeliveryError("مسیر قطعی شده — افزودن سفارش نیاز به تصمیم صریح دارد");
+  }
+
   const stopId = Number(
     db
       .prepare(
@@ -124,6 +138,14 @@ export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOr
 
   // Phase 3 (M6): the stop gets its own delivery entity, and the order moves to PLANNED.
   planDelivery(order.organization_id ?? 1, orderId, { route_stop_id: stopId });
+
+  // Phase 5: an add to a frozen route is worth a line in the audit trail.
+  if (run?.frozen_at && opts.force) {
+    db.prepare(
+      `INSERT INTO order_events (organization_id, order_id, from_status, to_status, action, note, created_at)
+       VALUES (?, ?, NULL, (SELECT status FROM orders WHERE id = ?), 'note', 'افزوده به مسیر قطعی‌شده', ?)`
+    ).run(order.organization_id ?? 1, orderId, orderId, new Date().toISOString());
+  }
 
   return stopId;
 }
