@@ -58,6 +58,7 @@ export const TENANT_TABLES = [
   "driver_commission_payments",
   "manager_commission_overrides",
   "manager_commission_payments",
+  "representative_profiles",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -292,6 +293,49 @@ export function getDb(): DatabaseSync {
       organization_id INTEGER NOT NULL REFERENCES organizations(id),
       path TEXT NOT NULL,
       occurred_at TEXT NOT NULL
+    );
+
+    /* Phase 0b M2: a representative IS a wholesale customer (customer_type='WHOLESALE',
+       its own lifecycle) plus this managed-relationship record. One Order table serves
+       both direct customers and reps. */
+    CREATE TABLE IF NOT EXISTS representative_profiles (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      rep_code TEXT NOT NULL,
+      manager_user_id INTEGER REFERENCES users(id),
+      contract_signed_at TEXT,
+      contract_expires_at TEXT,
+      exclusivity_territory_id INTEGER REFERENCES districts(id),
+      stage TEXT NOT NULL DEFAULT 'prospect' CHECK (stage IN
+        ('prospect','qualified','negotiating','documents','approved','onboarding','active','dormant','terminated')),
+      activated_at TEXT,
+      first_order_at TEXT,
+      credit_terms_days INTEGER NOT NULL DEFAULT 0,
+      discount_tier TEXT,
+      monthly_target_kg REAL,
+      monthly_target_toman INTEGER,
+      health_score REAL,
+      health_computed_at TEXT,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, customer_id),
+      UNIQUE (organization_id, rep_code)
+    );
+
+    /* Reaches a tenant through representative_profiles, so it is not in TENANT_TABLES. */
+    CREATE TABLE IF NOT EXISTS representative_onboarding_steps (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      representative_id INTEGER NOT NULL REFERENCES representative_profiles(id) ON DELETE CASCADE,
+      step_code TEXT NOT NULL,
+      label_fa TEXT NOT NULL,
+      required INTEGER NOT NULL DEFAULT 1,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      completed_at TEXT,
+      completed_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      UNIQUE (representative_id, step_code)
     );
 
     /* A group is one management team covering part of Tehran province. Territory is
