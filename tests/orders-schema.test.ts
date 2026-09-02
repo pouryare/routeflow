@@ -100,6 +100,8 @@ describe("orders", () => {
         "credit_override_by",
         // Phase 1 (Money): an order parked pending a credit_approvals decision.
         "credit_hold",
+        // Phase 4 (Offline-first): the client-generated idempotency key.
+        "client_uuid",
         "notes",
         "created_by",
         "created_at",

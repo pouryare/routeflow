@@ -70,6 +70,8 @@ export const TENANT_TABLES = [
   "reason_codes",
   "deliveries",
   "stock_reservations",
+  "sync_mutations",
+  "deleted_rows",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1428,6 +1430,42 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_complaints_batch ON quality_complaints(organization_id, batch_id, reported_at);
+
+    /* Phase 4 (Offline-first): the server's idempotency log. A mutation is upserted on
+       (organization_id, client_uuid) -- replaying it returns the stored result rather
+       than applying twice. occurred_at is the device clock (the only witness for a
+       basement delivery synced hours later); received_at is the server's; clock_skew_ms
+       is measured each sync so a wrong device clock is detectable. */
+    CREATE TABLE IF NOT EXISTS sync_mutations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      client_uuid TEXT NOT NULL,
+      user_id INTEGER REFERENCES users(id),
+      device_id TEXT,
+      op TEXT NOT NULL,
+      payload_json TEXT NOT NULL,
+      occurred_at TEXT NOT NULL,
+      clock_skew_ms INTEGER NOT NULL DEFAULT 0,
+      received_at TEXT NOT NULL,
+      applied_at TEXT,
+      status TEXT NOT NULL DEFAULT 'received' CHECK (status IN
+        ('received', 'applied', 'duplicate', 'conflict', 'failed')),
+      result_json TEXT,
+      error TEXT,
+      UNIQUE (organization_id, client_uuid)
+    );
+    CREATE INDEX IF NOT EXISTS ix_sync_mutations_recent ON sync_mutations(organization_id, received_at);
+
+    /* Tombstones. Without these a delete never propagates to a device that pulled the
+       row before it went away. */
+    CREATE TABLE IF NOT EXISTS deleted_rows (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      entity_type TEXT NOT NULL,
+      entity_id INTEGER NOT NULL,
+      deleted_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_deleted_rows_since ON deleted_rows(organization_id, deleted_at);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
@@ -2133,6 +2171,7 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE delivery_line_batches ADD COLUMN delivery_id INTEGER REFERENCES deliveries(id)");
   }
 
+
   const districtCentroidCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
   if (!districtCentroidCols.some((c) => c.name === "centroid_lat")) {
     db.exec("ALTER TABLE districts ADD COLUMN centroid_lat REAL");
@@ -2336,6 +2375,20 @@ export function getDb(): DatabaseSync {
   // Phase 3: give every legacy order a synthetic 'create' event so its timeline is not
   // blank. After backfillStockLedger so a fresh boot has done all its table rebuilds.
   backfillOrderEvents(db);
+
+  // Phase 4 (Offline-first): client_uuid on every offline-writable table. No CHECK, so a
+  // plain ADD COLUMN + a *partial* UNIQUE index (WHERE client_uuid IS NOT NULL) -- every
+  // legacy NULL row is fine and the migration is O(1) per table. UNIQUE buys idempotency
+  // for free. Runs last, after every table rebuild, so nothing drops the column.
+  for (const t of ["orders", "payments", "deliveries", "customers"]) {
+    const cuCols = db.prepare(`PRAGMA table_info(${t})`).all() as { name: string }[];
+    if (!cuCols.some((c) => c.name === "client_uuid")) {
+      db.exec(`ALTER TABLE ${t} ADD COLUMN client_uuid TEXT`);
+    }
+    db.exec(
+      `CREATE UNIQUE INDEX IF NOT EXISTS ix_${t}_client_uuid ON ${t}(client_uuid) WHERE client_uuid IS NOT NULL`
+    );
+  }
 
   _db = db;
   return db;
