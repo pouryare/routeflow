@@ -25,6 +25,9 @@ export interface SessionClaims {
   role: Role;
   /** null for an owner, who is not scoped to a group. */
   gid: number | null;
+  /** The tenant. A hint for proxy.ts, which has no safe route to the database -- the
+   *  authoritative value is always re-read from the row in lib/session.ts. */
+  oid: number;
   /** Snapshot of users.token_version. Bumping that column invalidates every token
    *  already issued to the user -- how a password reset or a deactivation takes effect
    *  immediately rather than in up to 30 days. */

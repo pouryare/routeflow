@@ -44,6 +44,7 @@ function sellAndDeliver(packs: number, orderDate: string): number {
     customer_id: ctx.customer,
     order_date: orderDate,
     created_by: ctx.owner,
+    organization_id: 1,
     salesperson_user_id: ctx.seller,
     lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs }],
   });

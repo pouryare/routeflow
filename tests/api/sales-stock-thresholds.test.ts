@@ -43,7 +43,7 @@ beforeAll(() => {
 });
 
 function cookieFor(uid: number, role: "owner" | "group_manager") {
-  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid: null, tv: 0, name: "t" })}`;
+  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid: null, oid: 1, tv: 0, name: "t" })}`;
 }
 
 function patch(id: number | string, cookie: string | null, body: unknown) {

@@ -44,7 +44,7 @@ beforeAll(() => {
 type ReqInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 
 function as(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, url: string, init: ReqInit = {}) {
-  const token = createSessionToken({ uid: userId, role, gid, tv: 0, name: "t" });
+  const token = createSessionToken({ uid: userId, role, gid, oid: 1, tv: 0, name: "t" });
   return new NextRequest(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `${COOKIE_NAME}=${token}` } });
 }
 

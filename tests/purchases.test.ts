@@ -153,6 +153,7 @@ describe("stockPosition", () => {
       customer_id: ctx.customer,
       order_date: "2026-06-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 5 }],
     });
     confirmOrder(db, order.id);
@@ -182,6 +183,7 @@ describe("stockPosition", () => {
       customer_id: ctx.customer,
       order_date: "2026-06-05",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 4 }],
     });
     confirmOrder(db, order.id);
@@ -209,6 +211,7 @@ describe("stockPosition", () => {
       customer_id: ctx.customer,
       order_date: "2026-07-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: bare, packaging_id: barePack, packs: 2 }],
     });
     confirmOrder(db, order.id);
@@ -316,6 +319,7 @@ describe("advancedStockPosition", () => {
       customer_id: ctx.customer,
       order_date: "2026-08-01",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: p, packaging_id: pack, packs: 2 }],
     });
     confirmOrder(db, order.id);

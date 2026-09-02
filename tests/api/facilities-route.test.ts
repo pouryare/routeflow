@@ -25,13 +25,13 @@ beforeAll(() => {
   const db = getDb();
   ownerId = Number(
     db.prepare(
-      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, 'owner', NULL, 1, ?, 1)"
     ).run("fac-owner", "x:y", "مالک", new Date().toISOString()).lastInsertRowid
   );
 });
 
 function authCookie() {
-  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, tv: 0, name: "مالک" });
+  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "مالک" });
   return `${COOKIE_NAME}=${token}`;
 }
 
@@ -63,8 +63,8 @@ function seedExtraFacility(): number {
   const now = new Date().toISOString();
   const r = getDb()
     .prepare(
-      `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, created_at, updated_at)
-       VALUES (?, 'other', 'موقت', 35.7, 51.4, 0, ?, ?)`
+      `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, created_at, updated_at, organization_id)
+       VALUES (?, 'other', 'موقت', 35.7, 51.4, 0, ?, ?, 1)`
     )
     .run(`tmp-${Math.random().toString(36).slice(2)}`, now, now);
   return Number(r.lastInsertRowid);
@@ -241,8 +241,8 @@ describe("DELETE /api/facilities/[id]", () => {
     // Something else claims that id in the meantime.
     getDb()
       .prepare(
-        `INSERT INTO facilities (id, slug, kind, name, lat, lng, is_default_origin, created_at, updated_at)
-         VALUES (?, 'squatter', 'other', 'جای گرفته', 35.7, 51.4, 0, ?, ?)`
+        `INSERT INTO facilities (id, slug, kind, name, lat, lng, is_default_origin, created_at, updated_at, organization_id)
+         VALUES (?, 'squatter', 'other', 'جای گرفته', 35.7, 51.4, 0, ?, ?, 1)`
       )
       .run(id, new Date().toISOString(), new Date().toISOString());
 

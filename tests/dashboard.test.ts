@@ -36,7 +36,12 @@ const ctx = {
 };
 
 function session(role: Role, uid: number, gid: number | null): Session {
-  return { user: { id: uid, role, group_id: gid } as UserRow, role, groupId: gid };
+  return {
+    user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow,
+    role,
+    groupId: gid,
+    organizationId: 1,
+  };
 }
 
 const runs = new Map<string, number>();
@@ -65,6 +70,7 @@ function sell(opts: {
     customer_id: opts.customer,
     order_date: opts.date,
     created_by: ctx.owner,
+    organization_id: 1,
     salesperson_user_id: opts.seller ?? null,
     lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: opts.ordered }],
   });
@@ -276,6 +282,7 @@ describe("salesDashboard", () => {
       customer_id: leadCustomer,
       order_date: "2026-08-01",
       created_by: ctx.owner,
+      organization_id: 1,
       salesperson_user_id: null,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
     });

@@ -41,6 +41,7 @@ export async function POST(req: NextRequest) {
       uid: user.id,
       role: user.role,
       gid: user.group_id,
+      oid: user.organization_id,
       tv: user.token_version,
       name: user.display_name,
     }),

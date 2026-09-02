@@ -78,6 +78,7 @@ export async function POST(req: NextRequest) {
       customer_id: customer.id,
       order_date: orderDate,
       created_by: session.user.id,
+      organization_id: session.user.organization_id,
       salesperson_user_id: salespersonId,
       credit_override_by: body?.credit_override ? session.user.id : null,
       notes: typeof body?.notes === "string" ? body.notes : null,

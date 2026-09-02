@@ -29,20 +29,20 @@ beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
   const group = db.prepare(
-    "INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)"
+    "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)"
   );
   ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
   ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
 
   const user = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
   ctx.driver = Number(user.run("d", "راننده", "driver", ctx.east, now).lastInsertRowid);
 
   const customer = db.prepare(
-    "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
+    "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
   );
   const eastCustomer = Number(customer.run("C1", "رستوران شرق", ctx.east, now).lastInsertRowid);
   const westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, now).lastInsertRowid);
@@ -56,13 +56,14 @@ beforeAll(() => {
       customer_id: customerId,
       order_date: "2026-08-26",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: product, packaging_id: packaging, packs: 2 }],
     });
   }
 });
 
 function req(uid: number, role: Role, gid: number | null) {
-  const token = createSessionToken({ uid, role, gid, tv: 0, name: "t" });
+  const token = createSessionToken({ uid, role, gid, oid: 1, tv: 0, name: "t" });
   return new NextRequest("http://localhost/api/sales/orders/export", {
     headers: { cookie: `${COOKIE_NAME}=${token}` },
   });

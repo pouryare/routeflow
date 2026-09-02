@@ -47,6 +47,7 @@ function cookieFor(role: string) {
     uid: ids[role],
     role: role as "owner",
     gid: role === "owner" ? null : 1,
+    oid: 1,
     tv: 0,
     name: role,
   });

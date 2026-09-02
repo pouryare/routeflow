@@ -25,12 +25,18 @@ let groupWest = 0;
 beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
-  const g = db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)");
+  // organization_id stamped on both: scopeGroupIds resolves an owner's groups by
+  // querying WHERE organization_id = session.organizationId, so an unstamped group
+  // would be invisible to every "owner" session in this file, and an unstamped user's
+  // .organization_id would not match the oid: 1 baked into reqFor()'s tokens below.
+  const g = db.prepare(
+    "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)"
+  );
   groupEast = Number(g.run("گروه شرق", "east", "#0ff", now).lastInsertRowid);
   groupWest = Number(g.run("گروه غرب", "west", "#f0f", now).lastInsertRowid);
 
   const u = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
   ownerId = Number(u.run("pourya", "x:y", "پوریا", "owner", null, now).lastInsertRowid);
   managerId = Number(u.run("sara", "x:y", "سارا", "group_manager", groupEast, now).lastInsertRowid);
@@ -38,7 +44,7 @@ beforeAll(() => {
 });
 
 function reqFor(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, tv = 0) {
-  const token = createSessionToken({ uid: userId, role, gid, tv, name: "t" });
+  const token = createSessionToken({ uid: userId, role, gid, oid: 1, tv, name: "t" });
   return new NextRequest("http://localhost/api/anything", { headers: { cookie: `${COOKIE_NAME}=${token}` } });
 }
 
@@ -104,10 +110,15 @@ describe("requireRole", () => {
 });
 
 describe("scoping helpers", () => {
-  it("gives an owner every group", () => {
+  it("gives an owner every group in their own organisation", () => {
+    // Not "all" -- that is platform_owner's answer now. An owner's scope is their
+    // organisation's groups, which happens to be every group in this fixture since
+    // there is only one organisation in it.
     const s = getSession(reqFor(ownerId, "owner", null))!;
-    expect(scopeGroupIds(s)).toBe("all");
-    expect(groupFilter(s)).toEqual({ sql: "", params: [] });
+    expect((scopeGroupIds(s) as number[]).sort()).toEqual([groupEast, groupWest].sort());
+    // groupFilter itself does not use that list for an owner -- it filters by
+    // organisation instead, so ungrouped rows in this organisation stay visible too.
+    expect(groupFilter(s).sql).toBe(" AND organization_id = ?");
     expect(canReachGroup(s, groupWest)).toBe(true);
   });
 

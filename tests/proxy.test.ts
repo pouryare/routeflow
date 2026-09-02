@@ -9,7 +9,7 @@ const { NextRequest } = await import("next/server");
 function req(pathname: string, role?: "owner" | "group_manager" | "salesperson" | "driver") {
   const headers: Record<string, string> = {};
   if (role) {
-    const token = createSessionToken({ uid: 1, role, gid: role === "owner" ? null : 2, tv: 0, name: "t" });
+    const token = createSessionToken({ uid: 1, role, gid: role === "owner" ? null : 2, oid: 1, tv: 0, name: "t" });
     headers.cookie = `${COOKIE_NAME}=${token}`;
   }
   return new NextRequest(`http://localhost${pathname}`, { headers });
@@ -40,7 +40,7 @@ describe("the retired shared-password session", () => {
     // Those cookies were minted by the shared-password login and are still validly
     // signed for 30 days. getSession() rejects uid 0 because it matches no row, so
     // without this the holder would load every page and have every API call fail.
-    const token = createSessionToken({ uid: 0, role: "owner", gid: null, tv: 0, name: "مدیر" });
+    const token = createSessionToken({ uid: 0, role: "owner", gid: null, oid: 1, tv: 0, name: "مدیر" });
     const legacy = (pathname: string) =>
       new NextRequest(`http://localhost${pathname}`, { headers: { cookie: `${COOKIE_NAME}=${token}` } });
 
@@ -53,7 +53,7 @@ describe("the retired shared-password session", () => {
   it("clears the dead cookie on the way out", () => {
     // Otherwise the browser keeps presenting a credential that can never work again, and
     // every navigation for the next 30 days takes the same round trip to be refused.
-    const token = createSessionToken({ uid: 0, role: "owner", gid: null, tv: 0, name: "مدیر" });
+    const token = createSessionToken({ uid: 0, role: "owner", gid: null, oid: 1, tv: 0, name: "مدیر" });
     const res = proxy(
       new NextRequest("http://localhost/planner", { headers: { cookie: `${COOKIE_NAME}=${token}` } })
     );

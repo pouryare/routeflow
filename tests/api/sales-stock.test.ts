@@ -43,7 +43,7 @@ beforeAll(() => {
 });
 
 const cookieFor = (uid: number, role: Role, gid: number | null) =>
-  `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, tv: 0, name: "t" })}`;
+  `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, oid: 1, tv: 0, name: "t" })}`;
 
 const AS = {
   owner: () => cookieFor(ctx.owner, "owner", null),

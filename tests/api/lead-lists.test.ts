@@ -23,7 +23,7 @@ afterAll(() => {
 let ownerId = 0;
 
 function authCookie() {
-  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, tv: 0, name: "مالک" });
+  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "مالک" });
   return `${COOKIE_NAME}=${token}`;
 }
 
@@ -36,11 +36,11 @@ beforeAll(() => {
   const now = new Date().toISOString();
   ownerId = Number(
     db.prepare(
-      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, 'owner', NULL, 1, ?, 1)"
     ).run("lists-owner", "x:y", "مالک", now).lastInsertRowid
   );
   const insert = db.prepare(
-    "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at) VALUES (?, ?, ?, ?, 'manual', ?)"
+    "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at, organization_id) VALUES (?, ?, ?, ?, 'manual', ?, 1)"
   );
   locA = Number(insert.run("رستوران الف", "https://maps.example/a", 35.7, 51.4, now).lastInsertRowid);
   locB = Number(insert.run("رستوران ب", "https://maps.example/b", 35.71, 51.41, now).lastInsertRowid);
@@ -178,7 +178,7 @@ describe("deleting a location", () => {
     const doomed = Number(
       db
         .prepare(
-          "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at) VALUES (?, ?, ?, ?, 'manual', ?)"
+          "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, created_at, organization_id) VALUES (?, ?, ?, ?, 'manual', ?, 1)"
         )
         .run("رفتنی", "https://maps.example/doomed", 35.6, 51.3, now).lastInsertRowid
     );

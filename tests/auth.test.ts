@@ -9,7 +9,7 @@ const { createSessionToken, parseSessionToken, verifySessionToken, hashPassword,
   await import("@/lib/auth");
 
 describe("session tokens", () => {
-  const base = { uid: 7, role: "group_manager" as const, gid: 3, tv: 0, name: "سارا" };
+  const base = { uid: 7, role: "group_manager" as const, gid: 3, oid: 1, tv: 0, name: "سارا" };
 
   it("round-trips every claim", () => {
     const token = createSessionToken(base);
@@ -17,6 +17,7 @@ describe("session tokens", () => {
     expect(claims?.uid).toBe(7);
     expect(claims?.role).toBe("group_manager");
     expect(claims?.gid).toBe(3);
+    expect(claims?.oid).toBe(1);
     expect(claims?.tv).toBe(0);
     expect(claims?.name).toBe("سارا");
   });

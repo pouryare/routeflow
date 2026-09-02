@@ -41,13 +41,13 @@ beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
   const group = db.prepare(
-    "INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)"
+    "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)"
   );
   ctx.east = Number(group.run("شرق", "east", "#0ff", now).lastInsertRowid);
   ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
 
   const user = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
   ctx.owner = Number(user.run("owner", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
@@ -57,7 +57,7 @@ beforeAll(() => {
   ctx.driver = Number(user.run("driver", "راننده", "driver", ctx.east, now).lastInsertRowid);
 
   const customer = db.prepare(
-    "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
+    "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
   );
   ctx.eastCustomer = Number(customer.run("C1", "رستوران شرق", ctx.east, now).lastInsertRowid);
   ctx.westCustomer = Number(customer.run("C2", "رستوران غرب", ctx.west, now).lastInsertRowid);
@@ -72,7 +72,7 @@ beforeAll(() => {
 });
 
 function cookieFor(uid: number, role: Role, gid: number | null) {
-  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, tv: 0, name: "t" })}`;
+  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, oid: 1, tv: 0, name: "t" })}`;
 }
 
 const AS = {

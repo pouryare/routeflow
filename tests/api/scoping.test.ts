@@ -23,26 +23,26 @@ let east = 0, west = 0, ownerId = 0, eastMgrId = 0, driverId = 0, westDistrictId
 beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
-  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)");
+  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)");
   east = Number(g.run("شرق", "east", now).lastInsertRowid);
   west = Number(g.run("غرب", "west", now).lastInsertRowid);
 
   const u = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
   ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
   eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
   driverId = Number(u.run("drv", "x:y", "راننده", "driver", east, now).lastInsertRowid);
 
   const c = db.prepare(
-    "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
+    "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
   );
   c.run("E1", "مشتری شرق", east, now);
   c.run("W1", "مشتری غرب", west, now);
 
   westDistrictId = Number(
     db.prepare(
-      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
+      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at, organization_id) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?, 1)"
     ).run("محله غرب", west, now).lastInsertRowid
   );
 });
@@ -50,7 +50,7 @@ beforeAll(() => {
 type ReqInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 
 function as(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, url = "http://localhost/api/customers", init: ReqInit = {}) {
-  const token = createSessionToken({ uid: userId, role, gid, tv: 0, name: "t" });
+  const token = createSessionToken({ uid: userId, role, gid, oid: 1, tv: 0, name: "t" });
   return new NextRequest(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `${COOKIE_NAME}=${token}` } });
 }
 
@@ -171,22 +171,22 @@ beforeAll(() => {
   westCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get() as { id: number }).id;
   eastDistrictId = Number(
     db.prepare(
-      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
+      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at, organization_id) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?, 1)"
     ).run("محله شرق", east, now).lastInsertRowid
   );
 
   const loc = db.prepare(
-    "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, updated_at) VALUES (?, ?, ?, ?, 'manual', ?, ?, ?)"
+    "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, 'manual', ?, ?, ?, 1)"
   );
   loc.run("پین شرق", "https://maps.example/e", 35.7, 51.4, east, now, now);
   westLocId = Number(loc.run("پین غرب", "https://maps.example/w", 35.7, 51.2, west, now, now).lastInsertRowid);
 
-  const list = db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at) VALUES (?, ?, ?, ?)");
+  const list = db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, 1)");
   list.run("لیست شرق", east, now, now);
   westListId = Number(list.run("لیست غرب", west, now, now).lastInsertRowid);
 
   const fac = db.prepare(
-    "INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, group_id, created_at, updated_at) VALUES (?, 'other', ?, ?, ?, 0, ?, ?, ?)"
+    "INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, group_id, created_at, updated_at, organization_id) VALUES (?, 'other', ?, ?, ?, 0, ?, ?, ?, 1)"
   );
   fac.run("fac-east", "انبار شرق", 35.7, 51.4, east, now, now);
   westFacId = Number(fac.run("fac-west", "انبار غرب", 35.7, 51.2, west, now, now).lastInsertRowid);

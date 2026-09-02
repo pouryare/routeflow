@@ -58,7 +58,7 @@ beforeAll(() => {
 });
 
 function cookieFor(uid: number, role: Role, gid: number | null) {
-  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, tv: 0, name: "t" })}`;
+  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, oid: 1, tv: 0, name: "t" })}`;
 }
 
 const AS = {

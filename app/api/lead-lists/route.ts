@@ -44,8 +44,10 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   const now = new Date().toISOString();
   const result = db
-    .prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at) VALUES (?, ?, ?, ?)")
-    .run(name, guard.session.groupId, now, now);
+    .prepare(
+      "INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, ?)"
+    )
+    .run(name, guard.session.groupId, now, now, guard.session.organizationId);
   const id = Number(result.lastInsertRowid);
 
   if (ids.length) setLeadListItems(db, id, ids);

@@ -34,6 +34,7 @@ export interface CreateOrderInput {
   customer_id: number;
   order_date: string;
   created_by: number;
+  organization_id: number;
   salesperson_user_id?: number | null;
   credit_override_by?: number | null;
   notes?: string | null;
@@ -79,12 +80,17 @@ export interface OrderDetail {
  *  constraint on order_no is what actually guarantees no duplicate -- this only has to
  *  be right, not exclusive, and BEGIN IMMEDIATE in createOrder takes the write lock
  *  before the read so two concurrent writers cannot both see the same maximum. */
-function nextOrderNo(db: DatabaseSync, orderDate: string): string {
+function nextOrderNo(db: DatabaseSync, orderDate: string, organizationId: number): string {
   const jy = toJalali(orderDate)?.jy ?? toJalali(new Date().toISOString())!.jy;
   const prefix = `${jy}-`;
+  // Scoped to this organisation: order_no is unique per (organization_id, order_no) now,
+  // not globally, so the next number has to be the max within this organisation too --
+  // otherwise a second tenant's numbering would start wherever the first tenant's had
+  // reached, which both wastes numbers and tells one company how many orders another has
+  // taken this year.
   const row = db
-    .prepare("SELECT MAX(order_no) AS latest FROM orders WHERE order_no LIKE ?")
-    .get(`${prefix}%`) as { latest: string | null };
+    .prepare("SELECT MAX(order_no) AS latest FROM orders WHERE order_no LIKE ? AND organization_id = ?")
+    .get(`${prefix}%`, organizationId) as { latest: string | null };
 
   const previous = row.latest ? Number(row.latest.slice(prefix.length)) : 0;
   return formatOrderNo(jy, previous + 1);
@@ -143,15 +149,16 @@ export function createOrder(
   // both read the same maximum before either takes the lock.
   db.exec("BEGIN IMMEDIATE");
   try {
-    const orderNo = nextOrderNo(db, input.order_date);
+    const orderNo = nextOrderNo(db, input.order_date, input.organization_id);
     const now = new Date().toISOString();
 
     const orderId = Number(
       db
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
-                               order_date, notes, credit_override_by, created_by, created_at, updated_at)
-           VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?)`
+                               order_date, notes, credit_override_by, created_by, created_at, updated_at,
+                               organization_id)
+           VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -163,7 +170,8 @@ export function createOrder(
           input.credit_override_by ?? null,
           input.created_by,
           now,
-          now
+          now,
+          input.organization_id
         ).lastInsertRowid
     );
 

@@ -37,7 +37,12 @@ const ctx = {
 };
 
 function session(role: Role, uid: number, gid: number | null): Session {
-  return { user: { id: uid, role, group_id: gid } as UserRow, role, groupId: gid };
+  return {
+    user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow,
+    role,
+    groupId: gid,
+    organizationId: 1,
+  };
 }
 
 beforeAll(() => {
@@ -76,6 +81,7 @@ beforeAll(() => {
     customer_id: ctx.customer,
     order_date: "2026-08-26",
     created_by: ctx.owner,
+    organization_id: 1,
     lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 3 }],
   });
   ctx.order = order.id;
@@ -122,6 +128,7 @@ describe("addStop", () => {
       customer_id: ctx.customer,
       order_date: "2026-08-26",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
     });
     expect(() => addStop(db, ctx.run, draft.id)).toThrow(DeliveryError);
@@ -213,6 +220,7 @@ describe("recordDelivery", () => {
       customer_id: ctx.customer,
       order_date: "2026-08-27",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
     });
     confirmOrder(db, order.id);
@@ -243,6 +251,7 @@ describe("recordDelivery", () => {
       customer_id: ctx.customer,
       order_date: "2026-08-28",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
     });
     confirmOrder(db, order.id);
@@ -279,6 +288,7 @@ describe("recordDelivery", () => {
       customer_id: ctx.customer,
       order_date: "2026-09-02",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 4 }],
     });
     confirmOrder(db, order.id);
@@ -329,6 +339,7 @@ describe("recordDelivery", () => {
       customer_id: ctx.customer,
       order_date: "2026-08-29",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
     });
     confirmOrder(db, order.id);

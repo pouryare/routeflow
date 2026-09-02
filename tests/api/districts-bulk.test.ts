@@ -17,8 +17,8 @@ function seedDistrict(status = "unknown") {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, updated_at)
-       VALUES (?, 'mahalle', NULL, ?, ?, NULL, 0, ?)`
+      `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, updated_at, organization_id)
+       VALUES (?, 'mahalle', NULL, ?, ?, NULL, 0, ?, 1)`
     )
     .run(`Test District ${Math.random()}`, JSON.stringify({ type: "Polygon", coordinates: [] }), status, now);
   return Number(result.lastInsertRowid);
@@ -30,7 +30,7 @@ function seedDistrict(status = "unknown") {
 let ownerId = 0;
 
 function bulkReq(body: unknown) {
-  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, tv: 0, name: "مالک" });
+  const token = createSessionToken({ uid: ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "مالک" });
   return new NextRequest("http://localhost/api/districts/bulk", {
     method: "PATCH",
     body: JSON.stringify(body),
@@ -48,7 +48,7 @@ beforeAll(() => {
   const db = getDb(); // ensure schema is created before any test seeds rows
   ownerId = Number(
     db.prepare(
-      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, 'owner', NULL, 1, ?)"
+      "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, 'owner', NULL, 1, ?, 1)"
     ).run("bulk-owner", "x:y", "مالک", new Date().toISOString()).lastInsertRowid
   );
 });

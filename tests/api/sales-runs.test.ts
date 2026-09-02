@@ -72,6 +72,7 @@ beforeAll(() => {
       customer_id: customerId,
       order_date: "2026-08-26",
       created_by: ctx.owner,
+      organization_id: 1,
       lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
     });
     confirmOrder(db, order.id);
@@ -80,7 +81,7 @@ beforeAll(() => {
 });
 
 function cookie(uid: number, role: Role, gid: number | null) {
-  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, tv: 0, name: "t" })}`;
+  return `${COOKIE_NAME}=${createSessionToken({ uid, role, gid, oid: 1, tv: 0, name: "t" })}`;
 }
 
 function post(url: string, c: string, body: unknown) {
