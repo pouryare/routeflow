@@ -4,8 +4,9 @@ import { useCallback, useEffect, useState } from "react";
 import { faNum } from "@/lib/format";
 import type { Board as BoardData } from "@/lib/repo/board";
 import type { TaskCard } from "@/lib/repo/taskCard";
-import { lanesFor, type BoardView } from "@/lib/tasks/lenses";
+import { lanesFor, movePatch, type BoardView } from "@/lib/tasks/lenses";
 import CustomerSheet from "@/components/kargah/CustomerSheet";
+import OutcomeChips from "@/components/today/OutcomeChips";
 import { useCardDrag } from "./useCardDrag";
 import BoardMobile from "./BoardMobile";
 
@@ -57,6 +58,7 @@ export default function Board({
   const [board, setBoard] = useState<BoardData>(initialBoard);
   const [custId, setCustId] = useState<number | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
+  const [outcomeFor, setOutcomeFor] = useState<{ cardId: number; toLane: string } | null>(null);
   const [log, setLog] = useState<string>("");
   const narrow = useIsNarrow();
 
@@ -75,23 +77,38 @@ export default function Board({
     void refetch(view, wfKind);
   }, [view, wfKind, refetch]);
 
-  const move = useCallback(
-    async (card: TaskCard, toLane: string) => {
+  const commitMove = useCallback(
+    async (card: TaskCard, toLane: string, outcomeCode?: string) => {
       setMenuId(null);
+      setOutcomeFor(null);
       const res = await fetch(`/api/tasks/${card.id}/move`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ view, to_lane: toLane }),
+        body: JSON.stringify({ view, to_lane: toLane, outcome_code: outcomeCode }),
       });
       const j = await res.json().catch(() => ({ ok: false }));
       if (j.ok) {
-        const label =
-          lanesFor(view, card.kind).find((l) => l.id === toLane)?.label ?? toLane;
+        const label = lanesFor(view, card.kind).find((l) => l.id === toLane)?.label ?? toLane;
         setLog(`«${card.title.slice(0, 26)}» → ${label} · در هر سه نما همگام شد`);
       }
       await refetch(view, wfKind);
     },
     [view, wfKind, refetch]
+  );
+
+  /** A drop into a lane that closes an outreach task asks for an outcome first (reusing
+   *  the /today chips); every other move commits straight away. */
+  const move = useCallback(
+    (card: TaskCard, toLane: string) => {
+      const patch = movePatch(card, view, toLane, new Date().toISOString());
+      if (patch.status === "done" && card.kind === "outreach") {
+        setMenuId(null);
+        setOutcomeFor({ cardId: card.id, toLane });
+        return;
+      }
+      void commitMove(card, toLane);
+    },
+    [view, commitMove]
   );
 
   const drag = useCardDrag<TaskCard>({
@@ -258,6 +275,40 @@ export default function Board({
                         ⋯
                       </button>
                     </div>
+
+                    {outcomeFor?.cardId === card.id ? (
+                      <div
+                        style={{
+                          marginTop: 8,
+                          borderTop: "1px dashed var(--line-2)",
+                          paddingTop: 8,
+                        }}
+                      >
+                        <div style={{ fontSize: 10.5, color: "var(--muted)", marginBottom: 5 }}>
+                          نتیجهٔ تماس؟
+                        </div>
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
+                          <OutcomeChips
+                            onPick={(code) => void commitMove(card, outcomeFor.toLane, code)}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => void commitMove(card, outcomeFor.toLane)}
+                            style={{
+                              borderRadius: 999,
+                              padding: "2px 8px",
+                              fontSize: 10.5,
+                              border: 0,
+                              background: "none",
+                              color: "var(--faint)",
+                              cursor: "pointer",
+                            }}
+                          >
+                            بدون نتیجه
+                          </button>
+                        </div>
+                      </div>
+                    ) : null}
 
                     {menuId === card.id ? (
                       <div
