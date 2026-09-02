@@ -8,6 +8,8 @@
 import type { DatabaseSync } from "node:sqlite";
 import { resolvePrice } from "./catalogue";
 import { toJalali } from "./jalali";
+import { customerDebt } from "./repo/payments";
+import { requestApproval } from "./repo/creditApprovals";
 import {
   formatOrderNo,
   orderTotalToman,
@@ -140,9 +142,28 @@ export function createOrder(
   if (input.lines.length === 0) throw new OrderError("سفارش بدون قلم ثبت نمی‌شود");
 
   const customer = db
-    .prepare("SELECT id, group_id FROM customers WHERE id = ?")
-    .get(input.customer_id) as { group_id: number | null } | undefined;
+    .prepare(
+      "SELECT id, group_id, hard_credit_block, credit_limit_toman FROM customers WHERE id = ?"
+    )
+    .get(input.customer_id) as
+    | {
+        group_id: number | null;
+        hard_credit_block: number;
+        credit_limit_toman: number | null;
+      }
+    | undefined;
   if (!customer) throw new OrderError("مشتری پیدا نشد");
+
+  // A representative settles in cash or bank cheque and is outside credit control.
+  const isRepresentative = !!db
+    .prepare(
+      "SELECT 1 FROM representative_profiles WHERE customer_id = ? AND organization_id = ?"
+    )
+    .get(input.customer_id, input.organization_id);
+
+  if (!isRepresentative && customer.hard_credit_block) {
+    throw new OrderError("این مشتری مسدود اعتباری است و سفارش جدید ثبت نمی‌شود");
+  }
 
   // IMMEDIATE rather than a deferred BEGIN: the transaction reads the highest order
   // number and then writes it back, and a deferred transaction would let two writers
@@ -177,6 +198,24 @@ export function createOrder(
 
     for (const line of input.lines) {
       insertLine(db, orderId, input.order_date, line, now);
+    }
+
+    // Credit control for direct customers: if the order would take the customer past a
+    // set limit, park it (credit_hold = 1) and file an approval request. A rep is
+    // exempt; a customer with no limit set is never held.
+    if (!isRepresentative && customer.credit_limit_toman !== null) {
+      const orderTotal = orderTotalToman(linesOf(db, orderId));
+      const balance = customerDebt(input.organization_id, input.customer_id).total;
+      if (balance + orderTotal > customer.credit_limit_toman) {
+        db.prepare("UPDATE orders SET credit_hold = 1 WHERE id = ?").run(orderId);
+        requestApproval(input.organization_id, {
+          order_id: orderId,
+          requested_by: input.created_by,
+          customer_id: input.customer_id,
+          customer_balance_toman: balance,
+          credit_limit_toman: customer.credit_limit_toman,
+        });
+      }
     }
 
     db.exec("COMMIT");

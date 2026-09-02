@@ -96,12 +96,15 @@ export function createRun(
  *  Draft orders are refused: a draft is a shopping list somebody is still editing, and
  *  loading a van from one means the quantities can change after it has left. */
 export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOrder = 0): number {
-  const order = db.prepare("SELECT id, status FROM orders WHERE id = ?").get(orderId) as
-    | { status: string }
-    | undefined;
+  const order = db
+    .prepare("SELECT id, status, credit_hold FROM orders WHERE id = ?")
+    .get(orderId) as { status: string; credit_hold: number } | undefined;
   if (!order) throw new DeliveryError("سفارش پیدا نشد");
   if (order.status === "draft") {
     throw new DeliveryError("سفارش پیش‌نویس روی مسیر قرار نمی‌گیرد؛ اول تأییدش کنید");
+  }
+  if (order.credit_hold) {
+    throw new DeliveryError("سفارش در انتظار تأیید اعتبار است و روی مسیر قرار نمی‌گیرد");
   }
 
   return Number(

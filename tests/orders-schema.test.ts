@@ -94,6 +94,8 @@ describe("orders", () => {
         "payment_status",
         "paid_toman",
         "credit_override_by",
+        // Phase 1 (Money): an order parked pending a credit_approvals decision.
+        "credit_hold",
         "notes",
         "created_by",
         "created_at",

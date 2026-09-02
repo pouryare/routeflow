@@ -77,6 +77,14 @@ export function decide(
     decided_at: new Date().toISOString(),
     reason: reason ?? null,
   });
+  // Approving releases the parked order; rejecting leaves it held until it is cancelled
+  // or a payment brings the balance back under the limit.
+  if (verdict === "approved") {
+    creditApprovalsRepo
+      .db()
+      .prepare("UPDATE orders SET credit_hold = 0 WHERE id = ? AND organization_id = ?")
+      .run(row.order_id, organizationId);
+  }
 }
 
 export function listApprovals(

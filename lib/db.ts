@@ -1571,6 +1571,14 @@ export function getDb(): DatabaseSync {
     }
   }
 
+  // Phase 1 (Money): an order that breaches a direct customer's credit limit is parked
+  // -- credit_hold = 1 -- until a credit_approvals decision releases it. No CHECK, so a
+  // plain ADD COLUMN, guarded on the column's absence.
+  const orderCols = db.prepare("PRAGMA table_info(orders)").all() as { name: string }[];
+  if (!orderCols.some((c) => c.name === "credit_hold")) {
+    db.exec("ALTER TABLE orders ADD COLUMN credit_hold INTEGER NOT NULL DEFAULT 0");
+  }
+
   const districtCentroidCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
   if (!districtCentroidCols.some((c) => c.name === "centroid_lat")) {
     db.exec("ALTER TABLE districts ADD COLUMN centroid_lat REAL");
