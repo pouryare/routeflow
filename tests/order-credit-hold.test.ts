@@ -152,6 +152,44 @@ describe("submitOrder credit hold", () => {
     submitOrder(1, id, { id: owner, role: "salesperson" });
     const approvalId = (db.prepare("SELECT id FROM credit_approvals WHERE order_id=?").get(id) as { id: number }).id;
     decide(1, approvalId, "approved", owner);
-    expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
+    const row = db.prepare("SELECT credit_hold, status FROM orders WHERE id=?").get(id) as {
+      credit_hold: number;
+      status: string;
+    };
+    expect(row.credit_hold).toBe(0);
+    expect(row.status).toBe("CONFIRMED");
+  });
+
+  it("raises a manager reminder when an order is flagged for credit", () => {
+    const db = getDb();
+    deliveredUnpaidOrder(2);
+    const { id } = createOrder(db, {
+      customer_id: custId,
+      order_date: "2026-02-01",
+      created_by: owner,
+      organization_id: 1,
+      lines: [line(1)],
+    });
+    submitOrder(1, id, { id: owner, role: "salesperson" });
+    const n = db
+      .prepare("SELECT COUNT(*) AS n FROM reminders WHERE entity_type='customer' AND entity_id=?")
+      .get(custId) as { n: number };
+    expect(n.n).toBe(1);
+  });
+
+  it("rejecting a credit approval parks the order ON_HOLD", () => {
+    const db = getDb();
+    deliveredUnpaidOrder(2);
+    const { id } = createOrder(db, {
+      customer_id: custId,
+      order_date: "2026-02-01",
+      created_by: owner,
+      organization_id: 1,
+      lines: [line(1)],
+    });
+    submitOrder(1, id, { id: owner, role: "salesperson" });
+    const approvalId = (db.prepare("SELECT id FROM credit_approvals WHERE order_id=?").get(id) as { id: number }).id;
+    decide(1, approvalId, "rejected", owner);
+    expect((db.prepare("SELECT status FROM orders WHERE id=?").get(id) as { status: string }).status).toBe("ON_HOLD");
   });
 });

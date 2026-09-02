@@ -35,7 +35,7 @@ function seed(orgId: number, code: string, wholesale = false) {
   const orderId = Number(
     db
       .prepare(
-        `INSERT INTO orders (order_no,customer_id,order_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,?,?)`
+        `INSERT INTO orders (order_no,customer_id,order_date,status,credit_hold,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,'PENDING_CREDIT',1,?,?,?,?)`
       )
       .run(`ord-${code}`, custId, "2026-01-01", uId, "2026-01-01", "2026-01-01", orgId).lastInsertRowid
   );

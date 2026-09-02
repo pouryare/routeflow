@@ -54,7 +54,7 @@ beforeAll(() => {
   orderId = Number(
     db
       .prepare(
-        "INSERT INTO orders (order_no,customer_id,order_date,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,?,?,?,1)"
+        "INSERT INTO orders (order_no,customer_id,order_date,status,credit_hold,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'PENDING_CREDIT',1,?,?,?,1)"
       )
       .run(custId, "2026-01-01", mgrId, now, now).lastInsertRowid
   );

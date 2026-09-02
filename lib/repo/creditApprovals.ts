@@ -1,4 +1,5 @@
 import { makeRepo } from "./base";
+import { advanceOrder, registerOrderEffectHandlers } from "./orders";
 
 export class CreditApprovalError extends Error {}
 
@@ -77,15 +78,41 @@ export function decide(
     decided_at: new Date().toISOString(),
     reason: reason ?? null,
   });
-  // Approving releases the parked order; rejecting leaves it held until it is cancelled
-  // or a payment brings the balance back under the limit.
-  if (verdict === "approved") {
-    creditApprovalsRepo
-      .db()
-      .prepare("UPDATE orders SET credit_hold = 0 WHERE id = ? AND organization_id = ?")
-      .run(row.order_id, organizationId);
-  }
+  // The decision drives the order machine: approve -> CONFIRMED (the transition's own
+  // effects clear credit_hold and reserve stock); reject -> ON_HOLD, still held until it
+  // is cancelled or a payment brings the balance back under the limit and a manager
+  // releases it.
+  advanceOrder(
+    organizationId,
+    row.order_id,
+    verdict === "approved" ? "approveCredit" : "rejectCredit",
+    { id: decidedBy, role: "group_manager" }
+  );
 }
+
+/** The `createCreditApprovalTask` effect: submitOrder has already filed the
+ *  credit_approvals row; this drops the manager's follow-up reminder. Same shape as the
+ *  Phase 1 cheque-bounce reminder. */
+registerOrderEffectHandlers({
+  createCreditApprovalTask(conn, _orgId, orderId) {
+    const order = conn
+      .prepare("SELECT customer_id FROM orders WHERE id = ?")
+      .get(orderId) as { customer_id: number } | undefined;
+    if (!order) return;
+    const now = new Date().toISOString();
+    conn
+      .prepare(
+        `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)
+         VALUES ('customer', ?, ?, ?, 0, ?)`
+      )
+      .run(
+        order.customer_id,
+        now.slice(0, 10),
+        "سفارش از سقف اعتبار مشتری عبور کرد — نیازمند تأیید مدیر",
+        now
+      );
+  },
+});
 
 export function listApprovals(
   organizationId: number,
