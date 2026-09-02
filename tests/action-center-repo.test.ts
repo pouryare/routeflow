@@ -35,7 +35,7 @@ let pkg = 0;
 beforeEach(() => {
   const db = getDb();
   db.exec(
-    "PRAGMA foreign_keys=OFF; DELETE FROM kpi_snapshots; DELETE FROM alerts; DELETE FROM order_events; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM payments; DELETE FROM payment_allocations; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; DELETE FROM groups; PRAGMA foreign_keys=ON;"
+    "PRAGMA foreign_keys=OFF; DELETE FROM kpi_snapshots; DELETE FROM churn_scores; DELETE FROM alerts; DELETE FROM order_events; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM payments; DELETE FROM payment_allocations; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; DELETE FROM groups; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   grp = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now).lastInsertRowid);
@@ -92,6 +92,16 @@ describe("action center repo", () => {
       .run(iso(1));
     const r = actionCenterFor(session("driver", driver, grp));
     expect(r).toEqual({ critical: [], warning: [], opportunity: [] });
+  });
+
+  it("surfaces a high churn_scores row as a warning", () => {
+    getDb()
+      .prepare(
+        "INSERT INTO churn_scores (organization_id,customer_id,probability,band,reason_fa,computed_at) VALUES (1,?,0.82,'high','مدت‌هاست از ریتم خرید عقب افتاده',?)"
+      )
+      .run(cust, iso(1));
+    const r = actionCenterFor(session("owner", owner, null));
+    expect(r.warning.some((c) => c.key === `churn:${cust}`)).toBe(true);
   });
 
   it("respects the per-bucket cap", () => {

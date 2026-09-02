@@ -116,7 +116,10 @@ export function proxy(req: NextRequest) {
     // Phase 9: the analysis sweep is a manager/scheduler hook. The read routes gate
     // themselves (kpis/action-center open to salesperson at own scope; why/margin
     // manager-only inside the route).
-    pathname.startsWith("/api/analysis/refresh");
+    pathname.startsWith("/api/analysis/refresh") ||
+    // Phase 10: prediction is a manager tool end to end.
+    pathname.startsWith("/api/predict") ||
+    pathname.startsWith("/sales/forecast");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
     return deny("/sales");
   }

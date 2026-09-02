@@ -299,6 +299,44 @@ function crossSellCandidates(session: Session): Candidate[] {
     }));
 }
 
+/** Phase 10: customers the churn model flags `high`. A no-op until the prediction
+ *  sweep has written `churn_scores`. */
+function churnCandidates(session: Session): Candidate[] {
+  const db = getDb();
+  const f = groupFilter(session);
+  const inScope = new Set(
+    (
+      db.prepare(`SELECT id FROM customers WHERE 1 = 1${f.sql}`).all(...f.params) as { id: number }[]
+    ).map((c) => c.id)
+  );
+  const rows = db
+    .prepare(
+      `SELECT cs.customer_id, cs.probability, cs.reason_fa, c.business_name
+         FROM churn_scores cs JOIN customers c ON c.id = cs.customer_id
+        WHERE cs.organization_id = ? AND cs.band = 'high'`
+    )
+    .all(session.organizationId) as {
+    customer_id: number;
+    probability: number;
+    reason_fa: string | null;
+    business_name: string;
+  }[];
+
+  return rows
+    .filter((r) => inScope.has(r.customer_id))
+    .map((r) => ({
+      key: `churn:${r.customer_id}`,
+      kind: "at_risk_customer" as const,
+      title_fa: `احتمال ریزش: ${r.business_name}`,
+      sub_fa: r.reason_fa ?? `احتمال ${Math.round(r.probability * 100)}٪`,
+      bucket: "warning" as Bucket,
+      impact: 0.5,
+      probability: Math.max(0, Math.min(1, r.probability)),
+      urgency: 0.5,
+      href: `/sales/customers/${r.customer_id}`,
+    }));
+}
+
 export function actionCenterFor(session: Session): Record<Bucket, RankedItem[]> {
   if (session.role === "driver") {
     return { critical: [], warning: [], opportunity: [] };
@@ -308,6 +346,7 @@ export function actionCenterFor(session: Session): Record<Bucket, RankedItem[]> 
     ...stalledOrderCandidates(session),
     ...overdueCandidates(session),
     ...atRiskCandidates(session),
+    ...churnCandidates(session),
     ...stockoutCandidates(session),
     ...crossSellCandidates(session),
   ];
