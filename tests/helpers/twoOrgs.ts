@@ -17,6 +17,7 @@ export interface OrgFixture {
   complaintId: number;
   reasonCodeId: number;
   deliveryId: number;
+  syncMutationId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -219,6 +220,24 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 4: a sync_mutations row (client_uuid colliding across orgs to prove the
+    // UNIQUE is per-tenant) and a tombstone.
+    const syncMutationId = insert(
+      `INSERT INTO sync_mutations (organization_id, client_uuid, user_id, op, payload_json,
+                                   occurred_at, clock_skew_ms, received_at, status)
+       VALUES (?, 'SHARED-MUT', ?, 'payment.record', '{}', ?, 0, ?, 'applied')`,
+      orgId,
+      ownerId,
+      NOW,
+      NOW
+    );
+    insert(
+      `INSERT INTO deleted_rows (organization_id, entity_type, entity_id, deleted_at)
+       VALUES (?, 'order_line', 999, ?)`,
+      orgId,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -236,6 +255,7 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       complaintId,
       reasonCodeId,
       deliveryId,
+      syncMutationId,
     };
   };
 

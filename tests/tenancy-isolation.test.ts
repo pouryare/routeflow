@@ -155,6 +155,30 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(sys.n).toBeGreaterThanOrEqual(13);
   });
 
+  it("keeps sync_mutations and deleted_rows apart; the client_uuid UNIQUE is per-tenant", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const muts = db
+        .prepare("SELECT id FROM sync_mutations WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(muts.map((r) => r.id)).toContain(self.syncMutationId);
+      expect(muts.map((r) => r.id)).not.toContain(other.syncMutationId);
+
+      const tombs = db
+        .prepare("SELECT COUNT(*) AS n FROM deleted_rows WHERE organization_id = ?")
+        .get(self.orgId) as { n: number };
+      expect(tombs.n).toBeGreaterThan(0);
+    }
+    // both orgs hold the same client_uuid -- the UNIQUE is (organization_id, client_uuid)
+    const shared = db
+      .prepare("SELECT COUNT(*) AS n FROM sync_mutations WHERE client_uuid = 'SHARED-MUT'")
+      .get() as { n: number };
+    expect(shared.n).toBe(2);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [
