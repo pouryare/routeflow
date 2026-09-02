@@ -9,6 +9,7 @@ import {
   type WeatherAdjustment,
 } from "@/lib/weather/capacityAdjust";
 import type { WeatherReading } from "@/lib/weather/conditions";
+import { resolvedCapacityFactorsFor } from "@/lib/repo/capacityLearning";
 
 export interface SnapshotRow extends WeatherSnapshotInput {
   id: number;
@@ -166,7 +167,10 @@ export function runWeatherAdjustment(
     visibility_m: snap.visibility_m,
     weather_code: snap.weather_code,
   };
-  return weatherAdjustment(reading, capacityFactorsFor(organizationId), {
+  // Phase 10: the resolved set folds in factors the tenant's own routes have learned
+  // (once >= MIN_LEARN_N observations); with no learning yet it is identical to
+  // capacityFactorsFor, so every Phase 6 reading is unchanged.
+  return weatherAdjustment(reading, resolvedCapacityFactorsFor(organizationId), {
     vehicle_has_refrigeration: opts.vehicle_has_refrigeration,
   });
 }
