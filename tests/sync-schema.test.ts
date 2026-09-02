@@ -34,7 +34,8 @@ describe("offline-first schema", () => {
       const idx = db
         .prepare("SELECT sql FROM sqlite_master WHERE type='index' AND name = ?")
         .get(`ix_${t}_client_uuid`) as { sql: string } | undefined;
-      expect(idx?.sql, t).toMatch(/UNIQUE.*client_uuid.*WHERE client_uuid IS NOT NULL/s);
+      expect(idx?.sql ?? "", t).toContain("UNIQUE INDEX");
+      expect(idx?.sql ?? "", t).toContain("WHERE client_uuid IS NOT NULL");
     }
   });
 
