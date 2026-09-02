@@ -9,6 +9,9 @@ import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { buildMapLink } from "@/lib/deepLink";
 import ConfirmOrderButton from "@/components/sales/ConfirmOrderButton";
+import OrderStatusPanel from "@/components/sales/OrderStatusPanel";
+import { statusLabel } from "@/components/sales/orderStage";
+import type { OrderRole } from "@/lib/orderStateMachine";
 import BentoStrip, {
   BentoIdentity,
   BentoTile,
@@ -17,12 +20,6 @@ import BentoStrip, {
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "پیش‌نویس",
-  confirmed: "تأییدشده",
-  delivered: "تحویل‌شده",
-  cancelled: "لغوشده",
-};
 
 export default async function OrderDetailPage({
   params,
@@ -69,7 +66,7 @@ export default async function OrderDetailPage({
               {order.customer_name}
             </Link>{" "}
             · {faJalaliDate(order.order_date)} ·{" "}
-            {STATUS_LABEL[order.status] ?? order.status}
+            {statusLabel(order.status)}
           </p>
         </div>
         <Link
@@ -86,7 +83,7 @@ export default async function OrderDetailPage({
           title={order.customer_name}
           meta={
             <>
-              {faJalaliDate(order.order_date)} · {STATUS_LABEL[order.status] ?? order.status}
+              {faJalaliDate(order.order_date)} · {statusLabel(order.status)}
               {order.salesperson_name && ` · ${order.salesperson_name}`}
             </>
           }
@@ -115,6 +112,12 @@ export default async function OrderDetailPage({
           }
         />
       </BentoStrip>
+
+      <OrderStatusPanel
+        orderId={order.id}
+        status={order.status}
+        role={session.role as OrderRole}
+      />
 
       <table className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
         <thead>
