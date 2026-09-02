@@ -235,8 +235,14 @@ describe("stockPosition", () => {
 });
 
 describe("readPurchases", () => {
+  // readPurchases is now tenant-scoped, but recordPurchase does not stamp
+  // organization_id until Task 5b -- pin the receipts these tests read to org 1.
+  beforeAll(() => {
+    getDb().exec("UPDATE purchases SET organization_id = 1 WHERE organization_id IS NULL");
+  });
+
   it("returns the newest receipt first", () => {
-    const rows = readPurchases(getDb());
+    const rows = readPurchases(getDb(), 1);
     expect(rows.length).toBeGreaterThan(0);
     for (let i = 1; i < rows.length; i++) {
       expect(rows[i - 1].purchase_date >= rows[i].purchase_date).toBe(true);
@@ -244,7 +250,7 @@ describe("readPurchases", () => {
   });
 
   it("carries the line count and total", () => {
-    const rows = readPurchases(getDb());
+    const rows = readPurchases(getDb(), 1);
     const first = rows.find((r) => r.total_toman > 0)!;
     expect(first.line_count).toBeGreaterThan(0);
   });

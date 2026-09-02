@@ -81,15 +81,18 @@ export function resolvePrice(
 
 export function readCatalogue(
   db: DatabaseSync,
+  organizationId: number,
   opts: { includeInactive?: boolean; onDate?: string } = {}
 ): CatalogueProduct[] {
   const onDate = opts.onDate ?? new Date().toISOString().slice(0, 10);
 
   const products = db
     .prepare(
-      `SELECT * FROM products ${opts.includeInactive ? "" : "WHERE active = 1"} ORDER BY name`
+      `SELECT * FROM products WHERE organization_id = ? ${
+        opts.includeInactive ? "" : "AND active = 1"
+      } ORDER BY name`
     )
-    .all() as unknown as ProductRow[];
+    .all(organizationId) as unknown as ProductRow[];
 
   return products.map((product) => {
     const packagings = db

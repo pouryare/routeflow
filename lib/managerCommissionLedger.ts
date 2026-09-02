@@ -111,16 +111,18 @@ export function recordManagerPayment(
 }
 
 export function readManagerOverrides(
-  db: DatabaseSync
+  db: DatabaseSync,
+  organizationId: number
 ): (ManagerOverrideRow & { display_name: string | null })[] {
   return db
     .prepare(
       `SELECT mco.*, u.display_name
          FROM manager_commission_overrides mco
          LEFT JOIN users u ON u.id = mco.manager_user_id
+        WHERE mco.organization_id = ?
         ORDER BY mco.valid_from DESC, mco.id DESC`
     )
-    .all() as unknown as (ManagerOverrideRow & { display_name: string | null })[];
+    .all(organizationId) as unknown as (ManagerOverrideRow & { display_name: string | null })[];
 }
 
 export function managerStatementFor(

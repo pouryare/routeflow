@@ -278,7 +278,7 @@ export interface PurchaseSummary {
   entered_by: string | null;
 }
 
-export function readPurchases(db: DatabaseSync, limit = 100): PurchaseSummary[] {
+export function readPurchases(db: DatabaseSync, organizationId: number, limit = 100): PurchaseSummary[] {
   return db
     .prepare(
       `SELECT pu.id, pu.supplier, pu.purchase_date, pu.invoice_no,
@@ -288,9 +288,10 @@ export function readPurchases(db: DatabaseSync, limit = 100): PurchaseSummary[] 
          FROM purchases pu
          LEFT JOIN purchase_lines pl ON pl.purchase_id = pu.id
          LEFT JOIN users u ON u.id = pu.created_by
+        WHERE pu.organization_id = ?
         GROUP BY pu.id
         ORDER BY pu.purchase_date DESC, pu.id DESC
         LIMIT ?`
     )
-    .all(limit) as unknown as PurchaseSummary[];
+    .all(organizationId, limit) as unknown as PurchaseSummary[];
 }

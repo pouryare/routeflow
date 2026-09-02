@@ -97,15 +97,19 @@ export function recordDriverPayment(
   );
 }
 
-export function readDriverRates(db: DatabaseSync): (DriverRateRow & { display_name: string | null })[] {
+export function readDriverRates(
+  db: DatabaseSync,
+  organizationId: number
+): (DriverRateRow & { display_name: string | null })[] {
   return db
     .prepare(
       `SELECT dcr.*, u.display_name
          FROM driver_commission_rates dcr
          LEFT JOIN users u ON u.id = dcr.driver_user_id
+        WHERE dcr.organization_id = ?
         ORDER BY dcr.valid_from DESC, dcr.id DESC`
     )
-    .all() as unknown as (DriverRateRow & { display_name: string | null })[];
+    .all(organizationId) as unknown as (DriverRateRow & { display_name: string | null })[];
 }
 
 /** Every completed stop credited to a driver inside a period, with its accrual.

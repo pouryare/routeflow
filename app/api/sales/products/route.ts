@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);
-  const products = readCatalogue(getDb(), {
+  const products = readCatalogue(getDb(), guard.session.organizationId, {
     includeInactive: url.searchParams.get("all") === "1",
     onDate: url.searchParams.get("on") ?? undefined,
   });

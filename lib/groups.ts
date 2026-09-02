@@ -2,8 +2,10 @@ import type { DatabaseSync } from "node:sqlite";
 import { pointInRing } from "./trafficZones";
 import type { GroupRow } from "./db";
 
-export function readGroups(db: DatabaseSync): GroupRow[] {
-  return db.prepare("SELECT * FROM groups ORDER BY name").all() as unknown as GroupRow[];
+export function readGroups(db: DatabaseSync, organizationId: number): GroupRow[] {
+  return db
+    .prepare("SELECT * FROM groups WHERE organization_id = ? ORDER BY name")
+    .all(organizationId) as unknown as GroupRow[];
 }
 
 interface DistrictShape {

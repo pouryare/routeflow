@@ -30,7 +30,9 @@ let leftId = 0;
 beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
-  const g = db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)");
+  const g = db.prepare(
+    "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)"
+  );
   west = Number(g.run("گروه غرب", "west", "#0ff", now).lastInsertRowid);
   east = Number(g.run("گروه شرق", "east", "#f0f", now).lastInsertRowid);
 
@@ -52,7 +54,7 @@ beforeAll(() => {
 
 describe("readGroups", () => {
   it("returns the groups in name order", () => {
-    expect(readGroups(getDb()).map((g) => g.slug).sort()).toEqual(["east", "west"]);
+    expect(readGroups(getDb(), 1).map((g) => g.slug).sort()).toEqual(["east", "west"]);
   });
 });
 

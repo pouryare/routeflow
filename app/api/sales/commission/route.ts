@@ -61,8 +61,8 @@ export async function GET(req: NextRequest) {
     statements,
     driver_statements: driverStatements,
     manager_statements: managerStatements,
-    rates: session.role === "owner" ? readRates(db) : [],
-    driver_rates: session.role === "owner" ? readDriverRates(db) : [],
-    manager_overrides: session.role === "owner" ? readManagerOverrides(db) : [],
+    rates: session.role === "owner" ? readRates(db, session.organizationId) : [],
+    driver_rates: session.role === "owner" ? readDriverRates(db, session.organizationId) : [],
+    manager_overrides: session.role === "owner" ? readManagerOverrides(db, session.organizationId) : [],
   });
 }

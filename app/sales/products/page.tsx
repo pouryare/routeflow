@@ -25,7 +25,9 @@ export default async function ProductsPage() {
   if (session.role === "driver") redirect("/driver");
 
   const db = getDb();
-  const products = readCatalogue(db, { includeInactive: session.role === "owner" });
+  const products = readCatalogue(db, session.organizationId, {
+    includeInactive: session.role === "owner",
+  });
 
   const allPriceRows = db
     .prepare(

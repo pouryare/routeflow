@@ -24,11 +24,15 @@ export default async function StockPage() {
 
   const db = getDb();
   const stock = advancedStockPosition(db);
-  const purchases = session.role === "owner" ? readPurchases(db, 15) : [];
+  const purchases = session.role === "owner" ? readPurchases(db, session.organizationId, 15) : [];
   const products =
     session.role === "owner"
       ? (plain(
-          db.prepare("SELECT id, name, base_unit FROM products WHERE active = 1 ORDER BY name").all()
+          db
+            .prepare(
+              "SELECT id, name, base_unit FROM products WHERE active = 1 AND organization_id = ? ORDER BY name"
+            )
+            .all(session.organizationId)
         ) as unknown as { id: number; name: string; base_unit: string }[])
       : [];
 

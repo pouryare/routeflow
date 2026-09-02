@@ -78,9 +78,11 @@ export default async function CommissionPage() {
         ) as unknown as { id: number; display_name: string }[])
       : [];
 
-  const rates = session.role === "owner" ? readRates(db).slice(0, 12) : [];
-  const driverRates = session.role === "owner" ? readDriverRates(db).slice(0, 12) : [];
-  const managerOverrides = session.role === "owner" ? readManagerOverrides(db).slice(0, 12) : [];
+  const rates = session.role === "owner" ? readRates(db, session.organizationId).slice(0, 12) : [];
+  const driverRates =
+    session.role === "owner" ? readDriverRates(db, session.organizationId).slice(0, 12) : [];
+  const managerOverrides =
+    session.role === "owner" ? readManagerOverrides(db, session.organizationId).slice(0, 12) : [];
 
   return (
     <div className="flex flex-col gap-[var(--space-5)]">

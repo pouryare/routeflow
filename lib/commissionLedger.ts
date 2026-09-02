@@ -110,15 +110,19 @@ export function recordPayment(
   );
 }
 
-export function readRates(db: DatabaseSync): (RateRow & { display_name: string | null })[] {
+export function readRates(
+  db: DatabaseSync,
+  organizationId: number
+): (RateRow & { display_name: string | null })[] {
   return db
     .prepare(
       `SELECT cr.*, u.display_name
          FROM commission_rates cr
          LEFT JOIN users u ON u.id = cr.salesperson_user_id
+        WHERE cr.organization_id = ?
         ORDER BY cr.valid_from DESC, cr.id DESC`
     )
-    .all() as unknown as (RateRow & { display_name: string | null })[];
+    .all(organizationId) as unknown as (RateRow & { display_name: string | null })[];
 }
 
 /** Every delivered order credited to a person inside a period, with its accrual. */

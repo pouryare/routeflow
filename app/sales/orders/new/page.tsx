@@ -53,7 +53,7 @@ export default async function NewOrderPage({
     credit_limit_toman: number | null;
   }[];
 
-  const products = readCatalogue(db).map((product) => ({
+  const products = readCatalogue(db, session.organizationId).map((product) => ({
     id: product.id,
     name: product.name,
     base_unit: product.base_unit,
@@ -75,12 +75,10 @@ export default async function NewOrderPage({
           db
           .prepare(
             `SELECT id, display_name FROM users
-              WHERE role = 'salesperson' AND active = 1${
-                session.role === "owner" ? "" : " AND group_id = ?"
-              }
+              WHERE role = 'salesperson' AND active = 1${scope.sql}
               ORDER BY display_name`
           )
-          .all(...(session.role === "owner" ? [] : [session.groupId]))
+          .all(...scope.params)
         ) as unknown as { id: number; display_name: string }[]);
 
   // Validated against the customers this caller can already see, rather than passed

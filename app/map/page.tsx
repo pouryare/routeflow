@@ -35,7 +35,7 @@ export default async function Home() {
   const facilities = readFacilities(db, groupFilterWithShared(session));
   // Only the groups this caller can actually see: an owner gets all of them, a manager
   // gets their own, which is the only one any district they can see belongs to.
-  const visibleGroups = readGroups(db)
+  const visibleGroups = readGroups(db, session.organizationId)
     .filter((g) => scope === "all" || scope.includes(g.id))
     .map((g) => ({ id: g.id, name: g.name, color: g.color }));
   const version = geometryVersion();

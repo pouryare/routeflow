@@ -18,6 +18,13 @@ afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
+// readCatalogue is now tenant-scoped, but createProduct does not stamp
+// organization_id until Task 5b -- pin every fixture product to org 1 so the
+// catalogue reads still see them. Task 5b removes the need for this.
+function pinProductsToOrg1() {
+  getDb().exec("UPDATE products SET organization_id = 1 WHERE organization_id IS NULL");
+}
+
 let marhaba = 0;
 let boxOf100 = 0;
 let boxOf12 = 0;
@@ -37,27 +44,28 @@ beforeAll(() => {
     price_toman: 60000,
     valid_from: "2026-05-01",
   });
+  pinProductsToOrg1();
 });
 
 describe("readCatalogue", () => {
   it("returns each product with its packagings nested", () => {
-    const rows = readCatalogue(getDb(), { onDate: "2026-08-26" });
+    const rows = readCatalogue(getDb(), 1, { onDate: "2026-08-26" });
     expect(rows).toHaveLength(1);
     expect(rows[0].name).toBe("کره گیاهی مرحبا");
     expect(rows[0].packagings.map((p) => p.name).sort()).toEqual(["جعبه بچه", "کارتن کوچک"]);
   });
 
   it("attaches the price in force on the day asked for", () => {
-    const now = readCatalogue(getDb(), { onDate: "2026-08-26" })[0];
+    const now = readCatalogue(getDb(), 1, { onDate: "2026-08-26" })[0];
     const big = now.packagings.find((p) => p.id === boxOf100)!;
     expect(big.price_toman).toBe(440000);
 
-    const earlier = readCatalogue(getDb(), { onDate: "2026-02-01" })[0];
+    const earlier = readCatalogue(getDb(), 1, { onDate: "2026-02-01" })[0];
     expect(earlier.packagings.find((p) => p.id === boxOf100)!.price_toman).toBe(400000);
   });
 
   it("lets a packaging-specific price beat the product-wide one", () => {
-    const rows = readCatalogue(getDb(), { onDate: "2026-08-26" })[0];
+    const rows = readCatalogue(getDb(), 1, { onDate: "2026-08-26" })[0];
     expect(rows.packagings.find((p) => p.id === boxOf12)!.price_toman).toBe(60000);
   });
 
@@ -65,7 +73,8 @@ describe("readCatalogue", () => {
     const db = getDb();
     const unpriced = createProduct(db, { name: "دوغ لیوانی", kg_per_base_unit: 0.3 });
     createPackaging(db, { product_id: unpriced, name: "شیرینک ۶ تایی", qty_per_pack: 6 });
-    const row = readCatalogue(db, { onDate: "2026-08-26" }).find((p) => p.id === unpriced)!;
+    pinProductsToOrg1();
+    const row = readCatalogue(db, 1, { onDate: "2026-08-26" }).find((p) => p.id === unpriced)!;
     expect(row.packagings[0].price_toman).toBeNull();
   });
 
@@ -73,9 +82,10 @@ describe("readCatalogue", () => {
     const db = getDb();
     const gone = createProduct(db, { name: "محصول بازنشسته", kg_per_base_unit: 1 });
     db.prepare("UPDATE products SET active = 0 WHERE id = ?").run(gone);
+    pinProductsToOrg1();
 
-    expect(readCatalogue(db).some((p) => p.id === gone)).toBe(false);
-    expect(readCatalogue(db, { includeInactive: true }).some((p) => p.id === gone)).toBe(true);
+    expect(readCatalogue(db, 1).some((p) => p.id === gone)).toBe(false);
+    expect(readCatalogue(db, 1, { includeInactive: true }).some((p) => p.id === gone)).toBe(true);
   });
 });
 

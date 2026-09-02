@@ -17,6 +17,6 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     ok: true,
     stock: stockPosition(db),
-    purchases: guard.session.role === "owner" ? readPurchases(db, 25) : [],
+    purchases: guard.session.role === "owner" ? readPurchases(db, guard.session.organizationId, 25) : [],
   });
 }
