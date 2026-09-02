@@ -211,7 +211,8 @@ describe("recordDelivery", () => {
       paid_toman: number;
       delivered_at: string;
     };
-    expect(row.status).toBe("DELIVERED");
+    // Phase 3: delivered AND fully settled -> the order closes itself.
+    expect(row.status).toBe("CLOSED");
     expect(row.payment_status).toBe("paid");
     expect(row.paid_toman).toBe(880000);
     expect(row.delivered_at).not.toBeNull();
@@ -281,7 +282,8 @@ describe("recordDelivery", () => {
     const orderRow = db.prepare("SELECT status FROM orders WHERE id = ?").get(order.id) as {
       status: string;
     };
-    expect(orderRow.status).toBe("CANCELLED");
+    // Phase 3: nothing taken at the door is a retryable failure, not a cancellation.
+    expect(orderRow.status).toBe("DELIVERY_FAILED");
   });
 
   it("is idempotent, so a queued delivery can be retried safely", () => {

@@ -8,9 +8,13 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
+import { getDb } from "./db";
 import { orderTotalToman, lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
 import { recordPaymentTxn, voidPaymentTxn, recomputeOrderPaymentTxn } from "./repo/payments";
 import { allocateFEFO, recordMovementsTxn, defaultFacilityId } from "./repo/stock";
+import { advanceOrder } from "./repo/orders";
+import { planDelivery, deliveryForStop } from "./repo/deliveries";
+import type { OrderStatus } from "./orderStateMachine";
 
 export class DeliveryError extends Error {}
 
@@ -98,8 +102,10 @@ export function createRun(
  *  loading a van from one means the quantities can change after it has left. */
 export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOrder = 0): number {
   const order = db
-    .prepare("SELECT id, status, credit_hold FROM orders WHERE id = ?")
-    .get(orderId) as { status: string; credit_hold: number } | undefined;
+    .prepare("SELECT id, status, credit_hold, organization_id FROM orders WHERE id = ?")
+    .get(orderId) as
+    | { status: string; credit_hold: number; organization_id: number | null }
+    | undefined;
   if (!order) throw new DeliveryError("سفارش پیدا نشد");
   if (order.credit_hold) {
     throw new DeliveryError("سفارش در انتظار تأیید اعتبار است و روی مسیر قرار نمی‌گیرد");
@@ -108,13 +114,18 @@ export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOr
     throw new DeliveryError("سفارش تأییدنشده روی مسیر قرار نمی‌گیرد؛ اول تأییدش کنید");
   }
 
-  return Number(
+  const stopId = Number(
     db
       .prepare(
         "INSERT INTO delivery_stops (run_id, order_id, sort_order, created_at) VALUES (?, ?, ?, ?)"
       )
       .run(runId, orderId, sortOrder, new Date().toISOString()).lastInsertRowid
   );
+
+  // Phase 3 (M6): the stop gets its own delivery entity, and the order moves to PLANNED.
+  planDelivery(order.organization_id ?? 1, orderId, { route_stop_id: stopId });
+
+  return stopId;
 }
 
 function stopLines(db: DatabaseSync, orderId: number): RunStopLine[] {
@@ -176,6 +187,14 @@ export interface DeliveryInput {
   collected_toman: number;
   by: number;
   notes?: string | null;
+  /** Required-in-spirit when nothing is taken: why the delivery failed (a reason_codes id
+   *  in the `delivery_fail` domain). Recorded on the order_events row and the delivery. */
+  fail_reason_id?: number | null;
+  receiver_name?: string | null;
+  gps_lat?: number | null;
+  gps_lng?: number | null;
+  /** The client's own clock, kept beside the server timestamp. */
+  device_time?: string | null;
 }
 
 /** Records what happened at one door.
@@ -233,6 +252,8 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     const lines = stopLines(db, stop.order_id);
     const total = orderTotalToman(lines);
     const nothingTaken = lines.every((l) => (l.packs_delivered ?? l.packs_ordered) === 0);
+    const someShort =
+      !nothingTaken && lines.some((l) => (l.packs_delivered ?? 0) < l.packs_ordered);
 
     const stopStatus = nothingTaken ? "refused" : "delivered";
     db.prepare(
@@ -241,19 +262,38 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
         WHERE id = ?`
     ).run(stopStatus, input.collected_toman, now, input.by, input.notes ?? null, stopId);
 
-    db.prepare(
-      `UPDATE orders
-          SET status = ?, delivered_at = ?, updated_at = ?
-        WHERE id = ?`
-    ).run(
-      // Nothing taken is not a delivery. Leaving it 'DELIVERED' would put a zero-value
-      // invoice in the ledger and count the stop as served. Task 9 routes this through
-      // the state machine (DELIVERY_FAILED); for now it keeps the pre-Phase-3 meaning.
-      nothingTaken ? "CANCELLED" : "DELIVERED",
-      nothingTaken ? null : now,
-      now,
-      stop.order_id
-    );
+    // Phase 3: the order moves through the machine. A door event is the driver at
+    // OUT_FOR_DELIVERY, so walk the intermediate desk steps (plan/freeze/startRoute) as
+    // 'system' -- each still lands its own order_events row -- then fire the real
+    // outcome as the driver. A retried sync finds the order already past
+    // OUT_FOR_DELIVERY and fires nothing.
+    const orgId = stop.organization_id || 1;
+    const statusNow = (): OrderStatus =>
+      (db.prepare("SELECT status FROM orders WHERE id = ?").get(stop.order_id) as { status: OrderStatus }).status;
+    const sys = { id: input.by, role: "system" as const };
+    let st = statusNow();
+    if (st === "CONFIRMED") {
+      advanceOrder(orgId, stop.order_id, "plan", sys, { db });
+      st = "PLANNED";
+    }
+    if (st === "PLANNED") {
+      advanceOrder(orgId, stop.order_id, "freeze", sys, { db });
+      st = "READY";
+    }
+    if (st === "READY") {
+      advanceOrder(orgId, stop.order_id, "startRoute", sys, { db });
+      st = "OUT_FOR_DELIVERY";
+    }
+    if (st === "OUT_FOR_DELIVERY") {
+      const action = nothingTaken ? "failDelivery" : someShort ? "deliverPartial" : "deliver";
+      advanceOrder(
+        orgId,
+        stop.order_id,
+        action,
+        { id: input.by, role: "driver" },
+        { db, reason_code_id: nothingTaken ? input.fail_reason_id ?? null : null }
+      );
+    }
 
     // Cash handed over at the door is a real payment now, not a number stamped onto the
     // order. recordPaymentTxn writes the ledger row, allocates it to this order (the
@@ -345,11 +385,129 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
       }
     }
 
+    // Phase 3 (M6): keep the deliveries entity in step. Server owns actual_arrival /
+    // completed_at -- input.device_time is stored beside them, never trusted as the time.
+    let delivery = deliveryForStop(stockOrgId, stopId, db);
+    if (!delivery) {
+      planDelivery(stockOrgId, stop.order_id, { route_stop_id: stopId, db });
+      delivery = deliveryForStop(stockOrgId, stopId, db);
+    }
+    if (delivery) {
+      const dStatus = nothingTaken ? "FAILED" : someShort ? "PARTIAL" : "DELIVERED";
+      db.prepare(
+        `UPDATE deliveries
+            SET status = ?, actual_arrival = COALESCE(actual_arrival, ?), completed_at = ?,
+                collected_toman = ?, fail_reason_id = ?, receiver_name = COALESCE(?, receiver_name),
+                gps_lat = COALESCE(?, gps_lat), gps_lng = COALESCE(?, gps_lng),
+                device_time = COALESCE(?, device_time), notes = COALESCE(?, notes)
+          WHERE id = ?`
+      ).run(
+        dStatus,
+        now,
+        now,
+        input.collected_toman,
+        nothingTaken ? input.fail_reason_id ?? null : null,
+        input.receiver_name ?? null,
+        input.gps_lat ?? null,
+        input.gps_lng ?? null,
+        input.device_time ?? null,
+        input.notes ?? null,
+        delivery.id
+      );
+      const dlSet = db.prepare(
+        "UPDATE delivery_lines SET qty_delivered = ? WHERE delivery_id = ? AND order_line_id = ?"
+      );
+      for (const line of input.lines) {
+        const ol = byId.get(line.line_id)!;
+        dlSet.run(line.packs_delivered * ol.qty_per_pack, delivery.id, line.line_id);
+      }
+    }
+
+    // A fully-settled delivered order closes itself.
+    const afterStatus = statusNow();
+    if (
+      (afterStatus === "DELIVERED" || afterStatus === "PARTIALLY_DELIVERED") &&
+      total > 0
+    ) {
+      const paid = (
+        db.prepare("SELECT paid_toman FROM orders WHERE id = ?").get(stop.order_id) as {
+          paid_toman: number;
+        }
+      ).paid_toman;
+      if (total - paid <= 0) {
+        advanceOrder(orgId, stop.order_id, "settle", { id: input.by, role: "system" }, { db });
+      }
+    }
+
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
     throw e;
   }
+}
+
+export interface CompleteDeliveryInput {
+  outcome: "delivered" | "partial" | "failed";
+  lines?: { order_line_id: number; qty_delivered: number }[];
+  fail_reason_id?: number | null;
+  receiver_name?: string | null;
+  gps_lat?: number | null;
+  gps_lng?: number | null;
+  collected_toman?: number;
+  device_time?: string | null;
+  notes?: string | null;
+}
+
+/** The API-facing door event: resolve the delivery to its route stop and hand off to
+ *  recordDelivery. `qty_delivered` here is BASE units (عدد); it is converted back to
+ *  packs against each line's frozen qty_per_pack. A `failed` outcome sets every line to
+ *  zero and requires a fail_reason_id. Server timestamps only -- any client time in the
+ *  body is carried as device_time, never used as the time. */
+export function completeDelivery(
+  organizationId: number,
+  deliveryId: number,
+  actor: { id: number },
+  input: CompleteDeliveryInput
+): void {
+  const db = getDb();
+  const delivery = db
+    .prepare("SELECT id, order_id, route_stop_id FROM deliveries WHERE id = ? AND organization_id = ?")
+    .get(deliveryId, organizationId) as
+    | { id: number; order_id: number; route_stop_id: number | null }
+    | undefined;
+  if (!delivery) throw new DeliveryError("تحویل پیدا نشد");
+  if (delivery.route_stop_id == null) throw new DeliveryError("این تحویل روی هیچ توقفی نیست");
+  if (input.outcome === "failed" && input.fail_reason_id == null) {
+    throw new DeliveryError("برای ثبت تحویل ناموفق، دلیل لازم است");
+  }
+
+  const orderLines = db
+    .prepare("SELECT id, packs_ordered, qty_per_pack FROM order_lines WHERE order_id = ?")
+    .all(delivery.order_id) as unknown as {
+    id: number;
+    packs_ordered: number;
+    qty_per_pack: number;
+  }[];
+  const byId = new Map(orderLines.map((l) => [l.id, l]));
+  const wanted = new Map<number, number>((input.lines ?? []).map((l) => [l.order_line_id, l.qty_delivered]));
+
+  const lines = orderLines.map((ol) => {
+    if (input.outcome === "failed") return { line_id: ol.id, packs_delivered: 0 };
+    const base = wanted.has(ol.id) ? wanted.get(ol.id)! : ol.packs_ordered * ol.qty_per_pack;
+    return { line_id: ol.id, packs_delivered: base / ol.qty_per_pack };
+  });
+
+  recordDelivery(db, delivery.route_stop_id, {
+    lines,
+    collected_toman: input.collected_toman ?? 0,
+    by: actor.id,
+    notes: input.notes ?? null,
+    fail_reason_id: input.fail_reason_id ?? null,
+    receiver_name: input.receiver_name ?? null,
+    gps_lat: input.gps_lat ?? null,
+    gps_lng: input.gps_lng ?? null,
+    device_time: input.device_time ?? null,
+  });
 }
 
 export interface RunSummary {
