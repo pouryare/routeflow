@@ -52,8 +52,15 @@ export function proxy(req: NextRequest) {
 
   const isAdmin = pathname.startsWith("/sales/admin") || pathname.startsWith("/api/admin");
   const isDriver = pathname.startsWith("/driver") || pathname.startsWith("/api/driver");
+  // The representatives admin surface is also open to rep_manager -- it is the channel
+  // they run. Every other admin path stays owner-only. The routes themselves re-check.
+  const isRepAdmin =
+    pathname.startsWith("/sales/admin/representatives") ||
+    pathname.startsWith("/api/admin/representatives");
 
-  if (isAdmin && claims.role !== "owner") return deny("/sales");
+  if (isAdmin && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
+    return deny("/sales");
+  }
   if (isDriver && claims.role !== "driver") return deny("/sales");
 
   // /analytics and /report aggregate a whole group's revenue, debt and coverage, and

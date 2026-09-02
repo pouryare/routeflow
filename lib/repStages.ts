@@ -27,3 +27,15 @@ export const REP_STAGE_TRANSITIONS: Record<RepStage, RepStage[]> = {
 export function canAdvance(from: RepStage, to: RepStage): boolean {
   return REP_STAGE_TRANSITIONS[from]?.includes(to) ?? false;
 }
+
+export const REP_STAGE_LABEL: Record<RepStage, string> = {
+  prospect: "شناسایی",
+  qualified: "ارزیابی‌شده",
+  negotiating: "مذاکره",
+  documents: "مدارک",
+  approved: "تأییدشده",
+  onboarding: "در حال پذیرش",
+  active: "فعال",
+  dormant: "غیرفعال",
+  terminated: "خاتمه‌یافته",
+};
