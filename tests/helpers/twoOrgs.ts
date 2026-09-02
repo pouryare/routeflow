@@ -23,6 +23,7 @@ export interface OrgFixture {
   capacityFactorId: number;
   taskId: number;
   alertId: number;
+  objectionCardId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -300,6 +301,23 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 8: a tenant objection-card override + a lesson_progress row per org.
+    const objectionCardId = insert(
+      `INSERT INTO objection_cards (organization_id, outcome_code, customer_type, title_fa, script_fa, updated_at)
+       VALUES (?, 'PRICE_OBJECTION', NULL, ?, ?, ?)`,
+      orgId,
+      `کارت ${tag}`,
+      `متن ${tag}`,
+      NOW
+    );
+    insert(
+      `INSERT INTO lesson_progress (organization_id, user_id, lesson_slug, completed_at)
+       VALUES (?, ?, '02-phone-sales', ?)`,
+      orgId,
+      ownerId,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -323,6 +341,7 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       capacityFactorId,
       taskId,
       alertId,
+      objectionCardId,
     };
   };
 

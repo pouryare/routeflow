@@ -248,6 +248,29 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(defaults.n).toBe(5);
   });
 
+  it("keeps tenant objection cards + lesson progress apart; the starter cards stay shared", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const rows = db
+        .prepare("SELECT id FROM objection_cards WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(rows.map((r) => r.id)).toContain(self.objectionCardId);
+      expect(rows.map((r) => r.id)).not.toContain(other.objectionCardId);
+
+      const lp = db
+        .prepare("SELECT COUNT(*) AS n FROM lesson_progress WHERE organization_id = ?")
+        .get(self.orgId) as { n: number };
+      expect(lp.n).toBeGreaterThan(0);
+    }
+    const starters = db
+      .prepare("SELECT COUNT(*) AS n FROM objection_cards WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(starters.n).toBe(8);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [
