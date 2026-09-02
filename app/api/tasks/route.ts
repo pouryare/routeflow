@@ -27,9 +27,11 @@ export async function POST(req: NextRequest) {
       kind: String(b.kind),
       assignee_user_id: (b.assignee_user_id as number | null) ?? null,
       role_hint: (b.role_hint as string | null) ?? null,
+      group_id: (b.group_id as number | null) ?? guard.session.groupId ?? null,
       entity_type: (b.entity_type as string | null) ?? null,
       entity_id: (b.entity_id as number | null) ?? null,
       due_at: (b.due_at as string | null) ?? null,
+      stage: (b.stage as string | null) ?? undefined,
       priority: (b.priority as never) ?? "NORMAL",
       created_by: guard.session.user.id,
     });
