@@ -1,11 +1,20 @@
 import { redirect } from "next/navigation";
+import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
 
-/** The sales section is the app's front door.
+/** The app's front door.
  *
- *  A redirect rather than a copy of /sales here: the sales pages share a layout that
- *  provides the chrome, the tab pill and the session guard, and rendering them from two
- *  routes would mean two places to keep in step. The map now lives at /map.
+ *  Phase 7: the briefing at /today is the landing page after login -- it is where the
+ *  day's actionable items live, role-branched. A driver goes to /driver, a
+ *  platform_owner to /platform, everyone else to /today; a logged-out visitor to
+ *  /login. A redirect rather than a copy: /today owns its own chrome and guard.
  */
-export default function Home() {
-  redirect("/sales");
+export default async function Home() {
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  if (!session) redirect("/login");
+  if (session.role === "driver") redirect("/driver");
+  if (session.role === "platform_owner") redirect("/platform");
+  redirect("/today");
 }
