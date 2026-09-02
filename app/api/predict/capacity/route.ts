@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { resolvedCapacityFactorsFor } from "@/lib/repo/capacityLearning";
+import { resolvedCapacityFactorsFor, learnedCapacityCounts } from "@/lib/repo/capacityLearning";
 
 export const dynamic = "force-dynamic";
 
@@ -12,21 +11,12 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const org = guard.session.organizationId;
-  const resolved = resolvedCapacityFactorsFor(org);
-  const learnedN = new Map(
-    (
-      getDb()
-        .prepare(
-          `SELECT condition_code, MAX(learned_n) AS n FROM capacity_factors
-            WHERE (organization_id = ? OR organization_id IS NULL) AND active = 1
-            GROUP BY condition_code`
-        )
-        .all(org) as { condition_code: string; n: number }[]
-    ).map((r) => [r.condition_code, r.n])
-  );
-
+  const learnedN = learnedCapacityCounts(org);
   return NextResponse.json({
     ok: true,
-    factors: resolved.map((f) => ({ ...f, learned_n: learnedN.get(f.condition_code) ?? 0 })),
+    factors: resolvedCapacityFactorsFor(org).map((f) => ({
+      ...f,
+      learned_n: learnedN.get(f.condition_code) ?? 0,
+    })),
   });
 }

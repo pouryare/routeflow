@@ -36,6 +36,11 @@ export default async function SalesLayout({ children }: { children: ReactNode })
     { href: "/sales", label: "داشبورد", ready: true },
     { href: "/sales/dashboard", label: "تحلیل و KPI", ready: true },
     { href: "/sales/analysis", label: "تحلیل", ready: true },
+    {
+      href: "/sales/forecast",
+      label: "پیش‌بینی",
+      ready: session.role === "owner" || session.role === "group_manager",
+    },
     { href: "/sales/orders", label: "سفارش‌ها", ready: true },
     { href: "/sales/board", label: "تخصیص کارها", ready: true },
     { href: "/sales/journey", label: "مسیر سفارش", ready: true },

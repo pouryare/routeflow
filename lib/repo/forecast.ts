@@ -343,4 +343,12 @@ export function avgDailySalesFor(organizationId: number, productId: number): num
   return row.base / 28;
 }
 
+/** The newest `computed_at` across the tenant's forecasts — the page's "as of …" line. */
+export function newestForecastAt(organizationId: number): string | null {
+  const row = getDb()
+    .prepare("SELECT MAX(computed_at) AS t FROM forecasts WHERE organization_id = ?")
+    .get(organizationId) as { t: string | null };
+  return row.t;
+}
+
 export { currentPeriod };

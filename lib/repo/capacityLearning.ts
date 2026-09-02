@@ -128,6 +128,18 @@ export function learnCapacityFromRuns(
   return applied;
 }
 
+/** How many of the tenant's own routes each condition's learned value rests on. */
+export function learnedCapacityCounts(organizationId: number): Map<string, number> {
+  const rows = getDb()
+    .prepare(
+      `SELECT condition_code, MAX(learned_n) AS n FROM capacity_factors
+        WHERE (organization_id = ? OR organization_id IS NULL) AND active = 1
+        GROUP BY condition_code`
+    )
+    .all(organizationId) as { condition_code: string; n: number }[];
+  return new Map(rows.map((r) => [r.condition_code, r.n]));
+}
+
 /** Phase 6's `capacityFactorsFor` union, but each factor is the learned value once
  *  `learned_n >= MIN_LEARN_N`, else the configured one. */
 export function resolvedCapacityFactorsFor(organizationId: number): FactorRow[] {
