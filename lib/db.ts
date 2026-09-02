@@ -102,6 +102,77 @@ function rebuildForTenantUnique(
   }
 }
 
+/** Phase 1: before this deploy, a delivery stamped `orders.paid_toman` directly. After
+ *  it, that column is a cache recomputed from `payment_allocations` -- so every legacy
+ *  order with `paid_toman > 0` and no allocation needs a synthetic payment behind it,
+ *  or the first `recomputeOrderPayment` on that customer would silently reset it to 0.
+ *
+ *  One CASH payment per such order, dated `delivered_at` (or the order date), attributed
+ *  to `created_by`, allocated wholly to the order. If the recorded amount exceeds the
+ *  order's own line total (bad legacy data) it is capped and the note says so. Guarded
+ *  on an app_meta marker and self-guarded by the `NOT EXISTS` clause, so a re-run is a
+ *  no-op. */
+export function backfillLegacyPayments(db: DatabaseSync): void {
+  const done = db
+    .prepare("SELECT value FROM app_meta WHERE key = 'legacy_payment_backfill_done'")
+    .get() as { value: string } | undefined;
+  if (done) return;
+
+  const now = new Date().toISOString();
+  const rows = db
+    .prepare(
+      `SELECT o.id, o.customer_id, o.organization_id, o.created_by, o.paid_toman,
+              COALESCE(o.delivered_at, o.order_date) AS when_paid,
+              COALESCE((
+                SELECT SUM(ROUND(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman))
+                  FROM order_lines ol WHERE ol.order_id = o.id
+              ), 0) AS total_toman
+         FROM orders o
+        WHERE o.paid_toman > 0
+          AND NOT EXISTS (SELECT 1 FROM payment_allocations a WHERE a.order_id = o.id)`
+    )
+    .all() as Array<{
+    id: number;
+    customer_id: number;
+    organization_id: number | null;
+    created_by: number;
+    paid_toman: number;
+    when_paid: string;
+    total_toman: number;
+  }>;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const insPay = db.prepare(
+      `INSERT INTO payments
+         (organization_id, customer_id, amount_toman, method, received_at, received_by, note, created_at)
+       VALUES (?, ?, ?, 'CASH', ?, ?, ?, ?)`
+    );
+    const insAlloc = db.prepare(
+      "INSERT INTO payment_allocations (payment_id, order_id, amount_toman, created_at) VALUES (?, ?, ?, ?)"
+    );
+    for (const o of rows) {
+      const cap = o.total_toman > 0 ? Math.min(o.paid_toman, o.total_toman) : o.paid_toman;
+      const note =
+        cap < o.paid_toman
+          ? "انتقال از سیستم قبلی (سقف‌گذاری‌شده)"
+          : "انتقال از سیستم قبلی";
+      const paymentId = Number(
+        insPay.run(o.organization_id ?? 1, o.customer_id, cap, o.when_paid, o.created_by, note, now)
+          .lastInsertRowid
+      );
+      insAlloc.run(paymentId, o.id, cap, now);
+    }
+    db.prepare(
+      "INSERT OR REPLACE INTO app_meta (key, value) VALUES ('legacy_payment_backfill_done', ?)"
+    ).run(now);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 /** Phase 0b: a pin that made it into a lead list is a relationship worth tracking, not
  *  just a dot on the map. Promote each such saved_location to a `customers` row
  *  (`lifecycle='lead'`, code `LEAD-<id>` -- the same scheme /api/locations/[id]/convert
@@ -1646,6 +1717,10 @@ export function getDb(): DatabaseSync {
       new Date().toISOString()
     );
   }
+
+  // Phase 1: give every legacy paid_toman a payment row to stand on before the derived
+  // recompute can zero it.
+  backfillLegacyPayments(db);
 
   seedFacilities(db);
 
