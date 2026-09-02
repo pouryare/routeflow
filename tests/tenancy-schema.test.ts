@@ -154,6 +154,8 @@ describe("organization_id backfill", () => {
       "visit_plans",        // through (entity_type, entity_id)
       "activity_log",       // through (entity_type, entity_id)
       "push_subscriptions", // a browser endpoint, not business data
+      "platform_access_log", // vendor audit trail; its organization_id names the tenant
+                             // that was looked at, not one that owns the row
       "import_log",
       "import_snapshots",
       "sales",              // the legacy imported ledger, read-only and being retired

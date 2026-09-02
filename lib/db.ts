@@ -242,6 +242,18 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
 
+    /* One row per time a platform_owner (the vendor) reads a tenant's data that is not
+       their own. Support access that leaves a trace is a different thing from support
+       access that does not: if a tenant asks what was looked at, the answer is a query
+       rather than a recollection. Written by lib/platformAccess.ts. */
+    CREATE TABLE IF NOT EXISTS platform_access_log (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      platform_user_id INTEGER NOT NULL REFERENCES users(id),
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      path TEXT NOT NULL,
+      occurred_at TEXT NOT NULL
+    );
+
     /* A group is one management team covering part of Tehran province. Territory is
        expressed by assigning districts to a group (districts.group_id), not by drawing
        new geometry -- the 22 منطقه and 369 محله polygons are already surveyed, and a
