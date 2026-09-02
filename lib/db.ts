@@ -3654,9 +3654,9 @@ export const CHURN_MODEL_SEED = {
   bias: -1.2,
   recency_ratio: 1.1,
   trend: -0.8,
-  tenure: -0.3,
-  complaints: 0.5,
-  overdue: 0.7,
+  tenure_months: -0.3,
+  complaints_90d: 0.5,
+  overdue_ratio: 0.7,
 };
 
 export function seedChurnModel(db: DatabaseSync): void {
