@@ -83,6 +83,8 @@ export const TENANT_TABLES = [
   "targets",
   "objection_cards",
   "lesson_progress",
+  "kpi_definitions",
+  "kpi_snapshots",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1716,6 +1718,55 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, user_id, lesson_slug)
     );
 
+    /* ---- Phase 9: Analysis ------------------------------------------------------
+       The KPI registry. Source §6: every KPI carries seven attributes or it is a
+       report, not a management system -- Definition, Formula, Owner, Target,
+       Benchmark, Frequency, Action -- plus the Data Dictionary sentence that fixes
+       a contested definition once. organization_id NULL = a shipped default
+       (seedKpiDefinitions), the reason_codes treatment. */
+    CREATE TABLE IF NOT EXISTS kpi_definitions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      metric TEXT NOT NULL,
+      title_fa TEXT NOT NULL,
+      definition_fa TEXT NOT NULL,
+      formula_fa TEXT NOT NULL,
+      owner_role TEXT NOT NULL,
+      benchmark_fa TEXT,
+      frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly')),
+      action_fa TEXT NOT NULL,
+      tier INTEGER NOT NULL DEFAULT 1,
+      direction TEXT NOT NULL DEFAULT 'up' CHECK (direction IN ('up', 'down')),
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, metric)
+    );
+
+    /* Precomputed metric values. Written by a sweep (refreshAll); every read on the
+       /analysis page and the KPI strip goes through here, never a raw orders scan --
+       the second SQLite-scaling condition in Part 2 of the plan. scope_id is NOT NULL
+       DEFAULT 0 (0 = the whole scope_type, i.e. org-level) so the UNIQUE never has to
+       reason about NULL -- the targets-table NULL-in-UNIQUE trap, sidestepped by
+       construction. numerator/denominator let a drill-down re-aggregate a ratio
+       without re-scanning; sample_size is the honesty hook -- a figure off three
+       orders is not a figure off three hundred. */
+    CREATE TABLE IF NOT EXISTS kpi_snapshots (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      metric TEXT NOT NULL,
+      scope_type TEXT NOT NULL
+        CHECK (scope_type IN ('org', 'group', 'salesperson', 'driver', 'customer', 'product', 'representative')),
+      scope_id INTEGER NOT NULL DEFAULT 0,
+      period TEXT NOT NULL,
+      value REAL NOT NULL,
+      numerator REAL,
+      denominator REAL,
+      sample_size INTEGER,
+      computed_at TEXT NOT NULL,
+      UNIQUE (organization_id, metric, scope_type, scope_id, period)
+    );
+    CREATE INDEX IF NOT EXISTS ix_kpi_snapshots_read
+      ON kpi_snapshots(organization_id, period, metric, scope_type);
+
     /* When each template runs. cutoff_time: after this, adding an order to that day's run
        needs an explicit decision (see lib/repo/routing.freezeRun + addStop force). */
     CREATE TABLE IF NOT EXISTS route_schedules (
@@ -2120,7 +2171,14 @@ export function getDb(): DatabaseSync {
       db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
     }
     // reason_codes keeps its NULL rows -- they are the shared system defaults.
-    if (table === "reason_codes" || table === "capacity_factors" || table === "rules" || table === "objection_cards") continue;
+    if (
+      table === "reason_codes" ||
+      table === "capacity_factors" ||
+      table === "rules" ||
+      table === "objection_cards" ||
+      table === "kpi_definitions"
+    )
+      continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2621,6 +2679,7 @@ export function getDb(): DatabaseSync {
   seedCapacityFactors(db);
   seedRules(db);
   seedObjectionCards(db);
+  seedKpiDefinitions(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
@@ -2632,7 +2691,14 @@ export function getDb(): DatabaseSync {
     // reason_codes is the one exception: a NULL organization_id there is deliberate --
     // it marks a system-default row every tenant shares -- not a row that missed the
     // tenancy backfill.
-    if (table === "reason_codes" || table === "capacity_factors" || table === "rules" || table === "objection_cards") continue;
+    if (
+      table === "reason_codes" ||
+      table === "capacity_factors" ||
+      table === "rules" ||
+      table === "objection_cards" ||
+      table === "kpi_definitions"
+    )
+      continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -3219,6 +3285,221 @@ export function seedObjectionCards(db: DatabaseSync): void {
   );
   for (const c of OBJECTION_CARD_SEED) {
     insert.run(c.outcome_code, c.title_fa, c.script_fa, c.module_slug, now, c.outcome_code);
+  }
+}
+
+/** Phase 9: the Tier-1 KPI registry, NULL-org. One row per metric in
+ *  lib/analysis/metrics.METRICS, each carrying the seven attributes the source (§6)
+ *  says a KPI needs to be a management figure rather than a report. INSERT ... WHERE
+ *  NOT EXISTS per row, the reason_codes treatment. */
+export const KPI_DEFINITION_SEED: {
+  metric: string;
+  title_fa: string;
+  definition_fa: string;
+  formula_fa: string;
+  owner_role: string;
+  benchmark_fa: string;
+  frequency: "daily" | "weekly" | "monthly";
+  action_fa: string;
+  tier: number;
+  direction: "up" | "down";
+}[] = [
+  {
+    metric: "net_sales",
+    title_fa: "فروش خالص",
+    definition_fa: "ارزش کالای تحویل‌شده در دورهٔ جاری، به قیمت فروش ثبت‌شده روی سطر سفارش، پس از کسر برگشتی.",
+    formula_fa: "Σ (تعداد تحویل‌شدهٔ هر سطر × قیمت واحد آن سطر) روی سفارش‌های تحویل‌شده",
+    owner_role: "group_manager",
+    benchmark_fa: "رشد ماهانهٔ ۵٪ تا ۱۰٪ در سال اول",
+    frequency: "daily",
+    action_fa: "اگر زیر هدف است، دکمهٔ «چرا؟» را بزنید و افت را تا سطح فروشنده و مرحلهٔ قیف دنبال کنید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "gross_profit",
+    title_fa: "سود ناخالص",
+    definition_fa: "فروش خالص منهای بهای تمام‌شدهٔ کالای همان سفارش‌ها (از قیمت خرید بچ).",
+    formula_fa: "فروش خالص − Σ (تعداد تحویل‌شده × بهای واحد بچ)",
+    owner_role: "owner",
+    benchmark_fa: "متناسب با حاشیهٔ هدف؛ نباید کندتر از فروش رشد کند",
+    frequency: "weekly",
+    action_fa: "اگر فروش بالا می‌رود ولی سود نه، ترکیب فروش کالاها و تخفیف‌ها را در بخش «حاشیهٔ مشارکتی» بررسی کنید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "gross_margin",
+    title_fa: "حاشیهٔ سود ناخالص",
+    definition_fa: "سهم سود ناخالص از فروش خالص، به‌صورت درصد.",
+    formula_fa: "سود ناخالص ÷ فروش خالص",
+    owner_role: "owner",
+    benchmark_fa: "۱۸٪ تا ۲۵٪ برای توزیع کره",
+    frequency: "weekly",
+    action_fa: "افت حاشیه یعنی تخفیف زیاد یا رشد فروش کالای کم‌سود؛ سیاست قیمت و سبد فروشنده را مرور کنید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "orders",
+    title_fa: "تعداد سفارش",
+    definition_fa: "شمار سفارش‌هایی که در دوره به وضعیت تحویل‌شده رسیده‌اند.",
+    formula_fa: "COUNT(سفارش‌های تحویل‌شده در دوره)",
+    owner_role: "group_manager",
+    benchmark_fa: "روند صعودی هم‌راستا با تعداد مشتری فعال",
+    frequency: "daily",
+    action_fa: "افت هم‌زمان با فروش یعنی مشکل تقاضا؛ افت بدون افت فروش یعنی سفارش‌ها بزرگ‌تر شده‌اند.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "aov",
+    title_fa: "میانگین ارزش سفارش",
+    definition_fa: "فروش خالص دوره تقسیم بر تعداد سفارش تحویل‌شدهٔ همان دوره.",
+    formula_fa: "فروش خالص ÷ تعداد سفارش",
+    owner_role: "group_manager",
+    benchmark_fa: "رشد آرام از طریق فروش مکمل، نه تخفیف حجمی",
+    frequency: "weekly",
+    action_fa: "برای رشد، فروش مکمل (کارت فرصت در مرکز اقدام) را روی مشتری‌های تک‌کالا اجرا کنید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "active_customers",
+    title_fa: "مشتری فعال",
+    definition_fa: "مشتری‌ای که در ۶۰ روز گذشته دست‌کم یک سفارش تأییدشده داشته است (تعریف واژه‌نامهٔ داده).",
+    formula_fa: "COUNT(مشتری با ≥۱ سفارش تأییدشده در ۶۰ روز اخیر)",
+    owner_role: "group_manager",
+    benchmark_fa: "بیش از ۷۰٪ کل مشتری‌های ثبت‌شدهٔ منطقه",
+    frequency: "weekly",
+    action_fa: "ریزش این عدد را با فهرست «مشتری در خطر» در مرکز اقدام تطبیق دهید و تماس بگیرید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "new_customers",
+    title_fa: "مشتری جدید",
+    definition_fa: "مشتری‌ای که اولین سفارش تاریخ‌اش (نه اولین سفارش در بازهٔ گزارش) در این دوره است.",
+    formula_fa: "COUNT(مشتری با MIN(تاریخ سفارش) داخل دوره)",
+    owner_role: "salesperson",
+    benchmark_fa: "متناسب با تعداد نمونهٔ گذاشته‌شده و نرخ تبدیل نمونه",
+    frequency: "monthly",
+    action_fa: "اگر کم است، تعداد نمونهٔ فعال و پیگیری نمونه را بررسی کنید؛ ورودی قیف مشکل دارد.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "lost_customers",
+    title_fa: "مشتری از‌دست‌رفته",
+    definition_fa: "مشتری‌ای که ابتدای دوره فعال بوده و تا پایان دوره ۶۰ روز بدون سفارش مانده است.",
+    formula_fa: "COUNT(فعال در ابتدای دوره ∧ بدون سفارش در ۶۰ روز منتهی به پایان دوره)",
+    owner_role: "group_manager",
+    benchmark_fa: "کمتر از ۵٪ پایگاه مشتری در ماه",
+    frequency: "monthly",
+    action_fa: "هر مورد را به‌عنوان یک کار تماس به فروشندهٔ همان مشتری بسپارید و علت را در کد نتیجه ثبت کنید.",
+    tier: 1,
+    direction: "down",
+  },
+  {
+    metric: "repeat_rate",
+    title_fa: "نرخ خرید تکرارشونده",
+    definition_fa: "سهم مشتری‌هایی که در دوره دست‌کم دو سفارش داشته‌اند از مشتری‌هایی که دست‌کم یک سفارش داشته‌اند.",
+    formula_fa: "COUNT(مشتری با ≥۲ سفارش در دوره) ÷ COUNT(مشتری با ≥۱ سفارش در دوره)",
+    owner_role: "salesperson",
+    benchmark_fa: "بیش از ۶۰٪ برای کالای مصرفی پرگردش",
+    frequency: "monthly",
+    action_fa: "نرخ پایین یعنی مشکل کیفیت یا پیگیری؛ تماس روز تحویل و بازهٔ سفارش بعدی را جدی بگیرید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "collection_rate",
+    title_fa: "نرخ وصول",
+    definition_fa: "نسبت مبلغ دریافت‌شده در دوره به ارزش کالای تحویل‌شدهٔ همان دوره.",
+    formula_fa: "Σ دریافت‌های دوره ÷ فروش خالص دوره",
+    owner_role: "owner",
+    benchmark_fa: "بالای ۹۰٪؛ زیر ۸۰٪ یعنی خطر نقدینگی",
+    frequency: "weekly",
+    action_fa: "با فهرست «مطالبات معوق» مرکز اقدام شروع کنید و چک‌های سررسیدشده را پیگیری کنید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "overdue_receivables",
+    title_fa: "مطالبات معوق",
+    definition_fa: "جمع بدهی مشتریان که بیش از ۳۰ روز از تحویل سفارش پرداخت‌نشده مانده است، در پایان دوره.",
+    formula_fa: "Σ بدهی مشتری در سطل «بیش از ۳۰ روز»",
+    owner_role: "owner",
+    benchmark_fa: "کمتر از ۱۰٪ کل مطالبات باز",
+    frequency: "weekly",
+    action_fa: "سقف اعتبار مشتری‌های بدحساب را ببندید و تا تسویه، سفارش نقدی کنید.",
+    tier: 1,
+    direction: "down",
+  },
+  {
+    metric: "on_time_delivery",
+    title_fa: "تحویل به‌موقع",
+    definition_fa: "سهم سفارش‌هایی که در تاریخ برنامه‌ریزی‌شده یا زودتر تحویل شده‌اند از کل سفارش‌های تحویل‌شده.",
+    formula_fa: "COUNT(تاریخ تحویل ≤ تاریخ برنامه) ÷ COUNT(تحویل‌شده)",
+    owner_role: "group_manager",
+    benchmark_fa: "بالای ۹۵٪",
+    frequency: "daily",
+    action_fa: "افت را با «امتیاز راننده» و شرایط جوی مسیر تطبیق دهید؛ ظرفیت مسیر را بازبینی کنید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "fulfillment_rate",
+    title_fa: "نرخ تکمیل سفارش",
+    definition_fa: "سهم تعداد تحویل‌شده از تعداد سفارش‌داده‌شده، روی سفارش‌هایی که به مرحلهٔ قیمت‌گذاری رسیده‌اند.",
+    formula_fa: "Σ تعداد تحویل‌شدهٔ سطرها ÷ Σ تعداد سفارش‌دادهٔ سطرها",
+    owner_role: "group_manager",
+    benchmark_fa: "بالای ۹۸٪ برای کالای موجود",
+    frequency: "daily",
+    action_fa: "کسری مکرر یعنی مشکل موجودی یا بارگیری؛ هشدار کمبود موجودی و نرخ پرشدن راننده را ببینید.",
+    tier: 1,
+    direction: "up",
+  },
+  {
+    metric: "sample_conversion",
+    title_fa: "نرخ تبدیل نمونه",
+    definition_fa: "سهم سفارش‌های نمونه که ظرف ۳۰ روز یک سفارش عادی از همان مشتری به دنبال داشته‌اند.",
+    formula_fa: "COUNT(نمونه با سفارش عادی بعدی ظرف ۳۰ روز) ÷ COUNT(سفارش نمونه)",
+    owner_role: "salesperson",
+    benchmark_fa: "بالای ۳۰٪",
+    frequency: "monthly",
+    action_fa: "نرخ پایین یعنی پیگیری نمونه ضعیف است؛ کار «پیگیری نمونه» را سر وقت ببندید و کارت اعتراض را بخوانید.",
+    tier: 1,
+    direction: "up",
+  },
+];
+
+export function seedKpiDefinitions(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO kpi_definitions
+       (organization_id, metric, title_fa, definition_fa, formula_fa, owner_role,
+        benchmark_fa, frequency, action_fa, tier, direction, updated_at)
+     SELECT NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM kpi_definitions WHERE organization_id IS NULL AND metric = ?
+      )`
+  );
+  for (const d of KPI_DEFINITION_SEED) {
+    insert.run(
+      d.metric,
+      d.title_fa,
+      d.definition_fa,
+      d.formula_fa,
+      d.owner_role,
+      d.benchmark_fa,
+      d.frequency,
+      d.action_fa,
+      d.tier,
+      d.direction,
+      now,
+      d.metric
+    );
   }
 }
 

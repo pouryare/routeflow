@@ -119,13 +119,14 @@ describe("organization_id backfill", () => {
   it("leaves no row without an organisation", () => {
     const db = getDb();
     for (const table of TENANT_TABLES) {
-      // reason_codes, capacity_factors, rules and objection_cards deliberately keep
-      // NULL-org rows: the shared system/default rows every tenant sees.
+      // reason_codes, capacity_factors, rules, objection_cards and kpi_definitions
+      // deliberately keep NULL-org rows: the shared system/default rows every tenant sees.
       if (
         table === "reason_codes" ||
         table === "capacity_factors" ||
         table === "rules" ||
-        table === "objection_cards"
+        table === "objection_cards" ||
+        table === "kpi_definitions"
       )
         continue;
       const row = db
