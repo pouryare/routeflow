@@ -97,7 +97,10 @@ export function proxy(req: NextRequest) {
   // A driver has one screen. Sending them anywhere else back to it keeps the whole
   // customer/coverage surface off a device that spends the day in a vehicle, and means a
   // mistyped URL is not the thing standing between a driver and the debt ledger.
-  if (claims.role === "driver" && !isDriver) return deny("/driver");
+  // The sync endpoints are the exception: the driver app IS an offline client, so it
+  // must be able to push its outbox and pull its run. The routes scope by session.
+  const isSync = pathname.startsWith("/api/sync");
+  if (claims.role === "driver" && !isDriver && !isSync) return deny("/driver");
 
   return NextResponse.next();
 }
