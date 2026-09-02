@@ -9,7 +9,7 @@ const testDbPath = path.join(
 );
 process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
-const { getDb, TENANT_TABLES } = await import("@/lib/db");
+const { getDb, TENANT_TABLES, backfillReminderTasks } = await import("@/lib/db");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -71,5 +71,41 @@ describe("board & pocket schema", () => {
         )
         .run(now, now)
     ).toThrow();
+  });
+
+  it("folds customer reminders into tasks, once, idempotently", () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      "INSERT INTO customers (customer_code,business_name,synced_at,organization_id,group_id) VALUES ('BP1','مشتری یادآوری',?,1,NULL)"
+    ).run(now);
+    const cid = (db.prepare("SELECT id FROM customers WHERE customer_code='BP1'").get() as { id: number }).id;
+    db.prepare("INSERT INTO reminders (entity_type,entity_id,due_date,message,resolved,created_at) VALUES ('customer',?,?,?,0,?)")
+      .run(cid, "2026-09-10", "تماس تسویه", now);
+    db.prepare("INSERT INTO reminders (entity_type,entity_id,due_date,message,resolved,created_at) VALUES ('customer',?,?,?,1,?)")
+      .run(cid, "2026-08-01", "پیگیری قدیمی", now);
+    db.prepare("INSERT INTO reminders (entity_type,entity_id,due_date,message,resolved,created_at) VALUES ('district',999,?,?,0,?)")
+      .run("2026-09-10", "یادآوری منطقه", now);
+
+    // The migration marker was set on the empty first boot; clear it to exercise the copy.
+    db.prepare("DELETE FROM app_meta WHERE key = 'board_pocket_reminders_folded'").run();
+
+    backfillReminderTasks(db);
+    const folded = db
+      .prepare("SELECT kind,title,entity_type,entity_id,due_at,status FROM tasks WHERE entity_id = ? AND kind='reminder'")
+      .all(cid) as { title: string; entity_type: string; due_at: string; status: string }[];
+    expect(folded).toHaveLength(2);
+    expect(folded.find((t) => t.title === "تماس تسویه")).toMatchObject({ entity_type: "customer", due_at: "2026-09-10", status: "open" });
+    expect(folded.find((t) => t.title === "پیگیری قدیمی")?.status).toBe("done");
+    expect(
+      (db.prepare("SELECT value FROM app_meta WHERE key='board_pocket_reminders_folded'").get() as { value: string }).value
+    ).toBe("1");
+
+    // district reminder is left on the map
+    expect((db.prepare("SELECT COUNT(*) n FROM tasks WHERE title='یادآوری منطقه'").get() as { n: number }).n).toBe(0);
+
+    // re-run is a no-op
+    backfillReminderTasks(db);
+    expect((db.prepare("SELECT COUNT(*) n FROM tasks WHERE entity_id=? AND kind='reminder'").get(cid) as { n: number }).n).toBe(2);
   });
 });

@@ -568,6 +568,49 @@ export function backfillOrderEvents(db: DatabaseSync): void {
   }
 }
 
+/** Board & Pocket: fold every customer-scoped `reminders` row into the Phase 7 `tasks`
+ *  spine as `kind='reminder'`, so the Pocket and the Board see it and new customer
+ *  reminders can route through `tasks` from here on. District reminders stay on the map.
+ *  Guarded on an app_meta marker; the `NOT EXISTS` clause makes a stray re-run a no-op
+ *  too. organization_id / group_id come from the customer. */
+export function backfillReminderTasks(db: DatabaseSync): void {
+  const done = db
+    .prepare("SELECT value FROM app_meta WHERE key = 'board_pocket_reminders_folded'")
+    .get() as { value: string } | undefined;
+  if (done) return;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`
+      INSERT INTO tasks
+        (organization_id, assignee_user_id, role_hint, group_id, kind, title,
+         entity_type, entity_id, due_at, priority, status, outcome_code, outcome_note,
+         created_by, created_at, done_at, stage)
+      SELECT c.organization_id, NULL, 'salesperson', c.group_id, 'reminder', r.message,
+             'customer', r.entity_id, r.due_date, 'NORMAL',
+             CASE WHEN r.resolved = 1 THEN 'done' ELSE 'open' END, NULL, NULL,
+             NULL, r.created_at,
+             CASE WHEN r.resolved = 1 THEN r.created_at ELSE NULL END, NULL
+        FROM reminders r
+        JOIN customers c ON c.id = r.entity_id
+       WHERE r.entity_type = 'customer'
+         AND NOT EXISTS (
+           SELECT 1 FROM tasks t
+            WHERE t.kind = 'reminder' AND t.entity_type = 'customer'
+              AND t.entity_id = r.entity_id AND t.title = r.message
+              AND t.created_at = r.created_at
+         );
+    `);
+    db.prepare(
+      "INSERT OR REPLACE INTO app_meta (key, value) VALUES ('board_pocket_reminders_folded', ?)"
+    ).run("1");
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 /** Phase 0b: a pin that made it into a lead list is a relationship worth tracking, not
  *  just a dot on the map. Promote each such saved_location to a `customers` row
  *  (`lifecycle='lead'`, code `LEAD-<id>` -- the same scheme /api/locations/[id]/convert
@@ -2896,6 +2939,8 @@ export function getDb(): DatabaseSync {
   if (!bpUserCols.some((c) => c.name === "prefs_json")) {
     db.exec("ALTER TABLE users ADD COLUMN prefs_json TEXT");
   }
+  // Fold existing customer reminders into the tasks spine (once, guarded).
+  backfillReminderTasks(db);
 
   _db = db;
   return db;
