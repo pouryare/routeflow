@@ -321,6 +321,22 @@ export function canReachGroup(session: Session, groupId: number | null): boolean
   return scope.includes(groupId);
 }
 
+/** Whether this session may look at another user's own data (the Pocket scoping a
+ *  manager does over a report). Yourself always; otherwise only a management role —
+ *  owner / platform_owner over anyone in their org, a group / rep manager over a user
+ *  whose group is in their scope. A salesperson or driver reaches only themselves. */
+export function canReachUser(session: Session, userId: number): boolean {
+  if (userId === session.user.id) return true;
+  if (session.role === "salesperson" || session.role === "driver") return false;
+  const u = getDb()
+    .prepare("SELECT group_id, organization_id FROM users WHERE id = ?")
+    .get(userId) as { group_id: number | null; organization_id: number } | undefined;
+  if (!u) return false;
+  if (!canReachOrg(session, u.organization_id)) return false;
+  if (session.role === "owner" || session.role === "platform_owner") return true;
+  return canReachGroup(session, u.group_id);
+}
+
 /** A SQL fragment narrowing a table that carries its own organization_id but no group of
  *  its own -- products, prices, purchases, commission rates -- which an owner reads
  *  unscoped today precisely because there was only ever one company. Same contract as
