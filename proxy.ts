@@ -58,6 +58,17 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/sales/admin/representatives") ||
     pathname.startsWith("/api/admin/representatives");
 
+  // Phase 8: the /reps surface is a manager + rep_manager tool (the routes re-check).
+  const isReps = pathname.startsWith("/sales/reps") || pathname.startsWith("/api/sales/reps");
+  if (
+    isReps &&
+    claims.role !== "owner" &&
+    claims.role !== "group_manager" &&
+    claims.role !== "rep_manager"
+  ) {
+    return deny("/sales");
+  }
+
   if (isAdmin && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
@@ -116,7 +127,10 @@ export function proxy(req: NextRequest) {
   const isDriverBriefing =
     pathname === "/today" ||
     pathname === "/api/today" ||
-    pathname.startsWith("/api/tasks");
+    pathname.startsWith("/api/tasks") ||
+    // Phase 8: the objection library is useful at the door.
+    pathname.startsWith("/sales/academy") ||
+    pathname.startsWith("/api/sales/academy");
   if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
 
   return NextResponse.next();
