@@ -67,6 +67,8 @@ describe("academy repo", () => {
     const p = lessonProgress(1, uid);
     expect(p).toHaveLength(1);
     expect(p[0].lesson_slug).toBe("02-phone-sales");
+    // Rows reach a Client Component on /sales/academy — must be plain objects.
+    expect(Object.getPrototypeOf(p[0])).toBe(Object.prototype);
   });
 
   it("academyManifest lists the two stub modules in order", () => {
@@ -79,5 +81,7 @@ describe("academy repo", () => {
     const all = listObjectionCards(1);
     expect(all.length).toBeGreaterThanOrEqual(8);
     expect(new Set(all.map((c) => c.outcome_code)).size).toBeGreaterThanOrEqual(8);
+    // Same boundary crossing — every card must be a plain object, not a node:sqlite row.
+    for (const c of all) expect(Object.getPrototypeOf(c)).toBe(Object.prototype);
   });
 });

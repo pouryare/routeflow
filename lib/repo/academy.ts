@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { getDb } from "@/lib/db";
+import { getDb, plain } from "@/lib/db";
 import { makeRepo } from "./base";
 
 export class AcademyError extends Error {}
@@ -48,7 +48,9 @@ export function listObjectionCards(
   if (filter.customer_type) {
     out = out.filter((r) => r.customer_type === filter.customer_type || r.customer_type === null);
   }
-  return out;
+  // plain(): these rows go straight to a Client Component (the academy library), and
+  // node:sqlite hands them back with a null prototype, which Next.js refuses to pass.
+  return plain(out);
 }
 
 /** The single best card for an outcome: a customer_type-specific match beats a generic
@@ -138,9 +140,11 @@ export function lessonProgress(
   organizationId: number,
   userId: number
 ): { lesson_slug: string; completed_at: string }[] {
-  return getDb()
-    .prepare(
-      "SELECT lesson_slug, completed_at FROM lesson_progress WHERE organization_id = ? AND user_id = ?"
-    )
-    .all(organizationId, userId) as unknown as { lesson_slug: string; completed_at: string }[];
+  return plain(
+    getDb()
+      .prepare(
+        "SELECT lesson_slug, completed_at FROM lesson_progress WHERE organization_id = ? AND user_id = ?"
+      )
+      .all(organizationId, userId) as unknown as { lesson_slug: string; completed_at: string }[]
+  );
 }
