@@ -5,10 +5,10 @@ import { getSessionFromCookies } from "@/lib/session";
 
 /** The app's front door.
  *
- *  Phase 7: the briefing at /today is the landing page after login -- it is where the
- *  day's actionable items live, role-branched. A driver goes to /driver, a
- *  platform_owner to /platform, everyone else to /today; a logged-out visitor to
- *  /login. A redirect rather than a copy: /today owns its own chrome and guard.
+ *  Phase 7: the briefing is the landing page after login -- it is where the day's
+ *  actionable items live, role-branched. A driver goes to /driver, a platform_owner to
+ *  /platform, everyone else to /sales/today (the briefing as a sales tab); a logged-out
+ *  visitor to /login. The bare /today route still serves the driver's briefing.
  */
 export default async function Home() {
   const jar = await cookies();
@@ -16,5 +16,5 @@ export default async function Home() {
   if (!session) redirect("/login");
   if (session.role === "driver") redirect("/driver");
   if (session.role === "platform_owner") redirect("/platform");
-  redirect("/today");
+  redirect("/sales/today");
 }

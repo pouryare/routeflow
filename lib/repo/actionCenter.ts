@@ -60,7 +60,7 @@ function alertCandidates(session: Session): Candidate[] {
         impact: a.category === "stock" || a.category === "credit" ? 0.7 : 0.5,
         probability: 1,
         urgency: Math.max(0.2, Math.min(1, ageDays / 5)),
-        href: "/today",
+        href: "/sales/today",
       };
     });
 }
