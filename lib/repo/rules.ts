@@ -302,6 +302,47 @@ export function escalateStaleRuns(
   return n;
 }
 
+export class RuleError extends Error {}
+
+/** Toggle / retune a rule for one tenant -- writes a tenant override row keyed by code,
+ *  copying the rest of the shape from the base (tenant or default) rule. */
+export function setTenantRuleOverride(
+  organizationId: number,
+  input: { code: string; active?: boolean; cooldown_min?: number }
+): void {
+  const db = getDb();
+  const base = db
+    .prepare(
+      `SELECT * FROM rules WHERE code = ? AND (organization_id IS NULL OR organization_id = ?)
+        ORDER BY (organization_id IS NULL) LIMIT 1`
+    )
+    .get(input.code, organizationId) as RuleRow | undefined;
+  if (!base) throw new RuleError("قانون پیدا نشد");
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO rules
+       (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
+        cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT (organization_id, code) DO UPDATE SET
+       active = excluded.active, cooldown_min = excluded.cooldown_min, updated_at = excluded.updated_at`
+  ).run(
+    organizationId,
+    base.code,
+    base.name,
+    base.trigger_kind,
+    base.condition_json,
+    base.action_kind,
+    base.action_json,
+    input.cooldown_min ?? base.cooldown_min,
+    base.escalate_after_min,
+    base.escalate_to_role,
+    input.active === false ? 0 : 1,
+    now,
+    now
+  );
+}
+
 /** When the underlying thing is handled, close the matching runs so the rule can fire
  *  again later. */
 export function resolveRuleRunsFor(

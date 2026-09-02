@@ -98,7 +98,10 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/sales/runs/") ||
     // Phase 6: weather refresh + factor tuning are manager tools; the read is opener.
     pathname.startsWith("/api/sales/weather/refresh") ||
-    pathname.startsWith("/api/sales/capacity-factors");
+    pathname.startsWith("/api/sales/capacity-factors") ||
+    // Phase 7: targets + rule tuning are manager tools.
+    pathname.startsWith("/api/targets") ||
+    pathname.startsWith("/api/rules");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
     return deny("/sales");
   }
@@ -108,8 +111,13 @@ export function proxy(req: NextRequest) {
   // mistyped URL is not the thing standing between a driver and the debt ledger.
   // The sync endpoints are the exception: the driver app IS an offline client, so it
   // must be able to push its outbox and pull its run. The routes scope by session.
+  // Phase 7: the driver's briefing + their own task actions live off /driver.
   const isSync = pathname.startsWith("/api/sync");
-  if (claims.role === "driver" && !isDriver && !isSync) return deny("/driver");
+  const isDriverBriefing =
+    pathname === "/today" ||
+    pathname === "/api/today" ||
+    pathname.startsWith("/api/tasks");
+  if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
 
   return NextResponse.next();
 }
