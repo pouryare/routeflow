@@ -44,8 +44,8 @@ executed).
   left off: `7f00880`, `369f211`, `0cc92cf`, `9e201c4` (Tasks 1–4), plus
   `14d1206` (undo bar, unrelated to tenancy, shipped standalone) and
   `6022464` (the plan doc itself).
-- Full test suite: **83 files, 1104 tests, all passing**, as of this
-  session (`npx vitest run`).
+- Full test suite: **85 files, 1113 tests, all passing**, as of 2026-09-02
+  after Tasks 5 + 5b (`npx vitest run`). Was 83/1104 before.
 - The tenancy plan's checkboxes in the plan file are still all unchecked
   (`- [ ]`) even for finished tasks — progress was tracked via commits and
   todos during execution, not by editing the plan file. **Trust the commit
@@ -86,26 +86,35 @@ Plan file: `docs/superpowers/plans/2026-09-01-phase-0a-tenancy-foundation.md`
   explanation in "Bugs found and fixed" below — read it before touching
   `lib/session.ts` again, the reasoning is non-obvious and easy to
   re-break.
-- **Task 5 — NOT STARTED**: "Close the owner-unscoped readers." Real
-  experience in Tasks 3–4 shows the recurring gap is *writers* forgetting to
-  stamp `organization_id` on INSERT, not readers. **Verified today** — these
-  7 write paths still don't stamp `organization_id` at all:
-  - `lib/catalogue.ts` (products)
-  - `app/api/districts/route.ts`
-  - `app/api/locations/route.ts` (saved_locations)
-  - `app/api/facilities/route.ts`
-  - `lib/purchases.ts`
-  - `lib/delivery.ts` (delivery_runs)
-  - `app/api/locations/[id]/convert/route.ts` (customers, via location
-    conversion)
+- **Task 5 — DONE** (`fc857ab`), scope: the plan's version, "close the
+  owner-unscoped readers." `readCatalogue`, `readPurchases`, `readRates`,
+  `readDriverRates`, `readManagerOverrides`, `readGroups` each took no
+  organisation and returned every tenant's rows. Each now takes a
+  *required* `organizationId` (required, not optional-with-default, so a
+  forgotten call site fails to compile). Call sites pull it from
+  `session.organizationId`. `app/sales/orders/new/page.tsx` swapped its
+  hand-rolled `AND group_id = ?` fragment for `groupFilter(session)`.
+  Plan-doc drift: the rate readers live in `lib/commissionLedger.ts` /
+  `driverCommissionLedger.ts` / `managerCommissionLedger.ts`, not the
+  `lib/commission.ts` etc. the plan names.
+- **Task 5b — DONE** (`6fd6c96`), the writer half from the old handoff:
+  the 7 write paths that inserted rows with a NULL `organization_id` now
+  stamp it. `createProduct`, `recordPurchase`, `createRun` take it as a
+  *required* input field (like `CreateOrderInput`); the raw INSERTs in the
+  districts / locations / facilities / location-convert API routes pull it
+  from `session.organizationId`. **Also fixed a latent Task 3 bug it
+  surfaced:** `POST /api/locations` and the location-convert route still
+  had `ON CONFLICT(maps_url)` / `ON CONFLICT(customer_code)` — bare keys
+  Task 3 replaced with `UNIQUE(organization_id, …)`. Both were 500ing
+  against a migrated DB and no test caught it until `tests/tenancy-
+  writers.test.ts`. If you add another per-tenant upsert, its ON CONFLICT
+  target must be the composite key.
 
-  Already fixed in earlier tasks, as a reference for the pattern: orders
-  (`lib/orders.ts` — `organization_id` made a *required*, not optional,
-  field on `CreateOrderInput` specifically so a forgotten call site fails
-  to compile), groups (`app/api/admin/groups/route.ts`), lead_lists
-  (`app/api/lead-lists/route.ts`), and the Excel importer
-  (`lib/importExcel.ts`, pinned to `IMPORT_ORGANIZATION_ID = 1` since it
-  reads one hardcoded company workbook).
+  Reference for the pattern (from earlier tasks): orders (`lib/orders.ts`,
+  `CreateOrderInput.organization_id` required), groups
+  (`app/api/admin/groups/route.ts`), lead_lists
+  (`app/api/lead-lists/route.ts`), Excel importer (`lib/importExcel.ts`,
+  pinned to `IMPORT_ORGANIZATION_ID = 1`).
 
 - **Task 6 — NOT STARTED**: `platform_access_log` table + logging every
   cross-tenant read a `platform_owner` performs.
@@ -114,15 +123,12 @@ Plan file: `docs/superpowers/plans/2026-09-01-phase-0a-tenancy-foundation.md`
   code, same product SKU, etc.) and assert neither can see the other's
   data, across every `TENANT_TABLES` entry. This is the test meant to fail
   the build automatically if a future table is added without its tenant
-  column.
+  column. `tests/tenancy-writers.test.ts` already sets up a second org
+  (`ORG2 = 2`) and an owner/driver in it — reuse that shape.
 
-**Immediate next step when resuming implementation:** Task 5, following the
-same TDD pattern as Tasks 1–4 (see `superpowers:executing-plans` skill —
-write failing test, verify fail, implement, verify pass, commit, one task
-at a time). Fix the 7 write paths listed above using the orders/groups/
-lead_lists fixes as the reference pattern — pull `organization_id` from
-`session.organizationId` (or `session.user.organization_id`) at the API
-route layer and pass it down into the `lib/` write function.
+**Immediate next step when resuming implementation:** Task 6, same TDD
+pattern (see `superpowers:executing-plans`). Then Task 7. After Task 7,
+Phase 0a is done — see "How to resume" for the master-plan-doc decision.
 
 ## Bugs found and fixed this phase (read before touching `lib/session.ts` or `lib/db.ts` migrations)
 
@@ -185,6 +191,22 @@ route layer and pass it down into the `lib/` write function.
    — and always take the copy via the SQLite backup API
    (`sqlite3.connect().backup()`), never a plain `cp`, since the live db
    runs in WAL mode and a plain copy is silently stale.
+
+6. **Task 3 left two `ON CONFLICT` clauses pointing at keys it had just
+   deleted.** `rebuildForTenantUnique()` replaced `saved_locations`'s
+   `UNIQUE(maps_url)` with `UNIQUE(organization_id, maps_url)` and
+   `customers`'s `UNIQUE(customer_code)` with
+   `UNIQUE(organization_id, customer_code)`, but the upserts in
+   `POST /api/locations` and `app/api/locations/[id]/convert/route.ts`
+   still said `ON CONFLICT(maps_url)` / `ON CONFLICT(customer_code)`.
+   SQLite requires an `ON CONFLICT` target to name an actual constraint,
+   so both routes threw
+   `ON CONFLICT clause does not match any PRIMARY KEY or UNIQUE constraint`
+   (a 500) against any migrated DB — and nothing caught it between Task 3
+   and Task 5b because no test exercised those POST handlers post-migration.
+   Fixed in `6fd6c96` by making both targets the composite key. Lesson: a
+   `rebuildForTenantUnique` call has a blast radius beyond the schema —
+   grep `ON CONFLICT` for the table whenever you change its unique keys.
 
 ## Architectural decisions locked for the whole RouteFlow project (from brainstorming, still binding)
 
