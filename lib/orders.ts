@@ -49,6 +49,8 @@ export interface CreateOrderInput {
   salesperson_user_id?: number | null;
   credit_override_by?: number | null;
   notes?: string | null;
+  /** Phase 4: the client-generated idempotency key when this order was drafted offline. */
+  client_uuid?: string | null;
   lines: LineInput[];
 }
 
@@ -186,9 +188,9 @@ export function createOrder(
       db
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
-                               order_date, notes, credit_override_by, created_by, created_at, updated_at,
-                               organization_id)
-           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?)`
+                               order_date, notes, credit_override_by, client_uuid, created_by,
+                               created_at, updated_at, organization_id)
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -198,6 +200,7 @@ export function createOrder(
           input.order_date.slice(0, 10),
           input.notes ?? null,
           input.credit_override_by ?? null,
+          input.client_uuid ?? null,
           input.created_by,
           now,
           now,

@@ -59,6 +59,8 @@ export interface RecordPaymentInput {
   allocations?: AllocationInput[];
   /** Permit a per-order allocation that exceeds the order's outstanding balance. */
   allow_overpay?: boolean;
+  /** Phase 4: the client-generated idempotency key when the cash was taken offline. */
+  client_uuid?: string | null;
 }
 
 export const paymentsRepo = makeRepo<PaymentRow>("payments", { tenant: true });
@@ -267,8 +269,8 @@ export function recordPaymentTxn(
       .prepare(
         `INSERT INTO payments
            (organization_id, customer_id, amount_toman, method, received_at, received_by,
-            reference, receipt_photo_stem, cheque_id, delivery_stop_id, note, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reference, receipt_photo_stem, cheque_id, delivery_stop_id, client_uuid, note, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         organizationId,
@@ -281,6 +283,7 @@ export function recordPaymentTxn(
         input.receipt_photo_stem ?? null,
         input.cheque_id ?? null,
         input.delivery_stop_id ?? null,
+        input.client_uuid ?? null,
         input.note ?? null,
         now
       ).lastInsertRowid

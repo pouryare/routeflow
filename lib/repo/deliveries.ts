@@ -65,7 +65,12 @@ function snapshotLines(conn: DatabaseSync, deliveryId: number, orderId: number):
 export function planDelivery(
   organizationId: number,
   orderId: number,
-  opts: { route_stop_id?: number | null; planned_date?: string | null; db?: DatabaseSync } = {}
+  opts: {
+    route_stop_id?: number | null;
+    planned_date?: string | null;
+    client_uuid?: string | null;
+    db?: DatabaseSync;
+  } = {}
 ): number {
   const conn = connOf(opts.db);
   const run = (): number => {
@@ -93,10 +98,18 @@ export function planDelivery(
       conn
         .prepare(
           `INSERT INTO deliveries
-             (organization_id, order_id, seq, status, route_stop_id, planned_date, created_at)
-           VALUES (?, ?, ?, 'PLANNED', ?, ?, ?)`
+             (organization_id, order_id, seq, status, route_stop_id, planned_date, client_uuid, created_at)
+           VALUES (?, ?, ?, 'PLANNED', ?, ?, ?, ?)`
         )
-        .run(organizationId, orderId, seq, opts.route_stop_id ?? null, opts.planned_date ?? null, now)
+        .run(
+          organizationId,
+          orderId,
+          seq,
+          opts.route_stop_id ?? null,
+          opts.planned_date ?? null,
+          opts.client_uuid ?? null,
+          now
+        )
         .lastInsertRowid
     );
     snapshotLines(conn, id, orderId);
