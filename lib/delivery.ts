@@ -10,6 +10,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { orderTotalToman, lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
 import { recordPaymentTxn, voidPaymentTxn, recomputeOrderPaymentTxn } from "./repo/payments";
+import { allocateFEFO, recordMovementsTxn, defaultFacilityId } from "./repo/stock";
 
 export class DeliveryError extends Error {}
 
@@ -197,8 +198,15 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
   if (!stop) throw new DeliveryError("توقف پیدا نشد");
 
   const ordered = db
-    .prepare("SELECT id, packs_ordered FROM order_lines WHERE order_id = ?")
-    .all(stop.order_id) as unknown as { id: number; packs_ordered: number }[];
+    .prepare(
+      "SELECT id, packs_ordered, product_id, qty_per_pack FROM order_lines WHERE order_id = ?"
+    )
+    .all(stop.order_id) as unknown as {
+    id: number;
+    packs_ordered: number;
+    product_id: number;
+    qty_per_pack: number;
+  }[];
   const byId = new Map(ordered.map((l) => [l.id, l]));
 
   for (const line of input.lines) {
@@ -294,6 +302,46 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
       // A retry that now collects nothing (or refuses the stop) must also clear the
       // cache the earlier attempt set.
       recomputeOrderPaymentTxn(db, stop.organization_id, stop.order_id);
+    }
+
+    // Phase 2: draw the delivered quantity from stock, FEFO. The DELIVERY_OUT movements
+    // and delivery_line_batches rows this writes are machine-generated within this one
+    // atomic delivery record and carry no independent history -- so a retried sync just
+    // deletes and re-writes them, converging like the payment above.
+    const stockOrgId = stop.organization_id || 1;
+    const facilityId = defaultFacilityId(stockOrgId);
+    db.prepare(
+      "DELETE FROM stock_movements WHERE ref_type = 'delivery_stop' AND ref_id = ? AND kind = 'DELIVERY_OUT'"
+    ).run(stopId);
+    db.prepare("DELETE FROM delivery_line_batches WHERE delivery_stop_id = ?").run(stopId);
+
+    const insDlb = db.prepare(
+      `INSERT INTO delivery_line_batches
+         (organization_id, delivery_stop_id, order_line_id, batch_id, base_qty, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    if (!nothingTaken) {
+      for (const line of input.lines) {
+        if (!(line.packs_delivered > 0)) continue;
+        const ol = byId.get(line.line_id)!;
+        const baseQty = line.packs_delivered * ol.qty_per_pack;
+        for (const a of allocateFEFO(stockOrgId, ol.product_id, baseQty, facilityId)) {
+          recordMovementsTxn(db, stockOrgId, [
+            {
+              facility_id: facilityId,
+              product_id: ol.product_id,
+              batch_id: a.batch_id,
+              base_qty: -a.base_qty,
+              kind: "DELIVERY_OUT",
+              ref_type: "delivery_stop",
+              ref_id: stopId,
+              occurred_at: now,
+              created_by: input.by,
+            },
+          ]);
+          insDlb.run(stockOrgId, stopId, line.line_id, a.batch_id, a.base_qty, now);
+        }
+      }
     }
 
     db.exec("COMMIT");
