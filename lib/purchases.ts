@@ -189,15 +189,16 @@ export interface StockRow {
 }
 
 export function stockPosition(db: DatabaseSync): StockRow[] {
+  // Phase 2: on-hand is the sum of the signed movement ledger. purchased_qty /
+  // delivered_qty stay in the shape callers expect, split by sign. stockAfter still
+  // holds: purchased - delivered = SUM(base_qty).
   const rows = db
     .prepare(
       `SELECT p.id AS product_id, p.name, p.base_unit, p.avg_cost_toman,
-              COALESCE((SELECT SUM(pl.base_qty) FROM purchase_lines pl
-                         WHERE pl.product_id = p.id), 0) AS purchased_qty,
-              COALESCE((SELECT SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack)
-                          FROM order_lines ol
-                          JOIN orders o ON o.id = ol.order_id
-                         WHERE ol.product_id = p.id AND o.status = 'delivered'), 0) AS delivered_qty
+              COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m
+                         WHERE m.product_id = p.id AND m.base_qty > 0), 0) AS purchased_qty,
+              -COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m
+                          WHERE m.product_id = p.id AND m.base_qty < 0), 0) AS delivered_qty
          FROM products p
         WHERE p.active = 1
         ORDER BY p.name`
@@ -244,6 +245,10 @@ export interface AdvancedStockRow extends StockRow {
    *  because this app's charts put index 0 on the right under RTL. */
   spark: number[];
   last_purchase_date: string | null;
+  /** Soonest expiry among this product's batches that still hold stock, or null. */
+  earliest_expiry: string | null;
+  /** How many of this product's batches are inside the expiry-alert window. */
+  expiring_count: number;
 }
 
 /** stockPosition plus everything the advanced انبار screen draws on top of it: the
@@ -286,6 +291,23 @@ export function advancedStockPosition(db: DatabaseSync): AdvancedStockRow[] {
     .all() as unknown as { product_id: number; last_date: string }[];
   const lastPurchaseById = new Map(lastPurchaseRows.map((r) => [r.product_id, r.last_date]));
 
+  // Phase 2: soonest expiry per product among batches still holding stock, plus a count
+  // of those within 30 days (or already past). The precise, shelf-life-scaled window
+  // lives in lib/repo/batches.expiringBatches and the /stock/expiry endpoint; this chip
+  // just flags "something here is ageing".
+  const expiryRows = db
+    .prepare(
+      `SELECT b.product_id,
+              MIN(b.expiry_date) AS earliest,
+              SUM(CASE WHEN julianday(b.expiry_date) - julianday('now') <= 30 THEN 1 ELSE 0 END) AS expiring
+         FROM batches b
+        WHERE b.status IN ('active', 'quarantined') AND b.expiry_date IS NOT NULL
+          AND COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.batch_id = b.id), 0) > 0
+        GROUP BY b.product_id`
+    )
+    .all() as unknown as { product_id: number; earliest: string | null; expiring: number }[];
+  const expiryByProduct = new Map(expiryRows.map((r) => [r.product_id, r]));
+
   // Every day in the window, oldest first, regardless of whether anything moved on it --
   // a day with no deliveries is a real zero, not a gap the chart should skip over.
   const days: string[] = [];
@@ -311,6 +333,8 @@ export function advancedStockPosition(db: DatabaseSync): AdvancedStockRow[] {
       days_left: dailyRate > 0 ? row.on_hand / dailyRate : null,
       spark,
       last_purchase_date: lastPurchaseById.get(row.product_id) ?? null,
+      earliest_expiry: expiryByProduct.get(row.product_id)?.earliest ?? null,
+      expiring_count: expiryByProduct.get(row.product_id)?.expiring ?? 0,
     };
   });
 }

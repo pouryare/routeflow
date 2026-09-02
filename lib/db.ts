@@ -178,6 +178,197 @@ export function backfillLegacyPayments(db: DatabaseSync): void {
   }
 }
 
+/** Phase 2: turn the legacy derived-stock world into a movement ledger. Every purchase
+ *  line becomes a batch (LEGACY-PL<id>, undated) plus a PURCHASE_IN; every delivered
+ *  order line becomes DELIVERY_OUT movements against those batches, oldest first. The
+ *  invariant this preserves is per-product on-hand -- after the run,
+ *  SUM(stock_movements.base_qty) for a product equals the old purchased minus delivered.
+ *  Guarded on an app_meta marker and by per-row existence checks, so a re-run is a
+ *  no-op. Pure SQL here rather than lib/repo to avoid a db.ts <-> repo import cycle. */
+export function backfillStockLedger(db: DatabaseSync): void {
+  const done = db
+    .prepare("SELECT value FROM app_meta WHERE key = 'stock_ledger_backfill_done'")
+    .get() as { value: string } | undefined;
+  if (done) return;
+
+  const facility = db
+    .prepare(
+      "SELECT id FROM facilities ORDER BY (kind <> 'warehouse'), (kind <> 'home_base'), id LIMIT 1"
+    )
+    .get() as { id: number } | undefined;
+  if (!facility) {
+    // No facility to attach stock to yet -- seedFacilities has not run. Leave the marker
+    // unset so the next boot (after seeding) does the work.
+    return;
+  }
+  const facilityId = facility.id;
+  const now = new Date().toISOString();
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    // --- purchases -> batches + PURCHASE_IN -----------------------------------------
+    const purchaseLines = db
+      .prepare(
+        `SELECT pl.id, pl.product_id, pl.base_qty, pl.unit_cost_toman,
+                pu.purchase_date, COALESCE(pu.organization_id, 1) AS org
+           FROM purchase_lines pl JOIN purchases pu ON pu.id = pl.purchase_id
+          WHERE NOT EXISTS (SELECT 1 FROM batches b WHERE b.purchase_line_id = pl.id)`
+      )
+      .all() as Array<{
+      id: number;
+      product_id: number;
+      base_qty: number;
+      unit_cost_toman: number;
+      purchase_date: string;
+      org: number;
+    }>;
+
+    const insBatch = db.prepare(
+      `INSERT INTO batches
+         (organization_id, product_id, batch_code, purchase_line_id, produced_at, expiry_date,
+          qty_received_base, unit_cost_toman, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, NULL, ?, ?, 'active', ?, ?)`
+    );
+    const insMove = db.prepare(
+      `INSERT INTO stock_movements
+         (organization_id, facility_id, product_id, batch_id, base_qty, kind, ref_type, ref_id,
+          occurred_at, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    );
+
+    for (const pl of purchaseLines) {
+      const batchId = Number(
+        insBatch.run(
+          pl.org,
+          pl.product_id,
+          `LEGACY-PL${pl.id}`,
+          pl.id,
+          pl.purchase_date,
+          pl.base_qty,
+          pl.unit_cost_toman,
+          now,
+          now
+        ).lastInsertRowid
+      );
+      insMove.run(
+        pl.org,
+        facilityId,
+        pl.product_id,
+        batchId,
+        pl.base_qty,
+        "PURCHASE_IN",
+        "purchase_line",
+        pl.id,
+        pl.purchase_date,
+        now
+      );
+    }
+
+    // --- deliveries -> DELIVERY_OUT (oldest batch first) --------------------------
+    const deliveredLines = db
+      .prepare(
+        `SELECT ol.id, ol.product_id, ol.order_id,
+                (COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack) AS base_qty,
+                COALESCE(o.delivered_at, o.order_date) AS occurred_at,
+                COALESCE(o.organization_id, 1) AS org
+           FROM order_lines ol JOIN orders o ON o.id = ol.order_id
+          WHERE o.status = 'delivered' AND COALESCE(ol.packs_delivered, 0) > 0
+            AND NOT EXISTS (SELECT 1 FROM delivery_line_batches d WHERE d.order_line_id = ol.id)
+            AND NOT EXISTS (SELECT 1 FROM stock_movements m
+                             WHERE m.ref_type = 'order_line' AND m.ref_id = ol.id AND m.kind = 'DELIVERY_OUT')
+          ORDER BY occurred_at, ol.id`
+      )
+      .all() as Array<{
+      id: number;
+      product_id: number;
+      order_id: number;
+      base_qty: number;
+      occurred_at: string;
+      org: number;
+    }>;
+
+    const insDlb = db.prepare(
+      `INSERT INTO delivery_line_batches
+         (organization_id, delivery_stop_id, order_line_id, batch_id, base_qty, created_at)
+       VALUES (?, ?, ?, ?, ?, ?)`
+    );
+    const stopForOrder = db.prepare(
+      "SELECT id FROM delivery_stops WHERE order_id = ? ORDER BY id LIMIT 1"
+    );
+
+    // Running on-hand per batch, seeded from the PURCHASE_IN rows just written.
+    const onHandByBatch = new Map<number, number>();
+    for (const r of db
+      .prepare(
+        "SELECT batch_id, COALESCE(SUM(base_qty), 0) AS n FROM stock_movements WHERE batch_id IS NOT NULL GROUP BY batch_id"
+      )
+      .all() as Array<{ batch_id: number; n: number }>) {
+      onHandByBatch.set(r.batch_id, r.n);
+    }
+
+    const batchesForProduct = db.prepare(
+      `SELECT id FROM batches WHERE product_id = ? AND organization_id = ?
+        ORDER BY (expiry_date IS NULL), expiry_date, id`
+    );
+
+    for (const dl of deliveredLines) {
+      let left = dl.base_qty;
+      const stop = stopForOrder.get(dl.order_id) as { id: number } | undefined;
+      const batchIds = (batchesForProduct.all(dl.product_id, dl.org) as Array<{ id: number }>).map(
+        (b) => b.id
+      );
+
+      for (const bId of batchIds) {
+        if (left <= 1e-9) break;
+        const avail = onHandByBatch.get(bId) ?? 0;
+        if (avail <= 0) continue;
+        const take = Math.min(left, avail);
+        insMove.run(
+          dl.org,
+          facilityId,
+          dl.product_id,
+          bId,
+          -take,
+          "DELIVERY_OUT",
+          "order_line",
+          dl.id,
+          dl.occurred_at,
+          now
+        );
+        if (stop) insDlb.run(dl.org, stop.id, dl.id, bId, take, now);
+        onHandByBatch.set(bId, avail - take);
+        left -= take;
+      }
+
+      if (left > 1e-9) {
+        // Oversold beyond every batch -- an unbatched shortfall, so on-hand still goes
+        // negative rather than the delivery vanishing.
+        insMove.run(
+          dl.org,
+          facilityId,
+          dl.product_id,
+          null,
+          -left,
+          "DELIVERY_OUT",
+          "order_line",
+          dl.id,
+          dl.occurred_at,
+          now
+        );
+        if (stop) insDlb.run(dl.org, stop.id, dl.id, null, left, now);
+      }
+    }
+
+    db.prepare(
+      "INSERT OR REPLACE INTO app_meta (key, value) VALUES ('stock_ledger_backfill_done', ?)"
+    ).run(now);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 /** Phase 0b: a pin that made it into a lead list is a relationship worth tracking, not
  *  just a dot on the map. Promote each such saved_location to a `customers` row
  *  (`lifecycle='lead'`, code `LEAD-<id>` -- the same scheme /api/locations/[id]/convert
@@ -1872,6 +2063,9 @@ export function getDb(): DatabaseSync {
   for (const table of TENANT_TABLES) {
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
+
+  // Phase 2: convert legacy purchases + deliveries into the stock-movement ledger, once.
+  backfillStockLedger(db);
 
   _db = db;
   return db;
