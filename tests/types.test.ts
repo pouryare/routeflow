@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
   isDistrictColorMode,
   districtGroupColor,
-  customerStatusColor,
+  customerLifecycleColor,
   debtColor,
   salespersonColor,
   daysSinceLastPurchase,
@@ -24,7 +24,14 @@ function customer(overrides: Partial<CustomerRow> = {}): CustomerRow {
     province: null,
     lat: null,
     lng: null,
-    status: null,
+    lifecycle: "lead",
+    customer_type: null,
+    parent_customer_id: null,
+    payment_terms_days: 0,
+    hard_credit_block: 0,
+    credit_limit_toman: null,
+    qualified_at: null,
+    first_order_at: null,
     salesperson: null,
     debt_0_7: 0,
     debt_8_30: 0,
@@ -36,18 +43,21 @@ function customer(overrides: Partial<CustomerRow> = {}): CustomerRow {
   };
 }
 
-describe("customerStatusColor", () => {
-  it("maps active (فعال) to visited color", () => {
-    expect(customerStatusColor("مشتری فعال")).toBe(STATUS_COLOR.visited);
+describe("customerLifecycleColor", () => {
+  it("maps active to the visited colour", () => {
+    expect(customerLifecycleColor("active")).toBe(STATUS_COLOR.visited);
   });
-  it("maps inactive (غیرفعال) to unknown color -- checked before the فعال substring match", () => {
-    expect(customerStatusColor("غیرفعال")).toBe(STATUS_COLOR.unknown);
+  it("maps qualified / sampled / dormant to needs_coverage", () => {
+    expect(customerLifecycleColor("qualified")).toBe(STATUS_COLOR.needs_coverage);
+    expect(customerLifecycleColor("sampled")).toBe(STATUS_COLOR.needs_coverage);
+    expect(customerLifecycleColor("dormant")).toBe(STATUS_COLOR.needs_coverage);
   });
-  it("maps null/empty status to unknown", () => {
-    expect(customerStatusColor(null)).toBe(STATUS_COLOR.unknown);
+  it("maps lost / blocked to not_allowed", () => {
+    expect(customerLifecycleColor("lost")).toBe(STATUS_COLOR.not_allowed);
+    expect(customerLifecycleColor("blocked")).toBe(STATUS_COLOR.not_allowed);
   });
-  it("falls back to needs_coverage for any other status text", () => {
-    expect(customerStatusColor("در انتظار بررسی")).toBe(STATUS_COLOR.needs_coverage);
+  it("maps lead to unknown", () => {
+    expect(customerLifecycleColor("lead")).toBe(STATUS_COLOR.unknown);
   });
 });
 

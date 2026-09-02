@@ -3,6 +3,7 @@ import path from "node:path";
 import fs from "node:fs";
 import type { FacilityRow } from "./facilityTypes";
 import type { Role } from "./roles";
+import type { CustomerLifecycle, CustomerType } from "./types";
 import { polygonCentroid } from "./simplify";
 import type { DistrictGeometry } from "./simplify";
 
@@ -1245,6 +1246,84 @@ export function getDb(): DatabaseSync {
   db.exec("DROP TABLE IF EXISTS import_log;");
   db.exec("DROP TABLE IF EXISTS import_snapshots;");
 
+  // Phase 0b M2: customers gains a lifecycle, a type, credit terms and a parent link,
+  // and loses the free-text `status` column (its values map onto `lifecycle`). SQLite
+  // cannot ALTER ADD a CHECK constraint, so this is a table rebuild -- guarded on the
+  // new `lifecycle` column so it runs exactly once.
+  const custM2Cols = (db.prepare("PRAGMA table_info(customers)").all() as { name: string }[]).map((c) => c.name);
+  if (!custM2Cols.includes("lifecycle")) {
+    db.exec("PRAGMA foreign_keys = OFF;");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE customers_m2_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          customer_code TEXT NOT NULL,
+          business_name TEXT NOT NULL,
+          contact_person TEXT,
+          phone TEXT,
+          address TEXT,
+          city TEXT,
+          province TEXT,
+          lat REAL,
+          lng REAL,
+          salesperson TEXT,
+          debt_0_7 REAL DEFAULT 0,
+          debt_8_30 REAL DEFAULT 0,
+          debt_30_plus REAL DEFAULT 0,
+          notes TEXT,
+          synced_at TEXT NOT NULL,
+          last_purchase_date TEXT,
+          group_id INTEGER REFERENCES groups(id),
+          credit_limit_toman INTEGER,
+          organization_id INTEGER REFERENCES organizations(id),
+          customer_type TEXT CHECK (customer_type IN
+            ('RESTAURANT','HOTEL','CATERING','CAFE','RETAIL','WHOLESALE','OTHER')),
+          lifecycle TEXT NOT NULL DEFAULT 'lead' CHECK (lifecycle IN
+            ('lead','qualified','sampled','active','dormant','lost','blocked')),
+          parent_customer_id INTEGER REFERENCES customers(id),
+          payment_terms_days INTEGER NOT NULL DEFAULT 0,
+          hard_credit_block INTEGER NOT NULL DEFAULT 0,
+          qualified_at TEXT,
+          first_order_at TEXT,
+          UNIQUE (organization_id, customer_code)
+        );
+        INSERT INTO customers_m2_new
+          (id, customer_code, business_name, contact_person, phone, address, city, province,
+           lat, lng, salesperson, debt_0_7, debt_8_30, debt_30_plus, notes, synced_at,
+           last_purchase_date, group_id, credit_limit_toman, organization_id, lifecycle)
+        SELECT
+          id, customer_code, business_name, contact_person, phone, address, city, province,
+          lat, lng, salesperson, debt_0_7, debt_8_30, debt_30_plus, notes, synced_at,
+          last_purchase_date, group_id, credit_limit_toman, organization_id,
+          CASE TRIM(COALESCE(status,''))
+            WHEN 'فعال' THEN 'active'
+            WHEN 'مشتری فعال' THEN 'active'
+            WHEN 'در حال پیگیری' THEN 'qualified'
+            WHEN 'نمونه داده شد' THEN 'sampled'
+            WHEN 'سرنخ' THEN 'lead'
+            WHEN 'غیرفعال' THEN 'dormant'
+            WHEN '' THEN 'lead'
+            ELSE 'lead'
+          END
+        FROM customers;
+        DROP TABLE customers;
+        ALTER TABLE customers_m2_new RENAME TO customers;
+        CREATE INDEX IF NOT EXISTS idx_customers_business_name ON customers(business_name);
+        UPDATE customers
+          SET first_order_at = (SELECT MIN(o.order_date) FROM orders o WHERE o.customer_id = customers.id)
+          WHERE EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = customers.id);
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON;");
+    }
+    console.info("[migrate] customers.status -> lifecycle applied; unknown values defaulted to 'lead'");
+  }
+
   seedFacilities(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
@@ -1274,7 +1353,14 @@ export interface Customer {
   province: string | null;
   lat: number | null;
   lng: number | null;
-  status: string | null;
+  lifecycle: CustomerLifecycle;
+  customer_type: CustomerType | null;
+  parent_customer_id: number | null;
+  payment_terms_days: number;
+  hard_credit_block: number;
+  credit_limit_toman: number | null;
+  qualified_at: string | null;
+  first_order_at: string | null;
   salesperson: string | null;
   debt_0_7: number;
   debt_8_30: number;

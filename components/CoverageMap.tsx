@@ -29,7 +29,7 @@ import {
   STATUS_COLOR,
   STATUS_LABEL,
   CustomerColorMode,
-  customerStatusColor,
+  customerLifecycleColor,
   debtColor,
   salespersonColor,
   inactivityColor,
@@ -824,7 +824,7 @@ export default function CoverageMap({
   const dormantCustomers = useMemo(() => {
     const now = new Date();
     return customers
-      .filter((c) => c.status?.includes("فعال") && !c.status?.includes("غیرفعال"))
+      .filter((c) => c.lifecycle === "active")
       .map((c) => ({ customer: c, days: daysSinceLastPurchase(c, now) }))
       .filter((x): x is { customer: CustomerRow; days: number } => x.days !== null && x.days > 30)
       .sort((a, b) => b.days - a.days)
@@ -835,7 +835,7 @@ export default function CoverageMap({
 
   const noCoordCustomers = useMemo(() => {
     return customers
-      .filter((c) => c.status?.includes("فعال") && !c.status?.includes("غیرفعال") && (!c.lat || !c.lng))
+      .filter((c) => c.lifecycle === "active" && (!c.lat || !c.lng))
       .slice(0, 30);
   }, [customers]);
 
@@ -1208,7 +1208,7 @@ export default function CoverageMap({
     if (colorMode === "salesperson") return salespersonColor(c.salesperson, salesIndex);
     if (colorMode === "inactivity") return inactivityColor(c);
     if (colorMode === "distance") return distanceColor(c, colourOrigin);
-    return customerStatusColor(c.status);
+    return customerLifecycleColor(c.lifecycle);
   }
 
   function flyToFacility(f: FacilityRow) {

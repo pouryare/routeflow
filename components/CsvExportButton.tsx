@@ -3,6 +3,7 @@
 import { toCsv } from "@/lib/csv";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
+import { LIFECYCLE_LABEL, type CustomerLifecycle } from "@/lib/types";
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/csv;charset=utf-8" });
@@ -19,7 +20,7 @@ function download(filename: string, content: string) {
 interface CustomerRow {
   business_name: string;
   customer_code: string;
-  status: string | null;
+  lifecycle: CustomerLifecycle;
   salesperson: string | null;
   phone: string | null;
   address: string | null;
@@ -60,7 +61,7 @@ export default function CsvExportButton({
       ...customers.map((c) => [
         c.business_name,
         c.customer_code,
-        c.status,
+        LIFECYCLE_LABEL[c.lifecycle],
         c.salesperson,
         c.phone,
         c.address,

@@ -56,7 +56,7 @@ export default async function AnalyticsPage() {
 
   const now = new Date();
   const dormant = customers.filter((c) => {
-    if (!c.status?.includes("فعال") || c.status.includes("غیرفعال")) return false;
+    if (c.lifecycle !== "active") return false;
     const days = daysSinceLastPurchase(c, now);
     return days !== null && days > 30;
   }).length;

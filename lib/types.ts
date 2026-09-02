@@ -96,7 +96,14 @@ export interface CustomerRow {
   province: string | null;
   lat: number | null;
   lng: number | null;
-  status: string | null;
+  lifecycle: CustomerLifecycle;
+  customer_type: CustomerType | null;
+  parent_customer_id: number | null;
+  payment_terms_days: number;
+  hard_credit_block: number;
+  credit_limit_toman: number | null;
+  qualified_at: string | null;
+  first_order_at: string | null;
   salesperson: string | null;
   debt_0_7: number;
   debt_8_30: number;
@@ -105,6 +112,34 @@ export interface CustomerRow {
   synced_at: string;
   last_purchase_date: string | null;
 }
+
+export type CustomerLifecycle =
+  | "lead"
+  | "qualified"
+  | "sampled"
+  | "active"
+  | "dormant"
+  | "lost"
+  | "blocked";
+
+export type CustomerType =
+  | "RESTAURANT"
+  | "HOTEL"
+  | "CATERING"
+  | "CAFE"
+  | "RETAIL"
+  | "WHOLESALE"
+  | "OTHER";
+
+export const LIFECYCLE_LABEL: Record<CustomerLifecycle, string> = {
+  lead: "سرنخ",
+  qualified: "در حال پیگیری",
+  sampled: "نمونه داده‌شده",
+  active: "فعال",
+  dormant: "غیرفعال",
+  lost: "از دست‌رفته",
+  blocked: "مسدود",
+};
 
 export type CustomerColorMode = "status" | "debt" | "salesperson" | "inactivity" | "distance";
 
@@ -123,14 +158,24 @@ export function isCustomerColorMode(v: unknown): v is CustomerColorMode {
   return typeof v === "string" && (CUSTOMER_COLOR_MODES as string[]).includes(v);
 }
 
-// Customer status text comes straight from the workbook ("مشتری فعال", "غیرفعال", ...)
-// and doesn't share a vocabulary with CoverageStatus (district coverage), so it gets
-// its own bucket -> token mapping instead of reusing STATUS_COLOR.
-export function customerStatusColor(status: string | null): string {
-  if (!status) return STATUS_COLOR.unknown;
-  if (status.includes("غیرفعال")) return STATUS_COLOR.unknown;
-  if (status.includes("فعال")) return STATUS_COLOR.visited;
-  return STATUS_COLOR.needs_coverage;
+// Customer lifecycle is app-owned (Phase 0b) and doesn't share a vocabulary with
+// CoverageStatus (district coverage), so it gets its own bucket -> colour mapping
+// instead of reusing STATUS_COLOR's keys directly.
+export function customerLifecycleColor(lifecycle: CustomerLifecycle): string {
+  switch (lifecycle) {
+    case "active":
+      return STATUS_COLOR.visited;
+    case "qualified":
+    case "sampled":
+    case "dormant":
+      return STATUS_COLOR.needs_coverage;
+    case "lost":
+    case "blocked":
+      return STATUS_COLOR.not_allowed;
+    case "lead":
+    default:
+      return STATUS_COLOR.unknown;
+  }
 }
 
 export function debtColor(c: CustomerRow): string {

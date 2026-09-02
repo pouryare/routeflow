@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getDb, District, Customer, CoverageStatus } from "@/lib/db";
-import { STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
+import { STATUS_LABEL, STATUS_COLOR, LIFECYCLE_LABEL } from "@/lib/types";
 import { readFacilities } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
 import type { FacilityRow } from "@/lib/facilityTypes";
@@ -115,7 +115,7 @@ export default async function ReportPage({
               customers={customers.map((c) => ({
                 business_name: c.business_name,
                 customer_code: c.customer_code,
-                status: c.status,
+                lifecycle: c.lifecycle,
                 salesperson: c.salesperson,
                 phone: c.phone,
                 address: c.address,
@@ -280,7 +280,7 @@ export default async function ReportPage({
                     <td dir="ltr" className="px-3 py-2 text-right font-mono text-text-faint">
                       {c.customer_code}
                     </td>
-                    <td className="px-3 py-2 text-text-muted">{c.status ?? "—"}</td>
+                    <td className="px-3 py-2 text-text-muted">{LIFECYCLE_LABEL[c.lifecycle]}</td>
                     <td className="px-3 py-2 text-text-muted">{c.salesperson ?? "—"}</td>
                     <td
                       dir="ltr"

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { CustomerRow, customerStatusColor, STATUS_COLOR } from "@/lib/types";
+import { CustomerRow, customerLifecycleColor, LIFECYCLE_LABEL, STATUS_COLOR } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import StatusPill from "./StatusPill";
@@ -132,7 +132,7 @@ export default function CustomerDetailPanel({
     return () => window.removeEventListener("keydown", onKey);
   }, [handleClose]);
 
-  const statusColor = customerStatusColor(customer.status);
+  const statusColor = customerLifecycleColor(customer.lifecycle);
   const debt = debtTier(customer);
 
   const bento = useCustomerSummary(customer.id);
@@ -209,7 +209,7 @@ export default function CustomerDetailPanel({
       </div>
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {customer.status && <StatusPill color={statusColor} label={customer.status} />}
+        <StatusPill color={statusColor} label={LIFECYCLE_LABEL[customer.lifecycle]} />
         <span className="font-mono text-[length:var(--text-xs)] text-text-faint">{customer.customer_code}</span>
         <div className="mr-auto flex items-center gap-1.5">
           {/* A link straight back to this customer on this map -- the thing you send
