@@ -56,7 +56,7 @@ function confirmedOrderFor(custId: number): number {
 beforeEach(() => {
   const db = getDb();
   db.exec(
-    "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM delivery_lines; DELETE FROM deliveries; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM route_schedules; DELETE FROM route_templates; DELETE FROM vehicles; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
+    "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM delivery_lines; DELETE FROM deliveries; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM route_schedules; DELETE FROM route_templates; DELETE FROM vehicles; DELETE FROM weather_snapshots; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM facilities; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );
   const now = new Date().toISOString();
   const u = db.prepare(
@@ -118,5 +118,37 @@ describe("routing repo (no OSRM/VROOM -> greedy path)", () => {
     const plan = await buildPlan(1, { date: "2026-03-01" });
     expect(plan.assignments[0].stops).toHaveLength(3);
     expect(plan.unassigned).toHaveLength(1);
+  });
+
+  it("a snow forecast at the centroid shrinks the effective stop ceiling and is frozen into the run", async () => {
+    const { upsertSnapshot } = await import("@/lib/repo/weather");
+    confirmedOrderFor(customerAt(35.7, 51.4));
+    confirmedOrderFor(customerAt(35.71, 51.41));
+    createVehicle(1, { name: "وانت", driver_default_id: driver });
+    upsertSnapshot({
+      lat_r: 35.71,
+      lng_r: 51.41,
+      forecast_date: "2026-03-01",
+      temp_min: -1,
+      temp_max: 2,
+      precip_prob: 90,
+      precip_mm: 4,
+      snow_mm: 3,
+      wind_kmh: 10,
+      gust_kmh: 20,
+      visibility_m: 3000,
+      weather_code: 71,
+      raw_json: "{}",
+    });
+
+    const plan = await buildPlan(1, { date: "2026-03-01" });
+    expect(plan.weather?.conditions).toContain("snow_ice");
+    expect(plan.weather!.effective_max_stops).toBeLessThan(plan.weather!.base_stops);
+
+    const { run_ids } = commitPlan(1, plan, { planned_by: owner });
+    const wj = getDb()
+      .prepare("SELECT weather_json FROM delivery_runs WHERE id = ?")
+      .get(run_ids[0]) as { weather_json: string | null };
+    expect(JSON.parse(wj.weather_json!).conditions).toContain("snow_ice");
   });
 });

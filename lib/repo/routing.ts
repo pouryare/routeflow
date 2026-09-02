@@ -15,6 +15,9 @@ import {
   type SolveResult,
 } from "@/lib/routing/vroom";
 import type { LatLng } from "@/lib/geo";
+import { effectiveCapacity } from "@/lib/routing/capacity";
+import { runWeatherAdjustment } from "./weather";
+import type { WeatherAdjustment } from "@/lib/weather/capacityAdjust";
 
 export class RoutingError extends Error {}
 
@@ -212,6 +215,7 @@ export function routableDeliveriesFor(
 export interface RoutingPlan extends SolveResult {
   source: "vroom" | "greedy";
   date: string;
+  weather?: WeatherAdjustment & { effective_max_stops: number; base_stops: number };
 }
 
 /** Build a delivery-route proposal for a date. Read-only -- proposes, never writes. Uses
@@ -243,7 +247,7 @@ export async function buildPlan(
   const allVehicles = template?.default_vehicle_id
     ? [vehiclesRepo.get(organizationId, template.default_vehicle_id)].filter(Boolean)
     : listVehicles(organizationId);
-  const vehicles: RoutableVehicle[] = (
+  const vehicleRows: VehicleRow[] =
     allVehicles.length > 0
       ? (allVehicles as VehicleRow[])
       : [
@@ -254,19 +258,41 @@ export async function buildPlan(
             max_stops: template?.max_stops ?? 40,
             has_refrigeration: 0,
           } as VehicleRow,
-        ]
-  ).map((v) => ({
+        ];
+
+  // Phase 6: weather at the group centroid on the plan date shrinks the effective stop
+  // ceiling. The forecast is resolved here and frozen into the run at commit time.
+  const cx = deliveries.reduce((s, d) => s + d.lat, 0) / deliveries.length;
+  const cy = deliveries.reduce((s, d) => s + d.lng, 0) / deliveries.length;
+  const anyRefrigerated = vehicleRows.some((v) => v.has_refrigeration === 1);
+  const adj = runWeatherAdjustment(organizationId, {
+    lat: cx,
+    lng: cy,
+    date: opts.date,
+    vehicle_has_refrigeration: anyRefrigerated,
+  });
+  const baseStops = template?.max_stops ?? 40;
+  const effectiveMaxStops = effectiveCapacity({
+    base_stops: baseStops,
+    base_service_min: template?.service_time_min ?? 8,
+    base_duration_min: template?.max_duration_min ?? 480,
+    factors: adj.factors,
+  }).max_stops;
+
+  const vehicles: RoutableVehicle[] = vehicleRows.map((v) => ({
     vehicle_key: v.id,
     start: depot,
     end: depot,
     capacity: [
       Math.round(v.max_weight_kg ?? template?.max_weight_kg ?? 5000),
       Math.round((v.max_volume_m3 ?? template?.max_volume_m3 ?? 50) * 100),
-      v.max_stops ?? template?.max_stops ?? 40,
+      Math.min(v.max_stops ?? template?.max_stops ?? 40, effectiveMaxStops),
     ],
     max_duration_s: template?.max_duration_min ? template.max_duration_min * 60 : undefined,
     has_refrigeration: v.has_refrigeration === 1,
   }));
+
+  const weather = { ...adj, effective_max_stops: effectiveMaxStops, base_stops: baseStops };
 
   const points: LatLng[] = [depot, ...deliveries.map((d) => ({ lat: d.lat, lng: d.lng }))];
   const osrm = await fetchOsrmTable(points).catch(() => null);
@@ -277,8 +303,8 @@ export async function buildPlan(
     buildVroomJob(deliveries, vehicles, { durations, distances })
   ).catch(() => null);
 
-  if (vroom) return { ...vroom, source: "vroom", date: opts.date };
-  return { ...greedyAssign(deliveries, vehicles), source: "greedy", date: opts.date };
+  if (vroom) return { ...vroom, source: "vroom", date: opts.date, weather };
+  return { ...greedyAssign(deliveries, vehicles), source: "greedy", date: opts.date, weather };
 }
 
 /** Write a proposal: one delivery_runs row per assigned vehicle+driver, its stops in
@@ -315,14 +341,17 @@ export function commitPlan(
     db.prepare(
       `UPDATE delivery_runs
           SET vehicle_id = ?, planned_distance_km = ?, planned_duration_min = ?,
-              capacity_stops = ?, optimisation_json = ?, updated_at = ?
+              capacity_stops = ?, optimisation_json = ?, weather_json = ?, updated_at = ?
         WHERE id = ?`
     ).run(
       vehicle?.id ?? null,
       a.distance_km,
       a.duration_min,
-      a.stops.length,
+      // the effective ceiling (weather-adjusted) rather than what happened to be assigned
+      plan.weather?.effective_max_stops ?? a.stops.length,
       JSON.stringify({ source: plan.source, assignment: a }),
+      // Phase 6: the forecast + adjustment, FROZEN at planning time. Never re-fetched.
+      plan.weather ? JSON.stringify(plan.weather) : null,
       now,
       run.id
     );
