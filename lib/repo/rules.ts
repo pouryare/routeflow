@@ -5,6 +5,10 @@ import {
   isEscalatable,
   type RuleCondition,
 } from "@/lib/rules/engine";
+import { toJalali } from "@/lib/jalali";
+import { rruleMatches } from "@/lib/tasks/recurrence";
+import { listRecurrences } from "./taskRecurrences";
+import { createTask } from "./tasks";
 import type { EventRow } from "./events";
 
 export interface RuleRow {
@@ -255,7 +259,50 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
     consider("sample_followup", "order", s.id, { group_id: s.group_id });
   }
 
+  // Board & Pocket: templates that spawn a task on a schedule. Same hook, same cooldown
+  // idea (last_spawned_on), so /api/rules/run drives it with no extra scheduler.
+  spawnRecurringTasks(organizationId, asOfIso);
+
   return out;
+}
+
+/** Jalali civil date as YYYY-MM-DD (Tehran). */
+function jalaliYmd(iso: string): string {
+  const j = toJalali(iso);
+  if (!j) return iso.slice(0, 10);
+  return `${j.jy}-${String(j.jm).padStart(2, "0")}-${String(j.jd).padStart(2, "0")}`;
+}
+
+/** Spawn a task for every active recurrence whose rrule matches today and that has not
+ *  already spawned today. Idempotent by `last_spawned_on`. Returns the count spawned. */
+export function spawnRecurringTasks(
+  organizationId: number,
+  asOfIso: string = new Date().toISOString()
+): { spawned: number } {
+  const today = jalaliYmd(asOfIso);
+  const dueIso = asOfIso.slice(0, 10);
+  let spawned = 0;
+  for (const r of listRecurrences(organizationId, { active: true })) {
+    if (r.last_spawned_on === today) continue;
+    if (!rruleMatches(r.rrule, today)) continue;
+    createTask(organizationId, {
+      title: r.title,
+      kind: r.kind,
+      assignee_user_id: r.assignee_user_id,
+      role_hint: r.role_hint,
+      group_id: r.group_id,
+      entity_type: r.entity_type,
+      entity_id: r.entity_id,
+      priority: r.priority,
+      due_at: dueIso,
+      created_by: r.created_by,
+    });
+    getDb()
+      .prepare("UPDATE task_recurrences SET last_spawned_on = ?, updated_at = ? WHERE id = ?")
+      .run(today, asOfIso, r.id);
+    spawned++;
+  }
+  return { spawned };
 }
 
 /** Escalate stale unresolved runs: re-assign the linked task to someone of the rule's
