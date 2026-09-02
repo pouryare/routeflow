@@ -9,11 +9,19 @@ interface Assignment {
   distance_km: number;
   duration_min: number;
 }
+interface WeatherBlock {
+  conditions: string[];
+  notes_fa: string[];
+  cold_chain_capped: boolean;
+  effective_max_stops: number;
+  base_stops: number;
+}
 interface Plan {
   assignments: Assignment[];
   unassigned: number[];
   source: "vroom" | "greedy";
   date: string;
+  weather?: WeatherBlock;
 }
 
 export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<number, string> }) {
@@ -105,6 +113,25 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
             <p className="m-0 text-[length:var(--text-xs)] text-[var(--warn)]">
               بدون بهینه‌ساز — مسیر تقریبی
             </p>
+          )}
+          {plan.weather && plan.weather.conditions.length > 0 && (
+            <div className="rounded-[var(--radius-md)] border border-[var(--warn)] bg-[var(--surface-2)] p-[var(--space-3)] text-[length:var(--text-xs)]">
+              <div className="flex flex-wrap gap-[var(--space-2)]">
+                {plan.weather.notes_fa.map((note) => (
+                  <span key={note} className="text-[var(--text)]">
+                    ⛅ {note}
+                  </span>
+                ))}
+              </div>
+              <p className="m-0 mt-[var(--space-1)] text-[var(--text-muted)]">
+                ظرفیت مؤثر: {faNum(plan.weather.effective_max_stops)} از {faNum(plan.weather.base_stops)} توقف
+              </p>
+              {plan.weather.cold_chain_capped && (
+                <p className="m-0 mt-[var(--space-1)] text-[var(--crit)]">
+                  زنجیرهٔ سرد — زمان مسیر برای خودروی بدون یخچال محدود شده است
+                </p>
+              )}
+            </div>
           )}
           {plan.assignments.map((a, i) => (
             <div

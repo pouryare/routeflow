@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { groupFilter, type Session } from "@/lib/session";
 import type { LatLng } from "@/lib/geo";
 import { fetchOpenMeteo, type WeatherSnapshotInput } from "@/lib/weather/openMeteo";
 import {
@@ -74,6 +75,66 @@ export function upsertSnapshot(row: WeatherSnapshotInput): void {
       new Date().toISOString(),
       row.raw_json
     );
+}
+
+/** Set (or clear) a tenant's override for one condition. Upsert on
+ *  (organization_id, condition_code). */
+export function upsertCapacityFactor(
+  organizationId: number,
+  input: {
+    condition_code: string;
+    stop_factor: number;
+    service_time_factor: number;
+    speed_factor: number;
+    max_duration_factor: number;
+    note_fa?: string | null;
+    active?: boolean;
+  }
+): void {
+  getDb()
+    .prepare(
+      `INSERT INTO capacity_factors
+         (organization_id, condition_code, stop_factor, service_time_factor, speed_factor,
+          max_duration_factor, note_fa, active, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+       ON CONFLICT (organization_id, condition_code) DO UPDATE SET
+         stop_factor = excluded.stop_factor, service_time_factor = excluded.service_time_factor,
+         speed_factor = excluded.speed_factor, max_duration_factor = excluded.max_duration_factor,
+         note_fa = excluded.note_fa, active = excluded.active, updated_at = excluded.updated_at`
+    )
+    .run(
+      organizationId,
+      input.condition_code,
+      input.stop_factor,
+      input.service_time_factor,
+      input.speed_factor,
+      input.max_duration_factor,
+      input.note_fa ?? null,
+      input.active === false ? 0 : 1,
+      new Date().toISOString()
+    );
+}
+
+/** The distinct ~1 km customer cells this session can see. */
+export function customerCellsFor(session: Session, limit = 60): LatLng[] {
+  const gf = groupFilter(session);
+  return getDb()
+    .prepare(
+      `SELECT DISTINCT ROUND(lat, 2) AS lat, ROUND(lng, 2) AS lng
+         FROM customers WHERE lat IS NOT NULL AND lng IS NOT NULL${gf.sql} LIMIT ${limit}`
+    )
+    .all(...gf.params) as unknown as LatLng[];
+}
+
+/** Refresh the org's customer cells over the next few days. No-op offline. */
+export async function refreshOrgForecast(session: Session, dates?: string[]): Promise<{ written: number; cells: number }> {
+  const cells = customerCellsFor(session);
+  const days =
+    dates && dates.length > 0
+      ? dates.map((d) => d.slice(0, 10))
+      : [0, 1, 2].map((i) => new Date(Date.now() + i * 86_400_000).toISOString().slice(0, 10));
+  const written = await refreshForecast(cells, days);
+  return { written, cells: cells.length };
 }
 
 /** Pull the forecast for a set of cells over a date range and store it. Glue path; a

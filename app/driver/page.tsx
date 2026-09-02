@@ -12,6 +12,19 @@ import SyncStatus from "@/components/SyncStatus";
 
 export const dynamic = "force-dynamic";
 
+/** Phase 6: one line of weather from the run's frozen forecast, or null. */
+function weatherLine(run: { weather_json?: string | null }): string | null {
+  if (!run.weather_json) return null;
+  try {
+    const w = JSON.parse(run.weather_json) as { notes_fa?: string[]; cold_chain_capped?: boolean };
+    const parts = w.notes_fa ?? [];
+    if (w.cold_chain_capped) parts.push("زنجیرهٔ سرد — زمان مسیر محدود است");
+    return parts.length ? `⛅ ${parts.join(" · ")}` : null;
+  } catch {
+    return null;
+  }
+}
+
 /** The driver's whole app: today's round, and nothing else.
  *
  *  Falls back to their most recent run rather than showing an empty screen -- a driver
@@ -60,6 +73,12 @@ export default async function DriverPage() {
           </button>
         </form>
       </header>
+
+      {run && weatherLine(run as unknown as { weather_json?: string | null }) && (
+        <p className="mb-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          {weatherLine(run as unknown as { weather_json?: string | null })}
+        </p>
+      )}
 
       {!run || run.stops.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-faint)]">
