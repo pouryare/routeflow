@@ -25,7 +25,9 @@ export default async function SchedulePage() {
   if (session.role === "driver") redirect("/driver");
 
   const db = getDb();
-  const scope = groupFilter(session);
+  // Qualified: the runs query joins delivery_runs to users, and for an owner this
+  // fragment filters on organization_id -- a column both tables carry.
+  const scope = groupFilter(session, "r.group_id");
   const today = toJalali(new Date().toISOString())!;
   const grid = jalaliMonthGrid(today.jy, today.jm);
 
@@ -41,7 +43,7 @@ export default async function SchedulePage() {
                 (SELECT COUNT(*) FROM delivery_stops s WHERE s.run_id = r.id) AS stops
            FROM delivery_runs r
            LEFT JOIN users u ON u.id = r.driver_user_id
-          WHERE r.run_date >= ? AND r.run_date <= ?${scope.sql.replaceAll("c.group_id", "r.group_id")}
+          WHERE r.run_date >= ? AND r.run_date <= ?${scope.sql}
           ORDER BY r.run_date, r.id`
       )
       .all(from, to, ...scope.params)

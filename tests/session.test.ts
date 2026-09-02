@@ -135,6 +135,14 @@ describe("scoping helpers", () => {
     expect(groupFilter(s, "c.group_id")).toEqual({ sql: " AND c.group_id = ?", params: [groupEast] });
   });
 
+  it("carries the qualifier onto the owner's organisation filter too", () => {
+    // The owner branch swaps group_id for organization_id. A caller that joins another
+    // org-scoped table (e.g. delivery_runs JOIN users) must be able to disambiguate it,
+    // so a qualified column has to qualify the organization_id it emits.
+    const s = getSession(reqFor(ownerId, "owner", null))!;
+    expect(groupFilter(s, "r.group_id").sql).toBe(" AND r.organization_id = ?");
+  });
+
   it("treats an ungrouped non-owner as reaching nothing", () => {
     const db = getDb();
     const now = new Date().toISOString();

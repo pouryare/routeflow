@@ -1,4 +1,4 @@
-import { getDb } from "@/lib/db";
+import { getDb, plain } from "@/lib/db";
 import { canReachUser, scopeGroupIds, type Session } from "@/lib/session";
 import { bucket } from "@/lib/tasks/lenses";
 import {
@@ -132,14 +132,19 @@ export function pocketTeam(session: Session): PocketTeamMember[] {
     params.push(...ids);
   }
 
-  return db
-    .prepare(
-      `SELECT u.id, u.display_name AS name, u.role,
-              (SELECT COUNT(*) FROM tasks t
-                 WHERE t.assignee_user_id = u.id AND t.status = 'open') AS open
-         FROM users u
-        WHERE ${where}
-        ORDER BY open DESC, u.display_name`
-    )
-    .all(...(params as never[])) as unknown as PocketTeamMember[];
+  // plain(): node:sqlite rows have a null prototype, which Next.js refuses to pass from
+  // a Server Component to a Client Component. pocketFor's rows go through rowToCard
+  // (fresh literals); this query does not, so it needs the copy.
+  return plain(
+    db
+      .prepare(
+        `SELECT u.id, u.display_name AS name, u.role,
+                (SELECT COUNT(*) FROM tasks t
+                   WHERE t.assignee_user_id = u.id AND t.status = 'open') AS open
+           FROM users u
+          WHERE ${where}
+          ORDER BY open DESC, u.display_name`
+      )
+      .all(...(params as never[])) as unknown as PocketTeamMember[]
+  );
 }

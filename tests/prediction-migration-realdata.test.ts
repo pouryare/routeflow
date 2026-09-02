@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 
 const provided = process.env.ROUTEFLOW_MIGRATION_CHECK_DB;
 let dbPath = provided ?? "";
@@ -24,6 +25,23 @@ if (!provided) {
   }
 }
 
+// Materialised-output counts on the untouched copy, BEFORE getDb() migrates it. A
+// pre-Phase-10 backup has none of these tables (0); a later backup already carries
+// materialised rows. The migration must add none — refreshPredictions() is what writes.
+const OUT_TABLES = ["forecasts", "forecast_models", "churn_scores"];
+const before: Record<string, number> = {};
+if (dbPath) {
+  const raw = new DatabaseSync(dbPath);
+  for (const t of OUT_TABLES) {
+    try {
+      before[t] = (raw.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n;
+    } catch {
+      before[t] = 0; // table absent in this backup
+    }
+  }
+  raw.close();
+}
+
 process.env.COVERAGE_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-prediction-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
@@ -40,8 +58,8 @@ describe.skipIf(!dbPath)("Phase 10 prediction migration on real data", () => {
     const cfCols = (db.prepare("PRAGMA table_info(capacity_factors)").all() as { name: string }[]).map((c) => c.name);
     for (const c of ["learned_stop_factor", "learned_speed_factor", "learned_n"]) expect(cfCols, c).toContain(c);
 
-    for (const t of ["forecasts", "forecast_models", "churn_scores"]) {
-      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(0);
+    for (const t of OUT_TABLES) {
+      expect((db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get() as { n: number }).n, t).toBe(before[t]);
     }
     expect(
       (db.prepare("SELECT COUNT(*) AS n FROM seasonal_factors WHERE organization_id IS NULL").get() as { n: number }).n

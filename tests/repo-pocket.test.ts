@@ -12,7 +12,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { createTask } = await import("@/lib/repo/tasks");
-const { pocketFor } = await import("@/lib/repo/pocket");
+const { pocketFor, pocketTeam } = await import("@/lib/repo/pocket");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -88,5 +88,25 @@ describe("pocketFor", () => {
 
     const peerView = pocketFor(sess(sp, "salesperson", gid), { scopeUserId: other, nowIso: NOW });
     expect(peerView.scopeUserId).toBe(sp); // ignored, fell back to self
+  });
+});
+
+describe("pocketTeam", () => {
+  it("returns the manager's reports as plain objects (crosses the RSC boundary)", () => {
+    createTask(1, { title: "کار رضا", kind: "admin", assignee_user_id: other, priority: "NORMAL" });
+
+    const team = pocketTeam(sess(gm, "group_manager", gid));
+    expect(team.map((m) => m.name)).toEqual(expect.arrayContaining(["سارا", "رضا"]));
+    expect(team.find((m) => m.name === "رضا")!.open).toBe(1);
+
+    // node:sqlite rows have a null prototype; Next.js refuses to pass those from a
+    // Server Component to a Client Component. Every row must be a plain object.
+    for (const m of team) {
+      expect(Object.getPrototypeOf(m)).toBe(Object.prototype);
+    }
+  });
+
+  it("is empty for a plain salesperson", () => {
+    expect(pocketTeam(sess(sp, "salesperson", gid))).toEqual([]);
   });
 });

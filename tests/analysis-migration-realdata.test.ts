@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import path from "node:path";
 import os from "node:os";
 import fs from "node:fs";
+import { DatabaseSync } from "node:sqlite";
 
 const provided = process.env.ROUTEFLOW_MIGRATION_CHECK_DB;
 let dbPath = provided ?? "";
@@ -24,6 +25,20 @@ if (!provided) {
   }
 }
 
+// kpi_snapshots count on the untouched copy, BEFORE getDb() migrates it. A pre-Phase-9
+// backup has no such table (0); a later backup already carries snapshots. The migration
+// itself must add none — the sweep below is what writes new ones.
+let snapshotsBefore = 0;
+if (dbPath) {
+  const raw = new DatabaseSync(dbPath);
+  try {
+    snapshotsBefore = (raw.prepare("SELECT COUNT(*) AS n FROM kpi_snapshots").get() as { n: number }).n;
+  } catch {
+    snapshotsBefore = 0;
+  }
+  raw.close();
+}
+
 process.env.COVERAGE_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-analysis-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
@@ -37,7 +52,9 @@ describe.skipIf(!dbPath)("Phase 9 analysis migration on real data", () => {
     for (const t of ["kpi_definitions", "kpi_snapshots"]) {
       expect(db.prepare(`SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?`).get(t), t).toBeTruthy();
     }
-    expect((db.prepare("SELECT COUNT(*) AS n FROM kpi_snapshots").get() as { n: number }).n).toBe(0);
+    expect((db.prepare("SELECT COUNT(*) AS n FROM kpi_snapshots").get() as { n: number }).n).toBe(
+      snapshotsBefore
+    );
     expect(
       (db.prepare("SELECT COUNT(*) AS n FROM kpi_definitions WHERE organization_id IS NULL").get() as { n: number }).n
     ).toBe(14);
