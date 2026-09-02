@@ -21,6 +21,8 @@ export interface OrgFixture {
   vehicleId: number;
   routeTemplateId: number;
   capacityFactorId: number;
+  taskId: number;
+  alertId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -267,6 +269,37 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 7: a task, an alert, a target and a tenant rule override per org.
+    const taskId = insert(
+      `INSERT INTO tasks (organization_id, kind, title, priority, status, created_at)
+       VALUES (?, 'call', ?, 'NORMAL', 'open', ?)`,
+      orgId,
+      `تماس ${tag}`,
+      NOW
+    );
+    const alertId = insert(
+      `INSERT INTO alerts (organization_id, severity, category, title, created_at)
+       VALUES (?, 'warning', 'stock', ?, ?)`,
+      orgId,
+      `هشدار ${tag}`,
+      NOW
+    );
+    insert(
+      `INSERT INTO targets (organization_id, user_id, group_id, period, metric, target_value, created_at)
+       VALUES (?, ?, NULL, '1405-01', 'orders', 20, ?)`,
+      orgId,
+      managerId,
+      NOW
+    );
+    insert(
+      `INSERT INTO rules (organization_id, code, name, trigger_kind, action_kind, created_at, updated_at)
+       VALUES (?, 'SHARED-RULE', ?, 'sweep', 'task', ?, ?)`,
+      orgId,
+      `قانون ${tag}`,
+      NOW,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -288,6 +321,8 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       vehicleId,
       routeTemplateId,
       capacityFactorId,
+      taskId,
+      alertId,
     };
   };
 

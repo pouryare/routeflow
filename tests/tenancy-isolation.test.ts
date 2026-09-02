@@ -221,6 +221,33 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(defaults.n).toBe(6);
   });
 
+  it("keeps tasks, alerts and tenant rules apart; the default rules stay shared", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      for (const [table, selfId, otherId] of [
+        ["tasks", self.taskId, other.taskId],
+        ["alerts", self.alertId, other.alertId],
+      ] as const) {
+        const rows = db
+          .prepare(`SELECT id FROM ${table} WHERE organization_id = ?`)
+          .all(self.orgId) as { id: number }[];
+        expect(rows.map((r) => r.id)).toContain(selfId);
+        expect(rows.map((r) => r.id)).not.toContain(otherId);
+      }
+    }
+    const shared = db
+      .prepare("SELECT COUNT(*) AS n FROM rules WHERE code = 'SHARED-RULE'")
+      .get() as { n: number };
+    expect(shared.n).toBe(2);
+    const defaults = db
+      .prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(defaults.n).toBe(5);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [
