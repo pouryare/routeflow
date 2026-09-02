@@ -378,6 +378,12 @@ export default function CustomerDetailPanel({
       >
         دریافت وجه
       </a>
+      <a
+        href={`/sales/complaints?customer_id=${customer.id}`}
+        className="mt-1 block text-center text-[length:var(--text-xs)] text-text-faint hover:text-accent"
+      >
+        ثبت شکایت کیفی
+      </a>
 
       {customer.notes && (
         <div className="mt-4 border-t border-border pt-3 text-[length:var(--text-sm)] leading-6 text-text-muted">

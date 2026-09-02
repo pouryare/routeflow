@@ -9,6 +9,7 @@ import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
 import InventoryBoard from "@/components/kargah/InventoryBoard";
 import GradientStat from "@/components/kargah/GradientStat";
+import { expiringBatches } from "@/lib/repo/batches";
 
 export const dynamic = "force-dynamic";
 
@@ -40,6 +41,8 @@ export default async function StockPage() {
   const critCount = stock.filter((r) => r.status === "crit").length;
   const lowCount = stock.filter((r) => r.status === "low").length;
   const negatives = stock.filter((row) => row.negative);
+  const stockName = new Map(stock.map((r) => [r.product_id, r.name]));
+  const expiring = expiringBatches(session.organizationId);
 
   const today = toJalali(new Date().toISOString())!;
   const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
@@ -89,6 +92,34 @@ export default async function StockPage() {
           chipTone="sky"
         />
       </div>
+
+      {expiring.length > 0 && (
+        <section className="card p-[var(--space-4)]">
+          <h2 className="m-0 text-[length:var(--text-base)] font-medium" style={{ color: "var(--warn)" }}>
+            انقضا — {faNum(expiring.length)} بچ
+          </h2>
+          <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
+            {expiring.slice(0, 12).map((b) => (
+              <li key={b.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
+                <span className="text-[var(--text)]">
+                  {stockName.get(b.product_id) ?? "کالا"}
+                  <span className="text-[var(--text-muted)]"> · بچ {b.batch_code}</span>
+                </span>
+                <span
+                  className="tabular-nums"
+                  style={{ color: (b.days_to_expiry ?? 0) < 0 ? "var(--crit)" : "var(--warn)" }}
+                >
+                  {b.expiry_date ? faJalaliDate(b.expiry_date) : "—"} ·{" "}
+                  {(b.days_to_expiry ?? 0) < 0
+                    ? `${faNum(Math.abs(b.days_to_expiry ?? 0))} روز گذشته`
+                    : `${faNum(b.days_to_expiry ?? 0)} روز مانده`}{" "}
+                  · {faNum(b.on_hand)} واحد
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {negatives.length > 0 && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">

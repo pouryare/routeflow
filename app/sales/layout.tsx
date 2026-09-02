@@ -43,6 +43,8 @@ export default async function SalesLayout({ children }: { children: ReactNode })
     { href: "/sales/payments", label: "دریافت‌ها", ready: true },
     { href: "/sales/cheques", label: "چک‌ها", ready: session.role === "owner" || session.role === "group_manager" },
     { href: "/sales/stock", label: "انبار و خرید", ready: true },
+    { href: "/sales/batches", label: "بچ‌ها", ready: session.role === "owner" || session.role === "group_manager" },
+    { href: "/sales/complaints", label: "شکایات", ready: true },
     // Owner only: the proxy refuses everyone else, so a tab for them would 404 on click.
     { href: "/sales/admin/users", label: "کاربران", ready: session.role === "owner" },
     { href: "/sales/admin/groups", label: "گروه‌ها", ready: session.role === "owner" },

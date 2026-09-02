@@ -78,6 +78,17 @@ export function proxy(req: NextRequest) {
     return deny("/sales");
   }
 
+  // The batch board + its write APIs are a warehouse/owner tool. A salesperson files a
+  // quality complaint (/sales/complaints stays open to them) but does not run the batch
+  // status machine or record stock movements. The routes re-check.
+  const isBatchAdmin =
+    pathname.startsWith("/sales/batches") ||
+    pathname.startsWith("/api/sales/batches") ||
+    pathname.startsWith("/api/sales/stock/movements");
+  if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
+    return deny("/sales");
+  }
+
   // A driver has one screen. Sending them anywhere else back to it keeps the whole
   // customer/coverage surface off a device that spends the day in a vehicle, and means a
   // mistyped URL is not the thing standing between a driver and the debt ledger.
