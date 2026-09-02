@@ -85,6 +85,11 @@ export const TENANT_TABLES = [
   "lesson_progress",
   "kpi_definitions",
   "kpi_snapshots",
+  "seasonal_factors",
+  "forecast_models",
+  "forecasts",
+  "churn_models",
+  "churn_scores",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1767,6 +1772,81 @@ export function getDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS ix_kpi_snapshots_read
       ON kpi_snapshots(organization_id, period, metric, scope_type);
 
+    /* ---- Phase 10: Prediction -------------------------------------------------
+       The company has no history yet. Every predictor estimates for the cold-start
+       year off these shipped season multipliers, then switches to incremental
+       learning. organization_id NULL = a shipped default (seedSeasonalFactors), the
+       reason_codes treatment; a tenant may tune its own once it has a year of data. */
+    CREATE TABLE IF NOT EXISTS seasonal_factors (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      kind TEXT NOT NULL CHECK (kind IN ('month', 'dow')),
+      idx INTEGER NOT NULL,
+      factor REAL NOT NULL DEFAULT 1,
+      note_fa TEXT,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, kind, idx)
+    );
+
+    /* The learned state of one demand series, folded forward one closed Jalali month
+       at a time. seasonal_naive until n_obs >= 8, then Holt (level + trend). */
+    CREATE TABLE IF NOT EXISTS forecast_models (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('org', 'group', 'product')),
+      entity_id INTEGER NOT NULL DEFAULT 0,
+      metric TEXT NOT NULL CHECK (metric IN ('demand_base_units', 'demand_toman')),
+      method TEXT NOT NULL DEFAULT 'seasonal_naive',
+      level REAL, trend REAL,
+      alpha REAL NOT NULL DEFAULT 0.4,
+      beta REAL NOT NULL DEFAULT 0.15,
+      n_obs INTEGER NOT NULL DEFAULT 0,
+      mae REAL,
+      last_period TEXT,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, entity_type, entity_id, metric)
+    );
+
+    /* Materialised predictions the pages + routing read. */
+    CREATE TABLE IF NOT EXISTS forecasts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      entity_type TEXT NOT NULL,
+      entity_id INTEGER NOT NULL DEFAULT 0,
+      metric TEXT NOT NULL,
+      target_period TEXT NOT NULL,
+      horizon INTEGER NOT NULL,
+      yhat REAL NOT NULL, yhat_lo REAL NOT NULL, yhat_hi REAL NOT NULL,
+      method TEXT NOT NULL,
+      computed_at TEXT NOT NULL,
+      UNIQUE (organization_id, entity_type, entity_id, metric, target_period)
+    );
+    CREATE INDEX IF NOT EXISTS ix_forecasts_read
+      ON forecasts(organization_id, entity_type, metric, target_period);
+
+    /* One logistic weight vector per tenant. organization_id NULL = shipped defaults
+       (seedChurnModel), the reason_codes treatment. */
+    CREATE TABLE IF NOT EXISTS churn_models (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      weights_json TEXT NOT NULL,
+      n_obs INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id)
+    );
+
+    /* Materialised churn probability per customer. */
+    CREATE TABLE IF NOT EXISTS churn_scores (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      probability REAL NOT NULL,
+      band TEXT NOT NULL CHECK (band IN ('low', 'watch', 'high')),
+      reason_fa TEXT,
+      computed_at TEXT NOT NULL,
+      UNIQUE (organization_id, customer_id)
+    );
+
     /* When each template runs. cutoff_time: after this, adding an order to that day's run
        needs an explicit decision (see lib/repo/routing.freezeRun + addStop force). */
     CREATE TABLE IF NOT EXISTS route_schedules (
@@ -2176,7 +2256,9 @@ export function getDb(): DatabaseSync {
       table === "capacity_factors" ||
       table === "rules" ||
       table === "objection_cards" ||
-      table === "kpi_definitions"
+      table === "kpi_definitions" ||
+      table === "seasonal_factors" ||
+      table === "churn_models"
     )
       continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
@@ -2680,6 +2762,8 @@ export function getDb(): DatabaseSync {
   seedRules(db);
   seedObjectionCards(db);
   seedKpiDefinitions(db);
+  seedSeasonalFactors(db);
+  seedChurnModel(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
@@ -2696,7 +2780,9 @@ export function getDb(): DatabaseSync {
       table === "capacity_factors" ||
       table === "rules" ||
       table === "objection_cards" ||
-      table === "kpi_definitions"
+      table === "kpi_definitions" ||
+      table === "seasonal_factors" ||
+      table === "churn_models"
     )
       continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
@@ -2738,6 +2824,23 @@ export function getDb(): DatabaseSync {
   );
   if (!prodVolCols.includes("volume_m3_per_base_unit")) {
     db.exec("ALTER TABLE products ADD COLUMN volume_m3_per_base_unit REAL");
+  }
+
+  // Phase 10 (Prediction): learned capacity factors sit beside the shipped/tuned ones.
+  // resolvedCapacityFactorsFor uses the learned value only once learned_n >= MIN_LEARN_N,
+  // so a fresh column set (learned_n = 0) leaves every Phase 6 reading unchanged.
+  const cfCols = (db.prepare("PRAGMA table_info(capacity_factors)").all() as { name: string }[]).map(
+    (c) => c.name
+  );
+  const cfAdds: [string, string][] = [
+    ["learned_stop_factor", "REAL"],
+    ["learned_speed_factor", "REAL"],
+    ["learned_service_time_factor", "REAL"],
+    ["learned_max_duration_factor", "REAL"],
+    ["learned_n", "INTEGER NOT NULL DEFAULT 0"],
+  ];
+  for (const [col, type] of cfAdds) {
+    if (!cfCols.includes(col)) db.exec(`ALTER TABLE capacity_factors ADD COLUMN ${col} ${type}`);
   }
 
   // Phase 4 (Offline-first): client_uuid on every offline-writable table. No CHECK, so a
@@ -3501,6 +3604,68 @@ export function seedKpiDefinitions(db: DatabaseSync): void {
       d.metric
     );
   }
+}
+
+/** Phase 10: the shipped season shape — a mild guess, mean-normalised to ~1 across
+ *  each cycle. The whole point of the cold-start rule is that a brand-new tenant
+ *  forecasts off this until it has a year of its own months. 12 Jalali-month factors
+ *  (Farvardin=1 … a Nowruz lift, an Esfand run-up, a mid-summer dip) + 7 day-of-week
+ *  factors (Saturday=0, a Thursday/Friday drop for a wholesale week). */
+export const SEASONAL_FACTOR_SEED: { kind: "month" | "dow"; idx: number; factor: number }[] = [
+  { kind: "month", idx: 1, factor: 1.12 },
+  { kind: "month", idx: 2, factor: 1.05 },
+  { kind: "month", idx: 3, factor: 1.0 },
+  { kind: "month", idx: 4, factor: 0.95 },
+  { kind: "month", idx: 5, factor: 0.9 },
+  { kind: "month", idx: 6, factor: 0.9 },
+  { kind: "month", idx: 7, factor: 0.95 },
+  { kind: "month", idx: 8, factor: 1.0 },
+  { kind: "month", idx: 9, factor: 1.03 },
+  { kind: "month", idx: 10, factor: 1.03 },
+  { kind: "month", idx: 11, factor: 1.07 },
+  { kind: "month", idx: 12, factor: 1.0 },
+  { kind: "dow", idx: 0, factor: 1.15 }, // Saturday — week opens
+  { kind: "dow", idx: 1, factor: 1.15 }, // Sunday
+  { kind: "dow", idx: 2, factor: 1.1 }, // Monday
+  { kind: "dow", idx: 3, factor: 1.05 }, // Tuesday
+  { kind: "dow", idx: 4, factor: 1.0 }, // Wednesday
+  { kind: "dow", idx: 5, factor: 0.75 }, // Thursday
+  { kind: "dow", idx: 6, factor: 0.6 }, // Friday — mostly closed
+];
+
+export function seedSeasonalFactors(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO seasonal_factors (organization_id, kind, idx, factor, updated_at)
+     SELECT NULL, ?, ?, ?, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM seasonal_factors WHERE organization_id IS NULL AND kind = ? AND idx = ?
+      )`
+  );
+  for (const r of SEASONAL_FACTOR_SEED) {
+    insert.run(r.kind, r.idx, r.factor, now, r.kind, r.idx);
+  }
+}
+
+/** Phase 10: the shipped churn weight vector — recency-dominated, so a brand-new tenant
+ *  gets a sensible "silent past their own cadence = likely gone" score before it has a
+ *  single lapse to learn from. trend is entered centred at 1 (see lib/predict/churn). */
+export const CHURN_MODEL_SEED = {
+  bias: -1.2,
+  recency_ratio: 1.1,
+  trend: -0.8,
+  tenure: -0.3,
+  complaints: 0.5,
+  overdue: 0.7,
+};
+
+export function seedChurnModel(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  db.prepare(
+    `INSERT INTO churn_models (organization_id, weights_json, n_obs, updated_at)
+     SELECT NULL, ?, 0, ?
+      WHERE NOT EXISTS (SELECT 1 FROM churn_models WHERE organization_id IS NULL)`
+  ).run(JSON.stringify(CHURN_MODEL_SEED), now);
 }
 
 export function seedCapacityFactors(db: DatabaseSync): void {

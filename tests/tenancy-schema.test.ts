@@ -126,7 +126,9 @@ describe("organization_id backfill", () => {
         table === "capacity_factors" ||
         table === "rules" ||
         table === "objection_cards" ||
-        table === "kpi_definitions"
+        table === "kpi_definitions" ||
+        table === "seasonal_factors" ||
+        table === "churn_models"
       )
         continue;
       const row = db
