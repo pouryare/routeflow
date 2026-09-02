@@ -59,6 +59,7 @@ export const TENANT_TABLES = [
   "manager_commission_overrides",
   "manager_commission_payments",
   "representative_profiles",
+  "credit_approvals",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -322,6 +323,26 @@ export function getDb(): DatabaseSync {
       updated_at TEXT NOT NULL,
       UNIQUE (organization_id, customer_id),
       UNIQUE (organization_id, rep_code)
+    );
+
+    /* Phase 0b M2: an order that breaches a direct customer's credit limit parks here
+       for a manager to approve or reject. Direct customers only -- reps buy on cash or
+       bank cheque, so the flow refuses a rep customer at request time. The automatic
+       "order over limit -> PENDING_CREDIT" trigger arrives with the order state machine
+       in Phase 3; for now this is a table plus a manual decide surface. */
+    CREATE TABLE IF NOT EXISTS credit_approvals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      requested_by INTEGER NOT NULL REFERENCES users(id),
+      requested_at TEXT NOT NULL,
+      customer_balance_toman INTEGER NOT NULL,
+      credit_limit_toman INTEGER,
+      overage_toman INTEGER NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','expired')),
+      decided_by INTEGER REFERENCES users(id),
+      decided_at TEXT,
+      reason TEXT
     );
 
     /* Reaches a tenant through representative_profiles, so it is not in TENANT_TABLES. */
