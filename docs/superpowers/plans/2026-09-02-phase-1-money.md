@@ -1065,8 +1065,8 @@ git push -q origin phase-1-money
 ### Task 13: Tenancy wiring — `TENANT_TABLES`, exempt list, two-org isolation
 
 **Files:**
-- Modify: `lib/db.ts` (`TENANT_TABLES` += `"payments"`, `"cheques"`)
-- Modify: `tests/tenancy-schema.test.ts` (exempt set += `"payment_allocations"`)
+- Modify: `lib/db.ts` (`TENANT_TABLES` += `"cheques"` — `"payments"` was added in Task 1)
+- Modify: `tests/tenancy-schema.test.ts` (`"payment_allocations"` was added to the exempt set in Task 1; nothing more needed here unless a new exempt table appears)
 - Modify: `tests/helpers/twoOrgs.ts` (`OrgFixture` += `paymentId`, `chequeId`; seed a `payments` row + a `cheques` row per org with a colliding `cheque_no`)
 - Modify: `tests/tenancy-isolation.test.ts` (assert payments + cheques stay per-org; colliding `cheque_no` across orgs is allowed)
 - Test: the above two test files are the test.

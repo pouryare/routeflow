@@ -156,6 +156,7 @@ describe("organization_id backfill", () => {
       "push_subscriptions", // a browser endpoint, not business data
       "app_meta",           // key/value store for migration markers -- not tenant data
       "representative_onboarding_steps", // reaches a tenant through representative_profiles
+      "payment_allocations", // reaches a tenant through payments
       "platform_access_log", // vendor audit trail; its organization_id names the tenant
                              // that was looked at, not one that owns the row
       "sales",              // the legacy imported ledger, read-only and being retired

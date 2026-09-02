@@ -60,6 +60,7 @@ export const TENANT_TABLES = [
   "manager_commission_payments",
   "representative_profiles",
   "credit_approvals",
+  "payments",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -752,6 +753,45 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_purchase_lines_purchase ON purchase_lines(purchase_id);
     CREATE INDEX IF NOT EXISTS idx_purchase_lines_product ON purchase_lines(product_id);
+
+    /* Phase 1 (Money). One row per sum of money received. Append-only: a mistake is
+       voided_at + a fresh row, never an edit, so the ledger cannot be rewritten. The
+       amount is settled against orders through payment_allocations; anything left over
+       sits on the customer's account as an allocation with order_id NULL. */
+    CREATE TABLE IF NOT EXISTS payments (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      amount_toman INTEGER NOT NULL,
+      method TEXT NOT NULL CHECK (method IN
+        ('CASH', 'POS', 'CARD_TO_CARD', 'CHEQUE', 'CREDIT_NOTE', 'OTHER')),
+      received_at TEXT NOT NULL,
+      received_by INTEGER NOT NULL REFERENCES users(id),
+      reference TEXT,
+      receipt_photo_stem TEXT,
+      /* Set iff method = 'CHEQUE'. No FK: the cheques table is created by a later
+         migration and SQLite cannot add the constraint afterwards -- the link is
+         enforced in lib/repo/cheques.ts. */
+      cheque_id INTEGER,
+      note TEXT,
+      voided_at TEXT,
+      voided_by INTEGER REFERENCES users(id),
+      void_reason TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_payments_customer ON payments(organization_id, customer_id, received_at);
+
+    /* Reaches a tenant through payments, so it carries no organization_id of its own
+       and is on the exempt list in tests/tenancy-schema.test.ts. order_id NULL means
+       the slice is on account (an unallocated credit). */
+    CREATE TABLE IF NOT EXISTS payment_allocations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      payment_id INTEGER NOT NULL REFERENCES payments(id) ON DELETE CASCADE,
+      order_id INTEGER REFERENCES orders(id),
+      amount_toman INTEGER NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_alloc_order ON payment_allocations(order_id);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
@@ -1389,6 +1429,40 @@ export function getDb(): DatabaseSync {
     } catch (e) {
       db.exec("ROLLBACK");
       throw e;
+    }
+  }
+
+  // Phase 1 (Money): a POS / card-to-card payment can carry a receipt photo, so photos
+  // must accept entity_type 'payment'. SQLite cannot ALTER a CHECK -- same rebuild the
+  // visit_plans widening above uses, guarded on the constraint text so it runs once.
+  const photosSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='photos'")
+    .get() as { sql: string } | undefined;
+  if (photosSchema && !photosSchema.sql.includes("'payment'")) {
+    db.exec("PRAGMA foreign_keys = OFF;");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE photos_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'payment')),
+          entity_id INTEGER NOT NULL,
+          file_stem TEXT UNIQUE NOT NULL,
+          caption TEXT,
+          taken_at TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        );
+        INSERT INTO photos_new SELECT id, entity_type, entity_id, file_stem, caption, taken_at, created_at FROM photos;
+        DROP TABLE photos;
+        ALTER TABLE photos_new RENAME TO photos;
+        CREATE INDEX IF NOT EXISTS idx_photos_entity ON photos(entity_type, entity_id, taken_at);
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON;");
     }
   }
 
