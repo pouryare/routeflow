@@ -341,6 +341,169 @@ export function voidPayment(
   }
 }
 
+export interface CustomerDebt {
+  total: number;
+  bucket_0_7: number;
+  bucket_8_30: number;
+  bucket_30_plus: number;
+}
+
+const ZERO_DEBT = (): CustomerDebt => ({
+  total: 0,
+  bucket_0_7: 0,
+  bucket_8_30: 0,
+  bucket_30_plus: 0,
+});
+
+function customersHasOpeningBalance(db: DatabaseSync): boolean {
+  return (
+    db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]
+  ).some((c) => c.name === "opening_balance_toman");
+}
+
+function ageDays(nowISO: string, refISO: string): number {
+  return Math.floor((Date.parse(nowISO) - Date.parse(refISO)) / 86_400_000);
+}
+
+function bucketOf(debt: CustomerDebt, days: number, amount: number): void {
+  if (days < 8) debt.bucket_0_7 += amount;
+  else if (days < 31) debt.bucket_8_30 += amount;
+  else debt.bucket_30_plus += amount;
+}
+
+/** A customer's live balance, computed -- never stored.
+ *
+ *  `total` is `opening_balance + Σ(delivered order totals) − Σ(non-voided allocations
+ *  for this customer, on-account slices included)`. The three buckets age each
+ *  still-unpaid delivered order by `asOf − delivered_at` (falling back to the order
+ *  date); the opening balance is old by definition and lands wholly in `bucket_30_plus`.
+ */
+export function customerDebt(
+  organizationId: number,
+  customerId: number,
+  asOf?: string
+): CustomerDebt {
+  const db = paymentsRepo.db();
+  const now = asOf ?? new Date().toISOString();
+
+  const opening = customersHasOpeningBalance(db)
+    ? Number(
+        (
+          db
+            .prepare(
+              "SELECT COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE id = ? AND organization_id = ?"
+            )
+            .get(customerId, organizationId) as { ob: number } | undefined
+        )?.ob ?? 0
+      )
+    : 0;
+
+  const allocated = Number(
+    (
+      db
+        .prepare(
+          `SELECT COALESCE(SUM(a.amount_toman), 0) AS s
+             FROM payment_allocations a
+             JOIN payments p ON p.id = a.payment_id
+            WHERE p.customer_id = ? AND p.organization_id = ? AND p.voided_at IS NULL`
+        )
+        .get(customerId, organizationId) as { s: number }
+    ).s
+  );
+
+  const debt = ZERO_DEBT();
+  debt.total = opening;
+  debt.bucket_30_plus = opening;
+
+  for (const o of deliveredOrdersForCustomer(db, organizationId, customerId)) {
+    debt.total += o.total_toman;
+    const outstanding = Math.max(0, o.total_toman - o.paid_toman);
+    if (outstanding > 0) bucketOf(debt, ageDays(now, o.delivered_at ?? o.order_date), outstanding);
+  }
+  debt.total -= allocated;
+  return debt;
+}
+
+/** Every customer's debt in one pass, for the dashboard and reports. */
+export function customerDebtsForOrg(
+  organizationId: number,
+  asOf?: string
+): Map<number, CustomerDebt> {
+  const db = paymentsRepo.db();
+  const now = asOf ?? new Date().toISOString();
+  const out = new Map<number, CustomerDebt>();
+
+  const hasOpening = customersHasOpeningBalance(db);
+  const customers = db
+    .prepare(
+      hasOpening
+        ? "SELECT id, COALESCE(opening_balance_toman, 0) AS ob FROM customers WHERE organization_id = ?"
+        : "SELECT id, 0 AS ob FROM customers WHERE organization_id = ?"
+    )
+    .all(organizationId) as unknown as { id: number; ob: number }[];
+  for (const c of customers) {
+    const d = ZERO_DEBT();
+    d.total = c.ob;
+    d.bucket_30_plus = c.ob;
+    out.set(c.id, d);
+  }
+
+  const orders = db
+    .prepare(
+      `SELECT o.id, o.customer_id, o.order_date, o.delivered_at, o.paid_toman
+         FROM orders o
+         JOIN customers c ON c.id = o.customer_id
+        WHERE c.organization_id = ? AND o.status = 'delivered'`
+    )
+    .all(organizationId) as unknown as {
+    id: number;
+    customer_id: number;
+    order_date: string;
+    delivered_at: string | null;
+    paid_toman: number;
+  }[];
+
+  const lineRows = db
+    .prepare(
+      `SELECT ol.order_id, ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman,
+              ol.unit_cost_toman, ol.qty_per_pack, ol.kg_per_base_unit
+         FROM order_lines ol
+         JOIN orders o ON o.id = ol.order_id
+         JOIN customers c ON c.id = o.customer_id
+        WHERE c.organization_id = ? AND o.status = 'delivered'`
+    )
+    .all(organizationId) as unknown as (LineSnapshot & { order_id: number })[];
+  const totalByOrder = new Map<number, number>();
+  for (const l of lineRows) {
+    totalByOrder.set(l.order_id, (totalByOrder.get(l.order_id) ?? 0) + lineTotalToman(l));
+  }
+
+  for (const o of orders) {
+    const d = out.get(o.customer_id);
+    if (!d) continue;
+    const total = totalByOrder.get(o.id) ?? 0;
+    d.total += total;
+    const outstanding = Math.max(0, total - o.paid_toman);
+    if (outstanding > 0) bucketOf(d, ageDays(now, o.delivered_at ?? o.order_date), outstanding);
+  }
+
+  const allocRows = db
+    .prepare(
+      `SELECT p.customer_id, COALESCE(SUM(a.amount_toman), 0) AS allocated
+         FROM payment_allocations a
+         JOIN payments p ON p.id = a.payment_id
+        WHERE p.organization_id = ? AND p.voided_at IS NULL
+        GROUP BY p.customer_id`
+    )
+    .all(organizationId) as unknown as { customer_id: number; allocated: number }[];
+  for (const r of allocRows) {
+    const d = out.get(r.customer_id);
+    if (d) d.total -= r.allocated;
+  }
+
+  return out;
+}
+
 export function voidPaymentTxn(
   db: DatabaseSync,
   organizationId: number,
