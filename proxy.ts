@@ -95,7 +95,10 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/sales/routing") ||
     pathname.startsWith("/api/sales/vehicles") ||
     pathname.startsWith("/api/sales/route-templates") ||
-    pathname.startsWith("/api/sales/runs/");
+    pathname.startsWith("/api/sales/runs/") ||
+    // Phase 6: weather refresh + factor tuning are manager tools; the read is opener.
+    pathname.startsWith("/api/sales/weather/refresh") ||
+    pathname.startsWith("/api/sales/capacity-factors");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
     return deny("/sales");
   }
