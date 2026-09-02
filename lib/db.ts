@@ -1747,6 +1747,8 @@ export function getDb(): DatabaseSync {
     if (!tenantCols.some((c) => c.name === "organization_id")) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
     }
+    // reason_codes keeps its NULL rows -- they are the shared system defaults.
+    if (table === "reason_codes") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2234,6 +2236,7 @@ export function getDb(): DatabaseSync {
   backfillLegacyPayments(db);
 
   seedFacilities(db);
+  seedReasonCodes(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
@@ -2242,6 +2245,10 @@ export function getDb(): DatabaseSync {
   // running this every boot is that it stays correct for whatever gets added later
   // without anyone having to remember to update this comment.
   for (const table of TENANT_TABLES) {
+    // reason_codes is the one exception: a NULL organization_id there is deliberate --
+    // it marks a system-default row every tenant shares -- not a row that missed the
+    // tenancy backfill.
+    if (table === "reason_codes") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2611,6 +2618,42 @@ export function seedFacilities(db: DatabaseSync): void {
       now,
       1
     );
+  }
+}
+
+/** Phase 3: the system-default reason codes every tenant sees (organization_id NULL).
+ *  A tenant may add its own rows on top. `INSERT ... SELECT ... WHERE NOT EXISTS` per
+ *  row rather than `INSERT OR IGNORE`, because the UNIQUE is on
+ *  (organization_id, domain, code) and NULL != NULL under SQLite, so OR IGNORE would
+ *  re-insert every boot. */
+export const REASON_CODE_SEED: { domain: string; code: string; label_fa: string }[] = [
+  { domain: "delivery_fail", code: "CUSTOMER_ABSENT", label_fa: "مشتری در محل نبود" },
+  { domain: "delivery_fail", code: "CUSTOMER_REFUSED", label_fa: "مشتری تحویل نگرفت" },
+  { domain: "delivery_fail", code: "ADDRESS_NOT_FOUND", label_fa: "آدرس پیدا نشد" },
+  { domain: "delivery_fail", code: "SHOP_CLOSED", label_fa: "مغازه تعطیل بود" },
+  { domain: "delivery_fail", code: "PAYMENT_DISPUTE", label_fa: "اختلاف بر سر مبلغ" },
+  { domain: "delivery_delay", code: "TRAFFIC", label_fa: "ترافیک سنگین" },
+  { domain: "delivery_delay", code: "VEHICLE_ISSUE", label_fa: "مشکل خودرو" },
+  { domain: "delivery_delay", code: "WEATHER", label_fa: "شرایط جوی" },
+  { domain: "order_cancel", code: "CUSTOMER_CANCELLED", label_fa: "مشتری لغو کرد" },
+  { domain: "order_cancel", code: "DUPLICATE", label_fa: "سفارش تکراری" },
+  { domain: "order_cancel", code: "STOCK_SHORTAGE", label_fa: "نبود موجودی" },
+  { domain: "order_return", code: "QUALITY_ISSUE", label_fa: "مشکل کیفی کالا" },
+  { domain: "order_return", code: "WRONG_ITEM", label_fa: "کالای اشتباه" },
+];
+
+export function seedReasonCodes(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO reason_codes (organization_id, domain, code, label_fa, active, created_at)
+     SELECT NULL, ?, ?, ?, 1, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM reason_codes
+         WHERE organization_id IS NULL AND domain = ? AND code = ?
+      )`
+  );
+  for (const r of REASON_CODE_SEED) {
+    insert.run(r.domain, r.code, r.label_fa, now, r.domain, r.code);
   }
 }
 
