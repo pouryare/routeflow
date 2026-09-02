@@ -61,6 +61,7 @@ export const TENANT_TABLES = [
   "representative_profiles",
   "credit_approvals",
   "payments",
+  "cheques",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -868,6 +869,34 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_alloc_order ON payment_allocations(order_id);
+
+    /* Phase 1 (Money). An Iranian customer cheque and its whole journey, as a state
+       machine (lib/chequeStates.ts) rather than a free status field. The normal entry
+       point is 'in_hand'; 'issued' is a stub for a cheque we write (supplier payments,
+       later). A 'bounced' transition reverses the linked payment's allocations -- the
+       debt it had settled comes back -- and raises a reminder. */
+    CREATE TABLE IF NOT EXISTS cheques (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      amount_toman INTEGER NOT NULL,
+      cheque_no TEXT NOT NULL,
+      bank_name TEXT,
+      due_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'in_hand' CHECK (status IN
+        ('issued', 'in_hand', 'deposited', 'cleared', 'bounced', 'replaced', 'cancelled')),
+      received_at TEXT NOT NULL,
+      received_by INTEGER NOT NULL REFERENCES users(id),
+      deposited_at TEXT,
+      cleared_at TEXT,
+      bounced_at TEXT,
+      replaced_by_cheque_id INTEGER REFERENCES cheques(id),
+      note TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, customer_id, cheque_no)
+    );
+    CREATE INDEX IF NOT EXISTS ix_cheques_status ON cheques(organization_id, status, due_date);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
