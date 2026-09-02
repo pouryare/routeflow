@@ -6,6 +6,17 @@
 
 Spec: `docs/superpowers/specs/2026-09-02-board-and-pocket-design.md` · Plan: `docs/superpowers/plans/2026-09-02-board-and-pocket.md` (18 tasks, done).
 
+**Post-deploy follow-ups (2026-09-02, all on `main`, deployed):**
+
+| Commit | What |
+|---|---|
+| `32579ae` | `/sales/pocket` 500 — `pocketTeam()` handed node:sqlite rows (null prototype) to a Client Component; wrapped in `plain()`. `/sales/schedule` 500 (pre-existing, owner-only) — `groupFilter(session)` emits unqualified `organization_id` and the runs query joins `users`; call `groupFilter(session, "r.group_id")`. Hardened the spine/analysis/prediction migration-realdata tests (they asserted their phase's tables empty after migrating the newest backup — false once a current prod backup lands in `data/backups/`; now compare pre/post row counts). |
+| `a2532ea` | `/today` is now a first-class `/sales` tab at `/sales/today` (kargah chrome + travelling pill, `Briefing` gained a `variant="kargah"`). The bare `/today` still serves the driver's briefing; everyone else redirects. `app/page.tsx` post-login → `/sales/today`. |
+| `e2390d7` | `scripts/seed-demo.mjs` enrichment: monthly targets, ~19 Board/Pocket tasks (every kind/stage/lane), 4 recurrences, 5 more delivery runs, cheques in every state, quality complaints, a pending credit approval, academy progress — all idempotent. `--remove` rewritten to run with FK off + assert `foreign_key_check` clean before commit (the old teardown orphaned rows against a DB with real delivery/batch/stock activity). De-flaked `repo-rules-recurring` "weekday" test (derived the day from `getUTCDay()` vs the code's Tehran civil date — failed every evening 20:30–24:00 UTC). |
+| `a32195b` | `/sales/academy` 500 — `listObjectionCards()` / `lessonProgress()` returned node:sqlite rows to `<AcademyLibrary>`; only stayed up while `lesson_progress` was empty. `plain()` both. |
+
+Demo data seeded into the live org (`node scripts/seed-demo.mjs --force`, backup `data/backups/pre-demo-seed-20260902-203053.db`), then `rules` / `analysis` / `predict` sweeps run (286 KPI snapshots for `1405-06`). Every `/sales` tab returns 200 for owner / group_manager / salesperson; `/today` + `/driver` for the driver. Clear the demo with `node scripts/seed-demo.mjs --remove`.
+
 Two new views on the Phase 7 `tasks` spine, for the کارگاه (`/sales`) section: a member **Pocket** and a manager task **Board** with three synced lenses.
 
 ## What shipped
