@@ -3,6 +3,7 @@ import { makeRepo } from "./base";
 import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import type { CustomerDebt } from "@/lib/types";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
+import { tryEmitEvent } from "./events";
 
 export type { CustomerDebt };
 
@@ -299,6 +300,18 @@ export function recordPaymentTxn(
   )) {
     recomputeOrderPaymentTxn(db, organizationId, orderId);
   }
+
+  tryEmitEvent(
+    organizationId,
+    {
+      kind: "payment.recorded",
+      entity_type: "payment",
+      entity_id: paymentId,
+      actor_user_id: input.received_by,
+      metadata: { amount_toman: input.amount_toman, method: input.method, customer_id: input.customer_id },
+    },
+    db
+  );
 
   return paymentId;
 }

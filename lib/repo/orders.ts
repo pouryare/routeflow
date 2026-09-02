@@ -9,6 +9,7 @@ import {
   type OrderEffect,
 } from "@/lib/orderStateMachine";
 import { reserveForOrder, releaseForOrder, consumeForOrder } from "./stock";
+import { tryEmitEvent } from "./events";
 
 /** A refusal the caller shows the user, not a bug. */
 export class OrderError extends Error {}
@@ -207,6 +208,19 @@ export function advanceOrder(
       note: opts.note ?? null,
       device_time: opts.device_time ?? null,
     });
+
+    // Phase 7: mirror the transition onto the generic event bus so rules can listen.
+    tryEmitEvent(
+      organizationId,
+      {
+        kind: `order.${action}`,
+        entity_type: "order",
+        entity_id: orderId,
+        actor_user_id: actor.id,
+        metadata: { from, to: t.to },
+      },
+      conn
+    );
 
     return t.to;
   };

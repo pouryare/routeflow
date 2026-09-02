@@ -13,6 +13,7 @@ import { orderTotalToman, lineTotalToman, lineKg, type LineSnapshot } from "./or
 import { recordPaymentTxn, voidPaymentTxn, recomputeOrderPaymentTxn } from "./repo/payments";
 import { allocateFEFO, recordMovementsTxn, defaultFacilityId } from "./repo/stock";
 import { advanceOrder } from "./repo/orders";
+import { tryEmitEvent } from "./repo/events";
 import { planDelivery, deliveryForStop } from "./repo/deliveries";
 import type { OrderStatus } from "./orderStateMachine";
 
@@ -315,6 +316,20 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
         { id: input.by, role: "driver" },
         { db, reason_code_id: nothingTaken ? input.fail_reason_id ?? null : null }
       );
+      if (nothingTaken) {
+        // Phase 7: a failed delivery is a rule trigger.
+        tryEmitEvent(
+          orgId,
+          {
+            kind: "delivery.failed",
+            entity_type: "order",
+            entity_id: stop.order_id,
+            actor_user_id: input.by,
+            metadata: { customer_id: stop.customer_id, fail_reason_id: input.fail_reason_id ?? null },
+          },
+          db
+        );
+      }
     }
 
     // Cash handed over at the door is a real payment now, not a number stamped onto the

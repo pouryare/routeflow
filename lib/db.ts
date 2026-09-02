@@ -1595,10 +1595,12 @@ export function getDb(): DatabaseSync {
        generic append-only fact bus; order_events stays as the order-specific audit. */
     CREATE TABLE IF NOT EXISTS events (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      /* No FK on any reference: an append-only bus must outlive the rows it mentions,
+         and deleting a user or an order must not cascade-break the history. */
+      organization_id INTEGER NOT NULL,
       kind TEXT NOT NULL,
       entity_type TEXT, entity_id INTEGER,
-      actor_user_id INTEGER REFERENCES users(id),
+      actor_user_id INTEGER,
       metadata_json TEXT,
       occurred_at TEXT NOT NULL,
       created_at TEXT NOT NULL
