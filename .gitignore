@@ -65,3 +65,4 @@ next-env.d.ts
 /data/tehran-map-src
 /data/tehran-districts-src
 
+.qa-shot.mjs
