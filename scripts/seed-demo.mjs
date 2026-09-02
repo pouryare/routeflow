@@ -76,11 +76,54 @@ db.exec(`
     created_by INTEGER REFERENCES users(id),
     created_at TEXT NOT NULL
   );
+  CREATE TABLE IF NOT EXISTS representative_profiles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    organization_id INTEGER NOT NULL REFERENCES organizations(id),
+    customer_id INTEGER NOT NULL REFERENCES customers(id),
+    rep_code TEXT NOT NULL,
+    manager_user_id INTEGER REFERENCES users(id),
+    contract_signed_at TEXT, contract_expires_at TEXT,
+    exclusivity_territory_id INTEGER REFERENCES districts(id),
+    stage TEXT NOT NULL DEFAULT 'prospect' CHECK (stage IN
+      ('prospect','qualified','negotiating','documents','approved','onboarding','active','dormant','terminated')),
+    activated_at TEXT, first_order_at TEXT,
+    credit_terms_days INTEGER NOT NULL DEFAULT 0,
+    discount_tier TEXT, monthly_target_kg REAL, monthly_target_toman INTEGER,
+    health_score REAL, health_computed_at TEXT, notes TEXT,
+    created_at TEXT NOT NULL, updated_at TEXT NOT NULL,
+    UNIQUE (organization_id, customer_id),
+    UNIQUE (organization_id, rep_code)
+  );
+  CREATE TABLE IF NOT EXISTS representative_onboarding_steps (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    representative_id INTEGER NOT NULL REFERENCES representative_profiles(id) ON DELETE CASCADE,
+    step_code TEXT NOT NULL, label_fa TEXT NOT NULL,
+    required INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL DEFAULT 0,
+    completed_at TEXT, completed_by INTEGER REFERENCES users(id), notes TEXT,
+    UNIQUE (representative_id, step_code)
+  );
 `);
 const now = new Date().toISOString();
 
 const plain = (rows) => rows.map((r) => ({ ...r }));
 const iso = (daysAgo) => new Date(Date.now() - daysAgo * 86_400_000).toISOString().slice(0, 10);
+
+const FORCE = process.argv.includes("--force");
+if (!REMOVE && !FORCE) {
+  // Seeding demo rows onto a live database mixes fake orders into real reporting. Removing
+  // them is always safe, so --remove skips this.
+  if (process.env.NODE_ENV === "production") {
+    console.error("[seed-demo] refusing: NODE_ENV=production. Pass --force if you really mean it.");
+    process.exit(1);
+  }
+  const realOrders = db
+    .prepare("SELECT COUNT(*) n FROM orders WHERE order_no NOT LIKE '1404-9%'")
+    .get().n;
+  if (realOrders > 0) {
+    console.error(`[seed-demo] refusing: ${realOrders} real order(s) already exist. Pass --force to override.`);
+    process.exit(1);
+  }
+}
 
 /* ── removal ───────────────────────────────────────────────────────────────── */
 if (REMOVE) {
@@ -107,6 +150,11 @@ if (REMOVE) {
     db.exec("DELETE FROM manager_commission_overrides WHERE manager_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
     db.exec("DELETE FROM manager_commission_payments WHERE manager_user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')");
     db.exec("DELETE FROM visit_plans WHERE purpose IS NOT NULL");
+    db.exec(
+      "DELETE FROM representative_onboarding_steps WHERE representative_id IN (SELECT id FROM representative_profiles WHERE rep_code LIKE 'DEMO-%')"
+    );
+    db.exec("DELETE FROM credit_approvals WHERE order_id NOT IN (SELECT id FROM orders)");
+    db.exec("DELETE FROM representative_profiles WHERE rep_code LIKE 'DEMO-%'");
     db.exec("DELETE FROM users WHERE username LIKE 'demo.%'");
     // The group only ever exists to hold those users -- deleted after them, so nothing
     // still references it, and guarded by the same slug it was created under.
@@ -423,6 +471,38 @@ try {
       `INSERT INTO purchase_lines (purchase_id, product_id, base_qty, unit_cost_toman, created_at)
        VALUES (?, ?, ?, ?, ?)`
     ).run(purchase, m.pid, 200 * m.per, m.cost, now);
+  }
+
+  /* ── a representative mid-onboarding, so /sales/admin/representatives has a row ─── */
+  const repCust = plain(db.prepare("SELECT id FROM customers ORDER BY id LIMIT 1").all())[0];
+  if (repCust) {
+    const repId = Number(
+      db
+        .prepare(
+          `INSERT INTO representative_profiles
+             (organization_id, customer_id, rep_code, stage, credit_terms_days, created_at, updated_at)
+           VALUES (1, ?, 'DEMO-REP-01', 'onboarding', 30, ?, ?)
+           ON CONFLICT DO NOTHING`
+        )
+        .run(repCust.id, now, now).lastInsertRowid
+    );
+    if (repId) {
+      const steps = [
+        ["contract_signed", "امضای قرارداد", 1, 1],
+        ["territory_assigned", "تخصیص منطقهٔ فعالیت", 1, 2],
+        ["price_list_assigned", "تعیین لیست قیمت نماینده", 1, 3],
+        ["credit_terms_set", "تعیین شرایط پرداخت", 1, 4],
+        ["first_stock_order", "ثبت اولین سفارش تأمین", 1, 5],
+        ["training_module_6", "گذراندن دورهٔ آموزش نماینده", 0, 6],
+      ];
+      const stepStmt = db.prepare(
+        `INSERT INTO representative_onboarding_steps (representative_id, step_code, label_fa, required, sort_order, completed_at)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      );
+      for (const [code, label, req, order] of steps) {
+        stepStmt.run(repId, code, label, req, order, order <= 2 ? now : null);
+      }
+    }
   }
 
   db.exec("COMMIT");
