@@ -28,10 +28,16 @@ function cookie(uid: number, role: string) {
 function ctxFor(id: number) {
   return { params: Promise.resolve({ id: String(id) }) } as never;
 }
-function req(url: string, uid: number, role: string, init: RequestInit = {}) {
+function req(
+  url: string,
+  uid: number,
+  role: string,
+  init: { method?: string; body?: string } = {}
+) {
   return new NextRequest(`http://localhost${url}`, {
-    ...init,
-    headers: { cookie: cookie(uid, role), "content-type": "application/json", ...(init.headers ?? {}) },
+    method: init.method,
+    body: init.body,
+    headers: { cookie: cookie(uid, role), "content-type": "application/json" },
   });
 }
 
