@@ -21,11 +21,15 @@ export async function POST(req: NextRequest) {
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.title || !b?.kind) return NextResponse.json({ ok: false, error: "عنوان و نوع لازم است" }, { status: 400 });
+  const kind = String(b.kind);
+  // A reminder / note the member adds for themselves lands in their own Pocket.
+  const selfKinds = kind === "reminder" || kind === "note";
   try {
     const id = createTask(guard.session.organizationId, {
       title: String(b.title),
-      kind: String(b.kind),
-      assignee_user_id: (b.assignee_user_id as number | null) ?? null,
+      kind,
+      assignee_user_id:
+        (b.assignee_user_id as number | null) ?? (selfKinds ? guard.session.user.id : null),
       role_hint: (b.role_hint as string | null) ?? null,
       group_id: (b.group_id as number | null) ?? guard.session.groupId ?? null,
       entity_type: (b.entity_type as string | null) ?? null,

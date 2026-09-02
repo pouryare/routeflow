@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import { canReachUser, type Session } from "@/lib/session";
+import { canReachUser, scopeGroupIds, type Session } from "@/lib/session";
 import { bucket } from "@/lib/tasks/lenses";
 import {
   rowToCard,
@@ -104,4 +104,42 @@ export function pocketFor(
   ];
 
   return { scopeUserId: target, scopeName: u?.display_name ?? "", tiles, today, week, done };
+}
+
+export interface PocketTeamMember {
+  id: number;
+  name: string;
+  role: string;
+  open: number;
+}
+
+/** The people a manager can scope the Pocket to — their reports, each with an open-task
+ *  count. Empty for a plain member. */
+export function pocketTeam(session: Session): PocketTeamMember[] {
+  if (session.role === "salesperson" || session.role === "driver") return [];
+  const db = getDb();
+  const roles = ["salesperson", "driver", "rep_manager"];
+  const roleIn = roles.map(() => "?").join(", ");
+
+  let where = "u.organization_id = ? AND u.role IN (" + roleIn + ") AND u.active = 1";
+  const params: unknown[] = [session.organizationId, ...roles];
+
+  if (session.role === "group_manager" || session.role === "rep_manager") {
+    const scope = scopeGroupIds(session);
+    const ids = scope === "all" ? [] : scope;
+    if (ids.length === 0) return [];
+    where += ` AND u.group_id IN (${ids.map(() => "?").join(", ")})`;
+    params.push(...ids);
+  }
+
+  return db
+    .prepare(
+      `SELECT u.id, u.display_name AS name, u.role,
+              (SELECT COUNT(*) FROM tasks t
+                 WHERE t.assignee_user_id = u.id AND t.status = 'open') AS open
+         FROM users u
+        WHERE ${where}
+        ORDER BY open DESC, u.display_name`
+    )
+    .all(...(params as never[])) as unknown as PocketTeamMember[];
 }

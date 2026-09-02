@@ -22,11 +22,31 @@ export default function AddReminder({
     if (!dueDate || !message.trim()) return;
     setSaving(true);
     try {
-      const res = await fetch("/api/reminders", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity_type: entityType, entity_id: entityId, due_date: dueDate, message }),
-      });
+      // A customer reminder is a task (kind='reminder') so it shows in the member's
+      // Pocket and on the manager's Board. A district reminder stays on the map.
+      const res =
+        entityType === "customer"
+          ? await fetch("/api/tasks", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: message.trim(),
+                kind: "reminder",
+                due_at: dueDate,
+                entity_type: "customer",
+                entity_id: entityId,
+              }),
+            })
+          : await fetch("/api/reminders", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                entity_type: entityType,
+                entity_id: entityId,
+                due_date: dueDate,
+                message,
+              }),
+            });
       if (!res.ok) throw new Error();
       toast("یادآوری ثبت شد.", "success");
       setDueDate("");

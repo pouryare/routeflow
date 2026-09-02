@@ -33,6 +33,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   // before anyone touches it, and 404s under the reader who does.
   const tabs = [
     { href: "/today", label: "امروز", ready: true },
+    { href: "/sales/pocket", label: "پاکت", ready: true },
     { href: "/sales", label: "داشبورد", ready: true },
     { href: "/sales/dashboard", label: "تحلیل و KPI", ready: true },
     { href: "/sales/analysis", label: "تحلیل", ready: true },
