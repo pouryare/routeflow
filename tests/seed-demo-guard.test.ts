@@ -47,6 +47,15 @@ describe("seed-demo guard", () => {
     expect(n("SELECT COUNT(*) n FROM products WHERE sku LIKE 'DEMO-%'")).toBeGreaterThan(0);
     expect(n("SELECT COUNT(*) n FROM representative_profiles WHERE rep_code LIKE 'DEMO-%'")).toBe(1);
     expect(n("SELECT COUNT(*) n FROM representative_onboarding_steps")).toBeGreaterThan(0);
+    // The enrichment rows: Board/Pocket tasks, monthly targets, cheques, complaints.
+    expect(n("SELECT COUNT(*) n FROM tasks")).toBeGreaterThan(0);
+    expect(n("SELECT COUNT(*) n FROM task_recurrences")).toBeGreaterThan(0);
+    expect(n("SELECT COUNT(*) n FROM targets")).toBeGreaterThan(0);
+    expect(n("SELECT COUNT(*) n FROM cheques WHERE cheque_no LIKE 'DEMO-CHK-%'")).toBeGreaterThan(0);
+    // A reseed onto the now-populated DB must not throw or double up the tasks.
+    const tasksAfterFirst = n("SELECT COUNT(*) n FROM tasks");
+    runSeed([]);
+    expect(n("SELECT COUNT(*) n FROM tasks")).toBe(tasksAfterFirst);
 
     // A real rep + its real customer that --remove must leave alone.
     const db = getDb();
@@ -68,5 +77,11 @@ describe("seed-demo guard", () => {
     expect(n("SELECT COUNT(*) n FROM representative_profiles WHERE rep_code LIKE 'DEMO-%'")).toBe(0);
     expect(n("SELECT COUNT(*) n FROM representative_onboarding_steps")).toBe(0);
     expect(n("SELECT COUNT(*) n FROM representative_profiles WHERE rep_code = 'REAL-REP'")).toBe(1);
+    // Enrichment rows gone too, and nothing left dangling.
+    expect(n("SELECT COUNT(*) n FROM tasks")).toBe(0);
+    expect(n("SELECT COUNT(*) n FROM task_recurrences")).toBe(0);
+    expect(n("SELECT COUNT(*) n FROM targets")).toBe(0);
+    expect(n("SELECT COUNT(*) n FROM cheques WHERE cheque_no LIKE 'DEMO-CHK-%'")).toBe(0);
+    expect(getDb().prepare("PRAGMA foreign_key_check").all()).toEqual([]);
   });
 });

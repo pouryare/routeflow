@@ -62,11 +62,18 @@ describe("spawnRecurringTasks", () => {
   });
 
   it("respects the weekday of a weekly rrule", () => {
-    // pick tomorrow's weekday so today does NOT match
+    // Pick tomorrow's weekday so today does NOT match. spawnRecurringTasks resolves
+    // "today" against the Tehran civil date (see lib/jalali), so the expected weekday
+    // has to come from that same clock -- deriving it from getUTCDay() is off by a day
+    // for the ~3.5h each evening when UTC and Tehran sit on different dates.
     const today = new Date();
     const tomorrow = new Date(today.getTime() + 86_400_000);
-    const DAYS = ["sat", "sun", "mon", "tue", "wed", "thu", "fri"];
-    const tomorrowDay = DAYS[(tomorrow.getUTCDay() + 1) % 7];
+    const tehranDay = (d: Date) =>
+      new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Tehran", weekday: "short" })
+        .format(d)
+        .toLowerCase()
+        .slice(0, 3);
+    const tomorrowDay = tehranDay(tomorrow);
     createRecurrence(
       1,
       { title: "کار هفتگی فردا", kind: "outreach", role_hint: "salesperson", rrule: `weekly:${tomorrowDay}`, priority: "LOW" },
