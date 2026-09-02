@@ -222,6 +222,32 @@ export function sweepBatchStatuses(organizationId?: number): { expired: number; 
   return { expired, depleted };
 }
 
+export function listBatches(
+  organizationId: number,
+  filter?: { product_id?: number; status?: BatchStatus }
+): Array<BatchRow & { on_hand: number }> {
+  const clauses = ["b.organization_id = ?"];
+  const params: unknown[] = [organizationId];
+  if (filter?.product_id !== undefined) {
+    clauses.push("b.product_id = ?");
+    params.push(filter.product_id);
+  }
+  if (filter?.status !== undefined) {
+    clauses.push("b.status = ?");
+    params.push(filter.status);
+  }
+  return batchesRepo
+    .db()
+    .prepare(
+      `SELECT b.*,
+              COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.batch_id = b.id), 0) AS on_hand
+         FROM batches b
+        WHERE ${clauses.join(" AND ")}
+        ORDER BY (b.expiry_date IS NULL), b.expiry_date, b.id`
+    )
+    .all(...(params as never[])) as unknown as Array<BatchRow & { on_hand: number }>;
+}
+
 export interface ExpiringBatch extends BatchRow {
   on_hand: number;
   days_to_expiry: number | null;

@@ -240,6 +240,42 @@ export function defaultFacilityId(organizationId: number): number {
   );
 }
 
+/** The recent ledger, newest first, optionally filtered. */
+export function listMovements(
+  organizationId: number,
+  filter?: { product_id?: number; facility_id?: number; limit?: number }
+): MovementRow[] {
+  const clauses = ["organization_id = ?"];
+  const params: unknown[] = [organizationId];
+  if (filter?.product_id !== undefined) {
+    clauses.push("product_id = ?");
+    params.push(filter.product_id);
+  }
+  if (filter?.facility_id !== undefined) {
+    clauses.push("facility_id = ?");
+    params.push(filter.facility_id);
+  }
+  params.push(filter?.limit ?? 200);
+  return stockMovementsRepo
+    .db()
+    .prepare(
+      `SELECT * FROM stock_movements WHERE ${clauses.join(" AND ")} ORDER BY occurred_at DESC, id DESC LIMIT ?`
+    )
+    .all(...(params as never[])) as unknown as MovementRow[];
+}
+
+/** Movement kinds a human may record by hand -- PURCHASE_IN and DELIVERY_OUT are
+ *  written only by their own flows. */
+export const MANUAL_MOVEMENT_KINDS: MovementKind[] = [
+  "TRANSFER_OUT",
+  "TRANSFER_IN",
+  "SAMPLE_OUT",
+  "RETURN_IN",
+  "ADJUSTMENT",
+  "COUNT",
+  "WRITE_OFF",
+];
+
 export interface StockLevel {
   product_id: number;
   on_hand: number;

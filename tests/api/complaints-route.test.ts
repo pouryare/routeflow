@@ -1,0 +1,132 @@
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+
+const testDbPath = path.join(
+  os.tmpdir(),
+  `coverage-test-complroute-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
+);
+process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.SESSION_SECRET = "test-secret";
+
+const { getDb } = await import("@/lib/db");
+const { GET, POST } = await import("@/app/api/sales/complaints/route");
+const { GET: GET_ONE, PATCH } = await import("@/app/api/sales/complaints/[id]/route");
+const { NextRequest } = await import("next/server");
+const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
+
+afterAll(() => {
+  for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
+});
+
+let mgrId = 0;
+let sellerId = 0;
+let custId = 0;
+let otherOrgComplaint = 0;
+
+beforeAll(() => {
+  const db = getDb();
+  db.exec("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'Two','two','2026-01-01')");
+  const now = new Date().toISOString();
+  mgrId = Number(
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)").run("q-mgr", "x:y", "م", now).lastInsertRowid
+  );
+  sellerId = Number(
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)").run("q-seller", "x:y", "ف", now).lastInsertRowid
+  );
+  custId = Number(
+    db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)").run().lastInsertRowid
+  );
+  otherOrgComplaint = Number(
+    db.prepare("INSERT INTO quality_complaints (organization_id,reported_at,reported_by,category,severity,status,created_at) VALUES (2,?,?,'other','low','open',?)").run(now, mgrId, now).lastInsertRowid
+  );
+});
+
+function cookie(uid: number, role: string) {
+  return `${COOKIE_NAME}=${createSessionToken({ uid, role: role as never, gid: null, oid: 1, tv: 0, name: "م" })}`;
+}
+function jreq(url: string, opts: { method?: string; body?: string; uid?: number; role?: string } = {}) {
+  const { method, body, uid = mgrId, role = "group_manager" } = opts;
+  return new NextRequest(`http://localhost${url}`, {
+    method,
+    body,
+    headers: { "Content-Type": "application/json", cookie: cookie(uid, role) },
+  });
+}
+const ctx = (id: number | string) => ({ params: Promise.resolve({ id: String(id) }) }) as never;
+
+describe("/api/sales/complaints", () => {
+  let complaintId = 0;
+
+  it("a salesperson can file a complaint", async () => {
+    const res = await POST(
+      jreq("/api/sales/complaints", {
+        method: "POST",
+        uid: sellerId,
+        role: "salesperson",
+        body: JSON.stringify({ customer_id: custId, category: "spoilage", severity: "high", description: "کپک" }),
+      })
+    );
+    expect(res.status).toBe(201);
+    complaintId = (await res.json()).id;
+  });
+
+  it("400s an unknown category", async () => {
+    const res = await POST(
+      jreq("/api/sales/complaints", { method: "POST", body: JSON.stringify({ category: "aliens" }) })
+    );
+    expect(res.status).toBe(400);
+  });
+
+  it("a manager resolves it, stamping resolved_*", async () => {
+    const res = await PATCH(
+      jreq(`/api/sales/complaints/${complaintId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "resolved", resolution: "بازپرداخت شد" }),
+      }),
+      ctx(complaintId)
+    );
+    expect(res.status).toBe(200);
+    const detail = await GET_ONE(jreq(`/api/sales/complaints/${complaintId}`), ctx(complaintId));
+    const body = await detail.json();
+    expect(body.complaint.status).toBe("resolved");
+    expect(body.complaint.resolved_by).toBe(mgrId);
+  });
+
+  it("refuses a salesperson updating", async () => {
+    const res = await PATCH(
+      jreq(`/api/sales/complaints/${complaintId}`, {
+        method: "PATCH",
+        uid: sellerId,
+        role: "salesperson",
+        body: JSON.stringify({ status: "open" }),
+      }),
+      ctx(complaintId)
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("404s a complaint in another org", async () => {
+    const res = await GET_ONE(jreq(`/api/sales/complaints/${otherOrgComplaint}`), ctx(otherOrgComplaint));
+    expect(res.status).toBe(404);
+  });
+
+  it("lists with a cluster once two open complaints hit the same batch", async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const prod = Number(db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('p',?,?,?,1)").run(`sp${Date.now()}`, now, now).lastInsertRowid);
+    const batch = Number(db.prepare("INSERT INTO batches (organization_id,product_id,batch_code,qty_received_base,unit_cost_toman,status,created_at,updated_at) VALUES (1,?,?,10,0,'active',?,?)").run(prod, "CL-1", now, now).lastInsertRowid);
+    for (let i = 0; i < 2; i++) {
+      await POST(
+        jreq("/api/sales/complaints", {
+          method: "POST",
+          body: JSON.stringify({ batch_id: batch, category: "spoilage" }),
+        })
+      );
+    }
+    const res = await GET(jreq("/api/sales/complaints"));
+    const body = await res.json();
+    expect(body.clusters.some((c: { batch_id: number }) => c.batch_id === batch)).toBe(true);
+  });
+});
