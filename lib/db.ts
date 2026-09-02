@@ -81,6 +81,8 @@ export const TENANT_TABLES = [
   "rules",
   "rule_runs",
   "targets",
+  "objection_cards",
+  "lesson_progress",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1689,6 +1691,31 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, user_id, group_id, period, metric)
     );
 
+    /* Phase 8 (Academy): objection-response cards keyed to the outcome_code a
+       salesperson picks on a task. organization_id NULL = a shipped starter; a tenant
+       overrides by (outcome_code, customer_type). */
+    CREATE TABLE IF NOT EXISTS objection_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      outcome_code TEXT NOT NULL,
+      customer_type TEXT,
+      title_fa TEXT NOT NULL,
+      script_fa TEXT NOT NULL,
+      module_slug TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, outcome_code, customer_type)
+    );
+
+    CREATE TABLE IF NOT EXISTS lesson_progress (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      lesson_slug TEXT NOT NULL,
+      completed_at TEXT NOT NULL,
+      UNIQUE (organization_id, user_id, lesson_slug)
+    );
+
     /* When each template runs. cutoff_time: after this, adding an order to that day's run
        needs an explicit decision (see lib/repo/routing.freezeRun + addStop force). */
     CREATE TABLE IF NOT EXISTS route_schedules (
@@ -2093,7 +2120,7 @@ export function getDb(): DatabaseSync {
       db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
     }
     // reason_codes keeps its NULL rows -- they are the shared system defaults.
-    if (table === "reason_codes" || table === "capacity_factors" || table === "rules") continue;
+    if (table === "reason_codes" || table === "capacity_factors" || table === "rules" || table === "objection_cards") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2593,6 +2620,7 @@ export function getDb(): DatabaseSync {
   seedReasonCodes(db);
   seedCapacityFactors(db);
   seedRules(db);
+  seedObjectionCards(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
@@ -2604,7 +2632,7 @@ export function getDb(): DatabaseSync {
     // reason_codes is the one exception: a NULL organization_id there is deliberate --
     // it marks a system-default row every tenant shares -- not a row that missed the
     // tenancy backfill.
-    if (table === "reason_codes" || table === "capacity_factors" || table === "rules") continue;
+    if (table === "reason_codes" || table === "capacity_factors" || table === "rules" || table === "objection_cards") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -3157,6 +3185,40 @@ export function seedRules(db: DatabaseSync): void {
       now,
       r.code
     );
+  }
+}
+
+/** Phase 8: starter objection cards, NULL-org. Keyed to the outcome codes the /today
+ *  TaskRow emits plus a few classics. INSERT ... WHERE NOT EXISTS per row. */
+export const OBJECTION_CARD_SEED: {
+  outcome_code: string;
+  title_fa: string;
+  script_fa: string;
+  module_slug: string;
+}[] = [
+  { outcome_code: "PRICE_OBJECTION", title_fa: "«گران است»", script_fa: "قیمت را به مصرف هر پرس برگردانید: «کره در هر پرس حدود X تومان می‌شود؛ تفاوتش با مارک ارزان‌تر در ماه Y تومان است، اما برگشتی و شکایت مشتری شما را کم می‌کند.» بعد یک نمونهٔ رایگان پیشنهاد دهید.", module_slug: "02-phone-sales" },
+  { outcome_code: "NOT_INTERESTED", title_fa: "«علاقه‌ای ندارم»", script_fa: "روی زمان‌بندی کار کنید، نه محصول: «کاملاً درست است، الان وقت خوبی نیست. اجازه بدهید فقط یک نمونه بگذارم و هفتهٔ بعد اگر خواستید یک تماس کوتاه بگیریم.» فشار نیاورید؛ در دفترچه یادداشت کنید و در بازهٔ بعدی برگردید.", module_slug: "01-market-and-customer" },
+  { outcome_code: "NO_TIME", title_fa: "«الان وقت ندارم»", script_fa: "«حتماً، ۳۰ ثانیه بیشتر نمی‌گیرم — فقط می‌خواستم بگویم این هفته نمونهٔ کره داریم؛ کی برای‌تان بیاورم، امروز یا فردا؟» یک انتخاب دوگزینه‌ای بدهید.", module_slug: "02-phone-sales" },
+  { outcome_code: "ALREADY_SUPPLIED", title_fa: "«تأمین‌کننده دارم»", script_fa: "«عالی است که یک تأمین‌کنندهٔ ثابت دارید. بیشتر مشتری‌های ما هم دارند و ما را برای روزهایی نگه می‌دارند که آن‌ها جنس ندارند یا دیر می‌رسانند. یک نمونه بگذارم که مقایسه دستتان باشد؟»", module_slug: "01-market-and-customer" },
+  { outcome_code: "QUALITY_DOUBT", title_fa: "«کیفیتش را نمی‌شناسم»", script_fa: "روی قابلیت ردیابی تکیه کنید: «هر بچ ما تاریخ تولید و انقضا دارد و ما دقیقاً می‌دانیم هر جعبه به کدام مغازه رفته. یک نمونه بگذارم، خودتان روی یک غذا امتحان کنید.»", module_slug: "01-market-and-customer" },
+  { outcome_code: "PAYMENT_TERMS", title_fa: "«نقدی نمی‌خرم»", script_fa: "«مشکلی نیست، برای مشتری‌های ثابت مهلت تسویه داریم. سفارش اول را نقد بگیریم که آشنا شویم، از سفارش دوم روی چک یا مهلت هفتگی می‌رویم.»", module_slug: "02-phone-sales" },
+  { outcome_code: "CONTACTED", title_fa: "پیگیری تماس بی‌نتیجه", script_fa: "یک تماس بدون سفارش، شکست نیست. تاریخ تماس بعدی را همین حالا در دفترچه بگذارید (۳ تا ۷ روز)، و یک بهانهٔ تماس تازه آماده کنید: نمونهٔ جدید، تخفیف مناسبتی، یا محصول تازه.", module_slug: "02-phone-sales" },
+  { outcome_code: "ORDERED", title_fa: "بعد از اولین خرید", script_fa: "روز تحویل یک تماس کوتاه بگیرید: «کره به دستتان رسید؟ راضی بودید؟» و بازهٔ سفارش بعدی را پیشنهاد بدهید. اولین خرید تازه شروع رابطه است.", module_slug: "01-market-and-customer" },
+];
+
+export function seedObjectionCards(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO objection_cards
+       (organization_id, outcome_code, customer_type, title_fa, script_fa, module_slug, active, updated_at)
+     SELECT NULL, ?, NULL, ?, ?, ?, 1, ?
+      WHERE NOT EXISTS (
+        SELECT 1 FROM objection_cards
+         WHERE organization_id IS NULL AND outcome_code = ? AND customer_type IS NULL
+      )`
+  );
+  for (const c of OBJECTION_CARD_SEED) {
+    insert.run(c.outcome_code, c.title_fa, c.script_fa, c.module_slug, now, c.outcome_code);
   }
 }
 
