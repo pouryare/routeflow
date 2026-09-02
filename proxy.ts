@@ -27,6 +27,20 @@ export function proxy(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // The sweep cron (scripts/run-sweeps.mjs) has no cookie -- it carries the shared
+  // SWEEP_TOKEN. This is the coarse gate that lets it past the manager-cookie check;
+  // the route (lib/sweepAuth) re-verifies the token in constant time.
+  const sweepToken = process.env.SWEEP_TOKEN;
+  if (
+    sweepToken &&
+    req.headers.get("x-sweep-token") === sweepToken &&
+    (pathname === "/api/rules/run" ||
+      pathname === "/api/analysis/refresh" ||
+      pathname === "/api/predict/refresh")
+  ) {
+    return NextResponse.next();
+  }
+
   const claims = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
   const isApi = pathname.startsWith("/api");
 

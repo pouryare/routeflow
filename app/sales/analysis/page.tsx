@@ -11,6 +11,7 @@ import { faDateTime, faNum } from "@/lib/format";
 import ActionCenter from "@/components/analysis/ActionCenter";
 import KpiStrip from "@/components/analysis/KpiStrip";
 import MarginTable from "@/components/analysis/MarginTable";
+import SweepButton from "@/components/SweepButton";
 
 export const dynamic = "force-dynamic";
 
@@ -42,9 +43,12 @@ export default async function AnalysisPage() {
     <div className="flex flex-col gap-[var(--space-4)]" dir="rtl">
       <div className="flex items-baseline justify-between">
         <h1 className="text-[length:var(--text-lg)] font-bold text-[var(--text)]">تحلیل</h1>
-        <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
-          {computedAt ? `عددها تا ${faDateTime(computedAt)}` : "هنوز محاسبه نشده — از «به‌روزرسانی تحلیل» استفاده کنید"}
-        </span>
+        <div className="flex items-center gap-[var(--space-2)]">
+          <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
+            {computedAt ? `عددها تا ${faDateTime(computedAt)}` : "هنوز محاسبه نشده"}
+          </span>
+          {isManager && <SweepButton endpoint="/api/analysis/refresh" idleLabel="به‌روزرسانی تحلیل" />}
+        </div>
       </div>
 
       <ActionCenter buckets={buckets} />

@@ -3,15 +3,25 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-/** POSTs the prediction sweep, then refreshes the server component. */
-export default function RefreshButton() {
+/** POSTs a sweep endpoint (rules / analysis / prediction refresh), then re-renders the
+ *  server component so the fresh rows show. The endpoints also run on a timer
+ *  (coverage-map-sweep-*.timer); this is the "I need it now" path. */
+export default function SweepButton({
+  endpoint,
+  idleLabel,
+  busyLabel = "در حال محاسبه…",
+}: {
+  endpoint: string;
+  idleLabel: string;
+  busyLabel?: string;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
 
   async function run() {
     setBusy(true);
     try {
-      await fetch("/api/predict/refresh", { method: "POST" });
+      await fetch(endpoint, { method: "POST" });
       router.refresh();
     } finally {
       setBusy(false);
@@ -25,7 +35,7 @@ export default function RefreshButton() {
       disabled={busy}
       className="cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)] disabled:opacity-50"
     >
-      {busy ? "در حال محاسبه…" : "به‌روزرسانی پیش‌بینی"}
+      {busy ? busyLabel : idleLabel}
     </button>
   );
 }

@@ -10,7 +10,7 @@ import { faDateTime } from "@/lib/format";
 import DemandTable from "@/components/predict/DemandTable";
 import ChurnList from "@/components/predict/ChurnList";
 import LearnedCapacity from "@/components/predict/LearnedCapacity";
-import RefreshButton from "@/components/predict/RefreshButton";
+import SweepButton from "@/components/SweepButton";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +38,7 @@ export default async function ForecastPage() {
           <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
             {computedAt ? `عددها تا ${faDateTime(computedAt)}` : "هنوز محاسبه نشده"}
           </span>
-          <RefreshButton />
+          <SweepButton endpoint="/api/predict/refresh" idleLabel="به‌روزرسانی پیش‌بینی" />
         </div>
       </div>
 

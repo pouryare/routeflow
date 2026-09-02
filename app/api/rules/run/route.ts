@@ -1,12 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/session";
+import { NextRequest } from "next/server";
+import { sweepScope, sweepResponse } from "@/lib/sweepAuth";
 import { runSweepRules, escalateStaleRuns } from "@/lib/repo/rules";
 
-/** The periodic hook a scheduler (or a manual click) calls. */
+export const dynamic = "force-dynamic";
+
+/** The periodic rule sweep — a manager's «به‌روزرسانی» click (own org) or the cron
+ *  with `x-sweep-token` (every org). Fires sweep rules + escalates stale runs. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
-  if (!guard.ok) return guard.response;
-  const fired = runSweepRules(guard.session.organizationId);
-  const escalated = escalateStaleRuns(guard.session.organizationId);
-  return NextResponse.json({ ok: true, fired: fired.length, escalated });
+  const scope = sweepScope(req);
+  if (!scope.ok) return scope.response;
+  const results = scope.orgIds.map((organization_id) => ({
+    organization_id,
+    fired: runSweepRules(organization_id).length,
+    escalated: escalateStaleRuns(organization_id),
+  }));
+  return sweepResponse(scope.via, results);
 }

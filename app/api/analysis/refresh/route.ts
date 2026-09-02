@@ -1,14 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/session";
+import { NextRequest } from "next/server";
+import { sweepScope, sweepResponse } from "@/lib/sweepAuth";
 import { refreshAll } from "@/lib/repo/analysisRefresh";
 
 export const dynamic = "force-dynamic";
 
-/** The analysis sweep hook — a scheduler or a manual click. Recomputes the current +
- *  prior Jalali month's KPI snapshots and the margin / health roll-ups. */
+/** The analysis sweep — a manager's click (own org) or the cron with `x-sweep-token`
+ *  (every org). Recomputes the current + prior Jalali month's KPI snapshots and the
+ *  margin / health roll-ups. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
-  if (!guard.ok) return guard.response;
-  const result = refreshAll(guard.session.organizationId);
-  return NextResponse.json({ ok: true, ...result });
+  const scope = sweepScope(req);
+  if (!scope.ok) return scope.response;
+  const results = scope.orgIds.map((organization_id) => ({
+    organization_id,
+    ...refreshAll(organization_id),
+  }));
+  return sweepResponse(scope.via, results);
 }
