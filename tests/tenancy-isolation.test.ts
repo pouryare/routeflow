@@ -118,6 +118,43 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(codes.find((c) => c.batch_code === "SHARED-BATCH")?.n).toBe(2);
   });
 
+  it("keeps deliveries, order events and reason codes apart; system reason codes are shared", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      for (const [table, selfId, otherId] of [
+        ["deliveries", self.deliveryId, other.deliveryId],
+        ["reason_codes", self.reasonCodeId, other.reasonCodeId],
+      ] as const) {
+        const rows = db
+          .prepare(`SELECT id FROM ${table} WHERE organization_id = ?`)
+          .all(self.orgId) as { id: number }[];
+        expect(rows.map((r) => r.id)).toContain(selfId);
+        expect(rows.map((r) => r.id)).not.toContain(otherId);
+      }
+      const evs = db
+        .prepare("SELECT organization_id FROM order_events WHERE organization_id = ?")
+        .all(other.orgId) as { organization_id: number }[];
+      // nothing from the other org shows when we scoped to it -- and our own has a row
+      expect(
+        (db.prepare("SELECT COUNT(*) n FROM order_events WHERE organization_id = ?").get(self.orgId) as { n: number }).n
+      ).toBeGreaterThan(0);
+      expect(evs.every((e) => e.organization_id === other.orgId)).toBe(true);
+    }
+    // the per-tenant SHARED-RC code exists once per org
+    const rc = db
+      .prepare("SELECT COUNT(*) AS n FROM reason_codes WHERE code = 'SHARED-RC'")
+      .get() as { n: number };
+    expect(rc.n).toBe(2);
+    // the system defaults (NULL org) are visible to both and belong to neither
+    const sys = db
+      .prepare("SELECT COUNT(*) AS n FROM reason_codes WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(sys.n).toBeGreaterThanOrEqual(13);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [

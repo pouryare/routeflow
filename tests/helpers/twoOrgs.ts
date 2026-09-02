@@ -15,6 +15,8 @@ export interface OrgFixture {
   batchId: number;
   stockMovementId: number;
   complaintId: number;
+  reasonCodeId: number;
+  deliveryId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -192,6 +194,31 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 3: a reason code (colliding code, per-tenant), a delivery row and the
+    // order's 'create' event.
+    const reasonCodeId = insert(
+      `INSERT INTO reason_codes (organization_id, domain, code, label_fa, active, created_at)
+       VALUES (?, 'delivery_fail', 'SHARED-RC', ?, 1, ?)`,
+      orgId,
+      `دلیل ${tag}`,
+      NOW
+    );
+    const deliveryId = insert(
+      `INSERT INTO deliveries (organization_id, order_id, seq, status, created_at)
+       VALUES (?, ?, 1, 'PLANNED', ?)`,
+      orgId,
+      orderId,
+      NOW
+    );
+    insert(
+      `INSERT INTO order_events (organization_id, order_id, from_status, to_status, action, actor_user_id, created_at)
+       VALUES (?, ?, NULL, 'DRAFT', 'create', ?, ?)`,
+      orgId,
+      orderId,
+      ownerId,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -207,6 +234,8 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       batchId,
       stockMovementId,
       complaintId,
+      reasonCodeId,
+      deliveryId,
     };
   };
 
