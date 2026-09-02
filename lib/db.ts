@@ -69,6 +69,7 @@ export const TENANT_TABLES = [
   "quality_complaints",
   "reason_codes",
   "deliveries",
+  "stock_reservations",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1366,6 +1367,27 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS ix_stock_mv ON stock_movements
       (organization_id, product_id, batch_id, facility_id, occurred_at);
+
+    /* Phase 3: a confirmed order CLAIMS stock without moving it. on_hand stays
+       SUM(stock_movements.base_qty); "available to promise" is on_hand minus the sum of
+       un-released reservations. A reservation is released when the order is cancelled or
+       a failed delivery sends it back, and consumed (also released -- the DELIVERY_OUT
+       movement is then the real record) when the goods actually leave. batch_id NULL is
+       a shortfall reservation: still recorded so negative availability shows. */
+    CREATE TABLE IF NOT EXISTS stock_reservations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      order_line_id INTEGER NOT NULL REFERENCES order_lines(id),
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      batch_id INTEGER REFERENCES batches(id),
+      base_qty REAL NOT NULL,
+      released_at TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_stock_res_order ON stock_reservations(order_id);
+    CREATE INDEX IF NOT EXISTS ix_stock_res_open ON stock_reservations(product_id, batch_id)
+      WHERE released_at IS NULL;
 
     /* Which batch actually went out on which delivery line -- the forward-traceability
        spine. Keyed to delivery_stop_id because the deliveries table is Phase 3 (M6);

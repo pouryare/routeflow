@@ -37,7 +37,10 @@ export function listReasonCodes(
     params.push(domain);
   }
   sql += " ORDER BY (organization_id IS NOT NULL), domain, code";
-  return reasonCodesRepo.db().prepare(sql).all(...(params as never[])) as ReasonCodeRow[];
+  return reasonCodesRepo
+    .db()
+    .prepare(sql)
+    .all(...(params as never[])) as unknown as ReasonCodeRow[];
 }
 
 /** Add a reason code for one tenant. Refuses a domain the schema does not know, and a
