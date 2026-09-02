@@ -22,8 +22,10 @@ partial-later, no cheques, and `customers.debt_*` is frozen at the last Excel im
    machine, not a status field. A bounced cheque re-opens the debt it had settled.
 4. **Derived debt** — `orders.paid_toman` becomes a cache recomputed from allocations;
    `customers.debt_0_7 / debt_8_30 / debt_30_plus` are replaced by figures computed
-   from unpaid, aged order balances, plus a one-time per-customer opening balance
-   seeded from the current frozen values so no real debt is lost.
+   from unpaid, aged order balances, plus a per-customer `opening_balance_toman` that
+   starts at **0** (the current frozen `debt_*` values are demo data — user
+   confirmation 2026-09-02 — so there is nothing real to carry forward; a genuine
+   pre-app balance can be entered per customer later).
 5. **Credit-approval workflow wiring** — Phase 0b built `credit_approvals` (table +
    repo + manual decide). Phase 1 connects it: creating an order that breaches a
    direct customer's limit records the approval request and marks the order; a
@@ -159,11 +161,11 @@ allocated to that order instead (same effect, now a real ledger row).
 
 Table-rebuild migration on `customers`:
 
-- **Drop** `debt_0_7`, `debt_8_30`, `debt_30_plus`.
-- **Add** `opening_balance_toman INTEGER NOT NULL DEFAULT 0` — seeded, once, from
-  `debt_0_7 + debt_8_30 + debt_30_plus` at migration time (an `app_meta` marker, like
-  the lead-pin fold-in). This preserves the pre-app debt figure the Excel import
-  carried; without it that history is silently lost.
+- **Drop** `debt_0_7`, `debt_8_30`, `debt_30_plus` outright. Their values are demo
+  data (user confirmation 2026-09-02), so no backfill — nothing real is lost.
+- **Add** `opening_balance_toman INTEGER NOT NULL DEFAULT 0`. It stays 0 for every
+  existing customer at migration time; it exists so a real pre-app balance can be set
+  per customer through the normal patch path afterwards.
 - Debt is now **computed**, never stored: a `customerDebt(db, customerId, asOf?)`
   function in `lib/repo/payments.ts` returns
   `{ total, bucket_0_7, bucket_8_30, bucket_30_plus }` where
@@ -230,8 +232,8 @@ All reads scoped through `lib/repo` tenant helpers. `/api/sales/orders/export` g
 - `lib/chequeStates.ts` + `lib/repo/cheques.ts`: every legal/illegal transition; a
   `bounced` cheque re-opens exactly the orders its payment had settled and raises the
   alert; `replaced` links.
-- Migration test: `debt_*` dropped, `opening_balance_toman` seeded = old sum, against
-  a copy of the real 141-customer backup (`ROUTEFLOW_MIGRATION_CHECK_DB`).
+- Migration test: `debt_*` dropped, `opening_balance_toman` present and `0` for every
+  row, against a copy of the real 141-customer backup (`ROUTEFLOW_MIGRATION_CHECK_DB`).
 - Route tests (model on `tests/api/facilities-route.test.ts`): auth per row above,
   cross-tenant 404, void 409-after-void, driver may only pay against their own stop.
 - `credit_approvals`: an over-limit direct order sets `credit_hold` + an approval row;
@@ -249,7 +251,7 @@ All reads scoped through `lib/repo` tenant helpers. `/api/sales/orders/export` g
    payment. Backfill: existing `orders.paid_toman > 0` → one synthetic `CASH` payment
    per order at `delivered_at`, allocated to it (guarded on an `app_meta` marker).
 3. `cheques` table, `lib/chequeStates.ts`, `lib/repo/cheques.ts`, the bounce reversal.
-4. Derived customer debt: migration (drop `debt_*`, seed `opening_balance_toman`),
+4. Derived customer debt: migration (drop `debt_*`, add `opening_balance_toman DEFAULT 0`),
    `customerDebt`, switch every consumer.
 5. `credit_hold` on orders + wire `credit_approvals` into `createOrder` / `addStop`.
 6. API routes + `/sales/payments` + `/sales/cheques` UI + panel button.
@@ -271,13 +273,14 @@ Each step is one or more commits, TDD, full suite green.
    marker, idempotent on an `app_meta` flag, tested against the real backup, backup
    mandatory before deploy. If a synthetic payment's amount exceeds the order total
    (bad legacy data) it is capped and flagged, not rejected.
-2. **Dropping `debt_*`** is irreversible. `opening_balance_toman` preserves the number;
-   the backup is the recovery path. Every consumer must be switched in the same commit
-   or the dashboard shows zero debt.
+2. **Dropping `debt_*`** is irreversible, but the values are demo data (user
+   confirmation 2026-09-02) so nothing real is lost; the backup is still the recovery
+   path. Every consumer must be switched in the same commit or the dashboard shows
+   zero debt.
 3. **Computed debt is only as complete as the app's order history.** Orders predating
-   the app are represented solely by `opening_balance_toman`; this is the accepted
-   trade-off (user decision 2026-09-02). A customer with real old debt and no app
-   orders shows their opening balance and nothing newer — correct, if coarse.
+   the app are represented solely by `opening_balance_toman`, which starts at 0 and is
+   entered by hand where a real pre-app balance exists; this is the accepted trade-off
+   (user decision 2026-09-02).
 4. **Cheque bounce touching allocations** is the most error-prone path: it mutates
    several `orders.paid_toman` caches and must be atomic. One transaction, and a test
    that a mid-bounce failure leaves every cache consistent.
