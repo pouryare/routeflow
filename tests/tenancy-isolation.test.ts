@@ -295,6 +295,52 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(defaults.n).toBe(14);
   });
 
+  it("keeps forecast models, churn scores and seasonal overrides apart; the shipped defaults stay shared", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const models = db
+        .prepare("SELECT id, organization_id FROM forecast_models WHERE organization_id = ?")
+        .all(self.orgId) as { id: number; organization_id: number }[];
+      expect(models.map((r) => r.id)).toContain(self.forecastModelId);
+      expect(models.map((r) => r.id)).not.toContain(other.forecastModelId);
+      expect(models.every((r) => r.organization_id === self.orgId)).toBe(true);
+
+      const scores = db
+        .prepare("SELECT id FROM churn_scores WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(scores.map((r) => r.id)).toContain(self.churnScoreId);
+      expect(scores.map((r) => r.id)).not.toContain(other.churnScoreId);
+
+      const override = db
+        .prepare("SELECT factor FROM seasonal_factors WHERE organization_id = ? AND kind = 'month' AND idx = 1")
+        .get(self.orgId) as { factor: number } | undefined;
+      expect(override?.factor).toBe(self.orgId === 1 ? 1.3 : 0.7);
+
+      // a tenant capacity_factors learned_* value must not leak
+      db.prepare(
+        `INSERT INTO capacity_factors (organization_id, condition_code, stop_factor, service_time_factor, speed_factor, max_duration_factor, active, updated_at, learned_speed_factor, learned_n)
+         VALUES (?, ?, 1, 1, 1, 1, 1, ?, ?, 7)`
+      ).run(self.orgId, `fog`, "2026-01-01T00:00:00.000Z", self.orgId === 1 ? 0.42 : 0.88);
+    }
+    const leaked = db
+      .prepare("SELECT organization_id, learned_speed_factor FROM capacity_factors WHERE condition_code = 'fog' AND organization_id IS NOT NULL")
+      .all() as { organization_id: number; learned_speed_factor: number }[];
+    expect(leaked.find((r) => r.organization_id === a.orgId)?.learned_speed_factor).toBe(0.42);
+    expect(leaked.find((r) => r.organization_id === b.orgId)?.learned_speed_factor).toBe(0.88);
+
+    const seasonalDefaults = db
+      .prepare("SELECT COUNT(*) AS n FROM seasonal_factors WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(seasonalDefaults.n).toBe(19);
+    const churnDefaults = db
+      .prepare("SELECT COUNT(*) AS n FROM churn_models WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(churnDefaults.n).toBe(1);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [

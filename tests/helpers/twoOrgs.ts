@@ -25,6 +25,8 @@ export interface OrgFixture {
   alertId: number;
   objectionCardId: number;
   kpiSnapshotId: number;
+  forecastModelId: number;
+  churnScoreId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -345,6 +347,33 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 10: a tenant seasonal_factors override + a forecast_models row + a
+    // churn_scores row per org.
+    insert(
+      `INSERT INTO seasonal_factors (organization_id, kind, idx, factor, updated_at)
+       VALUES (?, 'month', 1, ?, ?)`,
+      orgId,
+      orgId === 1 ? 1.3 : 0.7,
+      NOW
+    );
+    const forecastModelId = insert(
+      `INSERT INTO forecast_models
+         (organization_id, entity_type, entity_id, metric, method, level, trend, n_obs, updated_at)
+       VALUES (?, 'org', 0, 'demand_toman', 'holt', ?, 10, 9, ?)`,
+      orgId,
+      orgId === 1 ? 100_000 : 200_000,
+      NOW
+    );
+    const churnScoreId = insert(
+      `INSERT INTO churn_scores (organization_id, customer_id, probability, band, reason_fa, computed_at)
+       VALUES (?, ?, ?, 'high', ?, ?)`,
+      orgId,
+      customerId,
+      orgId === 1 ? 0.71 : 0.83,
+      `دلیل ${tag}`,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -370,6 +399,8 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       alertId,
       objectionCardId,
       kpiSnapshotId,
+      forecastModelId,
+      churnScoreId,
     };
   };
 
