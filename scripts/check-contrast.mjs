@@ -146,6 +146,24 @@ const THEME_IDS = [
   "ocean", "indigo", "purple", "raspberry", "graphite",
 ];
 
+/* The shipping cream, from the hand-written .kargah blocks. scripts/gen-accent-themes.mjs
+   re-emits each rung at the theme's hue with chroma capped near zero; the tinted value
+   must carry its inks no worse than the cream already does. --text-muted / --text-faint
+   on --surface-sunk sit at 4.25 / 2.89 in the palette on screen today, so those pairs are
+   held to the cream baseline rather than to an absolute 4.5 / 3.0. */
+const SURFACE_CREAM = {
+  light: {
+    "--bg": "#F4F0E9", "--surface": "#FFFFFF", "--surface-2": "#FDFBF8", "--surface-sunk": "#EFE9E0",
+  },
+  dark: {
+    "--bg": "#141110", "--surface": "#1E1A17", "--surface-2": "#242019", "--surface-sunk": "#2B241E",
+  },
+};
+const SURFACE_INK = {
+  light: { "--text": ["#231C16", 7], "--text-muted": ["#776C60", 4.5], "--text-faint": ["#91887C", 3] },
+  dark: { "--text": ["#F3EEE7", 7], "--text-muted": ["#9B8F81", 4.5], "--text-faint": ["#8A8278", 3] },
+};
+
 /* The grounds these themes are solved against, from the .kargah blocks. --surface-raised
    is what a cluster bubble sits on; it differs from --surface in dark. */
 const THEME_GROUND = {
@@ -192,6 +210,29 @@ for (const id of THEME_IDS) {
     // Map ink is non-text: 3:1 against the ground the basemap paints.
     for (const m of ["--map-stroke-major", "--map-stroke-minor", "--map-boundary", "--map-selected"]) {
       need(m, G.map, 3, `${m} on the map ground`);
+    }
+
+    /* Surface tint (.kargah-scoped block only, without the second `, :root[...]`
+       selector). Read it back and assert every tinted ground still carries its inks. */
+    let surf;
+    try {
+      surf = block(`:root[data-accent="${id}"]${skin === "dark" ? '[data-skin="dark"]' : ""} .kargah`);
+    } catch {
+      say(false, `${id}/${skin}: no .kargah surface-tint block — re-run scripts/gen-accent-themes.mjs`);
+      surf = {};
+    }
+    for (const [g, cream] of Object.entries(SURFACE_CREAM[skin])) {
+      for (const [ink, [inkHex, wcag]] of Object.entries(SURFACE_INK[skin])) {
+        themeChecks++;
+        if (!surf[g]) {
+          say(false, `${id}/${skin} ${ink} on ${g}: ${g} MISSING from surface block`);
+          continue;
+        }
+        const got = ratio(inkHex, surf[g]);
+        const base = ratio(inkHex, cream);
+        const floor = Math.min(wcag, base - 0.08);
+        say(got >= floor, `${id}/${skin} ${ink} on ${g} (tinted): ${got.toFixed(2)} (floor ${floor.toFixed(2)})`);
+      }
     }
   }
 }

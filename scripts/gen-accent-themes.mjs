@@ -84,6 +84,16 @@ function hexToOklab(hex) {
   return linearToOklab(p(0), p(2), p(4));
 }
 
+/** [L, C, Hdeg] for a hex. The inverse of oklchToHex, for reading a shipped colour's
+ *  lightness and chroma back so a themed variant can keep them and move only the hue. */
+function hexToOklch(hex) {
+  const [L, a, b] = hexToOklab(hex);
+  const C = Math.hypot(a, b);
+  let H = (Math.atan2(b, a) * 180) / Math.PI;
+  if (H < 0) H += 360;
+  return [L, C, H];
+}
+
 /** Largest chroma that survives sRGB at this lightness and hue, to 3 decimals. */
 function maxChroma(L, H, ceiling = 0.37) {
   let lo = 0, hi = ceiling;
@@ -140,6 +150,72 @@ const SKINS = {
     washInkMuted: "#A99C8D",
     status: { good: "#93C289", warn: "#E0A64A", crit: "#F2789B", info: "#83B9DC", plum: "#B79EEA" },
   },
+};
+
+/* ── surface tint. کارگاه only. ─────────────────────────────────────────────────
+   The /sales design system's paper and lines carry a faint warmth today (--bg is
+   #F4F0E9, a cream, not a neutral). A theme should own that warmth: teal paper, not
+   cream paper with a teal button on it. So each structural neutral is read back to its
+   OKLCH lightness and (tiny) chroma, then re-emitted at the theme's hue -- L and C held,
+   only H moved. Chroma is capped hard so "tinted" never becomes "coloured" and the
+   text-on-ground contrast the checker asserts barely shifts.
+
+   Scoped to `.kargah` ONLY. The map reads --bg/--surface/--border too, across two
+   thousand lines tuned for its own near-black, so re-skinning those globally is out of
+   scope (MASTER.md "Visual thesis"). terracotta is pinned to today's exact hexes so a
+   reader who keeps the default sees no change at all. */
+const SURFACE_BASE = {
+  light: {
+    "--bg": "#F4F0E9", "--surface": "#FFFFFF", "--surface-2": "#FDFBF8",
+    "--surface-sunk": "#EFE9E0", "--border": "#EAE2D7", "--border-strong": "#DED4C6",
+  },
+  dark: {
+    "--bg": "#141110", "--surface": "#1E1A17", "--surface-2": "#242019",
+    "--surface-sunk": "#2B241E", "--border": "#312A22", "--border-strong": "#3E352B",
+  },
+};
+/* The artifact's own names for the same six rungs -- both sets exist because the map
+   chrome reads one and the /sales stylesheet reads the other. */
+const SURFACE_ALIAS = {
+  "--card": "--surface", "--card-2": "--surface-2", "--sunk": "--surface-sunk",
+  "--line": "--border", "--line-2": "--border-strong",
+};
+/* How saturated the tinted paper is allowed to get. Deliberately well above a hair of
+   chroma -- the ask is for the surface to clearly take the accent hue, not to hint at
+   it -- but still low enough that --text/--text-muted clear their gates on every theme
+   (the verify pass below refuses to write if one does not). */
+const SURFACE_C_CEIL = { light: 0.026, dark: 0.020 };
+
+/** One number rotates the decorative gcard mesh gradients onto the theme (they are
+ *  hand-authored hex, not tokens). Full rotation keeps their internal hue relationships;
+ *  graphite has no hue to speak of, so its washes stay as authored. */
+function gcardRotate(hue, id) {
+  if (id === "graphite") return 0;
+  let d = hue - 42; // 42 = terracotta's declared hue
+  while (d > 180) d -= 360;
+  while (d < -180) d += 360;
+  return Math.round(d);
+}
+
+/** The `.kargah` surface tokens for one theme/skin. terracotta → today's exact hexes. */
+function surfaceTokens(hue, skin, id) {
+  const out = {};
+  for (const [k, hex] of Object.entries(SURFACE_BASE[skin])) {
+    if (id === "terracotta") { out[k] = hex; continue; }
+    const [L, C] = hexToOklch(hex);
+    const c = Math.min(C, SURFACE_C_CEIL[skin], maxChroma(L, hue));
+    out[k] = oklchToHex(L, c, hue).hex;
+  }
+  for (const [alias, src] of Object.entries(SURFACE_ALIAS)) out[alias] = out[src];
+  out["--gcard-hue-rotate"] = `${gcardRotate(hue, id)}deg`;
+  return out;
+}
+
+/** Inks the surface grounds have to keep carrying. From the `.kargah` blocks in
+ *  app/globals.css; --text-faint is non-text (3:1) by design, see MASTER.md. */
+const SURFACE_INKS = {
+  light: { text: "#231C16", muted: "#776C60", faint: "#91887C" },
+  dark: { text: "#F3EEE7", muted: "#9B8F81", faint: "#8A8278" },
 };
 
 /* ── the themes. Hue is the whole definition. ────────────────────────────────── */
@@ -484,6 +560,34 @@ function verify(themes) {
       for (const t2 of Object.values(STATUS_TOKEN)) {
         check(!(t2 in k), `emits ${t2}, which themes must never override`);
       }
+
+      /* Surface tint (.kargah only): a tinted ground must carry its inks no worse than
+         the shipping cream already does. The bar is terracotta's own value for the same
+         pair, not an absolute -- --text-muted/--text-faint on --surface-sunk sit at 4.25
+         / 2.89 in the palette on screen today, and a hue rotation at fixed OKLCH L/C
+         moves relative luminance by hundredths. Held to an absolute 4.5/3.0 these would
+         "fail" while looking identical to what ships. `EPS` allows only rounding-scale
+         drift below the baseline; a real regression still trips. */
+      const surf = surfaceTokens(t.hue, skin, t.id);
+      const cream = SURFACE_BASE[skin];
+      const I = SURFACE_INKS[skin];
+      const EPS = 0.08;
+      const WCAG = { "--text": 7, "--text-muted": 4.5, "--text-faint": 3 };
+      for (const g of ["--bg", "--surface", "--surface-2", "--surface-sunk"]) {
+        for (const [ink, name] of [[I.text, "--text"], [I.muted, "--text-muted"], [I.faint, "--text-faint"]]) {
+          const got = ratio(ink, surf[g]);
+          const base = ratio(ink, cream[g]);
+          // Clear the real WCAG bar, or -- where the shipping cream is itself already
+          // marginal for this pair -- come no more than a rounding hair below it.
+          check(got >= Math.min(WCAG[name], base - EPS),
+            `${name} on ${g} ${got.toFixed(2)} (cream baseline ${base.toFixed(2)})`);
+        }
+      }
+      if (t.id === "terracotta") {
+        for (const [g, hex] of Object.entries(SURFACE_BASE[skin])) {
+          check(surf[g] === hex, `terracotta surface ${g} drifted from ${hex} to ${surf[g]}`);
+        }
+      }
     }
   }
   return { problems, carried };
@@ -545,6 +649,15 @@ function css(themes) {
       L.push(`${sel} {`);
       for (const [k, v] of Object.entries(t.skins[skin].tokens)) L.push(`  ${k}: ${v};`);
       L.push(`  --series-single: var(--accent);`);
+      L.push(`}`);
+
+      /* Surface tint -- .kargah ONLY, never bare :root. The map keeps its own neutrals
+         (see surfaceTokens). Separate rule so the selector cannot accidentally widen. */
+      const surfSel = skin === "light"
+        ? `:root[data-accent="${t.id}"] .kargah`
+        : `:root[data-accent="${t.id}"][data-skin="dark"] .kargah`;
+      L.push(`${surfSel} {`);
+      for (const [k, v] of Object.entries(surfaceTokens(t.hue, skin, t.id))) L.push(`  ${k}: ${v};`);
       L.push(`}`);
     }
     for (const ground of ["light", "dark"]) {
