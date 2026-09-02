@@ -17,12 +17,18 @@ export async function GET(req: NextRequest) {
 
   const db = getDb();
   const org = guard.session.organizationId;
-  // Phase 2: attach the soonest expiry per product and a company-wide expiring count.
-  const expiryByProduct = new Map(stockLevels(org).map((l) => [l.product_id, l.earliest_expiry]));
-  const stock = stockPosition(db).map((row) => ({
-    ...row,
-    earliest_expiry: expiryByProduct.get(row.product_id) ?? null,
-  }));
+  // Phase 2: soonest expiry per product + a company-wide expiring count.
+  // Phase 3: reserved (claimed by confirmed orders) and available-to-promise.
+  const levelByProduct = new Map(stockLevels(org).map((l) => [l.product_id, l]));
+  const stock = stockPosition(db).map((row) => {
+    const lvl = levelByProduct.get(row.product_id);
+    return {
+      ...row,
+      earliest_expiry: lvl?.earliest_expiry ?? null,
+      reserved: lvl?.reserved ?? 0,
+      available: lvl ? lvl.available : row.on_hand,
+    };
+  });
   return NextResponse.json({
     ok: true,
     stock,

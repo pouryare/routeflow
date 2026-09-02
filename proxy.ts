@@ -84,7 +84,12 @@ export function proxy(req: NextRequest) {
   const isBatchAdmin =
     pathname.startsWith("/sales/batches") ||
     pathname.startsWith("/api/sales/batches") ||
-    pathname.startsWith("/api/sales/stock/movements");
+    pathname.startsWith("/api/sales/stock/movements") ||
+    // Phase 3: the deliveries board and its retry/complete routes are a desk job. The
+    // order-transition route is open to salesperson+/driver -- it gates itself by the
+    // transition's own roles.
+    pathname.startsWith("/sales/deliveries") ||
+    pathname.startsWith("/api/sales/deliveries");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
     return deny("/sales");
   }
