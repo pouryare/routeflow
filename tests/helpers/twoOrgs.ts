@@ -12,6 +12,9 @@ export interface OrgFixture {
   creditApprovalId: number;
   paymentId: number;
   chequeId: number;
+  batchId: number;
+  stockMovementId: number;
+  complaintId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -145,6 +148,50 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 2: a facility, a batch (colliding batch_code), a PURCHASE_IN movement and a
+    // complaint per org.
+    const facilityId = insert(
+      `INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at)
+       VALUES (?, 'warehouse', ?, 35, 51, ?, ?, ?)`,
+      `wh-${tag}`,
+      `انبار ${tag}`,
+      NOW,
+      orgId,
+      NOW
+    );
+    const batchId = insert(
+      `INSERT INTO batches (organization_id, product_id, batch_code, qty_received_base, unit_cost_toman,
+                            status, created_at, updated_at)
+       VALUES (?, ?, 'SHARED-BATCH', 50, 1000, 'active', ?, ?)`,
+      orgId,
+      productId,
+      NOW,
+      NOW
+    );
+    const stockMovementId = insert(
+      `INSERT INTO stock_movements (organization_id, facility_id, product_id, batch_id, base_qty, kind,
+                                    occurred_at, created_at)
+       VALUES (?, ?, ?, ?, 50, 'PURCHASE_IN', ?, ?)`,
+      orgId,
+      facilityId,
+      productId,
+      batchId,
+      NOW,
+      NOW
+    );
+    const complaintId = insert(
+      `INSERT INTO quality_complaints (organization_id, customer_id, product_id, batch_id, reported_at,
+                                       reported_by, category, severity, status, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'spoilage', 'medium', 'open', ?)`,
+      orgId,
+      customerId,
+      productId,
+      batchId,
+      NOW,
+      ownerId,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -157,6 +204,9 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       creditApprovalId,
       paymentId,
       chequeId,
+      batchId,
+      stockMovementId,
+      complaintId,
     };
   };
 

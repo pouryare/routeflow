@@ -94,6 +94,30 @@ describe("organisation A and organisation B cannot see each other", () => {
     }
   });
 
+  it("keeps batches, stock movements and complaints apart, and allows a shared batch_code", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      for (const [table, selfId, otherId] of [
+        ["batches", self.batchId, other.batchId],
+        ["stock_movements", self.stockMovementId, other.stockMovementId],
+        ["quality_complaints", self.complaintId, other.complaintId],
+      ] as const) {
+        const rows = db
+          .prepare(`SELECT id FROM ${table} WHERE organization_id = ?`)
+          .all(self.orgId) as { id: number }[];
+        expect(rows.map((r) => r.id)).toContain(selfId);
+        expect(rows.map((r) => r.id)).not.toContain(otherId);
+      }
+    }
+    const codes = db
+      .prepare("SELECT batch_code, COUNT(*) AS n FROM batches GROUP BY batch_code")
+      .all() as { batch_code: string; n: number }[];
+    expect(codes.find((c) => c.batch_code === "SHARED-BATCH")?.n).toBe(2);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [
