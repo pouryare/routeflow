@@ -20,6 +20,7 @@ export interface OrgFixture {
   syncMutationId: number;
   vehicleId: number;
   routeTemplateId: number;
+  capacityFactorId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -258,6 +259,14 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 6: a tenant capacity_factors override (same condition_code both orgs).
+    const capacityFactorId = insert(
+      `INSERT INTO capacity_factors (organization_id, condition_code, stop_factor, updated_at)
+       VALUES (?, 'heavy_rain', 0.5, ?)`,
+      orgId,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -278,6 +287,7 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       syncMutationId,
       vehicleId,
       routeTemplateId,
+      capacityFactorId,
     };
   };
 

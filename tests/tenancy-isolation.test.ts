@@ -202,6 +202,25 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(plates.n).toBe(2);
   });
 
+  it("keeps tenant capacity_factors apart while the NULL-org defaults stay shared", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const rows = db
+        .prepare("SELECT id FROM capacity_factors WHERE organization_id = ?")
+        .all(self.orgId) as { id: number }[];
+      expect(rows.map((r) => r.id)).toContain(self.capacityFactorId);
+      expect(rows.map((r) => r.id)).not.toContain(other.capacityFactorId);
+    }
+    // the six shipped defaults belong to neither org and are visible to both
+    const defaults = db
+      .prepare("SELECT COUNT(*) AS n FROM capacity_factors WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(defaults.n).toBe(6);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [
