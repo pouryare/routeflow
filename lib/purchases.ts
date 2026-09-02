@@ -15,6 +15,7 @@ import { movingAverageCost, stockAfter } from "./stockMath";
 import { isToman } from "./money";
 import { createBatchTxn } from "./repo/batches";
 import { recordMovementsTxn, defaultFacilityId } from "./repo/stock";
+import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 
 export class PurchaseError extends Error {}
 
@@ -168,7 +169,7 @@ function onHandFor(db: DatabaseSync, productId: number): number {
       `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack), 0) AS n
          FROM order_lines ol
          JOIN orders o ON o.id = ol.order_id
-        WHERE ol.product_id = ? AND o.status = 'delivered'`
+        WHERE ol.product_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
     )
     .get(productId) as { n: number };
 
@@ -272,7 +273,7 @@ export function advancedStockPosition(db: DatabaseSync): AdvancedStockRow[] {
               SUM(COALESCE(ol.packs_delivered, 0) * ol.qty_per_pack) AS qty
          FROM order_lines ol
          JOIN orders o ON o.id = ol.order_id
-        WHERE o.status = 'delivered' AND o.delivered_at IS NOT NULL AND o.delivered_at >= ?
+        WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.delivered_at IS NOT NULL AND o.delivered_at >= ?
         GROUP BY ol.product_id, day`
     )
     .all(windowStart) as unknown as { product_id: number; day: string; qty: number }[];

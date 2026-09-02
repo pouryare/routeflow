@@ -6,7 +6,7 @@ const base: JourneyInput = {
   customer_name: "سوپرمارکت رضایی",
   kg: 42,
   line_count: 3,
-  status: "draft",
+  status: "DRAFT",
   created_at: "2026-08-01T09:00:00.000Z",
   order_date: "2026-08-01",
   created_by_name: "زهرا احمدی",
@@ -26,14 +26,14 @@ describe("buildJourney", () => {
   });
 
   test("confirming ticks the second step and nothing further", () => {
-    const nodes = buildJourney({ ...base, status: "confirmed" });
+    const nodes = buildJourney({ ...base, status: "CONFIRMED" });
     expect(nodes.map((n) => n.done)).toEqual([true, true, false, false]);
   });
 
   test("a run ticks the loading step and names the driver", () => {
     const nodes = buildJourney({
       ...base,
-      status: "confirmed",
+      status: "CONFIRMED",
       run: { date: "2026-08-03", driver_name: "مهدی کاظمی" },
     });
     expect(nodes[2].done).toBe(true);
@@ -44,12 +44,12 @@ describe("buildJourney", () => {
   test("delivery needs BOTH the status and a timestamp", () => {
     // status alone is not enough: an order marked delivered with no delivered_at is a
     // half-written record, and ticking it would hide that.
-    const noStamp = buildJourney({ ...base, status: "delivered", delivered_at: null });
+    const noStamp = buildJourney({ ...base, status: "DELIVERED", delivered_at: null });
     expect(noStamp[3].done).toBe(false);
 
     const stamped = buildJourney({
       ...base,
-      status: "delivered",
+      status: "DELIVERED",
       delivered_at: "2026-08-03T14:20:00.000Z",
       paid_toman: 1_000_000,
       payment_status: "paid",
@@ -60,7 +60,7 @@ describe("buildJourney", () => {
   test("the settled note states what was collected against the total", () => {
     const nodes = buildJourney({
       ...base,
-      status: "delivered",
+      status: "DELIVERED",
       delivered_at: "2026-08-03T14:20:00.000Z",
       paid_toman: 400_000,
       payment_status: "partial",
@@ -70,14 +70,14 @@ describe("buildJourney", () => {
   });
 
   test("a cancelled order says so instead of sitting in wait forever", () => {
-    const nodes = buildJourney({ ...base, status: "cancelled" });
+    const nodes = buildJourney({ ...base, status: "CANCELLED" });
     expect(nodes[1].done).toBe(false);
     expect(nodes[1].note).toBe("سفارش لغو شد");
   });
 
   test("the confirm step never carries a timestamp", () => {
     // There is no confirmed_at column; updated_at moves whenever anyone edits a note.
-    for (const status of ["draft", "confirmed", "delivered"]) {
+    for (const status of ["DRAFT", "CONFIRMED", "DELIVERED"]) {
       expect(buildJourney({ ...base, status })[1].at).toBeNull();
     }
   });
@@ -85,7 +85,7 @@ describe("buildJourney", () => {
 
 describe("journey state", () => {
   test("exactly one step is current, and it is the first unfinished one", () => {
-    const nodes = buildJourney({ ...base, status: "confirmed" });
+    const nodes = buildJourney({ ...base, status: "CONFIRMED" });
     expect(nodes.filter((n) => n.state === "current")).toHaveLength(1);
     expect(nodes.find((n) => n.state === "current")!.key).toBe("loaded");
     expect(nodes.map((n) => n.state)).toEqual(["done", "done", "current", "todo"]);
@@ -94,7 +94,7 @@ describe("journey state", () => {
   test("a finished order has no current step at all", () => {
     const nodes = buildJourney({
       ...base,
-      status: "delivered",
+      status: "DELIVERED",
       delivered_at: "2026-08-03T14:20:00.000Z",
       run: { date: "2026-08-03", driver_name: "مهدی" },
       paid_toman: 1_000_000,
@@ -113,7 +113,7 @@ describe("journey state", () => {
   test("a partly-paid delivery states what is still owed", () => {
     const nodes = buildJourney({
       ...base,
-      status: "delivered",
+      status: "DELIVERED",
       delivered_at: "2026-08-03T14:20:00.000Z",
       paid_toman: 400_000,
       payment_status: "partial",

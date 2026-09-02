@@ -63,7 +63,7 @@ beforeEach(() => {
     db.prepare("INSERT INTO batches (organization_id,product_id,batch_code,supplier_batch_ref,purchase_line_id,qty_received_base,unit_cost_toman,status,created_at,updated_at) VALUES (1,?,?,?,?,50,1200,'active',?,?)").run(prod, "LOT-77", "SUP-REF-9", pl, now, now).lastInsertRowid
   );
   orderId = Number(
-    db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'delivered',?,?,?,?,1)").run(custId, "2026-01-05", "2026-01-06", userId, now, now).lastInsertRowid
+    db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'DELIVERED',?,?,?,?,1)").run(custId, "2026-01-05", "2026-01-06", userId, now, now).lastInsertRowid
   );
   const run = Number(
     db.prepare("INSERT INTO delivery_runs (driver_user_id,run_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,1)").run(userId, "2026-01-06", userId, now, now).lastInsertRowid

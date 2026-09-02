@@ -101,11 +101,11 @@ export function addStop(db: DatabaseSync, runId: number, orderId: number, sortOr
     .prepare("SELECT id, status, credit_hold FROM orders WHERE id = ?")
     .get(orderId) as { status: string; credit_hold: number } | undefined;
   if (!order) throw new DeliveryError("سفارش پیدا نشد");
-  if (order.status === "draft") {
-    throw new DeliveryError("سفارش پیش‌نویس روی مسیر قرار نمی‌گیرد؛ اول تأییدش کنید");
-  }
   if (order.credit_hold) {
     throw new DeliveryError("سفارش در انتظار تأیید اعتبار است و روی مسیر قرار نمی‌گیرد");
+  }
+  if (!["CONFIRMED", "PLANNED", "READY"].includes(order.status)) {
+    throw new DeliveryError("سفارش تأییدنشده روی مسیر قرار نمی‌گیرد؛ اول تأییدش کنید");
   }
 
   return Number(
@@ -246,9 +246,10 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
           SET status = ?, delivered_at = ?, updated_at = ?
         WHERE id = ?`
     ).run(
-      // Nothing taken is not a delivery. Leaving it 'delivered' would put a zero-value
-      // invoice in the ledger and count the stop as served.
-      nothingTaken ? "cancelled" : "delivered",
+      // Nothing taken is not a delivery. Leaving it 'DELIVERED' would put a zero-value
+      // invoice in the ledger and count the stop as served. Task 9 routes this through
+      // the state machine (DELIVERY_FAILED); for now it keeps the pre-Phase-3 meaning.
+      nothingTaken ? "CANCELLED" : "DELIVERED",
       nothingTaken ? null : now,
       now,
       stop.order_id

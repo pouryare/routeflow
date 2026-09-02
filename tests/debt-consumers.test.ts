@@ -33,7 +33,7 @@ function deliveredOrder(total: number, dateISO: string): number {
     db
       .prepare(
         `INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id)
-         VALUES (?,?,?,'delivered',?,?,?,?,1)`
+         VALUES (?,?,?,'DELIVERED',?,?,?,?,1)`
       )
       .run(`o-${tag}`, custId, dateISO, dateISO, userId, now, now).lastInsertRowid
   );

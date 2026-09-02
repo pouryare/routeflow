@@ -10,6 +10,7 @@ import { resolvePrice } from "./catalogue";
 import { toJalali } from "./jalali";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
+import { PRICED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import {
   formatOrderNo,
   orderTotalToman,
@@ -179,7 +180,7 @@ export function createOrder(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
                                order_date, notes, credit_override_by, created_by, created_at, updated_at,
                                organization_id)
-           VALUES (?, ?, ?, ?, 'draft', ?, ?, ?, ?, ?, ?, ?)`
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -262,7 +263,7 @@ export function addLine(db: DatabaseSync, orderId: number, line: LineInput): voi
     | { status: string; order_date: string }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
-  if (order.status !== "draft") {
+  if (order.status !== "DRAFT") {
     throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
   }
   insertLine(db, orderId, order.order_date, line, new Date().toISOString());
@@ -274,14 +275,14 @@ export function confirmOrder(db: DatabaseSync, orderId: number): void {
     | { status: string }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
-  if (order.status !== "draft") throw new OrderError("این سفارش قبلاً تأیید شده است");
+  if (order.status !== "DRAFT") throw new OrderError("این سفارش قبلاً تأیید شده است");
 
   const lines = db
     .prepare("SELECT COUNT(*) AS n FROM order_lines WHERE order_id = ?")
     .get(orderId) as { n: number };
   if (lines.n === 0) throw new OrderError("سفارش بدون قلم تأیید نمی‌شود");
 
-  db.prepare("UPDATE orders SET status = 'confirmed', updated_at = ? WHERE id = ?").run(
+  db.prepare("UPDATE orders SET status = 'CONFIRMED', updated_at = ? WHERE id = ?").run(
     new Date().toISOString(),
     orderId
   );
@@ -456,7 +457,7 @@ export function productMixFor(
          JOIN orders o ON o.id = ol.order_id
          JOIN products p ON p.id = ol.product_id
         WHERE o.customer_id = ?
-          AND o.status IN ('confirmed', 'delivered')${scope.sql}`
+          AND o.status IN (${sqlStatusList(PRICED_ORDER_STATUSES)})${scope.sql}`
     )
     .all(customerId, ...scope.params) as unknown as (LineSnapshot & {
     product_id: number;

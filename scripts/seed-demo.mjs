@@ -381,9 +381,9 @@ try {
       const total = lines.reduce((s, [m, packs]) => s + m.price * packs, 0);
 
       // today spreads across the pipeline; everything older has completed
-      let status = "delivered";
-      if (day === 0) status = ["draft", "confirmed", "confirmed", "delivered", "delivered", "confirmed"][k];
-      const delivered = status === "delivered";
+      let status = "DELIVERED";
+      if (day === 0) status = ["DRAFT", "CONFIRMED", "CONFIRMED", "DELIVERED", "DELIVERED", "CONFIRMED"][k];
+      const delivered = status === "DELIVERED";
       const partial = delivered && (day + k) % 5 === 0;
 
       const id = Number(
@@ -424,12 +424,12 @@ try {
           )
           .run(driver, owner.group_id, runDate, owner.id, now, now).lastInsertRowid
       );
-  const onRun = created.filter((o) => o.date === runDate && o.status !== "draft").slice(0, 3);
+  const onRun = created.filter((o) => o.date === runDate && o.status !== "DRAFT").slice(0, 3);
   onRun.forEach((o, i) => {
     db.prepare(
       `INSERT OR IGNORE INTO delivery_stops (run_id, order_id, sort_order, status, created_at)
        VALUES (?, ?, ?, ?, ?)`
-    ).run(runId, o.id, i, o.status === "delivered" ? "delivered" : "pending", now);
+    ).run(runId, o.id, i, o.status === "DELIVERED" ? "delivered" : "pending", now);
   });
 
   /* ── planned visits, so برنامهٔ روز has something to colour ───────────────── */

@@ -6,6 +6,7 @@ import type { Role } from "./roles";
 import type { CustomerLifecycle, CustomerType } from "./types";
 import { polygonCentroid } from "./simplify";
 import type { DistrictGeometry } from "./simplify";
+import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 
 // Re-exported so server modules that already import from db.ts keep one import site.
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
@@ -66,6 +67,7 @@ export const TENANT_TABLES = [
   "stock_movements",
   "delivery_line_batches",
   "quality_complaints",
+  "reason_codes",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -105,6 +107,107 @@ function rebuildForTenantUnique(
   } finally {
     db.exec("PRAGMA foreign_keys = ON;");
   }
+}
+
+/** Phase 3: rebuild `orders` so `status` carries the 12+2-state machine instead of the
+ *  old `draft / confirmed / delivered / cancelled`. Guarded on the CHECK already naming
+ *  `PENDING_REVIEW`, so a fresh DB (whose `orders` came out of the updated
+ *  `rebuildForTenantUnique` create) skips it and only a pre-Phase-3 production DB is
+ *  actually rebuilt.
+ *
+ *  The value map folds the delivery state that used to live implicitly in
+ *  `delivery_stops` back into the order itself: a `confirmed` order with a stop that is
+ *  still `pending` was really `PLANNED`; one whose stop is `delivered` was `DELIVERED`.
+ *  `credit_hold` rows are then reconciled against their `credit_approvals` row. */
+function rebuildOrdersStatusMachine(db: DatabaseSync): void {
+  const schema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'orders'")
+    .get() as { sql: string } | undefined;
+  if (!schema || schema.sql.includes("PENDING_REVIEW")) return;
+
+  db.exec("PRAGMA foreign_keys = OFF;");
+  db.exec("BEGIN");
+  try {
+    db.exec(`
+      CREATE TABLE orders_sm_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        order_no TEXT NOT NULL,
+        customer_id INTEGER NOT NULL REFERENCES customers(id),
+        group_id INTEGER REFERENCES groups(id),
+        salesperson_user_id INTEGER REFERENCES users(id),
+        status TEXT NOT NULL DEFAULT 'DRAFT'
+          CHECK (status IN ('DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD',
+                            'CONFIRMED', 'PLANNED', 'READY', 'OUT_FOR_DELIVERY',
+                            'DELIVERED', 'PARTIALLY_DELIVERED', 'DELIVERY_FAILED',
+                            'CLOSED', 'CANCELLED', 'RETURNED')),
+        order_type TEXT NOT NULL DEFAULT 'SALE',
+        priority TEXT NOT NULL DEFAULT 'NORMAL',
+        offline INTEGER NOT NULL DEFAULT 0,
+        order_date TEXT NOT NULL,
+        delivered_at TEXT,
+        payment_status TEXT NOT NULL DEFAULT 'unpaid'
+          CHECK (payment_status IN ('unpaid', 'partial', 'paid')),
+        paid_toman INTEGER NOT NULL DEFAULT 0,
+        credit_override_by INTEGER REFERENCES users(id),
+        credit_hold INTEGER NOT NULL DEFAULT 0,
+        notes TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        organization_id INTEGER REFERENCES organizations(id),
+        UNIQUE (organization_id, order_no)
+      );
+
+      INSERT INTO orders_sm_new
+        (id, order_no, customer_id, group_id, salesperson_user_id, status,
+         order_date, delivered_at, payment_status, paid_toman, credit_override_by,
+         credit_hold, notes, created_by, created_at, updated_at, organization_id)
+      SELECT
+        o.id, o.order_no, o.customer_id, o.group_id, o.salesperson_user_id,
+        CASE o.status
+          WHEN 'draft' THEN 'DRAFT'
+          WHEN 'cancelled' THEN 'CANCELLED'
+          WHEN 'delivered' THEN 'DELIVERED'
+          WHEN 'confirmed' THEN (
+            SELECT CASE
+              WHEN MAX(CASE WHEN ds.status = 'delivered' THEN 1 ELSE 0 END) = 1 THEN 'DELIVERED'
+              WHEN COUNT(ds.id) > 0 THEN 'PLANNED'
+              ELSE 'CONFIRMED'
+            END
+            FROM delivery_stops ds WHERE ds.order_id = o.id
+          )
+          ELSE 'DRAFT'
+        END,
+        o.order_date, o.delivered_at, o.payment_status, o.paid_toman, o.credit_override_by,
+        COALESCE(o.credit_hold, 0), o.notes, o.created_by, o.created_at, o.updated_at,
+        o.organization_id
+      FROM orders o;
+
+      DROP TABLE orders;
+      ALTER TABLE orders_sm_new RENAME TO orders;
+      CREATE INDEX IF NOT EXISTS idx_orders_customer ON orders(customer_id, order_date);
+      CREATE INDEX IF NOT EXISTS idx_orders_scope ON orders(group_id, status, order_date);
+      CREATE INDEX IF NOT EXISTS idx_orders_salesperson ON orders(salesperson_user_id, order_date);
+
+      /* A held order whose approval is still pending was really PENDING_CREDIT; one whose
+         approval was rejected was ON_HOLD. Anything else keeps the mapped status. */
+      UPDATE orders SET status = 'PENDING_CREDIT'
+       WHERE credit_hold = 1 AND status IN ('DRAFT', 'CONFIRMED', 'PENDING_REVIEW')
+         AND EXISTS (SELECT 1 FROM credit_approvals ca
+                      WHERE ca.order_id = orders.id AND ca.status = 'pending');
+      UPDATE orders SET status = 'ON_HOLD'
+       WHERE credit_hold = 1 AND status IN ('DRAFT', 'CONFIRMED', 'PENDING_REVIEW')
+         AND EXISTS (SELECT 1 FROM credit_approvals ca
+                      WHERE ca.order_id = orders.id AND ca.status = 'rejected');
+    `);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
+  }
+  console.info("[migrate] orders.status widened to the 12-state machine");
 }
 
 /** Phase 1: before this deploy, a delivery stamped `orders.paid_toman` directly. After
@@ -272,7 +375,7 @@ export function backfillStockLedger(db: DatabaseSync): void {
                 COALESCE(o.delivered_at, o.order_date) AS occurred_at,
                 COALESCE(o.organization_id, 1) AS org
            FROM order_lines ol JOIN orders o ON o.id = ol.order_id
-          WHERE o.status = 'delivered' AND COALESCE(ol.packs_delivered, 0) > 0
+          WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND COALESCE(ol.packs_delivered, 0) > 0
             AND NOT EXISTS (SELECT 1 FROM delivery_line_batches d WHERE d.order_line_id = ol.id)
             AND NOT EXISTS (SELECT 1 FROM stock_movements m
                              WHERE m.ref_type = 'order_line' AND m.ref_id = ol.id AND m.kind = 'DELIVERY_OUT')
@@ -362,6 +465,38 @@ export function backfillStockLedger(db: DatabaseSync): void {
     db.prepare(
       "INSERT OR REPLACE INTO app_meta (key, value) VALUES ('stock_ledger_backfill_done', ?)"
     ).run(now);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
+/** Phase 3: the order machine's audit view reads `order_events`. Legacy orders predate
+ *  the table, so give each one a single synthetic `create` row -- `from_status` NULL,
+ *  `to_status` its current status, dated and attributed from the order itself -- so the
+ *  timeline is never blank. Guarded on an app_meta marker; the `NOT EXISTS` clause makes
+ *  a stray re-run a no-op too. Pure SQL, same reason as backfillStockLedger. */
+export function backfillOrderEvents(db: DatabaseSync): void {
+  const done = db
+    .prepare("SELECT value FROM app_meta WHERE key = 'order_events_backfill_done'")
+    .get() as { value: string } | undefined;
+  if (done) return;
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.exec(`
+      INSERT INTO order_events
+        (organization_id, order_id, from_status, to_status, action, actor_user_id,
+         reason_code_id, note, device_time, created_at)
+      SELECT COALESCE(o.organization_id, 1), o.id, NULL, o.status, 'create', o.created_by,
+             NULL, NULL, NULL, o.created_at
+        FROM orders o
+       WHERE NOT EXISTS (SELECT 1 FROM order_events e WHERE e.order_id = o.id);
+    `);
+    db.prepare(
+      "INSERT OR REPLACE INTO app_meta (key, value) VALUES ('order_events_backfill_done', ?)"
+    ).run(new Date().toISOString());
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
@@ -793,6 +928,10 @@ export function getDb(): DatabaseSync {
       /* Who the order is credited to for commission. Not necessarily who typed it:
          today the manager records what the cold-call فروشنده sold. */
       salesperson_user_id INTEGER REFERENCES users(id),
+      /* Phase 3 widens this to the 12-state machine (rebuildOrdersStatusMachine, run in
+         the migration section); the base table keeps the pre-Phase-3 CHECK so a
+         pre-tenancy DB's rebuildForTenantUnique copy still validates before the value
+         map runs. lib/orderStateMachine.ts is the source of truth for legal moves. */
       status TEXT NOT NULL DEFAULT 'draft'
         CHECK (status IN ('draft', 'confirmed', 'delivered', 'cancelled')),
       order_date TEXT NOT NULL,
@@ -843,6 +982,42 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_order_lines_order ON order_lines(order_id);
     CREATE INDEX IF NOT EXISTS idx_order_lines_product ON order_lines(product_id);
+
+    /* Phase 3: pick-lists for why a delivery failed / was late, why an order was
+       cancelled / returned. organization_id NULL = a system default every tenant sees;
+       a tenant may add its own. Seeded by seedReasonCodes(). */
+    CREATE TABLE IF NOT EXISTS reason_codes (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      domain TEXT NOT NULL CHECK (domain IN
+        ('delivery_fail', 'delivery_delay', 'order_cancel', 'order_return')),
+      code TEXT NOT NULL,
+      label_fa TEXT NOT NULL,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      UNIQUE (organization_id, domain, code)
+    );
+
+    /* Phase 3: the audit trail for the order machine. Append-only -- one row per
+       transition, plus a synthetic 'create' row (from_status NULL) per order. A child
+       of orders for tenancy (it reaches its org through order_id), but carries
+       organization_id so a "what happened today" query need not join. device_time is
+       the client's own clock, kept beside the server's authoritative created_at so a
+       divergence is visible rather than silently trusted. */
+    CREATE TABLE IF NOT EXISTS order_events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+      from_status TEXT,
+      to_status TEXT NOT NULL,
+      action TEXT NOT NULL,
+      actor_user_id INTEGER REFERENCES users(id),
+      reason_code_id INTEGER REFERENCES reason_codes(id),
+      note TEXT,
+      device_time TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_order_events_order ON order_events(order_id, id);
 
     /* ---- Delivery ----------------------------------------------------------------
        A run is one driver's day. UNIQUE on (driver, date) because two runs for the
@@ -1872,6 +2047,12 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE orders ADD COLUMN credit_hold INTEGER NOT NULL DEFAULT 0");
   }
 
+  // Phase 3: widen orders.status from 'draft/confirmed/delivered/cancelled' to the
+  // 12+2-state machine (lib/orderStateMachine.ts). Runs here, after the credit_hold
+  // ADD COLUMN above, so the rebuild's value map can read credit_hold on every path.
+  // Guarded on the CHECK already naming PENDING_REVIEW.
+  rebuildOrdersStatusMachine(db);
+
   const districtCentroidCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
   if (!districtCentroidCols.some((c) => c.name === "centroid_lat")) {
     db.exec("ALTER TABLE districts ADD COLUMN centroid_lat REAL");
@@ -2066,6 +2247,10 @@ export function getDb(): DatabaseSync {
 
   // Phase 2: convert legacy purchases + deliveries into the stock-movement ledger, once.
   backfillStockLedger(db);
+
+  // Phase 3: give every legacy order a synthetic 'create' event so its timeline is not
+  // blank. After backfillStockLedger so a fresh boot has done all its table rebuilds.
+  backfillOrderEvents(db);
 
   _db = db;
   return db;

@@ -14,6 +14,11 @@ import type { DatabaseSync } from "node:sqlite";
 import { orderFilter, groupFilter, type Session } from "./session";
 import { lineTotalToman, lineCostToman, lineKg, type LineSnapshot } from "./orderMath";
 import { customerDebtsForOrg } from "./repo/payments";
+import {
+  FULFILLED_ORDER_STATUSES,
+  PRICED_ORDER_STATUSES,
+  sqlStatusList,
+} from "./orderStateMachine";
 import { toJalali, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
 
 export interface Series {
@@ -110,7 +115,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
          JOIN customers c ON c.id = o.customer_id
          JOIN products p ON p.id = ol.product_id
          LEFT JOIN users u ON u.id = o.salesperson_user_id
-        WHERE o.status = 'delivered'${scope.sql}`
+        WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})${scope.sql}`
     )
     .all(...scope.params) as unknown as DeliveredLine[];
 
@@ -122,7 +127,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
               COALESCE(SUM(COALESCE(ol.packs_delivered, 0)), 0) AS delivered
          FROM order_lines ol
          JOIN orders o ON o.id = ol.order_id
-        WHERE o.status IN ('confirmed', 'delivered', 'cancelled')${scope.sql}`
+        WHERE o.status IN (${sqlStatusList([...PRICED_ORDER_STATUSES, "CANCELLED"])})${scope.sql}`
     )
     .get(...scope.params) as { ordered: number; delivered: number };
 
@@ -206,7 +211,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     .prepare(
       `SELECT o.order_date, o.delivered_at
          FROM orders o
-        WHERE o.status = 'delivered' AND o.delivered_at IS NOT NULL${scope.sql}`
+        WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.delivered_at IS NOT NULL${scope.sql}`
     )
     .all(...scope.params) as unknown as { order_date: string; delivered_at: string }[];
   const leadDays = leadRows
@@ -297,7 +302,7 @@ export function fillRateByDriver(db: DatabaseSync, session: Session): Series[] {
          JOIN users u ON u.id = dr.driver_user_id
          JOIN orders o ON o.id = ds.order_id
          JOIN order_lines ol ON ol.order_id = o.id
-        WHERE o.status IN ('delivered', 'cancelled')${scope.sql}
+        WHERE o.status IN (${sqlStatusList([...FULFILLED_ORDER_STATUSES, "CANCELLED"])})${scope.sql}
         GROUP BY u.id`
     )
     .all(...scope.params) as unknown as { name: string; ordered: number; delivered: number }[];

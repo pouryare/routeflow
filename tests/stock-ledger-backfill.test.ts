@@ -55,7 +55,7 @@ function seedLegacy() {
   db.prepare("INSERT INTO purchase_lines (purchase_id,product_id,base_qty,unit_cost_toman,created_at) VALUES (?,?,40,1000,?)").run(pu, prod, now);
 
   const ord = Number(
-    db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'delivered',?,?,?,?,1)").run(cust, "2026-01-10", "2026-01-11", user, now, now).lastInsertRowid
+    db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'DELIVERED',?,?,?,?,1)").run(cust, "2026-01-10", "2026-01-11", user, now, now).lastInsertRowid
   );
   const run = Number(
     db.prepare("INSERT INTO delivery_runs (driver_user_id,run_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,1)").run(user, "2026-01-11", user, now, now).lastInsertRowid

@@ -16,6 +16,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
 import { lineKg, type LineSnapshot } from "./orderMath";
+import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman } from "./money";
 
 export interface Period {
@@ -138,7 +139,7 @@ function accrualsFor(
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
         WHERE o.salesperson_user_id = ?
-          AND o.status = 'delivered'
+          AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
           AND o.order_date BETWEEN ? AND ?
         ORDER BY o.order_date, o.id`
     )

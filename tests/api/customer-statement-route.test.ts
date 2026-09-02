@@ -67,7 +67,7 @@ beforeAll(() => {
   const o = Number(
     db
       .prepare(
-        "INSERT INTO orders (order_no,customer_id,group_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,?,'delivered',?,?,?,?,1)"
+        "INSERT INTO orders (order_no,customer_id,group_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,?,'DELIVERED',?,?,?,?,1)"
       )
       .run(custA, groupA, "2026-01-01", "2026-01-01", ownerId, now, now).lastInsertRowid
   );

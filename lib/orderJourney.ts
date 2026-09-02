@@ -1,6 +1,11 @@
 import type { DatabaseSync } from "node:sqlite";
 import { plain } from "./db";
 import { readOrder } from "./orders";
+import {
+  FULFILLED_ORDER_STATUSES,
+  PRICED_ORDER_STATUSES,
+  type OrderStatus,
+} from "./orderStateMachine";
 
 /** The lifecycle of one order, as four steps that already exist in the schema.
  *
@@ -59,9 +64,10 @@ export interface JourneyInput {
 const TOMAN = (n: number) => new Intl.NumberFormat("fa-IR").format(n);
 
 export function buildJourney(o: JourneyInput): JourneyNode[] {
-  const cancelled = o.status === "cancelled";
-  const confirmed = o.status === "confirmed" || o.status === "delivered";
-  const delivered = o.status === "delivered" && o.delivered_at !== null;
+  const st = o.status as OrderStatus;
+  const cancelled = st === "CANCELLED" || st === "RETURNED";
+  const confirmed = PRICED_ORDER_STATUSES.includes(st);
+  const delivered = FULFILLED_ORDER_STATUSES.includes(st) && o.delivered_at !== null;
   const owed = Math.max(0, o.total_toman - o.paid_toman);
 
   const base: Omit<JourneyNode, "state">[] = [

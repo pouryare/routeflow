@@ -185,3 +185,30 @@ export function isTerminalOrderStatus(s: OrderStatus): boolean {
 
 /** All 14 statuses, for schema checks and iteration. */
 export const ORDER_STATUSES = Object.keys(ORDER_STATUS_LABEL) as OrderStatus[];
+
+/** Goods have reached the customer, fully or partly -- what commission, customer debt
+ *  and delivered-weight reports count. RETURNED is excluded: the goods came back. */
+export const FULFILLED_ORDER_STATUSES: readonly OrderStatus[] = [
+  "DELIVERED",
+  "PARTIALLY_DELIVERED",
+  "CLOSED",
+];
+
+/** Prices are locked -- the order is confirmed or further along. Excludes every
+ *  pre-confirm state and the terminal CANCELLED / RETURNED. */
+export const PRICED_ORDER_STATUSES: readonly OrderStatus[] = [
+  "CONFIRMED",
+  "PLANNED",
+  "READY",
+  "OUT_FOR_DELIVERY",
+  "DELIVERED",
+  "PARTIALLY_DELIVERED",
+  "DELIVERY_FAILED",
+  "CLOSED",
+];
+
+/** `'A', 'B', 'C'` -- the body of an SQL `IN (…)` list. Values are the fixed identifiers
+ *  above, never user input. */
+export function sqlStatusList(statuses: readonly string[]): string {
+  return statuses.map((s) => `'${s}'`).join(", ");
+}

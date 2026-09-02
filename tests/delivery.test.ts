@@ -211,7 +211,7 @@ describe("recordDelivery", () => {
       paid_toman: number;
       delivered_at: string;
     };
-    expect(row.status).toBe("delivered");
+    expect(row.status).toBe("DELIVERED");
     expect(row.payment_status).toBe("paid");
     expect(row.paid_toman).toBe(880000);
     expect(row.delivered_at).not.toBeNull();
@@ -281,7 +281,7 @@ describe("recordDelivery", () => {
     const orderRow = db.prepare("SELECT status FROM orders WHERE id = ?").get(order.id) as {
       status: string;
     };
-    expect(orderRow.status).toBe("cancelled");
+    expect(orderRow.status).toBe("CANCELLED");
   });
 
   it("is idempotent, so a queued delivery can be retried safely", () => {

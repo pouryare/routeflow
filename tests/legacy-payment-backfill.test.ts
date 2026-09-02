@@ -28,7 +28,7 @@ function legacyPaidOrder(paid: number, total: number, dateISO = "2026-01-01"): n
     db
       .prepare(
         `INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,paid_toman,payment_status,created_by,created_at,updated_at,organization_id)
-         VALUES (?,?,?,'delivered',?,?,?,?,?,?,1)`
+         VALUES (?,?,?,'DELIVERED',?,?,?,?,?,?,1)`
       )
       .run(`o-${tag}`, custId, dateISO, dateISO, paid, "partial", userId, now, now).lastInsertRowid
   );

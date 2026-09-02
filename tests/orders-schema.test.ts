@@ -63,7 +63,7 @@ function tableSql(table: string): string {
   ).sql;
 }
 
-function insertOrder(orderNo: string, status = "draft"): number {
+function insertOrder(orderNo: string, status = "DRAFT"): number {
   const now = new Date().toISOString();
   return Number(
     getDb()
@@ -89,6 +89,10 @@ describe("orders", () => {
         "group_id",
         "salesperson_user_id",
         "status",
+        // Phase 3: the 12-state order machine plus its classifiers.
+        "order_type",
+        "priority",
+        "offline",
         "order_date",
         "delivered_at",
         "payment_status",
@@ -115,13 +119,37 @@ describe("orders", () => {
 
   it("refuses a status it does not know", () => {
     expect(() => insertOrder("1405-00002", "posted")).toThrow();
+    expect(() => insertOrder("1405-00003", "confirmed")).toThrow(); // old lower-case is gone
   });
 
-  it("accepts the four statuses an order moves through", () => {
+  it("accepts every state of the 12-state machine", () => {
     let n = 10;
-    for (const status of ["draft", "confirmed", "delivered", "cancelled"]) {
-      expect(() => insertOrder(`1405-000${n++}`, status)).not.toThrow();
+    for (const status of [
+      "DRAFT",
+      "PENDING_REVIEW",
+      "PENDING_CREDIT",
+      "ON_HOLD",
+      "CONFIRMED",
+      "PLANNED",
+      "READY",
+      "OUT_FOR_DELIVERY",
+      "DELIVERED",
+      "PARTIALLY_DELIVERED",
+      "DELIVERY_FAILED",
+      "CLOSED",
+      "CANCELLED",
+      "RETURNED",
+    ]) {
+      expect(() => insertOrder(`1405-00${n++}`, status)).not.toThrow();
     }
+  });
+
+  it("defaults order_type, priority and offline", () => {
+    const id = insertOrder("1405-00500");
+    const row = getDb()
+      .prepare("SELECT order_type, priority, offline FROM orders WHERE id = ?")
+      .get(id) as { order_type: string; priority: string; offline: number };
+    expect(row).toEqual({ order_type: "SALE", priority: "NORMAL", offline: 0 });
   });
 
   it("refuses to hang off a customer that does not exist", () => {
@@ -130,7 +158,7 @@ describe("orders", () => {
       getDb()
         .prepare(
           `INSERT INTO orders (order_no, customer_id, status, order_date, created_by, created_at, updated_at)
-           VALUES (?, ?, 'draft', ?, ?, ?, ?)`
+           VALUES (?, ?, 'DRAFT', ?, ?, ?, ?)`
         )
         .run("1405-09999", 999999, "2026-08-26", ctx.user, now, now)
     ).toThrow();

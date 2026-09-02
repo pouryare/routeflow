@@ -63,7 +63,7 @@ function deliveredUnpaidOrder(packs: number): number {
     lines: [line(packs)],
   });
   confirmOrder(db, o.id);
-  db.prepare("UPDATE orders SET status = 'delivered', delivered_at = '2026-01-02' WHERE id = ?").run(o.id);
+  db.prepare("UPDATE orders SET status = 'DELIVERED', delivered_at = '2026-01-02' WHERE id = ?").run(o.id);
   return o.id;
 }
 

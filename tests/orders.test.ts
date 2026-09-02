@@ -254,7 +254,7 @@ describe("confirmOrder", () => {
     const row = getDb().prepare("SELECT status FROM orders WHERE id = ?").get(order.id) as {
       status: string;
     };
-    expect(row.status).toBe("confirmed");
+    expect(row.status).toBe("CONFIRMED");
   });
 
   /** A customer nobody else in this file has ordered for. The first version of these

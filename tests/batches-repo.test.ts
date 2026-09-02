@@ -119,7 +119,7 @@ describe("advanceBatchStatus", () => {
     const id = createBatch(1, { product_id: prod, qty_received_base: 20 });
     recordMovement(1, { facility_id: fac, product_id: prod, batch_id: id, base_qty: 20, kind: "PURCHASE_IN", occurred_at: "2026-01-01" });
     const cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)").run().lastInsertRowid);
-    const ord = Number(db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'delivered',?,?,?,1)").run(cust, "2026-01-01", userId, now, now).lastInsertRowid);
+    const ord = Number(db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,created_by,created_at,updated_at,organization_id) VALUES ('o1',?,?,'DELIVERED',?,?,?,1)").run(cust, "2026-01-01", userId, now, now).lastInsertRowid);
     const run = Number(db.prepare("INSERT INTO delivery_runs (driver_user_id,run_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,1)").run(userId, "2026-01-01", userId, now, now).lastInsertRowid);
     const stop = Number(db.prepare("INSERT INTO delivery_stops (run_id,order_id,sort_order,created_at) VALUES (?,?,0,?)").run(run, ord, now).lastInsertRowid);
     const ol = Number(db.prepare("INSERT INTO order_lines (order_id,product_id,packaging_id,packs_ordered,unit_price_toman,unit_cost_toman,qty_per_pack,kg_per_base_unit,is_reversal,created_at) VALUES (?,?,?,1,1000,0,1,1,0,?)").run(ord, prod, pack, now).lastInsertRowid);
@@ -148,7 +148,7 @@ describe("batchTrace", () => {
     const now = new Date().toISOString();
     const id = createBatch(1, { product_id: prod, qty_received_base: 20 });
     const cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C9','رستوران','active','2026-01-01',1)").run().lastInsertRowid);
-    const ord = Number(db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o9',?,?,'delivered',?,?,?,?,1)").run(cust, "2026-01-01", "2026-01-02", userId, now, now).lastInsertRowid);
+    const ord = Number(db.prepare("INSERT INTO orders (order_no,customer_id,order_date,status,delivered_at,created_by,created_at,updated_at,organization_id) VALUES ('o9',?,?,'DELIVERED',?,?,?,?,1)").run(cust, "2026-01-01", "2026-01-02", userId, now, now).lastInsertRowid);
     const run = Number(db.prepare("INSERT INTO delivery_runs (driver_user_id,run_date,created_by,created_at,updated_at,organization_id) VALUES (?,?,?,?,?,1)").run(userId, "2026-01-02", userId, now, now).lastInsertRowid);
     const stop = Number(db.prepare("INSERT INTO delivery_stops (run_id,order_id,sort_order,created_at) VALUES (?,?,0,?)").run(run, ord, now).lastInsertRowid);
     const ol = Number(db.prepare("INSERT INTO order_lines (order_id,product_id,packaging_id,packs_ordered,unit_price_toman,unit_cost_toman,qty_per_pack,kg_per_base_unit,is_reversal,created_at) VALUES (?,?,?,1,1000,0,1,1,0,?)").run(ord, prod, pack, now).lastInsertRowid);

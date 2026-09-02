@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { plain } from "./db";
 import { lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
 import { customerDebt } from "./repo/payments";
+import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 
 /** Everything the customer sheet (پنجرهٔ مشتری) puts on screen, in one read.
  *
@@ -91,7 +92,7 @@ export function readCustomerSummary(
                 o.id AS order_id, o.order_no, o.order_date, o.customer_id
            FROM order_lines ol
            JOIN orders o ON o.id = ol.order_id
-          WHERE o.status = 'delivered' AND o.order_date >= ?${scope.sql}`
+          WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)}) AND o.order_date >= ?${scope.sql}`
       )
       .all(since, ...scope.params)
   ) as unknown as Row[];

@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
 import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import type { CustomerDebt } from "@/lib/types";
+import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 
 export type { CustomerDebt };
 
@@ -84,7 +85,7 @@ export function deliveredOrdersForCustomer(
       `SELECT o.id, o.order_date, o.delivered_at, o.paid_toman
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
-        WHERE o.customer_id = ? AND c.organization_id = ? AND o.status = 'delivered'
+        WHERE o.customer_id = ? AND c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
         ORDER BY o.order_date, o.id`
     )
     .all(customerId, organizationId) as unknown as Omit<OutstandingOrder, "total_toman">[];
@@ -494,7 +495,7 @@ export function customerDebtsForOrg(
       `SELECT o.id, o.customer_id, o.order_date, o.delivered_at, o.paid_toman
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
-        WHERE c.organization_id = ? AND o.status = 'delivered'`
+        WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
     )
     .all(organizationId) as unknown as {
     id: number;
@@ -511,7 +512,7 @@ export function customerDebtsForOrg(
          FROM order_lines ol
          JOIN orders o ON o.id = ol.order_id
          JOIN customers c ON c.id = o.customer_id
-        WHERE c.organization_id = ? AND o.status = 'delivered'`
+        WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
     )
     .all(organizationId) as unknown as (LineSnapshot & { order_id: number })[];
   const totalByOrder = new Map<number, number>();

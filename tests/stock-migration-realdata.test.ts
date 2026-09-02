@@ -34,6 +34,7 @@ if (!provided) {
 process.env.COVERAGE_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-stock-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
+const { FULFILLED_ORDER_STATUSES, sqlStatusList } = await import("@/lib/orderStateMachine");
 
 describe.skipIf(!dbPath)("Phase 2 stock backfill on real data", () => {
   it("keeps SUM(stock_movements.base_qty) per product equal to legacy purchased - delivered", () => {
@@ -59,7 +60,7 @@ describe.skipIf(!dbPath)("Phase 2 stock backfill on real data", () => {
           .prepare(
             `SELECT COALESCE(SUM(COALESCE(ol.packs_delivered,0) * ol.qty_per_pack),0) n
                FROM order_lines ol JOIN orders o ON o.id = ol.order_id
-              WHERE ol.product_id = ? AND o.status = 'delivered'`
+              WHERE ol.product_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
           )
           .get(p.id) as { n: number }
       ).n;
