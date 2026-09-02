@@ -10,19 +10,32 @@ const OUTCOMES: { code: string; label: string }[] = [
   { code: "NOT_INTERESTED", label: "رد کرد" },
 ];
 
+interface ObjectionCard {
+  title_fa: string;
+  script_fa: string;
+}
+
 export default function TaskRow({ taskId, label, sub }: { taskId: number; label: string; sub?: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
+  const [card, setCard] = useState<ObjectionCard | null>(null);
 
   async function resolve(code: string | null) {
     setBusy(true);
     try {
-      await fetch(`/api/tasks/${taskId}`, {
+      const res = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(code ? { status: "done", outcome_code: code } : { status: "dismissed" }),
       });
-      router.refresh();
+      const j = (await res.json().catch(() => ({}))) as { objection_card?: ObjectionCard | null };
+      if (j.objection_card) {
+        // Phase 8: show the coaching card in the call, then refresh the list.
+        setCard(j.objection_card);
+        window.setTimeout(() => router.refresh(), 6000);
+      } else {
+        router.refresh();
+      }
     } finally {
       setBusy(false);
     }
@@ -55,6 +68,12 @@ export default function TaskRow({ taskId, label, sub }: { taskId: number; label:
           حذف
         </button>
       </div>
+      {card && (
+        <div className="mt-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--surface-2)] p-[var(--space-2)] text-[length:var(--text-xs)]">
+          <strong className="text-[var(--text)]">{card.title_fa}</strong>
+          <p className="m-0 mt-[var(--space-1)] leading-6 text-[var(--text-muted)]">{card.script_fa}</p>
+        </div>
+      )}
     </li>
   );
 }
