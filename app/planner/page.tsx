@@ -14,7 +14,6 @@ import {
   twoOptOrder,
 } from "@/lib/geo";
 import type { RouteStop } from "@/components/PlannerRouteMap";
-import DeliveryImportPanel from "@/components/DeliveryImportPanel";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { replaceUrlQuery } from "@/lib/deepLink";
@@ -674,10 +673,6 @@ export default function PlannerPage() {
               </button>
             );
           })}
-        </div>
-
-        <div className="no-print">
-          <DeliveryImportPanel selectedDate={selectedDate} onAdded={loadWeek} />
         </div>
 
         <section className="no-print rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">

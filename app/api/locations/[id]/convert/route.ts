@@ -3,7 +3,7 @@ import { getDb, SavedLocationRow } from "@/lib/db";
 import { canReachGroup, requireRole } from "@/lib/session";
 
 // Promotes a prospect into the real customers table -- a manual insert, distinct from
-// the Excel/OneDrive sync path (importCustomersFromWorkbook), so it gets its own
+// the bulk customer-creation paths, so it gets its own
 // customer_code namespace ("LEAD-<id>") that can never collide with a spreadsheet code
 // and is easy to recognize later. The saved_locations row is deleted on success: once
 // promoted it's a customer, not a prospect, so it shouldn't linger in both lists (the

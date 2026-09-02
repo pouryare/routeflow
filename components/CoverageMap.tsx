@@ -105,7 +105,6 @@ const VectorBasemap = dynamic(() => import("./VectorBasemap"), { ssr: false });
 const FullscreenControl = dynamic(() => import("./FullscreenControl"), { ssr: false });
 const CustomerDetailPanel = dynamic(() => import("./CustomerDetailPanel"), { ssr: false });
 const DistrictEditor = dynamic(() => import("./DistrictEditor"), { ssr: false });
-const ImportPanel = dynamic(() => import("./ImportPanel"), { ssr: false });
 const NextStopBar = dynamic(() => import("./NextStopBar"), { ssr: false });
 const ShortcutHelp = dynamic(() => import("./ShortcutHelp"), { ssr: false });
 
@@ -643,10 +642,9 @@ export default function CoverageMap({
     return { type: "FeatureCollection", features };
   }, [districtProps, geometry]);
 
-  // Keeps customer data live without a manual reload -- not just for this tab's own
-  // Excel import (ImportPanel's onImported already refreshes that instantly), but for
-  // any update made elsewhere: a coworker importing from a different session, or this
-  // same tab left open from an earlier visit. /api/customers is always-revalidate
+  // Keeps customer data live without a manual reload: any update made elsewhere -- a
+  // coworker editing from a different session, or this same tab left open from an
+  // earlier visit. /api/customers is always-revalidate
   // (lib/httpCache.ts), so a poll that finds nothing new costs one cheap 304 -- no row
   // fetch even runs server-side -- and only actually re-renders when something changed.
   useEffect(() => {
@@ -2077,8 +2075,6 @@ export default function CoverageMap({
 
           </div>
         </CollapsibleSection>
-
-        <ImportPanel onImported={loadCustomers} />
 
         {/* Last in the panel on purpose: a driver never needs this, and it would be
             competing with the things they do. */}

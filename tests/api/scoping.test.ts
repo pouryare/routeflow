@@ -143,8 +143,6 @@ const { GET: getPlans, POST: postPlan } = await import("@/app/api/visit-plans/ro
 const { PATCH: patchPlan, DELETE: deletePlan } = await import("@/app/api/visit-plans/[id]/route");
 const { GET: getActivity, POST: postActivity } = await import("@/app/api/activity/route");
 const { GET: getSales } = await import("@/app/api/sales/route");
-const { GET: getImportStatus } = await import("@/app/api/import/status/route");
-const { POST: postImportUndo } = await import("@/app/api/import/undo/route");
 const { POST: subscribePush } = await import("@/app/api/push/subscribe/route");
 
 // Only the ids an assertion actually names are bound. The east-side rows still have to
@@ -504,19 +502,6 @@ describe("sales aggregates reach their group through the customer", () => {
       )
       .all(east) as unknown as { customer_name: string }[];
     expect(rows.some((r) => r.customer_name === "کسی که نیست")).toBe(false);
-  });
-});
-
-describe("owner-only routes", () => {
-  it("refuses a group manager the import status", async () => {
-    const res = await getImportStatus(as(eastMgrId, "group_manager", east, "http://localhost/api/import/status"));
-    expect(res.status).toBe(403);
-  });
-  it("refuses a group manager an import undo", async () => {
-    const res = await postImportUndo(
-      as(eastMgrId, "group_manager", east, "http://localhost/api/import/undo", { method: "POST" })
-    );
-    expect(res.status).toBe(403);
   });
 });
 

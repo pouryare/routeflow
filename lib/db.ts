@@ -141,13 +141,6 @@ export function getDb(): DatabaseSync {
       UNIQUE(name, level, parent_name)
     );
 
-    CREATE TABLE IF NOT EXISTS import_log (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      imported_at TEXT NOT NULL,
-      customers_upserted INTEGER NOT NULL,
-      source_filename TEXT
-    );
-
     CREATE TABLE IF NOT EXISTS activity_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer')),
@@ -218,13 +211,6 @@ export function getDb(): DatabaseSync {
       p256dh TEXT NOT NULL,
       auth TEXT NOT NULL,
       created_at TEXT NOT NULL
-    );
-
-    CREATE TABLE IF NOT EXISTS import_snapshots (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      created_at TEXT NOT NULL,
-      customers_json TEXT NOT NULL,
-      sales_json TEXT NOT NULL
     );
 
     /* A tenant. RouteFlow is sold to other distributors, so one database holds several
@@ -1253,6 +1239,11 @@ export function getDb(): DatabaseSync {
   if (!customerCols.some((c) => c.name === "last_purchase_date")) {
     db.exec("ALTER TABLE customers ADD COLUMN last_purchase_date TEXT");
   }
+
+  // Phase 0b: the Excel customer importer is gone. Its bookkeeping tables go with it.
+  // DROP IF EXISTS is idempotent and safe to run twice.
+  db.exec("DROP TABLE IF EXISTS import_log;");
+  db.exec("DROP TABLE IF EXISTS import_snapshots;");
 
   seedFacilities(db);
 
