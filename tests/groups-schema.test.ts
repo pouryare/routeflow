@@ -29,13 +29,16 @@ describe("groups schema", () => {
     );
   });
 
-  it("requires group names and slugs to be unique", () => {
+  it("requires group names and slugs to be unique within one organisation", () => {
     const db = getDb();
     const now = new Date().toISOString();
-    db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+    // organization_id stamped explicitly: the constraint this asserts is now
+    // (organization_id, name), and two NULL organisations are not equal to each other
+    // under SQLite's own uniqueness rules, so an unstamped insert would never collide.
+    db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)")
       .run("گروه شرق", "east", "#2DE0E6", now);
     expect(() =>
-      db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+      db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, 1)")
         .run("گروه شرق", "east-2", "#fff", now)
     ).toThrow();
   });

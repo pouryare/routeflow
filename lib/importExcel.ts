@@ -398,22 +398,29 @@ export async function importCustomersFromWorkbook(
   const debtMap = buildDebtMap(saleRecords, nowDate);
   const lastPurchaseMap = buildLastPurchaseMap(saleRecords);
 
+  // This importer reads one workbook at one URL (ONEDRIVE_SALES_FILE_URL) for one
+  // company -- it has no notion of which organisation is running it because there has
+  // only ever been one. Pinned to 1 rather than threaded through as a parameter until a
+  // second tenant actually needs its own workbook; parameterising a code path with no
+  // second caller is a guess at a shape nobody has asked for yet.
+  const IMPORT_ORGANIZATION_ID = 1;
+
   const selectExisting = db.prepare(
     `SELECT business_name, contact_person, phone, address, city, province, lat, lng,
             status, salesperson, debt_0_7, debt_8_30, debt_30_plus, notes
-     FROM customers WHERE customer_code = ?`
+     FROM customers WHERE customer_code = ? AND organization_id = ?`
   );
   const selectByBusinessName = db.prepare(
-    "SELECT customer_code FROM customers WHERE business_name = ? AND customer_code != ?"
+    "SELECT customer_code FROM customers WHERE business_name = ? AND customer_code != ? AND organization_id = ?"
   );
 
   const upsert = db.prepare(`
     INSERT INTO customers (
       customer_code, business_name, contact_person, phone, address, city, province,
       lat, lng, status, salesperson, debt_0_7, debt_8_30, debt_30_plus, notes,
-      last_purchase_date, synced_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(customer_code) DO UPDATE SET
+      last_purchase_date, synced_at, organization_id
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ON CONFLICT(organization_id, customer_code) DO UPDATE SET
       business_name = excluded.business_name,
       contact_person = excluded.contact_person,
       phone = excluded.phone,
@@ -514,7 +521,7 @@ export async function importCustomersFromWorkbook(
       totalDebtAfter += next.debt_0_7 + next.debt_8_30 + next.debt_30_plus;
       if (next.lat !== null && next.lng !== null) coordsAfter++;
 
-      const existing = selectExisting.get(customerCode) as CustomerFieldSnapshot | undefined;
+      const existing = selectExisting.get(customerCode, IMPORT_ORGANIZATION_ID) as CustomerFieldSnapshot | undefined;
       if (!existing) newCustomers++;
       else if (snapshotsEqual(existing, next)) unchangedCustomers++;
       else updatedCustomers++;
@@ -523,7 +530,7 @@ export async function importCustomersFromWorkbook(
       // code got corrupted (e.g. by a shifted column) created a *second* row for a
       // business name that already existed under a different code, instead of updating
       // the real one.
-      const dupe = selectByBusinessName.get(businessName, customerCode) as { customer_code: string } | undefined;
+      const dupe = selectByBusinessName.get(businessName, customerCode, IMPORT_ORGANIZATION_ID) as { customer_code: string } | undefined;
       if (dupe) {
         duplicateBusinessNames.push({ business_name: businessName, existing_code: dupe.customer_code, new_code: customerCode });
       }
@@ -545,7 +552,8 @@ export async function importCustomersFromWorkbook(
         next.debt_30_plus,
         next.notes,
         lastPurchaseMap.get(businessName) ?? null,
-        now
+        now,
+        IMPORT_ORGANIZATION_ID
       );
       upserted++;
     }

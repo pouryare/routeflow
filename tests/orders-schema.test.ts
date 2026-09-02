@@ -69,8 +69,8 @@ function insertOrder(orderNo: string, status = "draft"): number {
     getDb()
       .prepare(
         `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
-                             order_date, created_by, created_at, updated_at)
-         VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?)`
+                             order_date, created_by, created_at, updated_at, organization_id)
+         VALUES (?, ?, NULL, ?, ?, ?, ?, ?, ?, 1)`
       )
       .run(orderNo, ctx.customer, ctx.user, status, "2026-08-26", ctx.user, now, now)
       .lastInsertRowid

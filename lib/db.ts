@@ -59,6 +59,45 @@ export const TENANT_TABLES = [
   "manager_commission_payments",
 ] as const satisfies readonly string[];
 
+/** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
+ *
+ *  SQLite cannot ALTER a constraint, so the only route is the same one this file already
+ *  uses for the salesperson and platform_owner role widenings: build the replacement,
+ *  copy every row, drop, rename. Guarded on the *constraint text* rather than on a
+ *  column, because the columns are unchanged here -- it is only the uniqueness that
+ *  moves.
+ *
+ *  Foreign keys are suspended for the copy. With them on, DROP TABLE would either fail
+ *  or cascade into whatever references this table, depending on the pragma, and neither
+ *  is what a rename wants -- the schema those referents see is unchanged either way. */
+function rebuildForTenantUnique(
+  db: DatabaseSync,
+  table: string,
+  marker: string,
+  createSql: string
+): void {
+  const schema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?")
+    .get(table) as { sql: string } | undefined;
+  if (!schema || schema.sql.includes(marker)) return;
+
+  const tableCols = (db.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[])
+    .map((c) => `"${c.name}"`)
+    .join(", ");
+
+  db.exec("PRAGMA foreign_keys = OFF;");
+  try {
+    db.exec(`
+      ${createSql}
+      INSERT INTO ${table}_tn_new (${tableCols}) SELECT ${tableCols} FROM ${table};
+      DROP TABLE ${table};
+      ALTER TABLE ${table}_tn_new RENAME TO ${table};
+    `);
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
+  }
+}
+
 export function getDb(): DatabaseSync {
   if (_db) return _db;
 
@@ -916,9 +955,17 @@ export function getDb(): DatabaseSync {
     }
   }
 
-  // ALTER each table now, up front -- every later migration step in this function may
-  // insert or seed rows (seedFacilities is the concrete case), and those inserts must
-  // find the column already there.
+  // ALTER each table now, up front, and backfill immediately -- both matter here, not
+  // just the column. seedFacilities runs later in this same function and relies on
+  // "INSERT OR IGNORE" recognising an existing (organization_id, slug) row to skip it;
+  // on a database that already has facilities rows from before this migration, those
+  // rows still carry organization_id = NULL at the moment seedFacilities runs unless
+  // they are backfilled first. Backfilling only *after* seedFacilities -- which is what
+  // "runs every boot" originally meant here -- has the steps in the wrong order: it lets
+  // seedFacilities insert a fresh (1, slug) row next to the untouched (NULL, slug) row,
+  // and then the backfill's own UPDATE collides with the row seedFacilities just made.
+  // A second, final sweep further down still runs as a safety net for anything inserted
+  // by a migration step that comes after this one.
   for (const table of TENANT_TABLES) {
     const tenantCols = db.prepare(`PRAGMA table_info(${table})`).all() as unknown as {
       name: string;
@@ -926,7 +973,188 @@ export function getDb(): DatabaseSync {
     if (!tenantCols.some((c) => c.name === "organization_id")) {
       db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
     }
+    db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
+
+  // Seven natural keys move from globally unique to unique-per-tenant. Two companies
+  // must be able to independently use customer code C001, SKU KR250, district «منطقه ۱»
+  // -- without this, the second organisation to try any of those hits a UNIQUE violation
+  // that has nothing to do with anything they themselves have done.
+  //
+  // users.username deliberately does NOT move: there is one login form with no
+  // organisation picker, so a username has to identify a person across the whole system.
+
+  rebuildForTenantUnique(
+    db,
+    "customers",
+    "UNIQUE (organization_id, customer_code)",
+    `CREATE TABLE customers_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      customer_code TEXT NOT NULL,
+      business_name TEXT NOT NULL,
+      contact_person TEXT,
+      phone TEXT,
+      address TEXT,
+      city TEXT,
+      province TEXT,
+      lat REAL,
+      lng REAL,
+      status TEXT,
+      salesperson TEXT,
+      debt_0_7 REAL DEFAULT 0,
+      debt_8_30 REAL DEFAULT 0,
+      debt_30_plus REAL DEFAULT 0,
+      notes TEXT,
+      synced_at TEXT NOT NULL,
+      last_purchase_date TEXT,
+      group_id INTEGER REFERENCES groups(id),
+      credit_limit_toman INTEGER,
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, customer_code)
+    );`
+  );
+
+  rebuildForTenantUnique(
+    db,
+    "products",
+    "UNIQUE (organization_id, sku)",
+    `CREATE TABLE products_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      sku TEXT,
+      base_unit TEXT NOT NULL DEFAULT 'عدد',
+      kg_per_base_unit REAL NOT NULL DEFAULT 0,
+      avg_cost_toman INTEGER NOT NULL DEFAULT 0,
+      active INTEGER NOT NULL DEFAULT 1,
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      reorder_point REAL,
+      target_stock REAL,
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, sku)
+    );`
+  );
+
+  // Both of groups' constraints move together -- guarded on the name constraint alone,
+  // since a CREATE that changes one and not the other would leave the table half done.
+  rebuildForTenantUnique(
+    db,
+    "groups",
+    "UNIQUE (organization_id, name)",
+    `CREATE TABLE groups_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      slug TEXT NOT NULL,
+      color TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, name),
+      UNIQUE (organization_id, slug)
+    );`
+  );
+
+  rebuildForTenantUnique(
+    db,
+    "orders",
+    "UNIQUE (organization_id, order_no)",
+    `CREATE TABLE orders_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_no TEXT NOT NULL,
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      group_id INTEGER REFERENCES groups(id),
+      salesperson_user_id INTEGER REFERENCES users(id),
+      status TEXT NOT NULL DEFAULT 'draft'
+        CHECK (status IN ('draft', 'confirmed', 'delivered', 'cancelled')),
+      order_date TEXT NOT NULL,
+      delivered_at TEXT,
+      payment_status TEXT NOT NULL DEFAULT 'unpaid'
+        CHECK (payment_status IN ('unpaid', 'partial', 'paid')),
+      paid_toman INTEGER NOT NULL DEFAULT 0,
+      credit_override_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, order_no)
+    );`
+  );
+
+  rebuildForTenantUnique(
+    db,
+    "districts",
+    "UNIQUE (organization_id, name, level, parent_name)",
+    `CREATE TABLE districts_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      level TEXT NOT NULL CHECK (level IN ('mantaghe', 'mahalle')),
+      parent_name TEXT,
+      boundary_geojson TEXT NOT NULL,
+      coverage_status TEXT NOT NULL DEFAULT 'unknown'
+        CHECK (coverage_status IN ('visited', 'needs_coverage', 'not_allowed', 'unknown')),
+      notes TEXT,
+      is_custom INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT NOT NULL,
+      assigned_to TEXT,
+      centroid_lat REAL,
+      centroid_lng REAL,
+      group_id INTEGER REFERENCES groups(id),
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, name, level, parent_name)
+    );`
+  );
+
+  rebuildForTenantUnique(
+    db,
+    "saved_locations",
+    "UNIQUE (organization_id, maps_url)",
+    `CREATE TABLE saved_locations_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      maps_url TEXT NOT NULL,
+      address TEXT,
+      lat REAL,
+      lng REAL,
+      resolution TEXT NOT NULL DEFAULT 'unresolved'
+        CHECK (resolution IN ('direct', 'pluscode', 'nominatim', 'manual', 'unresolved')),
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      status TEXT,
+      updated_at TEXT,
+      rating_potential INTEGER,
+      rating_volume INTEGER,
+      rating_ease INTEGER,
+      group_id INTEGER REFERENCES groups(id),
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, maps_url)
+    );`
+  );
+
+  rebuildForTenantUnique(
+    db,
+    "facilities",
+    "UNIQUE (organization_id, slug)",
+    `CREATE TABLE facilities_tn_new (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      slug TEXT NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other')),
+      name TEXT NOT NULL,
+      address TEXT,
+      lat REAL NOT NULL,
+      lng REAL NOT NULL,
+      maps_url TEXT,
+      notes TEXT,
+      is_default_origin INTEGER NOT NULL DEFAULT 0,
+      owner_username TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      group_id INTEGER REFERENCES groups(id),
+      organization_id INTEGER REFERENCES organizations(id),
+      UNIQUE (organization_id, slug)
+    );`
+  );
 
   // Territory. Nullable rather than NOT NULL: a district nobody has claimed yet is a
   // real state, and it is different from one deliberately given to a group.
@@ -1016,11 +1244,12 @@ export function getDb(): DatabaseSync {
 
   seedFacilities(db);
 
-  // The backfill half, run last and every boot: several steps above -- seedFacilities
-  // chief among them -- insert or update rows of their own, and any of them can leave a
-  // fresh row with a null tenant if this ran before they did. Running it after every
-  // other migration step, rather than folded into the ALTER loop, is what makes this
-  // safe regardless of what gets added between here and there in the future.
+  // A second sweep, run last and every boot. The first one above (right after the
+  // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
+  // recognise them as already seeded; this one is the safety net for whatever runs
+  // between here and there -- today that is seedFacilities itself, and the point of
+  // running this every boot is that it stays correct for whatever gets added later
+  // without anyone having to remember to update this comment.
   for (const table of TENANT_TABLES) {
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
@@ -1352,10 +1581,16 @@ const FACILITY_SEED: Array<Omit<FacilityRow, "id" | "created_at" | "updated_at">
 
 export function seedFacilities(db: DatabaseSync): void {
   const now = new Date().toISOString();
+  // organization_id pinned to 1: these are the one real company's warehouse and home
+  // base, hardcoded above by address. Since the UNIQUE that "OR IGNORE" relies on is
+  // now (organization_id, slug), leaving this column out would insert a fresh
+  // organization_id = NULL row on every boot -- NULL is distinct from NULL under
+  // SQLite's own uniqueness rules, so it would never match the row a previous boot
+  // already created, and "idempotent" would quietly stop being true.
   const insert = db.prepare(`
     INSERT OR IGNORE INTO facilities
-      (slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at, organization_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
   for (const f of FACILITY_SEED) {
     insert.run(
@@ -1370,7 +1605,8 @@ export function seedFacilities(db: DatabaseSync): void {
       f.is_default_origin,
       f.owner_username,
       now,
-      now
+      now,
+      1
     );
   }
 }

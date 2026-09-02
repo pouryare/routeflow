@@ -24,12 +24,18 @@ let east = 0, west = 0, ownerId = 0, eastMgrId = 0;
 beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
-  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)");
+  // organization_id stamped explicitly on both: the groups uniqueness this file tests
+  // is now (organization_id, name), and an unstamped row would sit at NULL -- distinct
+  // from every other NULL under SQLite's own rules, so two "duplicate" groups would
+  // never actually collide.
+  const g = db.prepare(
+    "INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)"
+  );
   east = Number(g.run("شرق", "east", now).lastInsertRowid);
   west = Number(g.run("غرب", "west", now).lastInsertRowid);
 
   const u = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
   ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
   eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);

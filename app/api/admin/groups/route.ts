@@ -54,10 +54,13 @@ export async function POST(req: NextRequest) {
   const color = GROUP_PALETTE.includes(body?.color ?? "") ? body!.color! : GROUP_PALETTE[0];
 
   const db = getDb();
+  const organizationId = guard.session.user.organization_id;
   try {
     const result = db
-      .prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
-      .run(name, uniqueSlug(db, slugify(name)), color, new Date().toISOString());
+      .prepare(
+        "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, ?)"
+      )
+      .run(name, uniqueSlug(db, slugify(name), organizationId), color, new Date().toISOString(), organizationId);
     return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
@@ -71,14 +74,18 @@ export async function POST(req: NextRequest) {
 }
 
 /** Two different names can slugify to the same string ("گروه شرق" and "گروه-شرق"), and
- *  slug is UNIQUE, so a collision would surface as a duplicate-name error the owner
- *  cannot act on. Suffix instead. */
-function uniqueSlug(db: ReturnType<typeof getDb>, base: string): string {
-  const taken = db.prepare("SELECT 1 FROM groups WHERE slug = ?");
-  if (!taken.get(base)) return base;
+ *  slug is UNIQUE per organisation, so a collision would surface as a duplicate-name
+ *  error the owner cannot act on. Suffix instead.
+ *
+ *  Scoped to this organisation only: a slug taken by a different tenant is not a
+ *  collision here, and treating it as one would leak that the other tenant's slug
+ *  exists at all. */
+function uniqueSlug(db: ReturnType<typeof getDb>, base: string, organizationId: number): string {
+  const taken = db.prepare("SELECT 1 FROM groups WHERE slug = ? AND organization_id = ?");
+  if (!taken.get(base, organizationId)) return base;
   for (let n = 2; n < 100; n++) {
     const candidate = `${base}-${n}`;
-    if (!taken.get(candidate)) return candidate;
+    if (!taken.get(candidate, organizationId)) return candidate;
   }
   return `${base}-${Date.now().toString(36)}`;
 }
