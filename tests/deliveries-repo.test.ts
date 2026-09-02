@@ -13,7 +13,7 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder } = await import("@/lib/orders");
-const { createRun, addStop, recordDelivery, completeDelivery } = await import("@/lib/delivery");
+const { createRun, addStop, completeDelivery } = await import("@/lib/delivery");
 const { listDeliveries, readDelivery, retryDelivery, deliveryForStop } = await import(
   "@/lib/repo/deliveries"
 );

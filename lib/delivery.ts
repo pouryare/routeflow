@@ -488,7 +488,6 @@ export function completeDelivery(
     packs_ordered: number;
     qty_per_pack: number;
   }[];
-  const byId = new Map(orderLines.map((l) => [l.id, l]));
   const wanted = new Map<number, number>((input.lines ?? []).map((l) => [l.order_line_id, l.qty_delivered]));
 
   const lines = orderLines.map((ol) => {
