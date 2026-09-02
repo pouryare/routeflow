@@ -31,8 +31,8 @@ const PERIOD = periodOf(`${IN_MONTH}T00:00:00.000Z`);
 function cookie(uid: number, role: string, gid: number | null = null) {
   return `${COOKIE_NAME}=${createSessionToken({ uid, role: role as never, gid, oid: 1, tv: 0, name: "م" })}`;
 }
-const req = (url: string, c: string, init: RequestInit = {}) =>
-  new NextRequest(`http://localhost${url}`, { ...init, headers: { ...(init.headers ?? {}), cookie: c } });
+const req = (url: string, c: string, init: { method?: string; body?: string } = {}) =>
+  new NextRequest(`http://localhost${url}`, { ...init, headers: { cookie: c } });
 
 let owner = 0;
 let seller = 0;
