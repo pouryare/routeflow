@@ -9,6 +9,7 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import { orderTotalToman, lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
+import { recordPaymentTxn, voidPaymentTxn, recomputeOrderPaymentTxn } from "./repo/payments";
 
 export class DeliveryError extends Error {}
 
@@ -182,8 +183,14 @@ export interface DeliveryInput {
  */
 export function recordDelivery(db: DatabaseSync, stopId: number, input: DeliveryInput): void {
   const stop = db
-    .prepare("SELECT id, order_id, status FROM delivery_stops WHERE id = ?")
-    .get(stopId) as { order_id: number; status: string } | undefined;
+    .prepare(
+      `SELECT s.id, s.order_id, s.status, o.customer_id, o.organization_id
+         FROM delivery_stops s JOIN orders o ON o.id = s.order_id
+        WHERE s.id = ?`
+    )
+    .get(stopId) as
+    | { order_id: number; status: string; customer_id: number; organization_id: number }
+    | undefined;
   if (!stop) throw new DeliveryError("توقف پیدا نشد");
 
   const ordered = db
@@ -223,23 +230,68 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
         WHERE id = ?`
     ).run(stopStatus, input.collected_toman, now, input.by, input.notes ?? null, stopId);
 
-    const paymentStatus =
-      input.collected_toman <= 0 ? "unpaid" : input.collected_toman >= total ? "paid" : "partial";
-
     db.prepare(
       `UPDATE orders
-          SET status = ?, delivered_at = ?, paid_toman = ?, payment_status = ?, updated_at = ?
+          SET status = ?, delivered_at = ?, updated_at = ?
         WHERE id = ?`
     ).run(
       // Nothing taken is not a delivery. Leaving it 'delivered' would put a zero-value
       // invoice in the ledger and count the stop as served.
       nothingTaken ? "cancelled" : "delivered",
       nothingTaken ? null : now,
-      input.collected_toman,
-      paymentStatus,
       now,
       stop.order_id
     );
+
+    // Cash handed over at the door is a real payment now, not a number stamped onto the
+    // order. recordPaymentTxn writes the ledger row, allocates it to this order (the
+    // overpay slice, if any, lands on the customer's account), and recomputes
+    // orders.paid_toman + payment_status from the allocation -- same figures as before,
+    // now with a row behind them.
+    //
+    // Keyed to the stop so a retried sync converges rather than stacking: an existing,
+    // non-voided door payment for this stop with the same amount is left alone; a
+    // different amount voids the old row and writes a fresh one.
+    const priorDoorPayment = db
+      .prepare(
+        "SELECT id, amount_toman FROM payments WHERE delivery_stop_id = ? AND voided_at IS NULL"
+      )
+      .get(stopId) as { id: number; amount_toman: number } | undefined;
+
+    const wantPayment = !nothingTaken && input.collected_toman > 0;
+    const alreadyRight =
+      priorDoorPayment && wantPayment && priorDoorPayment.amount_toman === input.collected_toman;
+
+    if (priorDoorPayment && !alreadyRight) {
+      voidPaymentTxn(db, stop.organization_id, priorDoorPayment.id, input.by, "بازثبت تحویل");
+    }
+
+    if (wantPayment && !alreadyRight) {
+      const onOrder = Math.min(input.collected_toman, total);
+      const allocations: { order_id: number | null; amount_toman: number }[] = [
+        { order_id: stop.order_id, amount_toman: onOrder },
+      ];
+      if (input.collected_toman > total) {
+        allocations.push({ order_id: null, amount_toman: input.collected_toman - total });
+      }
+      recordPaymentTxn(db, stop.organization_id, {
+        customer_id: stop.customer_id,
+        amount_toman: input.collected_toman,
+        method: "CASH",
+        received_at: now,
+        received_by: input.by,
+        delivery_stop_id: stopId,
+        note: "دریافت درِ محل",
+        allocations,
+        // The cash in the driver's hand is the authoritative figure; never let a
+        // cap check roll back a delivery that actually happened.
+        allow_overpay: true,
+      });
+    } else if (!wantPayment) {
+      // A retry that now collects nothing (or refuses the stop) must also clear the
+      // cache the earlier attempt set.
+      recomputeOrderPaymentTxn(db, stop.organization_id, stop.order_id);
+    }
 
     db.exec("COMMIT");
   } catch (e) {

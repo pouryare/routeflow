@@ -773,6 +773,10 @@ export function getDb(): DatabaseSync {
          migration and SQLite cannot add the constraint afterwards -- the link is
          enforced in lib/repo/cheques.ts. */
       cheque_id INTEGER,
+      /* Set when the payment is the cash a driver collected at a delivery stop. It makes
+         recordDelivery idempotent: a retried sync finds the existing row for the stop
+         instead of stacking a second one. */
+      delivery_stop_id INTEGER REFERENCES delivery_stops(id),
       note TEXT,
       voided_at TEXT,
       voided_by INTEGER REFERENCES users(id),
@@ -780,6 +784,7 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_payments_customer ON payments(organization_id, customer_id, received_at);
+    CREATE INDEX IF NOT EXISTS ix_payments_stop ON payments(delivery_stop_id);
 
     /* Reaches a tenant through payments, so it carries no organization_id of its own
        and is on the exempt list in tests/tenancy-schema.test.ts. order_id NULL means

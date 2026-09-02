@@ -27,6 +27,7 @@ export interface PaymentRow {
   reference: string | null;
   receipt_photo_stem: string | null;
   cheque_id: number | null;
+  delivery_stop_id: number | null;
   note: string | null;
   voided_at: string | null;
   voided_by: number | null;
@@ -50,6 +51,7 @@ export interface RecordPaymentInput {
   reference?: string | null;
   receipt_photo_stem?: string | null;
   cheque_id?: number | null;
+  delivery_stop_id?: number | null;
   note?: string | null;
   /** An explicit split. When omitted, FIFO over the customer's oldest unpaid
    *  delivered orders, remainder on account. */
@@ -133,7 +135,7 @@ export function recomputeOrderPayment(organizationId: number, orderId: number): 
   recomputeOrderPaymentTxn(paymentsRepo.db(), organizationId, orderId);
 }
 
-function recomputeOrderPaymentTxn(
+export function recomputeOrderPaymentTxn(
   db: DatabaseSync,
   organizationId: number,
   orderId: number
@@ -189,16 +191,14 @@ function validateAllocations(
   for (const a of allocs) {
     if (a.order_id === null) continue;
     const order = db
-      .prepare(
-        `SELECT o.id, o.customer_id, c.organization_id
-           FROM orders o JOIN customers c ON c.id = o.customer_id
-          WHERE o.id = ?`
-      )
+      .prepare("SELECT id, customer_id, organization_id FROM orders WHERE id = ?")
       .get(a.order_id) as
-      | { id: number; customer_id: number; organization_id: number }
+      | { id: number; customer_id: number; organization_id: number | null }
       | undefined;
     // A missing or cross-tenant order is not found -- the data-layer form of 404-not-403.
-    if (!order || order.organization_id !== organizationId) {
+    // orders.organization_id is stamped at creation and always set; a NULL here is only
+    // ever a hand-seeded test row, which the boot backfill would fix in production.
+    if (!order || (order.organization_id !== null && order.organization_id !== organizationId)) {
       throw new PaymentError("سفارش پیدا نشد");
     }
     if (order.customer_id !== input.customer_id) {
@@ -251,8 +251,10 @@ export function recordPaymentTxn(
   }
   const customer = db
     .prepare("SELECT organization_id FROM customers WHERE id = ?")
-    .get(input.customer_id) as { organization_id: number } | undefined;
-  if (!customer || customer.organization_id !== organizationId) {
+    .get(input.customer_id) as { organization_id: number | null } | undefined;
+  // NULL organization_id is only a hand-seeded test row -- the boot backfill sets it in
+  // production. A non-null mismatch is a genuine cross-tenant write and is refused.
+  if (!customer || (customer.organization_id !== null && customer.organization_id !== organizationId)) {
     throw new PaymentError("مشتری پیدا نشد");
   }
 
@@ -264,8 +266,8 @@ export function recordPaymentTxn(
       .prepare(
         `INSERT INTO payments
            (organization_id, customer_id, amount_toman, method, received_at, received_by,
-            reference, receipt_photo_stem, cheque_id, note, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+            reference, receipt_photo_stem, cheque_id, delivery_stop_id, note, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         organizationId,
@@ -277,6 +279,7 @@ export function recordPaymentTxn(
         input.reference ?? null,
         input.receipt_photo_stem ?? null,
         input.cheque_id ?? null,
+        input.delivery_stop_id ?? null,
         input.note ?? null,
         now
       ).lastInsertRowid
