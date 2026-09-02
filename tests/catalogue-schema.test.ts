@@ -62,6 +62,8 @@ describe("products", () => {
         "updated_at",
         "reorder_point",
         "target_stock",
+        // Phase 2 (Stock & Batches): shelf life in days, for batch expiry defaulting.
+        "shelf_life_days",
       ].sort()
     );
   });

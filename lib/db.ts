@@ -62,6 +62,10 @@ export const TENANT_TABLES = [
   "credit_approvals",
   "payments",
   "cheques",
+  "batches",
+  "stock_movements",
+  "delivery_line_batches",
+  "quality_complaints",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -897,6 +901,97 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, customer_id, cheque_no)
     );
     CREATE INDEX IF NOT EXISTS ix_cheques_status ON cheques(organization_id, status, due_date);
+
+    /* Phase 2 (Stock & Batches). A received physical lot: code, supplier ref, expiry,
+       quantity, and a small status machine (lib/batchStates.ts). Cost stays
+       moving-average on the product -- unit_cost_toman here is carried for trace and
+       per-batch valuation, not for FIFO costing. expired/depleted are written by a
+       sweep, not the API. */
+    CREATE TABLE IF NOT EXISTS batches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      batch_code TEXT NOT NULL,
+      supplier_batch_ref TEXT,
+      purchase_line_id INTEGER REFERENCES purchase_lines(id),
+      produced_at TEXT,
+      expiry_date TEXT,
+      qty_received_base REAL NOT NULL,
+      unit_cost_toman INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active' CHECK (status IN
+        ('active', 'quarantined', 'recalled', 'expired', 'depleted')),
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, product_id, batch_code)
+    );
+    CREATE INDEX IF NOT EXISTS ix_batches_product ON batches(organization_id, product_id, expiry_date);
+
+    /* Signed, append-only stock ledger. On-hand is SUM(base_qty) over this table --
+       still derived, never a stored counter, but now per batch and per facility. A
+       mistake is a compensating ADJUSTMENT / WRITE_OFF, never an edit. base_qty may
+       drive on-hand negative (the books lag reality while paper drains -- the UI flags
+       it, same rule as lib/stockMath). batch_id NULL = an unbatched line (an oversell
+       shortfall, or legacy data). */
+    CREATE TABLE IF NOT EXISTS stock_movements (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      facility_id INTEGER NOT NULL REFERENCES facilities(id),
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      batch_id INTEGER REFERENCES batches(id),
+      base_qty REAL NOT NULL,
+      kind TEXT NOT NULL CHECK (kind IN
+        ('PURCHASE_IN', 'TRANSFER_OUT', 'TRANSFER_IN', 'DELIVERY_OUT', 'SAMPLE_OUT',
+         'RETURN_IN', 'ADJUSTMENT', 'COUNT', 'WRITE_OFF')),
+      ref_type TEXT,
+      ref_id INTEGER,
+      occurred_at TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_stock_mv ON stock_movements
+      (organization_id, product_id, batch_id, facility_id, occurred_at);
+
+    /* Which batch actually went out on which delivery line -- the forward-traceability
+       spine. Keyed to delivery_stop_id because the deliveries table is Phase 3 (M6);
+       a comment there marks the rename. */
+    CREATE TABLE IF NOT EXISTS delivery_line_batches (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      delivery_stop_id INTEGER NOT NULL REFERENCES delivery_stops(id),
+      order_line_id INTEGER NOT NULL REFERENCES order_lines(id),
+      batch_id INTEGER REFERENCES batches(id),
+      base_qty REAL NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_dlb_batch ON delivery_line_batches(batch_id);
+    CREATE INDEX IF NOT EXISTS ix_dlb_stop ON delivery_line_batches(delivery_stop_id);
+
+    /* A quality complaint tied to a customer, order, product and batch. Clustering on a
+       batch raises an alert -- but software does not replace a QA specialist for safety
+       calls (source-extract), so this is a signal, not a verdict. */
+    CREATE TABLE IF NOT EXISTS quality_complaints (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      customer_id INTEGER REFERENCES customers(id),
+      order_id INTEGER REFERENCES orders(id),
+      product_id INTEGER REFERENCES products(id),
+      batch_id INTEGER REFERENCES batches(id),
+      reported_at TEXT NOT NULL,
+      reported_by INTEGER REFERENCES users(id),
+      category TEXT NOT NULL CHECK (category IN
+        ('spoilage', 'packaging', 'foreign_object', 'short_weight', 'wrong_product', 'other')),
+      severity TEXT NOT NULL DEFAULT 'medium' CHECK (severity IN ('low', 'medium', 'high', 'critical')),
+      description TEXT,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN
+        ('open', 'investigating', 'resolved', 'dismissed')),
+      resolution TEXT,
+      resolved_at TEXT,
+      resolved_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_complaints_batch ON quality_complaints(organization_id, batch_id, reported_at);
   `);
 
   /* Nullable, and null means no limit rather than a limit of zero -- most customers do
@@ -930,6 +1025,12 @@ export function getDb(): DatabaseSync {
   }
   if (!productStockCols.some((c) => c.name === "target_stock")) {
     db.exec("ALTER TABLE products ADD COLUMN target_stock REAL");
+  }
+  // Phase 2 (Stock & Batches): shelf life in days, for defaulting a batch's expiry_date
+  // (produced_at + shelf_life_days) and sizing the expiry-alert window. Nullable -- a
+  // product with no shelf life set just gets a flat fallback window.
+  if (!productStockCols.some((c) => c.name === "shelf_life_days")) {
+    db.exec("ALTER TABLE products ADD COLUMN shelf_life_days INTEGER");
   }
 
   // saved_locations shipped with CHECK constraints that lagged the valid resolution
@@ -1338,6 +1439,7 @@ export function getDb(): DatabaseSync {
       updated_at TEXT NOT NULL,
       reorder_point REAL,
       target_stock REAL,
+      shelf_life_days INTEGER,
       organization_id INTEGER REFERENCES organizations(id),
       UNIQUE (organization_id, sku)
     );`
