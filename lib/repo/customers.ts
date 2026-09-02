@@ -6,6 +6,9 @@ export class LifecycleError extends Error {}
 
 interface CustomerRow {
   id: number;
+  business_name: string;
+  group_id: number | null;
+  organization_id: number | null;
   lifecycle: CustomerLifecycle;
   customer_type: CustomerType | null;
   payment_terms_days: number;
@@ -13,6 +16,12 @@ interface CustomerRow {
   credit_limit_toman: number | null;
   qualified_at: string | null;
   parent_customer_id: number | null;
+}
+
+/** Fetch a customer scoped to the tenant (cross-tenant reads return undefined, which
+ *  the caller turns into a 404). */
+export function getScopedCustomer(organizationId: number, id: number): CustomerRow | undefined {
+  return customersRepo.get(organizationId, id);
 }
 
 export const customersRepo = makeRepo<CustomerRow>("customers", { tenant: true });

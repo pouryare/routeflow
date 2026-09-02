@@ -314,6 +314,48 @@ export function recordPayment(organizationId: number, input: RecordPaymentInput)
   }
 }
 
+export function listPayments(
+  organizationId: number,
+  filter?: { customer_id?: number }
+): PaymentRow[] {
+  const rows = filter?.customer_id
+    ? paymentsRepo.list(organizationId, { customer_id: filter.customer_id } as Partial<PaymentRow>)
+    : paymentsRepo.list(organizationId);
+  return rows.sort((a, b) => (a.received_at < b.received_at ? 1 : -1));
+}
+
+export function getPayment(organizationId: number, id: number): PaymentRow | undefined {
+  return paymentsRepo.get(organizationId, id);
+}
+
+/** Record that a payment (a POS or card-to-card receipt) has a photo, and stamp the
+ *  stem onto the payment. The image bytes are written by the route, like the customer
+ *  photo path. One transaction. */
+export function attachReceiptPhoto(
+  organizationId: number,
+  paymentId: number,
+  fileStem: string,
+  caption?: string | null
+): void {
+  const db = paymentsRepo.db();
+  if (!paymentsRepo.get(organizationId, paymentId)) throw new PaymentError("دریافت پیدا نشد");
+  const now = new Date().toISOString();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare(
+      `INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at)
+       VALUES ('payment', ?, ?, ?, ?, ?)`
+    ).run(paymentId, fileStem, caption ?? null, now, now);
+    db.prepare(
+      "UPDATE payments SET receipt_photo_stem = ? WHERE id = ? AND organization_id = ?"
+    ).run(fileStem, paymentId, organizationId);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 export function allocationsOfPayment(
   organizationId: number,
   paymentId: number
