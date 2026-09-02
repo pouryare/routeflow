@@ -1,0 +1,76 @@
+import type { DatabaseSync } from "node:sqlite";
+import { getDb } from "@/lib/db";
+
+/** A thin, tenant-scoped table helper. The only sanctioned place for new raw SQL.
+ *
+ *  Every tenant repo takes `organizationId` as its first argument and applies
+ *  `WHERE organization_id = ?` on every read and stamps it on every insert. A forgotten
+ *  scope is a compile error at the call site, not a silent cross-tenant leak.
+ *
+ *  Complex reads stay hand-written SQL *inside a repo module* via `db()`, never in a
+ *  route. The eventual Postgres migration swaps the driver here and nothing else. */
+export interface Repo<Row extends { id: number }> {
+  get(organizationId: number, id: number): Row | undefined;
+  list(organizationId: number, where?: Partial<Row>): Row[];
+  insert(organizationId: number, row: Omit<Row, "id">): number;
+  patch(organizationId: number, id: number, fields: Partial<Row>): void;
+  db(): DatabaseSync;
+}
+
+export function makeRepo<Row extends { id: number }>(
+  table: string,
+  opts: { tenant: boolean }
+): Repo<Row> {
+  const tenantClause = opts.tenant ? " AND organization_id = ?" : "";
+  const tenantArgs = (organizationId: number): number[] => (opts.tenant ? [organizationId] : []);
+
+  return {
+    db: () => getDb(),
+
+    get(organizationId, id) {
+      return getDb()
+        .prepare(`SELECT * FROM ${table} WHERE id = ?${tenantClause}`)
+        .get(id, ...tenantArgs(organizationId)) as Row | undefined;
+    },
+
+    list(organizationId, where = {}) {
+      const keys = Object.keys(where);
+      const conds = keys.map((k) => `${k} = ?`).join(" AND ");
+      const sql =
+        `SELECT * FROM ${table} WHERE 1 = 1` + (conds ? ` AND ${conds}` : "") + tenantClause;
+      return getDb()
+        .prepare(sql)
+        .all(
+          ...keys.map((k) => (where as Record<string, unknown>)[k] as never),
+          ...tenantArgs(organizationId)
+        ) as Row[];
+    },
+
+    insert(organizationId, row) {
+      const data: Record<string, unknown> = { ...row };
+      if (opts.tenant) data.organization_id = organizationId;
+      const cols = Object.keys(data);
+      const sql = `INSERT INTO ${table} (${cols.join(", ")}) VALUES (${cols.map(() => "?").join(", ")})`;
+      return Number(
+        getDb()
+          .prepare(sql)
+          .run(...cols.map((c) => data[c] as never)).lastInsertRowid
+      );
+    },
+
+    patch(organizationId, id, fields) {
+      const cols = Object.keys(fields);
+      if (cols.length === 0) return;
+      const sql =
+        `UPDATE ${table} SET ${cols.map((c) => `${c} = ?`).join(", ")} ` +
+        `WHERE id = ?${tenantClause}`;
+      getDb()
+        .prepare(sql)
+        .run(
+          ...cols.map((c) => (fields as Record<string, unknown>)[c] as never),
+          id,
+          ...tenantArgs(organizationId)
+        );
+    },
+  };
+}
