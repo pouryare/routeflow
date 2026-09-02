@@ -119,9 +119,9 @@ describe("organization_id backfill", () => {
   it("leaves no row without an organisation", () => {
     const db = getDb();
     for (const table of TENANT_TABLES) {
-      // reason_codes and capacity_factors deliberately keep NULL-org rows: the shared
-      // system/default rows every tenant sees.
-      if (table === "reason_codes" || table === "capacity_factors") continue;
+      // reason_codes, capacity_factors and rules deliberately keep NULL-org rows: the
+      // shared system/default rows every tenant sees.
+      if (table === "reason_codes" || table === "capacity_factors" || table === "rules") continue;
       const row = db
         .prepare(`SELECT COUNT(*) AS n FROM ${table} WHERE organization_id IS NULL`)
         .get() as unknown as { n: number };

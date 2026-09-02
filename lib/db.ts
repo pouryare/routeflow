@@ -75,6 +75,12 @@ export const TENANT_TABLES = [
   "vehicles",
   "route_templates",
   "capacity_factors",
+  "events",
+  "tasks",
+  "alerts",
+  "rules",
+  "rule_runs",
+  "targets",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -1585,6 +1591,102 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, condition_code)
     );
 
+    /* Phase 7 (M8): the event / task / alert / rule spine. The events table is the
+       generic append-only fact bus; order_events stays as the order-specific audit. */
+    CREATE TABLE IF NOT EXISTS events (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      kind TEXT NOT NULL,
+      entity_type TEXT, entity_id INTEGER,
+      actor_user_id INTEGER REFERENCES users(id),
+      metadata_json TEXT,
+      occurred_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_events_recent ON events(organization_id, kind, occurred_at);
+
+    CREATE TABLE IF NOT EXISTS tasks (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      assignee_user_id INTEGER REFERENCES users(id),
+      role_hint TEXT,
+      group_id INTEGER REFERENCES groups(id),
+      kind TEXT NOT NULL,
+      title TEXT NOT NULL,
+      entity_type TEXT, entity_id INTEGER,
+      due_at TEXT,
+      priority TEXT NOT NULL DEFAULT 'NORMAL'
+        CHECK (priority IN ('CRITICAL', 'HIGH', 'NORMAL', 'LOW')),
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'done', 'dismissed')),
+      outcome_code TEXT,
+      outcome_note TEXT,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      done_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_tasks_open ON tasks(organization_id, assignee_user_id, status, due_at);
+
+    CREATE TABLE IF NOT EXISTS alerts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      severity TEXT NOT NULL CHECK (severity IN ('critical', 'warning', 'opportunity')),
+      category TEXT NOT NULL,
+      title TEXT NOT NULL,
+      entity_type TEXT, entity_id INTEGER,
+      group_id INTEGER REFERENCES groups(id),
+      created_at TEXT NOT NULL,
+      resolved_at TEXT, resolved_by INTEGER REFERENCES users(id)
+    );
+    CREATE INDEX IF NOT EXISTS ix_alerts_open ON alerts(organization_id, severity, resolved_at);
+
+    /* A rule: an event.kind (or 'sweep') + a flat condition list -> a task or an alert,
+       with a cooldown so it does not spam and an optional escalation. organization_id
+       NULL = a shipped default (seedRules). */
+    CREATE TABLE IF NOT EXISTS rules (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      code TEXT NOT NULL,
+      name TEXT NOT NULL,
+      trigger_kind TEXT NOT NULL,
+      condition_json TEXT,
+      action_kind TEXT NOT NULL CHECK (action_kind IN ('task', 'alert')),
+      action_json TEXT,
+      cooldown_min INTEGER NOT NULL DEFAULT 1440,
+      escalate_after_min INTEGER,
+      escalate_to_role TEXT,
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, code)
+    );
+
+    CREATE TABLE IF NOT EXISTS rule_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      rule_id INTEGER NOT NULL REFERENCES rules(id),
+      entity_type TEXT, entity_id INTEGER,
+      fired_at TEXT NOT NULL,
+      cooldown_until TEXT NOT NULL,
+      task_id INTEGER REFERENCES tasks(id),
+      alert_id INTEGER REFERENCES alerts(id),
+      escalated_at TEXT,
+      resolved_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_rule_runs_live ON rule_runs(organization_id, rule_id, entity_id, resolved_at);
+
+    CREATE TABLE IF NOT EXISTS targets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      user_id INTEGER REFERENCES users(id),
+      group_id INTEGER REFERENCES groups(id),
+      period TEXT NOT NULL,
+      metric TEXT NOT NULL CHECK (metric IN ('revenue_toman', 'kg', 'orders')),
+      target_value REAL NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      UNIQUE (organization_id, user_id, group_id, period, metric)
+    );
+
     /* When each template runs. cutoff_time: after this, adding an order to that day's run
        needs an explicit decision (see lib/repo/routing.freezeRun + addStop force). */
     CREATE TABLE IF NOT EXISTS route_schedules (
@@ -1989,7 +2091,7 @@ export function getDb(): DatabaseSync {
       db.exec(`ALTER TABLE ${table} ADD COLUMN organization_id INTEGER REFERENCES organizations(id)`);
     }
     // reason_codes keeps its NULL rows -- they are the shared system defaults.
-    if (table === "reason_codes" || table === "capacity_factors") continue;
+    if (table === "reason_codes" || table === "capacity_factors" || table === "rules") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2488,6 +2590,7 @@ export function getDb(): DatabaseSync {
   seedFacilities(db);
   seedReasonCodes(db);
   seedCapacityFactors(db);
+  seedRules(db);
 
   // A second sweep, run last and every boot. The first one above (right after the
   // ALTER) exists so seedFacilities sees already-backfilled rows and can correctly
@@ -2499,7 +2602,7 @@ export function getDb(): DatabaseSync {
     // reason_codes is the one exception: a NULL organization_id there is deliberate --
     // it marks a system-default row every tenant shares -- not a row that missed the
     // tenancy backfill.
-    if (table === "reason_codes" || table === "capacity_factors") continue;
+    if (table === "reason_codes" || table === "capacity_factors" || table === "rules") continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
 
@@ -2956,6 +3059,104 @@ export const CAPACITY_FACTOR_SEED: {
   { code: "dust_storm", stop: 0.7, service: 1.1, speed: 0.7, duration: 1, note: "گرد و خاک — دید کم" },
   { code: "fog", stop: 0.8, service: 1.05, speed: 0.75, duration: 1, note: "مه — دید کم" },
 ];
+
+/** Phase 7: a handful of NULL-org default rules. INSERT ... WHERE NOT EXISTS per row
+ *  (NULL != NULL under SQLite's UNIQUE). A tenant overrides by writing its own
+ *  (org, code) row. */
+export const RULE_SEED: {
+  code: string;
+  name: string;
+  trigger_kind: string;
+  condition_json: string | null;
+  action_kind: string;
+  action_json: string;
+  cooldown_min: number;
+  escalate_after_min: number | null;
+  escalate_to_role: string | null;
+}[] = [
+  {
+    code: "credit_approval_waiting",
+    name: "درخواست اعتبار معطل",
+    trigger_kind: "sweep",
+    condition_json: null,
+    action_kind: "alert",
+    action_json: JSON.stringify({ severity: "critical", category: "credit", title: "درخواست اعتبار در انتظار تصمیم" }),
+    cooldown_min: 60,
+    escalate_after_min: 240,
+    escalate_to_role: "owner",
+  },
+  {
+    code: "delivery_failed_retry",
+    name: "تحویل ناموفق — پیگیری",
+    trigger_kind: "delivery.failed",
+    condition_json: null,
+    action_kind: "task",
+    action_json: JSON.stringify({ role_hint: "group_manager", priority: "HIGH", title: "پیگیری تحویل ناموفق", kind: "delivery_retry" }),
+    cooldown_min: 720,
+    escalate_after_min: null,
+    escalate_to_role: null,
+  },
+  {
+    code: "customer_overdue",
+    name: "مشتری معوق",
+    trigger_kind: "sweep",
+    condition_json: null,
+    action_kind: "task",
+    action_json: JSON.stringify({ role_hint: "salesperson", priority: "NORMAL", title: "تماس با مشتری معوق", kind: "call" }),
+    cooldown_min: 2880,
+    escalate_after_min: null,
+    escalate_to_role: null,
+  },
+  {
+    code: "expiring_batch",
+    name: "بچ رو به انقضا",
+    trigger_kind: "sweep",
+    condition_json: null,
+    action_kind: "alert",
+    action_json: JSON.stringify({ severity: "warning", category: "stock", title: "بچ رو به انقضا با موجودی" }),
+    cooldown_min: 1440,
+    escalate_after_min: null,
+    escalate_to_role: null,
+  },
+  {
+    code: "sample_followup",
+    name: "پیگیری نمونه",
+    trigger_kind: "sweep",
+    condition_json: null,
+    action_kind: "task",
+    action_json: JSON.stringify({ role_hint: "salesperson", priority: "NORMAL", title: "پیگیری نمونه", kind: "sample_followup" }),
+    cooldown_min: 4320,
+    escalate_after_min: null,
+    escalate_to_role: null,
+  },
+];
+
+export function seedRules(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO rules
+       (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
+        cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at)
+     SELECT NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM rules WHERE organization_id IS NULL AND code = ?)`
+  );
+  for (const r of RULE_SEED) {
+    insert.run(
+      r.code,
+      r.name,
+      r.trigger_kind,
+      r.condition_json,
+      r.action_kind,
+      r.action_json,
+      r.cooldown_min,
+      r.escalate_after_min,
+      r.escalate_to_role,
+      now,
+      now,
+      r.code
+    );
+  }
+}
 
 export function seedCapacityFactors(db: DatabaseSync): void {
   const now = new Date().toISOString();
