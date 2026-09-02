@@ -271,6 +271,30 @@ describe("organisation A and organisation B cannot see each other", () => {
     expect(starters.n).toBe(8);
   });
 
+  it("keeps tenant KPI snapshots + definition overrides apart; the 14 defaults stay shared", () => {
+    const db = getDb();
+    for (const [self, other] of [
+      [a, b],
+      [b, a],
+    ] as const) {
+      const snaps = db
+        .prepare("SELECT id, organization_id FROM kpi_snapshots WHERE organization_id = ?")
+        .all(self.orgId) as { id: number; organization_id: number }[];
+      expect(snaps.map((r) => r.id)).toContain(self.kpiSnapshotId);
+      expect(snaps.map((r) => r.id)).not.toContain(other.kpiSnapshotId);
+      expect(snaps.every((r) => r.organization_id === self.orgId)).toBe(true);
+
+      const override = db
+        .prepare("SELECT title_fa FROM kpi_definitions WHERE organization_id = ? AND metric = 'net_sales'")
+        .get(self.orgId) as { title_fa: string } | undefined;
+      expect(override?.title_fa).toBe(`فروش ${self.orgId === 1 ? "a" : "b"}`);
+    }
+    const defaults = db
+      .prepare("SELECT COUNT(*) AS n FROM kpi_definitions WHERE organization_id IS NULL")
+      .get() as { n: number };
+    expect(defaults.n).toBe(14);
+  });
+
   it("keeps representatives and credit approvals apart", () => {
     const db = getDb();
     for (const [self, other] of [

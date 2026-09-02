@@ -24,6 +24,7 @@ export interface OrgFixture {
   taskId: number;
   alertId: number;
   objectionCardId: number;
+  kpiSnapshotId: number;
 }
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -318,6 +319,32 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       NOW
     );
 
+    // Phase 9: a tenant kpi_definitions override (renamed metric) + a couple of
+    // kpi_snapshots rows per org.
+    insert(
+      `INSERT INTO kpi_definitions
+         (organization_id, metric, title_fa, definition_fa, formula_fa, owner_role, frequency, action_fa, updated_at)
+       VALUES (?, 'net_sales', ?, 'تعریف', 'فرمول', 'owner', 'daily', 'اقدام', ?)`,
+      orgId,
+      `فروش ${tag}`,
+      NOW
+    );
+    const kpiSnapshotId = insert(
+      `INSERT INTO kpi_snapshots (organization_id, metric, scope_type, scope_id, period, value, computed_at)
+       VALUES (?, 'net_sales', 'org', 0, '1405-06', ?, ?)`,
+      orgId,
+      orgId === 1 ? 111_000 : 222_000,
+      NOW
+    );
+    insert(
+      `INSERT INTO kpi_snapshots (organization_id, metric, scope_type, scope_id, period, value, computed_at)
+       VALUES (?, 'orders', 'group', ?, '1405-06', ?, ?)`,
+      orgId,
+      groupId,
+      orgId === 1 ? 12 : 34,
+      NOW
+    );
+
     return {
       orgId,
       groupId,
@@ -342,6 +369,7 @@ export function seedTwoOrgs(db: DatabaseSync): { a: OrgFixture; b: OrgFixture } 
       taskId,
       alertId,
       objectionCardId,
+      kpiSnapshotId,
     };
   };
 
