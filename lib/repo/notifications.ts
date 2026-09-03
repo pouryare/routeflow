@@ -19,11 +19,18 @@ function jalaliYmd(iso: string): string {
   return `${j.jy}-${String(j.jm).padStart(2, "0")}-${String(j.jd).padStart(2, "0")}`;
 }
 
-export function groupKeyFor(groupScope: "entity" | "type_day", ctx: FanoutContext): string {
+export function groupKeyFor(
+  groupScope: "entity" | "type_day",
+  ctx: FanoutContext,
+  typeCode: string
+): string {
   if (groupScope === "entity" && ctx.entity_type && ctx.entity_id != null) {
     return `${ctx.entity_type}:${ctx.entity_id}`;
   }
-  return `${ctx.kind}:${jalaliYmd(ctx.occurred_at)}`;
+  // Spec ("Bundling"): type_day -> "{type_code}:{jalali_date}", and the entity-scope
+  // fallback (no entity_id) shares that shape. Keyed on the notification type_code, not
+  // the raw event kind.
+  return `${typeCode}:${jalaliYmd(ctx.occurred_at)}`;
 }
 
 function metaStr(meta: Record<string, unknown>, key: string): string | null {
@@ -98,16 +105,14 @@ export function recipientsFor(
   if (typeCode === "task.assigned") {
     const a = ctx.meta["assignee_user_id"];
     if (typeof a === "number") out.add(a);
-  } else if (
-    typeCode === "order.confirmed" ||
-    typeCode === "order.rejected" ||
-    typeCode === "delivery.succeeded"
-  ) {
+  } else if (typeCode === "order.confirmed" || typeCode === "order.rejected") {
     if (orderId) {
       const sp = orderSalesperson(organizationId, orderId);
       if (sp) out.add(sp);
     }
-  } else if (typeCode === "delivery.failed") {
+  } else if (typeCode === "delivery.succeeded" || typeCode === "delivery.failed") {
+    // Spec catalogue: both delivery outcomes go to the order's salesperson + the
+    // group_manager (ambient). The driver recipient for delivery.failed is Phase 2.
     if (orderId) {
       const sp = orderSalesperson(organizationId, orderId);
       if (sp) out.add(sp);
@@ -189,7 +194,7 @@ export function fanOutNotifications(
   const recipients = recipientsFor(organizationId, typeCode, ctx, event.actor_user_id);
   if (recipients.length === 0) return 0;
 
-  const groupKey = groupKeyFor(type.group_scope, ctx);
+  const groupKey = groupKeyFor(type.group_scope, ctx, typeCode);
   const rendered = renderNotification(typeCode, ctx);
   const title = rendered.title_fa || type.name_fa;
   const now = new Date().toISOString();
@@ -244,7 +249,8 @@ export function listNotificationGroups(
       `SELECT id, type_code, title_fa, body_fa, entity_type, entity_id, group_key, priority, created_at, read_at
          FROM notifications
         WHERE organization_id = ? AND user_id = ?
-        ORDER BY created_at DESC, id DESC`
+        ORDER BY created_at DESC, id DESC
+        LIMIT 500`
     )
     .all(organizationId, userId) as {
     id: number;

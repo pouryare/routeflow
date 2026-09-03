@@ -24,7 +24,8 @@ export interface EventRow {
 }
 
 /** Append one fact to the bus, then drive the rule engine against it best-effort.
- *  Returns the event id, or 0 on a swallowed failure. */
+ *  Returns the event id. A rule-engine failure is logged and swallowed -- the fact is
+ *  already recorded -- so the id is always a real, inserted row. */
 export function emitEvent(organizationId: number, input: EventInput, db?: DatabaseSync): number {
   const now = new Date().toISOString();
   const id = Number(
@@ -50,8 +51,9 @@ export function emitEvent(organizationId: number, input: EventInput, db?: Databa
       .prepare("SELECT * FROM events WHERE id = ?")
       .get(id) as unknown as EventRow;
     runEventRules(organizationId, row, db);
-  } catch {
+  } catch (e) {
     /* generation is best-effort; the fact is already recorded */
+    console.warn("[rules] event rule run failed", e);
   }
   return id;
 }

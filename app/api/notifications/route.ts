@@ -6,7 +6,7 @@ import {
   markGroupsRead,
 } from "@/lib/repo/notifications";
 
-const ROLES = ["owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...ROLES]);
@@ -27,6 +27,9 @@ export async function PATCH(req: NextRequest) {
   const read = body?.read;
   const ok = read === "all" || (Array.isArray(read) && read.every((x) => typeof x === "string"));
   if (!ok) return NextResponse.json({ ok: false, error: "پارامتر read نامعتبر است" }, { status: 400 });
-  markGroupsRead(organizationId, user.id, read as string[] | "all");
+  // Cap the array so a pathological payload can't blow SQLite's bound-variable limit
+  // inside the `group_key IN (...)` clause.
+  const keys = read === "all" ? "all" : (read as string[]).slice(0, 200);
+  markGroupsRead(organizationId, user.id, keys);
   return NextResponse.json({ ok: true, unread: unreadGroupCount(organizationId, user.id) });
 }

@@ -10,20 +10,23 @@ const base: FanoutContext = {
 };
 
 describe("groupKeyFor", () => {
+  // Spec ("Bundling"): type_day -> "{type_code}:{jalali_date}". The key is derived from
+  // the notification type_code passed in, not from ctx.kind (the raw event kind) -- here
+  // base.kind is "order.passReview" but the type_code under test is "order.confirmed".
   it("entity scope keys by entity type + id", () => {
-    expect(groupKeyFor("entity", base)).toBe("order:1234");
+    expect(groupKeyFor("entity", base, "order.confirmed")).toBe("order:1234");
   });
 
-  it("type_day scope keys by kind + jalali date (stable within a day)", () => {
-    const a = groupKeyFor("type_day", { ...base, occurred_at: "2026-06-01T06:00:00.000Z" });
-    const b = groupKeyFor("type_day", { ...base, occurred_at: "2026-06-01T20:00:00.000Z" });
+  it("type_day scope keys by type_code + jalali date (stable within a day)", () => {
+    const a = groupKeyFor("type_day", { ...base, occurred_at: "2026-06-01T06:00:00.000Z" }, "order.confirmed");
+    const b = groupKeyFor("type_day", { ...base, occurred_at: "2026-06-01T20:00:00.000Z" }, "order.confirmed");
     expect(a).toBe(b);
-    expect(a).toMatch(/^order\.passReview:\d{4}-\d{2}-\d{2}$/);
+    expect(a).toMatch(/^order\.confirmed:\d{4}-\d{2}-\d{2}$/);
   });
 
-  it("entity scope with no entity falls back to kind + day so the key is never empty", () => {
-    const k = groupKeyFor("entity", { ...base, entity_type: null, entity_id: null });
-    expect(k).toMatch(/^order\.passReview:\d{4}-\d{2}-\d{2}$/);
+  it("entity scope with no entity falls back to type_code + day so the key is never empty", () => {
+    const k = groupKeyFor("entity", { ...base, entity_type: null, entity_id: null }, "order.confirmed");
+    expect(k).toMatch(/^order\.confirmed:\d{4}-\d{2}-\d{2}$/);
   });
 });
 

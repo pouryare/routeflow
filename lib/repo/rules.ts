@@ -200,6 +200,16 @@ export function runEventRules(
     if (liveRun(organizationId, rule.id, event.entity_type, event.entity_id, now, db)) continue;
     const conds: RuleCondition[] = rule.condition_json ? JSON.parse(rule.condition_json) : [];
     if (!evaluateConditions(conds, meta)) continue;
+    // A malformed action_json would throw out of fire() and abort every *later* rule for
+    // this event. Skip just the broken one; well-formed rules are untouched.
+    if (rule.action_json) {
+      try {
+        JSON.parse(rule.action_json);
+      } catch (e) {
+        console.warn("[rules] bad action_json for rule", rule.code, e);
+        continue;
+      }
+    }
     const runId = fire(
       organizationId,
       rule,

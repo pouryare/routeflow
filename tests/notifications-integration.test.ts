@@ -124,4 +124,45 @@ describe("notification system — end to end", () => {
     const groups = listNotificationGroups(1, seller);
     expect(groups.some((g) => g.items.some((i) => i.title_fa.includes("پرداخت")))).toBe(true);
   });
+
+  it("a new order in a group notifies that group's manager (ambient order.created path)", () => {
+    const db = getDb();
+    const stamp = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    // A group, a group_manager sitting in it, and a customer whose orders fall in that group.
+    const grp = Number(
+      db
+        .prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES (?, ?, ?, 1)")
+        .run(`گروه ${stamp}`, `grp-${stamp}`, new Date().toISOString()).lastInsertRowid
+    );
+    const mgr = Number(
+      db
+        .prepare(
+          "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,1,?,1)"
+        )
+        .run(`gm${stamp}`, "x:y", "مدیر گروه", "group_manager", grp, new Date().toISOString()).lastInsertRowid
+    );
+    const custInGroup = Number(
+      db
+        .prepare(
+          "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id,group_id) VALUES (?,'x','active','2026-01-01',1,?)"
+        )
+        .run(`CG-${stamp}`, grp).lastInsertRowid
+    );
+
+    // actor = the salesperson; createOrder derives orders.group_id from the customer.
+    const o = createOrder(db, {
+      customer_id: custInGroup,
+      order_date: "2026-01-01",
+      created_by: seller,
+      salesperson_user_id: seller,
+      organization_id: 1,
+      lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
+    });
+    confirmOrder(db, o.id); // real path: drives order.submit -> the seeded notify_order_created rule
+
+    const groups = listNotificationGroups(1, mgr);
+    expect(groups.length).toBeGreaterThanOrEqual(1);
+    expect(groups.some((g) => g.group_key.startsWith("order.created:"))).toBe(true);
+    expect(unreadGroupCount(1, mgr)).toBeGreaterThanOrEqual(1);
+  });
 });

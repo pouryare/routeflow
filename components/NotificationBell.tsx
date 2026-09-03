@@ -2,8 +2,9 @@
 
 /** A fixed island in the bottom-start corner (RTL -> visually bottom-right), opposite the
  *  SyncStatus island (bottom-left) so the two never overlap. Polls GET /api/notifications
- *  every 60s for the unread count; a 401 (e.g. on /login) flips `authed` off and the
- *  component renders nothing. Browser glue -- not unit-tested, per repo convention.
+ *  every 60s for the unread count; a 401/403 (logged out, or a role the feed does not
+ *  serve) flips `authed` off and the component renders nothing. Browser glue -- not
+ *  unit-tested, per repo convention.
  */
 
 import { useEffect, useState } from "react";
@@ -22,8 +23,9 @@ export default function NotificationBell() {
       try {
         const res = await fetch("/api/notifications");
         if (!alive) return;
-        if (res.status === 401) {
-          setAuthed(false);
+        if (!res.ok) {
+          // 401 (logged out) or 403 (role not permitted) -> the bell has nothing to show.
+          if (res.status === 401 || res.status === 403) setAuthed(false);
           return;
         }
         if (res.ok) {
