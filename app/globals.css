@@ -2134,6 +2134,81 @@ body {
 .kargah .pill.draft { background: var(--sunk); color: var(--muted); }
 .kargah .face .more { font-size: 12.5px; color: var(--accent); font-weight: 600; }
 
+/* On the dark skin the warm-brown shadows on the slips behind a PocketCard vanish and
+   the papers lose their edge (image 2). A light rim + a real cast against black brings
+   them back; the light skin is exactly as main. */
+:root[data-skin="dark"] .kargah .doc {
+  border: 1px solid rgba(255,255,255,.10);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.06),
+              0 2px 8px rgba(0,0,0,.45), 0 12px 28px -14px rgba(0,0,0,.6);
+}
+
+/* ---- 4b · document-pocket, generalised --------------------------------------
+   Any card can sit in a pocket: 1-3 slips peek over its top edge and fan on hover.
+   The slips are SIBLINGS of the face and the face is NEVER overflow:hidden -- z-index
+   does the layering, exactly like the bespoke PocketCard. Drive it from <Pocketed>
+   (components/kargah/Pocketed.tsx): data-papers 0..3, data-tone, data-fan.            */
+.kargah .pocketed { position: relative; z-index: 0; }
+.kargah .pocketed[data-papers="0"] { padding-top: 0; }
+.kargah .pocketed[data-papers="1"],
+.kargah .pocketed[data-papers="2"],
+.kargah .pocketed[data-papers="3"] { padding-top: 38px; }
+.kargah .pocketed:hover, .kargah .pocketed:focus-within { z-index: 5; }
+.kargah .pocketed__slips {
+  position: absolute; inset-block-start: 0; inset-inline: 16px; height: 36px;
+  z-index: 0; pointer-events: none;
+}
+.kargah .pocketed:hover .pocketed__slips,
+.kargah .pocketed:focus-within .pocketed__slips { z-index: 3; }
+.kargah .pocketed__slip {
+  position: absolute; inset-block-start: 0;
+  inset-inline-end: calc(var(--si, 0) * 30px);
+  width: min(64%, 148px); height: 42px;
+  background: var(--card); border-radius: 10px 10px 4px 4px;
+  box-shadow: 0 2px 6px rgba(62,44,28,.10), 0 10px 24px -12px rgba(62,44,28,.30);
+  transform: translateY(calc(16px + var(--si, 0) * 4px))
+    rotate(calc((var(--si, 0) - .5) * 6deg));
+  transform-origin: bottom center;
+  transition: transform 520ms var(--spring), box-shadow 340ms var(--ease);
+}
+.kargah .pocketed__slip:nth-child(1) { --si: 0; }
+.kargah .pocketed__slip:nth-child(2) { --si: 1; }
+.kargah .pocketed__slip:nth-child(3) { --si: 2; }
+.kargah .pocketed[data-fan]:hover .pocketed__slip,
+.kargah .pocketed[data-fan]:focus-within .pocketed__slip { box-shadow: var(--sh-lift); }
+.kargah .pocketed[data-fan]:hover .pocketed__slip:nth-child(1),
+.kargah .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(1) {
+  transform: translate(-28px, -2px) rotate(7deg) scale(1.03);
+}
+.kargah .pocketed[data-fan]:hover .pocketed__slip:nth-child(2),
+.kargah .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(2) {
+  transform: translate(26px, 4px) rotate(-8deg) scale(1.03);
+}
+.kargah .pocketed[data-fan]:hover .pocketed__slip:nth-child(3),
+.kargah .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(3) {
+  transform: translate(48px, 10px) rotate(-13deg) scale(1.02);
+}
+.kargah .pocketed[data-tone="good"] .pocketed__slip { border-top: 2px solid var(--good); }
+.kargah .pocketed[data-tone="warn"] .pocketed__slip { border-top: 2px solid var(--warn); }
+.kargah .pocketed[data-tone="crit"] .pocketed__slip { border-top: 2px solid var(--crit); }
+.kargah .pocketed[data-tone="info"] .pocketed__slip { border-top: 2px solid var(--info); }
+.kargah .pocketed__face {
+  position: relative; z-index: 1;
+  transition: transform 300ms var(--ease), box-shadow 300ms var(--ease);
+}
+.kargah .pocketed:hover .pocketed__face { transform: translateY(-2px); }
+:root[data-skin="dark"] .kargah .pocketed__slip {
+  border: 1px solid rgba(255,255,255,.09);
+  box-shadow: 0 2px 8px rgba(0,0,0,.45), 0 12px 28px -14px rgba(0,0,0,.6);
+}
+@media (prefers-reduced-motion: reduce) {
+  .kargah .pocketed__slip, .kargah .pocketed__face { transition: none; }
+  .kargah .pocketed[data-fan]:hover .pocketed__slip,
+  .kargah .pocketed[data-fan]:focus-within .pocketed__slip {
+    transform: translateY(14px) rotate(0);
+  }
+}
+
 /* ---- 5 · the board (drag and drop) --------------------------------------- */
 .kargah .board {
   display: grid; grid-template-columns: repeat(3, minmax(0, 460px)); gap: 14px;

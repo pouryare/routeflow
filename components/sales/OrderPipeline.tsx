@@ -7,7 +7,17 @@ import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import ProcessingModal from "./ProcessingModal";
+import Pocketed from "@/components/kargah/Pocketed";
 import { STAGES, stageOf, moveRefusal, type StageKey } from "./orderStage";
+
+/** Documents an order carries by stage: an invoice once priced, a delivery note once on
+ *  a van. Drives the peeking slips behind the card. */
+const STAGE_DOCS: Record<StageKey, { papers: 0 | 1 | 2; tone?: "good" | "warn" | "info" }> = {
+  draft: { papers: 0 },
+  confirmed: { papers: 1, tone: "warn" },
+  on_route: { papers: 2, tone: "info" },
+  delivered: { papers: 2, tone: "good" },
+};
 
 export interface PipelineOrder {
   id: number;
@@ -192,9 +202,10 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
               {rows.slice(0, LANE_CAP).map((o) => {
                 const movable = stage.key === "draft";
                 const tone = AV_TONE[(o.salesperson_name ?? "").length % AV_TONE.length];
+                const docs = STAGE_DOCS[stage.key];
                 return (
+                  <Pocketed key={o.id} papers={docs.papers} tone={docs.tone} fan>
                   <button
-                    key={o.id}
                     type="button"
                     className={`task${drag?.order.id === o.id ? " dragging" : ""}`}
                     onPointerDown={movable ? (e) => onPointerDown(e, o, stage.key) : undefined}
@@ -228,6 +239,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                       </div>
                     )}
                   </button>
+                  </Pocketed>
                 );
               })}
 
