@@ -1729,6 +1729,45 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS ix_rule_runs_live ON rule_runs(organization_id, rule_id, entity_id, resolved_at);
 
+    -- Notification system (Phase 1). notification_types is the catalogue, seeded with
+    -- organization_id NULL defaults exactly like rules; a tenant row with the same
+    -- code overrides. notifications is one row per (recipient, event) and is the feed
+    -- plus the system of record.
+    CREATE TABLE IF NOT EXISTS notification_types (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER REFERENCES organizations(id),
+      code TEXT NOT NULL,
+      name_fa TEXT NOT NULL,
+      category TEXT NOT NULL,
+      directedness TEXT NOT NULL CHECK (directedness IN ('directed', 'ambient')),
+      priority TEXT NOT NULL CHECK (priority IN ('CRITICAL', 'HIGH', 'NORMAL', 'LOW')),
+      group_scope TEXT NOT NULL CHECK (group_scope IN ('entity', 'type_day')),
+      active INTEGER NOT NULL DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (organization_id, code)
+    );
+
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL,
+      user_id INTEGER NOT NULL,
+      type_code TEXT NOT NULL,
+      title_fa TEXT NOT NULL,
+      body_fa TEXT,
+      entity_type TEXT,
+      entity_id INTEGER,
+      group_key TEXT NOT NULL,
+      priority TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      seen_at TEXT,
+      read_at TEXT,
+      source_event_id INTEGER,
+      source_rule_run_id INTEGER
+    );
+    CREATE INDEX IF NOT EXISTS ix_notifications_feed ON notifications(organization_id, user_id, read_at, created_at);
+    CREATE INDEX IF NOT EXISTS ix_notifications_group ON notifications(user_id, group_key);
+
     CREATE TABLE IF NOT EXISTS targets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       organization_id INTEGER NOT NULL REFERENCES organizations(id),
@@ -2830,6 +2869,7 @@ export function getDb(): DatabaseSync {
   seedReasonCodes(db);
   seedCapacityFactors(db);
   seedRules(db);
+  seedNotificationTypes(db);
   seedObjectionCards(db);
   seedKpiDefinitions(db);
   seedSeasonalFactors(db);
@@ -3446,6 +3486,41 @@ export function seedRules(db: DatabaseSync): void {
       now,
       r.code
     );
+  }
+}
+
+export interface NotificationTypeSeed {
+  code: string;
+  name_fa: string;
+  category: string;
+  directedness: "directed" | "ambient";
+  priority: "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
+  group_scope: "entity" | "type_day";
+}
+
+/** The Phase 1 catalogue, NULL-org. Same INSERT ... WHERE NOT EXISTS treatment as
+ *  RULE_SEED / OBJECTION_CARD_SEED. Recipient wiring lives in lib/repo/notifications.ts;
+ *  loud-channel routing defaults are Phase 2. */
+export const NOTIFICATION_TYPE_SEED: NotificationTypeSeed[] = [
+  { code: "task.assigned",      name_fa: "کاری به شما سپرده شد",      category: "task",     directedness: "directed", priority: "HIGH",   group_scope: "entity" },
+  { code: "order.confirmed",    name_fa: "سفارش شما تأیید شد",         category: "order",    directedness: "directed", priority: "NORMAL", group_scope: "entity" },
+  { code: "order.rejected",     name_fa: "سفارش شما رد/لغو شد",        category: "order",    directedness: "directed", priority: "HIGH",   group_scope: "entity" },
+  { code: "order.created",      name_fa: "سفارش جدید در گروه",         category: "order",    directedness: "ambient",  priority: "NORMAL", group_scope: "type_day" },
+  { code: "delivery.succeeded", name_fa: "تحویل موفق",                 category: "delivery", directedness: "directed", priority: "NORMAL", group_scope: "type_day" },
+  { code: "delivery.failed",    name_fa: "تحویل ناموفق",              category: "delivery", directedness: "directed", priority: "HIGH",   group_scope: "entity" },
+  { code: "payment.recorded",   name_fa: "پرداخت روی سفارش شما ثبت شد", category: "finance",  directedness: "directed", priority: "NORMAL", group_scope: "entity" },
+];
+
+export function seedNotificationTypes(db: DatabaseSync): void {
+  const now = new Date().toISOString();
+  const insert = db.prepare(
+    `INSERT INTO notification_types
+       (organization_id, code, name_fa, category, directedness, priority, group_scope, active, created_at, updated_at)
+     SELECT NULL, ?, ?, ?, ?, ?, ?, 1, ?, ?
+      WHERE NOT EXISTS (SELECT 1 FROM notification_types WHERE organization_id IS NULL AND code = ?)`
+  );
+  for (const t of NOTIFICATION_TYPE_SEED) {
+    insert.run(t.code, t.name_fa, t.category, t.directedness, t.priority, t.group_scope, now, now, t.code);
   }
 }
 
