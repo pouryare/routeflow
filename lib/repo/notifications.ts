@@ -53,6 +53,18 @@ const TEMPLATES: Record<string, (m: Record<string, unknown>) => { title_fa: stri
     const who = metaStr(m, "customer_name");
     return { title_fa: "پرداخت ثبت شد", body_fa: [who, amt ? `${amt} تومان` : null].filter(Boolean).join(" — ") || null };
   },
+  "task.escalated": (m) => ({ title_fa: "کار فوری به شما ارجاع شد", body_fa: metaStr(m, "title") }),
+  "credit_approval.waiting": (m) => ({ title_fa: "تأیید اعتبار در انتظار شماست", body_fa: metaStr(m, "customer_name") }),
+  "customer.overdue": (m) => ({ title_fa: "مشتری عقب‌افتاده", body_fa: metaStr(m, "customer_name") }),
+  "cheque.due_soon": (m) => {
+    const no = metaStr(m, "cheque_no");
+    const due = metaStr(m, "due_date");
+    return {
+      title_fa: "سررسید چک نزدیک است",
+      body_fa: [no ? `چک ${no}` : null, due].filter(Boolean).join(" — ") || null,
+    };
+  },
+  "reminder.due": (m) => ({ title_fa: "یادآوری سررسید", body_fa: metaStr(m, "message") }),
 };
 
 function labelOrder(m: Record<string, unknown>): string | null {
@@ -89,6 +101,42 @@ function orderGroupManagers(orgId: number, orderId: number): number[] {
           WHERE o.id = ? AND u.organization_id = ? AND u.role = 'group_manager' AND u.active = 1`
       )
       .all(orderId, orgId) as { id: number }[]
+  ).map((r) => r.id);
+}
+
+/** The one salesperson credited with this customer's most recent attributed order. */
+function customerSalesperson(orgId: number, customerId: number): number | null {
+  const row = getDb()
+    .prepare(
+      `SELECT salesperson_user_id FROM orders
+        WHERE customer_id = ? AND organization_id = ? AND salesperson_user_id IS NOT NULL
+        ORDER BY order_date DESC LIMIT 1`
+    )
+    .get(customerId, orgId) as { salesperson_user_id: number | null } | undefined;
+  return row?.salesperson_user_id ?? null;
+}
+
+/** Active group_manager user ids for the group that owns the given district. */
+function districtGroupManagers(orgId: number, districtId: number): number[] {
+  return (
+    getDb()
+      .prepare(
+        `SELECT u.id FROM users u
+           JOIN districts d ON d.group_id = u.group_id
+          WHERE d.id = ? AND u.organization_id = ? AND u.role = 'group_manager' AND u.active = 1`
+      )
+      .all(districtId, orgId) as { id: number }[]
+  ).map((r) => r.id);
+}
+
+/** Everyone in the tenant who can sign off a credit decision: owners + group managers. */
+function orgApprovers(orgId: number): number[] {
+  return (
+    getDb()
+      .prepare(
+        "SELECT id FROM users WHERE organization_id = ? AND role IN ('owner','group_manager') AND active = 1"
+      )
+      .all(orgId) as { id: number }[]
   ).map((r) => r.id);
 }
 
@@ -130,6 +178,35 @@ export function recipientsFor(
         const sp = orderSalesperson(organizationId, oid);
         if (sp) out.add(sp);
       }
+    }
+  } else if (typeCode === "task.escalated") {
+    // The escalation sweep names the new owner (a role-holder) in meta.
+    const a = ctx.meta["assignee_user_id"];
+    if (typeof a === "number") out.add(a);
+  } else if (typeCode === "customer.overdue") {
+    if (ctx.entity_type === "customer" && ctx.entity_id != null) {
+      const sp = customerSalesperson(organizationId, ctx.entity_id);
+      if (sp) out.add(sp);
+    }
+  } else if (typeCode === "credit_approval.waiting") {
+    for (const u of orgApprovers(organizationId)) out.add(u);
+  } else if (typeCode === "cheque.due_soon") {
+    if (ctx.entity_type === "cheque" && ctx.entity_id != null) {
+      const row = getDb()
+        .prepare("SELECT received_by, customer_id FROM cheques WHERE id = ? AND organization_id = ?")
+        .get(ctx.entity_id, organizationId) as { received_by: number | null; customer_id: number } | undefined;
+      if (row?.received_by) out.add(row.received_by);
+      else if (row) {
+        const sp = customerSalesperson(organizationId, row.customer_id);
+        if (sp) out.add(sp);
+      }
+    }
+  } else if (typeCode === "reminder.due") {
+    if (ctx.entity_type === "customer" && ctx.entity_id != null) {
+      const sp = customerSalesperson(organizationId, ctx.entity_id);
+      if (sp) out.add(sp);
+    } else if (ctx.entity_type === "district" && ctx.entity_id != null) {
+      for (const m of districtGroupManagers(organizationId, ctx.entity_id)) out.add(m);
     }
   }
 
