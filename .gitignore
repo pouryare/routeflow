@@ -67,3 +67,6 @@ next-env.d.ts
 
 .qa-shot.mjs
 .qa-clip.mjs
+
+# superpowers SDD scratch (ledger, briefs, review packages)
+/.superpowers/
