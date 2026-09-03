@@ -9,6 +9,7 @@ import CustomerSheet from "@/components/kargah/CustomerSheet";
 import OutcomeChips from "@/components/today/OutcomeChips";
 import { useCardDrag } from "./useCardDrag";
 import BoardMobile from "./BoardMobile";
+import Avatar from "@/components/kargah/Avatar";
 
 const KIND_TONE: Record<string, string> = {
   outreach: "accent",
@@ -248,7 +249,12 @@ export default function Board({
                           {card.customer.name}
                         </button>
                       ) : null}
-                      {card.assignee ? <span>{card.assignee.name}</span> : null}
+                      {card.assignee ? (
+                        <span className="asg" style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
+                          <Avatar userId={card.assignee.id} name={card.assignee.name} size={18} />
+                          {card.assignee.name}
+                        </span>
+                      ) : null}
                     </div>
 
                     <div className="top" style={{ marginTop: 8 }}>

@@ -8,6 +8,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import ProcessingModal from "./ProcessingModal";
 import Pocketed from "@/components/kargah/Pocketed";
+import Avatar from "@/components/kargah/Avatar";
 import { STAGES, stageOf, moveRefusal, type StageKey } from "./orderStage";
 
 /** Documents an order carries by stage: an invoice once priced, a delivery note once on
@@ -44,7 +45,6 @@ const DRAG_THRESHOLD = 6;
 const CLICK_GUARD_MS = 60;
 
 /** The artifact's avatar tones, picked from the name so one person keeps one colour. */
-const AV_TONE = ["plum", "sage", "sky", "amber"] as const;
 
 /** Cards drawn per lane before the rest are summarised.
  *
@@ -201,7 +201,6 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
 
               {rows.slice(0, LANE_CAP).map((o) => {
                 const movable = stage.key === "draft";
-                const tone = AV_TONE[(o.salesperson_name ?? "").length % AV_TONE.length];
                 const docs = STAGE_DOCS[stage.key];
                 return (
                   <Pocketed key={o.id} papers={docs.papers} tone={docs.tone} fan>
@@ -230,12 +229,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                     </div>
                     {o.salesperson_name && (
                       <div className="asg">
-                        <span
-                          className="av"
-                          style={{ background: `var(--${tone}-soft)`, color: `var(--${tone})` }}
-                        >
-                          {o.salesperson_name.trim()[0]}
-                        </span>
+                        <Avatar name={o.salesperson_name} size={20} />
                         {o.salesperson_name}
                       </div>
                     )}

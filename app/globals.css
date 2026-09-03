@@ -1834,10 +1834,48 @@ body {
   width: 46px; height: 46px; border-radius: 15px;
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff 20%), var(--accent-2));
   color: var(--accent-ink); display: grid; place-items: center;
-  font-family: var(--font-display); font-size: 20px; font-weight: 800;
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent); flex: none;
 }
-.kargah .top h1 { margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 800; letter-spacing: -.015em; }
+.kargah .mark svg { display: block; }
+.kargah .top h1 {
+  margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 800;
+  letter-spacing: -.01em;
+  /* A Latin wordmark in an RTL bar -- pin it LTR so the glyphs are not reordered. */
+  direction: ltr; unicode-bidi: isolate;
+}
+
+/* ---- profile menu ------------------------------------------------------------
+   The one control at the end of the top bar: the avatar, opening a dropdown that
+   holds the map link and the appearance controls that used to sit loose beside it. */
+.kargah .pm { position: relative; }
+.kargah .pm__trigger {
+  border: 0; background: transparent; padding: 2px; cursor: pointer;
+  border-radius: 999px; display: grid; place-items: center;
+  transition: transform var(--dur-base, 160ms) var(--ease);
+}
+.kargah .pm__trigger:hover { transform: scale(1.05); }
+.kargah .pm__trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.kargah .pm__panel {
+  position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 50;
+  width: 15rem; max-width: calc(100vw - 2rem);
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-lg); box-shadow: var(--sh-3);
+  padding: 12px; display: flex; flex-direction: column; gap: 4px;
+}
+.kargah .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
+.kargah .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.kargah .pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }
+.kargah .pm__link {
+  display: block; padding: 9px 10px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--ink-2); text-decoration: none;
+  transition: background 160ms var(--ease);
+}
+.kargah .pm__link:hover { background: var(--sunk); color: var(--ink); }
+.kargah .pm__sep { height: 1px; background: var(--line); margin: 4px 0; }
+.kargah .pm__row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
+}
 .kargah .top .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
 .kargah .topright { display: flex; align-items: center; gap: 9px; }
 .kargah .chip {

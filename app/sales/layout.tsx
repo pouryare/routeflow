@@ -1,14 +1,11 @@
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
-import SkinToggle from "@/components/kargah/SkinToggle";
-import AccentPicker from "@/components/AccentPicker";
-import FontPicker from "@/components/FontPicker";
+import ProfileMenu from "@/components/kargah/ProfileMenu";
 import TabPill from "@/components/kargah/TabPill";
 import Chrome from "@/components/kargah/Chrome";
 import RevealRoute from "@/components/kargah/RevealRoute";
@@ -34,7 +31,6 @@ export default async function SalesLayout({ children }: { children: ReactNode })
 
   const tabs = salesTabs(session);
 
-  const initial = session.user.display_name.trim()[0] ?? "؟";
 
   return (
     /* `kargah` is the scope the whole design system hangs off. Every token the artifact
@@ -44,20 +40,22 @@ export default async function SalesLayout({ children }: { children: ReactNode })
         <Chrome>
         <div className="top">
           <div className="brandwrap">
-            <div className="mark">ف</div>
+            <div className="mark" aria-hidden="true">
+              <svg viewBox="0 0 44 24" width="26" height="14" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round">
+                <path d="M22 12c-3.2-4.6-6-6.2-9.4-6.2C8.4 5.8 5 8.6 5 12s3.4 6.2 7.6 6.2c3.4 0 6.2-1.6 9.4-6.2Zm0 0c3.2-4.6 6-6.2 9.4-6.2C35.6 5.8 39 8.6 39 12s-3.4 6.2-7.6 6.2c-3.4 0-6.2-1.6-9.4-6.2Z" />
+              </svg>
+            </div>
             <div>
-              <h1>فروش و سفارش‌ها</h1>
+              <h1>RouteFlow</h1>
               <div className="sub">{faJalaliLong(new Date().toISOString())}</div>
             </div>
           </div>
           <div className="topright">
-            <Link className="chip" href="/map">↗ نقشه</Link>
-            <SkinToggle />
-            <FontPicker />
-            <AccentPicker />
-            <div className="me" title={`${session.user.display_name} · ${ROLE_LABEL[session.role]}`}>
-              {initial}
-            </div>
+            <ProfileMenu
+              userId={session.user.id}
+              name={session.user.display_name}
+              roleLabel={ROLE_LABEL[session.role]}
+            />
           </div>
         </div>
 
