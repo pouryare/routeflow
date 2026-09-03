@@ -8,10 +8,13 @@ import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import SkinToggle from "@/components/kargah/SkinToggle";
 import AccentPicker from "@/components/AccentPicker";
+import FontPicker from "@/components/FontPicker";
 import TabPill from "@/components/kargah/TabPill";
+import Chrome from "@/components/kargah/Chrome";
 import RevealRoute from "@/components/kargah/RevealRoute";
 import RouteFade from "@/components/kargah/RouteFade";
 import SyncStatus from "@/components/SyncStatus";
+import { SALES_GROUPS, salesTabs } from "@/lib/salesNav";
 
 export const dynamic = "force-dynamic";
 
@@ -29,49 +32,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   if (!session) redirect("/login");
   if (session.role === "driver") redirect("/driver");
 
-  // `ready` flips as each slice lands. A tab for a page that does not exist yet is not
-  // merely untidy: Next prefetches every <Link> on render, so it 404s in the console
-  // before anyone touches it, and 404s under the reader who does.
-  const tabs = [
-    { href: "/sales/today", label: "امروز", ready: true },
-    { href: "/sales/pocket", label: "پاکت", ready: true },
-    { href: "/sales", label: "داشبورد", ready: true },
-    { href: "/sales/dashboard", label: "تحلیل فروش", ready: true },
-    {
-      href: "/sales/forecast",
-      label: "پیش‌بینی",
-      ready: session.role === "owner" || session.role === "group_manager",
-    },
-    { href: "/sales/orders", label: "سفارش‌ها", ready: true },
-    { href: "/sales/board", label: "تقسیم کار", ready: true },
-    {
-      href: "/sales/tasks",
-      label: "کارتابل",
-      ready: ["owner", "group_manager", "rep_manager"].includes(session.role),
-    },
-    { href: "/sales/journey", label: "مسیر سفارش", ready: true },
-    { href: "/sales/schedule", label: "برنامهٔ بازدید", ready: true },
-    { href: "/sales/products", label: "کالاها و قیمت‌ها", ready: true },
-    { href: "/sales/runs", label: "مسیر تحویل", ready: session.role !== "salesperson" },
-    { href: "/sales/commission", label: "پورسانت", ready: true },
-    { href: "/sales/payments", label: "دریافت‌ها", ready: true },
-    { href: "/sales/cheques", label: "چک‌ها", ready: session.role === "owner" || session.role === "group_manager" },
-    { href: "/sales/stock", label: "انبار و خرید", ready: true },
-    { href: "/sales/batches", label: "بچ‌ها", ready: session.role === "owner" || session.role === "group_manager" },
-    { href: "/sales/deliveries", label: "تحویل‌ها", ready: session.role === "owner" || session.role === "group_manager" },
-    { href: "/sales/routing", label: "مسیریابی", ready: session.role === "owner" || session.role === "group_manager" },
-    { href: "/sales/reps", label: "نمایندگان فروش", ready: ["owner", "group_manager", "rep_manager"].includes(session.role) },
-    { href: "/sales/academy", label: "آموزش", ready: true },
-    { href: "/sales/complaints", label: "شکایات", ready: true },
-    // Owner only: the proxy refuses everyone else, so a tab for them would 404 on click.
-    { href: "/sales/admin/users", label: "کاربران", ready: session.role === "owner" },
-    { href: "/sales/admin/groups", label: "گروه‌ها", ready: session.role === "owner" },
-    {
-      href: "/sales/admin/representatives",
-      label: "تعریف نمایندگی",
-      ready: session.role === "owner" || session.role === "rep_manager",
-    },
-  ];
+  const tabs = salesTabs(session);
 
   const initial = session.user.display_name.trim()[0] ?? "؟";
 
@@ -80,6 +41,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
        names is defined on this class -- see app/globals.css, "کارگاه". */
     <div className="kargah min-h-screen">
       <div className="app">
+        <Chrome>
         <div className="top">
           <div className="brandwrap">
             <div className="mark">ف</div>
@@ -91,6 +53,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
           <div className="topright">
             <Link className="chip" href="/map">↗ نقشه</Link>
             <SkinToggle />
+            <FontPicker />
             <AccentPicker />
             <div className="me" title={`${session.user.display_name} · ${ROLE_LABEL[session.role]}`}>
               {initial}
@@ -98,7 +61,8 @@ export default async function SalesLayout({ children }: { children: ReactNode })
           </div>
         </div>
 
-        <TabPill tabs={tabs} />
+        <TabPill tabs={tabs} groups={SALES_GROUPS} />
+        </Chrome>
 
         {/* One entrance for every sales screen — see RevealRoute for why it is not
             wired per page. RouteFade fades the whole view in on navigation (a

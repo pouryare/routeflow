@@ -1873,13 +1873,22 @@ body {
 .kargah .themeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- tabs ----------------------------------------------------------------
-   One pill that travels, instead of a background switching off one button and
-   on another -- the movement is what tells you which way you just went.       */
+   Two rows, both with a pill that travels between their items -- the six groups,
+   then the tabs of the active group. The movement is what tells you which way
+   you just went. Both rows are centred and, if a row is wider than the bar, it
+   scrolls inside itself rather than pushing the page wide.                    */
+.kargah .segwrap {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 10px; margin-bottom: 20px;
+}
 .kargah .seg {
   position: relative; display: flex; gap: 4px;
+  max-width: 100%; min-width: 0;
   background: var(--sunk); border-radius: 999px; padding: 5px;
-  margin-bottom: 20px; overflow-x: auto; scrollbar-width: none;
+  overflow-x: auto; scrollbar-width: none;
 }
+/* The group row: same pill mechanics, a touch smaller and quieter than the tab row. */
+.kargah .seg-groups > a { font-family: var(--font-display); font-weight: 800; font-size: 13px; padding-block: 8px; }
 .kargah .seg .thumb {
   position: absolute; top: 5px; bottom: 5px; left: 0; width: 0;
   border-radius: 999px; background: var(--card); box-shadow: var(--sh-1);
@@ -1898,9 +1907,40 @@ body {
   transition: background 200ms var(--ease), color 200ms var(--ease), box-shadow 200ms var(--ease);
 }
 .kargah .seg > a:hover { color: var(--ink); }
-.kargah .seg > a[aria-current="page"] { color: var(--ink); font-weight: 600; }
+.kargah .seg > a[aria-current="page"],
+.kargah .seg > a[aria-current="true"] { color: var(--ink); font-weight: 600; }
+.kargah .seg-groups > a[aria-current="true"] { color: var(--accent-text); }
 .kargah .seg > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .kargah .seg > span[aria-disabled] { color: var(--faint); cursor: default; }
+
+/* ---- sticky auto-hiding chrome -----------------------------------------------
+   The brand bar + both nav rows ride in one position:sticky wrapper that slides up out
+   of view on a downward scroll and back on an upward one (components/kargah/Chrome.tsx
+   decides which). It bleeds over the .app side padding so its backdrop is full-width and
+   pulls up into the .app top padding so it sits flush to the viewport edge when pinned.
+   The transition is on transform ALONE, so it never contends with .route-fade.
+   The four negative/positive margin+padding pairs must match .kargah .app's padding. */
+.kargah .chrome {
+  position: sticky; top: 0; z-index: 40;
+  background: var(--bg);
+  margin-inline: calc(-1 * clamp(16px, 3vw, 72px));
+  padding-inline: clamp(16px, 3vw, 72px);
+  margin-top: -26px; padding-top: 26px; padding-bottom: 10px;
+  transition: transform 320ms var(--ease);
+  will-change: transform;
+}
+.kargah .chrome.chrome-hidden { transform: translateY(-100%); }
+.kargah .chrome.chrome-hidden:focus-within { transform: none; }
+@media (max-width: 620px) {
+  .kargah .chrome {
+    margin-inline: -14px; padding-inline: 14px;
+    margin-top: -18px; padding-top: 18px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .kargah .chrome { transition: none; }
+  .kargah .chrome.chrome-hidden { transform: none; }
+}
 
 /* ---- generic blocks ------------------------------------------------------ */
 /* NOT `.block`: that is a Tailwind display utility this app uses 65 times, and a rule
