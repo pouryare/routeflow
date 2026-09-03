@@ -57,6 +57,11 @@
 **Deleted:**
 - `scripts/send-reminder-push.mjs` — replaced by the `reminder_due` sweep. Its systemd unit is retired at deploy (documented in Task 7, not by code).
 
+**Modified (Task 12 — admin-set Telegram id):**
+- `app/api/admin/users/route.ts` — GET list SELECT gains `u.telegram_chat_id`.
+- `app/api/admin/users/[id]/route.ts` — PATCH gains a `telegram_chat_id` field (owner-only, numeric-or-null, clears `telegram_link_nonce` when set).
+- `app/sales/admin/users/page.tsx` — a «تلگرام» column with an inline numeric input per row.
+
 ---
 
 ## Task 1: Schema + catalogue & rule seed
@@ -1052,6 +1057,72 @@ Run: `npm run build` **on a machine with ≥2 GB free** — the dev sandbox OOMs
 
 ---
 
+## Task 12: Admin-set Telegram id in مدیریت کاربران
+
+**Files:**
+- Modify: `app/api/admin/users/route.ts` (GET list), `app/api/admin/users/[id]/route.ts` (PATCH), `app/sales/admin/users/page.tsx`.
+- Test: `tests/api/admin-users-telegram.test.ts` (new)
+
+**Interfaces:**
+- Consumes: nothing new — `users.telegram_chat_id` / `users.telegram_link_nonce` columns exist (Task 1). The `/start <nonce>` linking flow (Tasks 9/10) stays; this is a second, admin-driven way to set the same column.
+
+- [ ] **Step 1: GET list — expose the column**
+
+`app/api/admin/users/route.ts`, the `GET` SELECT: add `u.telegram_chat_id` to the column list (owner-only route already).
+
+- [ ] **Step 2: PATCH — accept the field**
+
+`app/api/admin/users/[id]/route.ts`, in the `sets[]` builder, after the `phone` block:
+
+```ts
+  if (body?.telegram_chat_id !== undefined) {
+    const raw = typeof body.telegram_chat_id === "string" ? body.telegram_chat_id.trim() : "";
+    const chat = raw === "" ? null : raw;
+    if (chat !== null && !/^-?\d{1,20}$/.test(chat)) {
+      return NextResponse.json({ ok: false, error: "شناسه تلگرام باید عددی باشد" }, { status: 400 });
+    }
+    sets.push("telegram_chat_id = ?");
+    values.push(chat);
+    // An admin-set id supersedes any pending self-link; drop the stale nonce so it can't
+    // later rebind the account to a different chat.
+    sets.push("telegram_link_nonce = NULL");
+  }
+```
+
+No `bumpVersion` — the chat id does not gate any session. (Telegram ids are numeric; a channel/group id can be negative, hence the optional leading `-`.)
+
+- [ ] **Step 3: Test**
+
+`tests/api/admin-users-telegram.test.ts` — mirror an existing `tests/api/*admin*` or `tests/api/notifications-route.test.ts` header (env before import, dynamic imports, an `owner` session token, a seeded target user). Assert:
+- non-owner cookie → PATCH 403.
+- PATCH `{ telegram_chat_id: "55384695" }` → 200; row's `telegram_chat_id` = `"55384695"`.
+- with a `telegram_link_nonce` pre-set on the row, the same PATCH also nulls the nonce.
+- PATCH `{ telegram_chat_id: "" }` → 200, column back to `NULL`.
+- PATCH `{ telegram_chat_id: "abc" }` → 400 `"شناسه تلگرام باید عددی باشد"`, row unchanged.
+- GET `/api/admin/users` → each row object has a `telegram_chat_id` key.
+
+Run: `npx vitest run tests/api/admin-users-telegram.test.ts` — RED then GREEN.
+
+- [ ] **Step 4: UI — a column in the table**
+
+`app/sales/admin/users/page.tsx`:
+- `UserRow` interface: add `telegram_chat_id: string | null`.
+- Add a `<th className="p-2 font-normal">تلگرام</th>` in the `<thead>` row (next to «شناسه اکسل»).
+- Add the matching `<td>` in the row map: a controlled `<input>` seeded from `u.telegram_chat_id ?? ""`, `dir="ltr"`, `inputMode="numeric"`, `className` matching the other inline inputs (`rounded-md border border-border bg-surface-raised px-2 py-1 text-xs …`), that on `blur` — only if the trimmed value differs from `u.telegram_chat_id ?? ""` — calls `send(\`/api/admin/users/${u.id}\`, "PATCH", { telegram_chat_id: value.trim() || null })` then `load()`. Local `useState` per input, or a small `TelegramCell` sub-component in the same file.
+
+- [ ] **Step 5: Verify build**
+
+`npx eslint app/api/admin/users app/sales/admin/users/page.tsx` → 0. `npx tsc --noEmit -p tsconfig.json` → no new errors naming these files. `npm run build` on a ≥2 GB box (dev sandbox OOMs — record eslint+tsc if so).
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add app/api/admin/users app/sales/admin/users/page.tsx tests/api/admin-users-telegram.test.ts
+git commit -m "feat: admin-set Telegram chat id column in user management"
+```
+
+---
+
 ## Self-Review
 
 **1. Spec coverage**
@@ -1073,6 +1144,7 @@ Run: `npm run build` **on a machine with ≥2 GB free** — the dev sandbox OOMs
 | `scripts/telegram-poll.mjs` + `consumeTelegramStart` | 9 |
 | `/settings/notifications` matrix + quiet hours + connect; ProfileMenu link; retire the map toggle | 10 |
 | Real-backup migration test | 11 |
+| Admin-set `telegram_chat_id` column in مدیریت کاربران (2nd way to link, alongside `/start <nonce>`) | 12 |
 | Rollout (dormant → enable → tighten timer → Telegram) | documented in the spec; Task 1 note + Task 7 Step 6 |
 
 **2. Placeholder scan** — Task 10 (UI) has no literal code blocks for the component body: this is intentional and matches Phase 1 Task 8's "browser glue, build-gated" treatment; every behaviour it must implement is enumerated as a bullet with the exact endpoint + payload. All other tasks carry real test + implementation code. No "TBD" / "handle edge cases" / "similar to Task N".
