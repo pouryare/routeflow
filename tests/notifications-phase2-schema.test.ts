@@ -50,6 +50,25 @@ describe("Phase 2 notification schema", () => {
     // system.test: directed + LOW -> quiet
     const test = db.prepare("SELECT default_push FROM notification_types WHERE code='system.test' AND organization_id IS NULL").get() as { default_push: number };
     expect(test.default_push).toBe(0);
+    // the four sweep-fed loud types are all directed + (NORMAL|HIGH) -> loud on both channels
+    for (const code of ["credit_approval.waiting", "customer.overdue", "cheque.due_soon", "reminder.due"]) {
+      const row = db
+        .prepare("SELECT default_push, default_telegram FROM notification_types WHERE code=? AND organization_id IS NULL")
+        .get(code) as { default_push: number; default_telegram: number };
+      expect(row, code).toEqual({ default_push: 1, default_telegram: 1 });
+    }
+  });
+
+  it("backfills the Phase-1 catalogue rows to their loudByDefault value", () => {
+    const db = getDb();
+    // These 6 predate default_push/default_telegram; the seeder's UPDATE pass must lift
+    // them off the ALTER's DEFAULT 0 (all directed + NORMAL/HIGH -> loud).
+    for (const code of ["task.assigned", "order.confirmed", "order.rejected", "delivery.succeeded", "delivery.failed", "payment.recorded"]) {
+      const row = db
+        .prepare("SELECT default_push, default_telegram FROM notification_types WHERE code=? AND organization_id IS NULL")
+        .get(code) as { default_push: number; default_telegram: number };
+      expect(row, code).toEqual({ default_push: 1, default_telegram: 1 });
+    }
   });
 
   it("seeds 13 NULL-org notify rules (8 Phase-1 + 5 new)", () => {
@@ -58,6 +77,23 @@ describe("Phase 2 notification schema", () => {
     expect(n.c).toBeGreaterThanOrEqual(13);
     for (const code of ["notify_task_escalated", "notify_credit_approval_waiting", "notify_customer_overdue", "notify_cheque_due_soon", "notify_reminder_due"]) {
       expect(db.prepare("SELECT 1 FROM rules WHERE code=? AND organization_id IS NULL").get(code), code).toBeTruthy();
+    }
+  });
+
+  it("locks Ruling P2-A: trigger_kind + cooldown_min on the 5 new rules", () => {
+    const db = getDb();
+    const want: Record<string, { trigger_kind: string; cooldown_min: number }> = {
+      notify_task_escalated: { trigger_kind: "task.escalated", cooldown_min: 1 },
+      notify_credit_approval_waiting: { trigger_kind: "sweep", cooldown_min: 60 },
+      notify_customer_overdue: { trigger_kind: "sweep", cooldown_min: 1440 },
+      notify_cheque_due_soon: { trigger_kind: "sweep", cooldown_min: 1440 },
+      notify_reminder_due: { trigger_kind: "sweep", cooldown_min: 1440 },
+    };
+    for (const [code, expected] of Object.entries(want)) {
+      const row = db
+        .prepare("SELECT trigger_kind, cooldown_min FROM rules WHERE code=? AND organization_id IS NULL")
+        .get(code) as { trigger_kind: string; cooldown_min: number };
+      expect(row, code).toEqual(expected);
     }
   });
 
@@ -71,11 +107,18 @@ describe("Phase 2 notification schema", () => {
 
   it("re-running getDb() migrations is a no-op", async () => {
     const before = getDb().prepare("SELECT COUNT(*) c FROM notification_types").get() as { c: number };
+    const rulesBefore = getDb()
+      .prepare("SELECT COUNT(*) c FROM rules WHERE organization_id IS NULL")
+      .get() as { c: number };
     // getDb() is a singleton; call the seeders again directly to prove idempotency
     const dbMod = await import("@/lib/db");
     dbMod.seedNotificationTypes(getDb());
     dbMod.seedRules(getDb());
     const after = getDb().prepare("SELECT COUNT(*) c FROM notification_types").get() as { c: number };
+    const rulesAfter = getDb()
+      .prepare("SELECT COUNT(*) c FROM rules WHERE organization_id IS NULL")
+      .get() as { c: number };
     expect(after.c).toBe(before.c);
+    expect(rulesAfter.c).toBe(rulesBefore.c);
   });
 });

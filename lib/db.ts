@@ -1800,7 +1800,7 @@ export function getDb(): DatabaseSync {
     CREATE TABLE IF NOT EXISTS notification_deliveries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       user_id INTEGER NOT NULL,
-      channel TEXT NOT NULL,
+      channel TEXT NOT NULL CHECK (channel IN ('push', 'telegram')),
       flushed_at TEXT NOT NULL,
       notification_ids_json TEXT NOT NULL,
       provider_ref TEXT,
@@ -3673,9 +3673,19 @@ export function seedNotificationTypes(db: DatabaseSync): void {
      SELECT NULL, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?
       WHERE NOT EXISTS (SELECT 1 FROM notification_types WHERE organization_id IS NULL AND code = ?)`
   );
+  // Phase 2 backfill: the NULL-org catalogue rows are shipped defaults (tenants override
+  // with their own rows), so force default_push / default_telegram to the canonical
+  // loudByDefault value on every boot. This catches the 6 Phase-1 rows that predate the
+  // columns and would otherwise keep the ALTER's DEFAULT 0; on a fresh DB it is a no-op
+  // right after the INSERT. organization_id IS NOT NULL rows are never touched.
+  const backfill = db.prepare(
+    `UPDATE notification_types SET default_push = ?, default_telegram = ?, updated_at = ?
+      WHERE organization_id IS NULL AND code = ?`
+  );
   for (const t of NOTIFICATION_TYPE_SEED) {
     const loud = loudByDefault(t.directedness, t.priority);
     insert.run(t.code, t.name_fa, t.category, t.directedness, t.priority, t.group_scope, loud, loud, now, now, t.code);
+    backfill.run(loud, loud, now, t.code);
   }
 }
 
