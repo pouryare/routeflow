@@ -24,17 +24,20 @@ describe("spine schema", () => {
     }
   });
 
-  it("seeds the five default rules with a NULL organisation", () => {
+  it("seeds the default rules with a NULL organisation, idempotently", () => {
+    // 5 original spine rules + the 8 Phase 1 `notify` rules (RULE_SEED in lib/db.ts).
+    const EXPECTED_DEFAULT_RULES = 13;
     const rows = getDb()
       .prepare("SELECT code FROM rules WHERE organization_id IS NULL")
       .all() as { code: string }[];
-    expect(rows).toHaveLength(5);
+    expect(rows).toHaveLength(EXPECTED_DEFAULT_RULES);
     expect(rows.map((r) => r.code)).toContain("delivery_failed_retry");
+    expect(rows.map((r) => r.code)).toContain("notify_task_assigned");
     getDb();
     getDb();
     expect(
       (getDb().prepare("SELECT COUNT(*) n FROM rules WHERE organization_id IS NULL").get() as { n: number }).n
-    ).toBe(5);
+    ).toBe(EXPECTED_DEFAULT_RULES);
   });
 
   it("rejects junk in the CHECKed columns", () => {

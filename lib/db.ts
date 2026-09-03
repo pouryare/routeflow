@@ -91,6 +91,8 @@ export const TENANT_TABLES = [
   "churn_models",
   "churn_scores",
   "task_recurrences",
+  "notification_types",
+  "notifications",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -2365,6 +2367,7 @@ export function getDb(): DatabaseSync {
       table === "reason_codes" ||
       table === "capacity_factors" ||
       table === "rules" ||
+      table === "notification_types" ||
       table === "objection_cards" ||
       table === "kpi_definitions" ||
       table === "seasonal_factors" ||
@@ -2940,6 +2943,7 @@ export function getDb(): DatabaseSync {
       table === "reason_codes" ||
       table === "capacity_factors" ||
       table === "rules" ||
+      table === "notification_types" ||
       table === "objection_cards" ||
       table === "kpi_definitions" ||
       table === "seasonal_factors" ||
@@ -3511,6 +3515,19 @@ export const RULE_SEED: {
     escalate_after_min: null,
     escalate_to_role: null,
   },
+
+  // Phase 1 notifications: one `notify` rule per event kind that should reach a person's
+  // feed. action_json.notification_type names the row in NOTIFICATION_TYPE_SEED; recipient
+  // resolution lives in lib/repo/notifications.recipientsFor. cooldown_min: 1 so a genuine
+  // duplicate within the same minute is still absorbed while the feed is not throttled.
+  { code: "notify_task_assigned",          name: "اعلان: کار سپرده‌شده",   trigger_kind: "task.assigned",       condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "task.assigned" }),      cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_order_confirmed",        name: "اعلان: تأیید سفارش",      trigger_kind: "order.passReview",     condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "order.confirmed" }),     cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_order_confirmed_credit", name: "اعلان: تأیید سفارش (اعتبار)", trigger_kind: "order.approveCredit", condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "order.confirmed" }),     cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_order_rejected",         name: "اعلان: لغو سفارش",        trigger_kind: "order.cancel",         condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "order.rejected" }),      cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_order_created",          name: "اعلان: سفارش جدید",       trigger_kind: "order.submit",         condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "order.created" }),       cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_delivery_succeeded",     name: "اعلان: تحویل موفق",      trigger_kind: "delivery.succeeded",   condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "delivery.succeeded" }),  cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_delivery_failed",        name: "اعلان: تحویل ناموفق",    trigger_kind: "delivery.failed",      condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "delivery.failed" }),     cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_payment_recorded",       name: "اعلان: ثبت پرداخت",       trigger_kind: "payment.recorded",     condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "payment.recorded" }),    cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
 ];
 
 export function seedRules(db: DatabaseSync): void {

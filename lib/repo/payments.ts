@@ -295,9 +295,10 @@ export function recordPaymentTxn(
   );
   for (const a of allocs) insAlloc.run(paymentId, a.order_id, a.amount_toman, now);
 
-  for (const orderId of new Set(
-    allocs.filter((a) => a.order_id !== null).map((a) => a.order_id as number)
-  )) {
+  const orderIds = [
+    ...new Set(allocs.filter((a) => a.order_id !== null).map((a) => a.order_id as number)),
+  ];
+  for (const orderId of orderIds) {
     recomputeOrderPaymentTxn(db, organizationId, orderId);
   }
 
@@ -308,7 +309,14 @@ export function recordPaymentTxn(
       entity_type: "payment",
       entity_id: paymentId,
       actor_user_id: input.received_by,
-      metadata: { amount_toman: input.amount_toman, method: input.method, customer_id: input.customer_id },
+      // order_ids is what recipientsFor("payment.recorded") resolves salespeople from --
+      // one payment can span several orders, so it threads the distinct allocation ids.
+      metadata: {
+        amount_toman: input.amount_toman,
+        method: input.method,
+        customer_id: input.customer_id,
+        order_ids: orderIds,
+      },
     },
     db
   );

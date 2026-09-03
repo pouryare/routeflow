@@ -1,5 +1,6 @@
 import { makeRepo } from "./base";
 import { resolveRuleRunsFor } from "./rules";
+import { tryEmitEvent } from "./events";
 import {
   movePatch,
   stageFromStatus,
@@ -54,7 +55,7 @@ export function createTask(
   }
 ): number {
   if (!input.title?.trim()) throw new TaskError("عنوان لازم است");
-  return tasksRepo.insert(organizationId, {
+  const id = tasksRepo.insert(organizationId, {
     organization_id: organizationId,
     assignee_user_id: input.assignee_user_id ?? null,
     role_hint: input.role_hint ?? null,
@@ -74,6 +75,26 @@ export function createTask(
     created_at: new Date().toISOString(),
     done_at: null,
   } as Omit<TaskRow, "id">);
+
+  // Phase 1 notifications: a task handed to a person is a feed fact. Guarded on
+  // assignee_user_id, so a role-only task emits nothing. No recursion: task.assigned
+  // only matches notify_task_assigned (a `notify` rule, which creates no task), and the
+  // rule-spawned tasks fire() writes go through a raw INSERT, never this function.
+  if (input.assignee_user_id) {
+    tryEmitEvent(organizationId, {
+      kind: "task.assigned",
+      entity_type: "task",
+      entity_id: id,
+      actor_user_id: input.created_by ?? null,
+      metadata: {
+        assignee_user_id: input.assignee_user_id,
+        title: input.title.trim(),
+        priority: input.priority ?? "NORMAL",
+      },
+    });
+  }
+
+  return id;
 }
 
 /** Move a task by Board lane. `movePatch` (lib/tasks/lenses) is the only place the

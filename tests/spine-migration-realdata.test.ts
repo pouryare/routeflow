@@ -47,7 +47,7 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
 describe.skipIf(!dbPath)("Phase 7 spine migration on real data", () => {
-  it("adds the six tables + seeds five default rules, touching nothing else", () => {
+  it("adds the six tables + seeds the default rules, touching nothing else", () => {
     const db = getDb();
     expect(db.prepare("PRAGMA foreign_key_check").all()).toEqual([]);
 
@@ -59,7 +59,7 @@ describe.skipIf(!dbPath)("Phase 7 spine migration on real data", () => {
     }
     expect(
       (db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NULL").get() as { n: number }).n
-    ).toBe(5);
+    ).toBe(13); // 5 original spine rules + the 8 Phase 1 `notify` rules (RULE_SEED)
     expect(
       (db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NOT NULL").get() as { n: number }).n
     ).toBe(0);

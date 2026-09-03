@@ -230,12 +230,22 @@ export interface DeliveryInput {
 export function recordDelivery(db: DatabaseSync, stopId: number, input: DeliveryInput): void {
   const stop = db
     .prepare(
-      `SELECT s.id, s.order_id, s.status, o.customer_id, o.organization_id
-         FROM delivery_stops s JOIN orders o ON o.id = s.order_id
+      `SELECT s.id, s.order_id, s.status, o.customer_id, o.order_no, o.organization_id,
+              c.business_name AS customer_name
+         FROM delivery_stops s
+         JOIN orders o ON o.id = s.order_id
+         JOIN customers c ON c.id = o.customer_id
         WHERE s.id = ?`
     )
     .get(stopId) as
-    | { order_id: number; status: string; customer_id: number; organization_id: number }
+    | {
+        order_id: number;
+        status: string;
+        customer_id: number;
+        order_no: string;
+        organization_id: number;
+        customer_name: string;
+      }
     | undefined;
   if (!stop) throw new DeliveryError("توقف پیدا نشد");
 
@@ -326,6 +336,26 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
             entity_id: stop.order_id,
             actor_user_id: input.by,
             metadata: { customer_id: stop.customer_id, fail_reason_id: input.fail_reason_id ?? null },
+          },
+          db
+        );
+      } else {
+        // Phase 1 notifications: a partial OR full delivery is its own event, so both
+        // order actions (deliver / deliverPartial) feed one notification type without the
+        // feed rules special-casing two verbs. Best-effort, joins this transaction.
+        tryEmitEvent(
+          orgId,
+          {
+            kind: "delivery.succeeded",
+            entity_type: "order",
+            entity_id: stop.order_id,
+            actor_user_id: input.by,
+            metadata: {
+              customer_id: stop.customer_id,
+              customer_name: stop.customer_name,
+              order_no: stop.order_no,
+              partial: someShort,
+            },
           },
           db
         );
