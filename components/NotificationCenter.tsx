@@ -35,15 +35,19 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
-    const res = await fetch("/api/notifications");
-    if (!res.ok) {
+    try {
+      const res = await fetch("/api/notifications");
+      if (!res.ok) {
+        setLoading(false);
+        return;
+      }
+      const json = await res.json();
+      setGroups(json.groups ?? []);
+      onUnread(json.unread ?? 0);
       setLoading(false);
-      return;
+    } catch {
+      setLoading(false);
     }
-    const json = await res.json();
-    setGroups(json.groups ?? []);
-    onUnread(json.unread ?? 0);
-    setLoading(false);
   }, [onUnread]);
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only setStates after an awaited fetch; same pattern as components/SyncStatus.tsx
@@ -88,7 +92,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
     <div className="flex max-h-[60vh] w-[min(92vw,22rem)] flex-col">
       <div className="flex items-center justify-between border-b border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)]">
         <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">اعلان‌ها</span>
-        <button onClick={markAll} className="text-[length:var(--text-xs)] text-[var(--accent)]">
+        <button type="button" onClick={markAll} className="text-[length:var(--text-xs)] text-[var(--accent)]">
           خواندنِ همه
         </button>
       </div>
@@ -96,6 +100,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
         {groups.map((g) => (
           <li key={g.group_key} className="border-b border-[var(--border)] last:border-0">
             <button
+              type="button"
               onClick={() => {
                 setOpen(open === g.group_key ? null : g.group_key);
                 if (g.unread_count) void markGroup(g.group_key);

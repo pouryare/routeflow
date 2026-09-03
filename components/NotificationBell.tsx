@@ -19,15 +19,19 @@ export default function NotificationBell() {
   useEffect(() => {
     let alive = true;
     async function tick() {
-      const res = await fetch("/api/notifications");
-      if (!alive) return;
-      if (res.status === 401) {
-        setAuthed(false);
-        return;
-      }
-      if (res.ok) {
-        const j = await res.json();
-        setUnread(j.unread ?? 0);
+      try {
+        const res = await fetch("/api/notifications");
+        if (!alive) return;
+        if (res.status === 401) {
+          setAuthed(false);
+          return;
+        }
+        if (res.ok) {
+          const j = await res.json();
+          setUnread(j.unread ?? 0);
+        }
+      } catch {
+        /* transient; next tick retries */
       }
     }
     void tick();
@@ -48,6 +52,7 @@ export default function NotificationBell() {
         </div>
       )}
       <button
+        type="button"
         onClick={() => setOpen((v) => !v)}
         aria-label="اعلان‌ها"
         aria-expanded={open}
@@ -57,7 +62,7 @@ export default function NotificationBell() {
           🔔
         </span>
         {unread > 0 && (
-          <span className="absolute -top-1 -right-1 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--crit)] px-1 text-[0.65rem] font-bold text-white">
+          <span className="absolute -top-1 -right-1 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
             {unread > 9 ? "۹+" : faNum(unread)}
           </span>
         )}
