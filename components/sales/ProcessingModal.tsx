@@ -5,8 +5,8 @@ import { useEffect, useRef } from "react";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import type { PipelineOrder } from "./OrderPipeline";
+import Avatar from "@/components/kargah/Avatar";
 
-const AV_TONE = ["plum", "sage", "sky", "amber"] as const;
 
 const PAYMENT_LABEL: Record<string, string> = {
   unpaid: "پرداخت‌نشده",
@@ -99,15 +99,7 @@ export default function ProcessingModal({
                       here, and a chip that looked pressable but changed nothing would be
                       worse than one that plainly reports. */}
                   <span className="person" aria-pressed={true}>
-                    <span
-                      className="av"
-                      style={{
-                        background: `var(--${AV_TONE[(order.salesperson_name ?? "").length % AV_TONE.length]}-soft)`,
-                        color: `var(--${AV_TONE[(order.salesperson_name ?? "").length % AV_TONE.length]})`,
-                      }}
-                    >
-                      {(order.salesperson_name ?? "؟").trim()[0]}
-                    </span>
+                    <Avatar name={order.salesperson_name ?? "؟"} size={24} />
                     {order.salesperson_name ?? "بدون فروشنده"}
                   </span>
                 </div>

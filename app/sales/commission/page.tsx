@@ -9,6 +9,7 @@ import { allManagerStatements, managerStatementFor, readManagerOverrides } from 
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import CommissionEditor from "@/components/sales/CommissionEditor";
+import Avatar from "@/components/kargah/Avatar";
 import EarnerCard from "@/components/kargah/EarnerCard";
 
 export const dynamic = "force-dynamic";
@@ -146,13 +147,7 @@ export default async function CommissionPage() {
             {managerStatements.map((m) => (
               <article className="pcard" key={m.manager_user_id}>
                 <header className="pcard__head">
-                  <span
-                    className="pcard__av"
-                    style={{ background: "var(--sky-soft)", color: "var(--sky)" }}
-                    aria-hidden
-                  >
-                    {m.display_name.trim()[0]}
-                  </span>
+                  <Avatar userId={m.manager_user_id} name={m.display_name} size={46} className="pcard__av" />
                   <div className="min-w-0">
                     <h2>{m.display_name}</h2>
                     <div className="pcard__sub mono">

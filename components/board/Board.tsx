@@ -10,6 +10,7 @@ import OutcomeChips from "@/components/today/OutcomeChips";
 import { useCardDrag } from "./useCardDrag";
 import BoardMobile from "./BoardMobile";
 import Avatar from "@/components/kargah/Avatar";
+import Pocketed from "@/components/kargah/Pocketed";
 
 const KIND_TONE: Record<string, string> = {
   outreach: "accent",
@@ -208,8 +209,13 @@ export default function Board({
                 </div>
 
                 {lane.cards.map((card) => (
-                  <div
+                  <Pocketed
                     key={card.id}
+                    papers={card.customer ? 1 : 0}
+                    tone={lane.id === "done" || lane.id === "delivered" ? "good" : undefined}
+                    fan={false}
+                  >
+                  <div
                     className={`task${drag.drag?.item.id === card.id ? " dragging" : ""}`}
                     {...drag.bind(card, lane.id)}
                   >
@@ -357,6 +363,7 @@ export default function Board({
                       </div>
                     ) : null}
                   </div>
+                  </Pocketed>
                 ))}
 
                 {lane.cards.length === 0 ? (

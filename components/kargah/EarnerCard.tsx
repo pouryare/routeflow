@@ -1,6 +1,5 @@
 import { faToman, faNum } from "@/lib/format";
-
-const AV_TONE = ["plum", "sage", "sky", "amber"] as const;
+import Avatar from "@/components/kargah/Avatar";
 
 export interface EarnerLine {
   key: string | number;
@@ -38,7 +37,6 @@ export default function EarnerCard({
   /** «سفارش» or «تحویل» -- what one row of `lines` actually is. */
   lineNoun: string;
 }) {
-  const tone = AV_TONE[displayName.length % AV_TONE.length];
   // How much of what has accrued is still owed. The bar is the point of the card: two
   // people can accrue the same and be settled very differently.
   const settled =
@@ -47,13 +45,7 @@ export default function EarnerCard({
   return (
     <article className="pcard" key={id}>
       <header className="pcard__head">
-        <span
-          className="pcard__av"
-          style={{ background: `var(--${tone}-soft)`, color: `var(--${tone})` }}
-          aria-hidden
-        >
-          {displayName.trim()[0]}
-        </span>
+        <Avatar userId={id} name={displayName} size={46} className="pcard__av" />
         <div className="min-w-0">
           <h2>{displayName}</h2>
           <div className="pcard__sub mono">{subLabel}</div>

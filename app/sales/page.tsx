@@ -10,6 +10,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import GradientStat from "@/components/kargah/GradientStat";
 import SalesSpark, { type SparkPoint } from "@/components/kargah/SalesSpark";
 import CarvedCard from "@/components/kargah/CarvedCard";
+import Avatar from "@/components/kargah/Avatar";
 
 export const dynamic = "force-dynamic";
 
@@ -92,7 +93,6 @@ export default async function SalesHomePage() {
   const team = [...byPerson.values()].sort((a, b) => b.n - a.n).slice(0, 5);
   const todayOrders = todaysOrders.length;
 
-  const AV_TONE = ["plum", "sage", "sky", "amber", "accent"] as const;
 
   return (
     <>
@@ -166,19 +166,8 @@ export default async function SalesHomePage() {
           avatars={
             team.length === 0 ? null : (
               <>
-                {team.map((t, i) => (
-                  <div
-                    key={t.name}
-                    className="av"
-                    title={t.name}
-                    style={{
-                      background: `var(--${AV_TONE[i % AV_TONE.length]}-soft)`,
-                      color: `var(--${AV_TONE[i % AV_TONE.length]})`,
-                    }}
-                  >
-                    {t.name.trim()[0]}
-                    <span className="badge mono">{faNum(t.n)}</span>
-                  </div>
+                {team.map((t) => (
+                  <Avatar key={t.name} name={t.name} count={t.n} size={28} />
                 ))}
               </>
             )

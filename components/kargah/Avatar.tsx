@@ -5,10 +5,12 @@
  *  user id (not the name, not the name's length), so the same person is the same colour
  *  everywhere they appear, and it does not shuffle when they change their display name.
  *
- *  Replaces the ~6 ad-hoc `AV_TONE[...name.length % 4]` copies across /sales. When a
- *  real avatar column lands later, add an optional `src` here and fall through to the
- *  initials when it is null.
+ *  Replaces the ~6 ad-hoc `AV_TONE[...name.length % 4]` copies across /sales. When a real
+ *  avatar column lands later, add an optional `src` here and fall through to the initials
+ *  when it is null.
  */
+import { faNum } from "@/lib/format";
+
 const TONES = ["plum", "sage", "sky", "amber"] as const;
 
 function hashString(s: string): number {
@@ -21,7 +23,10 @@ function hashString(s: string): number {
  *  from the name -- never from `name.length`, which the old ad-hoc copies used and which
  *  collides constantly. */
 function toneFor(seed: number | string): (typeof TONES)[number] {
-  const n = typeof seed === "number" ? Math.abs(Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b)) : hashString(seed);
+  const n =
+    typeof seed === "number"
+      ? Math.abs(Math.imul(seed ^ 0x9e3779b9, 0x85ebca6b))
+      : hashString(seed);
   return TONES[n % TONES.length];
 }
 
@@ -37,6 +42,7 @@ export default function Avatar({
   name,
   size = 28,
   title,
+  count,
   className = "",
 }: {
   /** The user's id when the caller has it -- keeps the colour stable if they rename. */
@@ -44,10 +50,12 @@ export default function Avatar({
   name: string;
   size?: number;
   title?: string;
+  /** A small corner badge, e.g. a per-person count. Omitted when 0 or undefined. */
+  count?: number;
   className?: string;
 }) {
   const tone = toneFor(userId ?? name);
-  return (
+  const chip = (
     <span
       aria-hidden="true"
       title={title ?? name}
@@ -68,6 +76,33 @@ export default function Avatar({
       }}
     >
       {initials(name)}
+    </span>
+  );
+  if (!count) return chip;
+  return (
+    <span style={{ position: "relative", display: "inline-flex", flex: "none" }}>
+      {chip}
+      <span
+        aria-hidden="true"
+        style={{
+          position: "absolute",
+          insetInlineEnd: -4,
+          bottom: -4,
+          minWidth: 14,
+          padding: "0 3px",
+          borderRadius: 999,
+          border: "1px solid var(--surface)",
+          background: `var(--${tone})`,
+          color: "var(--surface)",
+          fontFamily: "var(--font-num)",
+          fontSize: Math.max(9, Math.round(size * 0.3)),
+          lineHeight: "14px",
+          textAlign: "center",
+          fontWeight: 700,
+        }}
+      >
+        {faNum(count)}
+      </span>
     </span>
   );
 }
