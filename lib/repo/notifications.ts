@@ -1,8 +1,65 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
 import { toJalali } from "@/lib/jalali";
+import { configureWebPush } from "@/lib/push";
+import { telegramConfigured } from "@/lib/telegram";
 
 export type Priority = "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
+
+const RANK: Record<string, number> = { LOW: 0, NORMAL: 1, HIGH: 2, CRITICAL: 3 };
+export function priorityRank(p: string): number {
+  return RANK[p] ?? 0;
+}
+
+/** Would this user get `typeCode` loud on `channel` right now? Pref row > stored default,
+ *  AND master switch on, AND the channel actually connected, AND the channel configured. */
+export function effectiveRouting(
+  userId: number,
+  typeCode: string,
+  channel: "push" | "telegram",
+  db?: DatabaseSync
+): boolean {
+  if (channel === "push" && !configureWebPush()) return false;
+  if (channel === "telegram" && !telegramConfigured()) return false;
+  const conn = db ?? getDb();
+
+  const master = conn
+    .prepare("SELECT enabled FROM notification_channels WHERE user_id = ? AND channel = ?")
+    .get(userId, channel) as { enabled: number } | undefined;
+  if (master && master.enabled === 0) return false;
+
+  const pref = conn
+    .prepare("SELECT enabled FROM notification_prefs WHERE user_id = ? AND type_code = ? AND channel = ?")
+    .get(userId, typeCode, channel) as { enabled: number } | undefined;
+
+  let want: boolean;
+  if (pref) want = pref.enabled === 1;
+  else {
+    const col = channel === "push" ? "default_push" : "default_telegram";
+    const orgId =
+      (conn.prepare("SELECT organization_id FROM users WHERE id = ?").get(userId) as
+        | { organization_id: number }
+        | undefined)?.organization_id ?? 0;
+    const t = conn
+      .prepare(
+        `SELECT ${col} d FROM notification_types
+          WHERE code = ? AND (organization_id = ? OR organization_id IS NULL)
+          ORDER BY (organization_id IS NULL) LIMIT 1`
+      )
+      .get(typeCode, orgId) as { d: number } | undefined;
+    want = (t?.d ?? 0) === 1;
+  }
+  if (!want) return false;
+
+  if (channel === "push") {
+    const has = conn.prepare("SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1").get(userId);
+    return !!has;
+  }
+  const chat = conn
+    .prepare("SELECT telegram_chat_id FROM users WHERE id = ?")
+    .get(userId) as { telegram_chat_id: string | null } | undefined;
+  return !!chat?.telegram_chat_id;
+}
 
 export interface FanoutContext {
   kind: string;
