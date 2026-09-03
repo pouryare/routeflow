@@ -2209,6 +2209,47 @@ body {
   }
 }
 
+/* ---- the image-3 top bar : a lit accent strip whose ends melt into the card edge ----
+   Opt-in, never on a page-section shell (.card / .kblock). It rides real cards: the
+   gradient stat tiles, product rows/tiles, kanban tasks, and anything given `.kbar`.
+   `--bar` is the single glow hue, so one rule covers the gradient default AND every
+   data-tone, and the halo always matches the strip.                                  */
+.kargah .kbar::after,
+.kargah .gcard::after,
+.kargah .prow::after,
+.kargah .ptile::after,
+.kargah .task::after {
+  content: "";
+  position: absolute; inset-block-start: 0; inset-inline: 0; height: 3px;
+  z-index: 2; pointer-events: none;
+  --bar: var(--accent-2);
+  background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--tint-plum));
+  /* Ends fade to transparent; the fade zone is wider than the largest card corner
+     radius (--r-2xl 26px) so the strip never collides with the rounded corner. */
+  --bar-fade: clamp(20px, 12%, 44px);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--bar-fade), #000 calc(100% - var(--bar-fade)), transparent 100%);
+          mask-image: linear-gradient(90deg, transparent 0, #000 var(--bar-fade), #000 calc(100% - var(--bar-fade)), transparent 100%);
+  /* Light skin: no blur (it smears on the cream ground) -- a 1px hairline of the same
+     hue is the only lift that survives on paper-white. */
+  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--bar) 26%, transparent));
+}
+/* Status mode: the strip AND the glow both follow --bar. */
+.kargah [data-tone="good"]::after { background: var(--good); --bar: var(--good); }
+.kargah [data-tone="warn"]::after { background: var(--warn); --bar: var(--warn); }
+.kargah [data-tone="crit"]::after { background: var(--crit); --bar: var(--crit); }
+.kargah [data-tone="info"]::after { background: var(--info); --bar: var(--info); }
+/* Dark skin: the neon bloom -- drop-shadow (NOT box-shadow) so the halo inherits the
+   end-fade mask and, with the card's overflow:hidden, spreads downward onto the surface.
+   .gcard is left out: an accent bloom over its mesh muddies it. */
+:root[data-skin="dark"] .kargah .kbar::after,
+:root[data-skin="dark"] .kargah .prow::after,
+:root[data-skin="dark"] .kargah .ptile::after,
+:root[data-skin="dark"] .kargah .task::after {
+  filter:
+    drop-shadow(0 0 5px  color-mix(in srgb, var(--bar) 70%, transparent))
+    drop-shadow(0 2px 12px color-mix(in srgb, var(--bar) 32%, transparent));
+}
+
 /* ---- 5 · the board (drag and drop) --------------------------------------- */
 .kargah .board {
   display: grid; grid-template-columns: repeat(3, minmax(0, 460px)); gap: 14px;
@@ -2246,6 +2287,7 @@ body {
 .kargah .task {
   background: var(--card); border-radius: var(--r-md); box-shadow: var(--sh-1);
   padding: 10px 12px; margin-bottom: 6px; cursor: grab;
+  position: relative; overflow: hidden;
   /* without these a mouse-drag paints a text selection across the board, and a
      touch-drag scrolls the page instead of moving the card */
   user-select: none; -webkit-user-select: none; touch-action: none;

@@ -207,6 +207,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   <Pocketed key={o.id} papers={docs.papers} tone={docs.tone} fan>
                   <button
                     type="button"
+                    data-tone={docs.tone}
                     className={`task${drag?.order.id === o.id ? " dragging" : ""}`}
                     onPointerDown={movable ? (e) => onPointerDown(e, o, stage.key) : undefined}
                     onPointerMove={movable ? onPointerMove : undefined}
