@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { toJalali } from "@/lib/jalali";
 import { configureWebPush } from "@/lib/push";
@@ -35,19 +36,10 @@ export function effectiveRouting(
   let want: boolean;
   if (pref) want = pref.enabled === 1;
   else {
-    const col = channel === "push" ? "default_push" : "default_telegram";
-    const orgId =
-      (conn.prepare("SELECT organization_id FROM users WHERE id = ?").get(userId) as
-        | { organization_id: number }
-        | undefined)?.organization_id ?? 0;
-    const t = conn
-      .prepare(
-        `SELECT ${col} d FROM notification_types
-          WHERE code = ? AND (organization_id = ? OR organization_id IS NULL)
-          ORDER BY (organization_id IS NULL) LIMIT 1`
-      )
-      .get(typeCode, orgId) as { d: number } | undefined;
-    want = (t?.d ?? 0) === 1;
+    const orgId = orgOf(userId, conn);
+    const t = catalogueRow(orgId, typeCode, conn);
+    const d = channel === "push" ? t?.default_push : t?.default_telegram;
+    want = (d ?? 0) === 1;
   }
   if (!want) return false;
 
@@ -274,17 +266,32 @@ export function recipientsFor(
 interface CatalogueRow {
   code: string;
   name_fa: string;
+  category: string;
   directedness: string;
   priority: Priority;
   group_scope: "entity" | "type_day";
+  default_push: number;
+  default_telegram: number;
   active: number;
 }
 
-/** Tenant row wins over the NULL-org default, by code. */
-function catalogueType(organizationId: number, code: string, db?: DatabaseSync): CatalogueRow | undefined {
+/** The tenant a user belongs to (0 if somehow unset), for the catalogue lookup. */
+function orgOf(userId: number, db?: DatabaseSync): number {
+  return (
+    ((db ?? getDb()).prepare("SELECT organization_id FROM users WHERE id = ?").get(userId) as
+      | { organization_id: number | null }
+      | undefined)?.organization_id ?? 0
+  );
+}
+
+/** One catalogue type by code, tenant row winning over the NULL-org default. The single
+ *  source of the tenant-override SELECT — `effectiveRouting`, `setPref` and
+ *  `fanOutNotifications` all read the catalogue through here. */
+function catalogueRow(organizationId: number, code: string, db?: DatabaseSync): CatalogueRow | undefined {
   return (db ?? getDb())
     .prepare(
-      `SELECT code, name_fa, directedness, priority, group_scope, active FROM notification_types
+      `SELECT code, name_fa, category, directedness, priority, group_scope, default_push, default_telegram, active
+         FROM notification_types
         WHERE code = ? AND (organization_id = ? OR organization_id IS NULL)
         ORDER BY (organization_id IS NULL) LIMIT 1`
     )
@@ -314,7 +321,7 @@ export function fanOutNotifications(
   const spec = rule.action_json ? (JSON.parse(rule.action_json) as { notification_type?: string }) : {};
   const typeCode = spec.notification_type;
   if (!typeCode) return 0;
-  const type = catalogueType(organizationId, typeCode, db);
+  const type = catalogueRow(organizationId, typeCode, db);
   if (!type || !type.active) return 0;
 
   const ctx: FanoutContext = {
@@ -453,4 +460,220 @@ export function markGroupsRead(organizationId: number, userId: number, groupKeys
         WHERE organization_id = ? AND user_id = ? AND read_at IS NULL AND group_key IN (${ph})`
     )
     .run(now, organizationId, userId, ...groupKeys);
+}
+
+/* -------------------------------------------------------------------------- *
+ *  Phase 2: per-user prefs matrix, channel master-switch / quiet-hours,      *
+ *  and the telegram deep-link nonce. The settings API (Task 8) and the      *
+ *  settings UI (Task 10) call these directly.                               *
+ * -------------------------------------------------------------------------- */
+
+/** A bad user input (unknown type code, bad channel, malformed HH:MM). Task 8's routes
+ *  map `instanceof NotifInputError` to a 400. Kept local so this file does not import
+ *  `RuleError` from lib/repo/rules (that would be an import cycle). */
+export class NotifInputError extends Error {}
+
+export interface ChannelState {
+  enabled: boolean;
+  quiet_start: string | null;
+  quiet_end: string | null;
+  critical_breaks_quiet: boolean;
+  /** The user has a usable target on this channel (a push subscription / a telegram chat). */
+  connected: boolean;
+  /** The server has the keys/token to send on this channel at all. */
+  configured: boolean;
+}
+
+export interface MatrixRow {
+  code: string;
+  name_fa: string;
+  category: string;
+  default_push: number;
+  default_telegram: number;
+  /** Effective on/off, ignoring connection: the pref row if one exists, else the stored default. */
+  push: boolean;
+  telegram: boolean;
+}
+
+/** HH:MM, 24h, zero-padded. */
+const HHMM = /^([01]\d|2[0-3]):[0-5]\d$/;
+
+type ChannelPatch = {
+  enabled?: boolean;
+  quiet_start?: string | null;
+  quiet_end?: string | null;
+  critical_breaks_quiet?: boolean;
+};
+
+/** Spec defaults for the keys a first `putChannelState` write does not supply. */
+const CHANNEL_STATE_DEFAULTS: Record<string, string | number> = {
+  enabled: 1,
+  quiet_start: "21:00",
+  quiet_end: "08:00",
+  critical_breaks_quiet: 1,
+};
+
+function channelPatchValue(
+  key: "enabled" | "quiet_start" | "quiet_end" | "critical_breaks_quiet",
+  v: boolean | string | null | undefined
+): string | number | null {
+  if (key === "enabled" || key === "critical_breaks_quiet") return v ? 1 : 0;
+  return v == null ? null : String(v);
+}
+
+/** Master switch + quiet-hours window for one channel, plus whether it is connected and
+ *  server-configured. Returns the spec defaults when the user has no `notification_channels`
+ *  row — it never lazily inserts one (only `putChannelState` writes). */
+export function getChannelState(userId: number, channel: "push" | "telegram"): ChannelState {
+  const db = getDb();
+  const configured = channel === "push" ? configureWebPush() : telegramConfigured();
+  const connected =
+    channel === "push"
+      ? !!db.prepare("SELECT 1 FROM push_subscriptions WHERE user_id = ? LIMIT 1").get(userId)
+      : !!(
+          db.prepare("SELECT telegram_chat_id FROM users WHERE id = ?").get(userId) as
+            | { telegram_chat_id: string | null }
+            | undefined
+        )?.telegram_chat_id;
+
+  const row = db
+    .prepare(
+      "SELECT enabled, quiet_start, quiet_end, critical_breaks_quiet FROM notification_channels WHERE user_id = ? AND channel = ?"
+    )
+    .get(userId, channel) as
+    | { enabled: number; quiet_start: string | null; quiet_end: string | null; critical_breaks_quiet: number }
+    | undefined;
+
+  return {
+    enabled: row ? row.enabled === 1 : true,
+    quiet_start: row ? row.quiet_start : null,
+    quiet_end: row ? row.quiet_end : null,
+    critical_breaks_quiet: row ? row.critical_breaks_quiet === 1 : true,
+    connected,
+    configured,
+  };
+}
+
+/** Upsert one channel's master switch / quiet-hours. First write fills unset keys with the
+ *  spec defaults (21:00 / 08:00, enabled, critical_breaks_quiet); a later write patches only
+ *  the keys present in `patch`. `updated_at` is always bumped. Throws `NotifInputError` on a
+ *  non-null `quiet_start` / `quiet_end` that is not HH:MM (null clears the bound). */
+export function putChannelState(userId: number, channel: "push" | "telegram", patch: ChannelPatch): void {
+  for (const k of ["quiet_start", "quiet_end"] as const) {
+    if (k in patch) {
+      const v = patch[k];
+      if (v != null && !HHMM.test(v)) throw new NotifInputError("زمان نامعتبر است");
+    }
+  }
+
+  const now = new Date().toISOString();
+  const cols = ["user_id", "channel", "updated_at"];
+  const ph = ["?", "?", "?"];
+  const vals: (string | number | null)[] = [userId, channel, now];
+  const set = ["updated_at = excluded.updated_at"];
+  for (const key of ["enabled", "quiet_start", "quiet_end", "critical_breaks_quiet"] as const) {
+    const provided = key in patch;
+    cols.push(key);
+    ph.push("?");
+    vals.push(provided ? channelPatchValue(key, patch[key]) : CHANNEL_STATE_DEFAULTS[key]);
+    if (provided) set.push(`${key} = excluded.${key}`);
+  }
+
+  getDb()
+    .prepare(
+      `INSERT INTO notification_channels (${cols.join(", ")}) VALUES (${ph.join(", ")})
+       ON CONFLICT(user_id, channel) DO UPDATE SET ${set.join(", ")}`
+    )
+    .run(...vals);
+}
+
+/** Set one (type, channel) pref for a user. If `enabled` matches the type's stored default,
+ *  the pref row is deleted (the catalogue default is the source of truth); otherwise it is
+ *  upserted. Throws `NotifInputError` on an unknown `typeCode` or a `channel` outside
+ *  {push, telegram}. */
+export function setPref(userId: number, typeCode: string, channel: "push" | "telegram", enabled: boolean): void {
+  if (channel !== "push" && channel !== "telegram") throw new NotifInputError("کانال نامعتبر است");
+  const db = getDb();
+  const type = catalogueRow(orgOf(userId, db), typeCode, db);
+  if (!type) throw new NotifInputError("نوع اعلان ناشناخته است");
+
+  const def = channel === "push" ? type.default_push : type.default_telegram;
+  if (Number(enabled) === def) {
+    db.prepare("DELETE FROM notification_prefs WHERE user_id = ? AND type_code = ? AND channel = ?").run(
+      userId,
+      typeCode,
+      channel
+    );
+    return;
+  }
+  db.prepare(
+    `INSERT INTO notification_prefs (user_id, type_code, channel, enabled, updated_at) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(user_id, type_code, channel) DO UPDATE SET enabled = excluded.enabled, updated_at = excluded.updated_at`
+  ).run(userId, typeCode, channel, Number(enabled), new Date().toISOString());
+}
+
+/** The settings screen's whole payload: every active catalogue type (tenant row winning
+ *  over the NULL-org default, `system.test` excluded) with its effective push/telegram
+ *  on/off, plus the two channel states. */
+export function getPrefsMatrix(
+  userId: number,
+  orgId: number
+): { channels: Record<"push" | "telegram", ChannelState>; types: MatrixRow[] } {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT code, name_fa, category, default_push, default_telegram
+         FROM notification_types
+        WHERE (organization_id = ? OR organization_id IS NULL) AND active = 1 AND code <> 'system.test'
+        ORDER BY code, (organization_id IS NULL)`
+    )
+    .all(orgId) as {
+    code: string;
+    name_fa: string;
+    category: string;
+    default_push: number;
+    default_telegram: number;
+  }[];
+
+  const prefs = db
+    .prepare("SELECT type_code, channel, enabled FROM notification_prefs WHERE user_id = ?")
+    .all(userId) as { type_code: string; channel: string; enabled: number }[];
+  const prefBy = new Map<string, number>();
+  for (const p of prefs) prefBy.set(`${p.type_code} ${p.channel}`, p.enabled);
+
+  const seen = new Set<string>();
+  const types: MatrixRow[] = [];
+  for (const r of rows) {
+    if (seen.has(r.code)) continue; // ORDER BY put the tenant row (non-null org) first
+    seen.add(r.code);
+    const p = prefBy.get(`${r.code} push`);
+    const t = prefBy.get(`${r.code} telegram`);
+    types.push({
+      code: r.code,
+      name_fa: r.name_fa,
+      category: r.category,
+      default_push: r.default_push,
+      default_telegram: r.default_telegram,
+      push: p !== undefined ? p === 1 : r.default_push === 1,
+      telegram: t !== undefined ? t === 1 : r.default_telegram === 1,
+    });
+  }
+
+  return {
+    channels: { push: getChannelState(userId, "push"), telegram: getChannelState(userId, "telegram") },
+    types,
+  };
+}
+
+/** Mint (and store on `users.telegram_link_nonce`) a fresh deep-link nonce; a second call
+ *  replaces the first. The bot's /start handler (Task 5) matches it to bind the chat. */
+export function mintTelegramNonce(userId: number): string {
+  const nonce = randomBytes(16).toString("base64url");
+  getDb().prepare("UPDATE users SET telegram_link_nonce = ? WHERE id = ?").run(nonce, userId);
+  return nonce;
+}
+
+/** Unbind telegram: null both the chat id and any pending link nonce. */
+export function clearTelegram(userId: number): void {
+  getDb().prepare("UPDATE users SET telegram_chat_id = NULL, telegram_link_nonce = NULL WHERE id = ?").run(userId);
 }
