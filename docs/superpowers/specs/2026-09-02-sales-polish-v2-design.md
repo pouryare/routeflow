@@ -227,3 +227,35 @@ Full spec §12-style checklist from the audit synthesis applies at the end.
 Independent of `globals.css`: `RouteFade`, `Avatar`, `ProfileMenu`, `Chrome`, `Pocketed`
 components; `salesNav.ts`; the tests. `TabPill.tsx` (H) and `layout.tsx` (H+I) are shared —
 do H then I. `RevealRoute.tsx` revert (G) is standalone and first in G.
+
+---
+
+## Implementation status (2026-09-03)
+
+All layers landed on branch `sales-polish` (10 commits off `main`):
+
+| Layer | Commit | Notes |
+|---|---|---|
+| 0 | `4fd5fe5` | branch + salvaged self-contained files |
+| A fonts | `1a490e7` | Peyda/Damavand self-hosted; `--font-num` = FaNum so figures stay tabular; picker in the profile menu |
+| B accent | `4efdf65` | terracotta tokenized; `SURFACE_C_CEIL` 0.026/0.020 → visible per-theme paper tint; `--gcard-hue-rotate` |
+| C layout | `778bfcd` | full-bleed `.app`; `.board`/`.lanes` columns capped + centred; `.bento`/`.sched`/`.statrow`/`.chartbox` `max-width`; kanban `.task`/`.col` density |
+| D bar | `b397b58` | image-3 neon strip (end-fade mask + dark bloom) on `.gcard`/`.prow`/`.ptile`/`.task`/`.kbar`, never `.card`/`.kblock` |
+| E lift | folded | `.prow`/`.ptile`/`.task`/`.stcard` already lift on main; no dedicated layer |
+| F pocket | `09572ba` | `<Pocketed>` + `.pocketed` CSS; wired on the `/sales/board` order pipeline; image-2 dark `.doc` edge |
+| G anim | `881834b` | `RouteFade` (key=pathname keyframe); RevealRoute transitionend cleanup; chart draw-in; `:active` press |
+| H nav | `fd90c32` | 6-group nav, both rows travel a pill (shared `slideThumb`), centred, `<Chrome>` auto-hide on scroll |
+| I brand | `07447ce` | ∞ SVG mark + `RouteFlow`; `<ProfileMenu>` holds map link + skin/font/accent; `<Avatar>` (id-seeded) |
+| J merge | `63cb71d` | `/sales/analysis` → redirect to `/sales/dashboard`; tab renames; fixed `CountUp` |
+| K image-1 | `63cb71d` | `.kblock__body` insets the forecast tables |
+
+**Verified:** `npm run build` clean · `npx tsc --noEmit` clean · `npm run check:contrast` 500/500 ·
+`node scripts/gen-accent-themes.mjs --check` clean · `npx vitest run` 1737 pass / 1 skip ·
+logged-in screenshot walk (light + dark, terracotta/teal/purple) of `/sales`, `/sales/orders`,
+`/sales/board`, `/sales/dashboard`.
+
+**Not merged to `main`.** `map.pouryarezaee.com` updates only after `sales-polish` → `main` + deploy.
+
+**Follow-ups (not blocking):** spread `<Pocketed>` to cheques / batches / پاکت / receipts / task
+board; migrate the remaining ad-hoc initial circles to `<Avatar>`; real avatar uploads (DB
+column + upload route); `.liftcard` opt-in for the raw-Tailwind panels (cheques/payments).
