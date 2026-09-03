@@ -41,7 +41,7 @@ export default function AcademyLibrary({
   );
 
   return (
-    <div className="flex flex-col gap-[var(--space-4)]" dir="rtl">
+    <div className="prose flex flex-col gap-[var(--space-4)]" dir="rtl">
       <section>
         <h3 className="m-0 mb-[var(--space-1)] text-[length:var(--text-sm)] font-medium">ماژول‌ها</h3>
         <ul className="m-0 list-none p-0 text-[length:var(--text-sm)]">

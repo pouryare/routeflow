@@ -1780,8 +1780,14 @@ body {
   .kargah .rev { opacity: 1; transform: none; }
 }
 
-.kargah .app { direction: rtl; max-width: 1240px; margin: 0 auto; padding: 26px 26px 120px; }
+/* Full-bleed: the content fills the viewport minus a fluid gutter. The old 1240px cap
+   moves down onto the individual fixed-column layouts (board / bento / sched / lanes /
+   statrow / chartbox) so those keep a sane measure while the data-dense grids
+   (pockets / ptiles / tables) take the whole width and answer it with more columns. */
+.kargah .app { direction: rtl; width: 100%; max-width: none; margin: 0; padding: 26px clamp(16px, 3vw, 72px) 120px; }
 @media (max-width: 620px) { .kargah .app { padding: 18px 14px 110px; } }
+/* Sentence-heavy surfaces keep a readable measure when the page is 3000px wide. */
+.kargah .prose { max-width: 72ch; }
 
 /* ---- top bar ------------------------------------------------------------- */
 .kargah .top {
@@ -1898,6 +1904,9 @@ body {
    accent instead of arriving from a different palette.                       */
 .kargah .statrow {
   display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; margin-bottom: 14px;
+  /* The hierarchy (one wide identity tile, two figures) only reads at a sane width; on a
+     full-bleed page the row stops here and aligns to the start edge. */
+  max-width: 1400px;
 }
 .kargah .gcard {
   position: relative; border-radius: var(--r-2xl); padding: 24px 26px;
@@ -1959,7 +1968,7 @@ body {
 }
 
 /* ---- 2 · the spline chart ------------------------------------------------ */
-.kargah .chartbox { padding: 8px 24px 22px; position: relative; }
+.kargah .chartbox { padding: 8px 24px 22px; position: relative; max-width: 1300px; }
 .kargah .spark { width: 100%; height: auto; display: block; overflow: visible; touch-action: none; }
 .kargah .grid-l { stroke: var(--line); stroke-width: 1; }
 .kargah .ser-a { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; }
@@ -2054,7 +2063,7 @@ body {
 
 /* ---- 4 · document-pocket cards ------------------------------------------- */
 .kargah .pockets {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(268px,1fr));
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 20vw, 300px), 1fr));
   gap: 16px; padding: 22px 24px 24px;
 }
 .kargah .pocket { position: relative; padding-top: 82px; cursor: pointer; z-index: 0; }
@@ -2127,13 +2136,13 @@ body {
 
 /* ---- 5 · the board (drag and drop) --------------------------------------- */
 .kargah .board {
-  display: grid; grid-template-columns: repeat(3,1fr); gap: 14px;
-  padding: 6px 24px 24px; align-items: start;
+  display: grid; grid-template-columns: repeat(3, minmax(0, 460px)); gap: 14px;
+  justify-content: center; padding: 6px 16px 24px; align-items: start;
   user-select: none; -webkit-user-select: none;
 }
 .kargah .col {
   background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-xl);
-  padding: 14px; min-height: 240px;
+  padding: 10px 10px 4px; min-height: 160px;
   /* Not in the artifact, because the artifact's board never holds more than two cards a
      column. On real data the تحویل‌شده lane is the one nothing ever leaves: at 31 orders
      it stretched the page to 3161px and the four stages stopped being comparable, which
@@ -2148,7 +2157,7 @@ body {
 }
 .kargah .colhead {
   display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; margin-bottom: 12px; padding: 0 4px;
+  gap: 10px; margin-bottom: 8px; padding: 0 4px;
 }
 .kargah .colhead .t { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; }
 .kargah .colhead .av {
@@ -2161,7 +2170,7 @@ body {
 }
 .kargah .task {
   background: var(--card); border-radius: var(--r-md); box-shadow: var(--sh-1);
-  padding: 13px 14px; margin-bottom: 9px; cursor: grab;
+  padding: 10px 12px; margin-bottom: 6px; cursor: grab;
   /* without these a mouse-drag paints a text selection across the board, and a
      touch-drag scrolls the page instead of moving the card */
   user-select: none; -webkit-user-select: none; touch-action: none;
@@ -2172,10 +2181,10 @@ body {
 .kargah .task.dragging { opacity: .42; transform: scale(.97) rotate(-1.5deg); }
 .kargah .task:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
 .kargah .task:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.kargah .task .n { font-size: 14px; font-weight: 600; }
+.kargah .task .n { font-size: 13.5px; font-weight: 600; line-height: 1.45; }
 .kargah .task .m {
-  font-size: 12px; color: var(--muted); display: flex; gap: 4px 12px;
-  flex-wrap: wrap; margin-top: -2px;
+  font-size: 11px; color: var(--muted); display: flex; gap: 2px 9px;
+  flex-wrap: wrap; margin-top: 2px;
 }
 .kargah .task .m span { position: relative; }
 .kargah .task .m span + span::before {
@@ -2190,12 +2199,12 @@ body {
 .kargah .hint b { color: var(--ink-2); font-weight: 600; }
 
 /* ---- 5b · pipeline card extras ------------------------------------------- */
-.kargah .board.pipe { grid-template-columns: repeat(4,1fr); }
+.kargah .board.pipe { grid-template-columns: repeat(4, minmax(0, 360px)); }
 .kargah .colhead .st { width: 9px; height: 9px; border-radius: 50%; flex: none; }
 .kargah .task .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .kargah .task .asg {
-  display: inline-flex; align-items: center; gap: 6px; margin-top: 8px;
-  font-size: 11.5px; color: var(--muted);
+  display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
+  font-size: 11px; color: var(--muted);
 }
 .kargah .task .asg .av {
   width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center;
@@ -2282,8 +2291,8 @@ body {
 
 /* ---- 5d · the journey swimlane ------------------------------------------- */
 .kargah .lanes {
-  display: grid; grid-template-columns: repeat(4,1fr); gap: 14px;
-  padding: 6px 24px 26px; align-items: start;
+  display: grid; grid-template-columns: repeat(4, minmax(0, 380px)); gap: 14px;
+  justify-content: center; padding: 6px 24px 26px; align-items: start;
 }
 .kargah .lane2 { position: relative; }
 .kargah .lane2 .lh { display: flex; align-items: center; gap: 9px; padding: 0 4px 12px; }
@@ -2383,7 +2392,7 @@ body {
 }
 
 /* ---- 6 · schedule: month + day rail -------------------------------------- */
-.kargah .sched { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; align-items: start; }
+.kargah .sched { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; align-items: start; max-width: 1200px; }
 .kargah .cal { padding: 6px 22px 22px; }
 .kargah .calgrid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-top: 8px; }
 .kargah .calgrid .dow { text-align: center; font-size: 11.5px; color: var(--muted); padding-bottom: 6px; }
@@ -2461,7 +2470,7 @@ body {
   flex: none; transition: background 160ms var(--ease);
 }
 .kargah .x:hover { background: var(--sunk); }
-.kargah .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; }
+.kargah .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; max-width: 1150px; }
 /* The map's customer panel is 320px wide: three tiles across would be 90px each, which
    is narrower than the figures they carry. */
 .kargah .bento--compact { grid-template-columns: 1fr; gap: 10px; padding: 0 0 14px; }
@@ -2656,7 +2665,7 @@ body {
 
 /* ---- کاشی: the scannable reading ----------------------------------------- */
 .kargah .ptiles {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 12px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(190px, 14vw, 220px), 1fr)); gap: 12px;
 }
 .kargah .ptile {
   background: var(--card); border-radius: var(--r-lg); box-shadow: var(--sh-1);
