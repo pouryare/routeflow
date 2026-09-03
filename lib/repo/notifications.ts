@@ -1,3 +1,4 @@
+import { getDb } from "@/lib/db";
 import { toJalali } from "@/lib/jalali";
 
 export type Priority = "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
@@ -60,4 +61,72 @@ export function renderNotification(
   const t = TEMPLATES[typeCode];
   if (t) return t(ctx.meta);
   return { title_fa: typeCode, body_fa: null };
+}
+
+/** The one user credited with a given order, scoped to the tenant. */
+function orderSalesperson(orgId: number, orderId: number): number | null {
+  const row = getDb()
+    .prepare("SELECT salesperson_user_id FROM orders WHERE id = ? AND organization_id = ?")
+    .get(orderId, orgId) as { salesperson_user_id: number | null } | undefined;
+  return row?.salesperson_user_id ?? null;
+}
+
+/** Active group_manager user ids sitting in the same group as the given order. */
+function orderGroupManagers(orgId: number, orderId: number): number[] {
+  return (
+    getDb()
+      .prepare(
+        `SELECT u.id FROM users u
+           JOIN orders o ON o.group_id = u.group_id
+          WHERE o.id = ? AND u.organization_id = ? AND u.role = 'group_manager' AND u.active = 1`
+      )
+      .all(orderId, orgId) as { id: number }[]
+  ).map((r) => r.id);
+}
+
+/** Distinct user ids that should hear about one event, with the actor removed. */
+export function recipientsFor(
+  organizationId: number,
+  typeCode: string,
+  ctx: FanoutContext,
+  actorUserId: number | null
+): number[] {
+  const out = new Set<number>();
+  const orderId = ctx.entity_type === "order" && ctx.entity_id != null ? ctx.entity_id : null;
+
+  if (typeCode === "task.assigned") {
+    const a = ctx.meta["assignee_user_id"];
+    if (typeof a === "number") out.add(a);
+  } else if (
+    typeCode === "order.confirmed" ||
+    typeCode === "order.rejected" ||
+    typeCode === "delivery.succeeded"
+  ) {
+    if (orderId) {
+      const sp = orderSalesperson(organizationId, orderId);
+      if (sp) out.add(sp);
+    }
+  } else if (typeCode === "delivery.failed") {
+    if (orderId) {
+      const sp = orderSalesperson(organizationId, orderId);
+      if (sp) out.add(sp);
+      for (const m of orderGroupManagers(organizationId, orderId)) out.add(m);
+    }
+  } else if (typeCode === "order.created") {
+    if (orderId) for (const m of orderGroupManagers(organizationId, orderId)) out.add(m);
+  } else if (typeCode === "payment.recorded") {
+    // The payment.recorded event carries entity_type "payment"; one payment can be
+    // allocated across several orders, so Task 6 threads the distinct non-null
+    // allocation order ids through meta.order_ids. Notify each of their salespeople.
+    const ids = Array.isArray(ctx.meta["order_ids"]) ? (ctx.meta["order_ids"] as unknown[]) : [];
+    for (const oid of ids) {
+      if (typeof oid === "number") {
+        const sp = orderSalesperson(organizationId, oid);
+        if (sp) out.add(sp);
+      }
+    }
+  }
+
+  if (actorUserId != null) out.delete(actorUserId);
+  return [...out];
 }
