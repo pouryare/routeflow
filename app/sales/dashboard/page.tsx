@@ -8,14 +8,23 @@ import { stockPosition } from "@/lib/purchases";
 import { allStatements, statementFor } from "@/lib/commissionLedger";
 import { allDriverStatements } from "@/lib/driverCommissionLedger";
 import { allManagerStatements, managerStatementFor } from "@/lib/managerCommissionLedger";
-import { faToman, faNum } from "@/lib/format";
+import { faToman, faNum, faDateTime } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { movingAverage } from "@/lib/chartScale";
+import { kpiBoard, newestComputedAt } from "@/lib/repo/kpiSnapshots";
+import { actionCenterFor } from "@/lib/repo/actionCenter";
+import { customersHealthOverview } from "@/lib/repo/health";
+import { currentPeriod, shiftPeriod } from "@/lib/analysis/period";
 import BarChart from "@/components/charts/BarChart";
 import SplineChart from "@/components/charts/SplineChart";
 import DonutChart from "@/components/charts/DonutChart";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import GradientStat from "@/components/kargah/GradientStat";
+import CountUp from "@/components/kargah/CountUp";
+import ActionCenter from "@/components/analysis/ActionCenter";
+import KpiStrip from "@/components/analysis/KpiStrip";
+import MarginTable from "@/components/analysis/MarginTable";
+import SweepButton from "@/components/SweepButton";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +34,8 @@ const STATUS_LABEL: Record<string, string> = {
   delivered: "تحویل‌شده",
   cancelled: "لغوشده",
 };
+
+const BAND_LABEL: Record<string, string> = { good: "خوب", watch: "مراقبت", risk: "پرخطر" };
 
 const pct = (n: number) => `${faNum(Math.round(n * 100))}٪`;
 
@@ -89,6 +100,20 @@ export default async function DashboardPage() {
 
   const empty = "هنوز داده‌ای برای این نمودار نیست";
 
+  // ── تحلیل عمیق — the former /sales/analysis page, folded in below the KPI tiles.
+  const aPeriod = currentPeriod();
+  const aPrev = shiftPeriod(aPeriod, 1);
+  const kpiCards = kpiBoard(session.organizationId, aPeriod, aPrev, session);
+  const buckets = actionCenterFor(session);
+  const health = customersHealthOverview(session);
+  const kpiComputedAt = newestComputedAt(session.organizationId, aPeriod);
+  const isManager = session.role === "owner" || session.role === "group_manager";
+  const bandCounts = health.reduce<Record<string, number>>((acc, h) => {
+    acc[h.band] = (acc[h.band] ?? 0) + 1;
+    return acc;
+  }, {});
+  const risky = health.filter((h) => h.band === "risk").slice(0, 8);
+
   return (
     <div className="flex flex-col gap-[var(--space-5)]">
       <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
@@ -106,7 +131,7 @@ export default async function DashboardPage() {
         <GradientStat
           tone="peach"
           label="فروش (تحویل‌شده)"
-          value={faNum(d.revenue_toman)}
+          value={<CountUp value={d.revenue_toman} />}
           unit="تومان"
           chip={`${faNum(d.order_count)} سفارش · میانگین ${faToman(d.average_order_toman)}`}
         />
@@ -115,7 +140,7 @@ export default async function DashboardPage() {
           small
           icon="⇄"
           label="نرخ تحویل"
-          value={pct(d.fill_rate)}
+          value={<CountUp value={d.fill_rate} mode="pct" />}
           chip={
             d.fill_rate > 0 && d.fill_rate < 0.9
               ? "زیر ۹۰٪ — تحویل‌شده به سفارش‌شده"
@@ -128,7 +153,7 @@ export default async function DashboardPage() {
           small
           icon="₸"
           label="مانده حساب مشتریان"
-          value={faNum(d.debt.total)}
+          value={<CountUp value={d.debt.total} />}
           unit="تومان"
           chip={
             d.debt.over_30 > 0
@@ -151,7 +176,7 @@ export default async function DashboardPage() {
             small
             icon="◎"
             label="سود ناخالص (تحویل‌شده)"
-            value={faNum(d.margin_toman)}
+            value={<CountUp value={d.margin_toman} />}
             unit="تومان"
             chip={`حاشیهٔ سود ${pct(d.revenue_toman > 0 ? d.margin_toman / d.revenue_toman : 0)} از فروش`}
           />
@@ -177,10 +202,65 @@ export default async function DashboardPage() {
           small
           icon="✦"
           label="مشتریان جدید این ماه"
-          value={`${faNum(newThisMonth)} مشتری`}
+          value={<CountUp value={newThisMonth} suffix=" مشتری" />}
           chip="اولین سفارش عمر مشتری در این ماه بوده"
         />
       </div>
+
+      {/* ── تحلیل عمیق — snapshot KPIs, the action centre, margins and customer health.
+          Was its own /sales/analysis tab; it reads the same figures against the same
+          period and belongs next to the dashboard it was always compared with. */}
+      <section className="flex flex-col gap-[var(--space-4)]">
+        <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
+          <h2
+            className="m-0 text-[length:var(--text-lg)] font-extrabold text-[var(--text)]"
+            style={{ fontFamily: "var(--font-display)" }}
+          >
+            تحلیل عمیق
+          </h2>
+          <div className="flex items-center gap-[var(--space-2)]">
+            <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
+              {kpiComputedAt ? `عددها تا ${faDateTime(kpiComputedAt)}` : "هنوز محاسبه نشده"}
+            </span>
+            {isManager && (
+              <SweepButton endpoint="/api/analysis/refresh" idleLabel="به‌روزرسانی تحلیل" />
+            )}
+          </div>
+        </div>
+
+        <ActionCenter buckets={buckets} />
+        <KpiStrip cards={kpiCards} period={aPeriod} />
+        {isManager && <MarginTable period={aPeriod} />}
+
+        <div className="kblock" dir="rtl">
+          <div className="bhead">
+            <h2>سلامت مشتری</h2>
+            <div className="n">
+              خوب {faNum(bandCounts.good ?? 0)} · مراقبت {faNum(bandCounts.watch ?? 0)} · پرخطر{" "}
+              {faNum(bandCounts.risk ?? 0)}
+            </div>
+          </div>
+          <div className="kblock__body">
+            {risky.length === 0 ? (
+              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">مشتری پرخطری نیست.</p>
+            ) : (
+              <ul className="m-0 list-none p-0 text-[length:var(--text-sm)]">
+                {risky.map((h) => (
+                  <li
+                    key={h.customer_id}
+                    className="flex items-center justify-between border-b border-[var(--border)] py-[var(--space-1)]"
+                  >
+                    <span className="text-[var(--text)]">{h.business_name}</span>
+                    <span className="tabular-nums text-[var(--text-muted)]">
+                      {faNum(h.score)} · {BAND_LABEL[h.band]} · {h.reasons[0] ?? ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      </section>
 
       <CollapsibleSection title="روند فروش و مشتریان" icon="📈" storageKey="dash-trends">
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">

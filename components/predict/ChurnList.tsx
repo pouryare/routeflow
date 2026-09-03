@@ -26,6 +26,7 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
           {rows.filter((r) => r.band === "watch").length.toLocaleString("fa-IR")}
         </div>
       </div>
+      <div className="kblock__body">
       {shown.length === 0 ? (
         <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
           مشتری پرخطری شناسایی نشده.
@@ -53,6 +54,7 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
           ))}
         </ul>
       )}
+      </div>
     </div>
   );
 }

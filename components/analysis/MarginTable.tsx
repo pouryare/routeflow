@@ -86,7 +86,7 @@ export default function MarginTable({ period }: { period: string }) {
         <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">داده‌ای برای این دوره نیست.</p>
       )}
       {rows && rows.length > 0 && (
-        <div className="overflow-x-auto">
+        <div className="kblock__body overflow-x-auto">
           <table className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
               <tr className="text-[var(--text-muted)]">

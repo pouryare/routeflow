@@ -1911,6 +1911,12 @@ body {
   background: var(--card); border-radius: var(--r-2xl);
   box-shadow: var(--sh-1); overflow: hidden;
 }
+/* The .kblock header (.bhead) is inset 24px but a table or list dropped straight into a
+   .kblock runs flush to the card edge -- Farsi figures then bleed past it (image 1).
+   .kblock__body gives that content the same inset. */
+.kargah .kblock__body { padding: 0 24px 20px; }
+@media (max-width: 639px) { .kargah .kblock__body { padding-inline: 16px; } }
+
 .kargah .bhead {
   display: flex; align-items: center; justify-content: space-between;
   gap: 14px; padding: 20px 24px 14px; flex-wrap: wrap;

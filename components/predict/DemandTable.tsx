@@ -52,7 +52,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
         <div className="bhead">
           <h2>پیش‌بینی تقاضا</h2>
         </div>
-        <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">
+        <p className="kblock__body text-[length:var(--text-sm)] text-[var(--text-muted)]">
           هنوز پیش‌بینی‌ای محاسبه نشده — دکمهٔ «به‌روزرسانی پیش‌بینی» را بزنید.
         </p>
       </div>
@@ -69,7 +69,7 @@ export default function DemandTable({ entries }: { entries: DemandEntry[] }) {
       <div className="bhead">
         <h2>پیش‌بینی تقاضا (تومان)</h2>
       </div>
-      <div className="overflow-x-auto">
+      <div className="kblock__body overflow-x-auto">
         <table className="w-full border-collapse text-[length:var(--text-sm)]">
           <thead>
             <tr className="text-[var(--text-muted)]">

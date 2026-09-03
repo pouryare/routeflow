@@ -28,7 +28,7 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
       <div className="bhead">
         <h2>ظرفیت آموخته‌شده از مسیرها</h2>
       </div>
-      <div className="overflow-x-auto">
+      <div className="kblock__body overflow-x-auto">
         <table className="w-full border-collapse text-[length:var(--text-sm)]">
           <thead>
             <tr className="text-[var(--text-muted)]">
