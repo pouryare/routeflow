@@ -10,6 +10,7 @@ import SkinToggle from "@/components/kargah/SkinToggle";
 import AccentPicker from "@/components/AccentPicker";
 import TabPill from "@/components/kargah/TabPill";
 import RevealRoute from "@/components/kargah/RevealRoute";
+import RouteFade from "@/components/kargah/RouteFade";
 import SyncStatus from "@/components/SyncStatus";
 
 export const dynamic = "force-dynamic";
@@ -101,9 +102,10 @@ export default async function SalesLayout({ children }: { children: ReactNode })
         <TabPill tabs={tabs} />
 
         {/* One entrance for every sales screen — see RevealRoute for why it is not
-            wired per page. */}
+            wired per page. RouteFade fades the whole view in on navigation (a
+            key={pathname} remount + CSS keyframe); the per-card cascade layers on top. */}
         <RevealRoute />
-        {children}
+        <RouteFade>{children}</RouteFade>
       </div>
       <SyncStatus />
     </div>

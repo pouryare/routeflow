@@ -126,6 +126,8 @@ export function BentoGauge({
               fill="none" stroke={tone} strokeWidth="8"
               strokeLinecap="round"
               strokeDasharray={`${track * f} 999`}
+              className="chart-arc"
+              style={{ ["--arc-len" as string]: `${track * f}` }}
             />
           )}
         </g>

@@ -90,11 +90,29 @@ export default function RevealRoute() {
     }
     void document.body.offsetHeight;
 
+    /* Once a card has finished entering, take the entrance classes back off it. Left on,
+     * `.rev.rev-in` keeps overriding the card's own `transition` for the life of the
+     * page, so a later hover snaps (or wobbles on a spring) instead of easing at the
+     * rate the stylesheet asks for. The opacity transition is the one to listen for --
+     * every card has it; the lift's transform transition may be absent. */
+    const cleanups: Array<() => void> = [];
     items.forEach((el, i) => {
       el.style.transition = "";
       el.style.transitionDelay = reduced ? "0ms" : `${Math.min(i, CAP) * STAGGER}ms`;
       el.classList.add("rev-in");
+
+      const done = (e: TransitionEvent) => {
+        if (e.target !== el || e.propertyName !== "opacity") return;
+        el.classList.remove("rev", "rev-lift", "rev-in");
+        el.style.transition = "";
+        el.style.transitionDelay = "";
+        el.removeEventListener("transitionend", done);
+      };
+      el.addEventListener("transitionend", done);
+      cleanups.push(() => el.removeEventListener("transitionend", done));
     });
+
+    return () => cleanups.forEach((fn) => fn());
   }, [pathname]);
 
   return null;

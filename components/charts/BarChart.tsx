@@ -111,7 +111,8 @@ export default function BarChart({
               height={bar.height}
               rx={4}
               fill={colorAt(i)}
-              className="transition-[filter] duration-[var(--dur-fast)] hover:brightness-125"
+              className="chart-rise transition-[filter] duration-[var(--dur-fast)] hover:brightness-125"
+              style={{ animationDelay: `${Math.min(i, 12) * 35}ms` }}
             />
           </g>
         ))}

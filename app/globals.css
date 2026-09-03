@@ -1780,6 +1780,41 @@ body {
   .kargah .rev { opacity: 1; transform: none; }
 }
 
+/* Route transition: the whole sales view fades + rises on every path change, driven by a
+   key={pathname} remount of the .route-fade wrapper (components/kargah/RouteFade.tsx) so
+   it is a pure CSS keyframe -- deterministic, replays every navigation, no rAF. `both`
+   holds the from-state on the first frame, masking the flash of cards RevealRoute has
+   not yet hidden. The per-card spring cascade layers over this. */
+@keyframes kargah-route-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: none; }
+}
+.kargah .route-fade { animation: kargah-route-in 240ms var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .kargah .route-fade { animation: none; } }
+
+/* Chart draw-in: SVG bars rise from their baseline and the gauge arc draws itself on
+   mount. Pure CSS so BarChart / BentoStrip stay server components. .kargah-scoped -- the
+   map / report charts are out of scope. */
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes kargah-bar-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+  .kargah .chart-rise {
+    transform-box: fill-box; transform-origin: bottom;
+    animation: kargah-bar-rise 520ms var(--spring) both;
+  }
+  @keyframes kargah-arc-draw {
+    from { stroke-dashoffset: var(--arc-len, 0); }
+    to { stroke-dashoffset: 0; }
+  }
+  .kargah .chart-arc { animation: kargah-arc-draw 700ms var(--ease) both; }
+}
+
+/* Micro-interactions: a small press on anything tappable. Spring, reduced-motion off. */
+@media (prefers-reduced-motion: no-preference) {
+  .kargah .btn:active,
+  .kargah .chip:active,
+  .kargah .seg > a:active { transform: scale(0.97); }
+}
+
 /* Full-bleed: the content fills the viewport minus a fluid gutter. The old 1240px cap
    moves down onto the individual fixed-column layouts (board / bento / sched / lanes /
    statrow / chartbox) so those keep a sane measure while the data-dense grids
