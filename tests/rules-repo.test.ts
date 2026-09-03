@@ -11,7 +11,6 @@ process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { emitEvent } = await import("@/lib/repo/events");
 const { runEventRules, runSweepRules, escalateStaleRuns, resolveRuleRunsFor } = await import(
   "@/lib/repo/rules"
 );
@@ -40,8 +39,21 @@ beforeEach(() => {
   );
 });
 
+// Insert the events row directly rather than via emitEvent: emitEvent now drives
+// runEventRules internally, which would consume the rule's fire (cooldown/liveRun) before
+// each test's own explicit runEventRules call. Raw INSERT keeps runEventRules unit-tested
+// in isolation. Columns mirror what emitEvent writes.
 function ev(kind: string, entityId: number, meta: Record<string, unknown> = {}, at?: string) {
-  const id = emitEvent(1, { kind, entity_type: "order", entity_id: entityId, metadata: meta, occurred_at: at });
+  const now = new Date().toISOString();
+  const id = Number(
+    getDb()
+      .prepare(
+        `INSERT INTO events
+           (organization_id, kind, entity_type, entity_id, actor_user_id, metadata_json, occurred_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(1, kind, "order", entityId, null, JSON.stringify(meta), at ?? now, now).lastInsertRowid
+  );
   return getDb().prepare("SELECT * FROM events WHERE id = ?").get(id) as never;
 }
 

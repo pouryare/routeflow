@@ -1,3 +1,4 @@
+import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
 import {
   evaluateConditions,
@@ -9,6 +10,7 @@ import { toJalali } from "@/lib/jalali";
 import { rruleMatches } from "@/lib/tasks/recurrence";
 import { listRecurrences } from "./taskRecurrences";
 import { createTask } from "./tasks";
+import { fanOutNotifications } from "./notifications";
 import type { EventRow } from "./events";
 
 export interface RuleRow {
@@ -18,7 +20,7 @@ export interface RuleRow {
   name: string;
   trigger_kind: string;
   condition_json: string | null;
-  action_kind: "task" | "alert";
+  action_kind: "task" | "alert" | "notify";
   action_json: string | null;
   cooldown_min: number;
   escalate_after_min: number | null;
@@ -56,9 +58,10 @@ function liveRun(
   ruleId: number,
   entityType: string | null,
   entityId: number | null,
-  nowIso: string
+  nowIso: string,
+  db?: DatabaseSync
 ): { id: number } | undefined {
-  return getDb()
+  return (db ?? getDb())
     .prepare(
       `SELECT id FROM rule_runs
         WHERE organization_id = ? AND rule_id = ?
@@ -69,25 +72,54 @@ function liveRun(
     .get(organizationId, ruleId, entityType, entityId, nowIso) as { id: number } | undefined;
 }
 
-/** Create the rule's task or alert and the rule_runs row. Returns the run id. */
+/** Create the rule's task, alert, or notification fan-out, plus the rule_runs row.
+ *  Returns the run id. */
 function fire(
   organizationId: number,
   rule: RuleRow,
   entityType: string | null,
   entityId: number | null,
-  ctx: { group_id?: number | null; assignee_user_id?: number | null; title_override?: string },
-  nowIso: string
+  ctx: {
+    group_id?: number | null;
+    assignee_user_id?: number | null;
+    title_override?: string;
+    event?: EventRow;
+  },
+  nowIso: string,
+  db?: DatabaseSync
 ): number {
-  const db = getDb();
+  const conn = db ?? getDb();
   const spec: ActionSpec = rule.action_json ? JSON.parse(rule.action_json) : {};
   const title = ctx.title_override ?? spec.title ?? rule.name;
 
   let taskId: number | null = null;
   let alertId: number | null = null;
 
-  if (rule.action_kind === "task") {
+  if (rule.action_kind === "notify") {
+    // Feed rows are written by the notification module; rule_runs still tracks the fire
+    // for cooldown/liveRun. No task or alert id. Only event-triggered rules carry the
+    // event context fanOutNotifications needs -- a 'notify' rule on a 'sweep' trigger
+    // (out of scope for Phase 1) simply no-ops here.
+    if (ctx.event) {
+      fanOutNotifications(
+        organizationId,
+        { code: rule.code, action_json: rule.action_json },
+        {
+          id: ctx.event.id,
+          kind: ctx.event.kind,
+          entity_type: ctx.event.entity_type,
+          entity_id: ctx.event.entity_id,
+          actor_user_id: ctx.event.actor_user_id,
+          metadata_json: ctx.event.metadata_json,
+          occurred_at: ctx.event.occurred_at,
+        },
+        null,
+        db
+      );
+    }
+  } else if (rule.action_kind === "task") {
     taskId = Number(
-      db
+      conn
         .prepare(
           `INSERT INTO tasks
              (organization_id, assignee_user_id, role_hint, group_id, kind, title, entity_type, entity_id,
@@ -109,7 +141,7 @@ function fire(
     );
   } else {
     alertId = Number(
-      db
+      conn
         .prepare(
           `INSERT INTO alerts
              (organization_id, severity, category, title, entity_type, entity_id, group_id, created_at)
@@ -129,7 +161,7 @@ function fire(
   }
 
   return Number(
-    db
+    conn
       .prepare(
         `INSERT INTO rule_runs
            (organization_id, rule_id, entity_type, entity_id, fired_at, cooldown_until, task_id, alert_id)
@@ -154,14 +186,18 @@ export interface FiredRun {
 }
 
 /** Run every event-triggered rule against one event. */
-export function runEventRules(organizationId: number, event: EventRow): FiredRun[] {
+export function runEventRules(
+  organizationId: number,
+  event: EventRow,
+  db?: DatabaseSync
+): FiredRun[] {
   const now = new Date().toISOString();
   const meta: Record<string, unknown> = event.metadata_json ? JSON.parse(event.metadata_json) : {};
   const out: FiredRun[] = [];
 
   for (const rule of rulesFor(organizationId)) {
     if (rule.trigger_kind !== event.kind) continue;
-    if (liveRun(organizationId, rule.id, event.entity_type, event.entity_id, now)) continue;
+    if (liveRun(organizationId, rule.id, event.entity_type, event.entity_id, now, db)) continue;
     const conds: RuleCondition[] = rule.condition_json ? JSON.parse(rule.condition_json) : [];
     if (!evaluateConditions(conds, meta)) continue;
     const runId = fire(
@@ -169,8 +205,9 @@ export function runEventRules(organizationId: number, event: EventRow): FiredRun
       rule,
       event.entity_type,
       event.entity_id,
-      {},
-      now
+      { event },
+      now,
+      db
     );
     out.push({ rule_code: rule.code, run_id: runId });
   }

@@ -1694,9 +1694,10 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS ix_alerts_open ON alerts(organization_id, severity, resolved_at);
 
-    /* A rule: an event.kind (or 'sweep') + a flat condition list -> a task or an alert,
-       with a cooldown so it does not spam and an optional escalation. organization_id
-       NULL = a shipped default (seedRules). */
+    /* A rule: an event.kind (or 'sweep') + a flat condition list -> a task, an alert, or
+       a notification fan-out ('notify', Phase 1 notification system). A cooldown so it
+       does not spam and an optional escalation. organization_id NULL = a shipped default
+       (seedRules). */
     CREATE TABLE IF NOT EXISTS rules (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       organization_id INTEGER REFERENCES organizations(id),
@@ -1704,7 +1705,7 @@ export function getDb(): DatabaseSync {
       name TEXT NOT NULL,
       trigger_kind TEXT NOT NULL,
       condition_json TEXT,
-      action_kind TEXT NOT NULL CHECK (action_kind IN ('task', 'alert')),
+      action_kind TEXT NOT NULL CHECK (action_kind IN ('task', 'alert', 'notify')),
       action_json TEXT,
       cooldown_min INTEGER NOT NULL DEFAULT 1440,
       escalate_after_min INTEGER,
@@ -2864,6 +2865,56 @@ export function getDb(): DatabaseSync {
   // Phase 1: give every legacy paid_toman a payment row to stand on before the derived
   // recompute can zero it.
   backfillLegacyPayments(db);
+
+  // Notification system (Phase 1): 'notify' joins ('task','alert') as a rule action_kind
+  // so a rule can drive fanOutNotifications. CREATE TABLE IF NOT EXISTS never re-applies a
+  // CHECK to an already-created table and SQLite has no ALTER for CHECK, so this is the
+  // standard rebuild. rule_runs.rule_id REFERENCES rules(id), so foreign keys are off for
+  // the DROP (a no-op inside a transaction, hence toggled around the whole thing).
+  const rulesSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='rules'")
+    .get() as { sql: string } | undefined;
+  if (rulesSchema && !rulesSchema.sql.includes("'notify'")) {
+    db.exec("PRAGMA foreign_keys = OFF;");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE rules_notify_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          organization_id INTEGER REFERENCES organizations(id),
+          code TEXT NOT NULL,
+          name TEXT NOT NULL,
+          trigger_kind TEXT NOT NULL,
+          condition_json TEXT,
+          action_kind TEXT NOT NULL CHECK (action_kind IN ('task', 'alert', 'notify')),
+          action_json TEXT,
+          cooldown_min INTEGER NOT NULL DEFAULT 1440,
+          escalate_after_min INTEGER,
+          escalate_to_role TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          created_at TEXT NOT NULL,
+          updated_at TEXT NOT NULL,
+          UNIQUE (organization_id, code)
+        );
+        INSERT INTO rules_notify_new
+          (id, organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
+           cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at)
+        SELECT
+          id, organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
+          cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at
+        FROM rules;
+        DROP TABLE rules;
+        ALTER TABLE rules_notify_new RENAME TO rules;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON;");
+    }
+    console.info("[migrate] rules.action_kind widened to include 'notify'");
+  }
 
   seedFacilities(db);
   seedReasonCodes(db);

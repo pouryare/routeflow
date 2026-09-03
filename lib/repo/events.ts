@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
+import { runEventRules } from "./rules";
 
 export interface EventInput {
   kind: string;
@@ -22,10 +23,11 @@ export interface EventRow {
   created_at: string;
 }
 
-/** Append one fact to the bus. Returns the id, or 0 on a swallowed failure. */
+/** Append one fact to the bus, then drive the rule engine against it best-effort.
+ *  Returns the event id, or 0 on a swallowed failure. */
 export function emitEvent(organizationId: number, input: EventInput, db?: DatabaseSync): number {
   const now = new Date().toISOString();
-  return Number(
+  const id = Number(
     (db ?? getDb())
       .prepare(
         `INSERT INTO events
@@ -43,6 +45,15 @@ export function emitEvent(organizationId: number, input: EventInput, db?: Databa
         now
       ).lastInsertRowid
   );
+  try {
+    const row = (db ?? getDb())
+      .prepare("SELECT * FROM events WHERE id = ?")
+      .get(id) as unknown as EventRow;
+    runEventRules(organizationId, row, db);
+  } catch {
+    /* generation is best-effort; the fact is already recorded */
+  }
+  return id;
 }
 
 /** Same, but never throws -- for emitters wired into a host flow that must not break. */

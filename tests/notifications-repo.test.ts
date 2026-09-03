@@ -11,6 +11,8 @@ const { getDb } = await import("@/lib/db");
 const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead } = await import(
   "@/lib/repo/notifications"
 );
+const { runEventRules } = await import("@/lib/repo/rules");
+const { emitEvent } = await import("@/lib/repo/events");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -203,4 +205,44 @@ it("markGroupsRead('all') clears the unread count", () => {
   expect(unreadGroupCount(1, seller)).toBe(1);
   markGroupsRead(1, seller, "all");
   expect(unreadGroupCount(1, seller)).toBe(0);
+});
+
+function seedNotifyRule(code: string, trigger: string, typeCode: string) {
+  const ts = new Date().toISOString();
+  getDb()
+    .prepare(
+      `INSERT INTO rules (organization_id, code, name, trigger_kind, condition_json, action_kind, action_json,
+         cooldown_min, escalate_after_min, escalate_to_role, active, created_at, updated_at)
+       VALUES (NULL, ?, ?, ?, NULL, 'notify', ?, 0, NULL, NULL, 1, ?, ?)`
+    )
+    .run(code, code, trigger, JSON.stringify({ notification_type: typeCode }), ts, ts);
+}
+
+describe("notify action", () => {
+  it("runEventRules fires a notify rule and writes a feed row", () => {
+    seedNotifyRule("n_conf", "order.passReview", "order.confirmed");
+    const id = emitEvent(1, {
+      kind: "order.passReview",
+      entity_type: "order",
+      entity_id: ord,
+      actor_user_id: owner,
+      metadata: {},
+    });
+    const e = getDb().prepare("SELECT * FROM events WHERE id = ?").get(id) as never;
+    const fired = runEventRules(1, e);
+    expect(fired.map((f: { rule_code: string }) => f.rule_code)).toContain("n_conf");
+    expect(listNotificationGroups(1, seller)).toHaveLength(1);
+  });
+
+  it("emitEvent alone (no explicit runEventRules) also produces the feed row", () => {
+    seedNotifyRule("n_conf2", "order.passReview", "order.confirmed");
+    emitEvent(1, {
+      kind: "order.passReview",
+      entity_type: "order",
+      entity_id: ord,
+      actor_user_id: owner,
+      metadata: {},
+    });
+    expect(unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
+  });
 });
