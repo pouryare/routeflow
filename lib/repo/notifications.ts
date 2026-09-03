@@ -1,9 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
+import { faNum } from "@/lib/format";
 import { toJalali } from "@/lib/jalali";
-import { configureWebPush } from "@/lib/push";
-import { telegramConfigured } from "@/lib/telegram";
+import { configureWebPush, webpush } from "@/lib/push";
+import { editTelegram, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
 export type Priority = "CRITICAL" | "HIGH" | "NORMAL" | "LOW";
 
@@ -676,4 +677,270 @@ export function mintTelegramNonce(userId: number): string {
 /** Unbind telegram: null both the chat id and any pending link nonce. */
 export function clearTelegram(userId: number): void {
   getDb().prepare("UPDATE users SET telegram_chat_id = NULL, telegram_link_nonce = NULL WHERE id = ?").run(userId);
+}
+
+/* -------------------------------------------------------------------------- *
+ *  Phase 2: the loud-channel flush. `flushNotifications` is the only writer   *
+ *  of notifications.push_flushed_at / tg_flushed_at and of                    *
+ *  notification_deliveries. Called once per org from the rules sweep.         *
+ * -------------------------------------------------------------------------- */
+
+const DEBOUNCE_MS = 120_000; // let a burst of related events settle into one message
+const EDIT_WINDOW_MS = 600_000; // within 10 min, update the last digest in place instead of re-notifying
+const DIGEST_GROUP_CAP = 4; // show this many group lines, then «و N مورد دیگر»
+/** One tag for every digest: a second web-push with the same tag *replaces* the visible
+ *  notification instead of stacking a new one — push's version of an edit. */
+const PUSH_TAG = "kargah-digest";
+
+const LOUD_CHANNELS = ["push", "telegram"] as const;
+type LoudChannel = (typeof LOUD_CHANNELS)[number];
+/** The per-channel flush stamp on `notifications`. Interpolated into SQL, never bound —
+ *  hence a closed Record rather than a string parameter. */
+const FLUSHED_COL: Record<LoudChannel, "push_flushed_at" | "tg_flushed_at"> = {
+  push: "push_flushed_at",
+  telegram: "tg_flushed_at",
+};
+
+/** Type aliases, not interfaces: only an alias gets the implicit index signature that
+ *  makes `stmt.all(...) as FlushRow[]` a legal cast from node:sqlite's row type. */
+type FlushRow = {
+  id: number;
+  type_code: string;
+  priority: string;
+  group_key: string;
+  title_fa: string;
+  body_fa: string | null;
+};
+
+type DeliveryRow = {
+  id: number;
+  flushed_at: string;
+  notification_ids_json: string;
+  provider_ref: string | null;
+  target: string | null;
+};
+
+/** Is `nowHHMM` inside the half-open window [start, end)? An unset bound means no quiet
+ *  hours at all. `start > end` is the normal night window and wraps midnight. Plain string
+ *  comparison is correct because both sides are zero-padded 24h "HH:MM". */
+function inQuietWindow(nowHHMM: string, start: string | null, end: string | null): boolean {
+  if (!start || !end) return false;
+  if (start <= end) return start <= nowHHMM && nowHHMM < end;
+  return nowHHMM >= start || nowHHMM < end;
+}
+
+/** One Persian line per `group_key` — «۳ سفارش جدید ثبت شد» for a repeated group, the
+ *  notification's own title (plus its body) for a single — joined by « · », capped at
+ *  DIGEST_GROUP_CAP with a «و N مورد دیگر» tail. This is the whole message body for both
+ *  channels; the deep link is always /notifications. */
+function composeDigest(rows: Pick<FlushRow, "group_key" | "title_fa" | "body_fa">[]): string {
+  const groups = new Map<string, { title: string; body: string | null; count: number }>();
+  for (const r of rows) {
+    const g = groups.get(r.group_key);
+    if (g) g.count += 1;
+    else groups.set(r.group_key, { title: r.title_fa, body: r.body_fa, count: 1 });
+  }
+
+  const lines = [...groups.values()].map((g) =>
+    g.count > 1 ? `${faNum(g.count)} ${g.title}` : g.body ? `${g.title} — ${g.body}` : g.title
+  );
+  const head = lines.slice(0, DIGEST_GROUP_CAP).join(" · ");
+  const rest = lines.length - DIGEST_GROUP_CAP;
+  return rest > 0 ? `${head} · و ${faNum(rest)} مورد دیگر` : head;
+}
+
+/** The ids a delivery row already covered, tolerant of a hand-edited/corrupt JSON blob
+ *  (the union just starts empty rather than throwing away the whole flush). */
+function deliveredIds(json: string): number[] {
+  try {
+    const v: unknown = JSON.parse(json);
+    return Array.isArray(v) ? v.filter((x): x is number => typeof x === "number") : [];
+  } catch {
+    return [];
+  }
+}
+
+/** Push the digest to every current subscription of `userId`; returns how many landed.
+ *  A `404`/`410` means the browser threw the subscription away — delete it here, which is
+ *  the only garbage collection push subscriptions get. */
+async function sendPushDigest(conn: DatabaseSync, userId: number, text: string): Promise<number> {
+  if (!configureWebPush()) return 0;
+  const subs = conn
+    .prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?")
+    .all(userId) as { id: number; endpoint: string; p256dh: string; auth: string }[];
+
+  const payload = JSON.stringify({ title: "کارگاه", body: text, url: "/notifications", tag: PUSH_TAG });
+  let ok = 0;
+  for (const s of subs) {
+    try {
+      await webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload);
+      ok += 1;
+    } catch (e) {
+      const code = (e as { statusCode?: number } | null)?.statusCode;
+      if (code === 404 || code === 410) {
+        conn.prepare("DELETE FROM push_subscriptions WHERE id = ?").run(s.id);
+      } else {
+        console.warn(`[notif-flush] push send failed for subscription ${s.id}`, e);
+      }
+    }
+  }
+  return ok;
+}
+
+/** One user × one channel. Returns the counters this channel contributed; a hold, an
+ *  "off" channel or a failed send all return without stamping, so the rows come back
+ *  next tick. Throws only on a genuine programming/DB error — the caller logs it. */
+async function flushChannel(
+  conn: DatabaseSync,
+  organizationId: number,
+  userId: number,
+  channel: LoudChannel,
+  asOfIso: string,
+  nowHHMM: string
+): Promise<{ sent: number; edited: number; held: number }> {
+  const none = { sent: 0, edited: 0, held: 0 };
+  const col = FLUSHED_COL[channel];
+
+  const candidates = conn
+    .prepare(
+      `SELECT id, type_code, priority, group_key, title_fa, body_fa
+         FROM notifications
+        WHERE organization_id = ? AND user_id = ? AND ${col} IS NULL
+        ORDER BY created_at, id`
+    )
+    .all(organizationId, userId) as FlushRow[];
+  const rows = candidates.filter((r) => effectiveRouting(userId, r.type_code, channel, conn));
+  if (rows.length === 0) return none;
+
+  // Quiet hours belong to the channel, not the type: hold the whole batch unless the user
+  // asked for CRITICAL to break through and this batch actually carries one.
+  const cs = getChannelState(userId, channel);
+  const breaks = cs.critical_breaks_quiet && rows.some((r) => r.priority === "CRITICAL");
+  if (inQuietWindow(nowHHMM, cs.quiet_start, cs.quiet_end) && !breaks) {
+    return { sent: 0, edited: 0, held: rows.length };
+  }
+
+  const text = composeDigest(rows);
+  const ids = rows.map((r) => r.id);
+
+  const prev = conn
+    .prepare(
+      `SELECT id, flushed_at, notification_ids_json, provider_ref, target
+         FROM notification_deliveries
+        WHERE user_id = ? AND channel = ?
+        ORDER BY flushed_at DESC, id DESC LIMIT 1`
+    )
+    .get(userId, channel) as DeliveryRow | undefined;
+  const reusable = !!prev && Date.parse(prev.flushed_at) >= Date.parse(asOfIso) - EDIT_WINDOW_MS;
+
+  const updateDelivery = (row: DeliveryRow) => {
+    const union = [...new Set([...deliveredIds(row.notification_ids_json), ...ids])];
+    conn
+      .prepare("UPDATE notification_deliveries SET notification_ids_json = ?, flushed_at = ? WHERE id = ?")
+      .run(JSON.stringify(union), asOfIso, row.id);
+  };
+  const insertDelivery = (providerRef: string, target: string) => {
+    conn
+      .prepare(
+        `INSERT INTO notification_deliveries (user_id, channel, flushed_at, notification_ids_json, provider_ref, target)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(userId, channel, asOfIso, JSON.stringify(ids), providerRef, target);
+  };
+
+  let sent = 0;
+  let edited = 0;
+
+  if (channel === "push") {
+    // Push has no true edit: the same `tag` re-sent replaces the visible notification, so
+    // the send is identical either way and only the ledger bookkeeping differs. Doing it
+    // once (rather than "try edit, fall back to send") is what keeps a failure from
+    // double-notifying.
+    const landed = await sendPushDigest(conn, userId, text);
+    if (landed === 0) return none; // nothing reached a device -> retry next tick
+    if (reusable && prev) {
+      updateDelivery(prev);
+      edited = 1;
+    } else {
+      insertDelivery(PUSH_TAG, "push");
+      sent = 1;
+    }
+  } else {
+    const chatId = (
+      conn.prepare("SELECT telegram_chat_id FROM users WHERE id = ?").get(userId) as
+        | { telegram_chat_id: string | null }
+        | undefined
+    )?.telegram_chat_id;
+    if (!chatId) return none; // effectiveRouting already required one; belt and braces
+
+    if (reusable && prev?.provider_ref && (await editTelegram(chatId, Number(prev.provider_ref), text))) {
+      updateDelivery(prev);
+      edited = 1;
+    } else {
+      // No recent message, or the edit was refused (message deleted / too old) -> a new one.
+      const r = await sendTelegram(chatId, text);
+      if (!r) {
+        console.warn(`[notif-flush] telegram send returned null for user ${userId}`);
+        return none;
+      }
+      insertDelivery(String(r.message_id), chatId);
+      sent = 1;
+    }
+  }
+
+  conn
+    .prepare(`UPDATE notifications SET ${col} = ? WHERE id IN (${ids.map(() => "?").join(",")})`)
+    .run(asOfIso, ...ids);
+  return { sent, edited, held: 0 };
+}
+
+/** Deliver every not-yet-flushed notification of one org to its loud channels, bundled.
+ *
+ *  Per user: debounce a still-running burst, then for each of push/telegram gather the
+ *  rows that channel is opted into, hold them if the user is inside quiet hours, compose
+ *  one digest, and either edit the last message (within EDIT_WINDOW_MS) or send a new one.
+ *  Only a successful send/edit stamps `<channel>_flushed_at`, so anything held or failed
+ *  is picked up by the next tick. The two channels are independent — one can flush a row
+ *  while the other still owes it. No failure here aborts the pass. */
+export async function flushNotifications(
+  organizationId: number,
+  asOfIso: string = new Date().toISOString(),
+  db?: DatabaseSync
+): Promise<{ sent: number; edited: number; held: number }> {
+  const conn = db ?? getDb();
+  const asOfMs = Date.parse(asOfIso);
+  const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false }).slice(0, 5);
+  const total = { sent: 0, edited: 0, held: 0 };
+
+  const users = conn
+    .prepare(
+      `SELECT DISTINCT user_id FROM notifications
+        WHERE organization_id = ? AND (push_flushed_at IS NULL OR tg_flushed_at IS NULL)`
+    )
+    .all(organizationId) as { user_id: number }[];
+
+  for (const { user_id: userId } of users) {
+    const newest = conn
+      .prepare(
+        `SELECT MAX(created_at) m FROM notifications
+          WHERE organization_id = ? AND user_id = ? AND (push_flushed_at IS NULL OR tg_flushed_at IS NULL)`
+      )
+      .get(organizationId, userId) as { m: string | null };
+    // Still arriving: give the burst DEBOUNCE_MS to finish so it becomes one message.
+    if (!newest.m || Date.parse(newest.m) > asOfMs - DEBOUNCE_MS) continue;
+
+    for (const channel of LOUD_CHANNELS) {
+      try {
+        const r = await flushChannel(conn, organizationId, userId, channel, asOfIso, nowHHMM);
+        total.sent += r.sent;
+        total.edited += r.edited;
+        total.held += r.held;
+      } catch (e) {
+        console.warn(`[notif-flush] ${channel} failed for user ${userId}`, e);
+        continue;
+      }
+    }
+  }
+
+  return total;
 }
