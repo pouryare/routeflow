@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ToastProvider } from "@/components/ToastProvider";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
+import NotificationBell from "@/components/NotificationBell";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 import { ACCENT_INIT_SCRIPT } from "@/lib/accent";
 import { FONT_INIT_SCRIPT } from "@/lib/font";
@@ -56,6 +57,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
             its own watch on the same GPS chip. */}
         <ToastProvider>
           <MyPositionProvider>{children}</MyPositionProvider>
+          <NotificationBell />
         </ToastProvider>
       </body>
     </html>
