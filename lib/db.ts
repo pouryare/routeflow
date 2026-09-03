@@ -1771,6 +1771,43 @@ export function getDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS ix_notifications_feed ON notifications(organization_id, user_id, read_at, created_at);
     CREATE INDEX IF NOT EXISTS ix_notifications_group ON notifications(user_id, group_key);
 
+    -- Notification system (Phase 2, loud channels). Per-user, not org-scoped: user_id
+    -- resolves to an organisation transitively, so these hold no NULL-org shared rows and
+    -- stay out of TENANT_TABLES. notification_prefs is the per-(user,type,channel) override
+    -- of the catalogue's default_push / default_telegram; notification_channels is the
+    -- per-(user,channel) master switch + quiet-hours window; notification_deliveries is the
+    -- append-only log of what was flushed to push / telegram.
+    CREATE TABLE IF NOT EXISTS notification_prefs (
+      user_id INTEGER NOT NULL,
+      type_code TEXT NOT NULL,
+      channel TEXT NOT NULL CHECK (channel IN ('push', 'telegram')),
+      enabled INTEGER NOT NULL,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, type_code, channel)
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_channels (
+      user_id INTEGER NOT NULL,
+      channel TEXT NOT NULL CHECK (channel IN ('push', 'telegram')),
+      enabled INTEGER NOT NULL DEFAULT 1,
+      quiet_start TEXT,
+      quiet_end TEXT,
+      critical_breaks_quiet INTEGER NOT NULL DEFAULT 1,
+      updated_at TEXT NOT NULL,
+      PRIMARY KEY (user_id, channel)
+    );
+
+    CREATE TABLE IF NOT EXISTS notification_deliveries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      channel TEXT NOT NULL,
+      flushed_at TEXT NOT NULL,
+      notification_ids_json TEXT NOT NULL,
+      provider_ref TEXT,
+      target TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_notification_deliveries ON notification_deliveries(user_id, channel, flushed_at);
+
     CREATE TABLE IF NOT EXISTS targets (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       organization_id INTEGER NOT NULL REFERENCES organizations(id),
@@ -2919,6 +2956,25 @@ export function getDb(): DatabaseSync {
     console.info("[migrate] rules.action_kind widened to include 'notify'");
   }
 
+  // Notification system (Phase 2, loud channels): plain ADD COLUMN, guarded per column.
+  // notification_types gains the loud-by-default hint columns (populated from
+  // loudByDefault in seedNotificationTypes); push_subscriptions / users / notifications
+  // gain the routing + flush bookkeeping.
+  const ntCols = (db.prepare("PRAGMA table_info(notification_types)").all() as { name: string }[]).map((c) => c.name);
+  if (!ntCols.includes("default_push")) db.exec("ALTER TABLE notification_types ADD COLUMN default_push INTEGER NOT NULL DEFAULT 0");
+  if (!ntCols.includes("default_telegram")) db.exec("ALTER TABLE notification_types ADD COLUMN default_telegram INTEGER NOT NULL DEFAULT 0");
+
+  const psCols = (db.prepare("PRAGMA table_info(push_subscriptions)").all() as { name: string }[]).map((c) => c.name);
+  if (!psCols.includes("user_id")) db.exec("ALTER TABLE push_subscriptions ADD COLUMN user_id INTEGER");
+
+  const uCols = (db.prepare("PRAGMA table_info(users)").all() as { name: string }[]).map((c) => c.name);
+  if (!uCols.includes("telegram_chat_id")) db.exec("ALTER TABLE users ADD COLUMN telegram_chat_id TEXT");
+  if (!uCols.includes("telegram_link_nonce")) db.exec("ALTER TABLE users ADD COLUMN telegram_link_nonce TEXT");
+
+  const nCols = (db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]).map((c) => c.name);
+  if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");
+  if (!nCols.includes("tg_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN tg_flushed_at TEXT");
+
   seedFacilities(db);
   seedReasonCodes(db);
   seedCapacityFactors(db);
@@ -3528,6 +3584,18 @@ export const RULE_SEED: {
   { code: "notify_delivery_succeeded",     name: "اعلان: تحویل موفق",      trigger_kind: "delivery.succeeded",   condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "delivery.succeeded" }),  cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
   { code: "notify_delivery_failed",        name: "اعلان: تحویل ناموفق",    trigger_kind: "delivery.failed",      condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "delivery.failed" }),     cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
   { code: "notify_payment_recorded",       name: "اعلان: ثبت پرداخت",       trigger_kind: "payment.recorded",     condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "payment.recorded" }),    cooldown_min: 1, escalate_after_min: null, escalate_to_role: null },
+
+  // Phase 2 loud-channel rules. notify_task_escalated fires through runEventRules on the
+  // task.escalated event; the other four are trigger_kind 'sweep' -- a later task adds
+  // consider("<code>", ...) calls in runSweepRules, and consider() only fires 'sweep'
+  // rules. Longer cooldowns on the sweep-fed rules because a sweep re-evaluates the same
+  // overdue customer / due cheque every tick; liveRun dedupe + this cooldown keep it to
+  // one notification per entity per day.
+  { code: "notify_task_escalated",          name: "اعلان: ارجاع کار",         trigger_kind: "task.escalated", condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "task.escalated" }),          cooldown_min: 1,    escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_credit_approval_waiting", name: "اعلان: انتظار تأیید اعتبار", trigger_kind: "sweep",          condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "credit_approval.waiting" }), cooldown_min: 60,   escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_customer_overdue",        name: "اعلان: مشتری عقب‌افتاده",   trigger_kind: "sweep",          condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "customer.overdue" }),        cooldown_min: 1440, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_cheque_due_soon",         name: "اعلان: سررسید چک",         trigger_kind: "sweep",          condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "cheque.due_soon" }),         cooldown_min: 1440, escalate_after_min: null, escalate_to_role: null },
+  { code: "notify_reminder_due",            name: "اعلان: یادآوری",           trigger_kind: "sweep",          condition_json: null, action_kind: "notify", action_json: JSON.stringify({ notification_type: "reminder.due" }),            cooldown_min: 1440, escalate_after_min: null, escalate_to_role: null },
 ];
 
 export function seedRules(db: DatabaseSync): void {
@@ -3566,9 +3634,20 @@ export interface NotificationTypeSeed {
   group_scope: "entity" | "type_day";
 }
 
-/** The Phase 1 catalogue, NULL-org. Same INSERT ... WHERE NOT EXISTS treatment as
- *  RULE_SEED / OBJECTION_CARD_SEED. Recipient wiring lives in lib/repo/notifications.ts;
- *  loud-channel routing defaults are Phase 2. */
+const PRIORITY_RANK: Record<string, number> = { LOW: 0, NORMAL: 1, HIGH: 2, CRITICAL: 3 };
+
+/** The spec's loud-by-default rule, stored on each catalogue row for the settings hint.
+ *  A directed notification (aimed at one person) goes loud from NORMAL up; an ambient one
+ *  (a group feed item) only goes loud at CRITICAL. */
+export function loudByDefault(directedness: string, priority: string): 0 | 1 {
+  if (directedness === "directed") return PRIORITY_RANK[priority] >= PRIORITY_RANK.NORMAL ? 1 : 0;
+  return priority === "CRITICAL" ? 1 : 0;
+}
+
+/** The Phase 1 catalogue, NULL-org, plus the Phase 2 loud-channel additions. Same
+ *  INSERT ... WHERE NOT EXISTS treatment as RULE_SEED / OBJECTION_CARD_SEED. Recipient
+ *  wiring lives in lib/repo/notifications.ts; default_push / default_telegram are derived
+ *  from loudByDefault(directedness, priority) at seed time, not stored on the literal. */
 export const NOTIFICATION_TYPE_SEED: NotificationTypeSeed[] = [
   { code: "task.assigned",      name_fa: "کاری به شما سپرده شد",      category: "task",     directedness: "directed", priority: "HIGH",   group_scope: "entity" },
   { code: "order.confirmed",    name_fa: "سفارش شما تأیید شد",         category: "order",    directedness: "directed", priority: "NORMAL", group_scope: "entity" },
@@ -3577,18 +3656,26 @@ export const NOTIFICATION_TYPE_SEED: NotificationTypeSeed[] = [
   { code: "delivery.succeeded", name_fa: "تحویل موفق",                 category: "delivery", directedness: "directed", priority: "NORMAL", group_scope: "type_day" },
   { code: "delivery.failed",    name_fa: "تحویل ناموفق",              category: "delivery", directedness: "directed", priority: "HIGH",   group_scope: "entity" },
   { code: "payment.recorded",   name_fa: "پرداخت روی سفارش شما ثبت شد", category: "finance",  directedness: "directed", priority: "NORMAL", group_scope: "entity" },
+  { code: "task.escalated",          name_fa: "کار به شما ارجاع شد",        category: "task",     directedness: "directed", priority: "CRITICAL", group_scope: "entity" },
+  { code: "credit_approval.waiting", name_fa: "تأیید اعتبار در انتظار شماست", category: "finance",  directedness: "directed", priority: "HIGH",     group_scope: "entity" },
+  { code: "customer.overdue",        name_fa: "مشتری شما عقب‌افتاده است",     category: "customer", directedness: "directed", priority: "NORMAL",   group_scope: "entity" },
+  { code: "cheque.due_soon",         name_fa: "سررسید چک نزدیک است",         category: "finance",  directedness: "directed", priority: "HIGH",     group_scope: "entity" },
+  { code: "reminder.due",            name_fa: "یادآوری سررسید",              category: "task",     directedness: "directed", priority: "NORMAL",   group_scope: "type_day" },
+  { code: "system.test",             name_fa: "پیام آزمایشی",                category: "task",     directedness: "directed", priority: "LOW",      group_scope: "entity" },
 ];
 
 export function seedNotificationTypes(db: DatabaseSync): void {
   const now = new Date().toISOString();
   const insert = db.prepare(
     `INSERT INTO notification_types
-       (organization_id, code, name_fa, category, directedness, priority, group_scope, active, created_at, updated_at)
-     SELECT NULL, ?, ?, ?, ?, ?, ?, 1, ?, ?
+       (organization_id, code, name_fa, category, directedness, priority, group_scope,
+        default_push, default_telegram, active, created_at, updated_at)
+     SELECT NULL, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?
       WHERE NOT EXISTS (SELECT 1 FROM notification_types WHERE organization_id IS NULL AND code = ?)`
   );
   for (const t of NOTIFICATION_TYPE_SEED) {
-    insert.run(t.code, t.name_fa, t.category, t.directedness, t.priority, t.group_scope, now, now, t.code);
+    const loud = loudByDefault(t.directedness, t.priority);
+    insert.run(t.code, t.name_fa, t.category, t.directedness, t.priority, t.group_scope, loud, loud, now, now, t.code);
   }
 }
 

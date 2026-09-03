@@ -59,7 +59,7 @@ describe.skipIf(!dbPath)("Phase 7 spine migration on real data", () => {
     }
     expect(
       (db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NULL").get() as { n: number }).n
-    ).toBe(13); // 5 original spine rules + the 8 Phase 1 `notify` rules (RULE_SEED)
+    ).toBe(18); // 5 original spine rules + 8 Phase 1 + 5 Phase 2 `notify` rules (RULE_SEED)
     expect(
       (db.prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NOT NULL").get() as { n: number }).n
     ).toBe(0);

@@ -172,6 +172,9 @@ describe("organization_id backfill", () => {
       "visit_plans",        // through (entity_type, entity_id)
       "activity_log",       // through (entity_type, entity_id)
       "push_subscriptions", // a browser endpoint, not business data
+      "notification_prefs",      // per-user loud-channel prefs; reaches a tenant through user_id
+      "notification_channels",   // per-user loud-channel master switch; through user_id
+      "notification_deliveries", // per-user push/telegram flush log; through user_id
       "app_meta",           // key/value store for migration markers -- not tenant data
       "representative_onboarding_steps", // reaches a tenant through representative_profiles
       "payment_allocations", // reaches a tenant through payments

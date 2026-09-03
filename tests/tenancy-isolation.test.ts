@@ -245,8 +245,8 @@ describe("organisation A and organisation B cannot see each other", () => {
     const defaults = db
       .prepare("SELECT COUNT(*) AS n FROM rules WHERE organization_id IS NULL")
       .get() as { n: number };
-    // 5 original spine rules + the 8 Phase 1 `notify` rules (RULE_SEED in lib/db.ts).
-    expect(defaults.n).toBe(13);
+    // 5 original spine rules + 8 Phase 1 + 5 Phase 2 `notify` rules (RULE_SEED in lib/db.ts).
+    expect(defaults.n).toBe(18);
   });
 
   it("keeps tenant objection cards + lesson progress apart; the starter cards stay shared", () => {
