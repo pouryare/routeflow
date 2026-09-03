@@ -8,7 +8,9 @@ process.env.COVERAGE_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { recipientsFor } = await import("@/lib/repo/notifications");
+const { recipientsFor, fanOutNotifications, listNotificationGroups, unreadGroupCount, markGroupsRead } = await import(
+  "@/lib/repo/notifications"
+);
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -142,4 +144,63 @@ describe("recipientsFor", () => {
     );
     expect(r).toEqual([]);
   });
+});
+
+function evRow(kind: string, entityId: number | null, meta: Record<string, unknown>, actor: number | null) {
+  return {
+    id: 1,
+    kind,
+    entity_type: entityId == null ? null : "order",
+    entity_id: entityId,
+    actor_user_id: actor,
+    metadata_json: JSON.stringify(meta),
+    occurred_at: now,
+  };
+}
+
+it("fans one order.confirmed event out to a single feed row for the salesperson", () => {
+  const n = fanOutNotifications(
+    1,
+    { code: "notify_order_confirmed", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
+    evRow("order.passReview", ord, { order_no: "9001", customer_name: "x" }, owner),
+    null
+  );
+  expect(n).toBe(1);
+  const groups = listNotificationGroups(1, seller);
+  expect(groups).toHaveLength(1);
+  expect(groups[0].group_key).toBe(`order:${ord}`);
+  expect(groups[0].unread_count).toBe(1);
+  expect(unreadGroupCount(1, seller)).toBe(1);
+});
+
+it("two order.created events the same day collapse into one group with count 2", () => {
+  const rule = { code: "notify_order_created", action_json: JSON.stringify({ notification_type: "order.created" }) };
+  fanOutNotifications(1, rule, evRow("order.submit", ord, { order_no: "9001" }, owner), null);
+  // a second order in the same group/day
+  const db = getDb();
+  const ord2 = Number(
+    db
+      .prepare(
+        `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status, order_date, created_by, created_at, updated_at)
+     VALUES ('9002', ?, (SELECT group_id FROM orders WHERE id = ?), ?, 'CONFIRMED', '2026-06-01', ?, ?, ?)`
+      )
+      .run(custId, ord, seller, owner, now, now).lastInsertRowid
+  );
+  fanOutNotifications(1, rule, { ...evRow("order.submit", ord2, { order_no: "9002" }, owner), id: 2 }, null);
+
+  const groups = listNotificationGroups(1, mgr);
+  expect(groups).toHaveLength(1);
+  expect(groups[0].count).toBe(2);
+});
+
+it("markGroupsRead('all') clears the unread count", () => {
+  fanOutNotifications(
+    1,
+    { code: "c", action_json: JSON.stringify({ notification_type: "order.confirmed" }) },
+    evRow("order.passReview", ord, {}, owner),
+    null
+  );
+  expect(unreadGroupCount(1, seller)).toBe(1);
+  markGroupsRead(1, seller, "all");
+  expect(unreadGroupCount(1, seller)).toBe(0);
 });

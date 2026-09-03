@@ -1,3 +1,4 @@
+import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
 import { toJalali } from "@/lib/jalali";
 
@@ -129,4 +130,187 @@ export function recipientsFor(
 
   if (actorUserId != null) out.delete(actorUserId);
   return [...out];
+}
+
+interface CatalogueRow {
+  code: string;
+  name_fa: string;
+  directedness: string;
+  priority: Priority;
+  group_scope: "entity" | "type_day";
+  active: number;
+}
+
+/** Tenant row wins over the NULL-org default, by code. */
+function catalogueType(organizationId: number, code: string, db?: DatabaseSync): CatalogueRow | undefined {
+  return (db ?? getDb())
+    .prepare(
+      `SELECT code, name_fa, directedness, priority, group_scope, active FROM notification_types
+        WHERE code = ? AND (organization_id = ? OR organization_id IS NULL)
+        ORDER BY (organization_id IS NULL) LIMIT 1`
+    )
+    .get(code, organizationId) as CatalogueRow | undefined;
+}
+
+export interface FanoutRule {
+  code: string;
+  action_json: string | null;
+}
+
+export function fanOutNotifications(
+  organizationId: number,
+  rule: FanoutRule,
+  event: {
+    id: number;
+    kind: string;
+    entity_type: string | null;
+    entity_id: number | null;
+    actor_user_id: number | null;
+    metadata_json: string | null;
+    occurred_at: string;
+  },
+  ruleRunId: number | null,
+  db?: DatabaseSync
+): number {
+  const spec = rule.action_json ? (JSON.parse(rule.action_json) as { notification_type?: string }) : {};
+  const typeCode = spec.notification_type;
+  if (!typeCode) return 0;
+  const type = catalogueType(organizationId, typeCode, db);
+  if (!type || !type.active) return 0;
+
+  const ctx: FanoutContext = {
+    kind: event.kind,
+    entity_type: event.entity_type,
+    entity_id: event.entity_id,
+    occurred_at: event.occurred_at,
+    meta: event.metadata_json ? (JSON.parse(event.metadata_json) as Record<string, unknown>) : {},
+  };
+
+  const recipients = recipientsFor(organizationId, typeCode, ctx, event.actor_user_id);
+  if (recipients.length === 0) return 0;
+
+  const groupKey = groupKeyFor(type.group_scope, ctx);
+  const rendered = renderNotification(typeCode, ctx);
+  const title = rendered.title_fa || type.name_fa;
+  const now = new Date().toISOString();
+
+  const insert = (db ?? getDb()).prepare(
+    `INSERT INTO notifications
+       (organization_id, user_id, type_code, title_fa, body_fa, entity_type, entity_id, group_key,
+        priority, created_at, source_event_id, source_rule_run_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  );
+  let n = 0;
+  for (const uid of recipients) {
+    insert.run(
+      organizationId,
+      uid,
+      typeCode,
+      title,
+      rendered.body_fa,
+      ctx.entity_type,
+      ctx.entity_id,
+      groupKey,
+      type.priority,
+      now,
+      event.id,
+      ruleRunId
+    );
+    n += 1;
+  }
+  return n;
+}
+
+export interface FeedGroup {
+  group_key: string;
+  latest_at: string;
+  count: number;
+  unread_count: number;
+  title_fa: string;
+  body_fa: string | null;
+  entity_type: string | null;
+  entity_id: number | null;
+  priority: string;
+  items: { id: number; title_fa: string; body_fa: string | null; created_at: string; read_at: string | null }[];
+}
+
+export function listNotificationGroups(
+  organizationId: number,
+  userId: number,
+  opts: { limit?: number } = {}
+): FeedGroup[] {
+  const rows = getDb()
+    .prepare(
+      `SELECT id, type_code, title_fa, body_fa, entity_type, entity_id, group_key, priority, created_at, read_at
+         FROM notifications
+        WHERE organization_id = ? AND user_id = ?
+        ORDER BY created_at DESC, id DESC`
+    )
+    .all(organizationId, userId) as {
+    id: number;
+    type_code: string;
+    title_fa: string;
+    body_fa: string | null;
+    entity_type: string | null;
+    entity_id: number | null;
+    group_key: string;
+    priority: string;
+    created_at: string;
+    read_at: string | null;
+  }[];
+
+  const byKey = new Map<string, FeedGroup>();
+  for (const r of rows) {
+    let g = byKey.get(r.group_key);
+    if (!g) {
+      g = {
+        group_key: r.group_key,
+        latest_at: r.created_at,
+        count: 0,
+        unread_count: 0,
+        title_fa: r.title_fa,
+        body_fa: r.body_fa,
+        entity_type: r.entity_type,
+        entity_id: r.entity_id,
+        priority: r.priority,
+        items: [],
+      };
+      byKey.set(r.group_key, g);
+    }
+    g.count += 1;
+    if (!r.read_at) g.unread_count += 1;
+    g.items.push({ id: r.id, title_fa: r.title_fa, body_fa: r.body_fa, created_at: r.created_at, read_at: r.read_at });
+  }
+  const groups = [...byKey.values()].sort((a, b) =>
+    a.latest_at > b.latest_at ? -1 : a.latest_at < b.latest_at ? 1 : 0
+  );
+  return opts.limit ? groups.slice(0, opts.limit) : groups;
+}
+
+export function unreadGroupCount(organizationId: number, userId: number): number {
+  const row = getDb()
+    .prepare(
+      `SELECT COUNT(DISTINCT group_key) c FROM notifications
+        WHERE organization_id = ? AND user_id = ? AND read_at IS NULL`
+    )
+    .get(organizationId, userId) as { c: number };
+  return row.c;
+}
+
+export function markGroupsRead(organizationId: number, userId: number, groupKeys: string[] | "all"): void {
+  const now = new Date().toISOString();
+  if (groupKeys === "all") {
+    getDb()
+      .prepare("UPDATE notifications SET read_at = ? WHERE organization_id = ? AND user_id = ? AND read_at IS NULL")
+      .run(now, organizationId, userId);
+    return;
+  }
+  if (groupKeys.length === 0) return;
+  const ph = groupKeys.map(() => "?").join(",");
+  getDb()
+    .prepare(
+      `UPDATE notifications SET read_at = ?
+        WHERE organization_id = ? AND user_id = ? AND read_at IS NULL AND group_key IN (${ph})`
+    )
+    .run(now, organizationId, userId, ...groupKeys);
 }
