@@ -22,8 +22,8 @@ async function call(
       body: JSON.stringify(body),
     });
     const json = (await res.json().catch(() => null)) as { ok?: boolean; result?: unknown } | null;
-    if (!json?.ok) {
-      console.warn(`[telegram] ${method} failed`, res.status, JSON.stringify(json)?.slice(0, 200));
+    if (!json?.ok || typeof json.result !== "object" || json.result === null) {
+      console.warn(`[telegram] ${method} failed`, res.status, JSON.stringify(json).slice(0, 200));
       return null;
     }
     return json as { ok: true; result: Record<string, unknown> };

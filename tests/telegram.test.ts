@@ -83,6 +83,24 @@ describe("sendTelegram", () => {
     expect(warn).toHaveBeenCalled();
   });
 
+  it("returns null (and warns) on a malformed ok:true with no result key", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = TOKEN;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    stubFetch(async () => fakeResponse(200, { ok: true }));
+
+    expect(await sendTelegram("42", "x")).toBeNull();
+    expect(warn).toHaveBeenCalled();
+  });
+
+  it("returns null (and warns) on ok:true with result: null", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = TOKEN;
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    stubFetch(async () => fakeResponse(200, { ok: true, result: null }));
+
+    expect(await sendTelegram("42", "x")).toBeNull();
+    expect(warn).toHaveBeenCalled();
+  });
+
   it("returns null without touching fetch when the token is unset", async () => {
     const mock = stubFetch(async () => fakeResponse(200, { ok: true, result: { message_id: 1 } }));
     expect(await sendTelegram("42", "x")).toBeNull();
