@@ -49,7 +49,9 @@ describe("users rebuild", () => {
     expect(cols("users").sort()).toEqual(
       // organization_id joined the list when the app became multi-tenant: a user belongs
       // to exactly one company, and every scoping decision reads it off this row.
-      ["active", "created_at", "display_name", "group_id", "id", "location_consent_at", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "token_version", "username"].sort()
+      // telegram_chat_id / telegram_link_nonce joined with the Phase 2 loud channels:
+      // the bound chat and the one-shot deep-link nonce that binds it.
+      ["active", "created_at", "display_name", "group_id", "id", "location_consent_at", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "username"].sort()
     );
   });
 

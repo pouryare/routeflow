@@ -10,8 +10,8 @@ import { toJalali } from "@/lib/jalali";
 import { rruleMatches } from "@/lib/tasks/recurrence";
 import { listRecurrences } from "./taskRecurrences";
 import { createTask } from "./tasks";
-import { fanOutNotifications } from "./notifications";
-import type { EventRow } from "./events";
+import { fanOutNotifications, flushNotifications } from "./notifications";
+import { emitEvent, tryEmitEvent, type EventRow } from "./events";
 
 export interface RuleRow {
   id: number;
@@ -30,6 +30,7 @@ export interface RuleRow {
 
 interface ActionSpec {
   title?: string;
+  notification_type?: string;
   kind?: string;
   role_hint?: string;
   priority?: string;
@@ -72,6 +73,44 @@ function liveRun(
     .get(organizationId, ruleId, entityType, entityId, nowIso) as { id: number } | undefined;
 }
 
+/** The fan-out shape `fanOutNotifications` consumes: an events row minus the columns it
+ *  never reads. */
+type SourceEvent = Pick<
+  EventRow,
+  "id" | "kind" | "entity_type" | "entity_id" | "actor_user_id" | "metadata_json" | "occurred_at"
+>;
+
+/** Record a sweep finding on the event bus so a sweep-triggered `notify` rule has a real
+ *  source event to fan out from. Returns undefined for a notify rule with no
+ *  notification_type -- nothing to deliver, so nothing to record. */
+function synthesiseSweepEvent(
+  organizationId: number,
+  spec: ActionSpec,
+  entityType: string | null,
+  entityId: number | null,
+  meta: Record<string, unknown> | undefined,
+  nowIso: string,
+  db?: DatabaseSync
+): SourceEvent | undefined {
+  const kind = spec.notification_type;
+  if (!kind) return undefined;
+  const metadata = meta ?? {};
+  const id = emitEvent(
+    organizationId,
+    { kind, entity_type: entityType, entity_id: entityId, actor_user_id: null, metadata, occurred_at: nowIso },
+    db
+  );
+  return {
+    id,
+    kind,
+    entity_type: entityType,
+    entity_id: entityId,
+    actor_user_id: null,
+    metadata_json: JSON.stringify(metadata),
+    occurred_at: nowIso,
+  };
+}
+
 /** Create the rule's task, alert, or notification fan-out, plus the rule_runs row.
  *  Returns the run id. */
 function fire(
@@ -83,6 +122,7 @@ function fire(
     group_id?: number | null;
     assignee_user_id?: number | null;
     title_override?: string;
+    meta?: Record<string, unknown>;
     event?: EventRow;
   },
   nowIso: string,
@@ -97,21 +137,26 @@ function fire(
 
   if (rule.action_kind === "notify") {
     // Feed rows are written by the notification module; rule_runs still tracks the fire
-    // for cooldown/liveRun. No task or alert id. Only event-triggered rules carry the
-    // event context fanOutNotifications needs -- a 'notify' rule on a 'sweep' trigger
-    // (out of scope for Phase 1) simply no-ops here.
-    if (ctx.event) {
+    // for cooldown/liveRun. No task or alert id. An event-triggered rule already carries
+    // the event fanOutNotifications needs; a 'notify' rule on a 'sweep' trigger (Phase 2:
+    // cheque.due_soon, reminder.due, credit_approval.waiting, customer.overdue) has none,
+    // so the sweep's finding is recorded on the bus first and the fan-out hangs off that
+    // row -- notifications.source_event_id then points at a real event either way.
+    // The synthesised kind is the notification type; no seeded rule triggers on those
+    // kinds, and an event-triggered fire always carries ctx.event, so this cannot recurse.
+    const src = ctx.event ?? synthesiseSweepEvent(organizationId, spec, entityType, entityId, ctx.meta, nowIso, db);
+    if (src) {
       fanOutNotifications(
         organizationId,
         { code: rule.code, action_json: rule.action_json },
         {
-          id: ctx.event.id,
-          kind: ctx.event.kind,
-          entity_type: ctx.event.entity_type,
-          entity_id: ctx.event.entity_id,
-          actor_user_id: ctx.event.actor_user_id,
-          metadata_json: ctx.event.metadata_json,
-          occurred_at: ctx.event.occurred_at,
+          id: src.id,
+          kind: src.kind,
+          entity_type: src.entity_type,
+          entity_id: src.entity_id,
+          actor_user_id: src.actor_user_id,
+          metadata_json: src.metadata_json,
+          occurred_at: src.occurred_at,
         },
         null,
         db
@@ -233,7 +278,7 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
     code: string,
     entityType: string,
     entityId: number,
-    ctx: { title_override?: string; group_id?: number | null } = {}
+    ctx: { title_override?: string; group_id?: number | null; meta?: Record<string, unknown> } = {}
   ) => {
     const rule = rules.get(code);
     if (!rule || rule.trigger_kind !== "sweep") return;
@@ -244,10 +289,19 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
   // credit_approval_waiting: pending > 60 min
   for (const r of db
     .prepare(
-      "SELECT id FROM credit_approvals WHERE organization_id = ? AND status = 'pending' AND requested_at <= ?"
+      `SELECT ca.id, (SELECT c.business_name FROM customers c JOIN orders o ON o.customer_id = c.id
+                        WHERE o.id = ca.order_id) AS customer_name
+         FROM credit_approvals ca
+        WHERE ca.organization_id = ? AND ca.status = 'pending' AND ca.requested_at <= ?`
     )
-    .all(organizationId, new Date(Date.parse(asOfIso) - 60 * 60_000).toISOString()) as { id: number }[]) {
+    .all(organizationId, new Date(Date.parse(asOfIso) - 60 * 60_000).toISOString()) as {
+    id: number;
+    customer_name: string | null;
+  }[]) {
     consider("credit_approval_waiting", "credit_approval", r.id);
+    consider("notify_credit_approval_waiting", "credit_approval", r.id, {
+      meta: { customer_name: r.customer_name },
+    });
   }
 
   // expiring_batch: a batch within 14 days with stock
@@ -265,7 +319,7 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
   // customer_overdue: active customer with no order in > 2x their mean interval (>= 3 orders)
   for (const c of db
     .prepare(
-      `SELECT c.id, c.group_id,
+      `SELECT c.id, c.group_id, c.business_name,
               (SELECT MAX(o.order_date) FROM orders o WHERE o.customer_id = c.id) AS last_order,
               (SELECT COUNT(*) FROM orders o WHERE o.customer_id = c.id) AS n,
               (SELECT MIN(o.order_date) FROM orders o WHERE o.customer_id = c.id) AS first_order
@@ -275,6 +329,7 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
     .all(organizationId) as {
     id: number;
     group_id: number | null;
+    business_name: string;
     last_order: string | null;
     n: number;
     first_order: string | null;
@@ -285,6 +340,10 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
     const idleDays = (Date.parse(asOfIso) - Date.parse(c.last_order)) / 86_400_000;
     if (idleDays > 2 * meanInterval && meanInterval > 0) {
       consider("customer_overdue", "customer", c.id, { group_id: c.group_id });
+      consider("notify_customer_overdue", "customer", c.id, {
+        group_id: c.group_id,
+        meta: { customer_name: c.business_name },
+      });
     }
   }
 
@@ -306,11 +365,65 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
     consider("sample_followup", "order", s.id, { group_id: s.group_id });
   }
 
+  // cheque_due_soon: a held/deposited cheque whose due_date is within 7 days.
+  for (const c of db
+    .prepare(
+      `SELECT id, cheque_no, due_date FROM cheques
+        WHERE organization_id = ? AND status IN ('in_hand','deposited')
+          AND date(due_date) <= date(?, '+7 days')`
+    )
+    .all(organizationId, asOfIso.slice(0, 10)) as {
+    id: number;
+    cheque_no: string;
+    due_date: string;
+  }[]) {
+    consider("notify_cheque_due_soon", "cheque", c.id, {
+      meta: { cheque_no: c.cheque_no, due_date: c.due_date },
+    });
+  }
+
+  // reminder_due: an unresolved reminder at/past its due_date. Replaces
+  // scripts/send-reminder-push.mjs -- retire coverage-map-reminder-push.{service,timer}
+  // at deploy.
+  for (const r of db
+    .prepare(
+      `SELECT id, entity_type, entity_id, message FROM reminders
+        WHERE resolved = 0 AND date(due_date) <= date(?)`
+    )
+    .all(asOfIso.slice(0, 10)) as {
+    id: number;
+    entity_type: string;
+    entity_id: number;
+    message: string;
+  }[]) {
+    // reminders carry no organization_id -- only fire for reminders whose entity is in THIS org
+    const inOrg =
+      r.entity_type === "customer"
+        ? db.prepare("SELECT 1 FROM customers WHERE id = ? AND organization_id = ?").get(r.entity_id, organizationId)
+        : db.prepare("SELECT 1 FROM districts WHERE id = ? AND organization_id = ?").get(r.entity_id, organizationId);
+    if (inOrg) consider("notify_reminder_due", r.entity_type, r.entity_id, { meta: { message: r.message } });
+  }
+
   // Board & Pocket: templates that spawn a task on a schedule. Same hook, same cooldown
   // idea (last_spawned_on), so /api/rules/run drives it with no extra scheduler.
   spawnRecurringTasks(organizationId, asOfIso);
 
   return out;
+}
+
+/** Deliver this org's pending feed rows to the loud channels. Split out of
+ *  `runSweepRules` (which stays sync) so `/api/rules/run` can await it once per org after
+ *  the sweep AND the escalation pass, letting the same tick's `task.escalated` rows ride
+ *  along. Best-effort: a broken channel must never fail the sweep. */
+export async function flushAllNotifications(
+  organizationId: number,
+  asOfIso: string = new Date().toISOString()
+): Promise<void> {
+  try {
+    await flushNotifications(organizationId, asOfIso);
+  } catch (e) {
+    console.warn("[rules] notification flush failed", e);
+  }
 }
 
 /** Jalali civil date as YYYY-MM-DD (Tehran). */
@@ -390,6 +503,24 @@ export function escalateStaleRuns(
       db.prepare(
         "UPDATE tasks SET assignee_user_id = COALESCE(?, assignee_user_id), priority = 'CRITICAL' WHERE id = ?"
       ).run(to?.id ?? null, rr.task_id);
+      // The escalation is a fact of its own: notify_task_escalated triggers on it through
+      // runEventRules. No new owner -> nobody to tell, so no event.
+      if (to?.id) {
+        const t = db.prepare("SELECT title FROM tasks WHERE id = ?").get(rr.task_id) as
+          | { title: string }
+          | undefined;
+        tryEmitEvent(
+          organizationId,
+          {
+            kind: "task.escalated",
+            entity_type: "task",
+            entity_id: rr.task_id,
+            actor_user_id: null,
+            metadata: { assignee_user_id: to.id, title: t?.title ?? null },
+          },
+          db
+        );
+      }
     }
     n += 1;
   }

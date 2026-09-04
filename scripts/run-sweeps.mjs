@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Fires one sweep endpoint against the local production server using the shared
 // SWEEP_TOKEN. Run standalone by systemd (see coverage-map-sweep-*.service), mirroring
-// scripts/backup.mjs / scripts/send-reminder-push.mjs conventions: config comes from
+// scripts/backup.mjs conventions: config comes from
 // process.env the way systemd's EnvironmentFile= injects it.
 //
 //   node scripts/run-sweeps.mjs <rules|analysis|predict>
