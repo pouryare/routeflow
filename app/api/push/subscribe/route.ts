@@ -7,10 +7,13 @@ interface SubscriptionBody {
   keys?: { p256dh?: string; auth?: string };
 }
 
-// All three roles: a driver's phone needs to register for notifications like anyone
-// else's device. The subscription is an endpoint, not business data.
+// Every signed-in role: a subscription is a device endpoint, not business data, and
+// Phase 2 routes loud notifications to whichever user owns it. Same list, same order, as
+// GET /api/notifications.
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  const guard = requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as SubscriptionBody | null;
@@ -21,24 +24,33 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "اشتراک نامعتبر است" }, { status: 400 });
   }
 
+  // user_id is what makes a subscription addressable: `effectiveRouting` and the flush
+  // both look up a user's devices through it. Re-stamped on conflict so a shared or
+  // recycled endpoint follows whoever registered it last.
   const db = getDb();
   db.prepare(
-    `INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at) VALUES (?, ?, ?, ?)
-     ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth`
-  ).run(endpoint, p256dh, auth, new Date().toISOString());
+    `INSERT INTO push_subscriptions (endpoint, p256dh, auth, created_at, user_id) VALUES (?, ?, ?, ?, ?)
+     ON CONFLICT(endpoint) DO UPDATE SET p256dh = excluded.p256dh, auth = excluded.auth, user_id = excluded.user_id`
+  ).run(endpoint, p256dh, auth, new Date().toISOString(), guard.session.user.id);
 
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  const guard = requireRole(req, [...ROLES]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as { endpoint?: string } | null;
   if (!body?.endpoint) {
     return NextResponse.json({ ok: false, error: "اشتراک نامعتبر است" }, { status: 400 });
   }
+  // Scoped to the caller now that user_id exists, so a guessed endpoint cannot unsubscribe
+  // someone else's device. `user_id IS NULL` keeps pre-Phase-2 rows (registered before the
+  // column existed) deletable by whoever is holding that endpoint in their browser.
   const db = getDb();
-  db.prepare("DELETE FROM push_subscriptions WHERE endpoint = ?").run(body.endpoint);
+  db.prepare("DELETE FROM push_subscriptions WHERE endpoint = ? AND (user_id IS NULL OR user_id = ?)").run(
+    body.endpoint,
+    guard.session.user.id
+  );
   return NextResponse.json({ ok: true });
 }

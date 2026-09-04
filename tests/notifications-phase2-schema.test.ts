@@ -47,9 +47,11 @@ describe("Phase 2 notification schema", () => {
     // ambient + NORMAL -> quiet
     const created = db.prepare("SELECT default_push FROM notification_types WHERE code='order.created' AND organization_id IS NULL").get() as { default_push: number };
     expect(created.default_push).toBe(0);
-    // system.test: directed + LOW -> quiet
-    const test = db.prepare("SELECT default_push FROM notification_types WHERE code='system.test' AND organization_id IS NULL").get() as { default_push: number };
-    expect(test.default_push).toBe(0);
+    // system.test: directed + NORMAL -> loud. It was seeded LOW, which made loudByDefault
+    // 0 on both channels and so made `effectiveRouting`'s want-gate drop every test row
+    // out of the flush -- the settings screen's "send me a test" button could never send.
+    const test = db.prepare("SELECT default_push, default_telegram FROM notification_types WHERE code='system.test' AND organization_id IS NULL").get() as { default_push: number; default_telegram: number };
+    expect(test).toEqual({ default_push: 1, default_telegram: 1 });
     // the four sweep-fed loud types are all directed + (NORMAL|HIGH) -> loud on both channels
     for (const code of ["credit_approval.waiting", "customer.overdue", "cheque.due_soon", "reminder.due"]) {
       const row = db
