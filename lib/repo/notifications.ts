@@ -723,7 +723,7 @@ type DeliveryRow = {
 /** Is `nowHHMM` inside the half-open window [start, end)? An unset bound means no quiet
  *  hours at all. `start > end` is the normal night window and wraps midnight. Plain string
  *  comparison is correct because both sides are zero-padded 24h "HH:MM". */
-function inQuietWindow(nowHHMM: string, start: string | null, end: string | null): boolean {
+export function inQuietWindow(nowHHMM: string, start: string | null, end: string | null): boolean {
   if (!start || !end) return false;
   if (start <= end) return start <= nowHHMM && nowHHMM < end;
   return nowHHMM >= start || nowHHMM < end;

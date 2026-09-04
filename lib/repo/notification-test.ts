@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db";
-import { groupKeyFor, getChannelState } from "@/lib/repo/notifications";
+import { groupKeyFor, getChannelState, inQuietWindow } from "@/lib/repo/notifications";
 
 /** The catalogue row for `system.test`, tenant override winning over the NULL-org seed --
  *  the same resolution `catalogueRow` does in lib/repo/notifications.ts (private there). */
@@ -53,16 +53,6 @@ export function insertTestNotification(organizationId: number, userId: number): 
   );
 }
 
-/** Half-open [start, end), wrapping midnight when start > end. A deliberate mirror of
- *  `inQuietWindow` in lib/repo/notifications.ts, which is module-private there; exporting
- *  it instead would be the better fix and is flagged for the whole-branch review. Both
- *  sides are zero-padded 24h "HH:MM", so plain string comparison is correct. */
-function inQuietWindow(nowHHMM: string, start: string | null, end: string | null): boolean {
-  if (!start || !end) return false;
-  if (start <= end) return start <= nowHHMM && nowHHMM < end;
-  return nowHHMM >= start || nowHHMM < end;
-}
-
 export type TestOutcome = {
   channel: "push" | "telegram";
   /** "sent" once the flush stamped this row; otherwise "held" if the caller's own quiet
@@ -73,7 +63,8 @@ export type TestOutcome = {
 /** What happened to *this* row on *this* channel -- the answer the caller asked for, as
  *  opposed to `flushNotifications`' org-wide counters, which also cover every other user
  *  the same pass happened to flush. The per-channel stamp is the authority: `flushChannel`
- *  writes it only after a successful send or edit. */
+ *  writes it only after a successful send or edit. The held/failed split uses the flush's
+ *  own exported `inQuietWindow`, so the two can never disagree about a quiet window. */
 export function testNotificationOutcome(
   notificationId: number,
   channel: "push" | "telegram",
