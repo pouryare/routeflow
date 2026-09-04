@@ -1,7 +1,19 @@
-import { describe, it, expect, beforeEach, afterEach, afterAll } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, afterAll, vi } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+
+// Only `sendTelegram` is faked -- `telegramConfigured` must stay real because these tests
+// drive it through process.env. Without this a "sent" outcome would need a live network
+// call to api.telegram.org.
+const sentMessages: { chatId: string; text: string }[] = [];
+vi.mock("@/lib/telegram", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("@/lib/telegram")>()),
+  sendTelegram: vi.fn(async (chatId: string, text: string) => {
+    sentMessages.push({ chatId, text });
+    return { message_id: 4242 };
+  }),
+}));
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -52,6 +64,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+  sentMessages.length = 0;
   delete process.env.TELEGRAM_BOT_TOKEN;
   delete process.env.TELEGRAM_BOT_USERNAME;
 });
@@ -198,8 +211,10 @@ describe("POST /api/notifications/test", () => {
     expect(res.status).toBe(200);
     const json = await res.json();
     expect(json.ok).toBe(true);
-    expect(json.sent).toBe(0);
-    expect(json.held).toBe(1);
+    expect(json.result.channel).toBe("telegram");
+    expect(json.result.status).toBe("held");
+    expect(json.org.sent).toBe(0);
+    expect(json.org.held).toBe(1);
 
     const n = (
       db
@@ -212,6 +227,77 @@ describe("POST /api/notifications/test", () => {
       .prepare("SELECT tg_flushed_at FROM notifications WHERE user_id = ? LIMIT 1")
       .get(seller) as { tg_flushed_at: string | null };
     expect(stamp.tg_flushed_at).toBe(null);
+  });
+
+  it("reports the CALLER's own outcome, not the org-wide flush total", async () => {
+    // The regression: `flushNotifications` is org-wide and the asOf shift makes its
+    // debounce guard unsatisfiable for everyone, so a coworker's backlog goes out on this
+    // same call. If the route reported the org tuple, the caller would read `sent: 1` while
+    // their own test was held by their own quiet hours.
+    process.env.TELEGRAM_BOT_TOKEN = "test-token";
+    const db = getDb();
+    const now = new Date().toISOString();
+
+    // The caller: connected, but inside an all-day quiet window -> must be HELD.
+    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    db.prepare(
+      `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
+       VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
+    ).run(seller, now);
+
+    // A coworker in the same org: connected, no quiet hours, one pending loud row.
+    const other = Number(
+      db
+        .prepare(
+          "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id,telegram_chat_id) VALUES (?,?,?,?,1,?,1,?)"
+        )
+        .run(`o${Date.now()}${Math.random()}`, "x:y", "هم‌کار", "salesperson", now, "55384696").lastInsertRowid
+    );
+    db.prepare(
+      `INSERT INTO notifications (organization_id, user_id, type_code, title_fa, group_key, priority, created_at)
+       VALUES (1, ?, 'task.assigned', 'کار جدید', 'task:1', 'HIGH', ?)`
+    ).run(other, now);
+
+    const res = await postTest(req("/api/notifications/test", "POST", sellerToken, { channel: "telegram" }));
+    expect(res.status).toBe(200);
+    const json = await res.json();
+
+    // The org-wide flush really did send -- to the coworker.
+    expect(json.org.sent).toBe(1);
+    expect(sentMessages.map((m) => m.chatId)).toEqual(["55384696"]);
+    // ...but the caller's own answer must be "held", never the org total.
+    expect(json.result.channel).toBe("telegram");
+    expect(json.result.status).toBe("held");
+
+    // And the caller's own row is genuinely still unflushed.
+    const mine = db
+      .prepare("SELECT tg_flushed_at FROM notifications WHERE user_id = ? AND type_code = 'system.test'")
+      .get(seller) as { tg_flushed_at: string | null };
+    expect(mine.tg_flushed_at).toBe(null);
+  });
+
+  it("carries the catalogue priority rather than a hardcoded literal", async () => {
+    process.env.TELEGRAM_BOT_TOKEN = "test-token";
+    const db = getDb();
+    db.prepare("UPDATE users SET telegram_chat_id = ? WHERE id = ?").run("55384695", seller);
+    db.prepare(
+      `INSERT INTO notification_channels (user_id, channel, enabled, quiet_start, quiet_end, critical_breaks_quiet, updated_at)
+       VALUES (?, 'telegram', 1, '00:01', '00:00', 1, ?)`
+    ).run(seller, new Date().toISOString());
+    // A tenant override wins over the NULL-org seed, exactly as `catalogueRow` resolves it.
+    db.prepare(
+      `INSERT INTO notification_types
+         (organization_id, code, name_fa, category, directedness, priority, group_scope, default_push, default_telegram, active, created_at, updated_at)
+       VALUES (1, 'system.test', 'پیام آزمایشی', 'task', 'directed', 'CRITICAL', 'entity', 1, 1, 1, ?, ?)`
+    ).run(new Date().toISOString(), new Date().toISOString());
+
+    await postTest(req("/api/notifications/test", "POST", sellerToken, { channel: "telegram" }));
+    const row = db
+      .prepare("SELECT priority FROM notifications WHERE user_id = ? AND type_code = 'system.test'")
+      .get(seller) as { priority: string };
+    expect(row.priority).toBe("CRITICAL");
+
+    db.prepare("DELETE FROM notification_types WHERE organization_id = 1 AND code = 'system.test'").run();
   });
 
   it("rate-limits a second test within the window", async () => {

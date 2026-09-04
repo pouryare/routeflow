@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { getChannelState, flushNotifications } from "@/lib/repo/notifications";
-import { insertTestNotification } from "@/lib/repo/notification-test";
+import { insertTestNotification, testNotificationOutcome } from "@/lib/repo/notification-test";
 
 const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
 
@@ -47,8 +47,24 @@ export async function POST(req: NextRequest) {
   }
   lastTestAt.set(user.id, Date.now());
 
-  insertTestNotification(organizationId, user.id);
+  const notificationId = insertTestNotification(organizationId, user.id);
   const asOf = new Date(Date.now() + PAST_DEBOUNCE_MS).toISOString();
-  const result = await flushNotifications(organizationId, asOf);
-  return NextResponse.json({ ok: true, ...result });
+
+  // Two side effects of the asOf shift, both deliberate and both org-wide:
+  //
+  //  1. `flushNotifications` is not user-scoped, and pushing asOf three minutes into the
+  //     future makes its debounce guard (`newest.m > asOfMs - DEBOUNCE_MS`) unsatisfiable
+  //     for *every* user in the org, since every real timestamp is more than 60s below
+  //     now + 180s. So pressing "test" force-flushes the whole org's backlog on both
+  //     channels, bypassing the 120s settle the normal sweep respects. A coworker can get
+  //     a premature partial digest here and a second one on the next sweep.
+  //  2. The returned counters are therefore org-wide totals, not the caller's. They are
+  //     reported under `org` for diagnostics only.
+  //
+  // Narrowing this needs a user-scoped flush in lib/repo/notifications.ts, which this task
+  // may not touch. `result` below is read back off the caller's own row instead, so the UI
+  // never mistakes a coworker's delivery for the caller's test.
+  const org = await flushNotifications(organizationId, asOf);
+  const result = testNotificationOutcome(notificationId, channel, asOf);
+  return NextResponse.json({ ok: true, result, org });
 }
