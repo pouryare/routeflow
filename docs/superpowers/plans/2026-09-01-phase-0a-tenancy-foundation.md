@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Branch:** `phase-0-tenancy`. Never commit to `main` during this plan. Production serves the prebuilt `.next` from this same working directory, so source edits are inert until someone runs `npm run build && systemctl restart coverage-map` — do not run either.
+- **Branch:** `phase-0-tenancy`. Never commit to `main` during this plan. Production serves the prebuilt `.next` from this same working directory, so source edits are inert until someone runs `npm run build && systemctl restart routeflow` — do not run either.
 - **Never point anything at `data/coverage.db`.** Migrations run on every `getDb()`. Tests set `process.env.COVERAGE_DB_PATH` to a temp file before importing anything from `lib/db`. A pre-migration backup already exists at `data/backups/pre-tenancy-20260901-224428.db` (141 customers, 45 orders, 6 users).
 - **Dates are stored ISO/Gregorian, displayed Jalali.** No new code stores a Jalali string. See `lib/jalali.ts`.
 - **Money is whole Toman in `INTEGER` columns.** See `lib/money.ts`. Do not add `REAL` money columns.

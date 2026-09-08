@@ -39,7 +39,7 @@ Suite: 146 files / 1381 tests green (+1 skipped). `npx tsc --noEmit` and `npx es
 1. Fresh backup via the SQLite backup API (never `cp` — WAL).
 2. Against a copy:
    `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/offline-migration-realdata tests/order-pipeline-migration-realdata tests/stock-migration-realdata tests/tenancy-schema` — confirm `foreign_key_check` empty, `client_uuid` NULL on every legacy row, partial indexes present, `sync_mutations`/`deleted_rows` empty, `orders`/`payments`/`customers` counts unchanged.
-3. `npm run build` + `systemctl restart coverage-map`.
+3. `npm run build` + `systemctl restart routeflow`.
 4. Live check the browser glue: install the SW (`-v3` cache), go offline, complete a delivery, watch the sync-status island show `1 در صف`, tap it, `لغو` inside the 9 s hold, then complete again and let the hold lapse; go online and confirm the push drains and `/api/sync/pull` reflects it. Repeat with `payment.record`. Confirm a `claim` op (approve/plan) is refused offline, not queued.
 
 ## Next: Phase 5 — Routing

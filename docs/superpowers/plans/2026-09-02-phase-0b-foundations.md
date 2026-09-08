@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Branch `phase-0b-foundations`.** Never commit to `main`. Production serves a prebuilt `.next` from this working directory; source edits are inert until `npm run build && systemctl restart coverage-map` — do not run either. The whole stack merges/deploys after Phase 10 (user decision 2026-09-02).
+- **Branch `phase-0b-foundations`.** Never commit to `main`. Production serves a prebuilt `.next` from this working directory; source edits are inert until `npm run build && systemctl restart routeflow` — do not run either. The whole stack merges/deploys after Phase 10 (user decision 2026-09-02).
 - **Never point anything at `data/coverage.db`.** Tests set `process.env.COVERAGE_DB_PATH` to a temp file before importing `lib/db`. Real-data checks: `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/tenancy-schema.test.ts`; take the copy via the SQLite backup API, never `cp` (live DB is WAL). Pre-migration backup exists: `data/backups/pre-tenancy-20260901-224428.db` (141 customers, 45 orders, 6 users).
 - **Migrations are idempotent and guarded on `PRAGMA table_info` / constraint text,** matching `lib/db.ts`. They run against live production data on the next deploy; every one must be safe to run twice.
 - **Dates are ISO/Gregorian in storage, Jalali in display** (`lib/jalali.ts`). No new code stores a Jalali string.

@@ -38,7 +38,7 @@ Suite: 135 files / 1339 tests green (+1 skipped). `npx tsc --noEmit` and `npx es
 1. Fresh backup via the SQLite backup API (never `cp` — WAL).
 2. Against a copy:
    `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/order-pipeline-migration-realdata tests/stock-migration-realdata tests/tenancy-schema tests/customer-opening-balance-migration tests/legacy-payment-backfill` — confirm `foreign_key_check` empty, every `orders.status` a valid `OrderStatus`, order count unchanged, every order has ≥1 `order_events` row, `order_events_backfill_done` set, `stock_reservations` empty.
-3. `npm run build` + `systemctl restart coverage-map`.
+3. `npm run build` + `systemctl restart routeflow`.
 
 ## Next: Phase 4 — Offline-first
 

@@ -484,7 +484,7 @@ Per phase, before moving on:
   `/dispatch`, record a فروش فوری, mark a stop delivered in airplane mode, restore
   signal, and confirm the queued write and pings both land with correct `recorded_at`.
 - Deploy per the standing rule for this app: `npm run build` then
-  `systemctl restart coverage-map` — source edits alone do not take effect.
+  `systemctl restart routeflow` — source edits alone do not take effect.
 
 ## 9. Sequencing
 

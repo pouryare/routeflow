@@ -915,7 +915,7 @@ Add `import { tryEmitEvent } from "./events";` if not already imported (Phase 1 
 git rm scripts/send-reminder-push.mjs
 ```
 
-Add a line to the plan's rollout note / a comment near the new `reminder_due` sweep: `// Replaces scripts/send-reminder-push.mjs — retire coverage-map-reminder-push.{service,timer} at deploy.`
+Add a line to the plan's rollout note / a comment near the new `reminder_due` sweep: `// Replaces scripts/send-reminder-push.mjs — retire the old reminder-push timer at deploy.`
 
 - [ ] **Step 7: Run the integration test + full regression**
 
@@ -971,7 +971,7 @@ Expected: 0 failed. Any pre-existing sweep/rules test that now also creates noti
 
 **Interfaces:**
 - Produces: `consumeTelegramStart(db: DatabaseSync, text: string, chatId: string) → { linked: boolean; userId?: number }` — parses `"/start <nonce>"`, looks up `users` by `telegram_link_nonce`, on hit sets `telegram_chat_id = chatId`, clears the nonce, returns `{ linked: true, userId }`; otherwise `{ linked: false }`. Idempotent — a second call with the now-cleared nonce returns `{ linked: false }`.
-- `scripts/telegram-poll.mjs`: standalone; `DatabaseSync(process.env.COVERAGE_DB_PATH || …)`, exits 0 with a log if `!process.env.TELEGRAM_BOT_TOKEN`; long-poll loop `getUpdates?offset=<n>&timeout=50`; persists offset to `<db>.telegram-offset`; for each message text, `consumeTelegramStart` → on `linked` reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`, else optionally a one-line help. `Restart=always` systemd unit `coverage-map-telegram.service` — documented in a comment header, not installed.
+- `scripts/telegram-poll.mjs`: standalone; `DatabaseSync(process.env.COVERAGE_DB_PATH || …)`, exits 0 with a log if `!process.env.TELEGRAM_BOT_TOKEN`; long-poll loop `getUpdates?offset=<n>&timeout=50`; persists offset to `<db>.telegram-offset`; for each message text, `consumeTelegramStart` → on `linked` reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`, else optionally a one-line help. `Restart=always` systemd unit `routeflow-telegram.service` — documented in a comment header, not installed.
 
 - [ ] **Step 1: Write the failing test** for `consumeTelegramStart` (in `tests/telegram-poll.test.ts`, DB header like Task 2): seed a user with `telegram_link_nonce = 'abc'`; `consumeTelegramStart(db, "/start abc", "999")` → `{ linked: true, userId }`, and `users.telegram_chat_id = '999'`, nonce null; a second call → `{ linked: false }`; `consumeTelegramStart(db, "hello", "999")` → `{ linked: false }`; `"/start "` (empty nonce) → `{ linked: false }`.
 
@@ -1049,7 +1049,7 @@ Run: `npm run build` **on a machine with ≥2 GB free** — the dev sandbox OOMs
   - every pre-existing `push_subscriptions` row still present, all with `user_id IS NULL` (`SELECT COUNT(*) FROM push_subscriptions WHERE user_id IS NOT NULL` = 0).
   - snapshot counts unchanged; `PRAGMA foreign_key_check` = `[]`.
 
-- [ ] **Step 2: Prove it.** WAL-aware-copy `/root/pourya/coverage-map/backups/pre-crm-erp-deploy-20260902-155938.db` to tmp, run with `NOTIF_P2_MIGRATION_CHECK_DB` pointed at it → the `it` executes and PASSES. Then run with the var unset → SKIPs cleanly. Report both.
+- [ ] **Step 2: Prove it.** WAL-aware-copy `/root/pourya/RouteFlow/backups/pre-crm-erp-deploy-20260902-155938.db` to tmp, run with `NOTIF_P2_MIGRATION_CHECK_DB` pointed at it → the `it` executes and PASSES. Then run with the var unset → SKIPs cleanly. Report both.
 
 - [ ] **Step 3: Full suite.** `rm -rf node_modules/.vite node_modules/.vitest && npx vitest run` → 0 failed.
 

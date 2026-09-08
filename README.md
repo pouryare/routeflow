@@ -127,16 +127,17 @@ this import.
 
 ## Deployment (already set up on this server)
 
-> The systemd unit, the working directory and `COVERAGE_DB_PATH` are still named
-> `coverage-map`. Renaming those means touching a live service and is deliberately
-> not done here — see `docs/crm-erp-plan.md` §2.4.
+> Renamed on 2026-09-08: the working directory is `/root/pourya/RouteFlow` and the
+> systemd units are `routeflow*`. The database file (`data/coverage.db`) and its
+> `COVERAGE_DB_PATH` env var keep their old names — those are read by every backup
+> in `backups/`, so renaming them is a separate, data-touching job.
 
-Runs as systemd service `coverage-map` on port **3003**, bound to `127.0.0.1` only
+Runs as systemd service `routeflow` on port **3003**, bound to `127.0.0.1` only
 (not reachable from outside the machine directly — only through Caddy):
 
 ```bash
-systemctl status coverage-map
-journalctl -u coverage-map -f
+systemctl status routeflow
+journalctl -u routeflow -f
 ```
 
 To expose it publicly, add a subdomain block to Caddy — see
@@ -146,7 +147,7 @@ add it yourself and run `systemctl reload caddy`).
 To deploy a code change:
 ```bash
 npm run build
-systemctl restart coverage-map
+systemctl restart routeflow
 ```
 
 ## Data safety

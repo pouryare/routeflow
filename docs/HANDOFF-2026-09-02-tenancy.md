@@ -2,7 +2,7 @@
 
 Read this first in a fresh conversation. It replaces the need to re-derive
 anything from chat history. Repo: `github.com/pouryare/routeflow` (renamed
-from coverage-map on 2026-09-01). Working dir: `/root/pourya/coverage-map`.
+from RouteFlow on 2026-09-01). Working dir: `/root/pourya/RouteFlow`.
 Branch: `phase-0-tenancy` (not merged to `main`).
 
 ## ✅ RESOLVED 2026-09-02: the "lost" planning docs were never lost
@@ -10,8 +10,8 @@ Branch: `phase-0-tenancy` (not merged to `main`).
 This section previously claimed `docs/crm-erp-plan.md` and
 `docs/crm-erp-source-extract.md` had never been written. **They had** —
 they were sitting at `/root/pourya/docs/` (one directory *above* the
-repo), so `git log --all` and a search inside `coverage-map/` both missed
-them. They are now copied into `coverage-map/docs/` and committed, so
+repo), so `git log --all` and a search inside `RouteFlow/` both missed
+them. They are now copied into `RouteFlow/docs/` and committed, so
 they are version-controlled and discoverable from here on.
 
 - **`docs/crm-erp-plan.md`** — the real v2 plan. 771 lines: Part 0
@@ -368,7 +368,7 @@ after Phase 10 (user decision, 2026-09-02).
 
 ## How to resume
 
-1. In a new conversation, in `/root/pourya/coverage-map`, confirm you're on
+1. In a new conversation, in `/root/pourya/RouteFlow`, confirm you're on
    `phase-0-tenancy` and pull this file up
    (`docs/HANDOFF-2026-09-02-tenancy.md`).
 2. Run `npx vitest run` once to confirm still green before touching

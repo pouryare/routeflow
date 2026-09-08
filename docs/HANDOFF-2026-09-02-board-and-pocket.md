@@ -2,7 +2,7 @@
 
 **Date:** 2026-09-02 · **Branch:** `board-and-pocket` (off `main`) · **Status:** ✅ merged to `main` (fast-forward, 17 commits) and deployed live 2026-09-02.
 
-**Deploy record (2026-09-02):** pre-deploy backup `data/backups/pre-board-pocket-deploy-20260902-181705.db` (via `db.serialize()`, not `cp`). Full suite green on the merged `main` (216 files / 1692 passed / 1 skipped, `tsc --noEmit` clean). Real-data migration check passed against a copy of the live DB. `npm run build` clean (`/sales/pocket`, `/sales/tasks`, `/api/tasks/[id]/move` in the route list). `systemctl restart coverage-map` — service `active`, `NRestarts=0`. Live DB migrated on service start: `tasks.stage` + `tasks.started_at` + `users.prefs_json` added, `task_recurrences` created, `board_pocket_reminders_folded` marker set, FK check clean, 0 reminders to fold (live `reminders` table was already empty). `https://map.pouryarezaee.com` serves the new routes (307 → login when unauthed; a 404 would have meant a stale build). **Still outstanding:** the browser click-through in step 4 below — not runnable headless.
+**Deploy record (2026-09-02):** pre-deploy backup `data/backups/pre-board-pocket-deploy-20260902-181705.db` (via `db.serialize()`, not `cp`). Full suite green on the merged `main` (216 files / 1692 passed / 1 skipped, `tsc --noEmit` clean). Real-data migration check passed against a copy of the live DB. `npm run build` clean (`/sales/pocket`, `/sales/tasks`, `/api/tasks/[id]/move` in the route list). `systemctl restart routeflow` — service `active`, `NRestarts=0`. Live DB migrated on service start: `tasks.stage` + `tasks.started_at` + `users.prefs_json` added, `task_recurrences` created, `board_pocket_reminders_folded` marker set, FK check clean, 0 reminders to fold (live `reminders` table was already empty). `https://map.pouryarezaee.com` serves the new routes (307 → login when unauthed; a 404 would have meant a stale build). **Still outstanding:** the browser click-through in step 4 below — not runnable headless.
 
 Spec: `docs/superpowers/specs/2026-09-02-board-and-pocket-design.md` · Plan: `docs/superpowers/plans/2026-09-02-board-and-pocket.md` (18 tasks, done).
 
@@ -57,7 +57,7 @@ Steps 1–3 were run on 2026-09-02 (see the deploy record at the top). Step 4 is
 
 1. ✅ Fresh backup via the SQLite backup API → `data/backups/pre-board-pocket-deploy-20260902-181705.db`.
 2. ✅ `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/board-pocket-migration-realdata.test.ts` — FK check empty, columns/table present and `NULL`/empty, reminders folded 1:1, re-run a no-op.
-3. ✅ `npm run build` + `systemctl restart coverage-map`.
+3. ✅ `npm run build` + `systemctl restart routeflow`.
 4. **Browser pass** — NOT yet done (not runnable headless); do this now that it is live:
    - as a **salesperson** — `/sales/pocket`: four tiles with real counts; the امروز/این‌هفته list; a customer name opens the sheet; `+ یادداشت` adds a no-due task; `+ یادآوری` adds a dated one and bumps the tile.
    - as a **group_manager** — `/sales/tasks`: drag a card between lanes (desktop); switch وضعیت / زمان / گردش‌کار; use the `⋯` menu; drop an outreach card into انجام‌شده → the outcome chips appear. The Pocket role/team strip scopes to a report.

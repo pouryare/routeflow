@@ -33,7 +33,7 @@ Suite: 170 files / 1479 tests green (+1 skipped). `tsc` + `eslint app/ lib/` cle
 
 1. Fresh backup via the SQLite backup API.
 2. `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/spine-migration-realdata …` — FK check empty, six tables present, five default rules, rest empty.
-3. `npm run build` + `systemctl restart coverage-map`.
+3. `npm run build` + `systemctl restart routeflow`.
 4. Wire a scheduler (cron, or a `setInterval` in an admin process) to `POST /api/rules/run` per tenant every ~15 min. Confirm a seeded pending credit approval raises a critical alert and a manager task after an hour, and escalates to the owner after four.
 5. Set real `targets` for the current period so the salesperson / manager briefing target panels populate.
 

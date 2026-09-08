@@ -32,7 +32,7 @@ Suite: 111 files / 1214 tests green (+1 skipped). `npx tsc --noEmit` and `npx es
 
 1. Fresh backup via the SQLite backup API (never `cp` — WAL).
 2. Against a copy: `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/customer-opening-balance-migration.test.ts tests/legacy-payment-backfill.test.ts tests/tenancy-*` — confirm `debt_*` gone, `opening_balance_toman` present and 0, one synthetic CASH payment per legacy `paid_toman`, `foreign_key_check` empty.
-3. `npm run build` + `systemctl restart coverage-map` (the standing "never do this mid-development" rule lifts only for the coordinated deploy).
+3. `npm run build` + `systemctl restart routeflow` (the standing "never do this mid-development" rule lifts only for the coordinated deploy).
 
 ## Next: Phase 2 — Stock / batches
 

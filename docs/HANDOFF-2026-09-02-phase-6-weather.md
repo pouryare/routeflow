@@ -31,7 +31,7 @@ Suite: 162 files / 1443 tests green (+1 skipped). `tsc` + `eslint app/ lib/` cle
 
 1. Fresh backup via the SQLite backup API.
 2. `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/weather-migration-realdata …` — FK check empty, tables present, 6 NULL-org factor rows, 0 tenant rows.
-3. `npm run build` + `systemctl restart coverage-map`.
+3. `npm run build` + `systemctl restart routeflow`.
 4. Set `OPEN_METEO_URL` (or leave the default public host); `POST /api/sales/weather/refresh` once and confirm `written > 0`; build a plan for a day with adverse weather and confirm the band shows and `capacity_stops` on the committed run is below base.
 
 ## Next: Phase 7 — Spine + briefing

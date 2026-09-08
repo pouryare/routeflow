@@ -12,7 +12,7 @@
 
 ## Global Constraints
 
-- **Branch `phase-1-money`.** Never commit to `main`. Never run `npm run build` or `systemctl restart coverage-map`. The whole branch stack merges and deploys after Phase 10.
+- **Branch `phase-1-money`.** Never commit to `main`. Never run `npm run build` or `systemctl restart routeflow`. The whole branch stack merges and deploys after Phase 10.
 - **Money is whole Toman in `INTEGER NOT NULL`.** No `REAL` money columns. Use `sumToman` / `roundToman` from `lib/money.ts`.
 - **Dates:** ISO/Gregorian stored, Jalali shown (`lib/jalali.ts`, `lib/format.ts`).
 - **Migrations** are idempotent and `PRAGMA table_info` / constraint-guarded, table-rebuild style (`PRAGMA foreign_keys = OFF; BEGIN; CREATE new; INSERT…SELECT; DROP; ALTER RENAME; recreate indexes; COMMIT; PRAGMA foreign_keys = ON`). They run against live data on the next deploy.

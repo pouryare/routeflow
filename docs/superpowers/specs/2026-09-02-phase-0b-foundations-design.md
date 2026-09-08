@@ -27,7 +27,7 @@ Phase 1 (Money).
 
 - **Branch `phase-0b-foundations`.** Never commit to `main`. Production serves a prebuilt
   `.next` from this working directory; source edits are inert until `npm run build &&
-  systemctl restart coverage-map` — do not run either. Merge/deploy of the whole stack is
+  systemctl restart routeflow` — do not run either. Merge/deploy of the whole stack is
   deferred until after Phase 10 (user decision, 2026-09-02).
 - **Never point anything at `data/coverage.db`.** Tests set `process.env.COVERAGE_DB_PATH`
   to a temp file before importing `lib/db`. Real-data checks use

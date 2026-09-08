@@ -12,7 +12,7 @@
 // The unit is Restart=always because getUpdates is a 50-second blocking call — a clean
 // exit is not expected, and a crash should simply resume from the persisted offset:
 //
-//   # /etc/systemd/system/coverage-map-telegram.service   (NOT installed by this script)
+//   # /etc/systemd/system/routeflow-telegram.service   (NOT installed by this script)
 //   [Unit]
 //   Description=RouteFlow telegram link worker
 //   After=network-online.target

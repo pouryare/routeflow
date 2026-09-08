@@ -30,7 +30,7 @@ Suite: **green** (`tsc` + `eslint app/ lib/` clean — see the commit's CI notes
 
 1. Fresh backup via the SQLite backup API.
 2. `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/academy-migration-realdata …` — FK check empty, two tables, 8 starter cards, rest empty.
-3. `npm run build` + `systemctl restart coverage-map`.
+3. `npm run build` + `systemctl restart routeflow`.
 4. **Backlog:** author `content/academy/*/index.mdx` for modules 1–7 from the source conversation; flip `_manifest.json` `status` to `ready` per module as it lands. Add `objection_cards` rows for the `customer_type`-specific scripts (§4.4: "a hotel purchasing manager and a small restaurant owner are not the same conversation").
 
 ## Next: Phase 9 — Analysis

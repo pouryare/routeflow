@@ -408,9 +408,9 @@ The sales-redesign branch introduced a card top bar (.kargah .kcard::after and 6
 
 **Root cause:** main has NO card top bar in the .kargah scope: .kargah .card (globals.css main ~2505) and .kargah .kblock (~1845) are plain 1px border + --sh-1; the only edge-marks are .kargah .prow::before (~2601, a 3px leading-edge hover rail) and .kargah .ptile::before (~2640, a radial --accent-soft hover wash). The 'neon' box-shadow: 0 0 Npx -1px var(--accent) vocabulary image 3 quotes exists only on map markers (globals.css ~783/832/1055/1086/1345). sales-redesign added .kargah .kcard::after / .card::after / .kblock::after / .prow::after / .ptile::after / .gcard::after / .face::after (globals.css 2623-2634) as content:''; position:absolute; inset-block-start:0; inset-inline:0; height:3px; background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--tint-plum)); z-index:2 — no mask, no filter/box-shadow. The [data-tone] rules (2635-2638) only swap background to a solid var(--good|--warn|--crit|--info), still flat. The design spec §7.2 (docs/superpowers/specs/2026-09-02-sales-redesign-design.md lines 176-190) under-specified the bar as '3px strip pinned to inset-block-start:0', so the code matched the spec, not image 3. Because .kcard/.card/.kblock/.prow/.ptile/.gcard/.face all set overflow:hidden + border-radius (--r-xl 20px, --r-2xl 26px, --r-lg 16px), the strip's ends are clipped square by the corner arc (the 'hard squared corner' complaint) and any outward box-shadow glow would be clipped at the border-box and never show.
 
-- `/root/pourya/coverage-map/app/globals.css` @ 2623-2638 (.kargah .kcard::after, .card::after, .kblock::after, .prow::after, .ptile::after, .gcard::after, .face::after and the four .kargah [data-tone=...]::after rules) — The flat strip + solid-tone swap to replace with the masked/lit version below.
-- `/root/pourya/coverage-map/app/globals.css` @ 2607-2621 (.kargah .kcard/.card/.kblock primitive) plus .gcard ~1961, .prow ~2760, .ptile ~2800, .face ~2154 — All seven selectors carry overflow:hidden + border-radius; this clip dictates the technique — mask fade wider than the radius, and drop-shadow (not box-shadow) so the bloom is not clipped away and spreads downward onto the surface.
-- `/root/pourya/coverage-map/docs/superpowers/specs/2026-09-02-sales-redesign-design.md` @ 176-190 (§7.2 Colorful top bar (image 3)) — Spec text says only '3px strip pinned to inset-block-start:0'; update it to require the transparent-end mask, the fade-zone-vs-corner-radius rule, and the dark-skin-only drop-shadow bloom with a light-skin hairline fallback.
+- `/root/pourya/RouteFlow/app/globals.css` @ 2623-2638 (.kargah .kcard::after, .card::after, .kblock::after, .prow::after, .ptile::after, .gcard::after, .face::after and the four .kargah [data-tone=...]::after rules) — The flat strip + solid-tone swap to replace with the masked/lit version below.
+- `/root/pourya/RouteFlow/app/globals.css` @ 2607-2621 (.kargah .kcard/.card/.kblock primitive) plus .gcard ~1961, .prow ~2760, .ptile ~2800, .face ~2154 — All seven selectors carry overflow:hidden + border-radius; this clip dictates the technique — mask fade wider than the radius, and drop-shadow (not box-shadow) so the bloom is not clipped away and spreads downward onto the surface.
+- `/root/pourya/RouteFlow/docs/superpowers/specs/2026-09-02-sales-redesign-design.md` @ 176-190 (§7.2 Colorful top bar (image 3)) — Spec text says only '3px strip pinned to inset-block-start:0'; update it to require the transparent-end mask, the fade-zone-vs-corner-radius rule, and the dark-skin-only drop-shadow bloom with a light-skin hairline fallback.
 
 **Fix:**
 Replace globals.css 2623-2638 with:
@@ -485,9 +485,9 @@ The branch (commit b5593f9) split the old single pill nav into two rows: a new .
 
 **Root cause:** On main, TabPill rendered one <nav class="seg"> with a travelling .thumb. Commit b5593f9 added a second row <nav class="seg-groups"> above it whose only active affordance is `.kargah .seg-groups > a[aria-current="true"] { background: var(--accent-soft); color: var(--accent-text); }` (globals.css ~1888) — a flat swap, no thumb, no spring. TabPill.move() (TabPill.tsx:51-59) queries a single `seg` ref for `[aria-current="page"]` + `.thumb`; the group row is never measured and has no .thumb element. The group buttons also use aria-current="true" (string), not "page", so even the existing .seg selectors would not target them.
 
-- `/root/pourya/coverage-map/components/kargah/TabPill.tsx` @ whole file (1-111) — Add a second ref `grp`, a shared `slideThumb(root, currentSelector)` helper, render <nav class="seg seg-groups"> with its own <span class="thumb">, drive both rows from the one effect, add .ready to both.
-- `/root/pourya/coverage-map/app/globals.css` @ .kargah .seg-groups block, lines 1878-1891 — Replace the standalone group-row styling with a thin override on top of the .seg primitive (the element now carries both classes).
-- `/root/pourya/coverage-map/app/globals.css` @ .kargah .seg, lines 1893-1897 — No change needed for the pill itself — .seg.ready .thumb transition already applies once the element has class "seg"; see finding 2 for the max-width/min-width add.
+- `/root/pourya/RouteFlow/components/kargah/TabPill.tsx` @ whole file (1-111) — Add a second ref `grp`, a shared `slideThumb(root, currentSelector)` helper, render <nav class="seg seg-groups"> with its own <span class="thumb">, drive both rows from the one effect, add .ready to both.
+- `/root/pourya/RouteFlow/app/globals.css` @ .kargah .seg-groups block, lines 1878-1891 — Replace the standalone group-row styling with a thin override on top of the .seg primitive (the element now carries both classes).
+- `/root/pourya/RouteFlow/app/globals.css` @ .kargah .seg, lines 1893-1897 — No change needed for the pill itself — .seg.ready .thumb transition already applies once the element has class "seg"; see finding 2 for the max-width/min-width add.
 
 **Fix:**
 REPLACE components/kargah/TabPill.tsx entirely with:
@@ -639,8 +639,8 @@ Nothing else in the .seg block changes for this finding; `.kargah .seg.ready .th
 
 **Root cause:** .kargah .segwrap (globals.css:1877) is a plain block, and .kargah .seg (1893-1897) is display:flex with the default justify-content:flex-start plus overflow-x:auto, so both rows hug the leading (right, in this RTL app) edge. Simply adding justify-content:center to .seg triggers the well-known flex+scroll bug: when the row is wider than the bar, the overflow past the start edge becomes unreachable by scroll. The fix is to center via the parent's cross axis instead, and let each row shrink-wrap.
 
-- `/root/pourya/coverage-map/app/globals.css` @ .kargah .segwrap, line 1877 — Make it a centered flex column.
-- `/root/pourya/coverage-map/app/globals.css` @ .kargah .seg, lines 1893-1897 — Add max-width:100%; min-width:0 so each row shrink-wraps and centers when it fits, and scrolls inside itself when it does not.
+- `/root/pourya/RouteFlow/app/globals.css` @ .kargah .segwrap, line 1877 — Make it a centered flex column.
+- `/root/pourya/RouteFlow/app/globals.css` @ .kargah .seg, lines 1893-1897 — Add max-width:100%; min-width:0 so each row shrink-wraps and centers when it fits, and scrolls inside itself when it does not.
 
 **Fix:**
 In app/globals.css:
@@ -679,9 +679,9 @@ No JS change: slideThumb() reads offsetLeft/offsetWidth from the row's own box, 
 
 **Root cause:** In app/sales/layout.tsx the brand bar (<div class="top">) and the nav (<TabPill> -> <div class="segwrap">) are static, non-sticky block elements, and no code observes scroll direction. There is no mechanism to hide/show them. Needs a position:sticky wrapper plus a small client component that watches scrollY direction and toggles a transform class.
 
-- `/root/pourya/coverage-map/components/kargah/Chrome.tsx` @ new file — Client wrapper: watches scroll direction via a rAF-throttled passive listener, toggles `.chrome-hidden`. Reveals on route change. No-ops under reduced motion.
-- `/root/pourya/coverage-map/app/sales/layout.tsx` @ lines 40-66 (the .app div) — Wrap <div class="top">...</div> and <TabPill/> together in <Chrome>...</Chrome>; leave <RevealRoute/> and <div class="route-fade"> as siblings after it.
-- `/root/pourya/coverage-map/app/globals.css` @ after line 1918 (end of the tabs block) — New `.kargah .chrome` rules: position:sticky, full-bleed backdrop, transform transition, .chrome-hidden translateY(-100%), :focus-within and reduced-motion guards.
+- `/root/pourya/RouteFlow/components/kargah/Chrome.tsx` @ new file — Client wrapper: watches scroll direction via a rAF-throttled passive listener, toggles `.chrome-hidden`. Reveals on route change. No-ops under reduced motion.
+- `/root/pourya/RouteFlow/app/sales/layout.tsx` @ lines 40-66 (the .app div) — Wrap <div class="top">...</div> and <TabPill/> together in <Chrome>...</Chrome>; leave <RevealRoute/> and <div class="route-fade"> as siblings after it.
+- `/root/pourya/RouteFlow/app/globals.css` @ after line 1918 (end of the tabs block) — New `.kargah .chrome` rules: position:sticky, full-bleed backdrop, transform transition, .chrome-hidden translateY(-100%), :focus-within and reduced-motion guards.
 
 **Fix:**
 NEW FILE components/kargah/Chrome.tsx:
@@ -849,10 +849,10 @@ The `.kargah .task` / `.col` / `.colhead` / `.board` CSS is byte-identical betwe
 
 **Root cause:** app/globals.css line 1819: the branch dropped `max-width: 1240px; margin: 0 auto` from `.kargah .app` in favour of `width: 100%; max-width: none; margin: 0`. `.kargah .board` (line 2196) is `grid-template-columns: repeat(3,1fr)` and `.kargah .board.pipe` (line 2260) is `repeat(4,1fr)` with no track ceiling and `justify-content` unset (default stretch). Previously the 1240px container held the board to ~388px (3-col) / ~290px (4-col) columns; now on a 1920px monitor columns are ~590px/~440px and on a 2560px monitor ~785px/~588px. Every `.kargah .task` is `display:block; width:100%`, so each card inherits that width while its content stays ~30 characters -- the remainder renders as empty card. `.kargah .task .top` is `justify-content: space-between`, so on a wide card the title and amount are flung to opposite edges with a canyon between them.
 
-- `/root/pourya/coverage-map/app/globals.css` @ 1819 (.kargah .app) — lost max-width/centring; now full-bleed with a clamp gutter
-- `/root/pourya/coverage-map/app/globals.css` @ 2196-2200 (.kargah .board) and 2260 (.kargah .board.pipe) — grid tracks are repeat(3,1fr)/repeat(4,1fr) with no max column width and no justify-content
-- `/root/pourya/coverage-map/components/sales/OrderPipeline.tsx` @ 169 (div.board.pipe) — renders the 4-lane order pipeline at /sales/board -- unchanged by branch, inherits the width blow-up
-- `/root/pourya/coverage-map/components/board/Board.tsx` @ ~150 (div.board), 160-330 (div.task) — renders the 3/4-lane task board at /sales/tasks -- unchanged by branch, inherits the width blow-up; note inline style={{ padding: "6px 24px 20px" }} on the board div
+- `/root/pourya/RouteFlow/app/globals.css` @ 1819 (.kargah .app) — lost max-width/centring; now full-bleed with a clamp gutter
+- `/root/pourya/RouteFlow/app/globals.css` @ 2196-2200 (.kargah .board) and 2260 (.kargah .board.pipe) — grid tracks are repeat(3,1fr)/repeat(4,1fr) with no max column width and no justify-content
+- `/root/pourya/RouteFlow/components/sales/OrderPipeline.tsx` @ 169 (div.board.pipe) — renders the 4-lane order pipeline at /sales/board -- unchanged by branch, inherits the width blow-up
+- `/root/pourya/RouteFlow/components/board/Board.tsx` @ ~150 (div.board), 160-330 (div.task) — renders the 3/4-lane task board at /sales/tasks -- unchanged by branch, inherits the width blow-up; note inline style={{ padding: "6px 24px 20px" }} on the board div
 
 **Fix:**
 Cap the column tracks and park the board on the reading edge. Replace the two rules in app/globals.css:
@@ -876,11 +876,11 @@ Why this shape: minmax(0, 340px) caps each column at a normal kanban width on bi
 
 **Root cause:** Pre-existing values in app/globals.css: .kargah .task (2229-2237) has padding: 13px 14px; margin-bottom: 9px. .kargah .col (2201-2211) has padding: 14px; min-height: 240px. .kargah .colhead (2216-2219) has margin-bottom: 12px. .kargah .task .m (2243-2246) is font-size: 12px. On the artifact's 2-cards-per-lane demo these felt fine; with real data and (even after Finding 1) a ~300px card the internal rhythm is still airy, and a near-empty lane is a 240px grey void. Board.tsx also adds inline style={{ marginTop: 8 }} on the second .top row and style={{ marginTop: 4 }} on the title.
 
-- `/root/pourya/coverage-map/app/globals.css` @ 2201-2211 (.kargah .col) — padding 14px, min-height 240px
-- `/root/pourya/coverage-map/app/globals.css` @ 2216-2219 (.kargah .colhead) — margin-bottom 12px
-- `/root/pourya/coverage-map/app/globals.css` @ 2229-2246 (.kargah .task, .task .n, .task .m) — padding 13px 14px, margin-bottom 9px, .m font-size 12px
-- `/root/pourya/coverage-map/app/globals.css` @ 2263-2266 (.kargah .task .asg) — margin-top 8px, font-size 11.5px
-- `/root/pourya/coverage-map/components/board/Board.tsx` @ ~250 (title div), ~275 (second .top row) — inline marginTop: 4 on title, marginTop: 8 on the drag-handle/menu row
+- `/root/pourya/RouteFlow/app/globals.css` @ 2201-2211 (.kargah .col) — padding 14px, min-height 240px
+- `/root/pourya/RouteFlow/app/globals.css` @ 2216-2219 (.kargah .colhead) — margin-bottom 12px
+- `/root/pourya/RouteFlow/app/globals.css` @ 2229-2246 (.kargah .task, .task .n, .task .m) — padding 13px 14px, margin-bottom 9px, .m font-size 12px
+- `/root/pourya/RouteFlow/app/globals.css` @ 2263-2266 (.kargah .task .asg) — margin-top 8px, font-size 11.5px
+- `/root/pourya/RouteFlow/components/board/Board.tsx` @ ~250 (title div), ~275 (second .top row) — inline marginTop: 4 on title, marginTop: 8 on the drag-handle/menu row
 
 **Fix:**
 Apply these exact values in app/globals.css (keep every other property on each rule as-is):
@@ -920,7 +920,7 @@ Deltas: task padding 13/14 -> 10/12; card gap (margin-bottom) 9 -> 6; column pad
 
 **Root cause:** The branch's .kcard primitive (app/globals.css 2607-2665) aliases .card and .kblock, adding a 3px ::after top bar, a ::before hover rail, overflow:hidden and isolation. The board pages wrap everything in <div className="kblock">, so the section shell gains the bar/rail. .kargah .task is NOT in any .kcard selector list, so task cards get no extra bar and no extra inset. .kcard__body / .kblock__body padding: 0 24px 20px is a new class the board markup does not use. So the primitive does not inflate the task cards; the whitespace is entirely Finding 1 (width) plus Finding 2 (internal padding).
 
-- `/root/pourya/coverage-map/app/globals.css` @ 2607-2665 (.kcard primitive), 2660-2661 (.kcard__body padding: 0 24px 20px) — aliases .card/.kblock and adds edge marks; does not target .task; __body inset unused by board markup
+- `/root/pourya/RouteFlow/app/globals.css` @ 2607-2665 (.kcard primitive), 2660-2661 (.kcard__body padding: 0 24px 20px) — aliases .card/.kblock and adds edge marks; does not target .task; __body inset unused by board markup
 
 **Fix:**
 No change required. Recorded so the reviewer does not chase the .kcard__body `0 24px 20px` inset -- it does not apply to the kanban. If the section shell's own 3px bar feels heavy above the toolbar, `.kargah .kblock:has(.board) { overflow: visible }` is a cosmetic option unrelated to the complaint.

@@ -383,7 +383,8 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
   }
 
   // reminder_due: an unresolved reminder at/past its due_date. Replaces
-  // scripts/send-reminder-push.mjs -- retire coverage-map-reminder-push.{service,timer}
+  // scripts/send-reminder-push.mjs -- that script and its systemd timer were both retired
+  // on deploy; this sweep is the only reminder notifier now.
   // at deploy.
   for (const r of db
     .prepare(

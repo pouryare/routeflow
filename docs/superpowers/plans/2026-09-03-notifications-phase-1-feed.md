@@ -1416,7 +1416,7 @@ Expected: build succeeds, no type errors.
 
 Then, per the `run` skill / repo conventions:
 ```bash
-npm run build && sudo systemctl restart <the coverage-map service>
+npm run build && sudo systemctl restart <the routeflow service>
 ```
 Log in as a salesperson, have a manager pass an order's review, confirm the bell shows a `۱` badge within 60s and the centre lists «سفارش تأیید شد».
 

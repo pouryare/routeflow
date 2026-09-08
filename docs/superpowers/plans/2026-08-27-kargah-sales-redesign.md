@@ -30,7 +30,7 @@ Copied verbatim from the spec. Every task's requirements implicitly include thes
 - Persian copy throughout; the app is RTL. Money via `faToman`, counts via `faNum` from `lib/format.ts` — never hand-formatted.
 - **The کارگاه palette is scoped to `.kargah`, never to `:root`.** 21 files outside `/sales` — the map among them — read `--bg`, `--surface` and `--accent` from `:root`. Redefining those globally re-skins the map, which is explicitly out of scope. The existing `:root` palette stays exactly as it is.
 
-**Deploy note:** this app runs as a systemd production service. Source edits do not appear until `npm run build && systemctl restart coverage-map`. Do not restart until Task 14.
+**Deploy note:** this app runs as a systemd production service. Source edits do not appear until `npm run build && systemctl restart routeflow`. Do not restart until Task 14.
 
 ---
 
@@ -1347,8 +1347,8 @@ Expected: succeeds. This app has previously needed `scripts/build-with-swap.sh` 
 - [ ] **Step 2: Restart the service**
 
 ```bash
-sudo systemctl restart coverage-map
-systemctl is-active coverage-map
+sudo systemctl restart routeflow
+systemctl is-active RouteFlow
 ```
 
 Expected: `active`.

@@ -34,7 +34,7 @@ Suite: 155 files / 1416 tests green (+1 skipped). `tsc` + `eslint app/ lib/` cle
 1. Fresh backup via the SQLite backup API.
 2. `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/routing-migration-realdata …` — FK check empty, `delivery_runs` columns + `'ready'` present, row count unchanged.
 3. Stand up OSRM + VROOM containers against a Tehran OSM extract; set `OSRM_TABLE_URL` + `VROOM_URL`. Verify a `/api/sales/routing/plan` call returns `source: 'vroom'`.
-4. `npm run build` + `systemctl restart coverage-map`.
+4. `npm run build` + `systemctl restart routeflow`.
 5. Enter real `vehicles` rows (plate, weight/volume/stop limits, `has_refrigeration`) and at least one `route_templates` + `route_schedules` with a `cutoff_time`.
 
 ## Next: Phase 6 — Weather

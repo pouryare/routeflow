@@ -32,7 +32,7 @@ Suite: **green** — `tsc` + `eslint app/ lib/` clean (see the commit CI notes).
 
 1. Fresh backup via the SQLite backup API.
 2. `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/analysis-migration-realdata …` — FK check empty, two tables, `kpi_snapshots` empty, 14 NULL-org definitions, `refreshAll` clean.
-3. `npm run build` + `systemctl restart coverage-map`.
+3. `npm run build` + `systemctl restart routeflow`.
 4. **Wire a scheduler** to `POST /api/analysis/refresh` (hourly or on a post-delivery hook) so the board and Action Center stay warm — until then a manager clicks it, or it runs on first page load being empty is acceptable for a small tenant.
 
 ## Next: Phase 10 — Prediction

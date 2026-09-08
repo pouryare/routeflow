@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 
 /** POSTs a sweep endpoint (rules / analysis / prediction refresh), then re-renders the
  *  server component so the fresh rows show. The endpoints also run on a timer
- *  (coverage-map-sweep-*.timer); this is the "I need it now" path. */
+ *  (routeflow-sweep-*.timer); this is the "I need it now" path. */
 export default function SweepButton({
   endpoint,
   idleLabel,

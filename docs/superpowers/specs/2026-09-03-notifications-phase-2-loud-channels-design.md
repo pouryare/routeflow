@@ -68,7 +68,7 @@ Parallel to `lib/push.ts`. `telegramConfigured(): boolean` (false if `TELEGRAM_B
 
 ### `scripts/telegram-poll.mjs` (new)
 
-Standalone Node (not Next). Reads `COVERAGE_DB_PATH`, `TELEGRAM_BOT_TOKEN` from `process.env`. Long-poll loop: `getUpdates?offset=<n>&timeout=50`; persists the offset (a `meta`/kv row or a file next to the DB). For each message whose text is `/start <nonce>`: `SELECT id FROM users WHERE telegram_link_nonce = ?`; if found, `UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = NULL`; reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`. Unknown text → optional one-line help reply, no state change. Exits non-zero and logs if the token is unset. systemd unit `coverage-map-telegram.service` (simple, `Restart=always`), documented in the plan; not installed by code.
+Standalone Node (not Next). Reads `COVERAGE_DB_PATH`, `TELEGRAM_BOT_TOKEN` from `process.env`. Long-poll loop: `getUpdates?offset=<n>&timeout=50`; persists the offset (a `meta`/kv row or a file next to the DB). For each message whose text is `/start <nonce>`: `SELECT id FROM users WHERE telegram_link_nonce = ?`; if found, `UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = NULL`; reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`. Unknown text → optional one-line help reply, no state change. Exits non-zero and logs if the token is unset. systemd unit `routeflow-telegram.service` (simple, `Restart=always`), documented in the plan; not installed by code.
 
 ### `flushNotifications(orgId, asOfIso, db)` in `lib/repo/notifications.ts` (new)
 
@@ -92,7 +92,7 @@ Constants (`DEBOUNCE_MS`, `EDIT_WINDOW_MS`, group cap) are module consts with a 
   - `entity_type = 'district'` → the district's group manager(s) (`districts.group_id` → `users` with role `group_manager` in that group), or the org's owners if the district has no group.
   - `reminders` has no `organization_id`; resolve the org from the customer/district row and pass it through. A reminder that resolves to no org (orphan) is skipped.
   - `group_scope = type_day`, priority `NORMAL`, directedness `directed`.
-  Its systemd timer (`coverage-map-reminder-push.*`) is retired in favour of the rules sweep timer.
+  Its systemd timer is retired in favour of the rules sweep timer.
 
 ### `/settings/notifications` (new route + page)
 
@@ -151,9 +151,9 @@ Each catalogue add = one `NOTIFICATION_TYPE_SEED` row + (except `system.test`) o
 ## Rollout
 
 1. Deploy with the flush pass dormant — seed the new `notify` rules `active = 0`, or land `flushNotifications` behind a `NOTIFY_FLUSH_ENABLED` env check. Confirm the new feed rows (from the new types) look right for a day.
-2. Enable the flush pass; tighten the `coverage-map-sweep-rules` systemd timer to ~1 min.
-3. Set `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME`; start `coverage-map-telegram.service`; announce the settings page. Retire `coverage-map-reminder-push.*`.
-4. `npm run build` on the deploy host (the dev sandbox OOMs) + `systemctl restart` per the usual coverage-map flow.
+2. Enable the flush pass; tighten the `routeflow-sweep-rules` systemd timer to ~1 min.
+3. Set `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME`; start `routeflow-telegram.service`; announce the settings page. Retire the old reminder-push timer.
+4. `npm run build` on the deploy host (the dev sandbox OOMs) + `systemctl restart` per the usual RouteFlow flow.
 
 Migrations verified against a real backup copy of `coverage.db` (WAL-aware — the app's own migration path, not a raw `cp`).
 

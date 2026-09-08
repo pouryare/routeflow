@@ -215,7 +215,7 @@ helper, not the primitive.
 ## Verification (every layer)
 
 `npm run lint` · `npx tsc --noEmit` · relevant `vitest` · `npm run check:contrast` (Layer B) ·
-`npm run build` · restart `coverage-map.service` · **then a screenshot walk of the affected
+`npm run build` · restart `routeflow.service` · **then a screenshot walk of the affected
 `/sales` screens while logged in**. The last step is what was missing last time. Needs either
 a test login, or the user drives the visual pass per layer. State which per layer.
 

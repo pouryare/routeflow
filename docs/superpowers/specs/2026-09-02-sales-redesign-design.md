@@ -37,7 +37,7 @@ Raise the `/sales` (کارگاه) surface to a premium, unified UI:
 
 ## 3. Deployment constraints (from project memory)
 
-- coverage-map runs as a **production systemd service**. Source edits require
+- RouteFlow runs as a **production systemd service**. Source edits require
   `npm run build` + `systemctl restart` to appear. The plan batches build/restart at
   phase boundaries, never per-commit.
 - A Stop hook auto-commits and pushes every change on this repo. Keep each commit

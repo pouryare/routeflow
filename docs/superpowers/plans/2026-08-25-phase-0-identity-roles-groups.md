@@ -17,7 +17,7 @@
 - **Migrations must never drop data.** SQLite cannot `ALTER` a `CHECK` constraint, so constraint changes use the table-rebuild pattern already in `lib/db.ts` (`saved_locations` ~line 224, `activity_log` ~line 296, `visit_plans` ~line 331): `BEGIN` → create `*_new` → `INSERT INTO ... SELECT` → `DROP` → `RENAME` → `COMMIT`, with `ROLLBACK` in a `catch`.
 - **Migrations must be idempotent.** `getDb()` runs them on every boot. Guard each with a `PRAGMA table_info` or `sqlite_master` check.
 - **The migration must not lock the user out.** Existing accounts become `owner`, because that is the access they already have today.
-- **Deploy is not automatic.** After any change lands: `npm run build && systemctl restart coverage-map`.
+- **Deploy is not automatic.** After any change lands: `npm run build && systemctl restart routeflow`.
 - **Tests:** `npm test` (vitest). DB-backed tests set `process.env.COVERAGE_DB_PATH` to a temp file **before** importing `@/lib/db`, and clean up `""`, `-wal`, `-shm` in `afterAll` — copy the header of `tests/api/facilities-schema.test.ts`.
 
 ---
@@ -2149,7 +2149,7 @@ Confirm by hand:
 git add app/api/admin/users app/admin/users scripts/create-user.mjs README.md tests/api/admin-users.test.ts
 git commit -m "Let the owner manage accounts, and document the new roles"
 git push origin main
-npm run build && systemctl restart coverage-map
+npm run build && systemctl restart routeflow
 ```
 
 ---

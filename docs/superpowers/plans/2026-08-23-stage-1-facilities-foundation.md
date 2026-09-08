@@ -728,7 +728,7 @@ Add a link to the new editor in `QUICK_LINKS`:
 - [ ] **Step 3: Verify**
 
 Run: `npm run build && npm test && npx tsc --noEmit`
-Expected: all clean. Then `systemctl restart coverage-map.service` and confirm both markers still render.
+Expected: all clean. Then `systemctl restart routeflow.service` and confirm both markers still render.
 
 - [ ] **Step 4: Commit**
 
@@ -761,7 +761,7 @@ Page shell copies `app/leads/page.tsx`: `dir="rtl"`, `min-h-screen bg-bg p-4 sm:
 
 - [ ] **Step 2: Verify in the running app**
 
-Run: `npm run build && systemctl restart coverage-map.service`, then drive it with Playwright — load `/facilities`, add a site, move its pin, switch the default origin, delete it — asserting no console errors and that the map's markers follow.
+Run: `npm run build && systemctl restart routeflow.service`, then drive it with Playwright — load `/facilities`, add a site, move its pin, switch the default origin, delete it — asserting no console errors and that the map's markers follow.
 
 - [ ] **Step 3: Commit**
 

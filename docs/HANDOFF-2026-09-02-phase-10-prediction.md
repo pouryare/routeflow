@@ -38,7 +38,7 @@ Suite: **green** (`tsc` + `eslint app/ lib/` clean — see the commit CI notes; 
 1. **Fresh backup via the SQLite backup API** (not `cp` — `coverage.db` is WAL mode).
 2. Run every `*-migration-realdata` test against that copy: `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/*-migration-realdata` — all should pass (FK check empty, new tables/columns present, seeds present, sweeps run clean).
 3. Merge the branch chain in order (`phase-0-tenancy` → … → `phase-10-prediction`) into `main`, or fast-forward if it is already linear.
-4. `npm run build` + `systemctl restart coverage-map`.
+4. `npm run build` + `systemctl restart routeflow`.
 5. **Wire schedulers** (or a boot hook) to `POST /api/rules/run`, `POST /api/analysis/refresh` and `POST /api/predict/refresh` — hourly, or on a post-delivery trigger — so the briefing, the KPI board, the Action Center and the forecasts stay warm.
 6. **Author the academy content** (Phase 8 backlog): `content/academy/*/index.mdx` for modules 1–7 from the source ChatGPT conversation; flip `_manifest.json` `status` to `ready` per module.
 7. Sanity-check `/today`, `/sales/analysis`, `/sales/forecast` and a driver's `/driver` with real data before handing over.
