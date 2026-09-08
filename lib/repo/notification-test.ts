@@ -1,6 +1,9 @@
 import { getDb } from "@/lib/db";
 import { groupKeyFor, getChannelState, inQuietWindow } from "@/lib/repo/notifications";
 
+/** Keep in step with lib/repo/notifications.ts — quiet hours are Tehran wall-clock. */
+const TEHRAN = "Asia/Tehran";
+
 /** The catalogue row for `system.test`, tenant override winning over the NULL-org seed --
  *  the same resolution `catalogueRow` does in lib/repo/notifications.ts (private there). */
 function testTypePriority(organizationId: number): string {
@@ -77,7 +80,9 @@ export function testNotificationOutcome(
   if (row?.flushed_at) return { channel, status: "sent" };
 
   const state = getChannelState(row?.user_id ?? 0, channel);
-  const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false }).slice(0, 5);
+  // Must match flushNotifications' own derivation exactly, Tehran included, or this
+  // helper and the flush can disagree about whether a row was held.
+  const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false, timeZone: TEHRAN }).slice(0, 5);
   return {
     channel,
     status: inQuietWindow(nowHHMM, state.quiet_start, state.quiet_end) ? "held" : "failed",

@@ -685,6 +685,11 @@ export function clearTelegram(userId: number): void {
  *  notification_deliveries. Called once per org from the rules sweep.         *
  * -------------------------------------------------------------------------- */
 
+/** The business is in Tehran (UTC+03:30, no DST since 2022) and the deploy host runs UTC.
+ *  Quiet hours are a wall-clock promise to a person, so they resolve through that zone --
+ *  the same reasoning lib/jalali.ts spells out for civil dates. */
+const TEHRAN = "Asia/Tehran";
+
 const DEBOUNCE_MS = 120_000; // let a burst of related events settle into one message
 const EDIT_WINDOW_MS = 600_000; // within 10 min, update the last digest in place instead of re-notifying
 const DIGEST_GROUP_CAP = 4; // show this many group lines, then «و N مورد دیگر»
@@ -909,7 +914,10 @@ export async function flushNotifications(
 ): Promise<{ sent: number; edited: number; held: number }> {
   const conn = db ?? getDb();
   const asOfMs = Date.parse(asOfIso);
-  const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false }).slice(0, 5);
+  // Tehran, not the server clock. The deploy host runs UTC, so a bare toLocaleTimeString
+  // would shift every user's quiet window 3.5 hours earlier -- silence through the Tehran
+  // late morning and pings around Tehran midnight. Same convention as lib/jalali.ts.
+  const nowHHMM = new Date(asOfIso).toLocaleTimeString("en-GB", { hour12: false, timeZone: TEHRAN }).slice(0, 5);
   const total = { sent: 0, edited: 0, held: 0 };
 
   const users = conn

@@ -167,7 +167,13 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/tasks") ||
     // Phase 8: the objection library is useful at the door.
     pathname.startsWith("/sales/academy") ||
-    pathname.startsWith("/api/sales/academy");
+    pathname.startsWith("/api/sales/academy") ||
+    // Notifications Phase 2: a driver receives delivery.failed and task.assigned, so they
+    // own the same opt-in matrix, quiet hours and device linking as everyone else. Every
+    // one of these routes already scopes to the caller's own session.
+    pathname.startsWith("/settings") ||
+    pathname.startsWith("/api/notifications") ||
+    pathname.startsWith("/api/push/subscribe");
   if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
 
   return NextResponse.next();

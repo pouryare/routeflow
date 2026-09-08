@@ -40,8 +40,11 @@ const MIN = 60_000;
  *  10-min edit window are crossed deliberately rather than by wall-clock luck. */
 const T0 = Date.parse("2026-03-01T10:00:00.000Z");
 const at = (ms: number) => new Date(ms).toISOString();
-/** The same server-local HH:MM the flush computes, so quiet windows are TZ-independent. */
-const hhmm = (ms: number) => new Date(ms).toLocaleTimeString("en-GB", { hour12: false }).slice(0, 5);
+/** The same Asia/Tehran HH:MM the flush computes. Pinned to the zone rather than mirroring
+ *  `new Date()`'s default: a helper that copies whatever the implementation does cannot
+ *  catch the implementation using the wrong clock. */
+const hhmm = (ms: number) =>
+  new Date(ms).toLocaleTimeString("en-GB", { hour12: false, timeZone: "Asia/Tehran" }).slice(0, 5);
 
 const TITLE_A = "سفارش تأیید شد";
 const TITLE_B = "تحویل ناموفق";

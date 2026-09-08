@@ -29,8 +29,11 @@ beforeAll(() => {
   east = Number(g.run("شرق", "east", now).lastInsertRowid);
   g.run("غرب", "west", now);
 
+  // organization_id matters: the admin routes are tenant-scoped, and the session `as()`
+  // mints carries oid 1. Production rows always have it (getDb backfills any NULL to 1 on
+  // boot); a fixture that omits it would make every request 404 for the wrong reason.
   const u = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, ?, ?, ?, ?, 1, ?, 1)"
   );
   ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
   eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);

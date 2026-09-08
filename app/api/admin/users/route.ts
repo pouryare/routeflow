@@ -11,14 +11,19 @@ export async function GET(req: NextRequest) {
 
   // Never password_hash. It is a scrypt digest rather than a password, but there is no
   // reason for it to cross the wire and every reason for it not to.
+  //
+  // Scoped to the caller's own tenant. This list was unscoped before Phase 2 -- tolerable
+  // while every column was local bookkeeping, not once it carries telegram_chat_id, which
+  // is a live delivery address for another tenant's staff.
   const users = getDb()
     .prepare(
       `SELECT u.id, u.username, u.display_name, u.role, u.group_id, u.staff_code, u.phone,
               u.telegram_chat_id, u.active, u.location_consent_at, u.created_at, g.name AS group_name
        FROM users u LEFT JOIN groups g ON g.id = u.group_id
+       WHERE u.organization_id = ?
        ORDER BY u.active DESC, u.display_name`
     )
-    .all() as unknown as Record<string, unknown>[];
+    .all(guard.session.organizationId) as unknown as Record<string, unknown>[];
 
   return NextResponse.json({ ok: true, users, roles: ROLES });
 }
@@ -58,12 +63,26 @@ export async function POST(req: NextRequest) {
   const phone = typeof body?.phone === "string" && body.phone.trim() ? body.phone.trim() : null;
 
   try {
+    // organization_id was missing here: a user created through this screen landed with a
+    // NULL tenant and was only rescued by getDb()'s NULL -> 1 backfill on the next boot.
+    // Harmless with one tenant, wrong with two -- and now load-bearing, because the list
+    // and the edit routes above are tenant-scoped.
     const result = db
       .prepare(
-        `INSERT INTO users (username, password_hash, display_name, role, group_id, staff_code, phone, active, token_version, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?)`
+        `INSERT INTO users (username, password_hash, display_name, role, group_id, staff_code, phone, active, token_version, created_at, organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
       )
-      .run(username, hashPassword(password), displayName, role, groupId, staffCode, phone, new Date().toISOString());
+      .run(
+        username,
+        hashPassword(password),
+        displayName,
+        role,
+        groupId,
+        staffCode,
+        phone,
+        new Date().toISOString(),
+        guard.session.organizationId
+      );
     return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";

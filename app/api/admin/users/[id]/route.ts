@@ -28,7 +28,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
   }
 
   const db = getDb();
-  const target = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as UserRow | undefined;
+  // Tenant-scoped: an owner administers their own organisation's staff and no one else's.
+  // A cross-tenant id now reads as "not found" rather than becoming an editable row --
+  // which from Phase 2 on would include rebinding that user's telegram delivery address.
+  const target = db
+    .prepare("SELECT * FROM users WHERE id = ? AND organization_id = ?")
+    .get(userId, guard.session.organizationId) as UserRow | undefined;
   if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -159,7 +164,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/use
   }
 
   const db = getDb();
-  const target = db.prepare("SELECT * FROM users WHERE id = ?").get(userId) as UserRow | undefined;
+  // Same tenant scoping as PATCH -- deactivating is at least as consequential as editing.
+  const target = db
+    .prepare("SELECT * FROM users WHERE id = ? AND organization_id = ?")
+    .get(userId, guard.session.organizationId) as UserRow | undefined;
   if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
 
   if (wouldStrandTheApp(db, target, true)) {
