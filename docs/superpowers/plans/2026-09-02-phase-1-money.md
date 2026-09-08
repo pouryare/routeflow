@@ -43,7 +43,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-pay-schema-${Date.now()}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
@@ -205,7 +205,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-pay-repo-${Date.now()}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { recordPayment, autoAllocateFIFO, voidPayment, recomputeOrderPayment, allocationsOfPayment, PaymentError } =
@@ -417,7 +417,7 @@ git push -q origin phase-1-money
 
 ```ts
 const testDbPath = path.join(os.tmpdir(), `rf-openbal-${Date.now()}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 

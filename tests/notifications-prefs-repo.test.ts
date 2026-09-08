@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-prefs-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 // Real VAPID keypair (web-push's setVapidDetails validates key length) + a telegram token
 // so ChannelState.configured is observable as true.

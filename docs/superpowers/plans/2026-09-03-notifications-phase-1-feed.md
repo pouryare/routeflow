@@ -18,7 +18,7 @@
 - **Migrations are idempotent.** New tables via `CREATE TABLE IF NOT EXISTS` inside the `db.exec(\`…\`)` block in `getDb()` (`lib/db.ts`). Column adds via the `PRAGMA table_info` guard pattern already used in that file. Seed data via `INSERT … SELECT … WHERE NOT EXISTS`, in a `seed*` function called from the seed block near `seedRules(db)` (`lib/db.ts:2832`).
 - **Best-effort generation.** Notification generation must never break the host write. The `runEventRules` call added to `emitEvent` is wrapped so a throw is swallowed, matching the `tryEmitEvent` contract (`lib/repo/events.ts:49`).
 - **Priority vocabulary** is exactly `CRITICAL | HIGH | NORMAL | LOW` (as on `tasks.priority`).
-- **Test DB pattern:** each test file sets `process.env.COVERAGE_DB_PATH` to a unique tmp path and `process.env.SESSION_SECRET = "test-secret"` **before** `await import("@/lib/db")`, and removes `${path}`, `${path}-wal`, `${path}-shm` in `afterAll`. Copy from `tests/events-repo.test.ts`.
+- **Test DB pattern:** each test file sets `process.env.ROUTEFLOW_DB_PATH` to a unique tmp path and `process.env.SESSION_SECRET = "test-secret"` **before** `await import("@/lib/db")`, and removes `${path}`, `${path}-wal`, `${path}-shm` in `afterAll`. Copy from `tests/events-repo.test.ts`.
 - **Commit after every task** with a `feat:`/`test:` message.
 
 ---
@@ -73,7 +73,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-repo-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -1439,7 +1439,7 @@ git commit -m "feat: notification bell + centre, mounted app-wide"
 
 - [ ] **Step 1: Write the test**
 
-Copy the structure of `tests/offline-migration-realdata.test.ts`. It should: locate the newest `backups/*.db` (skip the test with `it.skip`/early return if none exists — CI has no backup), copy it (and any `-wal`/`-shm`) to a tmp path, point `COVERAGE_DB_PATH` at the copy, `await import("@/lib/db")`, call `getDb()` (runs migrations), then assert:
+Copy the structure of `tests/offline-migration-realdata.test.ts`. It should: locate the newest `backups/*.db` (skip the test with `it.skip`/early return if none exists — CI has no backup), copy it (and any `-wal`/`-shm`) to a tmp path, point `ROUTEFLOW_DB_PATH` at the copy, `await import("@/lib/db")`, call `getDb()` (runs migrations), then assert:
 
 ```ts
 it("migrates a real backup without loss and seeds the catalogue", () => {

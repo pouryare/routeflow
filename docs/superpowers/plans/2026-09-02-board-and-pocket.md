@@ -250,7 +250,7 @@ import { describe, it, expect } from "vitest";
 const REAL = process.env.REALDATA_DB;               // path to a copy of the prod backup
 describe.skipIf(!REAL)("board & pocket migration on real data", () => {
   it("fk check clean, backfill lossless and idempotent", async () => {
-    process.env.COVERAGE_DB_PATH = REAL;
+    process.env.ROUTEFLOW_DB_PATH = REAL;
     const { getDb } = await import("@/lib/db");
     const db = getDb();
     expect((db.prepare("PRAGMA foreign_key_check").all() as unknown[]).length).toBe(0);
@@ -267,7 +267,7 @@ describe.skipIf(!REAL)("board & pocket migration on real data", () => {
 
 - [ ] **Step 6: Run it (gated) then the full suite**
 
-Run: `REALDATA_DB=/root/pourya/RouteFlow/data/coverage.db npx vitest run tests/board-pocket-migration-realdata.test.ts` then `npm test`
+Run: `REALDATA_DB=/root/pourya/RouteFlow/data/routeflow.db npx vitest run tests/board-pocket-migration-realdata.test.ts` then `npm test`
 Expected: PASS / all green. (If `REALDATA_DB` unset the gated test skips — acceptable for CI; run it once locally.)
 
 - [ ] **Step 7: Commit**
@@ -1468,7 +1468,7 @@ git commit -m "Board & Pocket Task 18: tenancy isolation, real-data migration, h
 Per the repo: `RouteFlow` runs as a production systemd service; a source change needs a rebuild + restart to show up.
 
 1. `npx tsc --noEmit` — clean.
-2. `npm test` — all green (run the `REALDATA_DB`-gated migration test once locally against a **copy** of `data/coverage.db`, never the live WAL file).
+2. `npm test` — all green (run the `REALDATA_DB`-gated migration test once locally against a **copy** of `data/routeflow.db`, never the live WAL file).
 3. `npm run build` then restart the service (`systemctl restart routeflow` or the documented equivalent).
 4. Browser, logged in as a **salesperson**: `/sales/pocket` — four gradient tiles with real counts, task list grouped امروز/این‌هفته, a customer name opens the sheet, `+ یادداشت` adds a no-due task, `+ یادآوری` adds a dated one and bumps the tile.
 5. Logged in as a **group_manager**: `/sales/board` — drag a card between lanes (desktop), switch وضعیت/زمان/گردش‌کار, `⋯` menu moves a card, dragging an outreach card to انجام‌شده shows the outcome chips. The Pocket role switch shows the team strip; picking a report loads their pocket.

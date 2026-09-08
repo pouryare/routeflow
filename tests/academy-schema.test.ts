@@ -7,7 +7,7 @@ const testDbPath = path.join(
   os.tmpdir(),
   `rf-academy-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
 );
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb, TENANT_TABLES } = await import("@/lib/db");
 

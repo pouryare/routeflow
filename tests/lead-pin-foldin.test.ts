@@ -4,7 +4,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-foldin-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb, foldLeadPinsIntoCustomers } = await import("@/lib/db");

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Serve the current build against a throwaway database, for browser checks.
 #
-# Never points at data/coverage.db: that is live customer data, and a preview that can
+# Never points at data/routeflow.db: that is live customer data, and a preview that can
 # write to it is one stray click from editing production.
 #
 # `next start` spawns a child `next-server` process that outlives a kill of its parent,
@@ -18,6 +18,6 @@ if command -v fuser >/dev/null 2>&1; then
 fi
 
 echo "→ preview on :$PORT against $DB"
-COVERAGE_DB_PATH="$DB" \
+ROUTEFLOW_DB_PATH="$DB" \
 SESSION_SECRET="${SESSION_SECRET:-preview-secret-not-for-production}" \
   exec npx next start -p "$PORT" -H 127.0.0.1

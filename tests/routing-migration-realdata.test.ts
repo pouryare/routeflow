@@ -33,7 +33,7 @@ if (dbPath) {
   raw.close();
 }
 
-process.env.COVERAGE_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-routing-empty-${Date.now()}.db`);
+process.env.ROUTEFLOW_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-routing-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 

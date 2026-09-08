@@ -249,10 +249,10 @@ named directly. `tsc` and the full vitest suite are the reliable gates.
    cause as #3, different table.
 
 5. **A migration verification instruction in the plan was wrong.** The plan
-   said `COVERAGE_DB_PATH=<path> npx vitest run tests/tenancy-*` would let
+   said `ROUTEFLOW_DB_PATH=<path> npx vitest run tests/tenancy-*` would let
    you verify a migration against a copy of real production data, but
    `tests/tenancy-schema.test.ts` unconditionally overwrites
-   `process.env.COVERAGE_DB_PATH` before importing `lib/db`, silently
+   `process.env.ROUTEFLOW_DB_PATH` before importing `lib/db`, silently
    discarding any externally-set value. Fixed by adding a dedicated
    `ROUTEFLOW_MIGRATION_CHECK_DB` env override read inside the test file
    itself, before the `lib/db` import. **Use this when verifying Tasks 5–7

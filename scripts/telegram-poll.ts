@@ -38,7 +38,7 @@ import { consumeTelegramStart } from "../lib/repo/telegramLink.ts";
 const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Same resolution as lib/db.ts, so the worker and the app always open the same file.
-const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(process.cwd(), "data", "coverage.db");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 const OFFSET_PATH = `${DB_PATH}.telegram-offset`;
 
 const LINKED_REPLY = "حساب تلگرام شما به کارگاه متصل شد.";

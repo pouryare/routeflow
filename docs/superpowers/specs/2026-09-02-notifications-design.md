@@ -321,7 +321,7 @@ their origin or a `sweep` rule — enumerated in the implementation plan.
 3. Connect Telegram; refactor `send-reminder-push.mjs` onto the `reminder.due`
    type.
 
-Migrations verified against a real backup copy of `coverage.db` (WAL-aware — use
+Migrations verified against a real backup copy of `routeflow.db` (WAL-aware — use
 the app's own migration path, not a raw `cp`).
 
 ## Suggested split into two specs / two plans

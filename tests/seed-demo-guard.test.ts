@@ -6,7 +6,7 @@ import os from "node:os";
 
 const REPO = path.resolve(__dirname, "..");
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-seedguard-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -29,7 +29,7 @@ beforeAll(() => {
 function runSeed(args: string[], nodeEnv: "test" | "production" = "test") {
   return execFileSync("node", ["scripts/seed-demo.mjs", ...args], {
     cwd: REPO,
-    env: { ...process.env, COVERAGE_DB_PATH: testDbPath, NODE_ENV: nodeEnv },
+    env: { ...process.env, ROUTEFLOW_DB_PATH: testDbPath, NODE_ENV: nodeEnv },
     stdio: "pipe",
   });
 }

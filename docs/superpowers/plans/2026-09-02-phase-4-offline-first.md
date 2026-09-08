@@ -11,7 +11,7 @@
 - Money = whole Toman `INTEGER`. Dates ISO stored. Persian UI text, English identifiers.
 - Cross-tenant → 404. Migrations idempotent, guarded; `client_uuid` is a plain `ADD COLUMN` + partial unique index (no rebuild).
 - New DB access via `lib/repo/`. Never commit to `main`. Never `npm run build` / `systemctl restart`.
-- Tests: node env, temp `COVERAGE_DB_PATH`. Pure `lib/offline/{uuidv7,clock,outbox,safety}.ts` + all server code are TDD'd; IndexedDB / service worker / React island are written to standard, not unit-tested (repo has no browser tests).
+- Tests: node env, temp `ROUTEFLOW_DB_PATH`. Pure `lib/offline/{uuidv7,clock,outbox,safety}.ts` + all server code are TDD'd; IndexedDB / service worker / React island are written to standard, not unit-tested (repo has no browser tests).
 - Vitest in background + poll. eslint `app/ lib/` + per-file. After route add: `npx next typegen && rm -rf .next/dev/types`.
 - Commit messages end with `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`.
 

@@ -41,7 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # runtime database and uploaded photos (generated, not source -- real customer/business data)
-/data/coverage.db*
+/data/routeflow.db*
 /data/photos/*
 
 # local database/photo backups (see scripts/backup.mjs) -- these belong on a

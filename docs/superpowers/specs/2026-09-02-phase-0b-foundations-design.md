@@ -29,7 +29,7 @@ Phase 1 (Money).
   `.next` from this working directory; source edits are inert until `npm run build &&
   systemctl restart routeflow` — do not run either. Merge/deploy of the whole stack is
   deferred until after Phase 10 (user decision, 2026-09-02).
-- **Never point anything at `data/coverage.db`.** Tests set `process.env.COVERAGE_DB_PATH`
+- **Never point anything at `data/routeflow.db`.** Tests set `process.env.ROUTEFLOW_DB_PATH`
   to a temp file before importing `lib/db`. Real-data checks use
   `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/tenancy-schema.test.ts`,
   copy taken via the SQLite backup API, never `cp` (live DB is WAL).

@@ -35,7 +35,7 @@ Suite: **green** (`tsc` + `eslint app/ lib/` clean — see the commit CI notes; 
 
 ## Pre-deploy checklist — the whole Phase 0–10 stack
 
-1. **Fresh backup via the SQLite backup API** (not `cp` — `coverage.db` is WAL mode).
+1. **Fresh backup via the SQLite backup API** (not `cp` — `routeflow.db` is WAL mode).
 2. Run every `*-migration-realdata` test against that copy: `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/*-migration-realdata` — all should pass (FK check empty, new tables/columns present, seeds present, sweeps run clean).
 3. Merge the branch chain in order (`phase-0-tenancy` → … → `phase-10-prediction`) into `main`, or fast-forward if it is already linear.
 4. `npm run build` + `systemctl restart routeflow`.

@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Branch `phase-0b-foundations`.** Never commit to `main`. Production serves a prebuilt `.next` from this working directory; source edits are inert until `npm run build && systemctl restart routeflow` — do not run either. The whole stack merges/deploys after Phase 10 (user decision 2026-09-02).
-- **Never point anything at `data/coverage.db`.** Tests set `process.env.COVERAGE_DB_PATH` to a temp file before importing `lib/db`. Real-data checks: `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/tenancy-schema.test.ts`; take the copy via the SQLite backup API, never `cp` (live DB is WAL). Pre-migration backup exists: `data/backups/pre-tenancy-20260901-224428.db` (141 customers, 45 orders, 6 users).
+- **Never point anything at `data/routeflow.db`.** Tests set `process.env.ROUTEFLOW_DB_PATH` to a temp file before importing `lib/db`. Real-data checks: `ROUTEFLOW_MIGRATION_CHECK_DB=<copy> npx vitest run tests/tenancy-schema.test.ts`; take the copy via the SQLite backup API, never `cp` (live DB is WAL). Pre-migration backup exists: `data/backups/pre-tenancy-20260901-224428.db` (141 customers, 45 orders, 6 users).
 - **Migrations are idempotent and guarded on `PRAGMA table_info` / constraint text,** matching `lib/db.ts`. They run against live production data on the next deploy; every one must be safe to run twice.
 - **Dates are ISO/Gregorian in storage, Jalali in display** (`lib/jalali.ts`). No new code stores a Jalali string.
 - **Money is whole Toman in `INTEGER` columns** (`lib/money.ts`). No `REAL` money columns.
@@ -79,7 +79,7 @@ describe("the Excel customer-import subsystem stays removed", () => {
 });
 ```
 
-> This test file sets no `COVERAGE_DB_PATH` of its own — add the standard temp-db preamble used by the other `tests/*.test.ts` (see `tests/tenancy-readers.test.ts` lines 1–16) so the second `it` runs migrations against a fresh DB.
+> This test file sets no `ROUTEFLOW_DB_PATH` of its own — add the standard temp-db preamble used by the other `tests/*.test.ts` (see `tests/tenancy-readers.test.ts` lines 1–16) so the second `it` runs migrations against a fresh DB.
 
 - [ ] **Step 3: Run it to verify it fails**
 
@@ -427,7 +427,7 @@ git commit -m "Add a scoped lib/repo layer and a gate against new raw SQL"
 Create `tests/customer-lifecycle-migration.test.ts` (temp-db preamble as in `tests/tenancy-readers.test.ts`):
 
 ```ts
-// preamble: temp COVERAGE_DB_PATH, SESSION_SECRET, afterAll cleanup
+// preamble: temp ROUTEFLOW_DB_PATH, SESSION_SECRET, afterAll cleanup
 const { getDb } = await import("@/lib/db");
 
 describe("customers M2 migration", () => {
@@ -1430,7 +1430,7 @@ import os from "node:os";
 function freshDb(): string {
   const p = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-seed-")), "t.db");
   // let lib/db migrations create the schema
-  execFileSync("node", ["-e", `process.env.COVERAGE_DB_PATH=${JSON.stringify(p)}; await import("./lib/db.ts").then(m=>m.getDb())`], { stdio: "ignore" });
+  execFileSync("node", ["-e", `process.env.ROUTEFLOW_DB_PATH=${JSON.stringify(p)}; await import("./lib/db.ts").then(m=>m.getDb())`], { stdio: "ignore" });
   return p;
 }
 
@@ -1438,19 +1438,19 @@ describe("seed-demo guard", () => {
   it("refuses to seed a production DB without --force", () => {
     const db = freshDb();
     expect(() =>
-      execFileSync("node", ["scripts/seed-demo.mjs"], { env: { ...process.env, COVERAGE_DB_PATH: db, NODE_ENV: "production" }, stdio: "pipe" })
+      execFileSync("node", ["scripts/seed-demo.mjs"], { env: { ...process.env, ROUTEFLOW_DB_PATH: db, NODE_ENV: "production" }, stdio: "pipe" })
     ).toThrow();
   });
 
   it("seeds then removes every marked row across the new tables", () => {
     const db = freshDb();
-    const env = { ...process.env, COVERAGE_DB_PATH: db, NODE_ENV: "test" };
+    const env = { ...process.env, ROUTEFLOW_DB_PATH: db, NODE_ENV: "test" };
     execFileSync("node", ["scripts/seed-demo.mjs"], { env, stdio: "pipe" });
     // a demo representative exists
     // (seed-demo creates one with rep_code LIKE 'DEMO-%')
     execFileSync("node", ["scripts/seed-demo.mjs", "--remove"], { env, stdio: "pipe" });
     const left = execFileSync("node", ["-e",
-      `process.env.COVERAGE_DB_PATH=${JSON.stringify(db)};` +
+      `process.env.ROUTEFLOW_DB_PATH=${JSON.stringify(db)};` +
       `const {getDb}=await import("./lib/db.ts");const d=getDb();` +
       `const n=d.prepare("SELECT (SELECT COUNT(*) FROM products WHERE sku LIKE 'DEMO-%')+(SELECT COUNT(*) FROM users WHERE username LIKE 'demo.%')+(SELECT COUNT(*) FROM representative_profiles WHERE rep_code LIKE 'DEMO-%') AS n").get().n;` +
       `process.stdout.write(String(n));`

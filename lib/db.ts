@@ -12,7 +12,7 @@ import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
 export { FACILITY_KINDS } from "./facilityTypes";
 
-const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(process.cwd(), "data", "coverage.db");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 
 let _db: DatabaseSync | null = null;
 

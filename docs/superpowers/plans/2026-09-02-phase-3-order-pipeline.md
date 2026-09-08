@@ -12,7 +12,7 @@
 - Persian user-facing text, English identifiers. Cross-tenant row → 404; legal-edge/wrong-role → 403; illegal edge → 409.
 - Migrations idempotent, guarded (`PRAGMA table_info` / CHECK text / `app_meta` marker); table-rebuild where a CHECK changes.
 - New DB access via `lib/repo/`; raw SQL outside the allowlist fails `tests/repo-boundary.test.ts`.
-- Never commit to `main`. Never `npm run build` / `systemctl restart`. Tests use temp `COVERAGE_DB_PATH`.
+- Never commit to `main`. Never `npm run build` / `systemctl restart`. Tests use temp `ROUTEFLOW_DB_PATH`.
 - Vitest in background + poll. eslint: `npx eslint app/ lib/` + per-file (full repo OOMs). After route add: `npx next typegen && rm -rf .next/dev/types`.
 - Commit messages end with `Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>`.
 

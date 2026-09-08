@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - **Branch:** `phase-0-tenancy`. Never commit to `main` during this plan. Production serves the prebuilt `.next` from this same working directory, so source edits are inert until someone runs `npm run build && systemctl restart routeflow` — do not run either.
-- **Never point anything at `data/coverage.db`.** Migrations run on every `getDb()`. Tests set `process.env.COVERAGE_DB_PATH` to a temp file before importing anything from `lib/db`. A pre-migration backup already exists at `data/backups/pre-tenancy-20260901-224428.db` (141 customers, 45 orders, 6 users).
+- **Never point anything at `data/routeflow.db`.** Migrations run on every `getDb()`. Tests set `process.env.ROUTEFLOW_DB_PATH` to a temp file before importing anything from `lib/db`. A pre-migration backup already exists at `data/backups/pre-tenancy-20260901-224428.db` (141 customers, 45 orders, 6 users).
 - **Dates are stored ISO/Gregorian, displayed Jalali.** No new code stores a Jalali string. See `lib/jalali.ts`.
 - **Money is whole Toman in `INTEGER` columns.** See `lib/money.ts`. Do not add `REAL` money columns.
 - **Migrations are idempotent and guarded on `PRAGMA table_info`,** matching the existing style in `lib/db.ts`. They run against live production data on the next deploy, so every one must be safe to run twice.
@@ -45,10 +45,10 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-tenancy-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
-// Imported after the env vars above are set -- lib/db reads COVERAGE_DB_PATH at module load.
+// Imported after the env vars above are set -- lib/db reads ROUTEFLOW_DB_PATH at module load.
 const { getDb } = await import("@/lib/db");
 
 describe("organizations table", () => {
@@ -388,7 +388,7 @@ lost:
 
 ```bash
 cp data/backups/pre-tenancy-20260901-224428.db /tmp/real-check.db
-COVERAGE_DB_PATH=/tmp/real-check.db npx vitest run tests/tenancy-schema.test.ts
+ROUTEFLOW_DB_PATH=/tmp/real-check.db npx vitest run tests/tenancy-schema.test.ts
 python3 -c "
 import sqlite3
 c = sqlite3.connect('/tmp/real-check.db')
@@ -434,7 +434,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-uniq-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 
@@ -642,7 +642,7 @@ Expected: PASS, 7 tests.
 
 ```bash
 cp data/backups/pre-tenancy-20260901-224428.db /tmp/real-uniq.db
-COVERAGE_DB_PATH=/tmp/real-uniq.db npx vitest run tests/tenancy-schema.test.ts
+ROUTEFLOW_DB_PATH=/tmp/real-uniq.db npx vitest run tests/tenancy-schema.test.ts
 python3 -c "
 import sqlite3; c=sqlite3.connect('/tmp/real-uniq.db')
 for t in ['customers','orders','order_lines','districts','facilities','saved_locations','products','groups']:
@@ -693,7 +693,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-scope-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -933,7 +933,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-readers-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -1043,7 +1043,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-pal-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -1259,7 +1259,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-iso-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb, TENANT_TABLES } = await import("@/lib/db");
@@ -1333,7 +1333,7 @@ Expected: all green. Record the final test count in the commit message.
 
 ```bash
 cp data/backups/pre-tenancy-20260901-224428.db /tmp/real-final.db
-COVERAGE_DB_PATH=/tmp/real-final.db npx vitest run tests/tenancy-schema.test.ts tests/tenancy-uniqueness.test.ts
+ROUTEFLOW_DB_PATH=/tmp/real-final.db npx vitest run tests/tenancy-schema.test.ts tests/tenancy-uniqueness.test.ts
 python3 -c "
 import sqlite3; c=sqlite3.connect('/tmp/real-final.db')
 print('customers', c.execute('select count(*) from customers').fetchone()[0])

@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// Nightly backup: a consistent snapshot of coverage.db (via SQLite's own serialize,
+// Nightly backup: a consistent snapshot of routeflow.db (via SQLite's own serialize,
 // not a raw file copy -- the live DB runs in WAL mode, so `cp`-ing the .db file alone
 // can catch it mid-write) plus a tarball of data/photos/, with a rotation pass that
 // drops anything older than KEEP_DAYS. Written for the local filesystem: real
@@ -13,7 +13,7 @@ import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(ROOT, "data", "coverage.db");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(ROOT, "data", "routeflow.db");
 const PHOTOS_DIR = path.join(ROOT, "data", "photos");
 const BACKUP_DIR = process.env.COVERAGE_BACKUP_DIR || path.join(ROOT, "backups");
 const KEEP_DAYS = 14;
@@ -30,7 +30,7 @@ function backupDatabase(ts) {
   const db = new DatabaseSync(DB_PATH, { readOnly: true });
   const snapshot = db.serialize();
   db.close();
-  const outPath = path.join(BACKUP_DIR, `coverage-${ts}.db`);
+  const outPath = path.join(BACKUP_DIR, `routeflow-${ts}.db`);
   fs.writeFileSync(outPath, snapshot);
   return outPath;
 }
@@ -49,7 +49,10 @@ function rotate() {
   const now = Date.now();
   const maxAgeMs = KEEP_DAYS * 24 * 60 * 60 * 1000;
   for (const name of fs.readdirSync(BACKUP_DIR)) {
-    if (!/^(coverage|photos)-/.test(name)) continue;
+    // `coverage-` is the pre-2026-09-08 prefix. Existing files were renamed to match the
+    // new one, but the alternation stays so a backup restored from an older archive is
+    // still rotated instead of accumulating forever.
+    if (!/^(routeflow|coverage|photos)-/.test(name)) continue;
     const full = path.join(BACKUP_DIR, name);
     const age = now - fs.statSync(full).mtimeMs;
     if (age > maxAgeMs) {

@@ -7,7 +7,7 @@ const testDbPath = path.join(
   os.tmpdir(),
   `rf-sweep-auth-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
 );
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.SWEEP_TOKEN = "unit-test-sweep-token-0123456789";
 

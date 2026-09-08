@@ -68,7 +68,7 @@ Parallel to `lib/push.ts`. `telegramConfigured(): boolean` (false if `TELEGRAM_B
 
 ### `scripts/telegram-poll.mjs` (new)
 
-Standalone Node (not Next). Reads `COVERAGE_DB_PATH`, `TELEGRAM_BOT_TOKEN` from `process.env`. Long-poll loop: `getUpdates?offset=<n>&timeout=50`; persists the offset (a `meta`/kv row or a file next to the DB). For each message whose text is `/start <nonce>`: `SELECT id FROM users WHERE telegram_link_nonce = ?`; if found, `UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = NULL`; reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`. Unknown text → optional one-line help reply, no state change. Exits non-zero and logs if the token is unset. systemd unit `routeflow-telegram.service` (simple, `Restart=always`), documented in the plan; not installed by code.
+Standalone Node (not Next). Reads `ROUTEFLOW_DB_PATH`, `TELEGRAM_BOT_TOKEN` from `process.env`. Long-poll loop: `getUpdates?offset=<n>&timeout=50`; persists the offset (a `meta`/kv row or a file next to the DB). For each message whose text is `/start <nonce>`: `SELECT id FROM users WHERE telegram_link_nonce = ?`; if found, `UPDATE users SET telegram_chat_id = ?, telegram_link_nonce = NULL`; reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`. Unknown text → optional one-line help reply, no state change. Exits non-zero and logs if the token is unset. systemd unit `routeflow-telegram.service` (simple, `Restart=always`), documented in the plan; not installed by code.
 
 ### `flushNotifications(orgId, asOfIso, db)` in `lib/repo/notifications.ts` (new)
 
@@ -136,7 +136,7 @@ Each catalogue add = one `NOTIFICATION_TYPE_SEED` row + (except `system.test`) o
 - VAPID keys already configured (`VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` / `VAPID_SUBJECT` / `NEXT_PUBLIC_VAPID_PUBLIC_KEY`).
 - Every channel degrades cleanly when its config is absent: `telegramConfigured()` / `configureWebPush()` false → the settings page shows «در دسترس نیست», `effectiveRouting` returns off, `flushNotifications` skips the channel. No throw anywhere.
 
-## Testing (vitest, repo norm — env-before-import, dynamic imports, `COVERAGE_DB_PATH` tmp)
+## Testing (vitest, repo norm — env-before-import, dynamic imports, `ROUTEFLOW_DB_PATH` tmp)
 
 - `effectiveRouting` — default on/off by directedness×priority; `notification_prefs` override both ways; master switch off; channel not connected (no push sub / null chat id).
 - quiet hours — inside window holds; releases on the first tick ≥ `quiet_end`; window wrapping past midnight (`quiet_start=22:00`, `quiet_end=06:00`); `critical_breaks_quiet` lets a `CRITICAL` row through, others still held.
@@ -155,7 +155,7 @@ Each catalogue add = one `NOTIFICATION_TYPE_SEED` row + (except `system.test`) o
 3. Set `TELEGRAM_BOT_TOKEN` / `TELEGRAM_BOT_USERNAME`; start `routeflow-telegram.service`; announce the settings page. Retire the old reminder-push timer.
 4. `npm run build` on the deploy host (the dev sandbox OOMs) + `systemctl restart` per the usual RouteFlow flow.
 
-Migrations verified against a real backup copy of `coverage.db` (WAL-aware — the app's own migration path, not a raw `cp`).
+Migrations verified against a real backup copy of `routeflow.db` (WAL-aware — the app's own migration path, not a raw `cp`).
 
 ## Deferred (written down, not built)
 

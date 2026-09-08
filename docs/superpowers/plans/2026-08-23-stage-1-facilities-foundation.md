@@ -18,7 +18,7 @@
 - **No emoji as icons.** Inline SVG only (`MASTER.md` anti-pattern list).
 - **`node:sqlite` returns null-prototype rows.** Any row crossing into a Client Component must be rebuilt as an object literal — see `lib/customers.ts` for the established pattern and the reason.
 - **Straight-line distances must be labelled `خط مستقیم`** and never formatted as a duration (spec §"Decisions taken before design").
-- **Tests:** Vitest, `tests/**/*.test.ts`, node environment, `@` alias to repo root. API tests set `COVERAGE_DB_PATH` to a temp file *before* importing `@/lib/db` — see `tests/api/districts-bulk.test.ts`.
+- **Tests:** Vitest, `tests/**/*.test.ts`, node environment, `@` alias to repo root. API tests set `ROUTEFLOW_DB_PATH` to a temp file *before* importing `@/lib/db` — see `tests/api/districts-bulk.test.ts`.
 - **Commit after every task.** A Stop hook auto-commits, but each task ends with an explicit commit anyway.
 
 ---
@@ -43,7 +43,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-fac-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.APP_PASSWORD = "test-password";
 
@@ -221,7 +221,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-facl-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.APP_PASSWORD = "test-password";
 

@@ -29,7 +29,7 @@ if (!provided) {
         .sort((a, b) => b.t - a.t)[0]?.f;
       if (newest) {
         dbPath = path.join(os.tmpdir(), `rf-notif-p2-realcheck-${Date.now()}.db`);
-        // WAL-aware: coverage.db runs in WAL mode, so copying the .db alone yields a
+        // WAL-aware: routeflow.db runs in WAL mode, so copying the .db alone yields a
         // silently stale snapshot. The -wal/-shm sidecars must come with it.
         for (const s of ["", "-wal", "-shm"]) {
           const src = path.join(dir, `${newest}${s}`);
@@ -55,7 +55,7 @@ if (dbPath) {
   raw.close();
 }
 
-process.env.COVERAGE_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-notif-p2-empty-${Date.now()}.db`);
+process.env.ROUTEFLOW_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-notif-p2-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb, seedNotificationTypes, loudByDefault, NOTIFICATION_TYPE_SEED } = await import("@/lib/db");
 

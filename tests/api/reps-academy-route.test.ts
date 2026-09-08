@@ -7,7 +7,7 @@ const testDbPath = path.join(
   os.tmpdir(),
   `rf-reps-academy-route-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
 );
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");

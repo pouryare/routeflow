@@ -4,7 +4,7 @@ import os from "node:os";
 import fs from "node:fs";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-iso-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb, TENANT_TABLES } = await import("@/lib/db");

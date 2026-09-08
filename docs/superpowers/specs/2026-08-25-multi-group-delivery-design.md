@@ -470,8 +470,8 @@ Per phase, before moving on:
   and `tests/auth.test.ts` for route-level tests.
 - **A scoping test per route** — assert a `group_manager` from group B cannot read or
   write group A's rows, and a `driver` gets 403 on everything except their own run.
-- **Migration against a copy of the real DB** — `cp data/coverage.db /tmp/` and boot with
-  `COVERAGE_DB_PATH=/tmp/coverage.db` before touching production data.
+- **Migration against a copy of the real DB** — `cp data/routeflow.db /tmp/` and boot with
+  `ROUTEFLOW_DB_PATH=/tmp/routeflow.db` before touching production data.
 - **Paste-in block alignment**: generate a block, paste it into a *copy* of the live
   workbook, and confirm every `شماره سفارش` still lines up with its own `L`/`P`/`T` value.
   Then confirm `O`/`R`/`S` recomputed to the expected figures and `U` resolved to the

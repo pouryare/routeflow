@@ -21,7 +21,7 @@
 - **Loud-channel default rule:** a type routes loud by default iff `directedness === 'directed' && priorityRank(priority) >= priorityRank('NORMAL')`. `ambient` types are loud by default only at `CRITICAL`. `default_push` and `default_telegram` are this same boolean, stored at seed time for the settings-matrix hint.
 - **Quiet hours** compare the server's local wall-clock `"HH:MM"` (deploy host runs Iran time; single-region app). No per-user timezone. A window with `quiet_start > quiet_end` wraps past midnight.
 - **Constants:** `DEBOUNCE_MS = 120_000`, `EDIT_WINDOW_MS = 600_000`, bundle group cap `= 4` then «و N مورد دیگر». Module-level consts with a one-line rationale comment.
-- **Test DB pattern:** each test file sets `process.env.COVERAGE_DB_PATH` to a unique tmp path and `process.env.SESSION_SECRET = "test-secret"` **before** `await import("@/lib/db")`, and removes `${path}`, `${path}-wal`, `${path}-shm` in `afterAll`. DB-touching imports are dynamic (`await import`) after those env lines. Copy the header from `tests/api/notifications-route.test.ts`.
+- **Test DB pattern:** each test file sets `process.env.ROUTEFLOW_DB_PATH` to a unique tmp path and `process.env.SESSION_SECRET = "test-secret"` **before** `await import("@/lib/db")`, and removes `${path}`, `${path}-wal`, `${path}-shm` in `afterAll`. DB-touching imports are dynamic (`await import`) after those env lines. Copy the header from `tests/api/notifications-route.test.ts`.
 - **Commit after every task** with a `feat:` / `test:` / `chore:` message.
 - **Config:** `TELEGRAM_BOT_TOKEN`, `TELEGRAM_BOT_USERNAME` read from `process.env` (deployed via systemd `EnvironmentFile=`; locally `.env.local`, which is gitignored — never commit a token). Every channel degrades cleanly when its config is absent.
 
@@ -89,7 +89,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-p2-schema-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -322,7 +322,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-p2-recip-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
@@ -509,7 +509,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `rf-notif-routing-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.VAPID_PUBLIC_KEY = "x"; process.env.VAPID_PRIVATE_KEY = "x"; process.env.VAPID_SUBJECT = "mailto:x@x";
 process.env.TELEGRAM_BOT_TOKEN = "t";
@@ -971,7 +971,7 @@ Expected: 0 failed. Any pre-existing sweep/rules test that now also creates noti
 
 **Interfaces:**
 - Produces: `consumeTelegramStart(db: DatabaseSync, text: string, chatId: string) → { linked: boolean; userId?: number }` — parses `"/start <nonce>"`, looks up `users` by `telegram_link_nonce`, on hit sets `telegram_chat_id = chatId`, clears the nonce, returns `{ linked: true, userId }`; otherwise `{ linked: false }`. Idempotent — a second call with the now-cleared nonce returns `{ linked: false }`.
-- `scripts/telegram-poll.mjs`: standalone; `DatabaseSync(process.env.COVERAGE_DB_PATH || …)`, exits 0 with a log if `!process.env.TELEGRAM_BOT_TOKEN`; long-poll loop `getUpdates?offset=<n>&timeout=50`; persists offset to `<db>.telegram-offset`; for each message text, `consumeTelegramStart` → on `linked` reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`, else optionally a one-line help. `Restart=always` systemd unit `routeflow-telegram.service` — documented in a comment header, not installed.
+- `scripts/telegram-poll.mjs`: standalone; `DatabaseSync(process.env.ROUTEFLOW_DB_PATH || …)`, exits 0 with a log if `!process.env.TELEGRAM_BOT_TOKEN`; long-poll loop `getUpdates?offset=<n>&timeout=50`; persists offset to `<db>.telegram-offset`; for each message text, `consumeTelegramStart` → on `linked` reply «حساب تلگرام شما به کارگاه متصل شد.» via `sendMessage`, else optionally a one-line help. `Restart=always` systemd unit `routeflow-telegram.service` — documented in a comment header, not installed.
 
 - [ ] **Step 1: Write the failing test** for `consumeTelegramStart` (in `tests/telegram-poll.test.ts`, DB header like Task 2): seed a user with `telegram_link_nonce = 'abc'`; `consumeTelegramStart(db, "/start abc", "999")` → `{ linked: true, userId }`, and `users.telegram_chat_id = '999'`, nonce null; a second call → `{ linked: false }`; `consumeTelegramStart(db, "hello", "999")` → `{ linked: false }`; `"/start "` (empty nonce) → `{ linked: false }`.
 
@@ -994,7 +994,7 @@ export function consumeTelegramStart(db: DatabaseSync, text: string, chatId: str
 
 - [ ] **Step 5: Write `scripts/telegram-poll.mjs`** (no test — standalone glue; the linking logic is covered above). Mirror `scripts/run-sweeps.mjs` conventions: shebang, a header comment documenting the systemd unit, `process.env` config, a `main()` loop with `try/catch` around each iteration and a 2 s sleep on error. Use `fetch` for `getUpdates` / `sendMessage`. Import `{ consumeTelegramStart }` from `../lib/repo/notifications` — **check it resolves under the project's Node ESM config**; if `@/` path aliases don't work in a bare script (they don't — `run-sweeps.mjs` uses none), inline a tiny copy of the 6-line function in the script and keep the exported one as the tested source of truth, with a `// keep in sync with lib/repo/notifications.consumeTelegramStart` comment on both.
 
-- [ ] **Step 6: Manual smoke (document only, do not run in CI):** `TELEGRAM_BOT_TOKEN=<token> COVERAGE_DB_PATH=… node scripts/telegram-poll.mjs`, send `/start <nonce>` to `@tamino_route_flow_bot`, confirm the reply + the DB row.
+- [ ] **Step 6: Manual smoke (document only, do not run in CI):** `TELEGRAM_BOT_TOKEN=<token> ROUTEFLOW_DB_PATH=… node scripts/telegram-poll.mjs`, send `/start <nonce>` to `@tamino_route_flow_bot`, confirm the reply + the DB row.
 
 - [ ] **Step 7: Commit** `feat: telegram-poll worker + consumeTelegramStart linking helper`.
 

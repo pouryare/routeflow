@@ -77,7 +77,7 @@ beforeAll(() => {
     .run("customer", 1, "status_change", "فعال", 7, now);
   seed.close();
 
-  process.env.COVERAGE_DB_PATH = testDbPath;
+  process.env.ROUTEFLOW_DB_PATH = testDbPath;
   process.env.SESSION_SECRET = "test-secret";
 });
 

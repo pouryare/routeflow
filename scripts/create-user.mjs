@@ -14,7 +14,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(ROOT, "data", "coverage.db");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(ROOT, "data", "routeflow.db");
 // Kept in step with lib/roles.ts by a test -- this script is plain ESM run straight by
 // node with no build step, so it cannot import the TypeScript definition.
 const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"];

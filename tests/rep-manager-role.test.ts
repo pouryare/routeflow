@@ -5,7 +5,7 @@ import os from "node:os";
 import { ROLES, ROLE_LABEL, ROLE_DESCRIPTION } from "@/lib/roles";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-repmgr-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");

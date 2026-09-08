@@ -20,7 +20,7 @@ import { planSplit, type PolyGeometry } from "../lib/districtSplit.ts";
 // boot, so it has no business running migrations -- and lib/db.ts pulls in the rest of
 // the app, which Node's type stripping cannot resolve without a bundler.
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const DB_PATH = process.env.COVERAGE_DB_PATH || path.join(ROOT, "data", "coverage.db");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(ROOT, "data", "routeflow.db");
 
 const apply = process.argv.includes("--apply");
 const db = new DatabaseSync(DB_PATH);

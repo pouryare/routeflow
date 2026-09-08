@@ -32,7 +32,7 @@ Raise the `/sales` (کارگاه) surface to a premium, unified UI:
 - The map itself, Leaflet canvas ink, and the `:root` map/CRM **surface** palette
   (`#0a0e14` dark base, 260-pair contrast system). The accent **token** still switches
   on `:root`; the surface tint is `.kargah`-scoped only.
-- All business logic, API routes, DB schema, `coverage.db` contents.
+- All business logic, API routes, DB schema, `routeflow.db` contents.
 - `check:contrast`'s existing 260 pairs stay green; new surface pairs are *added*.
 
 ## 3. Deployment constraints (from project memory)
@@ -42,7 +42,7 @@ Raise the `/sales` (کارگاه) surface to a premium, unified UI:
   phase boundaries, never per-commit.
 - A Stop hook auto-commits and pushes every change on this repo. Keep each commit
   coherent; do not fight the hook.
-- `coverage.db` is WAL — irrelevant here (no DB writes) but noted.
+- `routeflow.db` is WAL — irrelevant here (no DB writes) but noted.
 
 ---
 

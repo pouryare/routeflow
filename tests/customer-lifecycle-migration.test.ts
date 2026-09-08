@@ -9,7 +9,7 @@ import os from "node:os";
 const realDbPath = process.env.ROUTEFLOW_MIGRATION_CHECK_DB;
 const testDbPath =
   realDbPath ?? path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-m2cust-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");

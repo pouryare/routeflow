@@ -18,7 +18,7 @@
 - **Migrations must be idempotent.** `getDb()` runs them on every boot. Guard each with a `PRAGMA table_info` or `sqlite_master` check.
 - **The migration must not lock the user out.** Existing accounts become `owner`, because that is the access they already have today.
 - **Deploy is not automatic.** After any change lands: `npm run build && systemctl restart routeflow`.
-- **Tests:** `npm test` (vitest). DB-backed tests set `process.env.COVERAGE_DB_PATH` to a temp file **before** importing `@/lib/db`, and clean up `""`, `-wal`, `-shm` in `afterAll` — copy the header of `tests/api/facilities-schema.test.ts`.
+- **Tests:** `npm test` (vitest). DB-backed tests set `process.env.ROUTEFLOW_DB_PATH` to a temp file **before** importing `@/lib/db`, and clean up `""`, `-wal`, `-shm` in `afterAll` — copy the header of `tests/api/facilities-schema.test.ts`.
 
 ---
 
@@ -43,7 +43,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-groups-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.APP_PASSWORD = "test-password";
 
@@ -532,7 +532,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-session-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.APP_PASSWORD = "test-password";
 
@@ -789,7 +789,7 @@ Spec §2.5: this is release one of two. `APP_PASSWORD` still works, but only as 
 
 - [ ] **Step 1: Write the failing test**
 
-Append to `tests/api/login.test.ts`. Note the file's existing header sets `COVERAGE_DB_PATH`; if it does not, add the temp-DB header from `tests/api/facilities-schema.test.ts` **above** the existing `process.env` lines.
+Append to `tests/api/login.test.ts`. Note the file's existing header sets `ROUTEFLOW_DB_PATH`; if it does not, add the temp-DB header from `tests/api/facilities-schema.test.ts` **above** the existing `process.env` lines.
 
 ```ts
 const { getDb } = await import("@/lib/db");
@@ -1164,7 +1164,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-terr-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.APP_PASSWORD = "test-password";
 
@@ -1458,7 +1458,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-scope-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 process.env.APP_PASSWORD = "test-password";
 
@@ -2131,8 +2131,8 @@ npm run build
 Then against a copy of production data:
 
 ```bash
-cp data/coverage.db /tmp/phase0-check.db
-COVERAGE_DB_PATH=/tmp/phase0-check.db npm run dev
+cp data/routeflow.db /tmp/phase0-check.db
+ROUTEFLOW_DB_PATH=/tmp/phase0-check.db npm run dev
 ```
 
 Confirm by hand:

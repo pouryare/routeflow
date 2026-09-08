@@ -127,10 +127,10 @@ this import.
 
 ## Deployment (already set up on this server)
 
-> Renamed on 2026-09-08: the working directory is `/root/pourya/RouteFlow` and the
-> systemd units are `routeflow*`. The database file (`data/coverage.db`) and its
-> `COVERAGE_DB_PATH` env var keep their old names — those are read by every backup
-> in `backups/`, so renaming them is a separate, data-touching job.
+> Fully renamed on 2026-09-08. The working directory is `/root/pourya/RouteFlow`, the
+> systemd units are `routeflow*`, the database is `data/routeflow.db`, and the env var
+> is `ROUTEFLOW_DB_PATH`. Nightly backups are written as `routeflow-<ts>.db`; existing
+> ones were renamed to match. Nothing is called `coverage-map` any more.
 
 Runs as systemd service `routeflow` on port **3003**, bound to `127.0.0.1` only
 (not reachable from outside the machine directly — only through Caddy):
@@ -152,7 +152,7 @@ systemctl restart routeflow
 
 ## Data safety
 
-`data/coverage.db` (SQLite) is the only source of truth for district status and
+`data/routeflow.db` (SQLite) is the only source of truth for district status and
 imported customer data — it is **not** committed to git (gitignored) and has no
 automatic backup yet. Worth copying it somewhere occasionally, same as the Excel
 workbook.

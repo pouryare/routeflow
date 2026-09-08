@@ -5,7 +5,7 @@ import path from "node:path";
 import os from "node:os";
 
 const testDbPath = path.join(fs.mkdtempSync(path.join(os.tmpdir(), "rf-noexcel-")), "t.db");
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");

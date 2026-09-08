@@ -16,7 +16,7 @@ import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import crypto from "node:crypto";
 
-const DB_PATH = process.env.COVERAGE_DB_PATH ?? path.join(process.cwd(), "data", "coverage.db");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH ?? path.join(process.cwd(), "data", "routeflow.db");
 const REMOVE = process.argv.includes("--remove");
 /* Teardown crosses ~15 FK-linked tables (orders -> deliveries -> batches -> stock
    movements -> …). Rather than hand-order every DELETE and re-break on the next schema

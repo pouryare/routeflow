@@ -45,7 +45,7 @@ still stands:
 |---|---|
 | systemd units | ✅ `coverage-map*` → `routeflow*`, descriptions included. Old units removed; the dead `coverage-map-reminders` pair was deleted rather than renamed — Phase 2 deleted the script it ran. |
 | Directory | ✅ `/root/pourya/coverage-map` → `/root/pourya/RouteFlow`, with the unit paths, the auto-commit hook, and `scripts/build-traffic-zones.mjs` repointed. Caddy needed nothing: it proxies `127.0.0.1:3003` by port. |
-| `COVERAGE_DB_PATH`, `data/coverage.db` | ⏳ Still deferred. The env var plus every file in `backups/`. A filename is not a brand. |
+| `ROUTEFLOW_DB_PATH`, `data/routeflow.db` | ✅ Done too. WAL checkpointed to empty and the app stopped before the file moved, so nothing was mid-write; 186 files updated. `scripts/backup.mjs` writes `routeflow-<ts>.db` and its retention regex still matches the old prefix, so an archive restored from before the rename is rotated rather than kept forever. Two hand-made snapshots that sat on the rotation prefix were moved to the exempt `pre-` convention — the very next run would have deleted them. |
 | `docs/superpowers/plans/*` | Path and unit-name references were updated so copy-pasted commands still work; the dated narrative is otherwise untouched. |
 
 **`APP_PASSWORD` removed** from `.env.local` and from the dead assignment at the top of

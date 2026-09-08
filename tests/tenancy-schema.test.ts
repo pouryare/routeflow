@@ -6,7 +6,7 @@ import os from "node:os";
 /** Point this at a *copy* of the production database to prove the migration works on
  *  real rows: `ROUTEFLOW_MIGRATION_CHECK_DB=/tmp/copy.db npx vitest run tests/tenancy-*`.
  *
- *  Setting COVERAGE_DB_PATH from the shell does nothing on its own -- this file assigns
+ *  Setting ROUTEFLOW_DB_PATH from the shell does nothing on its own -- this file assigns
  *  it before importing lib/db, so an outer value is overwritten. The override has to be
  *  read here, which is also the honest place for it: a migration that has only ever run
  *  against an empty fixture has not been tested against the data it will meet. */
@@ -17,7 +17,7 @@ const testDbPath =
     os.tmpdir(),
     `coverage-test-tenancy-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
   );
-process.env.COVERAGE_DB_PATH = testDbPath;
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb, TENANT_TABLES } = await import("@/lib/db");
