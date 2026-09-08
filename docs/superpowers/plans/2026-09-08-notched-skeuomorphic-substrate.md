@@ -877,21 +877,23 @@ In both blocks, change `--radius-2xl: 26px;` to `--radius-2xl: 28px;` (matches s
 — the video's cards read slightly rounder than the current scale's ceiling). Leave
 `--radius-sm/-md/-lg/-xl`/`--radius-pill` unchanged; they already match.
 
-- [ ] **Step 3: Apply `--edge-hi` to the base card surface class**
+- [ ] **Step 3: Do NOT retrofit `--edge-hi` onto an existing card rule — confirmed during
+  execution**
 
-Find the rule that every plain card in kargah inherits from — likely `.pocket__card`,
-`.cradlecard`, or a shared `.card`/`.surface` utility:
+The two candidates for "the base card rule every plain card inherits from" both turned
+out wrong to touch. `.pocket__card` ([globals.css:167](../../app/globals.css#L167)) is
+the sacred pocket pattern — Task 19 later verifies it has exactly 3 palette-dependent
+declarations (background, border, radial wash), and adding a new `box-shadow` layer here
+would be a fourth, undermining that verification and risking the pattern the user
+explicitly protected. `.cradlecard` ([globals.css:2036](../../app/globals.css#L2036)) is
+being superseded outright by Task 13's `NotchedCard`, which already declares its own
+`.notch-edge` using `--edge-hi`/`--edge-lo` — retrofitting the doomed class would be
+wasted, conflicting work.
 
-```bash
-grep -n '^\.card\b\|^\.surface\b\|box-shadow: var(--sh' app/globals.css | head -20
-```
-For the base card rule(s) found, add `--edge-hi` to the existing `box-shadow` declaration
-as an additional layer (box-shadow accepts a comma-separated list — inset shadows can
-combine with outer ones in the same property):
-
-```css
-box-shadow: var(--edge-hi), var(--sh-2);
-```
+The tokens from Steps 1–2 are the deliverable of this task; their consumption is correctly
+Task 13's (`NotchedCard`) and Task 16's (`IconButton`, already written using
+`shadow-[var(--edge-hi),var(--sh-1)]`) job, not this one's. No CSS rule is modified in
+this step.
 
 - [ ] **Step 4: Confirm build and visual smoke test**
 
