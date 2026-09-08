@@ -4,13 +4,16 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SkinToggle from "@/components/kargah/SkinToggle";
 import FontPicker from "@/components/FontPicker";
-import AccentPicker from "@/components/AccentPicker";
 import Avatar from "@/components/kargah/Avatar";
 
 /** The one control at the end of the top bar: the viewer's avatar, opening a dropdown
  *  that holds everything that used to sit loose beside it -- the map link and the
- *  appearance controls (skin / font / accent). Same click-outside + Esc dismissal as
+ *  appearance controls (skin / font). Same click-outside + Esc dismissal as
  *  AccentPicker.
+ *
+ *  No accent picker here (2026-09-08 substrate redesign, Task 11): kargah is now a
+ *  fixed cool+black palette, not re-tintable per user. AccentPicker still exists for the
+ *  map, which keeps its own accent-theme choice -- see components/AccentPicker.tsx.
  */
 export default function ProfileMenu({
   userId,
@@ -81,10 +84,6 @@ export default function ProfileMenu({
           <div className="pm__row">
             <span>قلم</span>
             <FontPicker />
-          </div>
-          <div className="pm__row">
-            <span>رنگ</span>
-            <AccentPicker />
           </div>
         </div>
       )}

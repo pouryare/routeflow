@@ -120,10 +120,14 @@ dependencies added in Task 2: `motion`, `lucide-react`, `clsx`, `tailwind-merge`
 - `components/kargah/CarvedCard.tsx` (superseded by `NotchedCard.tsx`)
 
 **Explicitly NOT touched by this plan** (confirmed dependencies, out of scope):
-`components/AccentPicker.tsx` (the `useAccent()` hook itself), `lib/accentThemes.ts`,
-`tests/accent.test.ts` — all still serve `CoverageMap.tsx`'s map-scoped accent choice.
-`scripts/gen-accent-themes.mjs` IS touched (see above) but only to remove its
-kargah-scoped emission — its map-relevant output is preserved.
+`components/AccentPicker.tsx` (the `useAccent()` hook itself), `lib/accentThemes.ts` —
+both still serve `CoverageMap.tsx`'s map-scoped accent choice.
+`scripts/gen-accent-themes.mjs` IS touched (Task 11) but only to remove its kargah-scoped
+emission — its map-relevant output is preserved. **Correction: `tests/accent.test.ts`
+IS touched too**, despite the original plan listing it as untouched — Task 11's selector
+change (dropping `.kargah` from every generated rule) broke two of its assertions, which
+directly test the generated CSS's exact selector text. Fixed as part of Task 11, not
+deferred.
 
 ---
 
@@ -1399,23 +1403,93 @@ grep -n "useAccent" components/CoverageMap.tsx | head -3
 npm run build 2>&1 | tail -20
 ```
 
-- [ ] **Step 8: Confirm `/sales`'s colour no longer shifts with the map's accent choice**
+**Found regenerating and verifying — a second, deeper collision Step 4's removal alone
+does not close.** Dropping `.kargah` from the generator's selectors (Steps 4–5) makes
+every per-theme rule bare `:root[data-accent="X"]` — but the map's "no accent chosen yet"
+default is ALSO bare `:root` (unconditional, so the map has a colour before any choice
+exists), and a user's *explicit* accent choice is `:root[data-accent="X"]`, which is
+**more specific than anything kargah can declare at plain `:root`**. Concretely: kargah's
+own `:root { --accent: #3D6FD9 }` (Task 4) has specificity (0,1,0); the generator's
+default and every per-theme rule are (0,1,0) or (0,2,0) — equal or higher. Picking a map
+accent theme would silently repaint kargah's links, badges and chart-single-series too,
+which is the exact coupling this task exists to sever, unresolved by Steps 1–5 alone.
+
+- [ ] **Step 8: Add a `.kargah`-scoped guard for the 8 tokens the generator can still
+  reach**
+
+Only 8 tokens are at risk — every other kargah token has no competing generator rule.
+Confirm the set by reading the generator's token-object construction:
 
 ```bash
-npm run dev &
-sleep 3
+grep -n '"--accent":\|"--accent-ink":\|"--accent-text":\|"--accent-soft":\|"--accent-2":\|"--accent-dim":\|"--wash-peach":\|"--ev-a-ink":' scripts/gen-accent-themes.mjs | head -20
 ```
-Open `/sales` and `/settings`, confirm the theme is the fixed cool+black palette. Open
-the map at `/`, change its accent theme via the map's own picker (still present there),
-confirm the map's cluster/marker colours change while `/sales`/`/settings` do not shift
-at all when you return to them. Stop the dev server.
 
-- [ ] **Step 9: Confirm `/sales`'s profile menu renders without the picker**
+Append, at the TRUE end of `app/globals.css` (after `/* ACCENT-THEMES:END */`), a guard
+re-asserting kargah's fixed values for exactly these 8, using `:root .kargah` (light) and
+`:root[data-theme="dark"] .kargah` (dark). `.kargah` still exists on
+`app/sales/layout.tsx` and `app/settings/layout.tsx`'s wrapper divs — Task 3 promoted the
+CSS scope, never removed the class from the markup, which is what this guard relies on.
 
-Open `/sales`, open the profile menu, confirm the accent-picker control is gone and
-nothing else in the menu broke.
+```css
+/* kargah accent guard -- re-asserts the 8 tokens the map's still-active accent-theme
+   generator can reach, scoped to .kargah, positioned last. :root .kargah and
+   :root[data-theme="dark"] .kargah are EQUAL specificity to the generator's
+   :root[data-accent="X"] / :root[data-accent="X"][data-skin="dark"] rules -- position,
+   not specificity, is what makes this win; :root .kargah beats bare :root by
+   specificity regardless of position for the no-accent-chosen default case. */
+:root .kargah {
+  --accent: <Task 4's light value>;
+  --accent-text: <Task 4's light value>;
+  --accent-ink: <Task 4's light value>;
+  --accent-soft: <Task 6's light value>;
+  --accent-2: <Task 6's light value>;
+  --accent-dim: <Task 6's light value>;
+  --wash-peach: <Task 6's light value>;
+  --ev-a-ink: <Task 6's light value>;
+}
+:root[data-theme="dark"] .kargah {
+  /* same 8 tokens, Task 5/6's dark values */
+}
+```
+(Pull the exact hex values from the running file — `grep -n '^\s*--accent:'
+app/globals.css` etc. — rather than retyping them from this plan, since Tasks 4–8 may
+have adjusted them since this section was written.)
 
-- [ ] **Step 10: Commit**
+- [ ] **Step 9: Verify empirically, not by reasoning alone**
+
+Cascade collisions at equal specificity are easy to get backwards on paper. Build a
+minimal standalone page against the REAL compiled CSS and read `getComputedStyle` with
+Playwright (already a devDependency) rather than trusting a re-derivation of the
+specificity rules:
+
+```javascript
+// a throwaway script — set data-accent/data-skin/data-theme on document.documentElement
+// (NOT a descendant div: :root only ever matches the actual root element), then read
+// getComputedStyle(...).getPropertyValue("--accent") on both the root and a
+// class="kargah" child, for: no accent chosen, an explicit accent, and that accent's
+// dark variant with data-theme="dark" also set (kargah's own scope discriminator).
+```
+Expected results: the root element's `--accent` follows whichever map accent state you
+set; the `.kargah` child's `--accent` stays exactly your light/dark kargah value
+(`#3D6FD9` / `#6D96EC` at plan-write time) in EVERY scenario, never drifting toward the
+map's chosen hue. If any scenario shows drift, the guard's selector or position is wrong
+— fix and re-verify before proceeding, since this is the entire point of Task 11.
+
+- [ ] **Step 10: Confirm `/sales`'s colour no longer shifts with the map's accent choice**
+
+```bash
+npm run build
+```
+The compiled-output/Playwright verification in Step 7 is the real proof here — `npm run
+dev` plus eyeballing a browser is a weaker check for a cascade-specificity question and
+is not required if Step 7 passed cleanly.
+
+- [ ] **Step 11: Confirm `/sales`'s profile menu renders without the picker**
+
+Read `components/kargah/ProfileMenu.tsx` and confirm the `<AccentPicker />` import and
+JSX are gone, and the surrounding menu structure (skin toggle, font picker) is intact.
+
+- [ ] **Step 12: Commit**
 
 ```bash
 git add components/kargah/ProfileMenu.tsx scripts/gen-accent-themes.mjs app/globals.css

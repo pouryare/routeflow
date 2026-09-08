@@ -146,25 +146,7 @@ const THEME_IDS = [
   "ocean", "indigo", "purple", "raspberry", "graphite",
 ];
 
-/* The shipping cream, from the hand-written .kargah blocks. scripts/gen-accent-themes.mjs
-   re-emits each rung at the theme's hue with chroma capped near zero; the tinted value
-   must carry its inks no worse than the cream already does. --text-muted / --text-faint
-   on --surface-sunk sit at 4.25 / 2.89 in the palette on screen today, so those pairs are
-   held to the cream baseline rather than to an absolute 4.5 / 3.0. */
-const SURFACE_CREAM = {
-  light: {
-    "--bg": "#F4F0E9", "--surface": "#FFFFFF", "--surface-2": "#FDFBF8", "--surface-sunk": "#EFE9E0",
-  },
-  dark: {
-    "--bg": "#141110", "--surface": "#1E1A17", "--surface-2": "#242019", "--surface-sunk": "#2B241E",
-  },
-};
-const SURFACE_INK = {
-  light: { "--text": ["#16181D", 7], "--text-muted": ["#5F6672", 4.5], "--text-faint": ["#8A909B", 3] },
-  dark: { "--text": ["#E8EAEE", 7], "--text-muted": ["#9BA3AF", 4.5], "--text-faint": ["#6B7280", 3] },
-};
-
-/* The grounds these themes are solved against, from the .kargah blocks. --surface-raised
+/* The grounds these themes are solved against. --surface-raised
    is what a cluster bubble sits on; it differs from --surface in dark. */
 const THEME_GROUND = {
   light: { bg: "#F4F0E9", surface: "#FFFFFF", raised: "#FFFFFF", text: "#231C16", washMuted: "#6A6055", map: "#F4F0E9" },
@@ -174,8 +156,8 @@ const THEME_GROUND = {
 let themeChecks = 0;
 for (const id of THEME_IDS) {
   for (const [skin, selector] of [
-    ["light", `:root[data-accent="${id}"] .kargah, :root[data-accent="${id}"]`],
-    ["dark", `:root[data-accent="${id}"][data-skin="dark"] .kargah, :root[data-accent="${id}"][data-skin="dark"]`],
+    ["light", `:root[data-accent="${id}"]`],
+    ["dark", `:root[data-accent="${id}"][data-skin="dark"]`],
   ]) {
     let t;
     try {
@@ -212,28 +194,10 @@ for (const id of THEME_IDS) {
       need(m, G.map, 3, `${m} on the map ground`);
     }
 
-    /* Surface tint (.kargah-scoped block only, without the second `, :root[...]`
-       selector). Read it back and assert every tinted ground still carries its inks. */
-    let surf;
-    try {
-      surf = block(`:root[data-accent="${id}"]${skin === "dark" ? '[data-skin="dark"]' : ""} .kargah`);
-    } catch {
-      say(false, `${id}/${skin}: no .kargah surface-tint block — re-run scripts/gen-accent-themes.mjs`);
-      surf = {};
-    }
-    for (const [g, cream] of Object.entries(SURFACE_CREAM[skin])) {
-      for (const [ink, [inkHex, wcag]] of Object.entries(SURFACE_INK[skin])) {
-        themeChecks++;
-        if (!surf[g]) {
-          say(false, `${id}/${skin} ${ink} on ${g}: ${g} MISSING from surface block`);
-          continue;
-        }
-        const got = ratio(inkHex, surf[g]);
-        const base = ratio(inkHex, cream);
-        const floor = Math.min(wcag, base - 0.08);
-        say(got >= floor, `${id}/${skin} ${ink} on ${g} (tinted): ${got.toFixed(2)} (floor ${floor.toFixed(2)})`);
-      }
-    }
+    // No .kargah surface-tint check here anymore (Task 11, 2026-09-08): kargah's
+    // --bg/--surface/etc. no longer vary by accent choice at all, so there is nothing
+    // generated left to verify. See app/globals.css's "kargah accent guard" instead,
+    // which is what now keeps these themes from leaking into kargah.
   }
 }
 console.log(`\nchecked ${themeChecks} pairs across ${THEME_IDS.length} accent themes`);
