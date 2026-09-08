@@ -10,7 +10,7 @@
      (and the picker's --font-yekan / --font-sansx / --font-iran + -num) as custom
      properties on <html>; components/FontPicker.tsx writes data-font and the rules below
      remap --font-ui / --font-num per choice. Every other rule reads these stable names.
-     --font-en resolves to the NUMERAL face on purpose: inside .kargah it is almost
+     --font-en resolves to the NUMERAL face on purpose: inside it is almost
      always carrying tabular figures (.mono, .num, amounts), and Peyda FaNum still has
      full Latin + Arabic letters for the odd label. */
   --font-vazirmatn: var(--font-ui);
@@ -1492,13 +1492,13 @@ body {
 /* ═════════════════════════════════════════════════════════════════════════════
    کارگاه — the /sales design system.
 
-   Scoped to `.kargah`, never to `:root`. Twenty-one files outside /sales read
+   Scoped to `:root`, never to `:root`. Twenty-one files outside /sales read
    --bg, --surface and --accent from the :root block above — the map among them —
    so redefining those globally would silently re-skin the map, which is out of
    scope. The app deliberately carries two design systems until the other CRM
    surfaces get their own pass. See MASTER.md "Visual thesis".
    ═══════════════════════════════════════════════════════════════════════════ */
-.kargah {
+{
   /* ---- Colour: light is the default and the identity ---------------------- */
   --bg: #F4F0E9;
   --surface: #FFFFFF;
@@ -1646,7 +1646,7 @@ body {
 
    The attribute is data-skin, NOT data-theme: /sales carries its own toggle and
    must not fight the map's theme switch.                                       */
-:root[data-skin="dark"] .kargah {
+:root[data-theme="dark"] {
   --bg: #141110;
   --surface: #1E1A17;
   --surface-2: #242019;
@@ -1731,8 +1731,8 @@ body {
 /* Figures line up or they are not figures.
    `.mono` is the artifact's name for it; `.num` is kept because the pages written before
    the port use it, and they are the same rule. */
-.kargah .mono,
-.kargah .num {
+.mono,
+.num {
   font-family: var(--font-num), ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum";
@@ -1746,9 +1746,9 @@ body {
    Changing one of them to a rounder number is a change to the design, not a
    tidy-up.
 
-   The artifact writes its tokens on :root; this scope writes them on .kargah,
+   The artifact writes its tokens on :root; this scope writes them on :root,
    because the app also renders surfaces that are not this design system. Its
-   `body` rules are on .kargah for the same reason.
+   `body` rules are on for the same reason.
 
    Token names below are the ARTIFACT's (--card, --ink, --line, --sage …). The
    older names this app already uses (--surface, --text, --border …) are kept
@@ -1766,18 +1766,18 @@ body {
    and comes back. On three big cards that reads as liveliness; on twelve it reads as the
    whole page wobbling. So the lift is used where cards are few and the plain fade where
    they are many — RevealRoute counts them and picks. */
-.kargah .rev { opacity: 0; }
-.kargah .rev.rev-lift { transform: translateY(16px); }
-.kargah .rev.rev-in {
+.rev { opacity: 0; }
+.rev.rev-lift { transform: translateY(16px); }
+.rev.rev-in {
   opacity: 1;
   transform: none;
   transition: opacity 300ms var(--ease);
 }
-.kargah .rev.rev-lift.rev-in {
+.rev.rev-lift.rev-in {
   transition: opacity 460ms var(--ease), transform 620ms var(--spring);
 }
 @media (prefers-reduced-motion: reduce) {
-  .kargah .rev { opacity: 1; transform: none; }
+  .rev { opacity: 1; transform: none; }
 }
 
 /* Route transition: the whole sales view fades + rises on every path change, driven by a
@@ -1789,15 +1789,15 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
-.kargah .route-fade { animation: kargah-route-in 240ms var(--ease) both; }
-@media (prefers-reduced-motion: reduce) { .kargah .route-fade { animation: none; } }
+.route-fade { animation: kargah-route-in 240ms var(--ease) both; }
+@media (prefers-reduced-motion: reduce) { .route-fade { animation: none; } }
 
 /* Chart draw-in: SVG bars rise from their baseline and the gauge arc draws itself on
-   mount. Pure CSS so BarChart / BentoStrip stay server components. .kargah-scoped -- the
+   mount. Pure CSS so BarChart / BentoStrip stay server components. :root-scoped -- the
    map / report charts are out of scope. */
 @media (prefers-reduced-motion: no-preference) {
   @keyframes kargah-bar-rise { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-  .kargah .chart-rise {
+  .chart-rise {
     transform-box: fill-box; transform-origin: bottom;
     animation: kargah-bar-rise 520ms var(--spring) both;
   }
@@ -1805,39 +1805,39 @@ body {
     from { stroke-dashoffset: var(--arc-len, 0); }
     to { stroke-dashoffset: 0; }
   }
-  .kargah .chart-arc { animation: kargah-arc-draw 700ms var(--ease) both; }
+  .chart-arc { animation: kargah-arc-draw 700ms var(--ease) both; }
 }
 
 /* Micro-interactions: a small press on anything tappable. Spring, reduced-motion off. */
 @media (prefers-reduced-motion: no-preference) {
-  .kargah .btn:active,
-  .kargah .chip:active,
-  .kargah .seg > a:active { transform: scale(0.97); }
+  .btn:active,
+  .chip:active,
+  .seg > a:active { transform: scale(0.97); }
 }
 
 /* Full-bleed: the content fills the viewport minus a fluid gutter. The old 1240px cap
    moves down onto the individual fixed-column layouts (board / bento / sched / lanes /
    statrow / chartbox) so those keep a sane measure while the data-dense grids
    (pockets / ptiles / tables) take the whole width and answer it with more columns. */
-.kargah .app { direction: rtl; width: 100%; max-width: none; margin: 0; padding: 26px clamp(16px, 3vw, 72px) 120px; }
-@media (max-width: 620px) { .kargah .app { padding: 18px 14px 110px; } }
+.app { direction: rtl; width: 100%; max-width: none; margin: 0; padding: 26px clamp(16px, 3vw, 72px) 120px; }
+@media (max-width: 620px) { .app { padding: 18px 14px 110px; } }
 /* Sentence-heavy surfaces keep a readable measure when the page is 3000px wide. */
-.kargah .prose { max-width: 72ch; }
+.prose { max-width: 72ch; }
 
 /* ---- top bar ------------------------------------------------------------- */
-.kargah .top {
+.top {
   display: flex; align-items: center; justify-content: space-between;
   gap: 18px; margin-bottom: 20px;
 }
-.kargah .brandwrap { display: flex; align-items: center; gap: 13px; min-width: 0; }
-.kargah .mark {
+.brandwrap { display: flex; align-items: center; gap: 13px; min-width: 0; }
+.mark {
   width: 46px; height: 46px; border-radius: 15px;
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff 20%), var(--accent-2));
   color: var(--accent-ink); display: grid; place-items: center;
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent); flex: none;
 }
-.kargah .mark svg { display: block; }
-.kargah .top h1 {
+.mark svg { display: block; }
+.top h1 {
   margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 800;
   letter-spacing: -.01em;
   /* A Latin wordmark in an RTL bar -- pin it LTR so the glyphs are not reordered. */
@@ -1847,45 +1847,45 @@ body {
 /* ---- profile menu ------------------------------------------------------------
    The one control at the end of the top bar: the avatar, opening a dropdown that
    holds the map link and the appearance controls that used to sit loose beside it. */
-.kargah .pm { position: relative; }
-.kargah .pm__trigger {
+.pm { position: relative; }
+.pm__trigger {
   border: 0; background: transparent; padding: 2px; cursor: pointer;
   border-radius: 999px; display: grid; place-items: center;
   transition: transform var(--dur-base, 160ms) var(--ease);
 }
-.kargah .pm__trigger:hover { transform: scale(1.05); }
-.kargah .pm__trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.kargah .pm__panel {
+.pm__trigger:hover { transform: scale(1.05); }
+.pm__trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pm__panel {
   position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 50;
   width: 15rem; max-width: calc(100vw - 2rem);
   background: var(--surface); border: 1px solid var(--line);
   border-radius: var(--r-lg); box-shadow: var(--sh-3);
   padding: 12px; display: flex; flex-direction: column; gap: 4px;
 }
-.kargah .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
-.kargah .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
-.kargah .pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }
-.kargah .pm__link {
+.pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
+.pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
+.pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }
+.pm__link {
   display: block; padding: 9px 10px; border-radius: var(--r-sm);
   font-size: 13px; color: var(--ink-2); text-decoration: none;
   transition: background 160ms var(--ease);
 }
-.kargah .pm__link:hover { background: var(--sunk); color: var(--ink); }
-.kargah .pm__sep { height: 1px; background: var(--line); margin: 4px 0; }
-.kargah .pm__row {
+.pm__link:hover { background: var(--sunk); color: var(--ink); }
+.pm__sep { height: 1px; background: var(--line); margin: 4px 0; }
+.pm__row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
 }
-.kargah .top .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
-.kargah .topright { display: flex; align-items: center; gap: 9px; }
-.kargah .chip {
+.top .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
+.topright { display: flex; align-items: center; gap: 9px; }
+.chip {
   background: var(--card); border: 1px solid var(--line); border-radius: 999px;
   padding: 9px 15px; font-size: 13.5px; color: var(--ink-2); text-decoration: none;
   box-shadow: var(--sh-1); cursor: pointer; white-space: nowrap;
   transition: box-shadow 180ms var(--ease), transform 180ms var(--ease);
 }
-.kargah .chip:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
-.kargah .me {
+.chip:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
+.me {
   width: 42px; height: 42px; border-radius: 999px;
   background: var(--sage-soft); color: var(--sage);
   display: grid; place-items: center; font-weight: 600;
@@ -1893,63 +1893,63 @@ body {
 }
 
 /* ---- the sun/moon toggle: one disc, morphed ------------------------------ */
-.kargah .themeToggle {
+.themeToggle {
   position: relative; width: 42px; height: 42px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); box-shadow: var(--sh-1);
   cursor: pointer; overflow: hidden; flex: none; padding: 0;
 }
-.kargah .themeToggle svg {
+.themeToggle svg {
   position: absolute; inset: 0; margin: auto; width: 19px; height: 19px;
   stroke: var(--ink-2); fill: none; stroke-width: 1.7;
   stroke-linecap: round; stroke-linejoin: round;
   transition: transform 460ms var(--spring), opacity 240ms var(--ease);
 }
-.kargah .themeToggle .moon { opacity: 0; transform: rotate(-75deg) scale(.55); }
-:root[data-skin="dark"] .kargah .themeToggle .sun { opacity: 0; transform: rotate(75deg) scale(.55); }
-:root[data-skin="dark"] .kargah .themeToggle .moon { opacity: 1; transform: none; }
-.kargah .themeToggle:hover { box-shadow: var(--sh-2); }
-.kargah .themeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.themeToggle .moon { opacity: 0; transform: rotate(-75deg) scale(.55); }
+:root[data-theme="dark"] .themeToggle .sun { opacity: 0; transform: rotate(75deg) scale(.55); }
+:root[data-theme="dark"] .themeToggle .moon { opacity: 1; transform: none; }
+.themeToggle:hover { box-shadow: var(--sh-2); }
+.themeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- tabs ----------------------------------------------------------------
    Two rows, both with a pill that travels between their items -- the six groups,
    then the tabs of the active group. The movement is what tells you which way
    you just went. Both rows are centred and, if a row is wider than the bar, it
    scrolls inside itself rather than pushing the page wide.                    */
-.kargah .segwrap {
+.segwrap {
   display: flex; flex-direction: column; align-items: center;
   gap: 10px; margin-bottom: 20px;
 }
-.kargah .seg {
+.seg {
   position: relative; display: flex; gap: 4px;
   max-width: 100%; min-width: 0;
   background: var(--sunk); border-radius: 999px; padding: 5px;
   overflow-x: auto; scrollbar-width: none;
 }
 /* The group row: same pill mechanics, a touch smaller and quieter than the tab row. */
-.kargah .seg-groups > a { font-family: var(--font-display); font-weight: 800; font-size: 13px; padding-block: 8px; }
-.kargah .seg .thumb {
+.seg-groups > a { font-family: var(--font-display); font-weight: 800; font-size: 13px; padding-block: 8px; }
+.seg .thumb {
   position: absolute; top: 5px; bottom: 5px; left: 0; width: 0;
   border-radius: 999px; background: var(--card); box-shadow: var(--sh-1);
   pointer-events: none; z-index: 0;
 }
-.kargah .seg.ready .thumb {
+.seg.ready .thumb {
   transition: transform 520ms var(--spring), width 520ms var(--spring);
 }
-.kargah .seg::-webkit-scrollbar { display: none; }
-.kargah .seg > a,
-.kargah .seg > span {
+.seg::-webkit-scrollbar { display: none; }
+.seg > a,
+.seg > span {
   position: relative; z-index: 1; flex: none;
   padding: 9px 18px; border-radius: 999px; border: 0; background: transparent;
   font-size: 13.5px; color: var(--ink-2); cursor: pointer; white-space: nowrap;
   text-decoration: none;
   transition: background 200ms var(--ease), color 200ms var(--ease), box-shadow 200ms var(--ease);
 }
-.kargah .seg > a:hover { color: var(--ink); }
-.kargah .seg > a[aria-current="page"],
-.kargah .seg > a[aria-current="true"] { color: var(--ink); font-weight: 600; }
-.kargah .seg-groups > a[aria-current="true"] { color: var(--accent-text); }
-.kargah .seg > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.kargah .seg > span[aria-disabled] { color: var(--faint); cursor: default; }
+.seg > a:hover { color: var(--ink); }
+.seg > a[aria-current="page"],
+.seg > a[aria-current="true"] { color: var(--ink); font-weight: 600; }
+.seg-groups > a[aria-current="true"] { color: var(--accent-text); }
+.seg > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.seg > span[aria-disabled] { color: var(--faint); cursor: default; }
 
 /* ---- sticky auto-hiding chrome -----------------------------------------------
    The brand bar + both nav rows ride in one position:sticky wrapper that slides up out
@@ -1957,8 +1957,8 @@ body {
    decides which). It bleeds over the .app side padding so its backdrop is full-width and
    pulls up into the .app top padding so it sits flush to the viewport edge when pinned.
    The transition is on transform ALONE, so it never contends with .route-fade.
-   The four negative/positive margin+padding pairs must match .kargah .app's padding. */
-.kargah .chrome {
+   The four negative/positive margin+padding pairs must match .app's padding. */
+.chrome {
   position: sticky; top: 0; z-index: 40;
   background: var(--bg);
   margin-inline: calc(-1 * clamp(16px, 3vw, 72px));
@@ -1967,17 +1967,17 @@ body {
   transition: transform 320ms var(--ease);
   will-change: transform;
 }
-.kargah .chrome.chrome-hidden { transform: translateY(-100%); }
-.kargah .chrome.chrome-hidden:focus-within { transform: none; }
+.chrome.chrome-hidden { transform: translateY(-100%); }
+.chrome.chrome-hidden:focus-within { transform: none; }
 @media (max-width: 620px) {
-  .kargah .chrome {
+  .chrome {
     margin-inline: -14px; padding-inline: 14px;
     margin-top: -18px; padding-top: 18px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .kargah .chrome { transition: none; }
-  .kargah .chrome.chrome-hidden { transform: none; }
+  .chrome { transition: none; }
+  .chrome.chrome-hidden { transform: none; }
 }
 
 /* ---- generic blocks ------------------------------------------------------ */
@@ -1985,101 +1985,101 @@ body {
    for it painted every one of those elements as a card — a hint paragraph in the layers
    panel arrived as a white pill with its text clipped. The artifact calls this `.block`;
    here it has to carry a prefix. */
-.kargah .kblock {
+.kblock {
   background: var(--card); border-radius: var(--r-2xl);
   box-shadow: var(--sh-1); overflow: hidden;
 }
 /* The .kblock header (.bhead) is inset 24px but a table or list dropped straight into a
    .kblock runs flush to the card edge -- Farsi figures then bleed past it (image 1).
    .kblock__body gives that content the same inset. */
-.kargah .kblock__body { padding: 0 24px 20px; }
-@media (max-width: 639px) { .kargah .kblock__body { padding-inline: 16px; } }
+.kblock__body { padding: 0 24px 20px; }
+@media (max-width: 639px) { .kblock__body { padding-inline: 16px; } }
 
-.kargah .bhead {
+.bhead {
   display: flex; align-items: center; justify-content: space-between;
   gap: 14px; padding: 20px 24px 14px; flex-wrap: wrap;
 }
-.kargah .bhead h2 { margin: 0; font-size: 16.5px; font-weight: 600; }
-.kargah .bhead .n { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
-.kargah .acts { display: flex; gap: 8px; flex-wrap: wrap; }
-.kargah .btn {
+.bhead h2 { margin: 0; font-size: 16.5px; font-weight: 600; }
+.bhead .n { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
+.acts { display: flex; gap: 8px; flex-wrap: wrap; }
+.btn {
   border-radius: 999px; padding: 10px 17px; font-size: 13.5px;
   text-decoration: none; border: 1px solid transparent; cursor: pointer;
   white-space: nowrap; display: inline-flex; align-items: center; gap: 7px;
   font-family: var(--fa);
   transition: background 180ms var(--ease), transform 180ms var(--ease), box-shadow 180ms var(--ease);
 }
-.kargah .btn.ghost { border-color: var(--line); color: var(--ink-2); background: var(--card-2); }
-.kargah .btn.ghost:hover { background: var(--sunk); }
-.kargah .btn.solid {
+.btn.ghost { border-color: var(--line); color: var(--ink-2); background: var(--card-2); }
+.btn.ghost:hover { background: var(--sunk); }
+.btn.solid {
   background: var(--accent); color: var(--accent-ink); font-weight: 600;
   box-shadow: 0 6px 16px -7px color-mix(in srgb, var(--accent) 70%, transparent);
 }
-.kargah .btn.solid:hover { background: var(--accent-2); transform: translateY(-1px); }
-.kargah .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.btn.solid:hover { background: var(--accent-2); transform: translateY(-1px); }
+.btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- 1 · gradient stat cards --------------------------------------------
    Mesh gradients, mixed warm so they sit in the same room as the terracotta
    accent instead of arriving from a different palette.                       */
-.kargah .statrow {
+.statrow {
   display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; margin-bottom: 14px;
   /* The hierarchy (one wide identity tile, two figures) only reads at a sane width; on a
      full-bleed page the row stops here and aligns to the start edge. */
   max-width: 1400px;
 }
-.kargah .gcard {
+.gcard {
   position: relative; border-radius: var(--r-2xl); padding: 24px 26px;
   overflow: hidden; box-shadow: var(--sh-2); isolation: isolate;
 }
-.kargah .gcard::before {
+.gcard::before {
   content: ""; position: absolute; inset: 0; z-index: -1;
   filter: hue-rotate(var(--gcard-hue-rotate, 0deg));
 }
-.kargah .gcard.peach::before { background:
+.gcard.peach::before { background:
   radial-gradient(120% 130% at 12% 8%, #FBD9BE 0%, transparent 55%),
   radial-gradient(100% 120% at 92% 22%, #F2A98C 0%, transparent 58%),
   radial-gradient(120% 130% at 68% 100%, #E19BAE 0%, transparent 62%),
   linear-gradient(150deg,#FCEADC,#F3C4AC); }
-.kargah .gcard.mint::before { background:
+.gcard.mint::before { background:
   radial-gradient(120% 130% at 88% 10%, #BFE3D6 0%, transparent 58%),
   radial-gradient(110% 120% at 10% 88%, #A9C6E4 0%, transparent 60%),
   linear-gradient(150deg,#E4F1EC,#BBD5E2); }
-.kargah .gcard.sand::before { background:
+.gcard.sand::before { background:
   radial-gradient(120% 130% at 88% 12%, #F0DCAF 0%, transparent 58%),
   radial-gradient(110% 120% at 8% 92%, #DCC69B 0%, transparent 60%),
   linear-gradient(150deg,#F6EDD9,#E4D2AE); }
-:root[data-skin="dark"] .kargah .gcard.peach::before { background:
+:root[data-theme="dark"] .gcard.peach::before { background:
   radial-gradient(120% 130% at 12% 8%, #6B3524 0%, transparent 55%),
   radial-gradient(100% 120% at 92% 22%, #8A3A22 0%, transparent 58%),
   radial-gradient(120% 130% at 68% 100%, #6E2C3C 0%, transparent 62%),
   linear-gradient(150deg,#3A241C,#5A2E20); }
-:root[data-skin="dark"] .kargah .gcard.mint::before { background:
+:root[data-theme="dark"] .gcard.mint::before { background:
   radial-gradient(120% 130% at 88% 10%, #23483F 0%, transparent 58%),
   radial-gradient(110% 120% at 10% 88%, #23394E 0%, transparent 60%),
   linear-gradient(150deg,#1C2E2A,#22384A); }
-:root[data-skin="dark"] .kargah .gcard.sand::before { background:
+:root[data-theme="dark"] .gcard.sand::before { background:
   radial-gradient(120% 130% at 88% 12%, #5C4A2A 0%, transparent 58%),
   radial-gradient(110% 120% at 8% 92%, #4A3A22 0%, transparent 60%),
   linear-gradient(150deg,#332A1D,#4C3E27); }
-.kargah .gcard .k { font-size: 14px; color: var(--gcard-k); }
-.kargah .gcard .v {
+.gcard .k { font-size: 14px; color: var(--gcard-k); }
+.gcard .v {
   font-size: 46px; line-height: 1.12; font-weight: 700; letter-spacing: -.03em;
   margin-top: 6px; color: var(--gcard-ink);
 }
-.kargah .gcard .v small {
+.gcard .v small {
   font-size: 17px; font-weight: 500; color: var(--gcard-k);
   margin-inline-start: 8px; letter-spacing: 0;
 }
-.kargah .gcard.small .v { font-size: 32px; }
-.kargah .gcard .d.sky { color: var(--gcard-chip-sky); }
-.kargah .gcard .d.amber { color: var(--gcard-chip-amber); }
-.kargah .gcard .d {
+.gcard.small .v { font-size: 32px; }
+.gcard .d.sky { color: var(--gcard-chip-sky); }
+.gcard .d.amber { color: var(--gcard-chip-amber); }
+.gcard .d {
   display: inline-flex; align-items: center; gap: 6px; margin-top: 12px;
   background: var(--gcard-chip); color: var(--gcard-chip-ink);
   border-radius: 999px; padding: 5px 13px; font-size: 12.5px; font-weight: 600;
   backdrop-filter: blur(6px);
 }
-.kargah .gcard .ico {
+.gcard .ico {
   position: absolute; inset-block-start: 22px; inset-inline-end: 22px;
   width: 40px; height: 40px; border-radius: 13px;
   background: var(--gcard-glass); display: grid; place-items: center;
@@ -2087,58 +2087,58 @@ body {
 }
 
 /* ---- 2 · the spline chart ------------------------------------------------ */
-.kargah .chartbox { padding: 8px 24px 22px; position: relative; max-width: 1300px; }
-.kargah .spark { width: 100%; height: auto; display: block; overflow: visible; touch-action: none; }
-.kargah .grid-l { stroke: var(--line); stroke-width: 1; }
-.kargah .ser-a { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; }
-.kargah .ser-b {
+.chartbox { padding: 8px 24px 22px; position: relative; max-width: 1300px; }
+.spark { width: 100%; height: auto; display: block; overflow: visible; touch-action: none; }
+.grid-l { stroke: var(--line); stroke-width: 1; }
+.ser-a { fill: none; stroke: var(--accent); stroke-width: 3.2; stroke-linecap: round; }
+.ser-b {
   fill: none; stroke: var(--serie-b); stroke-width: 2.6; stroke-linecap: round;
   stroke-dasharray: 2 7; stroke-linejoin: round;
 }
-.kargah .xl { font-family: var(--fa); font-size: 12px; fill: var(--muted); }
-.kargah .hit { fill: transparent; cursor: pointer; }
-.kargah .pt {
+.xl { font-family: var(--fa); font-size: 12px; fill: var(--muted); }
+.hit { fill: transparent; cursor: pointer; }
+.pt {
   fill: var(--card); stroke: var(--accent); stroke-width: 3;
   opacity: 0; transition: opacity 160ms var(--ease);
 }
-.kargah .dot-p {
+.dot-p {
   fill: var(--card); stroke: var(--accent); stroke-width: 2.6;
   /* 460ms --spring per dot, with the last of seven starting at 960ms, put the chart's
      last point on screen about 1.4s after the page. Halved, and the overshoot dropped —
      a point that springs past its own radius reads as a wobble, not as landing. */
   r: 0px; transition: r 240ms var(--ease);
 }
-.kargah .dot-p.in { r: 4.6px; }
-.kargah .ser-a { transition: stroke-dashoffset 620ms var(--ease); }
-.kargah .fill-a, .kargah .ser-b { opacity: 0; transition: opacity 380ms var(--ease); }
-.kargah .fill-a.in, .kargah .ser-b.in { opacity: 1; }
-.kargah .pt.on { opacity: 1; }
-.kargah .vline {
+.dot-p.in { r: 4.6px; }
+.ser-a { transition: stroke-dashoffset 620ms var(--ease); }
+.fill-a, .ser-b { opacity: 0; transition: opacity 380ms var(--ease); }
+.fill-a.in, .ser-b.in { opacity: 1; }
+.pt.on { opacity: 1; }
+.vline {
   stroke: var(--line-2); stroke-width: 1; stroke-dasharray: 3 4;
   opacity: 0; transition: opacity 160ms var(--ease);
 }
-.kargah .vline.on { opacity: 1; }
-.kargah .tip {
+.vline.on { opacity: 1; }
+.tip {
   position: absolute; pointer-events: none; background: var(--card);
   border-radius: 14px; box-shadow: var(--sh-2); padding: 9px 14px;
   font-size: 13px; white-space: nowrap; opacity: 0;
   transform: translate(-50%,-6px) scale(.94);
   transition: opacity 180ms var(--ease), transform 220ms var(--spring); z-index: 3;
 }
-.kargah .tip.on { opacity: 1; transform: translate(-50%,-12px) scale(1); }
-.kargah .tip b { display: block; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
-.kargah .tip .s { color: var(--muted); font-size: 11.5px; }
-.kargah .legend {
+.tip.on { opacity: 1; transform: translate(-50%,-12px) scale(1); }
+.tip b { display: block; font-size: 16px; font-weight: 700; letter-spacing: -.02em; }
+.tip .s { color: var(--muted); font-size: 11.5px; }
+.legend {
   display: flex; gap: 18px; justify-content: flex-end; padding: 0 24px 20px;
   font-size: 12.5px; color: var(--muted); flex-wrap: wrap;
 }
-.kargah .legend i {
+.legend i {
   display: inline-block; width: 16px; height: 3px; border-radius: 2px;
   margin-inline-end: 7px; vertical-align: middle;
 }
-.kargah .legend .sw-a { background: var(--accent); }
-.kargah .legend .sw-b { background: var(--serie-b); }
-.kargah .gA-stop { stop-color: var(--accent); }
+.legend .sw-a { background: var(--accent); }
+.legend .sw-b { background: var(--serie-b); }
+.gA-stop { stop-color: var(--accent); }
 
 /* ---- 3 · the carved avatar cradle ----------------------------------------
    A rounded rectangle is REMOVED from the card's top inline-start corner,
@@ -2146,73 +2146,73 @@ body {
    in the bay that removal opens up. The silhouette is a clip-path computed in
    JS, because the notch is a fixed size while the card is fluid; drop-shadow
    (not box-shadow) is what follows a clipped shape.                          */
-.kargah .cradlewrap { position: relative; margin-top: 16px; }
-.kargah .cradlecard { background: var(--card); filter: var(--card-drop); border-radius: var(--r-2xl); }
-.kargah .cradlecard.carved { border-radius: 0; }
-.kargah .shoulder {
+.cradlewrap { position: relative; margin-top: 16px; }
+.cradlecard { background: var(--card); filter: var(--card-drop); border-radius: var(--r-2xl); }
+.cradlecard.carved { border-radius: 0; }
+.shoulder {
   position: absolute; top: 0; inset-inline-end: 26px; height: 62px;
   display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
 }
-.kargah .shoulder b {
+.shoulder b {
   font-family: var(--en); font-size: 17px; font-weight: 700;
   color: var(--ink); letter-spacing: -.02em;
 }
-.kargah .cradle {
+.cradle {
   position: absolute; top: 8px; inset-inline-start: 30px; display: flex; z-index: 2;
 }
-.kargah .cradle .av {
+.cradle .av {
   width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center;
   font-weight: 600; font-size: 16px; border: 4px solid var(--bg);
   margin-inline-start: -14px; position: relative;
   transition: transform 260ms var(--spring);
 }
-.kargah .cradle .av:first-child { margin-inline-start: 0; }
-.kargah .cradle .av:hover { transform: translateY(-6px) scale(1.06); z-index: 3; }
-.kargah .cradle .av .badge {
+.cradle .av:first-child { margin-inline-start: 0; }
+.cradle .av:hover { transform: translateY(-6px) scale(1.06); z-index: 3; }
+.cradle .av .badge {
   position: absolute; inset-block-end: -3px; inset-inline-start: -3px;
   min-width: 21px; height: 21px; border-radius: 999px;
   background: var(--accent); color: #fff; font-family: var(--en);
   font-size: 11px; font-weight: 700; display: grid; place-items: center;
   border: 2px solid var(--bg); padding: 0 4px;
 }
-.kargah .cradle .av.add { background: var(--sunk); color: var(--muted); font-size: 20px; cursor: pointer; }
-.kargah .cradlebody { padding: 80px 26px 26px; }
-.kargah .cradlebody h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
-.kargah .cradlebody p { margin: 0; font-size: 13.5px; color: var(--muted); }
+.cradle .av.add { background: var(--sunk); color: var(--muted); font-size: 20px; cursor: pointer; }
+.cradlebody { padding: 80px 26px 26px; }
+.cradlebody h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
+.cradlebody p { margin: 0; font-size: 13.5px; color: var(--muted); }
 
 /* ---- 4 · document-pocket cards ------------------------------------------- */
-.kargah .pockets {
+.pockets {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 20vw, 300px), 1fr));
   gap: 16px; padding: 22px 24px 24px;
 }
-.kargah .pocket { position: relative; padding-top: 82px; cursor: pointer; z-index: 0; }
-.kargah .pocket:hover, .kargah .pocket:focus-within { z-index: 5; }
-.kargah .docs { position: absolute; inset-block-start: 0; inset-inline: 14px; height: 70px; z-index: 0; }
-.kargah .pocket:hover .docs, .kargah .pocket:focus-within .docs { z-index: 3; }
-.kargah .doc {
+.pocket { position: relative; padding-top: 82px; cursor: pointer; z-index: 0; }
+.pocket:hover, .pocket:focus-within { z-index: 5; }
+.docs { position: absolute; inset-block-start: 0; inset-inline: 14px; height: 70px; z-index: 0; }
+.pocket:hover .docs, .pocket:focus-within .docs { z-index: 3; }
+.doc {
   position: absolute; inset-block-start: 0; width: 138px; background: var(--card);
   border-radius: 12px;
   box-shadow: 0 2px 6px rgba(62,44,28,.10), 0 10px 24px -12px rgba(62,44,28,.3);
   padding: 10px 12px;
   transition: transform 520ms var(--spring), box-shadow 340ms var(--ease);
 }
-.kargah .doc .dt { font-size: 9.5px; color: var(--muted); letter-spacing: .04em; }
-.kargah .doc .dv {
+.doc .dt { font-size: 9.5px; color: var(--muted); letter-spacing: .04em; }
+.doc .dv {
   font-family: var(--en); font-size: 15px; font-weight: 700;
   letter-spacing: -.02em; line-height: 1.3;
 }
-.kargah .doc .bars { display: flex; gap: 3px; align-items: flex-end; height: 16px; margin-top: 5px; }
-.kargah .doc .bars i { flex: 1; border-radius: 2px; display: block; }
-.kargah .doc:nth-child(1) { inset-inline-end: 4px; transform: translateY(52px) rotate(3.5deg); }
-.kargah .doc:nth-child(2) { inset-inline-end: 76px; transform: translateY(56px) rotate(-4deg); }
-.kargah .pocket:hover .doc:nth-child(1), .kargah .pocket:focus-within .doc:nth-child(1) {
+.doc .bars { display: flex; gap: 3px; align-items: flex-end; height: 16px; margin-top: 5px; }
+.doc .bars i { flex: 1; border-radius: 2px; display: block; }
+.doc:nth-child(1) { inset-inline-end: 4px; transform: translateY(52px) rotate(3.5deg); }
+.doc:nth-child(2) { inset-inline-end: 76px; transform: translateY(56px) rotate(-4deg); }
+.pocket:hover .doc:nth-child(1), .pocket:focus-within .doc:nth-child(1) {
   transform: translate(-32px,-2px) rotate(7deg) scale(1.03); box-shadow: var(--sh-lift);
 }
-.kargah .pocket:hover .doc:nth-child(2), .kargah .pocket:focus-within .doc:nth-child(2) {
+.pocket:hover .doc:nth-child(2), .pocket:focus-within .doc:nth-child(2) {
   transform: translate(30px,4px) rotate(-8deg) scale(1.03); box-shadow: var(--sh-lift);
 }
 /* the frosted face -- colour from the docs behind bleeds through it */
-.kargah .face {
+.face {
   position: relative; z-index: 1; border-radius: var(--r-xl); padding: 20px 20px 18px;
   background: var(--frost);
   /* Prefixed FIRST, standard LAST, and the order is load-bearing.
@@ -2226,37 +2226,37 @@ body {
   box-shadow: inset 0 1px 0 var(--frost-edge), var(--sh-1);
   transition: transform 300ms var(--ease), box-shadow 300ms var(--ease);
 }
-.kargah .pocket:hover .face {
+.pocket:hover .face {
   transform: translateY(-2px);
   box-shadow: inset 0 1px 0 var(--frost-edge), var(--sh-lift);
 }
-.kargah .face .who { font-size: 15.5px; font-weight: 600; }
-.kargah .face .meta { font-size: 12.5px; color: var(--muted); margin-top: -2px; }
-.kargah .face .amt {
+.face .who { font-size: 15.5px; font-weight: 600; }
+.face .meta { font-size: 12.5px; color: var(--muted); margin-top: -2px; }
+.face .amt {
   font-family: var(--en); font-variant-numeric: tabular-nums; font-size: 22px;
   font-weight: 700; letter-spacing: -.025em; margin-top: 12px;
 }
-.kargah .face .amt small {
+.face .amt small {
   font-size: 12px; font-weight: 500; color: var(--muted);
   margin-inline-start: 5px; letter-spacing: 0;
 }
-.kargah .face .foot {
+.face .foot {
   display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px;
 }
-.kargah .pill {
+.pill {
   border-radius: 999px; padding: 4px 11px; font-size: 12px; font-weight: 600;
   white-space: nowrap; display: inline-flex; align-items: center; gap: 6px;
 }
-.kargah .pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.kargah .pill.done { background: var(--sage-soft); color: var(--sage); }
-.kargah .pill.conf { background: var(--amber-soft); color: var(--amber); }
-.kargah .pill.draft { background: var(--sunk); color: var(--muted); }
-.kargah .face .more { font-size: 12.5px; color: var(--accent); font-weight: 600; }
+.pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pill.done { background: var(--sage-soft); color: var(--sage); }
+.pill.conf { background: var(--amber-soft); color: var(--amber); }
+.pill.draft { background: var(--sunk); color: var(--muted); }
+.face .more { font-size: 12.5px; color: var(--accent); font-weight: 600; }
 
 /* On the dark skin the warm-brown shadows on the slips behind a PocketCard vanish and
    the papers lose their edge (image 2). A light rim + a real cast against black brings
    them back; the light skin is exactly as main. */
-:root[data-skin="dark"] .kargah .doc {
+:root[data-theme="dark"] .doc {
   border: 1px solid rgba(255,255,255,.10);
   box-shadow: 0 0 0 1px rgba(255,255,255,.06),
               0 2px 8px rgba(0,0,0,.45), 0 12px 28px -14px rgba(0,0,0,.6);
@@ -2267,19 +2267,19 @@ body {
    The slips are SIBLINGS of the face and the face is NEVER overflow:hidden -- z-index
    does the layering, exactly like the bespoke PocketCard. Drive it from <Pocketed>
    (components/kargah/Pocketed.tsx): data-papers 0..3, data-tone, data-fan.            */
-.kargah .pocketed { position: relative; z-index: 0; }
-.kargah .pocketed[data-papers="0"] { padding-top: 0; }
-.kargah .pocketed[data-papers="1"],
-.kargah .pocketed[data-papers="2"],
-.kargah .pocketed[data-papers="3"] { padding-top: 38px; }
-.kargah .pocketed:hover, .kargah .pocketed:focus-within { z-index: 5; }
-.kargah .pocketed__slips {
+.pocketed { position: relative; z-index: 0; }
+.pocketed[data-papers="0"] { padding-top: 0; }
+.pocketed[data-papers="1"],
+.pocketed[data-papers="2"],
+.pocketed[data-papers="3"] { padding-top: 38px; }
+.pocketed:hover, .pocketed:focus-within { z-index: 5; }
+.pocketed__slips {
   position: absolute; inset-block-start: 0; inset-inline: 16px; height: 36px;
   z-index: 0; pointer-events: none;
 }
-.kargah .pocketed:hover .pocketed__slips,
-.kargah .pocketed:focus-within .pocketed__slips { z-index: 3; }
-.kargah .pocketed__slip {
+.pocketed:hover .pocketed__slips,
+.pocketed:focus-within .pocketed__slips { z-index: 3; }
+.pocketed__slip {
   position: absolute; inset-block-start: 0;
   inset-inline-end: calc(var(--si, 0) * 30px);
   width: min(64%, 148px); height: 42px;
@@ -2290,40 +2290,40 @@ body {
   transform-origin: bottom center;
   transition: transform 520ms var(--spring), box-shadow 340ms var(--ease);
 }
-.kargah .pocketed__slip:nth-child(1) { --si: 0; }
-.kargah .pocketed__slip:nth-child(2) { --si: 1; }
-.kargah .pocketed__slip:nth-child(3) { --si: 2; }
-.kargah .pocketed[data-fan]:hover .pocketed__slip,
-.kargah .pocketed[data-fan]:focus-within .pocketed__slip { box-shadow: var(--sh-lift); }
-.kargah .pocketed[data-fan]:hover .pocketed__slip:nth-child(1),
-.kargah .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(1) {
+.pocketed__slip:nth-child(1) { --si: 0; }
+.pocketed__slip:nth-child(2) { --si: 1; }
+.pocketed__slip:nth-child(3) { --si: 2; }
+.pocketed[data-fan]:hover .pocketed__slip,
+.pocketed[data-fan]:focus-within .pocketed__slip { box-shadow: var(--sh-lift); }
+.pocketed[data-fan]:hover .pocketed__slip:nth-child(1),
+.pocketed[data-fan]:focus-within .pocketed__slip:nth-child(1) {
   transform: translate(-28px, -2px) rotate(7deg) scale(1.03);
 }
-.kargah .pocketed[data-fan]:hover .pocketed__slip:nth-child(2),
-.kargah .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(2) {
+.pocketed[data-fan]:hover .pocketed__slip:nth-child(2),
+.pocketed[data-fan]:focus-within .pocketed__slip:nth-child(2) {
   transform: translate(26px, 4px) rotate(-8deg) scale(1.03);
 }
-.kargah .pocketed[data-fan]:hover .pocketed__slip:nth-child(3),
-.kargah .pocketed[data-fan]:focus-within .pocketed__slip:nth-child(3) {
+.pocketed[data-fan]:hover .pocketed__slip:nth-child(3),
+.pocketed[data-fan]:focus-within .pocketed__slip:nth-child(3) {
   transform: translate(48px, 10px) rotate(-13deg) scale(1.02);
 }
-.kargah .pocketed[data-tone="good"] .pocketed__slip { border-top: 2px solid var(--good); }
-.kargah .pocketed[data-tone="warn"] .pocketed__slip { border-top: 2px solid var(--warn); }
-.kargah .pocketed[data-tone="crit"] .pocketed__slip { border-top: 2px solid var(--crit); }
-.kargah .pocketed[data-tone="info"] .pocketed__slip { border-top: 2px solid var(--info); }
-.kargah .pocketed__face {
+.pocketed[data-tone="good"] .pocketed__slip { border-top: 2px solid var(--good); }
+.pocketed[data-tone="warn"] .pocketed__slip { border-top: 2px solid var(--warn); }
+.pocketed[data-tone="crit"] .pocketed__slip { border-top: 2px solid var(--crit); }
+.pocketed[data-tone="info"] .pocketed__slip { border-top: 2px solid var(--info); }
+.pocketed__face {
   position: relative; z-index: 1;
   transition: transform 300ms var(--ease), box-shadow 300ms var(--ease);
 }
-.kargah .pocketed:hover .pocketed__face { transform: translateY(-2px); }
-:root[data-skin="dark"] .kargah .pocketed__slip {
+.pocketed:hover .pocketed__face { transform: translateY(-2px); }
+:root[data-theme="dark"] .pocketed__slip {
   border: 1px solid rgba(255,255,255,.09);
   box-shadow: 0 2px 8px rgba(0,0,0,.45), 0 12px 28px -14px rgba(0,0,0,.6);
 }
 @media (prefers-reduced-motion: reduce) {
-  .kargah .pocketed__slip, .kargah .pocketed__face { transition: none; }
-  .kargah .pocketed[data-fan]:hover .pocketed__slip,
-  .kargah .pocketed[data-fan]:focus-within .pocketed__slip {
+  .pocketed__slip, .pocketed__face { transition: none; }
+  .pocketed[data-fan]:hover .pocketed__slip,
+  .pocketed[data-fan]:focus-within .pocketed__slip {
     transform: translateY(14px) rotate(0);
   }
 }
@@ -2333,11 +2333,11 @@ body {
    gradient stat tiles, product rows/tiles, kanban tasks, and anything given `.kbar`.
    `--bar` is the single glow hue, so one rule covers the gradient default AND every
    data-tone, and the halo always matches the strip.                                  */
-.kargah .kbar::after,
-.kargah .gcard::after,
-.kargah .prow::after,
-.kargah .ptile::after,
-.kargah .task::after {
+.kbar::after,
+.gcard::after,
+.prow::after,
+.ptile::after,
+.task::after {
   content: "";
   position: absolute; inset-block-start: 0; inset-inline: 0; height: 3px;
   z-index: 2; pointer-events: none;
@@ -2353,29 +2353,29 @@ body {
   filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--bar) 26%, transparent));
 }
 /* Status mode: the strip AND the glow both follow --bar. */
-.kargah [data-tone="good"]::after { background: var(--good); --bar: var(--good); }
-.kargah [data-tone="warn"]::after { background: var(--warn); --bar: var(--warn); }
-.kargah [data-tone="crit"]::after { background: var(--crit); --bar: var(--crit); }
-.kargah [data-tone="info"]::after { background: var(--info); --bar: var(--info); }
+[data-tone="good"]::after { background: var(--good); --bar: var(--good); }
+[data-tone="warn"]::after { background: var(--warn); --bar: var(--warn); }
+[data-tone="crit"]::after { background: var(--crit); --bar: var(--crit); }
+[data-tone="info"]::after { background: var(--info); --bar: var(--info); }
 /* Dark skin: the neon bloom -- drop-shadow (NOT box-shadow) so the halo inherits the
    end-fade mask and, with the card's overflow:hidden, spreads downward onto the surface.
    .gcard is left out: an accent bloom over its mesh muddies it. */
-:root[data-skin="dark"] .kargah .kbar::after,
-:root[data-skin="dark"] .kargah .prow::after,
-:root[data-skin="dark"] .kargah .ptile::after,
-:root[data-skin="dark"] .kargah .task::after {
+:root[data-theme="dark"] .kbar::after,
+:root[data-theme="dark"] .prow::after,
+:root[data-theme="dark"] .ptile::after,
+:root[data-theme="dark"] .task::after {
   filter:
     drop-shadow(0 0 5px  color-mix(in srgb, var(--bar) 70%, transparent))
     drop-shadow(0 2px 12px color-mix(in srgb, var(--bar) 32%, transparent));
 }
 
 /* ---- 5 · the board (drag and drop) --------------------------------------- */
-.kargah .board {
+.board {
   display: grid; grid-template-columns: repeat(3, minmax(0, 460px)); gap: 14px;
   justify-content: center; padding: 6px 16px 24px; align-items: start;
   user-select: none; -webkit-user-select: none;
 }
-.kargah .col {
+.col {
   background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-xl);
   padding: 10px 10px 4px; min-height: 160px;
   /* Not in the artifact, because the artifact's board never holds more than two cards a
@@ -2386,24 +2386,24 @@ body {
   max-height: 62vh; overflow-y: auto; overscroll-behavior: contain;
   transition: background 200ms var(--ease), border-color 200ms var(--ease), box-shadow 200ms var(--ease);
 }
-.kargah .col.over {
+.col.over {
   background: var(--accent-soft); border-color: var(--accent);
   border-style: dashed; box-shadow: inset 0 0 0 1px var(--accent);
 }
-.kargah .colhead {
+.colhead {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; margin-bottom: 8px; padding: 0 4px;
 }
-.kargah .colhead .t { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; }
-.kargah .colhead .av {
+.colhead .t { display: flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; }
+.colhead .av {
   width: 30px; height: 30px; border-radius: 999px; display: grid; place-items: center;
   font-size: 12.5px; font-weight: 600; flex: none;
 }
-.kargah .colhead .c {
+.colhead .c {
   font-family: var(--en); font-size: 12px; color: var(--muted);
   background: var(--sunk); border-radius: 999px; padding: 2px 9px; font-weight: 600;
 }
-.kargah .task {
+.task {
   background: var(--card); border-radius: var(--r-md); box-shadow: var(--sh-1);
   padding: 10px 12px; margin-bottom: 6px; cursor: grab;
   position: relative; overflow: hidden;
@@ -2413,46 +2413,46 @@ body {
   display: block; width: 100%; text-align: start; border: 0; font-family: var(--fa);
   transition: transform 220ms var(--spring), box-shadow 220ms var(--ease), opacity 180ms linear;
 }
-.kargah .task:active { cursor: grabbing; }
-.kargah .task.dragging { opacity: .42; transform: scale(.97) rotate(-1.5deg); }
-.kargah .task:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
-.kargah .task:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.kargah .task .n { font-size: 13.5px; font-weight: 600; line-height: 1.45; }
-.kargah .task .m {
+.task:active { cursor: grabbing; }
+.task.dragging { opacity: .42; transform: scale(.97) rotate(-1.5deg); }
+.task:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.task:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.task .n { font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.task .m {
   font-size: 11px; color: var(--muted); display: flex; gap: 2px 9px;
   flex-wrap: wrap; margin-top: 2px;
 }
-.kargah .task .m span { position: relative; }
-.kargah .task .m span + span::before {
+.task .m span { position: relative; }
+.task .m span + span::before {
   content: ""; position: absolute; inset-inline-end: -7px; top: 50%;
   width: 3px; height: 3px; border-radius: 50%; background: var(--line-2);
 }
-.kargah .task .kg { font-family: var(--en); font-weight: 600; }
-.kargah .hint {
+.task .kg { font-family: var(--en); font-weight: 600; }
+.hint {
   padding: 0 24px 18px; font-size: 12.5px; color: var(--muted);
   display: flex; align-items: center; gap: 8px;
 }
-.kargah .hint b { color: var(--ink-2); font-weight: 600; }
+.hint b { color: var(--ink-2); font-weight: 600; }
 
 /* ---- 5b · pipeline card extras ------------------------------------------- */
-.kargah .board.pipe { grid-template-columns: repeat(4, minmax(0, 360px)); }
-.kargah .colhead .st { width: 9px; height: 9px; border-radius: 50%; flex: none; }
-.kargah .task .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.kargah .task .asg {
+.board.pipe { grid-template-columns: repeat(4, minmax(0, 360px)); }
+.colhead .st { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.task .top { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.task .asg {
   display: inline-flex; align-items: center; gap: 6px; margin-top: 6px;
   font-size: 11px; color: var(--muted);
 }
-.kargah .task .asg .av {
+.task .asg .av {
   width: 22px; height: 22px; border-radius: 999px; display: grid; place-items: center;
   font-size: 10.5px; font-weight: 700;
 }
-.kargah .task .amt {
+.task .amt {
   font-family: var(--en); font-variant-numeric: tabular-nums; font-size: 13px;
   font-weight: 700; letter-spacing: -.02em;
 }
 
 /* ---- 5c · processing modal ----------------------------------------------- */
-.kargah .modal {
+.modal {
   position: fixed; top: 50%; left: 50%;
   /* physical left + translate: inset-inline-start is the RIGHT edge under rtl,
      so the -50% shift walks the dialog off toward the left instead of centring it */
@@ -2462,319 +2462,319 @@ body {
   opacity: 0; pointer-events: none;
   transition: opacity 260ms var(--ease), transform 420ms var(--spring);
 }
-.kargah .modal.on { opacity: 1; pointer-events: auto; transform: translate(-50%,-50%) scale(1); }
-.kargah .modal .mhead {
+.modal.on { opacity: 1; pointer-events: auto; transform: translate(-50%,-50%) scale(1); }
+.modal .mhead {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 14px; padding: 22px 24px 4px;
 }
-.kargah .modal .mhead h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
-.kargah .modal .mhead .s { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
-.kargah .mbody { padding: 14px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
-.kargah .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 7px; }
-.kargah .field .ro {
+.modal .mhead h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
+.modal .mhead .s { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
+.mbody { padding: 14px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
+.field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 7px; }
+.field .ro {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 11px 14px; font-size: 14.5px;
 }
-.kargah .people { display: flex; gap: 8px; flex-wrap: wrap; }
-.kargah .person {
+.people { display: flex; gap: 8px; flex-wrap: wrap; }
+.person {
   display: inline-flex; align-items: center; gap: 8px; background: var(--card);
   border: 1px solid var(--line); border-radius: 999px; padding: 6px 13px 6px 7px;
   font-size: 13px; cursor: pointer; color: var(--ink-2); font-family: var(--fa);
   transition: border-color 180ms var(--ease), background 180ms var(--ease), transform 180ms var(--spring);
 }
-.kargah .person .av {
+.person .av {
   width: 26px; height: 26px; border-radius: 999px; display: grid; place-items: center;
   font-size: 12px; font-weight: 700; flex: none;
 }
-.kargah .person:hover { transform: translateY(-1px); }
-.kargah .person[aria-pressed="true"] {
+.person:hover { transform: translateY(-1px); }
+.person[aria-pressed="true"] {
   border-color: var(--accent); background: var(--accent-soft); color: var(--ink); font-weight: 600;
 }
-.kargah .slidewrap {
+.slidewrap {
   background: var(--card); border: 1px solid var(--line);
   border-radius: var(--r-lg); padding: 16px 18px;
 }
-.kargah .sliderow {
+.sliderow {
   display: flex; align-items: baseline; justify-content: space-between;
   gap: 12px; margin-bottom: 12px;
 }
-.kargah .sliderow .big {
+.sliderow .big {
   font-family: var(--en); font-variant-numeric: tabular-nums; font-size: 27px;
   font-weight: 800; letter-spacing: -.03em; color: var(--accent);
 }
-.kargah .sliderow .of { font-size: 12.5px; color: var(--muted); }
-.kargah input[type=range] {
+.sliderow .of { font-size: 12.5px; color: var(--muted); }
+input[type=range] {
   -webkit-appearance: none; appearance: none; width: 100%; height: 8px;
   border-radius: 999px; background: var(--sunk); outline: none; cursor: pointer; direction: rtl;
 }
-.kargah input[type=range]::-webkit-slider-thumb {
+input[type=range]::-webkit-slider-thumb {
   -webkit-appearance: none; width: 26px; height: 26px; border-radius: 50%;
   background: var(--card); border: 3px solid var(--accent); box-shadow: var(--sh-2); cursor: grab;
 }
-.kargah input[type=range]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
-.kargah input[type=range]::-moz-range-thumb {
+input[type=range]::-webkit-slider-thumb:active { cursor: grabbing; transform: scale(1.08); }
+input[type=range]::-moz-range-thumb {
   width: 22px; height: 22px; border-radius: 50%; background: var(--card);
   border: 3px solid var(--accent); box-shadow: var(--sh-2); cursor: grab;
 }
-.kargah input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
-.kargah .quick { display: flex; gap: 7px; margin-top: 12px; flex-wrap: wrap; }
-.kargah .quick button {
+input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.quick { display: flex; gap: 7px; margin-top: 12px; flex-wrap: wrap; }
+.quick button {
   border: 1px solid var(--line); background: var(--card-2); color: var(--ink-2);
   border-radius: 999px; padding: 6px 13px; font-size: 12.5px; cursor: pointer; font-family: var(--fa);
 }
-.kargah .quick button:hover { border-color: var(--accent); color: var(--accent); }
-.kargah .mfoot { display: flex; gap: 9px; justify-content: flex-end; padding: 0 24px 22px; }
+.quick button:hover { border-color: var(--accent); color: var(--accent); }
+.mfoot { display: flex; gap: 9px; justify-content: flex-end; padding: 0 24px 22px; }
 
 /* ---- 5d · the journey swimlane ------------------------------------------- */
-.kargah .lanes {
+.lanes {
   display: grid; grid-template-columns: repeat(4, minmax(0, 380px)); gap: 14px;
   justify-content: center; padding: 6px 24px 26px; align-items: start;
 }
-.kargah .lane2 { position: relative; }
-.kargah .lane2 .lh { display: flex; align-items: center; gap: 9px; padding: 0 4px 12px; }
-.kargah .lane2 .lh .idx {
+.lane2 { position: relative; }
+.lane2 .lh { display: flex; align-items: center; gap: 9px; padding: 0 4px 12px; }
+.lane2 .lh .idx {
   font-family: var(--en); font-size: 11px; font-weight: 700; color: var(--muted);
   background: var(--sunk); border-radius: 999px; width: 22px; height: 22px;
   display: grid; place-items: center; flex: none;
 }
-.kargah .lane2 .lh .t { font-size: 14px; font-weight: 600; }
+.lane2 .lh .t { font-size: 14px; font-weight: 600; }
 /* the connector runs between lanes; RTL means it points leftward */
-.kargah .lane2:not(:last-child)::after {
+.lane2:not(:last-child)::after {
   content: ""; position: absolute; top: 11px; inset-inline-start: -14px;
   width: 14px; border-top: 2px dotted var(--line-2);
 }
 /* The step the order is actually sitting in. Everything before it is finished and
    everything after is not started, so only this one gets the accent. */
-.kargah .lane2 .lh .now {
+.lane2 .lh .now {
   font-size: 11px; font-weight: 700; color: var(--accent);
   background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
 }
-.kargah .lane2--todo { opacity: .62; }
-.kargah .lane2--current .node { box-shadow: var(--sh-2), inset 0 0 0 1.5px var(--accent); }
-.kargah .lane2__what {
+.lane2--todo { opacity: .62; }
+.lane2--current .node { box-shadow: var(--sh-2), inset 0 0 0 1.5px var(--accent); }
+.lane2__what {
   margin: 0 4px 10px; font-size: 12px; line-height: 1.65; color: var(--muted);
 }
-.kargah .lane2__note {
+.lane2__note {
   margin: 8px 4px 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-2);
 }
-.kargah .lane2--current .lane2__note { color: var(--accent); font-weight: 600; }
+.lane2--current .lane2__note { color: var(--accent); font-weight: 600; }
 
-.kargah .node {
+.node {
   background: var(--card); border-radius: var(--r-lg); box-shadow: var(--sh-1);
   padding: 12px 13px; margin-bottom: 9px; display: flex; align-items: center;
   gap: 10px; cursor: pointer;
   transition: transform 220ms var(--spring), box-shadow 220ms var(--ease);
 }
-.kargah .node:hover { transform: translateY(-2px); box-shadow: var(--sh-2); }
-.kargah .node .av {
+.node:hover { transform: translateY(-2px); box-shadow: var(--sh-2); }
+.node .av {
   width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center;
   font-size: 13px; font-weight: 700; flex: none;
 }
-.kargah .node .nb { flex: 1; min-width: 0; }
-.kargah .node .nb b { display: block; font-size: 13.5px; font-weight: 600; }
-.kargah .node .nb span { font-size: 11.5px; color: var(--muted); }
-.kargah .node .tick {
+.node .nb { flex: 1; min-width: 0; }
+.node .nb b { display: block; font-size: 13.5px; font-weight: 600; }
+.node .nb span { font-size: 11.5px; color: var(--muted); }
+.node .tick {
   width: 26px; height: 26px; border-radius: 999px; border: 1.5px solid var(--line-2);
   background: transparent; color: transparent; flex: none; cursor: pointer;
   display: grid; place-items: center; font-size: 13px;
   transition: background 220ms var(--ease), border-color 220ms var(--ease),
               color 220ms var(--ease), transform 260ms var(--spring);
 }
-.kargah .node .tick[data-done="true"] {
+.node .tick[data-done="true"] {
   background: var(--sage); border-color: var(--sage); color: var(--tick-ink); transform: scale(1.06);
 }
-.kargah .node.done .nb b {
+.node.done .nb b {
   color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px;
 }
-.kargah .addnode {
+.addnode {
   width: 100%; border: 1px dashed var(--line-2); background: transparent;
   color: var(--muted); border-radius: var(--r-lg); padding: 12px;
   font-family: var(--fa); font-size: 13px; cursor: pointer;
 }
-.kargah .addnode:hover { border-color: var(--accent); color: var(--accent); }
+.addnode:hover { border-color: var(--accent); color: var(--accent); }
 
 /* ---- the journey's order picker and summary ------------------------------ */
-.kargah .picker { padding: 0 24px 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-.kargah .picker__label { font-size: 12.5px; color: var(--muted); flex: none; }
-.kargah .picker__row { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
-.kargah .picker__row::-webkit-scrollbar { display: none; }
-.kargah .picker__chip {
+.picker { padding: 0 24px 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.picker__label { font-size: 12.5px; color: var(--muted); flex: none; }
+.picker__row { display: flex; gap: 7px; overflow-x: auto; padding-bottom: 6px; scrollbar-width: none; }
+.picker__row::-webkit-scrollbar { display: none; }
+.picker__chip {
   display: inline-flex; align-items: center; gap: 7px; flex: none;
   border: 1px solid var(--line); background: var(--card-2); color: var(--ink-2);
   border-radius: 999px; padding: 6px 13px; font-size: 12.5px; text-decoration: none;
   transition: border-color 160ms var(--ease), background 160ms var(--ease);
 }
-.kargah .picker__chip:hover { border-color: var(--line-2); }
-.kargah .picker__chip.on {
+.picker__chip:hover { border-color: var(--line-2); }
+.picker__chip.on {
   border-color: var(--accent); background: var(--accent-soft); color: var(--ink); font-weight: 600;
 }
-.kargah .picker__who { max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker__who { max-width: 13ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.kargah .jsum {
+.jsum {
   margin: 6px 24px 0; padding: 14px 16px; border-radius: var(--r-lg);
   background: var(--card-2); border: 1px solid var(--line);
   display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px 18px;
 }
-.kargah .jsum dt { margin: 0; font-size: 11.5px; color: var(--muted); }
-.kargah .jsum dd { margin: 2px 0 0; font-size: 14px; color: var(--ink); font-weight: 600; }
-.kargah .jnow {
+.jsum dt { margin: 0; font-size: 11.5px; color: var(--muted); }
+.jsum dd { margin: 2px 0 0; font-size: 14px; color: var(--ink); font-weight: 600; }
+.jnow {
   margin: 12px 24px 0; padding: 12px 16px; border-radius: var(--r-lg);
   background: var(--accent-soft); color: var(--ink); font-size: 13px; line-height: 1.7;
 }
-.kargah .jnow b { color: var(--accent); font-weight: 700; }
+.jnow b { color: var(--accent); font-weight: 700; }
 @media (max-width: 620px) {
-  .kargah .picker, .kargah .jsum, .kargah .jnow { margin-inline: 16px; padding-inline: 16px; }
-  .kargah .picker { padding-inline: 16px; }
+  .picker, .jsum, .jnow { margin-inline: 16px; padding-inline: 16px; }
+  .picker { padding-inline: 16px; }
 }
 
 /* ---- 6 · schedule: month + day rail -------------------------------------- */
-.kargah .sched { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; align-items: start; max-width: 1200px; }
-.kargah .cal { padding: 6px 22px 22px; }
-.kargah .calgrid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-top: 8px; }
-.kargah .calgrid .dow { text-align: center; font-size: 11.5px; color: var(--muted); padding-bottom: 6px; }
-.kargah .day {
+.sched { display: grid; grid-template-columns: 1fr 1.15fr; gap: 14px; align-items: start; max-width: 1200px; }
+.cal { padding: 6px 22px 22px; }
+.calgrid { display: grid; grid-template-columns: repeat(7,1fr); gap: 4px; margin-top: 8px; }
+.calgrid .dow { text-align: center; font-size: 11.5px; color: var(--muted); padding-bottom: 6px; }
+.day {
   aspect-ratio: 1; border: 0; background: transparent; border-radius: 12px;
   font-family: var(--en); font-variant-numeric: tabular-nums; font-size: 14px;
   color: var(--ink-2); cursor: pointer; display: flex; flex-direction: column;
   align-items: center; justify-content: center; gap: 3px; position: relative;
   transition: background 160ms var(--ease), color 160ms var(--ease), transform 200ms var(--spring);
 }
-.kargah .day:hover { background: var(--sunk); }
-.kargah .day.out { color: var(--faint); }
-.kargah .day.today {
+.day:hover { background: var(--sunk); }
+.day.out { color: var(--faint); }
+.day.today {
   background: var(--accent); color: var(--accent-ink); font-weight: 700;
   box-shadow: 0 6px 14px -6px color-mix(in srgb, var(--accent) 75%, transparent);
 }
-.kargah .day.sel { background: var(--ink); color: var(--bg); font-weight: 700; }
-.kargah .day .dots { display: flex; gap: 3px; height: 5px; }
-.kargah .day .dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
-.kargah .day.today .dots i, .kargah .day.sel .dots i { background: rgba(255,255,255,.85) !important; }
-.kargah .rail { padding: 6px 22px 22px; }
-.kargah .slot { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: start; min-height: 56px; }
-.kargah .slot .h { font-family: var(--en); font-size: 12px; color: var(--faint); padding-top: 9px; }
-.kargah .slot .lane { border-top: 1px solid var(--line); padding: 7px 0; min-height: 46px; }
-.kargah .ev {
+.day.sel { background: var(--ink); color: var(--bg); font-weight: 700; }
+.day .dots { display: flex; gap: 3px; height: 5px; }
+.day .dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
+.day.today .dots i, .day.sel .dots i { background: rgba(255,255,255,.85) !important; }
+.rail { padding: 6px 22px 22px; }
+.slot { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: start; min-height: 56px; }
+.slot .h { font-family: var(--en); font-size: 12px; color: var(--faint); padding-top: 9px; }
+.slot .lane { border-top: 1px solid var(--line); padding: 7px 0; min-height: 46px; }
+.ev {
   border-radius: 12px; padding: 9px 13px; font-size: 13px; display: flex;
   align-items: center; gap: 10px; box-shadow: var(--sh-1); cursor: pointer;
   transition: transform 220ms var(--spring), box-shadow 220ms var(--ease);
 }
-.kargah .ev:hover { transform: translateX(-3px); box-shadow: var(--sh-2); }
-.kargah .ev .dot {
+.ev:hover { transform: translateX(-3px); box-shadow: var(--sh-2); }
+.ev .dot {
   width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
   font-size: 14px; flex: none;
 }
-.kargah .ev .t { font-weight: 600; }
-.kargah .ev .s { font-size: 11.5px; opacity: .75; margin-top: -4px; }
-.kargah .ev.a { background: var(--accent-soft); color: var(--ev-a-ink); }
-.kargah .ev.a .dot { background: color-mix(in srgb, var(--accent) 16%, transparent); }
-.kargah .ev.b { background: var(--sage-soft); color: var(--ev-b-ink); }
-.kargah .ev.b .dot { background: rgba(79,107,74,.16); }
-.kargah .ev.c { background: var(--sky-soft); color: var(--ev-c-ink); }
-.kargah .ev.c .dot { background: rgba(46,99,130,.16); }
-.kargah .notice {
+.ev .t { font-weight: 600; }
+.ev .s { font-size: 11.5px; opacity: .75; margin-top: -4px; }
+.ev.a { background: var(--accent-soft); color: var(--ev-a-ink); }
+.ev.a .dot { background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.ev.b { background: var(--sage-soft); color: var(--ev-b-ink); }
+.ev.b .dot { background: rgba(79,107,74,.16); }
+.ev.c { background: var(--sky-soft); color: var(--ev-c-ink); }
+.ev.c .dot { background: rgba(46,99,130,.16); }
+.notice {
   margin: 0 22px 20px; padding: 14px 16px; border-radius: var(--r-lg);
   background: var(--amber-soft); color: var(--notice-ink); font-size: 13px;
   line-height: 1.7; border: 1px solid rgba(154,107,16,.18);
 }
-.kargah .notice b { font-weight: 700; }
+.notice b { font-weight: 700; }
 
 /* ---- 8 · bottom bento sheet (پنجرهٔ مشتری) -------------------------------- */
-.kargah-scrim {
+:root-scrim {
   position: fixed; inset: 0; background: rgba(35,28,22,.34);
   backdrop-filter: blur(3px); opacity: 0; pointer-events: none;
   transition: opacity 300ms var(--ease); z-index: 70;
 }
-.kargah-scrim.on { opacity: 1; pointer-events: auto; }
-.kargah .sheet {
+:root-scrim.on { opacity: 1; pointer-events: auto; }
+.sheet {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 71;
   background: var(--bg); border-radius: var(--r-2xl) var(--r-2xl) 0 0;
   box-shadow: 0 -12px 40px -12px rgba(62,44,28,.35);
   transform: translateY(102%); transition: transform 480ms var(--spring);
   max-height: 88vh; overflow-y: auto; direction: rtl;
 }
-.kargah .sheet.on { transform: none; }
-.kargah .grab { width: 44px; height: 5px; border-radius: 999px; background: var(--line-2); margin: 10px auto 0; }
-.kargah .sheethead {
+.sheet.on { transform: none; }
+.grab { width: 44px; height: 5px; border-radius: 999px; background: var(--line-2); margin: 10px auto 0; }
+.sheethead {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 14px; padding: 14px 24px 8px;
 }
-.kargah .sheethead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.015em; }
-.kargah .sheethead .s { font-size: 13px; color: var(--muted); margin-top: -4px; }
-.kargah .x {
+.sheethead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.015em; }
+.sheethead .s { font-size: 13px; color: var(--muted); margin-top: -4px; }
+.x {
   width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--card); color: var(--ink-2); font-size: 17px; cursor: pointer;
   flex: none; transition: background 160ms var(--ease);
 }
-.kargah .x:hover { background: var(--sunk); }
-.kargah .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; max-width: 1150px; }
+.x:hover { background: var(--sunk); }
+.bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; max-width: 1150px; }
 /* The map's customer panel is 320px wide: three tiles across would be 90px each, which
    is narrower than the figures they carry. */
-.kargah .bento--compact { grid-template-columns: 1fr; gap: 10px; padding: 0 0 14px; }
-.kargah .bento--compact .tile { padding: 13px 15px; }
-.kargah .bento--compact .tile .v { font-size: 21px; }
-.kargah .bento--compact .arc svg { width: 116px; height: 68px; }
-.kargah .tile { background: var(--card); border-radius: var(--r-xl); padding: 18px 20px; box-shadow: var(--sh-1); }
-.kargah .tile .k { font-size: 12.5px; color: var(--muted); }
-.kargah .tile .v { font-size: 26px; font-weight: 700; letter-spacing: -.025em; margin-top: 2px; }
-.kargah .tile .n { font-size: 12px; color: var(--muted); }
-.kargah .minirow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; }
-.kargah .mini { background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 11px 12px; }
-.kargah .mini .k { font-size: 11.5px; color: var(--muted); }
-.kargah .mini .v { font-family: var(--en); font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
-.kargah .arc { display: grid; place-items: center; padding: 6px 0 0; }
-.kargah .arc svg { width: 132px; height: 78px; overflow: visible; }
-.kargah .arc .track { fill: none; stroke: var(--sunk); stroke-width: 12; stroke-linecap: round; }
-.kargah .arc .val {
+.bento--compact { grid-template-columns: 1fr; gap: 10px; padding: 0 0 14px; }
+.bento--compact .tile { padding: 13px 15px; }
+.bento--compact .tile .v { font-size: 21px; }
+.bento--compact .arc svg { width: 116px; height: 68px; }
+.tile { background: var(--card); border-radius: var(--r-xl); padding: 18px 20px; box-shadow: var(--sh-1); }
+.tile .k { font-size: 12.5px; color: var(--muted); }
+.tile .v { font-size: 26px; font-weight: 700; letter-spacing: -.025em; margin-top: 2px; }
+.tile .n { font-size: 12px; color: var(--muted); }
+.minirow { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin-top: 14px; }
+.mini { background: var(--card-2); border: 1px solid var(--line); border-radius: var(--r-md); padding: 11px 12px; }
+.mini .k { font-size: 11.5px; color: var(--muted); }
+.mini .v { font-family: var(--en); font-size: 17px; font-weight: 700; letter-spacing: -.02em; }
+.arc { display: grid; place-items: center; padding: 6px 0 0; }
+.arc svg { width: 132px; height: 78px; overflow: visible; }
+.arc .track { fill: none; stroke: var(--sunk); stroke-width: 12; stroke-linecap: round; }
+.arc .val {
   fill: none; stroke: var(--accent); stroke-width: 12; stroke-linecap: round;
   transition: stroke-dashoffset 900ms var(--ease);
 }
-.kargah .arc .c { text-align: center; margin-top: -26px; }
-.kargah .arc .c b {
+.arc .c { text-align: center; margin-top: -26px; }
+.arc .c b {
   font-family: var(--en); font-size: 24px; font-weight: 800; letter-spacing: -.03em;
   display: block; line-height: 1.2;
 }
-.kargah .arc .c span { font-size: 11.5px; color: var(--muted); }
-.kargah .ordline {
+.arc .c span { font-size: 11.5px; color: var(--muted); }
+.ordline {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding: 9px 0; border-bottom: 1px solid var(--line); font-size: 13.5px;
 }
-.kargah .ordline:last-child { border-bottom: 0; }
+.ordline:last-child { border-bottom: 0; }
 /* The recent-orders rows are links; without this they arrive underlined and blue. */
-.kargah a.ordline { text-decoration: none; color: var(--ink); }
-.kargah a.ordline:hover { color: var(--accent); }
-.kargah .ordline .mono { font-weight: 600; }
+a.ordline { text-decoration: none; color: var(--ink); }
+a.ordline:hover { color: var(--accent); }
+.ordline .mono { font-weight: 600; }
 
 /* ---- responsive, exactly as the artifact draws it ------------------------ */
 @media (max-width: 1080px) {
-  .kargah .board.pipe { grid-template-columns: 1fr 1fr; }
-  .kargah .lanes { grid-template-columns: 1fr 1fr; }
-  .kargah .lane2:not(:last-child)::after { display: none; }
+  .board.pipe { grid-template-columns: 1fr 1fr; }
+  .lanes { grid-template-columns: 1fr 1fr; }
+  .lane2:not(:last-child)::after { display: none; }
 }
 @media (max-width: 940px) {
-  .kargah .statrow { grid-template-columns: 1fr 1fr; }
-  .kargah .statrow .gcard:first-child { grid-column: 1/-1; }
-  .kargah .board, .kargah .board.pipe { grid-template-columns: 1fr; }
-  .kargah .lanes { grid-template-columns: 1fr; }
-  .kargah .sched { grid-template-columns: 1fr; }
-  .kargah .bento { grid-template-columns: 1fr 1fr; }
-  .kargah .bento .tile:first-child { grid-column: 1/-1; }
+  .statrow { grid-template-columns: 1fr 1fr; }
+  .statrow .gcard:first-child { grid-column: 1/-1; }
+  .board, .board.pipe { grid-template-columns: 1fr; }
+  .lanes { grid-template-columns: 1fr; }
+  .sched { grid-template-columns: 1fr; }
+  .bento { grid-template-columns: 1fr 1fr; }
+  .bento .tile:first-child { grid-column: 1/-1; }
 }
 @media (max-width: 620px) {
-  .kargah .statrow { grid-template-columns: 1fr; }
-  .kargah .gcard .v { font-size: 38px; }
-  .kargah .pockets { grid-template-columns: 1fr; padding-inline: 16px; }
-  .kargah .bento { grid-template-columns: 1fr; padding-inline: 16px; }
-  .kargah .board, .kargah .hint { padding-inline: 16px; }
-  .kargah .cal, .kargah .rail { padding-inline: 16px; }
-  .kargah .bhead { padding-inline: 16px; }
-  .kargah .top h1 { font-size: 18px; }
+  .statrow { grid-template-columns: 1fr; }
+  .gcard .v { font-size: 38px; }
+  .pockets { grid-template-columns: 1fr; padding-inline: 16px; }
+  .bento { grid-template-columns: 1fr; padding-inline: 16px; }
+  .board, .hint { padding-inline: 16px; }
+  .cal, .rail { padding-inline: 16px; }
+  .bhead { padding-inline: 16px; }
+  .top h1 { font-size: 18px; }
 }
 
 /* ---- the section card, for surfaces the artifact does not draw ------------
    The map chrome and the pages with no artifact screen (products, stock,
    commission) still need one card treatment. `.card` rather than `.block`
    because `block` is a Tailwind display utility used across these pages.      */
-.kargah .card {
+.card {
   border-radius: var(--r-xl);
   border: 1px solid var(--line);
   background: var(--card);
@@ -2786,23 +2786,23 @@ body {
    states painted as `bg-white/5` — five per cent white, which on a cream ground is
    nothing at all. Sections are cards now, headings are ordinary sentence-case text, and
    every surface comes from a token so both skins work.                        */
-.kargah .side {
+.side {
   background: var(--bg);
   border-inline-start: 1px solid var(--line);
 }
-.kargah .side__brand {
+.side__brand {
   display: flex; align-items: center; gap: 12px; margin-bottom: 4px;
 }
-.kargah .side__mark {
+.side__mark {
   width: 40px; height: 40px; border-radius: 13px; flex: none;
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff 20%), var(--accent-2));
   color: var(--accent-ink); display: grid; place-items: center; font-size: 17px; font-weight: 600;
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent);
 }
-.kargah .side__brand h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -.015em; color: var(--ink); }
-.kargah .side__brand .s { font-size: 12px; color: var(--muted); margin-top: -3px; }
+.side__brand h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -.015em; color: var(--ink); }
+.side__brand .s { font-size: 12px; color: var(--muted); margin-top: -3px; }
 
-.kargah .sect {
+.sect {
   /* The sidebar is a flex column, so a section is a flex ITEM and shrinks by default.
      Collapsed, that squashed a 50px header into 22px and the card clipped its own title —
      ten blank bars down the panel. It never showed before the redesign because sections
@@ -2814,317 +2814,317 @@ body {
   box-shadow: var(--sh-1);
   overflow: hidden;
 }
-.kargah .sect__head { display: flex; align-items: center; gap: 6px; }
-.kargah .sect__btn {
+.sect__head { display: flex; align-items: center; gap: 6px; }
+.sect__btn {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
   padding: 11px 13px; border: 0; background: transparent; cursor: pointer;
   font-family: var(--fa); font-size: 13.5px; color: var(--ink); text-align: start;
   transition: background 160ms var(--ease);
 }
-.kargah .sect__btn:hover { background: var(--card-2); }
-.kargah .sect__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.kargah .sect__icon {
+.sect__btn:hover { background: var(--card-2); }
+.sect__btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+.sect__icon {
   width: 28px; height: 28px; flex: none; display: grid; place-items: center;
   border-radius: var(--r-sm); background: var(--sunk); font-size: 14px;
   transition: background 160ms var(--ease);
 }
-.kargah .sect__btn.on .sect__icon { background: var(--accent-soft); }
-.kargah .sect__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kargah .sect__count {
+.sect__btn.on .sect__icon { background: var(--accent-soft); }
+.sect__title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sect__count {
   flex: none; font-size: 11.5px; font-weight: 700; color: var(--muted);
   background: var(--sunk); border-radius: 999px; padding: 2px 8px;
 }
-.kargah .sect__chev {
+.sect__chev {
   flex: none; color: var(--faint); font-size: 13px; line-height: 1;
   transition: transform 240ms var(--spring);
 }
-.kargah .sect__btn.on .sect__chev { transform: rotate(180deg); color: var(--accent); }
-.kargah .sect__body { padding: 0 13px 13px; }
+.sect__btn.on .sect__chev { transform: rotate(180deg); color: var(--accent); }
+.sect__body { padding: 0 13px 13px; }
 
 /* ---- catalogue: two readings, and the switch between them ----------------- */
-.kargah .viewbar {
+.viewbar {
   display: flex; align-items: center; justify-content: space-between;
   gap: 12px; margin-bottom: 14px; flex-wrap: wrap;
 }
-.kargah .viewbar__seg {
+.viewbar__seg {
   display: inline-flex; gap: 4px; background: var(--sunk);
   border-radius: 999px; padding: 4px;
 }
-.kargah .viewbar__seg button {
+.viewbar__seg button {
   border: 0; background: transparent; cursor: pointer; font-family: var(--fa);
   font-size: 13px; color: var(--ink-2); padding: 7px 15px; border-radius: 999px;
   transition: background 200ms var(--ease), color 200ms var(--ease), box-shadow 200ms var(--ease);
 }
-.kargah .viewbar__seg button.on {
+.viewbar__seg button.on {
   background: var(--card); color: var(--ink); font-weight: 600; box-shadow: var(--sh-1);
 }
-.kargah .viewbar__seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.kargah .viewbar__n { font-size: 12.5px; color: var(--muted); }
+.viewbar__seg button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.viewbar__n { font-size: 12.5px; color: var(--muted); }
 
 /* ---- فهرست: the dense reading -------------------------------------------- */
-.kargah .plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
-.kargah .prow {
+.plist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
+.prow {
   background: var(--card); border-radius: var(--r-xl); box-shadow: var(--sh-1);
   padding: 16px 18px; position: relative; overflow: hidden;
   transition: box-shadow 260ms var(--ease), transform 260ms var(--ease);
 }
 /* The hover effect. A rail that grows from the inline-start edge rather than a colour
    wash: the row is mostly figures, and tinting the whole card tints them too. */
-.kargah .prow::before {
+.prow::before {
   content: ""; position: absolute; inset-block: 0; inset-inline-start: 0;
   width: 3px; background: var(--accent); transform: scaleY(0); transform-origin: center;
   transition: transform 320ms var(--spring);
 }
-.kargah .prow:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
-.kargah .prow:hover::before { transform: scaleY(1); }
-.kargah .prow__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
-.kargah .prow__head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
-.kargah .prow__unit { font-size: 11.5px; color: var(--muted); }
-.kargah .prow__none { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
-.kargah .prow__packs { margin-top: 11px; display: flex; flex-direction: column; gap: 2px; }
-.kargah .pk {
+.prow:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.prow:hover::before { transform: scaleY(1); }
+.prow__head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+.prow__head h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+.prow__unit { font-size: 11.5px; color: var(--muted); }
+.prow__none { margin: 10px 0 0; font-size: 13px; color: var(--muted); }
+.prow__packs { margin-top: 11px; display: flex; flex-direction: column; gap: 2px; }
+.pk {
   display: grid; grid-template-columns: minmax(0,1fr) 92px 92px 110px 130px; gap: 10px;
   align-items: center; padding: 8px 10px; border-radius: var(--r-sm); font-size: 13px;
   transition: background 180ms var(--ease);
 }
-.kargah .pk:hover { background: var(--card-2); }
-.kargah .pk__n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.kargah .pk__q, .kargah .pk__w, .kargah .pk__k { text-align: end; color: var(--muted); font-size: 12px; }
-.kargah .pk__p { text-align: end; font-weight: 700; }
+.pk:hover { background: var(--card-2); }
+.pk__n { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk__q, .pk__w, .pk__k { text-align: end; color: var(--muted); font-size: 12px; }
+.pk__p { text-align: end; font-weight: 700; }
 /* The column header — same grid so its labels sit directly over the figures below. */
-.kargah .pk--head {
+.pk--head {
   padding: 0 10px 6px; margin-bottom: 4px; font-size: 11px; font-weight: 600;
   color: var(--muted); text-transform: none; border-bottom: 1px solid var(--border);
 }
-.kargah .pk--head span { text-align: end; }
-.kargah .pk--head span:first-child { text-align: start; }
+.pk--head span { text-align: end; }
+.pk--head span:first-child { text-align: start; }
 
 /* ---- کاشی: the scannable reading ----------------------------------------- */
-.kargah .ptiles {
+.ptiles {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(190px, 14vw, 220px), 1fr)); gap: 12px;
 }
-.kargah .ptile {
+.ptile {
   background: var(--card); border-radius: var(--r-lg); box-shadow: var(--sh-1);
   padding: 15px 16px 14px; position: relative; overflow: hidden; isolation: isolate;
   display: flex; flex-direction: column; gap: 2px;
   transition: box-shadow 260ms var(--ease), transform 260ms var(--ease);
 }
-.kargah .ptile::before {
+.ptile::before {
   content: ""; position: absolute; inset: 0; z-index: -1; opacity: 0;
   background: radial-gradient(120% 130% at 88% 8%, var(--accent-soft) 0%, transparent 72%);
   transition: opacity 300ms var(--ease);
 }
-.kargah .ptile:hover { box-shadow: var(--sh-2); transform: translateY(-3px); }
-.kargah .ptile:hover::before { opacity: 1; }
-.kargah .ptile--off { opacity: .62; }
+.ptile:hover { box-shadow: var(--sh-2); transform: translateY(-3px); }
+.ptile:hover::before { opacity: 1; }
+.ptile--off { opacity: .62; }
 /* Name first and quiet, price second and loud — the order the artifact's tile had the
    other way round, which is what made it read as a label with a number attached. */
-.kargah .ptile__name {
+.ptile__name {
   font-size: 12.5px; color: var(--muted); line-height: 1.5;
   display: flex; align-items: center; gap: 7px; flex-wrap: wrap;
 }
-.kargah .ptile__price {
+.ptile__price {
   font-family: var(--en); font-variant-numeric: tabular-nums;
   font-size: 23px; font-weight: 700; letter-spacing: -.03em; color: var(--ink);
   line-height: 1.25; margin-top: 3px;
 }
-.kargah .ptile__price small { font-family: var(--fa); font-size: 11.5px; font-weight: 500; color: var(--muted); margin-inline-start: 5px; }
-.kargah .ptile__meta {
+.ptile__price small { font-family: var(--fa); font-size: 11.5px; font-weight: 500; color: var(--muted); margin-inline-start: 5px; }
+.ptile__meta {
   display: flex; align-items: baseline; justify-content: space-between; gap: 8px;
   font-size: 11.5px; color: var(--muted); margin-top: 4px;
 }
 
 @media (max-width: 620px) {
-  .kargah .pk { grid-template-columns: minmax(0,1fr) 110px; }
-  .kargah .pk__q, .kargah .pk__w, .kargah .pk__k { display: none; }
-  .kargah .ptiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .pk { grid-template-columns: minmax(0,1fr) 110px; }
+  .pk__q, .pk__w, .pk__k { display: none; }
+  .ptiles { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 }
 
 /* ---- انبار پیشرفته: the advanced inventory board -------------------------
    Ported from the approved artifact (favicon 📦), re-solved against this
    file's actual tokens rather than the artifact's standalone copy of them. */
-.kargah .stalert {
+.stalert {
   background: var(--crit-soft); border: 1px solid color-mix(in srgb, var(--crit) 30%, transparent);
   border-radius: var(--r-xl); padding: 16px 20px; display: flex; flex-direction: column; gap: 10px;
 }
-.kargah .stalert__head { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--crit); }
-.kargah .stalert__rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
-.kargah .stalert__row {
+.stalert__head { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: var(--crit); }
+.stalert__rows { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.stalert__row {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   background: var(--card); border-radius: var(--r-md); padding: 9px 12px; font-size: 12.5px;
 }
-.kargah .stalert__row b { font-weight: 600; color: var(--ink); }
-.kargah .stalert__row .days { color: var(--crit); font-weight: 700; }
-.kargah .stalert__row .sug { color: var(--muted); }
+.stalert__row b { font-weight: 600; color: var(--ink); }
+.stalert__row .days { color: var(--crit); font-weight: 700; }
+.stalert__row .sug { color: var(--muted); }
 
-.kargah .sttoolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.kargah .stsearch {
+.sttoolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.stsearch {
   flex: 1 1 220px; display: flex; align-items: center; gap: 8px;
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);
   padding: 9px 13px; font-size: 13px; color: var(--muted); box-shadow: var(--sh-1);
 }
-.kargah .stsearch input {
+.stsearch input {
   border: 0; background: none; outline: none; color: var(--ink); font: inherit; width: 100%; direction: rtl;
 }
-.kargah .stsearch input::placeholder { color: var(--faint); }
-.kargah .stchips { display: flex; gap: 6px; flex-wrap: wrap; }
-.kargah .stchip {
+.stsearch input::placeholder { color: var(--faint); }
+.stchips { display: flex; gap: 6px; flex-wrap: wrap; }
+.stchip {
   font-size: 12.5px; font-weight: 600; padding: 8px 14px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); color: var(--ink-2); cursor: pointer;
   display: flex; align-items: center; gap: 6px;
   transition: background 160ms var(--ease), color 160ms var(--ease), border-color 160ms var(--ease);
 }
-.kargah .stchip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
-.kargah .stchip[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
-.kargah .stchip[data-tone="crit"] { color: var(--crit); }
-.kargah .stchip[data-tone="amber"] { color: var(--amber); }
-.kargah .stchip[data-tone="sage"] { color: var(--sage); }
-.kargah .stchip[data-tone="sky"] { color: var(--sky); }
-.kargah .stchip[aria-pressed="true"][data-tone] { color: var(--card); }
-.kargah .stsort {
+.stchip i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.stchip[aria-pressed="true"] { background: var(--ink); color: var(--card); border-color: var(--ink); }
+.stchip[data-tone="crit"] { color: var(--crit); }
+.stchip[data-tone="amber"] { color: var(--amber); }
+.stchip[data-tone="sage"] { color: var(--sage); }
+.stchip[data-tone="sky"] { color: var(--sky); }
+.stchip[aria-pressed="true"][data-tone] { color: var(--card); }
+.stsort {
   font: inherit; font-size: 12.5px; color: var(--ink-2); background: var(--card);
   border: 1px solid var(--line); border-radius: var(--r-md); padding: 9px 12px; cursor: pointer;
 }
 
-.kargah .stgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
-.kargah .stcard {
+.stgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 14px; }
+.stcard {
   background: var(--card); border-radius: var(--r-xl); box-shadow: var(--sh-1);
   padding: 17px 18px 15px; display: flex; flex-direction: column; gap: 12px;
   transition: box-shadow 240ms var(--ease), transform 240ms var(--ease);
 }
-.kargah .stcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
-.kargah .stcard__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
-.kargah .stcard__name { font-size: 14.5px; font-weight: 600; line-height: 1.4; }
-.kargah .stcard__pack { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
-.kargah .stpill {
+.stcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.stcard__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.stcard__name { font-size: 14.5px; font-weight: 600; line-height: 1.4; }
+.stcard__pack { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.stpill {
   flex: none; font-size: 10.5px; font-weight: 700; padding: 4px 9px; border-radius: 999px;
   display: flex; align-items: center; gap: 5px; white-space: nowrap;
 }
-.kargah .stpill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
-.kargah .stpill[data-s="crit"] { background: var(--crit-soft); color: var(--crit); }
-.kargah .stpill[data-s="low"] { background: var(--amber-soft); color: var(--amber); }
-.kargah .stpill[data-s="ok"] { background: var(--sage-soft); color: var(--sage); }
-.kargah .stpill[data-s="over"] { background: var(--sky-soft); color: var(--sky); }
+.stpill i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.stpill[data-s="crit"] { background: var(--crit-soft); color: var(--crit); }
+.stpill[data-s="low"] { background: var(--amber-soft); color: var(--amber); }
+.stpill[data-s="ok"] { background: var(--sage-soft); color: var(--sage); }
+.stpill[data-s="over"] { background: var(--sky-soft); color: var(--sky); }
 
-.kargah .stgauge { display: flex; flex-direction: column; gap: 5px; }
-.kargah .stgauge__row { position: relative; height: 9px; border-radius: 5px; background: var(--sunk); }
-.kargah .stgauge__fill { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: 5px; transition: width 500ms var(--spring); }
-.kargah .stgauge__fill[data-s="crit"] { background: var(--crit); }
-.kargah .stgauge__fill[data-s="low"] { background: var(--amber); }
-.kargah .stgauge__fill[data-s="ok"] { background: var(--sage); }
-.kargah .stgauge__fill[data-s="over"] { background: var(--sky); }
-.kargah .stgauge__tick { position: absolute; top: -3px; width: 2px; height: 15px; background: var(--ink-2); opacity: .55; border-radius: 1px; }
-.kargah .stgauge__labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
-.kargah .stgauge__labels b { color: var(--ink-2); font-weight: 600; font-family: var(--en); }
+.stgauge { display: flex; flex-direction: column; gap: 5px; }
+.stgauge__row { position: relative; height: 9px; border-radius: 5px; background: var(--sunk); }
+.stgauge__fill { position: absolute; inset-block: 0; inset-inline-start: 0; border-radius: 5px; transition: width 500ms var(--spring); }
+.stgauge__fill[data-s="crit"] { background: var(--crit); }
+.stgauge__fill[data-s="low"] { background: var(--amber); }
+.stgauge__fill[data-s="ok"] { background: var(--sage); }
+.stgauge__fill[data-s="over"] { background: var(--sky); }
+.stgauge__tick { position: absolute; top: -3px; width: 2px; height: 15px; background: var(--ink-2); opacity: .55; border-radius: 1px; }
+.stgauge__labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
+.stgauge__labels b { color: var(--ink-2); font-weight: 600; font-family: var(--en); }
 
-.kargah .stcard__mid { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.kargah .stcard__stat { display: flex; flex-direction: column; gap: 1px; }
-.kargah .stcard__stat .k { font-size: 10.5px; color: var(--faint); }
-.kargah .stcard__stat .v { font-size: 15.5px; font-weight: 700; font-family: var(--en); }
-.kargah .stcard__stat .v.crit { color: var(--crit); }
-.kargah .stcard__stat .v.amber { color: var(--amber); }
+.stcard__mid { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.stcard__stat { display: flex; flex-direction: column; gap: 1px; }
+.stcard__stat .k { font-size: 10.5px; color: var(--faint); }
+.stcard__stat .v { font-size: 15.5px; font-weight: 700; font-family: var(--en); }
+.stcard__stat .v.crit { color: var(--crit); }
+.stcard__stat .v.amber { color: var(--amber); }
 
-.kargah .stspark { position: relative; flex: none; }
-.kargah .stspark svg { display: block; overflow: visible; }
-.kargah .stspark .tip {
+.stspark { position: relative; flex: none; }
+.stspark svg { display: block; overflow: visible; }
+.stspark .tip {
   position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%) translateY(4px);
   background: var(--ink); color: var(--card); font-size: 10.5px; font-family: var(--en);
   padding: 4px 7px; border-radius: 6px; white-space: nowrap; opacity: 0; pointer-events: none;
   transition: opacity 140ms var(--ease), transform 140ms var(--ease);
 }
-.kargah .stspark:hover .tip, .kargah .stspark:focus-within .tip { opacity: 1; transform: translateX(-50%) translateY(0); }
+.stspark:hover .tip, .stspark:focus-within .tip { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-.kargah .stcard__foot {
+.stcard__foot {
   display: flex; align-items: center; justify-content: space-between; gap: 10px;
   padding-top: 11px; border-top: 1px solid var(--line); font-size: 12px; color: var(--muted);
 }
-.kargah .stcard__foot .value { color: var(--ink); font-weight: 600; font-family: var(--en); }
+.stcard__foot .value { color: var(--ink); font-weight: 600; font-family: var(--en); }
 
-.kargah .stmore summary {
+.stmore summary {
   cursor: pointer; color: var(--muted); list-style: none; display: flex; align-items: center; gap: 5px; font-size: 12px;
 }
-.kargah .stmore summary::-webkit-details-marker { display: none; }
-.kargah .stmore summary::before { content: "▸"; font-size: 10px; transition: transform 200ms var(--ease); }
-.kargah .stmore[open] summary::before { transform: rotate(90deg); }
-.kargah .stmore summary:hover { color: var(--ink); }
-.kargah .stmore__body { margin-top: 9px; display: flex; flex-direction: column; gap: 9px; font-size: 12px; color: var(--muted); }
-.kargah .stmore__row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.kargah .stmore__row b { color: var(--ink-2); font-weight: 500; }
-.kargah .stmore__row input {
+.stmore summary::-webkit-details-marker { display: none; }
+.stmore summary::before { content: "▸"; font-size: 10px; transition: transform 200ms var(--ease); }
+.stmore[open] summary::before { transform: rotate(90deg); }
+.stmore summary:hover { color: var(--ink); }
+.stmore__body { margin-top: 9px; display: flex; flex-direction: column; gap: 9px; font-size: 12px; color: var(--muted); }
+.stmore__row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.stmore__row b { color: var(--ink-2); font-weight: 500; }
+.stmore__row input {
   width: 84px; text-align: end; font-family: var(--en); background: var(--sunk); border: 1px solid var(--line);
   border-radius: var(--r-sm); padding: 4px 8px; color: var(--ink); font-size: 12px; outline: none;
 }
-.kargah .stmore__row input:focus-visible { border-color: var(--accent); }
-.kargah .stmore__save {
+.stmore__row input:focus-visible { border-color: var(--accent); }
+.stmore__save {
   font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-soft);
   border: 0; border-radius: var(--r-sm); padding: 4px 10px; cursor: pointer;
 }
-.kargah .stmore__save:disabled { opacity: .5; cursor: default; }
-.kargah .stmore__saved { font-size: 11px; color: var(--sage); }
+.stmore__save:disabled { opacity: .5; cursor: default; }
+.stmore__saved { font-size: 11px; color: var(--sage); }
 
 /* ---- the schedule's purpose legend --------------------------------------
    Colour is never the only carrier: every chip has its glyph and its words beside it,
    because a legend that reads as four coloured squares is unusable to anyone who cannot
    separate two of them.                                                        */
-.kargah .legend2 {
+.legend2 {
   display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 16px;
 }
-.kargah .legend2__t { font-size: 12.5px; color: var(--muted); }
-.kargah .legend2__i {
+.legend2__t { font-size: 12.5px; color: var(--muted); }
+.legend2__i {
   display: inline-flex; align-items: center; gap: 6px;
   border-radius: 999px; padding: 5px 12px; font-size: 12.5px; font-weight: 600;
 }
-.kargah .legend2__i--none { background: var(--sunk); color: var(--muted); }
-.kargah .rail .slot .h { font-size: 15px; text-align: center; padding-top: 12px; }
+.legend2__i--none { background: var(--sunk); color: var(--muted); }
+.rail .slot .h { font-size: 15px; text-align: center; padding-top: 12px; }
 
 /* ---- پورسانت: a card per person ------------------------------------------ */
-.kargah .pcards {
+.pcards {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(288px, 1fr)); gap: 14px;
 }
-.kargah .pcard {
+.pcard {
   background: var(--card); border-radius: var(--r-xl); box-shadow: var(--sh-1);
   padding: 18px 19px 16px; display: flex; flex-direction: column; gap: 12px;
   transition: box-shadow 260ms var(--ease), transform 260ms var(--ease);
 }
-.kargah .pcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
-.kargah .pcard__head { display: flex; align-items: center; gap: 12px; }
-.kargah .pcard__av {
+.pcard:hover { box-shadow: var(--sh-2); transform: translateY(-2px); }
+.pcard__head { display: flex; align-items: center; gap: 12px; }
+.pcard__av {
   width: 46px; height: 46px; border-radius: 999px; flex: none;
   display: grid; place-items: center; font-size: 18px; font-weight: 700;
   box-shadow: var(--sh-1);
 }
-.kargah .pcard__head h2 { margin: 0; font-size: 15.5px; font-weight: 600; }
-.kargah .pcard__sub { font-size: 11.5px; color: var(--muted); margin-top: -2px; }
-.kargah .pcard__big {
+.pcard__head h2 { margin: 0; font-size: 15.5px; font-weight: 600; }
+.pcard__sub { font-size: 11.5px; color: var(--muted); margin-top: -2px; }
+.pcard__big {
   font-size: 27px; font-weight: 700; letter-spacing: -.03em; line-height: 1.2;
 }
-.kargah .pcard__big small {
+.pcard__big small {
   font-family: var(--fa); font-size: 12px; font-weight: 500;
   color: var(--muted); margin-inline-start: 7px; letter-spacing: 0;
 }
 /* How much of what accrued has actually been paid. Two people can accrue the same and be
    settled very differently, and that difference is the reason to open this page. */
-.kargah .pcard__bar { height: 6px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
-.kargah .pcard__bar i { display: block; height: 100%; background: var(--sage); border-radius: 999px; }
-.kargah .pcard__grid { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-.kargah .pcard__grid dt { margin: 0; font-size: 11px; color: var(--muted); }
-.kargah .pcard__grid dd { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; }
-.kargah .pcard__more summary {
+.pcard__bar { height: 6px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+.pcard__bar i { display: block; height: 100%; background: var(--sage); border-radius: 999px; }
+.pcard__grid { margin: 0; display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.pcard__grid dt { margin: 0; font-size: 11px; color: var(--muted); }
+.pcard__grid dd { margin: 2px 0 0; font-size: 13.5px; font-weight: 600; }
+.pcard__more summary {
   cursor: pointer; font-size: 12px; color: var(--muted); list-style: none;
 }
-.kargah .pcard__more summary::-webkit-details-marker { display: none; }
-.kargah .pcard__more summary::before { content: "⌄ "; color: var(--faint); }
-.kargah .pcard__more[open] summary::before { content: "⌃ "; }
-.kargah .pcard__more summary:hover { color: var(--accent); }
-.kargah .pcard__rows { margin-top: 8px; display: flex; flex-direction: column; }
-.kargah .pcard__row {
+.pcard__more summary::-webkit-details-marker { display: none; }
+.pcard__more summary::before { content: "⌄ "; color: var(--faint); }
+.pcard__more[open] summary::before { content: "⌃ "; }
+.pcard__more summary:hover { color: var(--accent); }
+.pcard__rows { margin-top: 8px; display: flex; flex-direction: column; }
+.pcard__row {
   display: grid; grid-template-columns: minmax(0,1fr) 74px 96px; gap: 8px;
   padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 12px; color: var(--muted);
 }
-.kargah .pcard__row:last-child { border-bottom: 0; }
-.kargah .pcard__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
-.kargah .pcard__amt { text-align: end; color: var(--ink); font-weight: 600; }
-.kargah .pcard__rest { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
+.pcard__row:last-child { border-bottom: 0; }
+.pcard__who { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--ink-2); }
+.pcard__amt { text-align: end; color: var(--ink); font-weight: 600; }
+.pcard__rest { margin: 8px 0 0; font-size: 11.5px; color: var(--muted); }
 
 /* ---- the map's customer panel, in two orientations -----------------------
    Upright it keeps the map's WIDTH for the map; lying across the bottom it keeps the
@@ -3135,7 +3135,7 @@ body {
    `top` is 48px rather than 80: at 80 the panel started below the search box even when
    the search box was nowhere near it, and the gap read as the panel being short of
    content rather than as clearance.                                            */
-.kargah .cpanel {
+.cpanel {
   position: absolute;
   background: var(--card);
   border: 1px solid var(--line);
@@ -3143,14 +3143,14 @@ body {
   padding: 16px 18px;
   box-shadow: var(--sh-2);
 }
-.kargah .cpanel--side {
+.cpanel--side {
   inset-block: 48px 16px;
   /* Physical left: this sits opposite the sidebar, which is pinned right under RTL. */
   left: 28px;
   width: 340px;
   max-width: calc(100vw - 3rem);
 }
-.kargah .cpanel--bottom {
+.cpanel--bottom {
   inset-inline: 28px;
   inset-block-end: 16px;
   top: auto;
@@ -3159,11 +3159,11 @@ body {
 }
 /* Lying down, the bento runs three across and the rest flows in columns rather than
    stacking — otherwise a wide panel is one narrow column with a lot of empty air. */
-.kargah .cpanel--bottom .bento--compact { grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; }
-.kargah .cpanel--bottom .bento--compact .tile .v { font-size: 24px; }
+.cpanel--bottom .bento--compact { grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; }
+.cpanel--bottom .bento--compact .tile .v { font-size: 24px; }
 @media (max-width: 900px) {
-  .kargah .cpanel--side { left: 16px; width: 320px; }
-  .kargah .cpanel--bottom .bento--compact { grid-template-columns: 1fr; }
+  .cpanel--side { left: 16px; width: 320px; }
+  .cpanel--bottom .bento--compact { grid-template-columns: 1fr; }
 }
 
 /* ACCENT-THEMES:BEGIN — generated by scripts/gen-accent-themes.mjs */
