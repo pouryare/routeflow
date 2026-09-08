@@ -63,8 +63,8 @@ const say = (ok, line) => {
 };
 
 for (const [theme, selector] of [
-  ["light", ".kargah"],
-  ["dark", ':root[data-skin="dark"] .kargah'],
+  ["light", ":root"],
+  ["dark", ':root[data-theme="dark"]'],
 ]) {
   const t = block(selector);
 
@@ -160,8 +160,8 @@ const SURFACE_CREAM = {
   },
 };
 const SURFACE_INK = {
-  light: { "--text": ["#231C16", 7], "--text-muted": ["#776C60", 4.5], "--text-faint": ["#91887C", 3] },
-  dark: { "--text": ["#F3EEE7", 7], "--text-muted": ["#9B8F81", 4.5], "--text-faint": ["#8A8278", 3] },
+  light: { "--text": ["#16181D", 7], "--text-muted": ["#5F6672", 4.5], "--text-faint": ["#8A909B", 3] },
+  dark: { "--text": ["#E8EAEE", 7], "--text-muted": ["#9BA3AF", 4.5], "--text-faint": ["#6B7280", 3] },
 };
 
 /* The grounds these themes are solved against, from the .kargah blocks. --surface-raised

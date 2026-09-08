@@ -915,6 +915,16 @@ git commit -m "style: cool-tint elevation shadows; add inset-highlight edge toke
 
 ### Task 8: Update the contrast checker and its test for the new palette
 
+**Found running the checker for real:** two of Task 4/6's proposed hex values did not
+clear their required thresholds. `--text-faint: #8A909B` (Task 4) was 2.74:1 against
+`--bg`, below the 3.0 floor — corrected to `#7E8490` (3.21:1 vs `--bg`, 3.76:1 vs
+`--surface`, still well under 4.5 so it stays distinguishable from `--text-muted`).
+`--wash-ink-muted: #5E6470` (Task 6's light secondary-token pass) was 4.30–4.40:1 against
+two of the four gradient washes, below 4.5 — corrected to `#565C68` (4.86–5.30:1 across
+all four washes). Both already applied directly to `app/globals.css`; this task's own
+work (the checker/test updates below) is what caught them. If executing this plan fresh,
+apply the corrected values in Tasks 4 and 6 directly rather than the plan's original text.
+
 **Files:**
 - Modify: `scripts/check-contrast.mjs`
 - Modify: `tests/contrast.test.ts`
