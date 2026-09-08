@@ -1,19 +1,32 @@
 import { describe, it, expect } from "vitest";
 import { THEME_INIT_SCRIPT, SKIN_KEY } from "@/lib/theme";
 
-/** The sales scope reads data-skin; the map reads data-theme. One stored preference
- *  drives both, so the two can never disagree — which is the whole reason applyTheme
- *  writes them together rather than each caller remembering to. */
+/** data-theme is the primary signal since the 2026-09-08 substrate promotion (the whole
+ *  app now reads one :root / :root[data-theme="dark"] pair); data-skin mirrors it only
+ *  because the accent-theme generator's map-relevant dark variants still key on it (see
+ *  lib/theme.ts's SKIN_KEY comment) and have not been migrated. Both are written from
+ *  one script so they can never disagree.
+ *
+ *  Unlike the pre-redesign script, data-theme is now written EXPLICITLY for BOTH
+ *  resolved values, not only for light -- several CSS rules key on [data-theme="light"]
+ *  being present, and light is the default besides. */
 describe("theme init script", () => {
-  it("sets data-skin for BOTH themes, not only for light", () => {
-    // dark removes data-theme, so data-skin is the only signal .kargah has
-    expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-skin"');
-    const darkBranch = THEME_INIT_SCRIPT.slice(THEME_INIT_SCRIPT.indexOf("data-skin"));
-    expect(darkBranch.length).toBeGreaterThan(0);
+  it("sets data-theme to the resolved value unconditionally, not only for light", () => {
+    expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-theme",resolved)');
   });
 
-  it("still sets data-theme for light so the map is unaffected", () => {
-    expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-theme","light")');
+  it("sets data-skin to the same resolved value, for the accent-theme generator", () => {
+    expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-skin",resolved)');
+  });
+
+  it("resolves auto from the OS preference, live, not a frozen first-run guess", () => {
+    expect(THEME_INIT_SCRIPT).toContain("prefersLight");
+    expect(THEME_INIT_SCRIPT).toContain("prefers-color-scheme: light");
+  });
+
+  it("pins /driver away from auto, defaulting dark", () => {
+    expect(THEME_INIT_SCRIPT).toContain("/driver");
+    expect(THEME_INIT_SCRIPT).toContain("isDriver");
   });
 
   it("runs entirely inside a try/catch — a theme is never worth a blank page", () => {
