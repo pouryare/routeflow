@@ -59,7 +59,6 @@ import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
-import NotificationToggle from "./NotificationToggle";
 import NavAppSetting, { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import { useToast } from "./ToastProvider";
@@ -2030,7 +2029,16 @@ export default function CoverageMap({
 
             <div>
 
-              <NotificationToggle />
+              {/* Phase 2 moved every notification control — subscribing this device, quiet
+                  hours, and the per-type opt-in matrix — to one screen. A toggle here would
+                  only ever be a third of that story. */}
+              <Link
+                href="/settings/notifications"
+                className="flex items-center justify-between gap-2 text-[length:var(--text-sm)] text-text hover:text-accent"
+              >
+                <span>تنظیمات اعلان‌ها</span>
+                <span aria-hidden="true">↗</span>
+              </Link>
 
             </div>
 

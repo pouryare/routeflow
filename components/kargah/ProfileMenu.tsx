@@ -68,6 +68,10 @@ export default function ProfileMenu({
             ↗ نقشهٔ پوشش
           </Link>
 
+          <Link className="pm__link" href="/settings/notifications" onClick={() => setOpen(false)}>
+            ↗ تنظیمات اعلان‌ها
+          </Link>
+
           <div className="pm__sep" />
 
           <div className="pm__row">
