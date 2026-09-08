@@ -9,7 +9,7 @@ import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import GradientStat from "@/components/kargah/GradientStat";
 import SalesSpark, { type SparkPoint } from "@/components/kargah/SalesSpark";
-import CarvedCard from "@/components/kargah/CarvedCard";
+import NotchedCard from "@/components/kargah/NotchedCard";
 import Avatar from "@/components/kargah/Avatar";
 
 export const dynamic = "force-dynamic";
@@ -161,7 +161,7 @@ export default async function SalesHomePage() {
           )}
         </div>
 
-        <CarvedCard
+        <NotchedCard
           shoulder={<>امروز <b className="mono">{faNum(todayOrders)}</b> سفارش</>}
           avatars={
             team.length === 0 ? null : (
@@ -191,7 +191,7 @@ export default async function SalesHomePage() {
               ))}
             </div>
           )}
-        </CarvedCard>
+        </NotchedCard>
       </div>
     </>
   );

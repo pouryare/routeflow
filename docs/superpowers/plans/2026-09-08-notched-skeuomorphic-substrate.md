@@ -1691,10 +1691,40 @@ git commit -m "feat: generalize notch geometry to any side/edge/direction (lib/d
 
 ### Task 13: `NotchedCard` — the border/highlight problem, solved
 
+**Found during execution — four gaps beyond what this task originally described,** all
+from the same root cause: `CarvedCard`'s CSS did more than clip-path geometry, and simply
+renaming classes lost real styling that had nowhere else to go.
+
+1. **`.notch-card` needs its own padding/typography.** The old `.cradlebody` supplied
+   `padding: 80px 26px 26px` (top clears the notch) plus `h2`/`p` rules; `NotchedCard`'s
+   children would otherwise sit flush against the clipped edges with no typography at all.
+2. **The `shoulder` prop needs a positioning wrapper.** The plan's first draft rendered
+   `{shoulder}` as a bare sibling with no class — the old `.shoulder` rule
+   (`position: absolute; inset-inline-end: 26px; height: 62px; ...`) is what actually
+   placed it in the notch band opposite the avatars. Needs a `.notch-shoulder` wrapper
+   and matching CSS, positioned at `inset-inline-start` (opposite `.notch-avatars`, which
+   sits at `inset-inline-end`).
+3. **The old `.cradlewrap`/`.cradlecard`/`.cradle`/`.shoulder`/`.cradlebody` CSS becomes
+   genuinely dead** once `CarvedCard.tsx` is deleted — confirm with
+   `grep -rln "cradlewrap\|cradlecard\|className=\"cradle\|className=\"shoulder"
+   --include="*.tsx" .` before deleting the rules, since a stray consumer would make this
+   unsafe. Delete the whole section (`app/globals.css`'s "3 · the carved avatar cradle").
+4. **`components/kargah/RevealRoute.tsx` references `.cradlewrap` by string** in its
+   per-route reveal-on-navigate selector list (`"/sales": [".gcard", ".kblock",
+   ".cradlewrap"]`) — an existing file this task's file list did not name. Renaming the
+   class without updating this reference would not break the build (it's a runtime
+   `querySelectorAll` string, not an import) but would silently stop animating the
+   notched card on navigation into `/sales`. Update it to `.notch-wrap`.
+
+`Avatar.tsx`'s `className="av"` turns out to be vestigial — checked its full source and
+confirmed every visual property is inline `style`, not CSS-class-dependent, so deleting
+`.cradle .av` does not regress it. Worth checking, not worth assuming.
+
 **Files:**
 - Create: `components/kargah/NotchedCard.tsx`
 - Delete: `components/kargah/CarvedCard.tsx`
-- Modify: `app/sales/page.tsx`
+- Modify: `app/sales/page.tsx`, `components/kargah/RevealRoute.tsx`, `app/globals.css`
+  (delete the dead cradle section, add `.notch-card`/`.notch-shoulder` styling)
 
 **Interfaces:**
 - Consumes: `notchedCardPath` from Task 12.

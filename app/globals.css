@@ -2026,45 +2026,9 @@ body {
 .legend .sw-b { background: var(--serie-b); }
 .gA-stop { stop-color: var(--accent); }
 
-/* ---- 3 · the carved avatar cradle ----------------------------------------
-   A rounded rectangle is REMOVED from the card's top inline-start corner,
-   leaving a stepped edge with a rounded inner corner -- the avatars then live
-   in the bay that removal opens up. The silhouette is a clip-path computed in
-   JS, because the notch is a fixed size while the card is fluid; drop-shadow
-   (not box-shadow) is what follows a clipped shape.                          */
-.cradlewrap { position: relative; margin-top: 16px; }
-.cradlecard { background: var(--card); filter: var(--card-drop); border-radius: var(--r-2xl); }
-.cradlecard.carved { border-radius: 0; }
-.shoulder {
-  position: absolute; top: 0; inset-inline-end: 26px; height: 62px;
-  display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--muted);
-}
-.shoulder b {
-  font-family: var(--en); font-size: 17px; font-weight: 700;
-  color: var(--ink); letter-spacing: -.02em;
-}
-.cradle {
-  position: absolute; top: 8px; inset-inline-start: 30px; display: flex; z-index: 2;
-}
-.cradle .av {
-  width: 52px; height: 52px; border-radius: 999px; display: grid; place-items: center;
-  font-weight: 600; font-size: 16px; border: 4px solid var(--bg);
-  margin-inline-start: -14px; position: relative;
-  transition: transform 260ms var(--spring);
-}
-.cradle .av:first-child { margin-inline-start: 0; }
-.cradle .av:hover { transform: translateY(-6px) scale(1.06); z-index: 3; }
-.cradle .av .badge {
-  position: absolute; inset-block-end: -3px; inset-inline-start: -3px;
-  min-width: 21px; height: 21px; border-radius: 999px;
-  background: var(--accent); color: #fff; font-family: var(--en);
-  font-size: 11px; font-weight: 700; display: grid; place-items: center;
-  border: 2px solid var(--bg); padding: 0 4px;
-}
-.cradle .av.add { background: var(--sunk); color: var(--muted); font-size: 20px; cursor: pointer; }
-.cradlebody { padding: 80px 26px 26px; }
-.cradlebody h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
-.cradlebody p { margin: 0; font-size: 13.5px; color: var(--muted); }
+/* ---- 3 · the carved avatar cradle -- SUPERSEDED, see NotchedCard's .notch-wrap/
+   .notch-card/.notch-edge/.notch-avatars further down. Section number kept for the
+   surrounding comments' sake even though this section is now empty. */
 
 /* ---- 4 · document-pocket cards ------------------------------------------- */
 .pockets {
@@ -3619,4 +3583,78 @@ a.ordline:hover { color: var(--accent); }
   --accent-dim: #4A6BB0;
   --wash-peach: #3A2530;
   --ev-a-ink: #8FAEF0;
+}
+
+/* ── NotchedCard ──────────────────────────────────────────────────────────────────
+   Generalizes .cradlecard/.cradlewrap for any side/edge, spec's core visual identity. */
+.notch-wrap {
+  position: relative;
+  filter: var(--card-drop);
+}
+
+.notch-card {
+  position: relative;
+  z-index: 2;
+  background: var(--surface);
+  border-radius: var(--radius-2xl);
+  /* Top clears the default 62px notch height plus breathing room; sides/bottom use the
+     normal card padding scale. A consumer with a taller/shorter notchHeight can override
+     padding-top itself -- this is the sane default, not a hard constraint. */
+  padding: 80px var(--space-6) var(--space-6);
+}
+.notch-card h2 { margin: 0 0 4px; font-size: var(--text-lg); font-weight: 600; }
+.notch-card p { margin: 0; font-size: var(--text-sm); color: var(--text-muted); }
+.notch-card.notched {
+  border-radius: 0; /* the clip-path is the only thing describing the shape once carved */
+}
+
+/* The border/highlight ring: an absolutely-positioned layer painted with the border
+   colour, clipped to the SAME notch path (written to --notch-clip-path by the component),
+   then inset 1px via a second clip so only a thin ring is visible -- the notched
+   equivalent of a 1px border, since a real `border` property is clipped away with
+   everything else outside a clip-path'd shape. */
+.notch-edge {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  background: linear-gradient(var(--edge-hi), var(--edge-lo)), var(--border-strong);
+  clip-path: var(--notch-clip-path, none);
+}
+.notch-edge::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  background: var(--surface);
+  clip-path: var(--notch-clip-path, none);
+}
+
+/* The notch's other occupant -- a small metadata line (e.g. "امروز N سفارش") sitting
+   opposite the avatars within the notch's own height band, so the two never collide. */
+.notch-shoulder {
+  position: absolute;
+  top: 0;
+  inset-inline-start: var(--space-6);
+  height: 62px;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  z-index: 3;
+}
+.notch-shoulder b {
+  font-family: var(--font-en), system-ui, sans-serif;
+  font-size: var(--text-lg);
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.notch-avatars {
+  position: absolute;
+  z-index: 3;
+  /* Positioned in the bay -- exact inset tuned per consumer via a modifier class,
+     since notch position (side/edge) varies by usage. */
+  inset-inline-end: var(--space-4);
+  top: var(--space-3);
 }
