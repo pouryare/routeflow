@@ -3,7 +3,7 @@
 // Tehran's traffic authority and OSM tracks them.
 import fs from "node:fs";
 
-const OUT = "/root/pourya/coverage-map/public/tehran-traffic-zones.geojson";
+const OUT = "/root/pourya/RouteFlow/public/tehran-traffic-zones.geojson";
 const QUERY = "[out:json][timeout:120];rel(id:6947428,6950174);out geom;";
 
 /** Overpass is a shared free service and answers "too busy" with an HTML page and a 200,

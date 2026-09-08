@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash /root/pourya/coverage-map/.claude/hooks/auto-commit-push.sh",
+            "command": "bash /root/pourya/RouteFlow/.claude/hooks/auto-commit-push.sh",
             "timeout": 120,
             "statusMessage": "Committing and pushing to GitHub..."
           }

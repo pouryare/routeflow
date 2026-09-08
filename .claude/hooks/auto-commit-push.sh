@@ -10,7 +10,7 @@
 
 set -uo pipefail
 
-REPO="/root/pourya/coverage-map"
+REPO="/root/pourya/RouteFlow"
 cd "$REPO" 2>/dev/null || exit 0
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 

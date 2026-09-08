@@ -18,8 +18,8 @@
 //   After=network-online.target
 //   [Service]
 //   Type=simple
-//   WorkingDirectory=/root/pourya/coverage-map
-//   EnvironmentFile=/root/pourya/coverage-map/.env.local
+//   WorkingDirectory=/root/pourya/RouteFlow
+//   EnvironmentFile=/root/pourya/RouteFlow/.env.local
 //   ExecStart=/usr/bin/node --experimental-strip-types scripts/telegram-poll.ts
 //   Restart=always
 //   RestartSec=5
