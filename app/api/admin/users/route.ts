@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
   const users = getDb()
     .prepare(
       `SELECT u.id, u.username, u.display_name, u.role, u.group_id, u.staff_code, u.phone,
-              u.active, u.location_consent_at, u.created_at, g.name AS group_name
+              u.telegram_chat_id, u.active, u.location_consent_at, u.created_at, g.name AS group_name
        FROM users u LEFT JOIN groups g ON g.id = u.group_id
        ORDER BY u.active DESC, u.display_name`
     )

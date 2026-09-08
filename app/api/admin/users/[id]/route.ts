@@ -102,6 +102,23 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
     values.push(phone);
   }
 
+  // The second way to bind a telegram account, alongside the user's own «/start <nonce>»
+  // deep link: an owner can paste an id straight in for someone who cannot manage it
+  // themselves. Ids are numeric, and a group or channel id is negative -- hence the
+  // optional leading minus. No `bumpVersion`: the chat id gates no session.
+  if (body?.telegram_chat_id !== undefined) {
+    const raw = typeof body.telegram_chat_id === "string" ? body.telegram_chat_id.trim() : "";
+    const chat = raw === "" ? null : raw;
+    if (chat !== null && !/^-?\d{1,20}$/.test(chat)) {
+      return NextResponse.json({ ok: false, error: "شناسه تلگرام باید عددی باشد" }, { status: 400 });
+    }
+    sets.push("telegram_chat_id = ?");
+    values.push(chat);
+    // An admin-set id supersedes any pending self-link; drop the stale nonce so a later
+    // «/start» with it cannot rebind the account to a different chat.
+    sets.push("telegram_link_nonce = NULL");
+  }
+
   if (body?.active !== undefined) {
     const active = body.active ? 1 : 0;
     if (!active && wouldStrandTheApp(db, target, true)) {

@@ -13,6 +13,7 @@ interface UserRow {
   group_name: string | null;
   staff_code: string | null;
   phone: string | null;
+  telegram_chat_id: string | null;
   active: number;
   location_consent_at: string | null;
   created_at: string;
@@ -21,6 +22,31 @@ interface UserRow {
 interface GroupRow {
   id: number;
   name: string;
+}
+
+/** The admin-driven half of telegram linking: a user who cannot manage their own
+ *  «/start» deep link gets their chat id pasted in here instead. Uncontrolled and saved on
+ *  blur — a controlled input would re-render the whole table on every keystroke, and a
+ *  save per keystroke would PATCH a dozen half-typed ids. `key` on the value means a row
+ *  reloaded from the server re-seeds the field instead of holding a stale edit. */
+function TelegramCell({ user, onSave }: { user: UserRow; onSave: (v: string | null) => Promise<boolean> }) {
+  const current = user.telegram_chat_id ?? "";
+  return (
+    <input
+      key={current}
+      defaultValue={current}
+      dir="ltr"
+      inputMode="numeric"
+      placeholder="—"
+      aria-label={`شناسه تلگرام ${user.display_name}`}
+      onBlur={(e) => {
+        const v = e.target.value.trim();
+        if (v === current) return;
+        onSave(v || null);
+      }}
+      className="w-32 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+    />
+  );
 }
 
 const EMPTY = {
@@ -183,6 +209,7 @@ export default function AdminUsersPage() {
                   <th className="p-2 font-normal">نقش</th>
                   <th className="p-2 font-normal">گروه</th>
                   <th className="p-2 font-normal">شناسه اکسل</th>
+                  <th className="p-2 font-normal">تلگرام</th>
                   <th className="p-2 font-normal">اجازه موقعیت</th>
                   <th className="p-2 font-normal">وضعیت</th>
                   <th className="p-2 font-normal">کارها</th>
@@ -224,6 +251,12 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2 text-left font-mono text-xs text-text-muted" dir="ltr">
                       {u.staff_code ?? "—"}
+                    </td>
+                    <td className="p-2">
+                      <TelegramCell
+                        user={u}
+                        onSave={(v) => send(`/api/admin/users/${u.id}`, "PATCH", { telegram_chat_id: v })}
+                      />
                     </td>
                     {/* Unused until Phase 2, but showing it now costs nothing and makes
                         the consent state visible before anything depends on it. */}
