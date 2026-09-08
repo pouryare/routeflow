@@ -1490,15 +1490,13 @@ body {
 }
 
 /* ═════════════════════════════════════════════════════════════════════════════
-   کارگاه — the /sales design system.
-
-   Scoped to `:root`, never to `:root`. Twenty-one files outside /sales read
-   --bg, --surface and --accent from the :root block above — the map among them —
-   so redefining those globally would silently re-skin the map, which is out of
-   scope. The app deliberately carries two design systems until the other CRM
-   surfaces get their own pass. See MASTER.md "Visual thesis".
+   The app's one token system, promoted here from its former .kargah-only scope
+   (2026-09-08, see docs/superpowers/plans/2026-09-08-notched-skeuomorphic-substrate.md).
+   Light is the default and the identity; :root[data-theme="dark"] below carries the
+   night skin. The dead old-console :root block this superseded is removed in the same
+   pass (Task 6) that retints the tokens below to the new cool+black palette.
    ═══════════════════════════════════════════════════════════════════════════ */
-{
+:root {
   /* ---- Colour: light is the default and the identity ---------------------- */
   --bg: #F4F0E9;
   --surface: #FFFFFF;

@@ -329,6 +329,24 @@ console.log("done — review the diff before committing");
 node scripts/promote-kargah.mjs
 ```
 
+**Found during execution:** the script's second pass (`\.kargah\s+` → `""`, meant to
+strip `.kargah ` from a descendant selector like `.kargah .foo`) also matches a bare
+`.kargah` sitting alone on its own line with `{` on the next line — `\s+` consumes the
+newline between them. The file's own top-level `.kargah` selector was written exactly
+that way, so this pass deleted the ENTIRE selector, leaving a bare `{` with nothing
+before it: invalid CSS, silently dropped by the compiler rather than erroring — `npm run
+build` still succeeded, but the whole light token block stopped compiling. Caught by
+reading the raw file (`cat -A`) rather than trusting build success, and fixed by hand
+(re-adding `:root` before that line). If re-running this script on a fresh checkout,
+check for this exact pattern — a solitary `.kargah` line — before trusting the diff:
+
+```bash
+grep -B1 -n '^\.kargah$' app/globals.css
+```
+If this prints anything BEFORE running the script, fix that occurrence to
+`.kargah {` (same line) first, or add a fourth regex pass handling `\.kargah\s*\n\s*\{`
+explicitly.
+
 - [ ] **Step 4: Verify no hand-written rule was silently dropped, and the generated section is untouched**
 
 ```bash
