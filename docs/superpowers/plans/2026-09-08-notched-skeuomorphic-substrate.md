@@ -1659,19 +1659,31 @@ Expected: PASS, 5/5. If the mirroring test fails because the two paths are accid
 identical, double check `resolvePhysicalSide`'s truth table against the four
 `side`×`dir` combinations by hand before adjusting the sweep-flag logic.
 
-- [ ] **Step 6: Delete the superseded file**
+- [ ] **Step 6: Do NOT delete `lib/design/carve.ts` yet — confirmed during execution**
+
+`components/kargah/CarvedCard.tsx` still imports it and is not replaced until Task 13;
+deleting it here breaks `npm run build` immediately (a missing-module error, not a subtle
+one). Confirm the remaining consumers instead:
 
 ```bash
-rm lib/design/carve.ts
 grep -rln "lib/design/carve\|carvedCardPath" --include="*.tsx" --include="*.ts" . | grep -v node_modules
 ```
-The only hit should be `components/kargah/CarvedCard.tsx`, which Task 13 replaces.
+Two hits are expected: `components/kargah/CarvedCard.tsx` (Task 13 replaces it) and
+`tests/carve.test.ts` — an existing test this plan's earlier drafting missed, covering the
+same path-generation math `notch.test.ts` now covers more generally. Delete just the test
+file now, since nothing depends on it and its coverage is superseded:
+
+```bash
+rm tests/carve.test.ts
+```
+`lib/design/carve.ts` itself is deleted in Task 13, in the same commit that removes its
+last real consumer.
 
 - [ ] **Step 7: Commit**
 
 ```bash
 git add lib/design/notch.ts tests/design/notch.test.ts
-git rm lib/design/carve.ts
+git rm tests/carve.test.ts
 git commit -m "feat: generalize notch geometry to any side/edge/direction (lib/design/notch.ts)"
 ```
 
@@ -1856,10 +1868,13 @@ Replace the import and JSX usage: `CarvedCard` → `NotchedCard`, keeping the sa
 (`shoulder`, `avatars`, `children`) — the prop signature is unchanged from `CarvedCard`,
 only the new `side`/`edge`/`notchWidth`/`notchHeight` are additive.
 
-- [ ] **Step 4: Delete the superseded file**
+- [ ] **Step 4: Delete both superseded files**
+
+`lib/design/carve.ts` deferred deletion from Task 12 lands here too — this is the commit
+that removes its last real consumer, so it is the correct place to delete both together:
 
 ```bash
-git rm components/kargah/CarvedCard.tsx
+git rm components/kargah/CarvedCard.tsx lib/design/carve.ts
 ```
 
 - [ ] **Step 5: Confirm build and visual smoke test — including the sibling-not-descendant check**
