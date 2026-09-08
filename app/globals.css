@@ -3658,3 +3658,54 @@ a.ordline:hover { color: var(--accent); }
   inset-inline-end: var(--space-4);
   top: var(--space-3);
 }
+
+/* ── Tilt + glow ──────────────────────────────────────────────────────────────────
+   Driven by --mx/--my, written by ONE delegated pointer listener per container
+   (lib/design/tilt.ts's useTiltGlow) -- never per-card React state. RTL-aware via
+   --tilt-dir. Desktop-only (the hook itself gates on hover:hover+pointer:fine) and
+   fully disabled under prefers-reduced-motion, both at the hook level and here. */
+:root { --tilt-dir: -1; }      /* rtl default */
+[dir="ltr"] { --tilt-dir: 1; }
+
+[data-tilt] {
+  --mx: 0.5;
+  --my: 0.5;
+  --tilt-max: 8deg;
+  transform: perspective(900px)
+    rotateX(calc((0.5 - var(--my)) * var(--tilt-max)))
+    rotateY(calc((var(--mx) - 0.5) * var(--tilt-max) * var(--tilt-dir)));
+  transition: transform var(--dur-base) var(--ease-out);
+}
+
+[data-glow] {
+  position: relative;
+  isolation: isolate;
+}
+[data-glow]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    220px circle at calc(var(--mx, 0.5) * 100%) calc(var(--my, 0.5) * 100%),
+    color-mix(in srgb, var(--accent) 22%, transparent),
+    transparent 70%
+  );
+  mix-blend-mode: plus-lighter;
+  opacity: 0;
+  transition: opacity var(--dur-base) var(--ease-out);
+}
+[data-tilt]:hover[data-glow]::after,
+[data-glow]:hover::after {
+  opacity: 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-tilt] { transform: none !important; }
+  [data-glow]::after { display: none !important; }
+}
+
+.tilt-container, .glow-container { display: contents; }
+.tilt-card, .glow-card { display: block; }
