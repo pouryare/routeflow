@@ -1646,30 +1646,32 @@ body {
 }
 
 /* ---- Dark ------------------------------------------------------------------
-   Not an inversion. The ground is warm-black rather than the map's blue-black, the
-   terracotta is lifted because light's brick disappears against it, and every
-   "soft" tint is re-solved as a deep tone rather than a pale one.
-
-   The attribute is data-skin, NOT data-theme: /sales carries its own toggle and
-   must not fight the map's theme switch.                                       */
+   The night skin. Cool-black rather than the old warm-black, matching the light
+   block's temperature inversion (spec §4.2). Selected by :root[data-theme="dark"] —
+   this app's ONE theme attribute since promotion; the old separate data-skin
+   attribute this comment used to describe is retired along with it.            */
 :root[data-theme="dark"] {
-  --bg: #141110;
-  --surface: #1E1A17;
-  --surface-2: #242019;
-  --surface-sunk: #2B241E;
-  --border: #312A22;
-  --border-strong: #3E352B;
-  --text: #F3EEE7;
-  --text-muted: #9B8F81;
-  --text-faint: #8A8278;
-  --accent: #E8734A;
-  --accent-text: #E8734A;
-  --accent-ink: #241009;   /* NOT white — white on this accent is 3.01:1 */
-  --good: #93C289;
-  --warn: #E0A64A;
-  --crit: #F2789B;
-  --info: #83B9DC;
+  --bg: #101215;
+  --surface: #191C21;
+  --surface-2: #1F232A;
+  --surface-sunk: #0C0E11;
+  --border: #262B33;
+  --border-strong: #343A44;
+  --text: #E8EAEE;
+  --text-muted: #9BA3AF;
+  --text-faint: #6B7280;
+  --accent: #6D96EC;        /* data/links only in dark too */
+  --accent-text: #8FB0F2;
+  --accent-ink: #0B1220;
+  --good: #4BB07C;
+  --warn: #D9A23B;
+  --crit: #E8607F;
+  --info: #6BA8CE;
   --tint-plum: #B79EEA;
+
+  /* Inverted from light: on a dark ground the near-black primary becomes a light pill. */
+  --primary: #F2F4F7;
+  --primary-ink: #101216;
 
   --accent-soft: #3B241A;
   --good-soft: #22301F;
