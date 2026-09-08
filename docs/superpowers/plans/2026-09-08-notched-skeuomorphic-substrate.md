@@ -600,7 +600,145 @@ git commit -m "style: retint core dark tokens cool+black; verify light/dark toke
 
 **Files:**
 
-- [ ] **Step 1: Delete the old dark console `:root { ... }` block**
+**Amended during execution — read this before deleting anything.** The old dark console
+`:root {}` (lines 8–165) is NOT purely dead colour, as the original version of this step
+assumed. A precise census (every `--token` in that block, checked for whether ANY other
+definition of the same name survives anywhere else in the file) found **51 tokens with no
+safe replacement**: motion timing (`--ease-out`, `--spring-*`, `--dur-*`, `--stagger-tight`/
+`-loose`, `--drift-duration`, `--pulse-*`, `--sweep-duration`), the spacing scale
+(`--space-1`…`--space-12`), z-index stacking (`--z-map-chrome` through `--z-toast`, 9
+tokens), `--elev-1/2/3` (consumed directly by `NotificationBell.tsx`, `FontPicker.tsx`,
+`AccentPicker.tsx` — all mounted app-wide, all out of scope, all would silently lose their
+dropdown shadow), the validated colourblind-safe chart palette `--series-1`…`--series-7` +
+`--series-other` (consumed by `lib/chartPalette.ts` / `components/charts/SplineChart.tsx`),
+`--facility`, `--sweep-opacity` (consumed directly by `app/login/page.tsx`), and two font
+aliases. `npm run build` would still succeed if these were deleted — the breakage is
+runtime-only (a missing shadow, an unstyled sweep, a wrong-hued chart series) and would not
+show up until someone happened to look at the affected page.
+
+Four of these — `--elev-1/2/3`, `--series-*`, `--facility`, `--sweep-opacity` — are
+genuinely THEME-DEPENDENT: the old `:root[data-theme="light"]` block (lines 179–214, also
+being deleted) redefines each with a different value. The rest are theme-INDEPENDENT and
+were only ever defined once. Because `:root[data-theme="dark"]` is an *additional* rule
+matching the same `<html>` element rather than an isolated scope, a theme-independent
+token declared once in the (light) promoted block is automatically visible in dark mode
+too — nothing needs to be duplicated into the dark block for those.
+
+- [ ] **Step 1: Add the theme-independent tokens to the promoted light block, once**
+
+Insert before the promoted block's closing `}` (`grep -n "Colour: light is the default"`
+to locate it, then find its closing brace):
+
+```css
+/* ---- Shared infrastructure. Theme-independent -- declared once here; dark mode
+   inherits these unchanged, since :root[data-theme="dark"] matches the same element
+   rather than opening an isolated scope. Ported verbatim from the old console block,
+   which these tokens have no other home once it is deleted below. */
+--font-vazirmatn: var(--font-ui);
+--font-jetbrains-mono: var(--font-num);
+--font-fa: var(--font-ui);
+--font-en: var(--font-num);
+--font-display: var(--font-damavand), var(--font-ui), system-ui, sans-serif;
+
+--z-map-chrome: 1000;
+--z-map-overlay: 1010;
+--z-prompt: 1015;
+--z-panel: 1020;
+--z-sidebar: 1030;
+--z-sidebar-toggle: 1035;
+--z-lightbox: 1050;
+--z-help: 1060;
+--z-toast: 1070;
+
+--ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+--spring-snap: cubic-bezier(0.34, 1.26, 0.64, 1);
+--spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+--spring-drop: cubic-bezier(0.22, 1.61, 0.36, 1);
+--dur-fast: 120ms;
+--dur-base: 180ms;
+--dur-slow: 300ms;
+--dur-morph: 420ms;
+--dur-settle: 320ms;
+--dur-draw: 700ms;
+--stagger-tight: 20ms;
+--stagger-loose: 60ms;
+--drift-duration: 12000ms;
+--pulse-duration: 2400ms;
+--pulse-stagger: 800ms;
+--sweep-duration: 4000ms;
+
+--space-1: 4px;
+--space-2: 8px;
+--space-3: 12px;
+--space-4: 16px;
+--space-5: 20px;
+--space-6: 24px;
+--space-8: 32px;
+--space-12: 48px;
+```
+
+- [ ] **Step 2: Add the theme-DEPENDENT tokens' light values to the promoted light block**
+
+Same insertion point as Step 1 — light values, ported from the doomed
+`:root[data-theme="light"]` block:
+
+```css
+/* ---- Shared infrastructure, light-specific. See the dark block for the paired
+   values -- these four differ by theme, unlike the tokens in Step 1. */
+--sweep-opacity: 0.05;
+--series-1: #0068cb;
+--series-2: #b63e00;
+--series-3: #018058;
+--series-4: #9c6600;
+--series-5: #ac0258;
+--series-6: #008d00;
+--series-7: #6a3fe9;
+--series-other: #5f6c79;
+--facility: #2b4a66;
+--elev-1: 0 0 0 1px var(--border), 0 1px 2px rgba(15, 25, 34, 0.06);
+--elev-2: 0 0 0 1px var(--border), 0 4px 12px rgba(15, 25, 34, 0.10);
+--elev-3: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 25, 34, 0.16);
+```
+
+- [ ] **Step 3: Add the same four tokens' dark values to the promoted dark block**
+
+Locate with `grep -n ':root\[data-theme="dark"\] {' app/globals.css`, insert before its
+closing `}`, values ported from the old dark console:
+
+```css
+--sweep-opacity: 0.12;
+--series-1: #3987e5;
+--series-2: #d95926;
+--series-3: #199e70;
+--series-4: #c98500;
+--series-5: #d55181;
+--series-6: #008300;
+--series-7: #9085e9;
+--series-other: #5b6b7c;
+--facility: #d6e6f5;
+--elev-1: 0 0 0 1px var(--border);
+--elev-2: 0 0 0 1px var(--border-strong), 0 8px 24px -8px rgba(2, 5, 9, 0.9);
+--elev-3: 0 0 0 1px var(--border-strong), 0 16px 48px -12px rgba(2, 5, 9, 0.95);
+```
+
+- [ ] **Step 4: Verify the 51 tokens now resolve from the promoted blocks, not the doomed
+  ones, before deleting anything**
+
+```bash
+node -e '
+const fs = require("fs");
+const css = fs.readFileSync("app/globals.css", "utf8");
+const tokens = ["--font-vazirmatn","--z-toast","--ease-out","--space-1","--sweep-opacity","--series-1","--facility","--elev-1"];
+for (const t of tokens) {
+  const count = (css.match(new RegExp(t.replace(/[-[\]{}()*+?.,\\^$|#\s]/g, "\\$&") + "\\s*:", "g")) || []).length;
+  console.log(t, "defined", count, "times total (expect 2: once light, once dark, for theme-dependent; for theme-independent expect appearing inside BOTH old+new until old is deleted next)");
+}
+'
+```
+This is a sanity spot-check, not exhaustive — the real verification is Step 8 below,
+after deletion, confirming zero regressions in the actual compiled output.
+
+- [ ] **Step 5: NOW delete the old dark console `:root { ... }` block**
 
 Locate it precisely by its unique old-dark-navy signature rather than by match order:
 
@@ -612,14 +750,18 @@ inside the FIRST `:root {` in the file — confirm with
 `grep -n '^:root {' app/globals.css` (this old block is always the first match; the
 promoted block from Task 3 is the second, further down at whatever line the
 `grep -n "Colour: light is the default"` marker from Task 4 pointed to). Delete the
-entire old block, from its `:root {` line to its matching closing `}`.
+entire old block, from its `:root {` line to its matching closing `}` — confirmed at line
+165 by direct reading, not by an automated brace-counter (two earlier tasks in this plan
+found automated brace-counting unreliable on this file; read the raw lines to confirm the
+true closing `}` before deleting).
 
-- [ ] **Step 2: Delete the old `:root[data-theme="light"] { ... }` block**
+- [ ] **Step 6: Delete the old `:root[data-theme="light"] { ... }` block**
 
-Same file, `grep -n ':root\[data-theme="light"\]' app/globals.css`. Delete it entirely —
-the promoted block now serves this role at bare `:root`.
+Same file, `grep -n ':root\[data-theme="light"\]' app/globals.css` — confirmed at lines
+179–214 by direct reading. Delete it entirely — the promoted block now serves this role
+at bare `:root`, and Steps 2–3 above already ported everything it uniquely held.
 
-- [ ] **Step 3: Confirm exactly one `:root {` and one `:root[data-theme="dark"] {` block
+- [ ] **Step 7: Confirm exactly one `:root {` and one `:root[data-theme="dark"] {` block
   remain**
 
 ```bash
@@ -628,7 +770,7 @@ grep -n ':root\[data-theme="dark"\] {' app/globals.css
 ```
 Each command prints exactly one line.
 
-- [ ] **Step 4: Retint the remaining secondary/decorative tokens in both blocks**
+- [ ] **Step 8: Retint the remaining secondary/decorative tokens in both blocks**
 
 The promoted block also carries ~50 secondary tokens not covered by Tasks 4–5: soft pill
 fills (`--accent-soft`, `--good-soft`, ...), gradient washes (`--wash-*`), map-chrome
@@ -651,7 +793,7 @@ apply this rule and confirm by eye, not by transcribing a table:
 Apply the rule to every remaining warm literal in both the light and dark blocks. This is
 a visual-judgement pass — after applying it:
 
-- [ ] **Step 5: Smoke-test visually — with the known caveat from Task 4**
+- [ ] **Step 9: Smoke-test visually — with the known caveat from Task 4**
 
 **`/sales` and `/settings` will still show cream, not grey, and this task does not fix
 that** — see Task 4 Step 3's cascade analysis. This task removes the app-WIDE old console
@@ -668,14 +810,14 @@ confirm it is UNCHANGED from before this task (still cream) — that is the expe
 correct state until Task 11. The gradient-stat cards (dashboard) should still be visually
 distinct from each other. Stop the dev server.
 
-- [ ] **Step 6: Run the full build**
+- [ ] **Step 10: Run the full build**
 
 ```bash
 npm run build 2>&1 | tail -30
 ```
 Expected: succeeds, no CSS parse errors.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 11: Commit**
 
 ```bash
 git add app/globals.css

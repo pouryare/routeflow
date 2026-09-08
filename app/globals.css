@@ -1,218 +1,5 @@
 @import "tailwindcss";
 
-/*
-  MASTER.md is the source of truth for every value below.
-  Single-world dark commitment -- no light theme, no prefers-color-scheme branch.
-  See /MASTER.md at project root.
-*/
-:root {
-  /* Font-family aliases. app/fonts.ts injects --font-ui / --font-num / --font-damavand
-     (and the picker's --font-yekan / --font-sansx / --font-iran + -num) as custom
-     properties on <html>; components/FontPicker.tsx writes data-font and the rules below
-     remap --font-ui / --font-num per choice. Every other rule reads these stable names.
-     --font-en resolves to the NUMERAL face on purpose: inside it is almost
-     always carrying tabular figures (.mono, .num, amounts), and Peyda FaNum still has
-     full Latin + Arabic letters for the odd label. */
-  --font-vazirmatn: var(--font-ui);
-  --font-jetbrains-mono: var(--font-num);
-  --font-fa: var(--font-ui);
-  --font-en: var(--font-num);
-  --font-display: var(--font-damavand), var(--font-ui), system-ui, sans-serif;
-
-  /* color */
-  --bg: #0a0e14;
-  --surface: #121a24;
-  --surface-raised: #182230;
-  --border: #1e2a38;
-  --border-strong: #2a3a4c;
-  --accent: #2de0e6;
-  --accent-dim: #1b8a8f;
-  /* Ink on an --accent fill. A separate token because it does not merely invert between
-     themes: on dark's bright cyan the readable ink is near-black, on light's darkened
-     teal it is white. Every primary button in the app had this value hardcoded, which is
-     precisely why it broke the moment a second theme existed. */
-  --accent-ink: #04191c;
-  /* Ambient sweep. Barely-there on a near-black ground at 0.12; the same figure over a
-     pale canvas is a grey wedge across the page, so light dials it down. */
-  --sweep-opacity: 0.12;
-  /* ---- Chart series ---------------------------------------------------------------
-     Validated, not chosen. Each set was checked against its own chart surface for five
-     things: every hue inside the lightness band that surface needs, none so grey it stops
-     reading as a colour, adjacent pairs apart under protanopia/deuteranopia/tritanopia and
-     for normal vision, and 3:1 contrast against the surface. Adjacent is the criterion
-     that matters because colours are assigned by position, so series 1 and 2 share every
-     legend while 1 and 7 rarely do.
-
-     The dark set's worst adjacent separation is 7.9 (yellow/magenta under deuteranopia).
-     The light set was searched to meet that same figure rather than a looser one, and
-     lands at 7.9 (aqua/yellow under protanopia). Do not reorder or extend either by eye.
-
-     Exposed as variables rather than imported hex so a theme change re-colours every
-     chart without re-rendering it -- SVG stroke and fill both accept var().           */
-  --series-1: #3987e5;
-  --series-2: #d95926;
-  --series-3: #199e70;
-  --series-4: #c98500;
-  --series-5: #d55181;
-  --series-6: #008300;
-  --series-7: #9085e9;
-  --series-other: #5b6b7c;
-  /* One series, so nothing to be told apart from: it wears the app's accent. */
-  --series-single: #2de0e6;
-  --text: #e7eef5;
-  --text-muted: #8697a8;
-  --text-faint: #71808f;
-  --good: #3ddc84;
-  --warn: #f5a623;
-  --crit: #f0475b;
-  --neutral: #78889a;
-  /* Own sites (warehouse / home base). Not a status and not the interactive accent --
-     see MASTER.md "Facility marker". */
-  --facility: #d6e6f5;
-
-  /* ---- Stacking order ------------------------------------------------------------
-     Every floating thing in the app, in one ordered list, because the alternative is
-     what this replaced: a dozen literal z-index values scattered across a dozen files,
-     each chosen against whatever its author happened to be looking at. That is how the
-     customer panel ended up at 1000 with the search box at 1001 -- so on a phone, where
-     both sit at the top of the screen, the panel's own title and close button were
-     underneath the search box and could not be tapped.
-
-     Read bottom to top. Anything added later belongs *in this list*, not next to it.
-
-     The 1000 floor clears Leaflet's own panes and controls, which top out at 800. ---- */
-  --z-map-chrome: 1000;      /* search box, map controls */
-  --z-map-overlay: 1010;     /* next-stop bar, bulk-edit bar */
-  --z-prompt: 1015;          /* geofence arrival -- above the map, below anything the
-                                user opened themselves. It was above everything on the
-                                grounds of being time-critical, which had it covering the
-                                bottom of an open panel. It is a suggestion, and it waits
-                                until dismissed, so nothing is lost by letting a panel
-                                the user deliberately opened sit in front of it. */
-  --z-panel: 1020;           /* customer detail, district editor -- own the screen */
-  --z-sidebar: 1030;         /* covers a panel when opened over it */
-  --z-sidebar-toggle: 1035;  /* sits inside the sidebar's footprint and is what closes
-                                it, so it has to clear the thing it controls. It is
-                                hidden outright while a panel owns the screen -- see
-                                CoverageMap -- because there it would only be chrome
-                                floating over someone's title bar. */
-  --z-lightbox: 1050;
-  --z-help: 1060;
-  --z-toast: 1070;
-
-  /* type scale */
-  --text-xs: 0.6875rem;
-  --text-sm: 0.8125rem;
-  --text-base: 0.875rem;
-  --text-md: 1rem;
-  --text-lg: 1.25rem;
-  --text-xl: 1.5rem;
-  /* Display sizes exist for one reason: a dashboard's primary figure should be readable
-     across a desk. Mono, weight 400 -- a large number gets loud through size, not weight. */
-  --text-2xl: 2rem;
-  --text-3xl: 2.75rem;
-
-  /* spacing (4px base) */
-  --space-1: 4px;
-  --space-2: 8px;
-  --space-3: 12px;
-  --space-4: 16px;
-  --space-5: 20px;
-  --space-6: 24px;
-  --space-8: 32px;
-  --space-12: 48px;
-
-  /* radii */
-  --radius-sm: 4px;
-  --radius-md: 6px;
-  --radius-lg: 10px;
-  /* Radius scales with surface size -- see MASTER.md "Radii". A 420px bento tile with a
-     6px radius reads as a table cell, and a 32px control with a 20px radius loses its
-     affordance, so the two ends of the scale are not interchangeable. */
-  --radius-xl: 14px;
-  --radius-2xl: 20px;
-
-  /* ---- Elevation: one API, two implementations -----------------------------------
-     Components consume --elev-N and never learn which theme they are in. In dark the
-     lift comes from a lighter surface plus a cool halo of near-black; on a #0A0E14
-     ground that halo reads as occlusion rather than as a lit-from-above shadow, which
-     is the distinction MASTER.md's "glow, not shadow" rule was actually protecting.
-     In light it is a genuine shadow, tinted to the canvas hue -- never neutral black. */
-  --elev-1: 0 0 0 1px var(--border);
-  --elev-2: 0 0 0 1px var(--border-strong), 0 8px 24px -8px rgba(2, 5, 9, 0.9);
-  --elev-3: 0 0 0 1px var(--border-strong), 0 16px 48px -12px rgba(2, 5, 9, 0.95);
-
-  /* motion */
-  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  /* Spring curves. Legal in Tier 1 (direct manipulation) only -- never on data, hover
-     targets, map layers, or in driver mode. See MASTER.md "Motion". */
-  --spring-snap: cubic-bezier(0.34, 1.26, 0.64, 1);
-  --spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --spring-drop: cubic-bezier(0.22, 1.61, 0.36, 1);
-  --dur-fast: 120ms;
-  --dur-base: 180ms;
-  --dur-slow: 300ms;
-  --dur-morph: 420ms;
-  --dur-settle: 320ms;
-  --dur-draw: 700ms;
-  --stagger-tight: 20ms;
-  --stagger-base: 40ms;
-  --stagger-loose: 60ms;
-  --drift-duration: 12000ms;
-  --pulse-duration: 2400ms;
-  --pulse-stagger: 800ms;
-  --sweep-duration: 4000ms;
-}
-
-/* ---- Light theme --------------------------------------------------------------------
-   Every token from the dark :root is redefined here. None inherit: a token defined only
-   in the dark block shows up in light mode as an invisible element, so the rule is
-   absolute rather than a convention.
-
-   This is not an inversion. The accent is the same cyan hue darkened until it clears
-   4.5:1 on the light ground (bright cyan cannot); --facility flips from pale to deep,
-   because a near-white marker is invisible on a near-white canvas; and --warn darkens to
-   bronze, because no amber that still reads as amber passes 4.5:1 on white. All eighteen
-   text values are computed against their own canvas, not eyeballed -- see MASTER.md.
-
-   Dark stays the default. This block only applies once something sets data-theme.       */
-:root[data-theme="light"] {
-  --bg: #f1f4f7;
-  --surface: #ffffff;
-  --surface-raised: #ffffff;
-  --border: #dde3ea;
-  --border-strong: #c2ccd6;
-  --accent: #0b7c82;
-  --accent-dim: #6bc4c8;
-  --accent-ink: #ffffff;
-  --sweep-opacity: 0.05;
-  /* Same hues, re-solved for a white chart surface. Bright cyan cannot be the single-series
-     colour here for the same reason it cannot be the accent: it glares and fails contrast. */
-  --series-1: #0068cb;
-  --series-2: #b63e00;
-  --series-3: #018058;
-  --series-4: #9c6600;
-  --series-5: #ac0258;
-  --series-6: #008d00;
-  --series-7: #6a3fe9;
-  --series-other: #5f6c79;
-  --series-single: #0b7c82;
-  --text: #0f1922;
-  --text-muted: #56636f;
-  --text-faint: #616d79;
-  --good: #147d4b;
-  --warn: #8a5300;
-  --crit: #be2637;
-  --neutral: #5f6c79;
-  --facility: #2b4a66;
-
-  /* --surface and --surface-raised are the same white on purpose: in light mode a raised
-     surface separates by shadow, not by tint. Tinting it grey would read as disabled. */
-  --elev-1: 0 0 0 1px var(--border), 0 1px 2px rgba(15, 25, 34, 0.06);
-  --elev-2: 0 0 0 1px var(--border), 0 4px 12px rgba(15, 25, 34, 0.10);
-  --elev-3: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 25, 34, 0.16);
-}
-
 /* Font picker. Peyda is the bare :root default (aliases above); each other choice remaps
    only the body + numeral family. Damavand (--font-display) never changes. */
 :root[data-font="yekan"] { --font-ui: var(--font-yekan); --font-num: var(--font-yekan-num); }
@@ -1527,34 +1314,36 @@ body {
   --primary-ink: #FFFFFF;
 
   /* Soft pill fills. The status word answers to the pill, not to the page. */
-  --accent-soft: #FBEDE6;
-  --good-soft: #E9F0E6;
-  --warn-soft: #FBF1DD;
-  --crit-soft: #FBE9EE;
-  --info-soft: #E5F0F6;
-  --plum-soft: #F2ECFA;
+  --accent-soft: #E7EEFC;
+  --good-soft: #E3F0E9;
+  --warn-soft: #F5EDDC;
+  --crit-soft: #F8E4E9;
+  --info-soft: #E4EFF5;
+  --plum-soft: #EFEAFA;
 
   /* Gradient-stat washes. Only the strongest stop is a token; the rest of each mesh is
      mixed toward --surface from it, so one value moves a whole card. The muted ink has
      its OWN token because --text-muted lands at 3.79 on the coolest wash -- a label
-     that answers to the wash it sits on, not to the page. */
-  --wash-peach: #FFD7BE;
-  --wash-mint: #CFE6D2;
-  --wash-sand: #F0DFBB;
+     that answers to the wash it sits on, not to the page. Cooled from the warm set but
+     kept distinct from each other and from --accent -- spec §6's "warmth leaves, hue
+     variety stays" rule. */
+  --wash-peach: #F5D3D9;
+  --wash-mint: #CFE6D6;
+  --wash-sand: #F0E4C0;
   --wash-sky: #CFE0EC;
   --wash-ink: var(--text);
-  --wash-ink-muted: #6A6055;
-  --wash-edge: rgba(62, 44, 28, .10);
+  --wash-ink-muted: #5E6470;
+  --wash-edge: rgba(24, 28, 38, .10);
 
   /* Aliases for tokens the map's chrome still reads.
      کارگاه replaced --surface-raised with --surface-2 and retired --accent-dim, but the
      main page renders CoverageMap, whose chrome references the originals across two
-     thousand lines. Defining warm equivalents here re-skins that chrome without
+     thousand lines. Defining cool equivalents here re-skins that chrome without
      rewriting it. Every one of them is a background or a border, never text, so there is
      no contrast pair to solve. */
   --surface-raised: #FFFFFF;
-  --accent-dim: #E3A184;
-  --neutral: #8A7F72;
+  --accent-dim: #9FB3E0;
+  --neutral: #7C8290;
 
   /* ---- The artifact's own token names ------------------------------------
      Ported verbatim from the approved design so its CSS can be used rule for
@@ -1563,43 +1352,43 @@ body {
      stylesheet reads the other, and re-pointing either would mean rewriting
      one of the two. */
   --card: #FFFFFF;
-  --card-2: #FDFBF8;
-  --sunk: #EFE9E0;
-  --ink: #231C16;
-  --ink-2: #4E4339;
-  --muted: #8A7D70;
-  --faint: #B3A899;
-  --line: #EAE2D7;
-  --line-2: #DED4C6;
-  --accent-2: #A9451F;
-  --sage: #4F6B4A;      --sage-soft: #E9F0E6;
-  --amber: #9A6B10;     --amber-soft: #FBF1DD;
-  --plum: #6B4FA0;      --plum-soft: #F2ECFA;
-  --sky: #2E6382;       --sky-soft: #E5F0F6;
+  --card-2: #F7F8F9;
+  --sunk: #E3E5E8;
+  --ink: #16181D;
+  --ink-2: #3A3F49;
+  --muted: #5F6672;
+  --faint: #9AA0AC;
+  --line: #E2E4E8;
+  --line-2: #D2D6DC;
+  --accent-2: #2E56AD;
+  --sage: #4A6B5A;      --sage-soft: #E3F0E9;
+  --amber: #8A6620;     --amber-soft: #F5EDDC;
+  --plum: #6B4FA0;      --plum-soft: #EFEAFA;
+  --sky: #2E6382;       --sky-soft: #E4EFF5;
 
   --r-2xl: 26px; --r-xl: 20px; --r-lg: 16px; --r-md: 12px; --r-sm: 9px;
   --spring: cubic-bezier(.34,1.32,.5,1);
   --ease: cubic-bezier(.16,1,.3,1);
 
   /* Rotates the decorative gcard mesh gradients onto the chosen accent. 0deg for the
-     default (terracotta) and for graphite; scripts/gen-accent-themes.mjs emits a per-
+     default and for graphite; scripts/gen-accent-themes.mjs emits a per-
      theme value into the generated block below. */
   --gcard-hue-rotate: 0deg;
-  --gcard-ink: #231C16;
-  --gcard-k: rgba(35,28,22,.68);
+  --gcard-ink: #16181D;
+  --gcard-k: rgba(15,18,25,.68);
   --gcard-chip: rgba(255,255,255,.62);
-  --gcard-chip-ink: #3F5B3B;
-  --gcard-chip-sky: #2C5468;
-  --gcard-chip-amber: #7A5409;
+  --gcard-chip-ink: #3A5B48;
+  --gcard-chip-sky: #2A5468;
+  --gcard-chip-amber: #6E5A1A;
   --gcard-glass: rgba(255,255,255,.55);
   --frost: rgba(255,255,255,.62);
   --frost-edge: rgba(255,255,255,.85);
-  --track: #EFE9E0;
+  --track: #E3E5E8;
   --serie-b: #A9C6E4;
-  --ev-a-ink: #8E3A17; --ev-b-ink: #3B5537; --ev-c-ink: #255670;
-  --notice-ink: #7A5409;
+  --ev-a-ink: #2A4A8A; --ev-b-ink: #354F3E; --ev-c-ink: #255670;
+  --notice-ink: #8A5A00;
   --tick-ink: #FFFFFF;
-  --island-bg: #191410; --island-ink: #F7F2EC; --island-sub: #B9AEA2; --island-edge: transparent;
+  --island-bg: #14161B; --island-ink: #F2F4F7; --island-sub: #9BA3AF; --island-edge: transparent;
 
   --fa: var(--font-fa), system-ui, sans-serif;
   --en: var(--font-en), system-ui, sans-serif;
@@ -1638,6 +1427,68 @@ body {
 
   --stagger-base: 55ms;
 
+  /* ---- Shared infrastructure. Theme-independent -- declared once here; dark mode
+     inherits these unchanged, since :root[data-theme="dark"] matches the same element
+     rather than opening an isolated scope. Ported verbatim from the old console block,
+     which these tokens have no other home once it is deleted below. */
+  --font-vazirmatn: var(--font-ui);
+  --font-jetbrains-mono: var(--font-num);
+  --font-fa: var(--font-ui);
+  --font-en: var(--font-num);
+  --font-display: var(--font-damavand), var(--font-ui), system-ui, sans-serif;
+
+  --z-map-chrome: 1000;
+  --z-map-overlay: 1010;
+  --z-prompt: 1015;
+  --z-panel: 1020;
+  --z-sidebar: 1030;
+  --z-sidebar-toggle: 1035;
+  --z-lightbox: 1050;
+  --z-help: 1060;
+  --z-toast: 1070;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --spring-snap: cubic-bezier(0.34, 1.26, 0.64, 1);
+  --spring-pop: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-drop: cubic-bezier(0.22, 1.61, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 180ms;
+  --dur-slow: 300ms;
+  --dur-morph: 420ms;
+  --dur-settle: 320ms;
+  --dur-draw: 700ms;
+  --stagger-tight: 20ms;
+  --stagger-loose: 60ms;
+  --drift-duration: 12000ms;
+  --pulse-duration: 2400ms;
+  --pulse-stagger: 800ms;
+  --sweep-duration: 4000ms;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ---- Shared infrastructure, light-specific. See the dark block for the paired
+     values -- these four differ by theme, unlike the tokens above. */
+  --sweep-opacity: 0.05;
+  --series-1: #0068cb;
+  --series-2: #b63e00;
+  --series-3: #018058;
+  --series-4: #9c6600;
+  --series-5: #ac0258;
+  --series-6: #008d00;
+  --series-7: #6a3fe9;
+  --series-other: #5f6c79;
+  --facility: #2b4a66;
+  --elev-1: 0 0 0 1px var(--border), 0 1px 2px rgba(15, 25, 34, 0.06);
+  --elev-2: 0 0 0 1px var(--border), 0 4px 12px rgba(15, 25, 34, 0.10);
+  --elev-3: 0 0 0 1px var(--border), 0 12px 32px rgba(15, 25, 34, 0.16);
+
   background: var(--bg);
   color: var(--text);
   font-family: var(--font-fa), system-ui, sans-serif;
@@ -1669,65 +1520,80 @@ body {
   --info: #6BA8CE;
   --tint-plum: #B79EEA;
 
+  /* Shared-infrastructure tokens that DO differ by theme (paired with the light block's
+     values, ported from the old dark console). */
+  --sweep-opacity: 0.12;
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
+  --series-5: #d55181;
+  --series-6: #008300;
+  --series-7: #9085e9;
+  --series-other: #5b6b7c;
+  --facility: #d6e6f5;
+  --elev-1: 0 0 0 1px var(--border);
+  --elev-2: 0 0 0 1px var(--border-strong), 0 8px 24px -8px rgba(2, 5, 9, 0.9);
+  --elev-3: 0 0 0 1px var(--border-strong), 0 16px 48px -12px rgba(2, 5, 9, 0.95);
+
   /* Inverted from light: on a dark ground the near-black primary becomes a light pill. */
   --primary: #F2F4F7;
   --primary-ink: #101216;
 
-  --accent-soft: #3B241A;
-  --good-soft: #22301F;
-  --warn-soft: #33280F;
-  --crit-soft: #3A1B25;
+  --accent-soft: #1A2A45;
+  --good-soft: #1E2F26;
+  --warn-soft: #2E2716;
+  --crit-soft: #351A26;
   --info-soft: #1B2A34;
   --plum-soft: #2A2337;
 
   /* Dark carries its OWN mixes. The light pastels glare on a dark ground -- they are
-     the brightest thing on the page and the figure printed on them disappears. */
-  --wash-peach: #4A2A1C;
-  --wash-mint: #24382A;
-  --wash-sand: #40331A;
+     the brightest thing on the page and the figure printed on them disappears. Cool-
+     tinted here to match the light block's temperature (spec §4.2). */
+  --wash-peach: #3A2530;
+  --wash-mint: #223A2C;
+  --wash-sand: #3A3420;
   --wash-sky: #1F3341;
   --wash-ink: var(--text);
-  --wash-ink-muted: #A99C8D;
+  --wash-ink-muted: #9BA3AF;
   --wash-edge: rgba(0, 0, 0, .38);
 
-  --surface-raised: #242019;
-  --accent-dim: #8A4227;
-  --neutral: #6E6357;
+  --surface-raised: #1F232A;
+  --accent-dim: #4A6BB0;
+  --neutral: #6B7280;
 
-  /* The artifact's dark set. Not an inversion: the ground goes warm-black
-     rather than blue-black, the terracotta lifts to #E8734A because the
-     light-mode brick disappears against it, and every "soft" tint is re-solved
-     as a deep tone rather than a pale one. */
-  --card: #1E1A17;
-  --card-2: #242019;
-  --sunk: #2B241E;
-  --ink: #F3EEE7;
-  --ink-2: #C8BFB4;
-  --muted: #9B8F81;
-  --faint: #6E6558;
-  --line: #312A22;
-  --line-2: #3E352B;
-  --accent-2: #F28C67;
-  --sage: #93C289;  --sage-soft: #22301F;
-  --amber: #E0A64A; --amber-soft: #33280F;
+  /* The artifact's dark set. Cool-black rather than the old warm-black, matching the
+     app-wide inversion; every "soft" tint stays re-solved as a deep tone. */
+  --card: #191C21;
+  --card-2: #1F232A;
+  --sunk: #0C0E11;
+  --ink: #E8EAEE;
+  --ink-2: #C2C8D2;
+  --muted: #9BA3AF;
+  --faint: #6B7280;
+  --line: #262B33;
+  --line-2: #343A44;
+  --accent-2: #8FAEF0;
+  --sage: #93C289;  --sage-soft: #1E2F26;
+  --amber: #D4A854; --amber-soft: #2E2716;
   --plum: #B79EEA;  --plum-soft: #2A2337;
   --sky: #83B9DC;   --sky-soft: #1B2A34;
 
-  --gcard-ink: #F7F2EC;
-  --gcard-k: rgba(247,242,236,.72);
+  --gcard-ink: #F2F4F7;
+  --gcard-k: rgba(242,244,247,.72);
   --gcard-chip: rgba(0,0,0,.30);
   --gcard-chip-ink: #B6D9AD;
   --gcard-chip-sky: #A7CFE8;
-  --gcard-chip-amber: #EFC580;
+  --gcard-chip-amber: #E0C888;
   --gcard-glass: rgba(0,0,0,.26);
-  --frost: rgba(38,32,27,.62);
+  --frost: rgba(25,28,33,.62);
   --frost-edge: rgba(255,255,255,.07);
-  --track: #2B241E;
+  --track: #0C0E11;
   --serie-b: #6E93B4;
-  --ev-a-ink: #F0A183; --ev-b-ink: #AED4A5; --ev-c-ink: #9CC8E4;
-  --notice-ink: #E8C489;
-  --tick-ink: #152110;
-  --island-bg: #2A231D; --island-ink: #F7F2EC; --island-sub: #B9AEA2; --island-edge: rgba(255,255,255,.10);
+  --ev-a-ink: #8FAEF0; --ev-b-ink: #AED4A5; --ev-c-ink: #9CC8E4;
+  --notice-ink: #D9A23B;
+  --tick-ink: #10151A;
+  --island-bg: #1A1D24; --island-ink: #F2F4F7; --island-sub: #9BA3AF; --island-edge: rgba(255,255,255,.10);
 
   --sh-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6);
   --sh-2: 0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7);
