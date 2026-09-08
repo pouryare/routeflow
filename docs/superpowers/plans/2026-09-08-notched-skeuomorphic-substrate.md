@@ -2229,6 +2229,23 @@ git commit -m "feat: delegated tilt+glow architecture (one listener, one active 
 grep -n "backdrop-filter" app/globals.css
 ```
 
+**Found reading it — a hard-won, documented bug fix this plan's own draft CSS (Step 2,
+originally) had backwards.** The pocket's `.face` rule
+([globals.css:2064](../../app/globals.css#L2064)) carries a comment: *"Prefixed FIRST,
+standard LAST, and the order is load-bearing. Written the other way round the minifier
+treats the standard declaration as shadowed by the later prefixed one and drops it —
+leaving only -webkit-backdrop-filter, which Chromium rejects outright. The face then
+rendered as flat translucent white with no blur at all."* `-webkit-backdrop-filter` must
+come BEFORE `backdrop-filter`, not after. Verify this survives minification in the
+compiled output, not just in source, before trusting it:
+
+```bash
+npm run build
+CSS=$(find .next/static/chunks -name "*.css" | xargs grep -l "glass-face")
+grep -o "glass-face{[^}]*}" "$CSS"
+```
+Confirm both the prefixed and standard declarations are present, in that order.
+
 - [ ] **Step 2: Implement, extracting the existing technique into a reusable primitive**
 
 ```typescript
@@ -2265,8 +2282,10 @@ Add to `app/globals.css`:
 
 ```css
 .glass-face {
-  backdrop-filter: blur(16px) saturate(1.5);
+  /* -webkit- FIRST, standard LAST -- see Step 1's finding. Reversed, a minifier bug
+     drops the standard declaration entirely. */
   -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
   background: color-mix(in srgb, var(--glass-tint, var(--surface)) 72%, transparent);
 }
 

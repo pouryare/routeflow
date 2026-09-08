@@ -3709,3 +3709,24 @@ a.ordline:hover { color: var(--accent); }
 
 .tilt-container, .glow-container { display: contents; }
 .tilt-card, .glow-card { display: block; }
+
+/* ── GlassFace ────────────────────────────────────────────────────────────────────
+   Extracted from the pocket's .face. Restricted to modal backdrops, the sticky header
+   and the pocket's own document face -- never plain cards (the reference's cards are
+   opaque white, and backdrop-filter is the single most expensive property here). */
+.glass-face {
+  /* Prefixed FIRST, standard LAST -- load-bearing order, not style. A minifier bug
+     treats the standard declaration as shadowed by a LATER prefixed one and drops it,
+     leaving only -webkit-backdrop-filter, which Chromium rejects outright (not an alias
+     there); the face then renders as flat translucent colour with no blur at all. See
+     .pocket's .face rule, where this was first found and fixed. */
+  -webkit-backdrop-filter: blur(16px) saturate(1.5);
+  backdrop-filter: blur(16px) saturate(1.5);
+  background: color-mix(in srgb, var(--glass-tint, var(--surface)) 72%, transparent);
+}
+
+/* Firefox/older Safari without backdrop-filter support: an opaque fallback rather than
+   see-through content with unreadable contrast. */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-face { background: var(--glass-tint, var(--surface)); }
+}
