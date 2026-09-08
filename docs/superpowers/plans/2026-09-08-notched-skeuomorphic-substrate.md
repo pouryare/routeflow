@@ -47,6 +47,19 @@ dependencies added in Task 2: `motion`, `lucide-react`, `clsx`, `tailwind-merge`
 - **New dependencies must be famous and actively maintained** — verified in Task 2
   against npm/GitHub at plan-write time (2026-09-08): `motion@13.2.0` (2026-09-02),
   `lucide-react@1.43.0` (2026-09-08), `clsx@2.1.1`, `tailwind-merge@3.6.0`.
+- **Corrected during execution — test file location and testing style.** `vitest.config.mts`
+  restricts `include` to `tests/**/*.test.ts`; a colocated `lib/cn.test.ts` would be
+  invisible to the test runner. Every test file this plan creates lives under `tests/`, mirroring its
+  source path (e.g. `lib/cn.ts` → `tests/cn.test.ts`, `lib/design/notch.ts` →
+  `tests/design/notch.test.ts`), matching the existing `tests/contrast.test.ts` /
+  `tests/accent.test.ts` convention. Further, the config runs `environment: "node"` with
+  no jsdom/happy-dom, and the repo has **zero** existing `@testing-library/react` usage or
+  `.test.tsx` files anywhere — every existing test is pure-logic. This plan follows that
+  convention rather than introducing component-rendering tests: wherever a task below
+  originally specified a DOM-rendering test (`render`/`screen`/`fireEvent`), the
+  interesting logic is tested as a plain function instead, and the component itself is
+  verified by the task's existing manual browser smoke-test step. No `@testing-library/*`
+  package is installed by this plan.
 
 ---
 
@@ -54,7 +67,7 @@ dependencies added in Task 2: `motion`, `lucide-react`, `clsx`, `tailwind-merge`
 
 **New files:**
 - `lib/design/notch.ts` — generalized notch-path geometry (replaces `lib/design/carve.ts`)
-- `lib/design/notch.test.ts` — unit tests for the path math
+- `tests/design/notch.test.ts` — unit tests for the path math
 - `lib/design/tilt.ts` — delegated pointer listener (`useTiltGlow` hook)
 - `lib/cn.ts` — the `clsx` + `tailwind-merge` class-name helper every new component uses
 - `components/kargah/NotchedCard.tsx` — generalized `CarvedCard`
@@ -66,36 +79,51 @@ dependencies added in Task 2: `motion`, `lucide-react`, `clsx`, `tailwind-merge`
 - `components/kargah/Select.tsx` — pill select
 - `components/kargah/Textarea.tsx` — pill textarea
 - `components/kargah/RangeSlider.tsx` — pill-readout range slider
+- `lib/design/rangeFill.ts` — pure fill-percentage math (extracted for testability)
+- `tests/design/rangeFill.test.ts`
 - `components/kargah/SegmentedPill.tsx` — generic sliding-pill segmented control
 - `components/kargah/ArcGauge.tsx` — arc/donut gauge
 - `components/kargah/StatefulButton.tsx` — idle → loading → success button
+- `lib/design/statefulButton.ts` — pure state-machine reducer (extracted for testability)
+- `tests/design/statefulButton.test.ts`
 - `components/kargah/GooeyInput.tsx` — SVG-filter gooey search input
-- `scripts/promote-kargah.mjs` — one-time mechanical migration script (Task 3)
+- `scripts/promote-kargah.mjs` — one-time mechanical migration script (Task 3), scoped to
+  stop at the `ACCENT-THEMES:BEGIN` marker in `app/globals.css`
 
 **Modified files:**
-- `app/globals.css` — retint `.kargah`'s tokens, promote the block to `:root`, delete the
-  dead old-console `:root`/`:root[data-theme="light"]` blocks, add skeuomorphic elevation
-  tokens
+- `app/globals.css` — retint `.kargah`'s tokens, promote the hand-written block to
+  `:root`, delete the dead old-console `:root`/`:root[data-theme="light"]` blocks, add
+  skeuomorphic elevation tokens, add directional noise, and — separately, via Task 11's
+  regeneration, NOT via the Task 3 script — sever the generated accent-theme section's
+  `.kargah`-scoped rules
 - `lib/theme.ts` — three-state auto/light/dark, `THEME_KEY` rename, live `matchMedia`
 - `app/layout.tsx` — viewport `colorScheme`/`themeColor` update (accent script untouched)
 - `app/manifest.ts` — `background_color`/`theme_color` update
 - `components/kargah/ProfileMenu.tsx` — remove the `<AccentPicker />` render
-- `components/kargah/AvatarStack.tsx` *or* `components/AvatarStack.tsx` (confirmed in
-  Task 17) — add numeric badge support
+- `scripts/gen-accent-themes.mjs` — stop emitting kargah-scoped accent rules (Task 11);
+  the map-relevant bare-root generation is otherwise unchanged
+- `components/AvatarStack.tsx` — add numeric badge support (Task 17; confirmed at this
+  path, not under `components/kargah/`)
 - `app/sales/page.tsx` — swap `CarvedCard` import/usage for `NotchedCard`
+- `components/kargah/NotchedCard.tsx` — Task 20 adds the `noise-surface` class
 - `scripts/check-contrast.mjs` — selectors move from `.kargah`/`:root[data-skin="dark"]
-  .kargah` to `:root`/`:root[data-theme="dark"]`; baseline hex table updated
+  .kargah` to `:root`/`:root[data-theme="dark"]`; baseline hex table updated; the
+  accent-theme loop's now-dead kargah-surface-tint sub-check is deleted (must run after
+  Task 11, not before — see Task 8 Step 2.5)
 - `tests/contrast.test.ts` — the hardcoded "agrees with MASTER.md" pair updated to the
   new palette
 - `package.json` — new dependencies
+- `MASTER.md` — rewritten per Task 21
 
 **Deleted files:**
 - `lib/design/carve.ts` (superseded by `lib/design/notch.ts`)
 - `components/kargah/CarvedCard.tsx` (superseded by `NotchedCard.tsx`)
 
 **Explicitly NOT touched by this plan** (confirmed dependencies, out of scope):
-`components/AccentPicker.tsx`, `lib/accentThemes.ts`, `scripts/gen-accent-themes.mjs`,
-`tests/accent.test.ts` — all still serve `CoverageMap.tsx`'s `useAccent()`.
+`components/AccentPicker.tsx` (the `useAccent()` hook itself), `lib/accentThemes.ts`,
+`tests/accent.test.ts` — all still serve `CoverageMap.tsx`'s map-scoped accent choice.
+`scripts/gen-accent-themes.mjs` IS touched (see above) but only to remove its
+kargah-scoped emission — its map-relevant output is preserved.
 
 ---
 
@@ -145,7 +173,7 @@ git commit -m "chore: record pre-substrate test and contrast baseline"
 **Files:**
 - Modify: `package.json`
 - Create: `lib/cn.ts`
-- Test: `lib/cn.test.ts`
+- Test: `tests/cn.test.ts`
 
 **Interfaces:**
 - Produces: `cn(...inputs: ClassValue[]): string` — used by every component task from
@@ -160,9 +188,9 @@ npm install motion@13.2.0 lucide-react@1.43.0 clsx@2.1.1 tailwind-merge@3.6.0
 - [ ] **Step 2: Write the failing test**
 
 ```typescript
-// lib/cn.test.ts
+// tests/cn.test.ts
 import { describe, it, expect } from "vitest";
-import { cn } from "./cn";
+import { cn } from "@/lib/cn";
 
 describe("cn", () => {
   it("joins plain class strings", () => {
@@ -179,14 +207,14 @@ describe("cn", () => {
 });
 ```
 
-- [ ] **Step 2: Run it to confirm it fails**
+- [ ] **Step 3: Run it to confirm it fails**
 
 ```bash
-npx vitest run lib/cn.test.ts
+npx vitest run tests/cn.test.ts
 ```
 Expected: FAIL — `lib/cn.ts` does not exist yet.
 
-- [ ] **Step 3: Implement**
+- [ ] **Step 4: Implement**
 
 ```typescript
 // lib/cn.ts
@@ -201,17 +229,17 @@ export function cn(...inputs: ClassValue[]): string {
 }
 ```
 
-- [ ] **Step 4: Run it to confirm it passes**
+- [ ] **Step 5: Run it to confirm it passes**
 
 ```bash
-npx vitest run lib/cn.test.ts
+npx vitest run tests/cn.test.ts
 ```
 Expected: PASS, 3/3.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add package.json package-lock.json lib/cn.ts lib/cn.test.ts
+git add package.json package-lock.json lib/cn.ts tests/cn.test.ts
 git commit -m "chore: install motion, lucide-react, clsx, tailwind-merge; add cn() helper"
 ```
 
@@ -225,28 +253,49 @@ rules are scattered across `app/globals.css` (not one contiguous block) as
 task writes a script that rewrites every one of them, verifies nothing was lost, then
 deletes the now-dead old console.
 
+**Amended during execution.** `app/globals.css` ends (lines 3169–3969, confirmed by the
+`/* ACCENT-THEMES:BEGIN */` … `/* ACCENT-THEMES:END */` markers) in an entirely separate,
+*generated* section from `scripts/gen-accent-themes.mjs` that also contains hundreds of
+literal `.kargah` occurrences — in two different textual forms (`.kargah,` and
+`.kargah {`), only one of which a naive regex catches consistently. A blind whole-file
+replace would silently corrupt that generated block rather than promote it. The script
+below is scoped to stop at the `ACCENT-THEMES:BEGIN` marker; the generated section is
+Task 11's responsibility (regenerated from its own edited source, not hand-patched here).
+
 **Files:**
 - Create: `scripts/promote-kargah.mjs`
 - Modify: `app/globals.css`
 
-- [ ] **Step 1: Count the current selector occurrences, for later verification**
+- [ ] **Step 1: Confirm the boundary marker and count occurrences on each side of it**
 
 ```bash
 cd /root/pourya/RouteFlow
-grep -c '\.kargah' app/globals.css
+grep -n "ACCENT-THEMES:BEGIN" app/globals.css
 ```
-Note this number down — call it `N`.
+Note the line number — call it `B`. Then:
 
-- [ ] **Step 2: Write the promotion script**
+```bash
+head -n $(($(grep -n "ACCENT-THEMES:BEGIN" app/globals.css | cut -d: -f1) - 1)) app/globals.css | grep -c '\.kargah'
+```
+Note this number down — call it `N` (the hand-written occurrences this task must promote).
+
+- [ ] **Step 2: Write the promotion script, scoped to stop at the marker**
 
 ```javascript
 // scripts/promote-kargah.mjs
-/** One-time mechanical migration: promotes every `.kargah`-scoped rule to `:root`.
+/** One-time mechanical migration: promotes every HAND-WRITTEN `.kargah`-scoped rule to
+ *  `:root`.
  *
  *  `.kargah X` -> `X`                                  (light, becomes the default)
  *  `:root[data-skin="dark"] .kargah X` -> `:root[data-theme="dark"] X`  (dark)
  *  bare `.kargah {` -> `:root {`
  *  bare `:root[data-skin="dark"] .kargah {` -> `:root[data-theme="dark"] {`
+ *
+ *  STOPS at the "/* ACCENT-THEMES:BEGIN *\/" marker -- everything from there to EOF is
+ *  generated by scripts/gen-accent-themes.mjs and also contains literal ".kargah" text,
+ *  in forms this file's regexes were not written to distinguish from the hand-written
+ *  ones. That section is handled by Task 11's edit to the generator itself, then
+ *  regenerated -- never by a blind find/replace here.
  *
  *  Run once, by hand, and the diff is reviewed before committing -- this is not meant
  *  to run again. See docs/superpowers/plans/2026-09-08-notched-skeuomorphic-substrate.md
@@ -255,15 +304,22 @@ Note this number down — call it `N`.
 import fs from "node:fs";
 
 const path = "app/globals.css";
-let css = fs.readFileSync(path, "utf8");
+const full = fs.readFileSync(path, "utf8");
+
+const marker = "/* ACCENT-THEMES:BEGIN";
+const cut = full.indexOf(marker);
+if (cut === -1) throw new Error(`"${marker}" not found -- has the file structure changed?`);
+
+let head = full.slice(0, cut);
+const tail = full.slice(cut); // untouched, verbatim
 
 // Order matters: the dark (longer, more specific) pattern must be rewritten before the
 // light one, or the light rule would also match inside the dark selector's tail.
-css = css.replace(/:root\[data-skin="dark"\]\s*\.kargah\b/g, ':root[data-theme="dark"]');
-css = css.replace(/\.kargah\s+/g, "");   // ".kargah .foo" -> ".foo"
-css = css.replace(/\.kargah\b/g, ":root"); // bare ".kargah" -> ":root"
+head = head.replace(/:root\[data-skin="dark"\]\s*\.kargah\b/g, ':root[data-theme="dark"]');
+head = head.replace(/\.kargah\s+/g, "");   // ".kargah .foo" -> ".foo"
+head = head.replace(/\.kargah\b/g, ":root"); // bare ".kargah" -> ":root"
 
-fs.writeFileSync(path, css);
+fs.writeFileSync(path, head + tail);
 console.log("done — review the diff before committing");
 ```
 
@@ -273,20 +329,30 @@ console.log("done — review the diff before committing");
 node scripts/promote-kargah.mjs
 ```
 
-- [ ] **Step 4: Verify no rule was silently dropped**
+- [ ] **Step 4: Verify no hand-written rule was silently dropped, and the generated section is untouched**
 
 ```bash
-grep -c '\.kargah' app/globals.css
+head -n $(($(grep -n "ACCENT-THEMES:BEGIN" app/globals.css | cut -d: -f1) - 1)) app/globals.css | grep -c '\.kargah'
 ```
 Expected: `0`. If it is not `0`, some occurrence used a form the regex missed (e.g.
-`.kargah:hover` with no space) — inspect with `grep -n '\.kargah' app/globals.css` and
-extend the script's patterns to cover it, then re-run from Step 3 on a fresh checkout of
-the file (`git checkout app/globals.css` first).
+`.kargah:hover` with no space) — inspect with
+`grep -n '\.kargah' app/globals.css | awk -F: '$1 < '$B` and extend the script's patterns
+to cover it, then re-run from Step 3 on a fresh checkout of the file
+(`git checkout app/globals.css` first).
+
+```bash
+tail -n +$(grep -n "ACCENT-THEMES:BEGIN" app/globals.css | cut -d: -f1) app/globals.css | grep -c '\.kargah'
+```
+Expected: unchanged from before this task ran (the generated section's own `.kargah`
+count) — confirms the marker-scoped script left it untouched, as intended.
 
 ```bash
 git diff --stat app/globals.css
 ```
-Confirm the diff touches roughly `N` lines (from Step 1) and nothing else moved.
+Confirm the diff touches roughly `N` lines (from Step 1) and nothing at or after the
+`ACCENT-THEMES:BEGIN` line moved — spot-check with
+`git diff app/globals.css | grep -A2 'ACCENT-THEMES:BEGIN'` (expect no diff hunk touching
+that line or anything after it).
 
 - [ ] **Step 5: Confirm the app still builds**
 
@@ -312,10 +378,19 @@ git commit -m "refactor: promote .kargah tokens to :root (mechanical, script-dri
 **Files:**
 - Modify: `app/globals.css`
 
-The promoted `:root` block (formerly `.kargah`) starts around line 1501 (line numbers
-will have shifted slightly after Task 3 — locate it with
-`grep -n '^:root {' app/globals.css` and take the first match). Retint the tokens the
-contrast checker and every downstream task depend on to their exact new values:
+**Correction:** `grep -n '^:root {'` alone is ambiguous here — two `:root {` blocks exist
+until Task 6 deletes the old one: the dead old-console block near the top of the file
+(around line 8, untouched by Task 3), and the newly-promoted block (formerly `.kargah`,
+around line 1501). Locate the RIGHT one by its content, not by match order:
+
+```bash
+grep -n "Colour: light is the default and the identity" app/globals.css
+```
+This comment is unique to the promoted block (it was `.kargah`'s own header comment
+before Task 3). Take the `:root {` line immediately above it as the block to edit.
+
+Retint the tokens the contrast checker and every downstream task depend on to their exact
+new values:
 
 ```css
 --bg: #ECEDEF;
@@ -422,26 +497,33 @@ cross-check by diffing the two blocks' property names:
 
 - [ ] **Step 2: Verify token-name parity between the two blocks**
 
+**Correction, same reason as Task 4:** two `:root {` blocks exist until Task 6 deletes
+the dead one, so locating "the block" by selector text alone finds the wrong one first.
+This script locates the promoted light block by its unique marker comment instead:
+
 ```bash
 node -e '
 const fs = require("fs");
 const css = fs.readFileSync("app/globals.css", "utf8");
-function names(selector) {
-  const re = new RegExp(selector.replace(/[.[\]"*+?^\${}()|\\\\]/g, "\\\\\$&") + "\\s*\\{");
-  const m = re.exec(css);
-  const open = css.indexOf("{", m.index);
+function blockAt(markerText) {
+  const mIdx = css.indexOf(markerText);
+  if (mIdx === -1) throw new Error(`marker not found: ${markerText}`);
+  const open = css.indexOf("{", mIdx);
   let depth = 0, j = open;
   for (; j < css.length; j++) { if (css[j] === "{") depth++; else if (css[j] === "}") { depth--; if (!depth) break; } }
   return new Set([...css.slice(open, j).matchAll(/(--[\w-]+)\s*:/g)].map(m => m[1]));
 }
-const light = names(":root {");
-const dark = names(":root[data-theme=\"dark\"] {");
+const light = blockAt("Colour: light is the default and the identity");
+const dark = blockAt(":root[data-theme=\"dark\"] {");
 const onlyLight = [...light].filter(x => !dark.has(x));
 const onlyDark = [...dark].filter(x => !light.has(x));
 console.log("only in light:", onlyLight);
 console.log("only in dark:", onlyDark);
 '
 ```
+(The dark block's own selector text IS unambiguous — `:root[data-theme="dark"]` did not
+exist anywhere in the old system, only Task 3 creates it — so it needs no marker-based
+lookup, unlike the light block.)
 Both arrays print empty (`[]`). If not, add the missing token to whichever block lacks it
 — MASTER.md's own hard-won rule holds: a token defined in only one theme block is a
 rendering bug in the other, and it stays a real requirement even though MASTER.md's
@@ -465,11 +547,17 @@ git commit -m "style: retint core dark tokens cool+black; verify light/dark toke
 
 - [ ] **Step 1: Delete the old dark console `:root { ... }` block**
 
-Locate it — it is the ORIGINAL, non-promoted block at the top of the file
-(`grep -n '^:root {' app/globals.css`, now the SECOND match after Task 3's promoted one
-if promotion inserted its block earlier in the file, or the FIRST if not — read
-`app/globals.css:1-10` to confirm which is which by its `--bg: #0a0e14` value, the old
-dark-navy signature). Delete that entire block.
+Locate it precisely by its unique old-dark-navy signature rather than by match order:
+
+```bash
+grep -n "bg: #0a0e14" app/globals.css
+```
+This value exists nowhere else in the file (Tasks 4–5 use `#ECEDEF`/`#101215`). It sits
+inside the FIRST `:root {` in the file — confirm with
+`grep -n '^:root {' app/globals.css` (this old block is always the first match; the
+promoted block from Task 3 is the second, further down at whatever line the
+`grep -n "Colour: light is the default"` marker from Task 4 pointed to). Delete the
+entire old block, from its `:root {` line to its matching closing `}`.
 
 - [ ] **Step 2: Delete the old `:root[data-theme="light"] { ... }` block**
 
@@ -666,6 +754,30 @@ light: { "--text": ["#16181D", 7], "--text-muted": ["#5F6672", 4.5], "--text-fai
 dark: { "--text": ["#E8EAEE", 7], "--text-muted": ["#9BA3AF", 4.5], "--text-faint": ["#6B7280", 3] },
 ```
 
+**Do this step only after Task 11 has run** (its generator change is a prerequisite —
+the check below asserts kargah no longer has per-accent surface blocks, which is only
+true once Task 11 lands):
+
+- [ ] **Step 2.5: Remove the now-dead kargah-surface accent check**
+
+The script's accent-theme loop (below the `THEME_IDS` array, roughly lines 130–245 at
+plan-write time — confirm with `grep -n 'SURFACE_CREAM\|SURFACE_INK\|THEME_GROUND'
+scripts/check-contrast.mjs`) checks a `:root[data-accent="X"] .kargah` surface-tint block
+against hardcoded `SURFACE_CREAM`/`SURFACE_INK` cream-palette baselines. Task 11 makes the
+generator stop emitting that block entirely, so this whole surface-tint sub-check
+(the `try { surf = block(...) } catch { ... }` section and its nested loop over
+`SURFACE_CREAM[skin]`/`SURFACE_INK[skin]`) now always fails — not because a colour
+regressed, but because the CSS it looks for no longer exists by design. Delete that
+sub-section (the `let surf; try { ... } catch { ... } for (const [g, cream] of
+Object.entries(...))` block) along with the now-unused `SURFACE_CREAM` and `SURFACE_INK`
+constant declarations above the loop.
+
+Keep everything else in the accent-theme loop — the `need(...)` calls checking
+`--accent-ink` on `--accent`, `--accent-text` on `--bg`/`--surface`/`--accent-soft`,
+`--ev-a-ink` on `--surface`, the wash-peach checks, the cluster/badge composed checks,
+and the `--map-*` checks — all of these still read the bare-root form of the shared rule,
+which Task 11 preserves.
+
 - [ ] **Step 3: Run it**
 
 ```bash
@@ -733,7 +845,7 @@ git commit -m "test: update contrast checker and pinned figures for the cool+bla
 
 **Files:**
 - Modify: `lib/theme.ts`
-- Test: `lib/theme.test.ts` (new)
+- Test: `tests/theme.test.ts` (new)
 
 **Interfaces:**
 - Produces: `type Theme = "auto" | "light" | "dark"`, `THEME_KEY = "routeflow-theme"`,
@@ -744,9 +856,9 @@ git commit -m "test: update contrast checker and pinned figures for the cool+bla
 - [ ] **Step 1: Write the failing test for the pure resolution function**
 
 ```typescript
-// lib/theme.test.ts
+// tests/theme.test.ts
 import { describe, it, expect } from "vitest";
-import { resolveTheme } from "./theme";
+import { resolveTheme } from "@/lib/theme";
 
 describe("resolveTheme", () => {
   it("auto follows the OS preference", () => {
@@ -775,7 +887,7 @@ describe("resolveTheme", () => {
 - [ ] **Step 2: Run it to confirm it fails**
 
 ```bash
-npx vitest run lib/theme.test.ts
+npx vitest run tests/theme.test.ts
 ```
 Expected: FAIL — `resolveTheme` is not exported yet.
 
@@ -868,7 +980,7 @@ export function readTheme(): Theme {
 - [ ] **Step 5: Run the test to confirm it passes**
 
 ```bash
-npx vitest run lib/theme.test.ts
+npx vitest run tests/theme.test.ts
 ```
 Expected: PASS, 6/6.
 
@@ -894,7 +1006,7 @@ npm run build 2>&1 | tail -30
 - [ ] **Step 8: Commit**
 
 ```bash
-git add lib/theme.ts lib/theme.test.ts components/
+git add lib/theme.ts tests/theme.test.ts components/
 git commit -m "feat: rewrite lib/theme.ts for auto/light/dark, rename THEME_KEY, live matchMedia"
 ```
 
@@ -976,47 +1088,122 @@ git commit -m "chore: viewport/manifest colours to the light-default palette; fi
 
 ---
 
-### Task 11: Remove the accent-picker widget from the kargah UI
+### Task 11: Remove the accent-picker widget; sever kargah from accent theming
+
+**Amended during execution.** The original version of this task assumed
+`scripts/gen-accent-themes.mjs` only affected the map. Reading the actual generated CSS
+during Task 1's baseline pass found otherwise: each accent theme emits a rule
+`:root[data-accent="X"] .kargah, :root[data-accent="X"] { --accent: ...; }` — a selector
+that matches BOTH the kargah scope and bare `:root`, joined as one rule. Since
+`ACCENT_INIT_SCRIPT` always sets `data-accent` to some value (there is a default, not just
+an opt-in), this rule's later position in `app/globals.css`'s source order means it
+currently overrides whatever `--accent` Task 4 sets at bare `:root` — kargah's colour
+would silently stay accent-theme-dependent even after every other task in this plan lands.
+Each theme also emits a SECOND, kargah-only rule that re-tints `--bg`/`--surface`/`--border`
+etc. per accent — pure kargah surface variation, unrelated to the map.
+
+The fix stays narrow and consistent with the "retire it" decision: the generator stops
+emitting anything kargah-scoped, for every theme and both skins, while the bare-root
+map-relevant declarations (`--map-*`, and whatever else the map itself reads) keep being
+generated exactly as before.
 
 **Files:**
 - Modify: `components/kargah/ProfileMenu.tsx`
+- Modify: `scripts/gen-accent-themes.mjs`
+- Modify: `app/globals.css` (regenerated output, not hand-edited)
+- Modify: `scripts/check-contrast.mjs` (its accent-theme loop, in Task 8 — cross-reference)
 
-**Files:**
-
-- [ ] **Step 1: Read the current render**
+- [ ] **Step 1: Read the current render and remove the widget**
 
 ```bash
 grep -n "AccentPicker" components/kargah/ProfileMenu.tsx
 ```
-
-- [ ] **Step 2: Remove the `<AccentPicker />` element and its import**
-
 Delete the `import AccentPicker from "@/components/AccentPicker";` line and the
 `<AccentPicker />` JSX it renders. **Do not** delete `components/AccentPicker.tsx` itself,
 `lib/accentThemes.ts`, or `scripts/gen-accent-themes.mjs` — `CoverageMap.tsx` imports
 `useAccent` from the same file and is out of scope for this plan.
 
-- [ ] **Step 3: Confirm the map still builds and still reads the accent**
+- [ ] **Step 2: Read the generator's current output shape for one theme, to ground the edit**
+
+```bash
+grep -n 'data-accent="terracotta"' app/globals.css | head -6
+```
+Confirms two emitted forms per theme per skin: the shared rule
+(`:root[data-accent="X"] .kargah, :root[data-accent="X"] { ... }`, carrying `--accent`,
+`--accent-ink`, `--accent-text`, `--accent-soft`, `--accent-2`, `--accent-dim`,
+`--wash-peach`, `--ev-a-ink`, the `--map-*` tokens, `--series-single`) and the kargah-only
+surface rule (`:root[data-accent="X"] .kargah { --bg, --surface, ... }`).
+
+- [ ] **Step 3: Read the generator script in full**
+
+```bash
+cat scripts/gen-accent-themes.mjs
+```
+
+- [ ] **Step 4: Edit the generator so it emits ONLY the bare-root, map-relevant form**
+
+Locate the template-string or object literal that builds the shared selector
+(search for `.kargah` inside the file — `grep -n '\.kargah' scripts/gen-accent-themes.mjs`).
+Change the shared-rule selector from `:root[data-accent="${id}"] .kargah,
+:root[data-accent="${id}"]` to just `:root[data-accent="${id}"]` (drop the `.kargah`
+half of the comma list). Then find and delete entirely the block that emits the
+kargah-only surface-retint rule (`:root[data-accent="${id}"] .kargah { --bg: ...`) for
+both skins — kargah no longer varies its surface by accent at all; it is one fixed
+cool+black palette from Tasks 4–5.
+
+Kargah-only tokens that were part of the shared rule but have no map consumer
+(`--accent-soft`, `--accent-2`, `--accent-dim`, `--wash-peach`, `--ev-a-ink`,
+`--series-single`) can stay in the bare-root emission — they land as unused custom
+properties outside `.kargah`, which is harmless, and removing them requires tracing each
+one's actual map usage individually for no real benefit. Only the two structural changes
+above (drop `.kargah` from the shared selector; delete the kargah-only surface block)
+are required.
+
+- [ ] **Step 5: Regenerate**
+
+```bash
+node scripts/gen-accent-themes.mjs
+git diff --stat app/globals.css
+```
+Confirm the diff removes every `:root[data-accent="X"] .kargah {` rule (the surface
+block) and every `.kargah` occurrence inside the shared-rule selectors, for all ten
+theme ids and both skins.
+
+- [ ] **Step 6: Confirm no `.kargah` accent-scoping remains**
+
+```bash
+grep -c 'data-accent.*\.kargah\|\.kargah.*data-accent' app/globals.css
+```
+Expected: `0`.
+
+- [ ] **Step 7: Confirm the map still builds and still reads the accent**
 
 ```bash
 grep -n "useAccent" components/CoverageMap.tsx | head -3
 npm run build 2>&1 | tail -20
 ```
 
-- [ ] **Step 4: Confirm `/sales`'s profile menu renders without the picker**
+- [ ] **Step 8: Confirm `/sales`'s colour no longer shifts with the map's accent choice**
 
 ```bash
 npm run dev &
 sleep 3
 ```
-Open `/sales`, open the profile menu, confirm the accent-picker control is gone and
-nothing else in the menu broke. Stop dev server.
+Open `/sales` and `/settings`, confirm the theme is the fixed cool+black palette. Open
+the map at `/`, change its accent theme via the map's own picker (still present there),
+confirm the map's cluster/marker colours change while `/sales`/`/settings` do not shift
+at all when you return to them. Stop the dev server.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Confirm `/sales`'s profile menu renders without the picker**
+
+Open `/sales`, open the profile menu, confirm the accent-picker control is gone and
+nothing else in the menu broke.
+
+- [ ] **Step 10: Commit**
 
 ```bash
-git add components/kargah/ProfileMenu.tsx
-git commit -m "style: remove the accent-picker widget from the kargah profile menu (map keeps it)"
+git add components/kargah/ProfileMenu.tsx scripts/gen-accent-themes.mjs app/globals.css
+git commit -m "fix: sever kargah from accent theming — generator emits bare-root/map tokens only"
 ```
 
 ---
@@ -1025,7 +1212,7 @@ git commit -m "style: remove the accent-picker widget from the kargah profile me
 
 **Files:**
 - Create: `lib/design/notch.ts`
-- Create: `lib/design/notch.test.ts`
+- Create: `tests/design/notch.test.ts`
 - Delete: `lib/design/carve.ts`
 
 **Interfaces:**
@@ -1043,9 +1230,9 @@ cat lib/design/carve.ts
 - [ ] **Step 2: Write the failing tests**
 
 ```typescript
-// lib/design/notch.test.ts
+// tests/design/notch.test.ts
 import { describe, it, expect } from "vitest";
-import { notchedCardPath } from "./notch";
+import { notchedCardPath } from "@/lib/design/notch";
 
 describe("notchedCardPath", () => {
   it("returns null below the minimum width", () => {
@@ -1084,7 +1271,7 @@ describe("notchedCardPath", () => {
 - [ ] **Step 3: Run to confirm failure**
 
 ```bash
-npx vitest run lib/design/notch.test.ts
+npx vitest run tests/design/notch.test.ts
 ```
 Expected: FAIL — module does not exist.
 
@@ -1176,7 +1363,7 @@ export function notchedCardPath(w: number, h: number, opts: NotchOpts = {}): str
 - [ ] **Step 5: Run to confirm pass**
 
 ```bash
-npx vitest run lib/design/notch.test.ts
+npx vitest run tests/design/notch.test.ts
 ```
 Expected: PASS, 5/5. If the mirroring test fails because the two paths are accidentally
 identical, double check `resolvePhysicalSide`'s truth table against the four
@@ -1193,7 +1380,7 @@ The only hit should be `components/kargah/CarvedCard.tsx`, which Task 13 replace
 - [ ] **Step 7: Commit**
 
 ```bash
-git add lib/design/notch.ts lib/design/notch.test.ts
+git add lib/design/notch.ts tests/design/notch.test.ts
 git rm lib/design/carve.ts
 git commit -m "feat: generalize notch geometry to any side/edge/direction (lib/design/notch.ts)"
 ```
@@ -1206,7 +1393,6 @@ git commit -m "feat: generalize notch geometry to any side/edge/direction (lib/d
 - Create: `components/kargah/NotchedCard.tsx`
 - Delete: `components/kargah/CarvedCard.tsx`
 - Modify: `app/sales/page.tsx`
-- Test: `components/kargah/NotchedCard.test.tsx`
 
 **Interfaces:**
 - Consumes: `notchedCardPath` from Task 12.
@@ -1214,56 +1400,20 @@ git commit -m "feat: generalize notch geometry to any side/edge/direction (lib/d
   — the component every later notched surface (page headers, icon-bearing cards) is built
   from.
 
+**No component-rendering test** (see Global Constraints — this repo has no
+`@testing-library/react` and no jsdom environment). The geometry this component wraps is
+already covered by `tests/design/notch.test.ts` (Task 12); this component's own
+correctness — that avatars render as a sibling of the clipped element, not a descendant —
+is verified by direct DOM inspection in Step 5's browser smoke test instead of an
+automated render test.
+
 - [ ] **Step 1: Read the existing `CarvedCard.tsx` in full**
 
 ```bash
 cat components/kargah/CarvedCard.tsx
 ```
 
-- [ ] **Step 2: Write the failing test**
-
-```typescript
-// components/kargah/NotchedCard.test.tsx
-import { describe, it, expect, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
-import NotchedCard from "./NotchedCard";
-
-describe("NotchedCard", () => {
-  it("renders its children and avatars slot", () => {
-    render(
-      <NotchedCard avatars={<span data-testid="avs">avs</span>}>
-        <p data-testid="body">body</p>
-      </NotchedCard>,
-    );
-    expect(screen.getByTestId("body")).toBeInTheDocument();
-    expect(screen.getByTestId("avs")).toBeInTheDocument();
-  });
-
-  it("the avatars slot is a SIBLING of the clipped element, not a descendant", () => {
-    const { container } = render(
-      <NotchedCard avatars={<span data-testid="avs">avs</span>}>
-        <p>body</p>
-      </NotchedCard>,
-    );
-    const clipped = container.querySelector("[data-notch-clip]");
-    const avatarsEl = screen.getByTestId("avs");
-    // clip-path clips descendants too (spec §5.3) -- the avatars element must NOT be
-    // inside the element carrying the clip.
-    expect(clipped?.contains(avatarsEl)).toBe(false);
-  });
-});
-```
-
-- [ ] **Step 3: Run to confirm failure**
-
-```bash
-npx vitest run components/kargah/NotchedCard.test.tsx
-```
-Expected: FAIL — module does not exist. (If `@testing-library/react` is not installed,
-`npm install -D @testing-library/react @testing-library/dom` first — check
-`grep testing-library package.json` before assuming.)
-
-- [ ] **Step 4: Implement**
+- [ ] **Step 2: Implement**
 
 ```typescript
 // components/kargah/NotchedCard.tsx
@@ -1407,14 +1557,7 @@ Add the matching CSS to `app/globals.css` (append near the other kargah componen
 }
 ```
 
-- [ ] **Step 5: Run to confirm pass**
-
-```bash
-npx vitest run components/kargah/NotchedCard.test.tsx
-```
-Expected: PASS, 2/2.
-
-- [ ] **Step 6: Update `app/sales/page.tsx`'s call site**
+- [ ] **Step 3: Update `app/sales/page.tsx`'s call site**
 
 ```bash
 grep -n "CarvedCard" app/sales/page.tsx
@@ -1423,26 +1566,28 @@ Replace the import and JSX usage: `CarvedCard` → `NotchedCard`, keeping the sa
 (`shoulder`, `avatars`, `children`) — the prop signature is unchanged from `CarvedCard`,
 only the new `side`/`edge`/`notchWidth`/`notchHeight` are additive.
 
-- [ ] **Step 7: Delete the superseded file**
+- [ ] **Step 4: Delete the superseded file**
 
 ```bash
 git rm components/kargah/CarvedCard.tsx
 ```
 
-- [ ] **Step 8: Confirm build and visual smoke test**
+- [ ] **Step 5: Confirm build and visual smoke test — including the sibling-not-descendant check**
 
 ```bash
 npm run build 2>&1 | tail -30
 npm run dev &
 sleep 3
 ```
-Open `/sales`, find the page that used `CarvedCard`, confirm the notch still renders with
-a visible border/highlight ring following its outline. Stop dev server.
+Open `/sales`, find the page that used `CarvedCard`, confirm: the notch still renders with
+a visible border/highlight ring following its outline, and the avatars are visible (not
+clipped away — open devtools, confirm the `.notch-avatars` element is a SIBLING of the
+`[data-notch-clip]` element in the DOM tree, not nested inside it). Stop dev server.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add components/kargah/NotchedCard.tsx components/kargah/NotchedCard.test.tsx app/globals.css app/sales/page.tsx
+git add components/kargah/NotchedCard.tsx app/globals.css app/sales/page.tsx
 git commit -m "feat: NotchedCard generalizes CarvedCard; solves the clip-path border problem"
 ```
 
@@ -1452,7 +1597,7 @@ git commit -m "feat: NotchedCard generalizes CarvedCard; solves the clip-path bo
 
 **Files:**
 - Create: `lib/design/tilt.ts`
-- Create: `lib/design/tilt.test.ts`
+- Create: `tests/design/tilt.test.ts`
 - Create: `components/kargah/TiltCard.tsx`
 - Create: `components/kargah/GlowSurface.tsx`
 
@@ -1464,9 +1609,9 @@ git commit -m "feat: NotchedCard generalizes CarvedCard; solves the clip-path bo
 - [ ] **Step 1: Write the failing test for the pure math**
 
 ```typescript
-// lib/design/tilt.test.ts
+// tests/design/tilt.test.ts
 import { describe, it, expect } from "vitest";
-import { normalizedPointerPosition, tiltDirection } from "./tilt";
+import { normalizedPointerPosition, tiltDirection } from "@/lib/design/tilt";
 
 describe("normalizedPointerPosition", () => {
   it("returns 0.5,0.5 at the exact center of the box", () => {
@@ -1491,7 +1636,7 @@ describe("tiltDirection", () => {
 - [ ] **Step 2: Run to confirm failure**
 
 ```bash
-npx vitest run lib/design/tilt.test.ts
+npx vitest run tests/design/tilt.test.ts
 ```
 
 - [ ] **Step 3: Implement the pure math and the delegated hook**
@@ -1592,7 +1737,7 @@ export function useTiltGlow(containerRef: React.RefObject<HTMLElement | null>) {
 - [ ] **Step 4: Run to confirm pass**
 
 ```bash
-npx vitest run lib/design/tilt.test.ts
+npx vitest run tests/design/tilt.test.ts
 ```
 Expected: PASS, 3/3.
 
@@ -1726,7 +1871,7 @@ does not tilt on hover. Disable it again, confirm it does, and confirm the tilt 
 - [ ] **Step 9: Commit**
 
 ```bash
-git add lib/design/tilt.ts lib/design/tilt.test.ts components/kargah/TiltCard.tsx components/kargah/GlowSurface.tsx app/globals.css
+git add lib/design/tilt.ts tests/design/tilt.test.ts components/kargah/TiltCard.tsx components/kargah/GlowSurface.tsx app/globals.css
 git commit -m "feat: delegated tilt+glow architecture (one listener, one active element)"
 ```
 
@@ -1820,12 +1965,16 @@ git commit -m "feat: extract GlassFace as a reusable primitive, scoped to modals
 - Create: `components/kargah/Select.tsx`
 - Create: `components/kargah/Textarea.tsx`
 - Create: `components/kargah/RangeSlider.tsx`
-- Test: `components/kargah/RangeSlider.test.tsx`
+- Create: `lib/design/rangeFill.ts`
+- Test: `tests/design/rangeFill.test.ts`
 
 **Interfaces:**
 - Produces: `<IconButton icon label onClick? />`, `<Field label ...inputProps />`,
   `<Select label options ...selectProps />`, `<Textarea label ...textareaProps />`,
-  `<RangeSlider label min max value onChange formatValue? />`.
+  `<RangeSlider label min max value onChange formatValue? />`, and
+  `fillPercent(value: number, min: number, max: number): number` — the one piece of real
+  logic in this task, extracted as a pure function per Global Constraints (no
+  component-rendering tests in this repo).
 
 - [ ] **Step 1: Read the existing budget-slider fill mechanism this generalizes**
 
@@ -1837,28 +1986,30 @@ the fill is painted by hand as a linear gradient, and the input takes `direction
 it fills from the right. `RangeSlider` generalizes that existing mechanism into a
 standalone component.)
 
-- [ ] **Step 2: Write the failing test for `RangeSlider`**
+- [ ] **Step 2: Write the failing test for the fill-percentage math**
 
 ```typescript
-// components/kargah/RangeSlider.test.tsx
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import RangeSlider from "./RangeSlider";
+// tests/design/rangeFill.test.ts
+import { describe, it, expect } from "vitest";
+import { fillPercent } from "@/lib/design/rangeFill";
 
-describe("RangeSlider", () => {
-  it("shows the current value formatted", () => {
-    render(
-      <RangeSlider label="بودجه" min={0} max={100} value={42} onChange={() => {}} formatValue={(v) => `${v} $`} />,
-    );
-    expect(screen.getByText("42 $")).toBeInTheDocument();
+describe("fillPercent", () => {
+  it("is 0 at min and 100 at max", () => {
+    expect(fillPercent(0, 0, 100)).toBe(0);
+    expect(fillPercent(100, 0, 100)).toBe(100);
   });
 
-  it("calls onChange with the new numeric value on drag", () => {
-    const onChange = vi.fn();
-    render(<RangeSlider label="بودجه" min={0} max={100} value={42} onChange={onChange} />);
-    const input = screen.getByRole("slider");
-    fireEvent.change(input, { target: { value: "70" } });
-    expect(onChange).toHaveBeenCalledWith(70);
+  it("is proportional in between", () => {
+    expect(fillPercent(25, 0, 100)).toBe(25);
+    expect(fillPercent(42, 0, 100)).toBe(42);
+  });
+
+  it("handles a non-zero-based range", () => {
+    expect(fillPercent(15, 10, 20)).toBe(50);
+  });
+
+  it("returns 0 rather than NaN/Infinity when min equals max", () => {
+    expect(fillPercent(5, 10, 10)).toBe(0);
   });
 });
 ```
@@ -1866,10 +2017,30 @@ describe("RangeSlider", () => {
 - [ ] **Step 3: Run to confirm failure**
 
 ```bash
-npx vitest run components/kargah/RangeSlider.test.tsx
+npx vitest run tests/design/rangeFill.test.ts
+```
+Expected: FAIL — module does not exist.
+
+- [ ] **Step 4: Implement the pure function**
+
+```typescript
+// lib/design/rangeFill.ts
+/** The filled-track percentage for a range input -- extracted as a pure function so it
+ *  can be unit tested without rendering a component (this repo has no
+ *  @testing-library/react / jsdom setup; see the plan's Global Constraints). */
+export function fillPercent(value: number, min: number, max: number): number {
+  return max > min ? ((value - min) / (max - min)) * 100 : 0;
+}
 ```
 
-- [ ] **Step 4: Implement all five**
+- [ ] **Step 5: Run to confirm pass**
+
+```bash
+npx vitest run tests/design/rangeFill.test.ts
+```
+Expected: PASS, 4/4.
+
+- [ ] **Step 6: Implement the five components**
 
 ```typescript
 // components/kargah/IconButton.tsx
@@ -2005,6 +2176,7 @@ export default function Textarea({
 "use client";
 
 import { cn } from "@/lib/cn";
+import { fillPercent } from "@/lib/design/rangeFill";
 
 /** Generalizes ProcessingModal's hand-painted range fill (MASTER.md: a range input has
  *  no pseudo-element for its filled track) into a reusable component. Takes
@@ -2027,7 +2199,7 @@ export default function RangeSlider({
   formatValue?: (v: number) => string;
   className?: string;
 }) {
-  const pct = max > min ? ((value - min) / (max - min)) * 100 : 0;
+  const pct = fillPercent(value, min, max);
   return (
     <div className={cn("block", className)}>
       <div className="mb-1.5 flex items-baseline justify-between">
@@ -2054,23 +2226,21 @@ export default function RangeSlider({
 }
 ```
 
-- [ ] **Step 5: Run to confirm pass**
-
-```bash
-npx vitest run components/kargah/RangeSlider.test.tsx
-```
-Expected: PASS, 2/2.
-
-- [ ] **Step 6: Confirm build**
+- [ ] **Step 7: Confirm build and smoke-test the slider fill visually**
 
 ```bash
 npm run build 2>&1 | tail -30
+npm run dev &
+sleep 3
 ```
+Open the page using `ProcessingModal`'s budget slider (or a page exercising the new
+`RangeSlider`), drag it, confirm the fill tracks the handle and reads correctly under RTL
+(fills from the right). Stop the dev server.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add components/kargah/IconButton.tsx components/kargah/Field.tsx components/kargah/Select.tsx components/kargah/Textarea.tsx components/kargah/RangeSlider.tsx components/kargah/RangeSlider.test.tsx
+git add components/kargah/IconButton.tsx components/kargah/Field.tsx components/kargah/Select.tsx components/kargah/Textarea.tsx components/kargah/RangeSlider.tsx lib/design/rangeFill.ts
 git commit -m "feat: pill form kit -- IconButton, Field, Select, Textarea, RangeSlider"
 ```
 
@@ -2081,11 +2251,16 @@ git commit -m "feat: pill form kit -- IconButton, Field, Select, Textarea, Range
 **Files:**
 - Create: `components/kargah/SegmentedPill.tsx`
 - Modify: `components/AvatarStack.tsx`
-- Test: `components/kargah/SegmentedPill.test.tsx`
 
 **Interfaces:**
 - Produces: `<SegmentedPill options={{value,label}[]} value onChange />`,
   `<AvatarStack items={{src?,initial,badge?}[]} />` (badge is new).
+
+**No component-rendering test** (Global Constraints — no `@testing-library/react`/jsdom
+in this repo). Both the "current option marked active" logic and the click-to-select
+handler are single-line, low-risk JSX/prop wiring with no extractable pure logic worth a
+dedicated unit — the ResizeObserver-driven slide positioning is inherently DOM-dependent
+and is verified visually in Step 5's smoke test instead.
 
 - [ ] **Step 1: Read `TabPill.tsx`'s `slideThumb` measure-and-move technique in full**
 
@@ -2096,42 +2271,7 @@ cat components/kargah/TabPill.tsx
 technique — it does not literally extend or import `TabPill`, which is tightly coupled to
 `SalesTab`/`SalesGroupId` navigation types and is not a generic control.
 
-- [ ] **Step 2: Write the failing test**
-
-```typescript
-// components/kargah/SegmentedPill.test.tsx
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
-import SegmentedPill from "./SegmentedPill";
-
-describe("SegmentedPill", () => {
-  const options = [
-    { value: "a", label: "الف" },
-    { value: "b", label: "ب" },
-  ];
-
-  it("renders every option and marks the current one active", () => {
-    render(<SegmentedPill options={options} value="a" onChange={() => {}} />);
-    expect(screen.getByRole("button", { name: "الف" })).toHaveAttribute("aria-pressed", "true");
-    expect(screen.getByRole("button", { name: "ب" })).toHaveAttribute("aria-pressed", "false");
-  });
-
-  it("calls onChange with the clicked option's value", () => {
-    const onChange = vi.fn();
-    render(<SegmentedPill options={options} value="a" onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "ب" }));
-    expect(onChange).toHaveBeenCalledWith("b");
-  });
-});
-```
-
-- [ ] **Step 3: Run to confirm failure**
-
-```bash
-npx vitest run components/kargah/SegmentedPill.test.tsx
-```
-
-- [ ] **Step 4: Implement**
+- [ ] **Step 2: Implement**
 
 ```typescript
 // components/kargah/SegmentedPill.tsx
@@ -2204,20 +2344,23 @@ export default function SegmentedPill<T extends string>({
 }
 ```
 
-- [ ] **Step 5: Run to confirm pass**
+- [ ] **Step 3: Confirm build, then smoke-test the slide and click behaviour**
 
 ```bash
-npx vitest run components/kargah/SegmentedPill.test.tsx
+npm run build 2>&1 | tail -30
 ```
-Expected: PASS, 2/2.
+This component is not yet imported anywhere — a bare `npm run build` succeeding confirms
+only that the file compiles. Real verification happens once Task 20 (final integration)
+or a later shell task mounts it; note that gap here rather than silently skipping
+verification.
 
-- [ ] **Step 6: Read the existing `AvatarStack.tsx` before extending it**
+- [ ] **Step 4: Read the existing `AvatarStack.tsx` before extending it**
 
 ```bash
 cat components/AvatarStack.tsx
 ```
 
-- [ ] **Step 7: Add a numeric badge, preserving the existing prop shape**
+- [ ] **Step 5: Add a numeric badge, preserving the existing prop shape**
 
 Add an optional `badge?: number | string` field to whatever item type the file already
 exports, and render it as a small circle at each avatar's bottom edge only when present
@@ -2243,17 +2386,24 @@ badge?: number | string;
 )}
 ```
 
-- [ ] **Step 8: Confirm existing `AvatarStack` consumers still build**
+- [ ] **Step 6: Confirm existing `AvatarStack` consumers still build and render the badge**
 
 ```bash
 grep -rln "AvatarStack" --include="*.tsx" . | grep -v node_modules
 npm run build 2>&1 | tail -30
+npm run dev &
+sleep 3
 ```
+Open a page that already uses `AvatarStack` (from the grep above), confirm existing
+avatars render unchanged (no `badge` passed = no visual change). If any current caller
+can trivially pass a `badge` value, do so temporarily to confirm it renders, then revert
+— this task does not require wiring badges into real data, only that the prop works.
+Stop the dev server.
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add components/kargah/SegmentedPill.tsx components/kargah/SegmentedPill.test.tsx components/AvatarStack.tsx
+git add components/kargah/SegmentedPill.tsx components/AvatarStack.tsx
 git commit -m "feat: SegmentedPill generic control; AvatarStack numeric badges"
 ```
 
@@ -2265,12 +2415,14 @@ git commit -m "feat: SegmentedPill generic control; AvatarStack numeric badges"
 - Create: `components/kargah/ArcGauge.tsx`
 - Create: `components/kargah/StatefulButton.tsx`
 - Create: `components/kargah/GooeyInput.tsx`
-- Test: `components/kargah/StatefulButton.test.tsx`
+- Create: `lib/design/statefulButton.ts`
+- Test: `tests/design/statefulButton.test.ts`
 
 **Interfaces:**
 - Produces: `<ArcGauge value min max label color? />`,
   `<StatefulButton onClick={() => void | Promise<void>}>children</StatefulButton>`,
-  `<GooeyInput value onChange placeholder? />`.
+  `<GooeyInput value onChange placeholder? />`,
+  `nextButtonState(state: ButtonState, event: ButtonEvent): ButtonState`.
 
 **Confirmed directly from the reference video (spec §9c):** `StatefulButton`'s
 idle→loading→success cycle is what "Take for Processing" visibly does on screen — this is
@@ -2350,30 +2502,37 @@ export default function ArcGauge({
 }
 ```
 
-- [ ] **Step 3: Write the failing test for `StatefulButton`**
+- [ ] **Step 3: Write the failing test for the state machine, as a pure reducer**
+
+The idle→loading→success→idle transitions are real logic worth testing directly, without
+rendering (Global Constraints — no `@testing-library/react`/jsdom here). Extract them as
+a pure reducer over an explicit event type:
 
 ```typescript
-// components/kargah/StatefulButton.test.tsx
-import { describe, it, expect, vi } from "vitest";
-import { render, screen, fireEvent, waitFor } from "@testing-library/react";
-import StatefulButton from "./StatefulButton";
+// tests/design/statefulButton.test.ts
+import { describe, it, expect } from "vitest";
+import { nextButtonState } from "@/lib/design/statefulButton";
 
-describe("StatefulButton", () => {
-  it("shows idle text, then a loading state, then reverts after an async onClick resolves", async () => {
-    const onClick = vi.fn().mockResolvedValue(undefined);
-    render(<StatefulButton onClick={onClick}>ثبت</StatefulButton>);
-    const btn = screen.getByRole("button", { name: "ثبت" });
-    fireEvent.click(btn);
-    expect(btn).toHaveAttribute("data-state", "loading");
-    await waitFor(() => expect(btn).toHaveAttribute("data-state", "success"));
+describe("nextButtonState", () => {
+  it("idle -> loading on click", () => {
+    expect(nextButtonState("idle", "click")).toBe("loading");
   });
 
-  it("reverts to idle if onClick throws", async () => {
-    const onClick = vi.fn().mockRejectedValue(new Error("nope"));
-    render(<StatefulButton onClick={onClick}>ثبت</StatefulButton>);
-    const btn = screen.getByRole("button", { name: "ثبت" });
-    fireEvent.click(btn);
-    await waitFor(() => expect(btn).toHaveAttribute("data-state", "idle"));
+  it("ignores a click while already loading or in success", () => {
+    expect(nextButtonState("loading", "click")).toBe("loading");
+    expect(nextButtonState("success", "click")).toBe("success");
+  });
+
+  it("loading -> success on resolve", () => {
+    expect(nextButtonState("loading", "resolve")).toBe("success");
+  });
+
+  it("loading -> idle on reject", () => {
+    expect(nextButtonState("loading", "reject")).toBe("idle");
+  });
+
+  it("success -> idle on timeout", () => {
+    expect(nextButtonState("success", "timeout")).toBe("idle");
   });
 });
 ```
@@ -2381,10 +2540,34 @@ describe("StatefulButton", () => {
 - [ ] **Step 4: Run to confirm failure**
 
 ```bash
-npx vitest run components/kargah/StatefulButton.test.tsx
+npx vitest run tests/design/statefulButton.test.ts
+```
+Expected: FAIL — module does not exist.
+
+- [ ] **Step 5: Implement the pure reducer, then `StatefulButton`**
+
+```typescript
+// lib/design/statefulButton.ts
+export type ButtonState = "idle" | "loading" | "success";
+export type ButtonEvent = "click" | "resolve" | "reject" | "timeout";
+
+/** idle -> loading -> success -> idle. Confirmed live in the reference video on "Take
+ *  for Processing" and "Add Case" (spec §9c) -- this is not a speculative addition.
+ *  Extracted as a pure reducer so the transition logic is unit-testable without
+ *  rendering a component. */
+export function nextButtonState(state: ButtonState, event: ButtonEvent): ButtonState {
+  if (state === "idle" && event === "click") return "loading";
+  if (state === "loading" && event === "resolve") return "success";
+  if (state === "loading" && event === "reject") return "idle";
+  if (state === "success" && event === "timeout") return "idle";
+  return state; // any other (state, event) pair is a no-op, not an error
+}
 ```
 
-- [ ] **Step 5: Implement `StatefulButton`**
+```bash
+npx vitest run tests/design/statefulButton.test.ts
+```
+Expected: PASS, 5/5.
 
 ```typescript
 // components/kargah/StatefulButton.tsx
@@ -2392,11 +2575,8 @@ npx vitest run components/kargah/StatefulButton.test.tsx
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { nextButtonState, type ButtonState } from "@/lib/design/statefulButton";
 
-type ButtonState = "idle" | "loading" | "success";
-
-/** idle -> loading -> success -> idle. Confirmed live in the reference video on "Take
- *  for Processing" and "Add Case" (spec §9c) -- this is not a speculative addition. */
 export default function StatefulButton({
   onClick,
   children,
@@ -2411,14 +2591,14 @@ export default function StatefulButton({
   const [state, setState] = useState<ButtonState>("idle");
 
   const handleClick = async () => {
+    setState((s) => nextButtonState(s, "click"));
     if (state !== "idle") return;
-    setState("loading");
     try {
       await onClick();
-      setState("success");
-      setTimeout(() => setState("idle"), successDurationMs);
+      setState((s) => nextButtonState(s, "resolve"));
+      setTimeout(() => setState((s) => nextButtonState(s, "timeout")), successDurationMs);
     } catch {
-      setState("idle");
+      setState((s) => nextButtonState(s, "reject"));
     }
   };
 
@@ -2451,14 +2631,7 @@ export default function StatefulButton({
 }
 ```
 
-- [ ] **Step 6: Run to confirm pass**
-
-```bash
-npx vitest run components/kargah/StatefulButton.test.tsx
-```
-Expected: PASS, 2/2.
-
-- [ ] **Step 7: Implement `GooeyInput`**
+- [ ] **Step 6: Implement `GooeyInput`**
 
 ```typescript
 // components/kargah/GooeyInput.tsx
@@ -2506,16 +2679,16 @@ export default function GooeyInput({
 }
 ```
 
-- [ ] **Step 8: Confirm build**
+- [ ] **Step 7: Confirm build**
 
 ```bash
 npm run build 2>&1 | tail -30
 ```
 
-- [ ] **Step 9: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
-git add components/kargah/ArcGauge.tsx components/kargah/StatefulButton.tsx components/kargah/StatefulButton.test.tsx components/kargah/GooeyInput.tsx
+git add lib/design/statefulButton.ts components/kargah/ArcGauge.tsx components/kargah/StatefulButton.tsx components/kargah/GooeyInput.tsx
 git commit -m "feat: ArcGauge, StatefulButton (confirmed from reference), GooeyInput"
 ```
 
