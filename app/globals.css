@@ -228,6 +228,8 @@
   --color-accent: var(--accent);
   --color-accent-dim: var(--accent-dim);
   --color-accent-ink: var(--accent-ink);
+  --color-primary: var(--primary);
+  --color-primary-ink: var(--primary-ink);
   --color-text: var(--text);
   --color-text-muted: var(--text-muted);
   --color-text-faint: var(--text-faint);
@@ -1498,25 +1500,31 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 :root {
   /* ---- Colour: light is the default and the identity ---------------------- */
-  --bg: #F4F0E9;
+  --bg: #ECEDEF;
   --surface: #FFFFFF;
-  --surface-2: #FDFBF8;
-  --surface-sunk: #EFE9E0;
-  --border: #EAE2D7;
-  --border-strong: #DED4C6;
-  --text: #231C16;
-  --text-muted: #776C60;
-  /* Non-text only (3.07:1). Solved to 4.5 it collapses into --text-muted and the
+  --surface-2: #F7F8F9;
+  --surface-sunk: #E3E5E8;
+  --border: #E2E4E8;
+  --border-strong: #D2D6DC;
+  --text: #16181D;
+  --text-muted: #5F6672;
+  /* Non-text only. Solved to 4.5 it collapses into --text-muted and the
      two roles stop being distinguishable, so anything readable uses --text-muted. */
-  --text-faint: #91887C;
-  --accent: #C0532B;        /* fills only in light */
-  --accent-text: #B44E28;   /* accent as text: 4.55 on --bg */
-  --accent-ink: #FFFFFF;    /* on an --accent fill: 4.65 */
-  --good: #4F6B4A;
-  --warn: #7A5409;
-  --crit: #A11B3F;          /* crimson, not orange-red: ΔE 35 from --accent */
-  --info: #2E6382;
+  --text-faint: #8A909B;
+  --accent: #3D6FD9;        /* data/links only -- never a chrome fill, see --primary */
+  --accent-text: #2F5FC4;   /* accent as text */
+  --accent-ink: #FFFFFF;    /* on an --accent fill */
+  --good: #1F6B45;
+  --warn: #8A5A00;
+  --crit: #A81D3A;
+  --info: #2A5F80;
   --tint-plum: #6B4FA0;
+
+  /* Primary action. The video's signature: a solid near-black pill, distinct from the
+     accent above -- the previous system had no separate primary token and every button
+     filled with --accent. */
+  --primary: #101216;
+  --primary-ink: #FFFFFF;
 
   /* Soft pill fills. The status word answers to the pill, not to the page. */
   --accent-soft: #FBEDE6;
@@ -2010,8 +2018,8 @@ body {
 .btn.ghost { border-color: var(--line); color: var(--ink-2); background: var(--card-2); }
 .btn.ghost:hover { background: var(--sunk); }
 .btn.solid {
-  background: var(--accent); color: var(--accent-ink); font-weight: 600;
-  box-shadow: 0 6px 16px -7px color-mix(in srgb, var(--accent) 70%, transparent);
+  background: var(--primary); color: var(--primary-ink); font-weight: 600;
+  box-shadow: 0 6px 16px -7px color-mix(in srgb, var(--primary) 70%, transparent);
 }
 .btn.solid:hover { background: var(--accent-2); transform: translateY(-1px); }
 .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

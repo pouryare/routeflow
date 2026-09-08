@@ -457,15 +457,52 @@ not a status pill, not a link, not a chart series), change `var(--accent)` to
 use of `--accent` alone — it is now correctly scoped to data/links only, which is the
 point.
 
-- [ ] **Step 3: Run the app and eyeball `/sales`**
+- [ ] **Step 3: Verify by cascade analysis, not by eyeballing — the page will still LOOK
+  unchanged, correctly**
+
+**Found during execution, and worth understanding before "eyeballing" anything:** at
+this point `/sales` will still visually look like the OLD cream palette, and that is
+CORRECT for this stage, for two separate reasons, not one:
+
+1. The old dark-console `:root {}` block (deleted in Task 6) and this promoted block
+   collide at equal specificity; source order (this block is later) means this block
+   wins for `--bg`/`--surface`/etc. everywhere EXCEPT —
+2. — `/sales` and `/settings` specifically, where `app/sales/layout.tsx:38` and
+   `app/settings/layout.tsx:23` still render `className="kargah"` (Task 3 only rewrote
+   `globals.css` selectors, never the `.tsx` markup). The generator's still-untouched
+   `:root[data-accent="X"] .kargah { --bg: ...cream... }` rule (Task 11's target) has
+   HIGHER specificity than plain `:root` and so overrides this task's `--bg` back to
+   cream, specifically on the two pages you'd most want to check. `--accent` has a
+   third, separate collision: the generator's bare-root default-theme rule
+   (`:root, :root .kargah { --accent: #C0532B }`) sits LAST in file order among the
+   *un*-scoped rules, so it wins the plain `--accent` token everywhere too, until
+   Task 11.
+
+**A browser check now would show `/sales` apparently unchanged and could look like a
+regression. It is not one** — verify with cascade analysis instead, which is unambiguous
+where a screenshot is not:
 
 ```bash
-npm run dev &
-sleep 3
+node -e '
+const fs = require("fs");
+const path = require("path");
+const dir = ".next/static/chunks";
+const files = fs.readdirSync(dir).filter(f => f.endsWith(".css"));
+for (const f of files) {
+  const css = fs.readFileSync(path.join(dir, f), "utf8");
+  if (css.includes("--bg:#ecedef")) {
+    console.log(f, "offsets:",
+      "old-console(#0a0e14)=" + css.indexOf("--bg:#0a0e14"),
+      "this-task(#ecedef)=" + css.indexOf("--bg:#ecedef"),
+      "kargah-generator(#f4f0e9)=" + css.indexOf("--bg:#f4f0e9"));
+  }
+}
+'
 ```
-Open `/sales` in a browser. Confirm the page has *some* colour (not fully broken) — full
-correctness is not expected until Task 6 removes the competing old block. Stop the dev
-server (`kill %1` or `Ctrl-C`).
+Confirm: `this-task` offset is greater than `old-console` (so it wins the app-wide
+collision already), and `kargah-generator`'s offset is greater still (confirming it is
+the ONE remaining override, closed specifically by Task 11 — not by anything in this
+task or Task 6). The genuinely meaningful, no-caveats visual check happens after Task 11.
 
 - [ ] **Step 4: Commit**
 
@@ -614,15 +651,22 @@ apply this rule and confirm by eye, not by transcribing a table:
 Apply the rule to every remaining warm literal in both the light and dark blocks. This is
 a visual-judgement pass — after applying it:
 
-- [ ] **Step 5: Smoke-test visually**
+- [ ] **Step 5: Smoke-test visually — with the known caveat from Task 4**
+
+**`/sales` and `/settings` will still show cream, not grey, and this task does not fix
+that** — see Task 4 Step 3's cascade analysis. This task removes the app-WIDE old console
+(fixing every route except `/sales`/`/settings` themselves), but the kargah-scoped
+generator override that specifically affects those two pages is untouched until Task 11.
 
 ```bash
 npm run dev &
 sleep 3
 ```
-Open `/sales` and `/settings`. Confirm: cool grey ground, white cards, no leftover cream
-or terracotta anywhere, the gradient-stat cards (dashboard) are still visually distinct
-from each other. Stop the dev server.
+Open a NON-kargah route — `/today`, `/leads`, or `/report` — and confirm it now shows the
+new cool grey ground (this is the meaningful check for THIS task). Open `/sales` and
+confirm it is UNCHANGED from before this task (still cream) — that is the expected,
+correct state until Task 11. The gradient-stat cards (dashboard) should still be visually
+distinct from each other. Stop the dev server.
 
 - [ ] **Step 6: Run the full build**
 

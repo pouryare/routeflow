@@ -145,7 +145,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
           />
         </label>
-        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="rounded bg-primary px-4 py-2 text-sm text-primary-ink">
           ثبت چک
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}

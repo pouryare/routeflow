@@ -364,7 +364,7 @@ export default function AssignmentBoard({
                 type="button"
                 onClick={assign}
                 disabled={busy || confirm.runId === null}
-                className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                className="rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--primary)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-primary-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {busy ? "…" : "افزودن"}
               </button>

@@ -277,7 +277,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
 
   const BUTTON =
     "rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] transition-colors duration-[var(--dur-base)] disabled:opacity-40";
-  const primary = "border-[var(--accent)] bg-[var(--accent)] text-accent-ink";
+  const primary = "border-[var(--primary)] bg-[var(--primary)] text-primary-ink";
   const secondary = "border-[var(--border)] text-[var(--text-muted)] hover:border-[var(--border-strong)]";
 
   const options: { key: Transport; label: string; run: () => void; show: boolean }[] = [

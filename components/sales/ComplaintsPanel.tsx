@@ -165,7 +165,7 @@ export default function ComplaintsPanel({
           ))}
         </select>
         <input className="col-span-2 rounded border border-border bg-bg p-2 text-sm md:col-span-1" placeholder="توضیح" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="rounded bg-primary px-4 py-2 text-sm text-primary-ink">
           ثبت شکایت
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}

@@ -45,7 +45,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
       <button
         type="button"
         onClick={() => setAsking(true)}
-        className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
+        className="rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--primary)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-primary-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110"
       >
         تأیید سفارش
       </button>
@@ -61,7 +61,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
         type="button"
         onClick={confirm}
         disabled={busy}
-        className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-50"
+        className="rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--primary)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-primary-ink disabled:opacity-50"
       >
         {busy ? "…" : "تأیید"}
       </button>

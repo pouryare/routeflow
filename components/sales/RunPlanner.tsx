@@ -100,7 +100,7 @@ export default function RunPlanner({
                     "مسیر ساخته شد"
                   )
                 }
-                className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-40"
+                className="rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--primary)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-primary-ink disabled:opacity-40"
               >
                 ساخت مسیر
               </button>
