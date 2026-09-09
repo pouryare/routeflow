@@ -6,6 +6,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import ProfileMenu from "@/components/kargah/ProfileMenu";
+import Rail from "@/components/kargah/Rail";
 
 export const dynamic = "force-dynamic";
 
@@ -21,21 +22,20 @@ export default async function SettingsLayout({ children }: { children: ReactNode
 
   return (
     <div className="kargah min-h-screen">
-      <div className="app">
-        <div className="top">
-          <div className="brandwrap">
-            <div>
-              <h1>تنظیمات</h1>
-            </div>
+      <Rail />
+      <div className="app app--railed">
+        <nav className="navbar" aria-label="ناوبری اصلی" dir="rtl">
+          <div className="navbar__brand">
+            <h1>تنظیمات</h1>
           </div>
-          <div className="topright">
+          <div className="navbar__utility">
             <ProfileMenu
               userId={session.user.id}
               name={session.user.display_name}
               roleLabel={ROLE_LABEL[session.role]}
             />
           </div>
-        </div>
+        </nav>
 
         <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-start">
           <nav aria-label="بخش‌های تنظیمات" className="shrink-0 md:w-48">

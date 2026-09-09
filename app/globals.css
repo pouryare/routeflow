@@ -1655,15 +1655,22 @@ body {
    (pockets / ptiles / tables) take the whole width and answer it with more columns. */
 .app { direction: rtl; width: 100%; max-width: none; margin: 0; padding: 26px clamp(16px, 3vw, 72px) 120px; }
 @media (max-width: 620px) { .app { padding: 18px 14px 110px; } }
+/* The rail is fixed at 52px wide + 18px from the LEFT (Task 5) -- give the content area
+   the same left gutter so nothing sits under it. Physical `left`, not padding-inline-
+   start: the spec (2026-09-08 §9a) names this the "left icon rail" literally and
+   repeatedly, unlike the navbar (decision 4), which the spec DOES mirror by logical
+   role -- a real Playwright check against the built page caught this rail sitting on
+   the visual RIGHT when it was first written with a logical property, which would have
+   put it under the navbar's own utility cluster instead of beside the content. */
+.app--railed { padding-left: 90px; }
+@media (max-width: 900px) { .app--railed { padding-left: clamp(16px, 3vw, 72px); } }
 /* Sentence-heavy surfaces keep a readable measure when the page is 3000px wide. */
 .prose { max-width: 72ch; }
 
-/* ---- top bar ------------------------------------------------------------- */
-.top {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 18px; margin-bottom: 20px;
-}
-.brandwrap { display: flex; align-items: center; gap: 13px; min-width: 0; }
+/* ---- brand mark -------------------------------------------------------------
+   The one piece of the old two-row .top bar still used directly -- Navbar.tsx renders
+   these two classes inline as its `brand` prop content. .top/.brandwrap/.top h1
+   themselves are retired: Navbar (see below) replaced the two-row header entirely. */
 .mark {
   width: 46px; height: 46px; border-radius: 15px;
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff 20%), var(--accent-2));
@@ -1671,12 +1678,17 @@ body {
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent); flex: none;
 }
 .mark svg { display: block; }
-.top h1 {
-  margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 800;
+/* .navbar__wordmark, NOT a bare ".navbar__brand h1" -- the settings layout's navbar puts
+   a real Persian h1 ("تنظیمات") inside .navbar__brand too, and pinning THAT ltr would
+   reverse its glyphs. Only the Latin "RouteFlow" wordmark gets this class. */
+.navbar__brand h1.navbar__wordmark {
+  margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 800;
   letter-spacing: -.01em;
   /* A Latin wordmark in an RTL bar -- pin it LTR so the glyphs are not reordered. */
   direction: ltr; unicode-bidi: isolate;
 }
+.navbar__brand h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; }
+.navbar__brand .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
 
 /* ---- profile menu ------------------------------------------------------------
    The one control at the end of the top bar: the avatar, opening a dropdown that
@@ -1697,6 +1709,9 @@ body {
   padding: 12px; display: flex; flex-direction: column; gap: 4px;
 }
 .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
+.pm__avatarLabel { cursor: pointer; display: inline-flex; border-radius: 35%; }
+.pm__avatarLabel:hover { opacity: 0.85; }
+.pm__avatarLabel input { display: none; }
 .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }
 .pm__link {
@@ -1710,8 +1725,6 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
 }
-.top .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
-.topright { display: flex; align-items: center; gap: 9px; }
 .chip {
   background: var(--card); border: 1px solid var(--line); border-radius: 999px;
   padding: 9px 15px; font-size: 13.5px; color: var(--ink-2); text-decoration: none;
@@ -1744,6 +1757,61 @@ body {
 .themeToggle:hover { box-shadow: var(--sh-2); }
 .themeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* ---- three-state theme control (rail foot) -------------------------------
+   Spec 2026-09-08 §9a decision 3: auto/light/dark, all three reachable -- the rail's
+   foot control, distinct from .themeToggle's binary light/dark morph used elsewhere. */
+.theme3 { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.theme3__opt {
+  width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; padding: 0;
+  transition: background 160ms var(--ease), transform 160ms var(--ease);
+}
+.theme3__opt:hover { transform: scale(1.06); }
+.theme3__opt[data-active="true"] { background: var(--primary); border-color: var(--primary); }
+.theme3__opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- left icon rail --------------------------------------------------------
+   Spec 2026-09-08 §9a: a narrow vertical column of circular icon buttons, fixed so it
+   stays put while the page scrolls under it. PHYSICAL `left`, not `inset-inline-start`:
+   the spec names this the "left icon rail" literally and repeatedly (unlike the navbar,
+   which decision 4 DOES mirror by logical role under RTL) -- a bare inline-start here
+   would resolve to the visual RIGHT under RTL, landing the rail under the navbar's own
+   utility cluster instead of beside the content. Caught by Task 10's Playwright check
+   against the actual built page, not by reasoning about the CSS.
+
+   NAMED .iconrail, NOT .rail: ScheduleBoard.tsx already renders a bare `.rail` for its
+   own day-schedule panel (app/globals.css:2559, `.rail { padding: 6px 22px 22px; }`) --
+   and this component's own calendar icon links straight to that page. A bare `.rail`
+   here would have collided with it at equal specificity, exactly the `.pocket` bug
+   class from the previous plan's Task 19. Found and renamed before this ever shipped. */
+.iconrail {
+  position: fixed; top: 96px; left: 18px; bottom: 24px; z-index: 40;
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; width: 52px;
+}
+.iconrail__group { display: flex; flex-direction: column; gap: 10px; }
+.iconrail__foot { margin-top: auto; }
+.iconrail__item {
+  position: relative; width: 40px; height: 40px; border-radius: 999px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+  display: grid; place-items: center; cursor: pointer; text-decoration: none;
+  box-shadow: var(--edge-hi), var(--sh-1);
+  transform: scale(var(--dock-scale, 1));
+  transition: color 160ms var(--ease), background 160ms var(--ease);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .iconrail__item { transition: color 160ms var(--ease), background 160ms var(--ease), transform 120ms var(--ease); }
+}
+.iconrail__item:hover, .iconrail__item[aria-current="page"] { color: var(--text); background: var(--surface-raised); }
+.iconrail__item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.iconrail__back { color: var(--text-faint); margin-bottom: 4px; }
+.iconrail__dot {
+  position: absolute; top: 6px; inset-inline-end: 6px;
+  width: 8px; height: 8px; border-radius: 999px; background: var(--crit);
+  border: 1.5px solid var(--surface);
+}
+@media (max-width: 900px) { .iconrail { display: none; } }
+
 /* ---- tabs ----------------------------------------------------------------
    Two rows, both with a pill that travels between their items -- the six groups,
    then the tabs of the active group. The movement is what tells you which way
@@ -1759,8 +1827,6 @@ body {
   background: var(--sunk); border-radius: 999px; padding: 5px;
   overflow-x: auto; scrollbar-width: none;
 }
-/* The group row: same pill mechanics, a touch smaller and quieter than the tab row. */
-.seg-groups > a { font-family: var(--font-display); font-weight: 800; font-size: 13px; padding-block: 8px; }
 .seg .thumb {
   position: absolute; top: 5px; bottom: 5px; left: 0; width: 0;
   border-radius: 999px; background: var(--card); box-shadow: var(--sh-1);
@@ -1781,14 +1847,64 @@ body {
 .seg > a:hover { color: var(--ink); }
 .seg > a[aria-current="page"],
 .seg > a[aria-current="true"] { color: var(--ink); font-weight: 600; }
-.seg-groups > a[aria-current="true"] { color: var(--accent-text); }
 .seg > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .seg > span[aria-disabled] { color: var(--faint); cursor: default; }
 
+/* ---- single-row navbar -----------------------------------------------------
+   Spec 2026-09-08 §9a: one row, brand at inline-start, groups centred, utility cluster
+   at inline-end -- logical properties only, matching decision 4 (navbar mirroring). */
+.navbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; padding-block: 4px;
+}
+.navbar__brand { display: flex; align-items: center; gap: 13px; min-width: 0; flex: none; }
+.navbar__groups {
+  display: flex; align-items: center; gap: 2px; margin: 0; padding: 0; list-style: none;
+  flex: 1; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none;
+}
+.navbar__groups::-webkit-scrollbar { display: none; }
+.navbar__navgroup { position: relative; }
+.navbar__pill {
+  border: 0; background: transparent; cursor: pointer;
+  padding: 9px 16px; border-radius: 999px;
+  font-family: var(--font-display); font-weight: 700; font-size: 13.5px;
+  color: var(--text-muted); white-space: nowrap;
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+.navbar__pill:hover { color: var(--text); }
+.navbar__pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.navbar__pill--active { background: var(--primary); color: var(--primary-ink); }
+/* Always in the DOM (Navbar.tsx), hidden here by default. [data-open="true"] is the
+   click-driven path (works for touch and keyboard, any pointer type); the :hover/
+   :focus-within rule below is a mouse-only enhancement gated to fine pointers, and
+   needs the node to already exist in the DOM to have anything to reveal -- which is
+   exactly the bug an early version of this component had (dropdown was conditionally
+   RENDERED on the same React state the click handler toggled, so hovering then
+   clicking closed what hover had just opened; a real Playwright click caught it). */
+.navbar__dropdown {
+  position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: 50;
+  display: none; flex-direction: column; gap: 2px; min-width: 11rem;
+  border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 6px;
+}
+.navbar__dropdown[data-open="true"] { display: flex; }
+@media (hover: hover) and (pointer: fine) {
+  .navbar__navgroup:hover .navbar__dropdown,
+  .navbar__navgroup:focus-within .navbar__dropdown { display: flex; }
+}
+.navbar__dropitem {
+  display: block; padding: 9px 12px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--ink-2); text-decoration: none; white-space: nowrap;
+  transition: background 160ms var(--ease);
+}
+.navbar__dropitem:hover { background: var(--sunk); color: var(--ink); }
+.navbar__dropitem[data-active="true"] { color: var(--ink); font-weight: 600; background: var(--sunk); }
+.navbar__dropitem--disabled { color: var(--faint); cursor: default; }
+.navbar__utility { display: flex; align-items: center; gap: 9px; flex: none; }
+
 /* ---- sticky auto-hiding chrome -----------------------------------------------
-   The brand bar + both nav rows ride in one position:sticky wrapper that slides up out
-   of view on a downward scroll and back on an upward one (components/kargah/Chrome.tsx
-   decides which). It bleeds over the .app side padding so its backdrop is full-width and
+   The Navbar + tab row ride in one position:sticky wrapper that slides up out of view
+   on a downward scroll and back on an upward one (components/kargah/Chrome.tsx decides
+   which). It bleeds over the .app side padding so its backdrop is full-width and
    pulls up into the .app top padding so it sits flush to the viewport edge when pinned.
    The transition is on transform ALONE, so it never contends with .route-fade.
    The four negative/positive margin+padding pairs must match .app's padding. */
@@ -1835,6 +1951,24 @@ body {
 }
 .bhead h2 { margin: 0; font-size: 16.5px; font-weight: 600; }
 .bhead .n { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
+
+/* ---- bento grid -----------------------------------------------------------
+   A real span system, not ad-hoc widths (spec 2026-09-08 §9b) -- 12 columns, gutters
+   from --space-5, phone stacks everything to one column. `data-span` is written by
+   BentoCell in components/kargah/Bento.tsx. */
+.bento {
+  display: grid;
+  grid-template-columns: repeat(12, 1fr);
+  gap: var(--space-5);
+}
+.bento > * { grid-column: span 12; }
+@media (min-width: 900px) {
+  .bento > [data-span="full"] { grid-column: span 12; }
+  .bento > [data-span="wide"] { grid-column: span 7; }
+  .bento > [data-span="half"] { grid-column: span 6; }
+  .bento > [data-span="narrow"] { grid-column: span 5; }
+}
+
 .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .btn {
   border-radius: 999px; padding: 10px 17px; font-size: 13.5px;
@@ -2268,6 +2402,54 @@ body {
 .modal .mhead h2 { margin: 0; font-size: 19px; font-weight: 600; letter-spacing: -.015em; }
 .modal .mhead .s { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
 .mbody { padding: 14px 24px 22px; display: flex; flex-direction: column; gap: 16px; }
+
+/* ---- complaint resolution workflow graph ----------------------------------
+   Spec 2026-09-08 §9c: curved bezier edges, solid=resolved/dashed=pending. Drag
+   mechanic is AssignmentBoard.tsx's pattern; this is purely the graph's own paint. */
+.workflow-modal { width: min(640px, calc(100vw - 32px)); }
+.wf-palette {
+  display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+  padding-bottom: 16px; border-bottom: 1px solid var(--line);
+}
+.wf-template {
+  border-radius: var(--radius-pill); border: 1px solid var(--border);
+  background: var(--surface); padding: 8px 14px; font-size: 13px; color: var(--ink-2);
+  cursor: grab; touch-action: none;
+}
+.wf-template:hover { border-color: var(--accent); color: var(--ink); }
+.wf-graph { position: relative; min-height: 160px; padding: 8px 4px 24px; overflow: auto; }
+.wf-edges { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.wf-edge { fill: none; stroke: var(--line-2); stroke-width: 2; }
+.wf-edge--resolved { stroke: var(--sage); }
+.wf-edge--pending { stroke-dasharray: 5 5; }
+.wf-root, .wf-node {
+  position: absolute; width: 150px; min-height: 44px; border-radius: var(--r-lg);
+  border: 1px solid var(--border); background: var(--surface); box-shadow: var(--sh-1);
+  padding: 8px 10px; font-size: 12.5px; color: var(--ink);
+  display: flex; align-items: center; justify-content: space-between; gap: 6px;
+}
+.wf-root { position: static; margin-bottom: 24px; width: fit-content; background: var(--sunk); font-weight: 600; }
+.wf-node--done { opacity: 0.7; text-decoration: line-through; }
+.wf-drop-hover { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.wf-complete {
+  border: 0; background: transparent; color: var(--accent-text); font-size: 11px;
+  cursor: pointer; flex: none;
+}
+.wf-ghost {
+  position: fixed; z-index: 60; transform: translate(-50%, -50%);
+  pointer-events: none; border-radius: var(--radius-pill); background: var(--primary);
+  color: var(--primary-ink); padding: 8px 14px; font-size: 13px; box-shadow: var(--sh-3);
+}
+.wf-picker { max-width: 360px; }
+.wf-pick-option {
+  display: block; width: 100%; text-align: start; padding: 10px 12px;
+  border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--surface);
+  margin-bottom: 6px; font-size: 13px; color: var(--ink-2); cursor: pointer;
+}
+.wf-pick-option:hover { border-color: var(--accent); color: var(--ink); }
+@media (prefers-reduced-motion: no-preference) {
+  .wf-node, .wf-root { transition: box-shadow 160ms var(--ease); }
+}
 .field label { display: block; font-size: 12.5px; color: var(--muted); margin-bottom: 7px; }
 .field .ro {
   background: var(--card); border: 1px solid var(--line); border-radius: var(--r-md);

@@ -421,13 +421,177 @@ Governing rule for any future extension: **slip/paper count is real data — the
 actual attachment count, capped at 3 — never decoration.** An empty pocket (0 papers) is
 a legitimate, informative empty state, not a bug to hide.
 
+## The shell `SHIPPED` — single navbar, left icon rail, bento grid
+
+Spec 2026-09-08 §9a/§9b, built in the follow-on `shell/navbar-rail-bento` branch on top
+of the substrate. Three independent pieces:
+
+**`Navbar`** (`components/kargah/Navbar.tsx`) replaced the old two-row header (brand bar
++ `TabPill`'s group row + tab row) with one row: brand at inline-start (visual right
+under RTL), the six sales groups centred, `ProfileMenu` at inline-end — all logical
+properties, per decision 4. Each group pill click-toggles its own dropdown (same open/
+outside-click/Esc pattern as `ProfileMenu`) — the spec's own instruction is hover-only,
+which has no equivalent on touch and is not keyboard-operable alone, so a pure-CSS
+`(hover: hover) and (pointer: fine)` enhancement is layered on top instead of replacing
+click. **The dropdown panel must be unconditionally rendered and hidden by CSS default**
+(`display: none`, revealed by `[data-open="true"]` or the hover/focus-within rule) —
+conditionally *rendering* it on the same React state the click handler toggles was tried
+first and is a real bug: a mouse hover opens it, then the click that follows immediately
+toggles the same state closed, so hovering and clicking together closes what hover just
+opened. Caught by a real Playwright click against the built page, not by reading the
+JSX. `TabPill` (`components/kargah/TabPill.tsx`) shrank to render only the tab row —
+`groups`/`shownGroups`/the `seg-groups` markup all moved into `Navbar`.
+
+**`Rail`** (`components/kargah/Rail.tsx`) is the left icon column — **named `.iconrail`,
+never bare `.rail`**: `ScheduleBoard.tsx` already renders `.rail` for its own
+day-schedule panel, and the rail's own calendar icon links straight to that page: a bare
+`.rail` here would have collided with it at equal specificity on first paint, exactly the
+`.pocket` collision class documented above. It ships **five items, not the video's nine**
+— back, calendar (`/sales/schedule`), map (`/map`), alerts (the existing
+`NotificationBell` polling logic, extracted to `lib/useUnreadCount.ts` so both consumers
+share one 60s poll instead of two drifting ones), and the three-state theme control
+(`ThemeToggle3.tsx`, decision 3) at the foot. Share/export/star/add/data/send are NOT
+wired: none has a real target anywhere in this app today, and shipping inert icons is
+exactly the decoration the pocket's own governing rule above forbids. **The rail is
+positioned with physical `left`, not `inset-inline-start`** — unlike the navbar, the spec
+names this the "left icon rail" literally and repeatedly rather than by logical role;
+`inset-inline-start` resolves to the visual RIGHT under RTL and would land the rail under
+the navbar's own utility cluster. Also caught by the same Playwright check, not by
+re-reading the spec's prose. Magnification-on-proximity is `useDockMagnify`
+(`lib/design/dockMagnify.ts`) — same one-delegated-listener architecture as
+`useTiltGlow`, writing `--dock-scale` from a single `pointermove` on the rail container.
+
+**`Bento`/`BentoCell`** (`components/kargah/Bento.tsx`) is the general span-grid system —
+`.bento` + `data-span="full|wide|half|narrow"`, 12 columns, phone stacks to one. Distinct
+from `BentoStrip`/`BentoTile`/`BentoGauge` (`components/BentoStrip.tsx`, the fixed-shape
+record-header widget on order pages) and `CustomerBento` (the customer-window widget) —
+same word, three different, non-overlapping things; do not conflate them.
+`lib/design/bentoSpan.ts`'s `bentoSpanForIndex(index, total)` picks a span for a
+dynamic-length tile list (pairs wide+narrow, a lone/odd-leftover tile spans full) — its
+one real consumer is `components/today/Briefing.tsx`'s `kargah` variant, which is the
+`/sales/today` page the redesign brief itself named for "card widths... over-expanding."
+
+## User avatars `SHIPPED`
+
+The other genuine §9d gap (alongside the workflow-editor backend, still deferred below)
+is closed: a user can have a real profile picture, not just initials-on-a-tone.
+
+Reuses the `photos` table rather than a second storage path — `entity_type` widened to
+also accept `'user'` (it already accepted `'district'`/`'customer'`/`'payment'` by the
+time this landed; the two-value set an earlier design read of this table assumed was
+already stale before this work even started, found by a failing test's real error
+message, not by re-reading the file closely enough the first time). A partial UNIQUE
+index (`idx_photos_user_singleton`) guarantees at most one avatar row per user — upload
+replaces rather than accumulates, unlike a customer's photo gallery or a payment's
+receipt, both of which are meant to grow.
+
+**Self-service only**: `POST`/`DELETE /api/users/[id]/avatar` accept only the caller's
+own id — no admin-uploads-for-others path, matching the workflow-template decision's
+"no admin CRUD" minimalism (§15 decision 6). **Viewing is org-wide**, not group-scoped
+like `canReachUser` in `lib/session.ts` — a shared task board needs to show a colleague's
+face regardless of which group they're in; `lib/avatarAccess.ts`'s `canViewUserAvatar`
+is the (tenant-safe) rule for that, deliberately looser than `canReachUser` and
+deliberately its own small module rather than a reuse of the stricter one.
+
+All the SQL for this lives in `lib/repo/avatars.ts`, not in the routes themselves —
+`tests/repo-boundary.test.ts` enforces that new raw SQL may only live in `lib/repo/`,
+which the first draft of the routes violated (caught by the full test suite, not by
+anything task-scoped verification alone would have surfaced, since running only the new
+test file in isolation never exercises that repo-wide check).
+
+`Avatar.tsx` tries a real picture first (`/api/users/{id}/avatar/file`), falling through
+to the initials chip on a 404/error — no prop signature change, so all ~dozen existing
+call sites (ProfileMenu, AvatarStack, task rows, …) needed zero edits. `ProfileMenu`
+gets upload/remove controls on the viewer's own avatar, mirroring `PhotoGallery.tsx`'s
+established upload idiom (hidden `<input type=file>` under a label, upload-on-select).
+
+**Not built, on purpose**: the spec's "assign realistic AI-generated avatars to demo
+users" is a seed-script concern that needs real image assets nobody has produced — the
+pipe is built, filling it with demo images is separate work.
+
+## Complaint resolution workflow `SHIPPED`
+
+The backend half of the repurposed workflow editor (2026-09-09 decision — see the
+deferred list below for why `/sales/complaints`, not a new generic `/sales/tasks` board).
+
+No new column on `tasks`: a spawned step is `entity_type='complaint'` /
+`entity_id=<complaint id>`, the same polymorphic link photos/reminders/activity_log
+already use. Two new tables only: `workflow_step_templates` (six fixed, seeded,
+app-wide steps — بررسی اولیه / آزمایش و بررسی فنی / تماس با مشتری / تعویض یا جبران /
+اطلاع‌رسانی نتیجه / تماس رضایت‌سنجی — no admin CRUD, spec §15 decision 6) and
+`workflow_edges` (`from_task_id`, `to_task_id UNIQUE`) — the `UNIQUE` on `to_task_id`
+makes "every step has at most one parent" a DB-level guarantee, not just app discipline,
+since a freshly created task can never already have one.
+
+**No `state` column on an edge.** The original spec's draft SQL had one
+(`resolved`/`pending`); this implementation derives it instead from the target task's
+own `status` at read time — a second stored copy of "is this task done" is a second
+place it can drift out of sync, and `lib/repo/workflow.ts`'s `getComplaintSteps` already
+returns the task rows the caller needs to compute solid/dashed itself.
+
+**No new completion endpoint.** Marking a step done reuses the existing
+`PATCH /api/tasks/[id]` (`completeTask` in `lib/repo/tasks.ts`) — it was already fully
+generic (works for any `kind`/`entity_type`, no special-casing needed).
+
+`lib/repo/workflow.ts`: `listStepTemplates()`, `getComplaintSteps(orgId, complaintId)`,
+`linkStep(orgId, complaintId, templateKey, fromTaskId, createdByUserId)`. Routes:
+`GET`/`POST /api/sales/complaints/[id]/steps` — GET open to owner/group_manager/
+salesperson (read parity with the existing complaints list route), POST restricted to
+owner/group_manager (write parity with `ComplaintsPanel.tsx`'s existing `canManage`
+status-change gate).
+
+Neither new table carries `organization_id` — both are in
+`tests/tenancy-schema.test.ts`'s `exempt` set (`workflow_edges` reaches its tenant
+through the tasks it connects, `workflow_step_templates` is not tenant data at all).
+
+**The UI**: `ComplaintWorkflowModal.tsx`, opened from a new "مسیر رسیدگی" button on each
+`/sales/complaints` row (reuses `.kargah-scrim`/`.modal` — `ProcessingModal.tsx` is the
+reference, not a new modal chrome pattern). The drag gesture is
+`AssignmentBoard.tsx`'s proven pointer-capture pattern adapted, not reinvented: a real
+`<button>` wired with both `onPointerDown` (drag) and `onClick` (keyboard/tap fallback,
+opening a target-picker instead), distinguished by a `dragging` ref so a completed drag
+never also fires a click. Two pure, tested modules do the graph's math:
+`lib/design/treeLayout.ts`'s `layoutTree` (row = depth, a parent's column centres over
+its children's — deliberately simple, these graphs are a handful of nodes) and
+`lib/design/connectorPath.ts`'s `bezierPath` (the vertical S-curve between two nodes,
+spec §9c's "curved bezier edges"). Edge solid/dashed is read directly off the target
+task's live `status` — no separate state to keep in sync, per the backend section above.
+
+## Brand mark `SHIPPED`
+
+Replaced the stale placeholder (`public/icon.svg`'s navy #0A0E14 square + cyan #2DE0E6
+diamond, both colours dead since the substrate redesign) after two full rejected rounds
+— see `docs/superpowers/plans/2026-09-09-brand-mark.md` for the concepts that didn't
+make it and why. **The mark: a near-black rounded square containing a white route arc
+with a live pulse riding it** (a solid dot inside a faint ring, positioned mid-path, not
+at either endpoint) — the one element among all twelve concepts shown that actually
+implied movement rather than a static path.
+
+Wired into every Next.js icon convention: `app/icon.svg` (auto-linked `<link
+rel="icon">`), `app/apple-icon.png` 180×180 (auto-linked `<link rel="apple-touch-icon">`),
+`app/favicon.ico` 16+32 (root-only `favicon` convention), and a maskable 512×512 PNG
+(`public/icons/maskable-512.png`, rendered from a *separate* full-bleed SVG with the mark
+scaled into the W3C safe zone — a maskable icon must not pre-round its own corners, the
+OS applies its own mask) referenced from `manifest.ts`. `public/icon.svg` duplicates
+`app/icon.svg`'s content on purpose: Next's own icon route serves at a query-stringed
+URL, not the stable path a PWA manifest needs. `scripts/gen-icons.mjs` does the
+rasterizing (via `sharp`, already a dependency) and hand-assembles the `.ico` container
+directly — modern `.ico` embeds PNG data per entry, no third-party encoder needed.
+
 ## Kit primitives not yet wired to real pages
 
 `TiltCard`, `GlowSurface`, the five pill form controls, `SegmentedPill`, `ArcGauge`,
 `StatefulButton`, `GooeyInput` all exist, are tested where they have extractable pure
-logic, and build cleanly — but none is imported by a real page yet. That is deliberate:
-this sub-project's scope is the substrate and the kit, not the shell that will consume
-it. Wiring them in is the shell/journey sub-project's job.
+logic, and build cleanly — but none is imported by a real page yet. That was deliberate
+at the time: the substrate sub-project's scope was the substrate and the kit, not the
+shell that would consume it. The shell sub-project above is exactly that consumption —
+`Navbar`, `Rail` and `Bento`/`BentoCell` are the wired examples of how a kit primitive
+graduates from "exists" to "used": a real page imports it, a real click does something,
+and (where the primitive has pure logic worth isolating, like `bentoSpanForIndex` or
+`magnifyScale`) a test pins the shape of that logic down. The primitives listed above
+still await the same treatment from whichever future page actually needs them —
+`StatefulButton`/`GooeyInput` in particular are confirmed-from-video but have no current
+call site.
 
 ## Anti-patterns
 
@@ -479,19 +643,25 @@ it. Wiring them in is the shell/journey sub-project's job.
 
 ## Not yet decided / deferred to later sub-projects
 
-- Icon set — `lucide-react` approved (published the same day this redesign shipped,
-  actively maintained), not yet wired into any component.
-- Global shell — single navbar, left icon rail, bento grid, journey connector lines
-  (curved bezier edges between task nodes, solid=resolved/dashed=pending).
+- Icon set — `lucide-react` approved, now wired via the shell sub-project's `Rail`
+  (`ChevronRight`/`CalendarDays`/`MapPin`/`Bell`) — still the only consumer; the rest of
+  the app's icons (SVG inline, or emoji in places the anti-patterns below already flag)
+  are unmigrated.
+- Journey connector lines (curved bezier edges between task nodes,
+  solid=resolved/dashed=pending) and the drag-to-link workflow editor UI — repurposed
+  onto `/sales/complaints` rather than a new generic `/sales/tasks` board (2026-09-09
+  decision, see "Complaint resolution workflow" below); the backend is done, this UI
+  piece is the remaining part.
 - Route migration + the `loading.tsx`/`<Suspense>`/`next/dynamic`/`Promise.all` speed
   work, for the routes not yet on this substrate.
-- The workflow-editor backend (`workflow_edges`, `workflow_step_templates`, task→stage
-  assignment) and its `/sales/tasks` UI — deliberately NOT retrofitted onto
-  `OrderJourney.tsx`, which keeps its explicit read-only invariant (ticks derived from
-  real records, never manually toggled, so they can never disagree with the invoice).
+- ~~The workflow-editor UI~~ — shipped, see "Complaint resolution workflow" above.
+  §9c/§9d are now fully shipped: user avatars, the workflow backend, and the drag-to-link
+  graph UI all exist. Deliberately NOT retrofitted onto `OrderJourney.tsx`, which keeps
+  its explicit read-only invariant (ticks derived from real records, never manually
+  toggled, so they can never disagree with the invoice).
 - Global features: command palette, hotkeys, Login-As impersonation, themed error pages,
   contextual `(i)` help.
 - Module polish: map/GIS cleanup, CRM workflow gaps, logistics (vertical timeline, Lottie
   empty states), calendar/weather, the Persian i18n sweep.
-- Brand mark, full icon/favicon set, splash screen — user reviews the mark before it
-  ships.
+- ~~Brand mark, icon/favicon set~~ — shipped, see "Brand mark" above. Splash screen
+  still open (no dedicated splash asset exists yet, only the PWA manifest icons).

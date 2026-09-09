@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { faDateTime } from "@/lib/format";
+import ComplaintWorkflowModal from "./ComplaintWorkflowModal";
 
 const CATEGORY_LABEL: Record<string, string> = {
   spoilage: "فساد",
@@ -60,6 +61,7 @@ export default function ComplaintsPanel({
   const [complaints, setComplaints] = useState<Complaint[] | null>(null);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [workflowFor, setWorkflowFor] = useState<number | null>(null);
   const [form, setForm] = useState(() => {
     let customer_id = "";
     if (typeof window !== "undefined") {
@@ -185,6 +187,7 @@ export default function ComplaintsPanel({
               <th className="p-2 text-right">شدت</th>
               <th className="p-2 text-right">وضعیت</th>
               <th className="p-2 text-right">تاریخ</th>
+              <th className="p-2" />
               {canManage && <th className="p-2" />}
             </tr>
           </thead>
@@ -197,6 +200,15 @@ export default function ComplaintsPanel({
                 <td className="p-2">{SEVERITY_LABEL[c.severity] ?? c.severity}</td>
                 <td className="p-2">{STATUS_LABEL[c.status] ?? c.status}</td>
                 <td className="p-2">{faDateTime(c.reported_at)}</td>
+                <td className="p-2 text-left">
+                  <button
+                    type="button"
+                    onClick={() => setWorkflowFor(c.id)}
+                    className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent"
+                  >
+                    مسیر رسیدگی
+                  </button>
+                </td>
                 {canManage && (
                   <td className="p-2 text-left">
                     <div className="flex flex-wrap justify-end gap-1">
@@ -215,6 +227,12 @@ export default function ComplaintsPanel({
           </tbody>
         </table>
       )}
+
+      <ComplaintWorkflowModal
+        complaintId={workflowFor}
+        onClose={() => setWorkflowFor(null)}
+        canManage={canManage}
+      />
     </div>
   );
 }
