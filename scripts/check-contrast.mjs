@@ -146,29 +146,30 @@ const THEME_IDS = [
   "ocean", "indigo", "purple", "raspberry", "graphite",
 ];
 
-/* The shipping cream, from the hand-written .meridian blocks. scripts/gen-accent-themes.mjs
+/* The default cold ground, from the hand-written .meridian blocks. scripts/gen-accent-themes.mjs
    re-emits each rung at the theme's hue with chroma capped near zero; the tinted value
-   must carry its inks no worse than the cream already does. --text-muted / --text-faint
-   on --surface-sunk sit at 4.25 / 2.89 in the palette on screen today, so those pairs are
-   held to the cream baseline rather than to an absolute 4.5 / 3.0. */
+   must carry its inks no worse than this base already does. --text-muted / --text-faint
+   on --surface-sunk sit just under an absolute 4.5 / 3.0 on the base, so those pairs are
+   held to the base baseline rather than to the absolute. */
 const SURFACE_CREAM = {
   light: {
-    "--bg": "#F4F0E9", "--surface": "#FFFFFF", "--surface-2": "#FDFBF8", "--surface-sunk": "#EFE9E0",
+    "--bg": "#F1F3F6", "--surface": "#FFFFFF", "--surface-2": "#F8FAFC", "--surface-sunk": "#E8ECF1",
   },
   dark: {
-    "--bg": "#141110", "--surface": "#1E1A17", "--surface-2": "#242019", "--surface-sunk": "#2B241E",
+    "--bg": "#0F1214", "--surface": "#181B20", "--surface-2": "#1E2228", "--surface-sunk": "#242A31",
   },
 };
 const SURFACE_INK = {
-  light: { "--text": ["#231C16", 7], "--text-muted": ["#776C60", 4.5], "--text-faint": ["#91887C", 3] },
-  dark: { "--text": ["#F3EEE7", 7], "--text-muted": ["#9B8F81", 4.5], "--text-faint": ["#8A8278", 3] },
+  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#828A98", 3] },
+  dark: { "--text": ["#EDF1F5", 7], "--text-muted": ["#8B98A5", 4.5], "--text-faint": ["#828C97", 3] },
 };
 
-/* The grounds these themes are solved against, from the .meridian blocks. --surface-raised
-   is what a cluster bubble sits on; it differs from --surface in dark. */
+/* The grounds these themes are solved against, from the .meridian blocks (cold). --surface-raised
+   is what a cluster bubble sits on; it differs from --surface in dark. The dark map ground
+   stays the map's own near-black — the map keeps its identity. */
 const THEME_GROUND = {
-  light: { bg: "#F4F0E9", surface: "#FFFFFF", raised: "#FFFFFF", text: "#231C16", washMuted: "#6A6055", map: "#F4F0E9" },
-  dark:  { bg: "#141110", surface: "#1E1A17", raised: "#242019", text: "#F3EEE7", washMuted: "#A99C8D", map: "#12100F" },
+  light: { bg: "#F1F3F6", surface: "#FFFFFF", raised: "#FFFFFF", text: "#1A1F26", washMuted: "#4F5763", map: "#F1F3F6" },
+  dark:  { bg: "#0F1214", surface: "#181B20", raised: "#1D2228", text: "#EDF1F5", washMuted: "#B4BEC8", map: "#12100F" },
 };
 
 let themeChecks = 0;

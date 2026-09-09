@@ -1500,19 +1500,19 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 .meridian {
   /* ---- Colour: light is the default and the identity ---------------------- */
-  --bg: #F4F0E9;
+  --bg: #F0F3F6;
   --surface: #FFFFFF;
-  --surface-2: #FDFBF8;
-  --surface-sunk: #EFE9E0;
-  --border: #EAE2D7;
-  --border-strong: #DED4C6;
-  --text: #231C16;
-  --text-muted: #776C60;
+  --surface-2: #F8FAFC;
+  --surface-sunk: #E7ECF1;
+  --border: #DFE6EC;
+  --border-strong: #CBD5DD;
+  --text: #1A1F26;
+  --text-muted: #5C6672;
   /* Non-text only (3.07:1). Solved to 4.5 it collapses into --text-muted and the
      two roles stop being distinguishable, so anything readable uses --text-muted. */
-  --text-faint: #91887C;
-  --accent: #C0532B;        /* fills only in light */
-  --accent-text: #B44E28;   /* accent as text: 4.55 on --bg */
+  --text-faint: #828A98;
+  --accent: #0077BC;        /* fills only in light */
+  --accent-text: #006EAE;   /* accent as text: 4.55 on --bg */
   --accent-ink: #FFFFFF;    /* on an --accent fill: 4.65 */
   --good: #4F6B4A;
   --warn: #7A5409;
@@ -1521,7 +1521,7 @@ body {
   --tint-plum: #6B4FA0;
 
   /* Soft pill fills. The status word answers to the pill, not to the page. */
-  --accent-soft: #FBEDE6;
+  --accent-soft: #E4F2FE;
   --good-soft: #E9F0E6;
   --warn-soft: #FBF1DD;
   --crit-soft: #FBE9EE;
@@ -1532,13 +1532,13 @@ body {
      mixed toward --surface from it, so one value moves a whole card. The muted ink has
      its OWN token because --text-muted lands at 3.79 on the coolest wash -- a label
      that answers to the wash it sits on, not to the page. */
-  --wash-peach: #FFD7BE;
+  --wash-peach: #D1E9FF;
   --wash-mint: #CFE6D2;
   --wash-sand: #F0DFBB;
   --wash-sky: #CFE0EC;
   --wash-ink: var(--text);
-  --wash-ink-muted: #6A6055;
-  --wash-edge: rgba(62, 44, 28, .10);
+  --wash-ink-muted: #4F5763;
+  --wash-edge: rgba(40, 52, 68, .10);
 
   /* Aliases for tokens the map's chrome still reads.
      مریدین replaced --surface-raised with --surface-2 and retired --accent-dim, but the
@@ -1547,8 +1547,8 @@ body {
      rewriting it. Every one of them is a background or a border, never text, so there is
      no contrast pair to solve. */
   --surface-raised: #FFFFFF;
-  --accent-dim: #E3A184;
-  --neutral: #8A7F72;
+  --accent-dim: #86BEEE;
+  --neutral: #7C8590;
 
   /* ---- The artifact's own token names ------------------------------------
      Ported verbatim from the approved design so its CSS can be used rule for
@@ -1557,15 +1557,15 @@ body {
      stylesheet reads the other, and re-pointing either would mean rewriting
      one of the two. */
   --card: #FFFFFF;
-  --card-2: #FDFBF8;
-  --sunk: #EFE9E0;
-  --ink: #231C16;
-  --ink-2: #4E4339;
-  --muted: #8A7D70;
-  --faint: #B3A899;
-  --line: #EAE2D7;
-  --line-2: #DED4C6;
-  --accent-2: #A9451F;
+  --card-2: #F8FAFC;
+  --sunk: #E7ECF1;
+  --ink: #1A1F26;
+  --ink-2: #3F4753;
+  --muted: #79818E;
+  --faint: #ABB2BE;
+  --line: #DFE6EC;
+  --line-2: #CBD5DD;
+  --accent-2: #0065A1;
   --sage: #4F6B4A;      --sage-soft: #E9F0E6;
   --amber: #9A6B10;     --amber-soft: #FBF1DD;
   --plum: #6B4FA0;      --plum-soft: #F2ECFA;
@@ -1579,7 +1579,7 @@ body {
      default (terracotta) and for graphite; scripts/gen-accent-themes.mjs emits a per-
      theme value into the generated block below. */
   --gcard-hue-rotate: 0deg;
-  --gcard-ink: #231C16;
+  --gcard-ink: #1A1F26;
   --gcard-k: rgba(35,28,22,.68);
   --gcard-chip: rgba(255,255,255,.62);
   --gcard-chip-ink: #3F5B3B;
@@ -1588,7 +1588,7 @@ body {
   --gcard-glass: rgba(255,255,255,.55);
   --frost: rgba(255,255,255,.62);
   --frost-edge: rgba(255,255,255,.85);
-  --track: #EFE9E0;
+  --track: #E7ECF1;
   --serie-b: #A9C6E4;
   --ev-a-ink: #8E3A17; --ev-b-ink: #3B5537; --ev-c-ink: #255670;
   --notice-ink: #7A5409;
@@ -1647,25 +1647,25 @@ body {
    The attribute is data-skin, NOT data-theme: /sales carries its own toggle and
    must not fight the map's theme switch.                                       */
 :root[data-skin="dark"] .meridian {
-  --bg: #141110;
-  --surface: #1E1A17;
-  --surface-2: #242019;
-  --surface-sunk: #2B241E;
-  --border: #312A22;
-  --border-strong: #3E352B;
-  --text: #F3EEE7;
-  --text-muted: #9B8F81;
-  --text-faint: #8A8278;
-  --accent: #E8734A;
-  --accent-text: #E8734A;
-  --accent-ink: #241009;   /* NOT white — white on this accent is 3.01:1 */
+  --bg: #0F1214;
+  --surface: #171B20;
+  --surface-2: #1D2228;
+  --surface-sunk: #232A31;
+  --border: #28323A;
+  --border-strong: #37414A;
+  --text: #EDF1F5;
+  --text-muted: #8B98A5;
+  --text-faint: #828C97;
+  --accent: #3BA6F5;
+  --accent-text: #3BA6F5;
+  --accent-ink: #030E19;   /* NOT white — white on this accent is 3.01:1 */
   --good: #93C289;
   --warn: #E0A64A;
   --crit: #F2789B;
   --info: #83B9DC;
   --tint-plum: #B79EEA;
 
-  --accent-soft: #3B241A;
+  --accent-soft: #202A33;
   --good-soft: #22301F;
   --warn-soft: #33280F;
   --crit-soft: #3A1B25;
@@ -1674,32 +1674,32 @@ body {
 
   /* Dark carries its OWN mixes. The light pastels glare on a dark ground -- they are
      the brightest thing on the page and the figure printed on them disappears. */
-  --wash-peach: #4A2A1C;
+  --wash-peach: #1D3B53;
   --wash-mint: #24382A;
   --wash-sand: #40331A;
   --wash-sky: #1F3341;
   --wash-ink: var(--text);
-  --wash-ink-muted: #A99C8D;
+  --wash-ink-muted: #B4BEC8;
   --wash-edge: rgba(0, 0, 0, .38);
 
-  --surface-raised: #242019;
-  --accent-dim: #8A4227;
-  --neutral: #6E6357;
+  --surface-raised: #1D2228;
+  --accent-dim: #2C628D;
+  --neutral: #5A6570;
 
   /* The artifact's dark set. Not an inversion: the ground goes warm-black
-     rather than blue-black, the terracotta lifts to #E8734A because the
+     rather than blue-black, the terracotta lifts to #3BA6F5 because the
      light-mode brick disappears against it, and every "soft" tint is re-solved
      as a deep tone rather than a pale one. */
-  --card: #1E1A17;
-  --card-2: #242019;
-  --sunk: #2B241E;
-  --ink: #F3EEE7;
-  --ink-2: #C8BFB4;
-  --muted: #9B8F81;
-  --faint: #6E6558;
-  --line: #312A22;
-  --line-2: #3E352B;
-  --accent-2: #F28C67;
+  --card: #171B20;
+  --card-2: #1D2228;
+  --sunk: #232A31;
+  --ink: #EDF1F5;
+  --ink-2: #B7C0CB;
+  --muted: #8B98A5;
+  --faint: #69727D;
+  --line: #28323A;
+  --line-2: #37414A;
+  --accent-2: #61B9FF;
   --sage: #93C289;  --sage-soft: #22301F;
   --amber: #E0A64A; --amber-soft: #33280F;
   --plum: #B79EEA;  --plum-soft: #2A2337;
@@ -1714,7 +1714,7 @@ body {
   --gcard-glass: rgba(0,0,0,.26);
   --frost: rgba(38,32,27,.62);
   --frost-edge: rgba(255,255,255,.07);
-  --track: #2B241E;
+  --track: #232A31;
   --serie-b: #6E93B4;
   --ev-a-ink: #F0A183; --ev-b-ink: #AED4A5; --ev-c-ink: #9CC8E4;
   --notice-ink: #E8C489;
@@ -3183,48 +3183,122 @@ body {
    getComputedStyle. They live here anyway so there is exactly one place a palette is
    defined. */
 :root, :root .meridian {
-  --accent: #C0532B;
+  --accent: #0077BC;
   --accent-ink: #FFFFFF;
-  --accent-text: #B44E28;
-  --accent-soft: #FBEDE6;
-  --accent-2: #A9451F;
-  --accent-dim: #E3A184;
-  --wash-peach: #FFD7BE;
-  --ev-a-ink: #8E3A17;
-  --map-stroke-major: #6B5B4C;
-  --map-stroke-minor: #8A7A69;
-  --map-boundary: #998876;
-  --map-selected: #C0532B;
-  --map-unknown: #7D7166;
+  --accent-text: #006EAE;
+  --accent-soft: #E4F2FE;
+  --accent-2: #0065A1;
+  --accent-dim: #86BEEE;
+  --wash-peach: #C2E2FF;
+  --ev-a-ink: #00598F;
+  --map-stroke-major: #485A6B;
+  --map-stroke-minor: #647481;
+  --map-boundary: #76828D;
+  --map-selected: #0074B7;
+  --map-unknown: #727C85;
 }
 :root[data-skin="dark"], :root[data-skin="dark"] .meridian {
-  --accent: #E8734A;
-  --accent-ink: #241009;
-  --accent-text: #E8734A;
-  --accent-soft: #3B241A;
-  --accent-2: #F28C67;
-  --accent-dim: #8A4227;
-  --wash-peach: #4A2A1C;
-  --ev-a-ink: #F0A183;
-  --map-stroke-major: #9A8A78;
-  --map-stroke-minor: #8A7A69;
-  --map-boundary: #6E6055;
-  --map-selected: #E8734A;
-  --map-unknown: #7D7166;
+  --accent: #3BA6F5;
+  --accent-ink: #030E19;
+  --accent-text: #46A6EF;
+  --accent-soft: #202A33;
+  --accent-2: #61B9FF;
+  --accent-dim: #2C628D;
+  --wash-peach: #1D3B53;
+  --ev-a-ink: #63B9FE;
+  --map-stroke-major: #8195A7;
+  --map-stroke-minor: #6D7C8A;
+  --map-boundary: #56626C;
+  --map-selected: #40AAF9;
+  --map-unknown: #616A73;
 }
 :root [data-ground="light"] {
-  --map-stroke-major: #6B5B4C;
-  --map-stroke-minor: #8A7A69;
-  --map-boundary: #998876;
-  --map-selected: #C0532B;
-  --map-unknown: #7D7166;
+  --map-stroke-major: #485A6B;
+  --map-stroke-minor: #647481;
+  --map-boundary: #76828D;
+  --map-selected: #0074B7;
+  --map-unknown: #727C85;
 }
 :root [data-ground="dark"] {
-  --map-stroke-major: #9A8A78;
-  --map-stroke-minor: #8A7A69;
-  --map-boundary: #6E6055;
-  --map-selected: #E8734A;
-  --map-unknown: #7D7166;
+  --map-stroke-major: #8195A7;
+  --map-stroke-minor: #6D7C8A;
+  --map-boundary: #56626C;
+  --map-selected: #40AAF9;
+  --map-unknown: #616A73;
+}
+:root[data-accent="ocean"] .meridian, :root[data-accent="ocean"] {
+  --accent: #0077BC;
+  --accent-ink: #FFFFFF;
+  --accent-text: #006EAE;
+  --accent-soft: #E4F2FE;
+  --accent-2: #0065A1;
+  --accent-dim: #86BEEE;
+  --wash-peach: #C2E2FF;
+  --ev-a-ink: #00598F;
+  --map-stroke-major: #485A6B;
+  --map-stroke-minor: #647481;
+  --map-boundary: #76828D;
+  --map-selected: #0074B7;
+  --map-unknown: #727C85;
+  --series-single: var(--accent);
+}
+:root[data-accent="ocean"] .meridian {
+  --bg: #F0F3F6;
+  --surface: #FFFFFF;
+  --surface-2: #F8FAFC;
+  --surface-sunk: #E7ECF1;
+  --border: #DFE6EC;
+  --border-strong: #CBD5DD;
+  --card: #FFFFFF;
+  --card-2: #F8FAFC;
+  --sunk: #E7ECF1;
+  --line: #DFE6EC;
+  --line-2: #CBD5DD;
+  --gcard-hue-rotate: -157deg;
+}
+:root[data-accent="ocean"][data-skin="dark"] .meridian, :root[data-accent="ocean"][data-skin="dark"] {
+  --accent: #3BA6F5;
+  --accent-ink: #030E19;
+  --accent-text: #46A6EF;
+  --accent-soft: #202A33;
+  --accent-2: #61B9FF;
+  --accent-dim: #2C628D;
+  --wash-peach: #1D3B53;
+  --ev-a-ink: #63B9FE;
+  --map-stroke-major: #8195A7;
+  --map-stroke-minor: #6D7C8A;
+  --map-boundary: #56626C;
+  --map-selected: #40AAF9;
+  --map-unknown: #616A73;
+  --series-single: var(--accent);
+}
+:root[data-accent="ocean"][data-skin="dark"] .meridian {
+  --bg: #0F1214;
+  --surface: #171B20;
+  --surface-2: #1D2228;
+  --surface-sunk: #232A31;
+  --border: #28323A;
+  --border-strong: #37414A;
+  --card: #171B20;
+  --card-2: #1D2228;
+  --sunk: #232A31;
+  --line: #28323A;
+  --line-2: #37414A;
+  --gcard-hue-rotate: -157deg;
+}
+:root[data-accent="ocean"] [data-ground="light"] {
+  --map-stroke-major: #485A6B;
+  --map-stroke-minor: #647481;
+  --map-boundary: #76828D;
+  --map-selected: #0074B7;
+  --map-unknown: #727C85;
+}
+:root[data-accent="ocean"] [data-ground="dark"] {
+  --map-stroke-major: #8195A7;
+  --map-stroke-minor: #6D7C8A;
+  --map-boundary: #56626C;
+  --map-selected: #40AAF9;
+  --map-unknown: #616A73;
 }
 :root[data-accent="terracotta"] .meridian, :root[data-accent="terracotta"] {
   --accent: #C0532B;
@@ -3243,17 +3317,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="terracotta"] .meridian {
-  --bg: #F4F0E9;
+  --bg: #F1F3F6;
   --surface: #FFFFFF;
-  --surface-2: #FDFBF8;
-  --surface-sunk: #EFE9E0;
-  --border: #EAE2D7;
-  --border-strong: #DED4C6;
+  --surface-2: #F8FAFC;
+  --surface-sunk: #E8ECF1;
+  --border: #E0E5EC;
+  --border-strong: #CDD4DE;
   --card: #FFFFFF;
-  --card-2: #FDFBF8;
-  --sunk: #EFE9E0;
-  --line: #EAE2D7;
-  --line-2: #DED4C6;
+  --card-2: #F8FAFC;
+  --sunk: #E8ECF1;
+  --line: #E0E5EC;
+  --line-2: #CDD4DE;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="terracotta"][data-skin="dark"] .meridian, :root[data-accent="terracotta"][data-skin="dark"] {
@@ -3273,17 +3347,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="terracotta"][data-skin="dark"] .meridian {
-  --bg: #141110;
-  --surface: #1E1A17;
-  --surface-2: #242019;
-  --surface-sunk: #2B241E;
-  --border: #312A22;
-  --border-strong: #3E352B;
-  --card: #1E1A17;
-  --card-2: #242019;
-  --sunk: #2B241E;
-  --line: #312A22;
-  --line-2: #3E352B;
+  --bg: #0F1214;
+  --surface: #181B20;
+  --surface-2: #1E2228;
+  --surface-sunk: #242A31;
+  --border: #2A313B;
+  --border-strong: #37414C;
+  --card: #181B20;
+  --card-2: #1E2228;
+  --sunk: #242A31;
+  --line: #2A313B;
+  --line-2: #37414C;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="terracotta"] [data-ground="light"] {
@@ -3317,17 +3391,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="gold"] .meridian {
-  --bg: #F3F0E9;
+  --bg: #F4F3EF;
   --surface: #FFFFFF;
-  --surface-2: #FCFBF8;
-  --surface-sunk: #EDEAE0;
-  --border: #E7E3D7;
-  --border-strong: #DBD5C6;
+  --surface-2: #FBFAF7;
+  --surface-sunk: #EDECE6;
+  --border: #E7E4DD;
+  --border-strong: #D7D3C8;
   --card: #FFFFFF;
-  --card-2: #FCFBF8;
-  --sunk: #EDEAE0;
-  --line: #E7E3D7;
-  --line-2: #DBD5C6;
+  --card-2: #FBFAF7;
+  --sunk: #EDECE6;
+  --line: #E7E4DD;
+  --line-2: #D7D3C8;
   --gcard-hue-rotate: 50deg;
 }
 :root[data-accent="gold"][data-skin="dark"] .meridian, :root[data-accent="gold"][data-skin="dark"] {
@@ -3337,7 +3411,7 @@ body {
   --accent-soft: #2D291C;
   --accent-2: #D3AD1B;
   --accent-dim: #705B13;
-  --wash-peach: #403510;
+  --wash-peach: #423712;
   --ev-a-ink: #CFAE42;
   --map-stroke-major: #9A927A;
   --map-stroke-minor: #807A68;
@@ -3347,17 +3421,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="gold"][data-skin="dark"] .meridian {
-  --bg: #13120F;
-  --surface: #1C1B16;
-  --surface-2: #232019;
-  --surface-sunk: #28251D;
-  --border: #2E2B22;
-  --border-strong: #3A372B;
-  --card: #1C1B16;
-  --card-2: #232019;
-  --sunk: #28251D;
-  --line: #2E2B22;
-  --line-2: #3A372B;
+  --bg: #12110E;
+  --surface: #1D1B15;
+  --surface-2: #24221B;
+  --surface-sunk: #2C2921;
+  --border: #343025;
+  --border-strong: #444034;
+  --card: #1D1B15;
+  --card-2: #24221B;
+  --sunk: #2C2921;
+  --line: #343025;
+  --line-2: #444034;
   --gcard-hue-rotate: 50deg;
 }
 :root[data-accent="gold"] [data-ground="light"] {
@@ -3391,17 +3465,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="olive"] .meridian {
-  --bg: #EFF2EA;
+  --bg: #F2F3F0;
   --surface: #FFFFFF;
-  --surface-2: #FBFCF9;
-  --surface-sunk: #E8EBE2;
-  --border: #E1E5D9;
-  --border-strong: #D3D8C8;
+  --surface-2: #F9FAF8;
+  --surface-sunk: #EBEDE7;
+  --border: #E3E6DE;
+  --border-strong: #D1D5CA;
   --card: #FFFFFF;
-  --card-2: #FBFCF9;
-  --sunk: #E8EBE2;
-  --line: #E1E5D9;
-  --line-2: #D3D8C8;
+  --card-2: #F9FAF8;
+  --sunk: #EBEDE7;
+  --line: #E3E6DE;
+  --line-2: #D1D5CA;
   --gcard-hue-rotate: 80deg;
 }
 :root[data-accent="olive"][data-skin="dark"] .meridian, :root[data-accent="olive"][data-skin="dark"] {
@@ -3411,7 +3485,7 @@ body {
   --accent-soft: #272A20;
   --accent-2: #A4BE5D;
   --accent-dim: #566431;
-  --wash-peach: #31391D;
+  --wash-peach: #343C20;
   --ev-a-ink: #A5BC6B;
   --map-stroke-major: #8E967E;
   --map-stroke-minor: #777D6B;
@@ -3421,17 +3495,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="olive"][data-skin="dark"] .meridian {
-  --bg: #111210;
-  --surface: #1A1C17;
-  --surface-2: #1F221A;
-  --surface-sunk: #24271F;
-  --border: #2A2D23;
-  --border-strong: #35392D;
-  --card: #1A1C17;
-  --card-2: #1F221A;
-  --sunk: #24271F;
-  --line: #2A2D23;
-  --line-2: #35392D;
+  --bg: #11120F;
+  --surface: #1A1C16;
+  --surface-2: #21231C;
+  --surface-sunk: #282B22;
+  --border: #2F3227;
+  --border-strong: #3E4236;
+  --card: #1A1C16;
+  --card-2: #21231C;
+  --sunk: #282B22;
+  --line: #2F3227;
+  --line-2: #3E4236;
   --gcard-hue-rotate: 80deg;
 }
 :root[data-accent="olive"] [data-ground="light"] {
@@ -3465,17 +3539,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="emerald"] .meridian {
-  --bg: #EBF3EE;
+  --bg: #F0F4F2;
   --surface: #FFFFFF;
-  --surface-2: #F9FCFA;
-  --surface-sunk: #E3EDE6;
-  --border: #DAE7DF;
-  --border-strong: #CADAD0;
+  --surface-2: #F8FAF9;
+  --surface-sunk: #E7EDEA;
+  --border: #DFE7E2;
+  --border-strong: #CBD7CF;
   --card: #FFFFFF;
-  --card-2: #F9FCFA;
-  --sunk: #E3EDE6;
-  --line: #DAE7DF;
-  --line-2: #CADAD0;
+  --card-2: #F8FAF9;
+  --sunk: #E7EDEA;
+  --line: #DFE7E2;
+  --line-2: #CBD7CF;
   --gcard-hue-rotate: 116deg;
 }
 :root[data-accent="emerald"][data-skin="dark"] .meridian, :root[data-accent="emerald"][data-skin="dark"] {
@@ -3485,7 +3559,7 @@ body {
   --accent-soft: #202C25;
   --accent-2: #48CD8C;
   --accent-dim: #286D4A;
-  --wash-peach: #183C29;
+  --wash-peach: #1C412D;
   --ev-a-ink: #5ECA91;
   --map-stroke-major: #81998A;
   --map-stroke-minor: #6D8074;
@@ -3495,17 +3569,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="emerald"][data-skin="dark"] .meridian {
-  --bg: #101311;
-  --surface: #181C19;
-  --surface-2: #1B231E;
-  --surface-sunk: #202823;
-  --border: #242E28;
-  --border-strong: #2E3A33;
-  --card: #181C19;
-  --card-2: #1B231E;
-  --sunk: #202823;
-  --line: #242E28;
-  --line-2: #2E3A33;
+  --bg: #0F1210;
+  --surface: #171C19;
+  --surface-2: #1D241F;
+  --surface-sunk: #232C26;
+  --border: #28342D;
+  --border-strong: #37433C;
+  --card: #171C19;
+  --card-2: #1D241F;
+  --sunk: #232C26;
+  --line: #28342D;
+  --line-2: #37433C;
   --gcard-hue-rotate: 116deg;
 }
 :root[data-accent="emerald"] [data-ground="light"] {
@@ -3539,17 +3613,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="teal"] .meridian {
-  --bg: #E9F3F3;
+  --bg: #F0F4F4;
   --surface: #FFFFFF;
-  --surface-2: #F8FCFC;
-  --surface-sunk: #E0EDED;
-  --border: #D7E7E7;
-  --border-strong: #C6DADA;
+  --surface-2: #F7FBFA;
+  --surface-sunk: #E6EDED;
+  --border: #DDE7E7;
+  --border-strong: #C8D7D6;
   --card: #FFFFFF;
-  --card-2: #F8FCFC;
-  --sunk: #E0EDED;
-  --line: #D7E7E7;
-  --line-2: #C6DADA;
+  --card-2: #F7FBFA;
+  --sunk: #E6EDED;
+  --line: #DDE7E7;
+  --line-2: #C8D7D6;
   --gcard-hue-rotate: 153deg;
 }
 :root[data-accent="teal"][data-skin="dark"] .meridian, :root[data-accent="teal"][data-skin="dark"] {
@@ -3559,7 +3633,7 @@ body {
   --accent-soft: #1C2C2C;
   --accent-2: #00CACA;
   --accent-dim: #006C6C;
-  --wash-peach: #013C3C;
+  --wash-peach: #064141;
   --ev-a-ink: #00CACA;
   --map-stroke-major: #7A9999;
   --map-stroke-minor: #68807F;
@@ -3569,17 +3643,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="teal"][data-skin="dark"] .meridian {
-  --bg: #0F1312;
-  --surface: #161C1C;
-  --surface-2: #192323;
-  --surface-sunk: #1D2828;
-  --border: #212E2E;
-  --border-strong: #2B3A3A;
-  --card: #161C1C;
-  --card-2: #192323;
-  --sunk: #1D2828;
-  --line: #212E2E;
-  --line-2: #2B3A3A;
+  --bg: #0E1212;
+  --surface: #151C1C;
+  --surface-2: #1B2424;
+  --surface-sunk: #212C2C;
+  --border: #253434;
+  --border-strong: #344343;
+  --card: #151C1C;
+  --card-2: #1B2424;
+  --sunk: #212C2C;
+  --line: #253434;
+  --line-2: #344343;
   --gcard-hue-rotate: 153deg;
 }
 :root[data-accent="teal"] [data-ground="light"] {
@@ -3595,80 +3669,6 @@ body {
   --map-boundary: #526564;
   --map-selected: #00B5B5;
   --map-unknown: #5D6C6C;
-}
-:root[data-accent="ocean"] .meridian, :root[data-accent="ocean"] {
-  --accent: #0077BC;
-  --accent-ink: #FFFFFF;
-  --accent-text: #006EAE;
-  --accent-soft: #E4F2FE;
-  --accent-2: #0065A1;
-  --accent-dim: #86BEEE;
-  --wash-peach: #C2E2FF;
-  --ev-a-ink: #00598F;
-  --map-stroke-major: #485A6B;
-  --map-stroke-minor: #647481;
-  --map-boundary: #76828D;
-  --map-selected: #0074B7;
-  --map-unknown: #727C85;
-  --series-single: var(--accent);
-}
-:root[data-accent="ocean"] .meridian {
-  --bg: #EBF1F7;
-  --surface: #FFFFFF;
-  --surface-2: #F9FCFE;
-  --surface-sunk: #E3EBF3;
-  --border: #DAE5EE;
-  --border-strong: #CAD7E3;
-  --card: #FFFFFF;
-  --card-2: #F9FCFE;
-  --sunk: #E3EBF3;
-  --line: #DAE5EE;
-  --line-2: #CAD7E3;
-  --gcard-hue-rotate: -157deg;
-}
-:root[data-accent="ocean"][data-skin="dark"] .meridian, :root[data-accent="ocean"][data-skin="dark"] {
-  --accent: #3BA6F5;
-  --accent-ink: #030E19;
-  --accent-text: #46A6EF;
-  --accent-soft: #202A33;
-  --accent-2: #61B9FF;
-  --accent-dim: #2C628D;
-  --wash-peach: #1A384F;
-  --ev-a-ink: #63B9FE;
-  --map-stroke-major: #8195A7;
-  --map-stroke-minor: #6D7C8A;
-  --map-boundary: #56626C;
-  --map-selected: #40AAF9;
-  --map-unknown: #616A73;
-  --series-single: var(--accent);
-}
-:root[data-accent="ocean"][data-skin="dark"] .meridian {
-  --bg: #101214;
-  --surface: #181B1F;
-  --surface-2: #1B2127;
-  --surface-sunk: #1F262D;
-  --border: #242C34;
-  --border-strong: #2E3841;
-  --card: #181B1F;
-  --card-2: #1B2127;
-  --sunk: #1F262D;
-  --line: #242C34;
-  --line-2: #2E3841;
-  --gcard-hue-rotate: -157deg;
-}
-:root[data-accent="ocean"] [data-ground="light"] {
-  --map-stroke-major: #485A6B;
-  --map-stroke-minor: #647481;
-  --map-boundary: #76828D;
-  --map-selected: #0074B7;
-  --map-unknown: #727C85;
-}
-:root[data-accent="ocean"] [data-ground="dark"] {
-  --map-stroke-major: #8195A7;
-  --map-stroke-minor: #6D7C8A;
-  --map-boundary: #56626C;
-  --map-selected: #40AAF9;
-  --map-unknown: #616A73;
 }
 :root[data-accent="indigo"] .meridian, :root[data-accent="indigo"] {
   --accent: #5F64C7;
@@ -3687,17 +3687,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="indigo"] .meridian {
-  --bg: #EFF0F8;
+  --bg: #F2F3F6;
   --surface: #FFFFFF;
-  --surface-2: #FAFBFE;
-  --surface-sunk: #E7E9F3;
-  --border: #E0E2EF;
-  --border-strong: #D2D5E4;
+  --surface-2: #F9FAFC;
+  --surface-sunk: #EAEBF1;
+  --border: #E3E4EC;
+  --border-strong: #D1D3DE;
   --card: #FFFFFF;
-  --card-2: #FAFBFE;
-  --sunk: #E7E9F3;
-  --line: #E0E2EF;
-  --line-2: #D2D5E4;
+  --card-2: #F9FAFC;
+  --sunk: #EAEBF1;
+  --line: #E3E4EC;
+  --line-2: #D1D3DE;
   --gcard-hue-rotate: -124deg;
 }
 :root[data-accent="indigo"][data-skin="dark"] .meridian, :root[data-accent="indigo"][data-skin="dark"] {
@@ -3707,7 +3707,7 @@ body {
   --accent-soft: #262834;
   --accent-2: #9FA9FF;
   --accent-dim: #525890;
-  --wash-peach: #2F3352;
+  --wash-peach: #313554;
   --ev-a-ink: #9FA9FF;
   --map-stroke-major: #8D91A8;
   --map-stroke-minor: #76798B;
@@ -3717,17 +3717,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="indigo"][data-skin="dark"] .meridian {
-  --bg: #111214;
-  --surface: #1A1B1F;
-  --surface-2: #1F2027;
-  --surface-sunk: #24252D;
-  --border: #292B34;
-  --border-strong: #343641;
-  --card: #1A1B1F;
-  --card-2: #1F2027;
-  --sunk: #24252D;
-  --line: #292B34;
-  --line-2: #343641;
+  --bg: #111114;
+  --surface: #1A1A20;
+  --surface-2: #202128;
+  --surface-sunk: #272931;
+  --border: #2E303B;
+  --border-strong: #3D3F4B;
+  --card: #1A1A20;
+  --card-2: #202128;
+  --sunk: #272931;
+  --line: #2E303B;
+  --line-2: #3D3F4B;
   --gcard-hue-rotate: -124deg;
 }
 :root[data-accent="indigo"] [data-ground="light"] {
@@ -3751,7 +3751,7 @@ body {
   --accent-soft: #F6ECFC;
   --accent-2: #7F3CA2;
   --accent-dim: #CDA5E6;
-  --wash-peach: #EDD4FD;
+  --wash-peach: #ECD3FC;
   --ev-a-ink: #6F388D;
   --map-stroke-major: #5F5366;
   --map-stroke-minor: #776D7E;
@@ -3761,17 +3761,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="purple"] .meridian {
-  --bg: #F3EFF6;
+  --bg: #F4F2F5;
   --surface: #FFFFFF;
-  --surface-2: #FCFAFE;
-  --surface-sunk: #EDE7F1;
-  --border: #E7E0EC;
-  --border-strong: #DAD2E0;
+  --surface-2: #FAF9FB;
+  --surface-sunk: #EDEAF0;
+  --border: #E7E3EA;
+  --border-strong: #D7D1DB;
   --card: #FFFFFF;
-  --card-2: #FCFAFE;
-  --sunk: #EDE7F1;
-  --line: #E7E0EC;
-  --line-2: #DAD2E0;
+  --card-2: #FAF9FB;
+  --sunk: #EDEAF0;
+  --line: #E7E3EA;
+  --line-2: #D7D1DB;
   --gcard-hue-rotate: -90deg;
 }
 :root[data-accent="purple"][data-skin="dark"] .meridian, :root[data-accent="purple"][data-skin="dark"] {
@@ -3791,17 +3791,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="purple"][data-skin="dark"] .meridian {
-  --bg: #131114;
-  --surface: #1C1A1E;
-  --surface-2: #231F26;
-  --surface-sunk: #28232B;
-  --border: #2E2932;
-  --border-strong: #3A343E;
-  --card: #1C1A1E;
-  --card-2: #231F26;
-  --sunk: #28232B;
-  --line: #2E2932;
-  --line-2: #3A343E;
+  --bg: #121114;
+  --surface: #1D191F;
+  --surface-2: #242026;
+  --surface-sunk: #2C272F;
+  --border: #342E38;
+  --border-strong: #433D48;
+  --card: #1D191F;
+  --card-2: #242026;
+  --sunk: #2C272F;
+  --line: #342E38;
+  --line-2: #433D48;
   --gcard-hue-rotate: -90deg;
 }
 :root[data-accent="purple"] [data-ground="light"] {
@@ -3825,7 +3825,7 @@ body {
   --accent-soft: #FBEBF6;
   --accent-2: #943482;
   --accent-dim: #DEA0CF;
-  --wash-peach: #F9D1EE;
+  --wash-peach: #F8D0ED;
   --ev-a-ink: #813171;
   --map-stroke-major: #655160;
   --map-stroke-minor: #7D6C78;
@@ -3835,17 +3835,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="raspberry"] .meridian {
-  --bg: #F5EEF3;
+  --bg: #F5F2F4;
   --surface: #FFFFFF;
-  --surface-2: #FDFAFC;
-  --surface-sunk: #F0E7ED;
-  --border: #EBDFE8;
-  --border-strong: #DFD0DB;
+  --surface-2: #FBF9FB;
+  --surface-sunk: #EFEAEE;
+  --border: #EAE2E7;
+  --border-strong: #DBD0D7;
   --card: #FFFFFF;
-  --card-2: #FDFAFC;
-  --sunk: #F0E7ED;
-  --line: #EBDFE8;
-  --line-2: #DFD0DB;
+  --card-2: #FBF9FB;
+  --sunk: #EFEAEE;
+  --line: #EAE2E7;
+  --line-2: #DBD0D7;
   --gcard-hue-rotate: -66deg;
 }
 :root[data-accent="raspberry"][data-skin="dark"] .meridian, :root[data-accent="raspberry"][data-skin="dark"] {
@@ -3855,7 +3855,7 @@ body {
   --accent-soft: #30252D;
   --accent-2: #EE87D7;
   --accent-dim: #7E4872;
-  --wash-peach: #492B42;
+  --wash-peach: #4B2C43;
   --ev-a-ink: #E78ED2;
   --map-stroke-major: #A18A9A;
   --map-stroke-minor: #867481;
@@ -3866,16 +3866,16 @@ body {
 }
 :root[data-accent="raspberry"][data-skin="dark"] .meridian {
   --bg: #131113;
-  --surface: #1E191C;
-  --surface-2: #251E23;
-  --surface-sunk: #2A2328;
-  --border: #31282F;
-  --border-strong: #3E333B;
-  --card: #1E191C;
-  --card-2: #251E23;
-  --sunk: #2A2328;
-  --line: #31282F;
-  --line-2: #3E333B;
+  --surface: #1E191D;
+  --surface-2: #261F24;
+  --surface-sunk: #2F272C;
+  --border: #372D34;
+  --border-strong: #473C44;
+  --card: #1E191D;
+  --card-2: #261F24;
+  --sunk: #2F272C;
+  --line: #372D34;
+  --line-2: #473C44;
   --gcard-hue-rotate: -66deg;
 }
 :root[data-accent="raspberry"] [data-ground="light"] {
@@ -3909,17 +3909,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="graphite"] .meridian {
-  --bg: #EDF1F8;
+  --bg: #F1F3F6;
   --surface: #FFFFFF;
-  --surface-2: #FAFBFE;
-  --surface-sunk: #E5EAF3;
-  --border: #DEE3EF;
-  --border-strong: #CED6E5;
+  --surface-2: #F9FAFC;
+  --surface-sunk: #E9ECF1;
+  --border: #E1E5EC;
+  --border-strong: #CED3DE;
   --card: #FFFFFF;
-  --card-2: #FAFBFE;
-  --sunk: #E5EAF3;
-  --line: #DEE3EF;
-  --line-2: #CED6E5;
+  --card-2: #F9FAFC;
+  --sunk: #E9ECF1;
+  --line: #E1E5EC;
+  --line-2: #CED3DE;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="graphite"][data-skin="dark"] .meridian, :root[data-accent="graphite"][data-skin="dark"] {
@@ -3929,7 +3929,7 @@ body {
   --accent-soft: #28292A;
   --accent-2: #ABB1BE;
   --accent-dim: #5A5E64;
-  --wash-peach: #34363A;
+  --wash-peach: #36383C;
   --ev-a-ink: #ACB1BC;
   --map-stroke-major: #8892A8;
   --map-stroke-minor: #727A8B;
@@ -3939,17 +3939,17 @@ body {
   --series-single: var(--accent);
 }
 :root[data-accent="graphite"][data-skin="dark"] .meridian {
-  --bg: #111214;
-  --surface: #191B1F;
-  --surface-2: #1D2128;
-  --surface-sunk: #22262D;
-  --border: #272B34;
-  --border-strong: #323741;
-  --card: #191B1F;
-  --card-2: #1D2128;
-  --sunk: #22262D;
-  --line: #272B34;
-  --line-2: #323741;
+  --bg: #101214;
+  --surface: #181B20;
+  --surface-2: #1F2228;
+  --surface-sunk: #262931;
+  --border: #2C303B;
+  --border-strong: #3B404B;
+  --card: #181B20;
+  --card-2: #1F2228;
+  --sunk: #262931;
+  --line: #2C303B;
+  --line-2: #3B404B;
   --gcard-hue-rotate: 0deg;
 }
 :root[data-accent="graphite"] [data-ground="light"] {

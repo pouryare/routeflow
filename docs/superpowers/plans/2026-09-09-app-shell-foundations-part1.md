@@ -10,6 +10,17 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-09-app-shell-and-foundations-design.md` (Sections 0 and the primitive halves of Section 3). Part 2 covers Sections 1, 2, 4, 5.
 
+## Progress & deviations (updated during execution)
+
+- **Baseline (branch point):** build ✓, 1868 tests pass, `check:contrast` ✓ (500 pairs, not 260 — plan estimate was low). Lint has **2 pre-existing errors** (`components/board/Board.tsx:79`, `BoardMobile.tsx:40`, both `react-hooks/set-state-in-effect`) unrelated to this slice. Gate for this plan is therefore "no *new* lint errors", not "zero".
+- **Task 1 (deps):** done. `lucide-react@1.43.0`, `framer-motion@13.2.0` (current as of 2026-09; lucide is on 1.x now). Commit `036e279`.
+- **Task 2 (rename):** done. Commit `a05311e`. Extra work: `lib/repo/notifications.ts` carries 3 stray NUL bytes (used as map-key separators, e.g. `` `${code}\0push` ``), so `grep -I` treated it as binary and the sweep skipped it — its `PUSH_TAG "kargah-digest"` was patched directly. **NUL separators left in place** (behaviour-adjacent; pre-existing). *Follow-up candidate: replace the `\0` separators with a printable delimiter so the file is text again.*
+- **Tasks 3+4 (cold palette) — merged and reordered.** They are inseparable (grounds → default accent → regenerate). The default accent is switched by **reordering the `THEMES` array in `scripts/gen-accent-themes.mjs` so `ocean` is `themes[0]`** — the solver derives both `dflt` (the no-attribute CSS block) and `DEFAULT_ACCENT` from `themes[0]`. `lib/accentThemes.ts` is solver-generated; editing it directly is futile.
+  - Stale hard-coded grounds also live in **`scripts/check-contrast.mjs`** in *three* blocks: `SURFACE_CREAM`, `SURFACE_INK`, `THEME_GROUND` — all updated to the cold values. The dark *map* ground (`THEME_GROUND.dark.map`) stays `#12100F` (the map keeps its own identity).
+  - Contrast iteration: cold grounds triggered 12 near-miss failures, all `--wash-ink-muted` / `--text-faint`; resolved by nudging `SKINS.*.washInkMuted`, `SURFACE_INKS.light.faint`, and the `check-contrast.mjs` `THEME_GROUND.washMuted` mirror. Final: **500/500 pass.**
+  - **Decorative warm tokens deferred:** `--gcard-*`, `--frost*`, `--island-*`, `--tick-ink`, `--notice-ink`, `--serie-b`, `--ev-*-ink`, `--wash-mint/sand/sky` in the hand `.meridian` blocks are still warm-brown. They are outside any contrast pair and belong to the gradient-stat / island / frost components — re-tinted in **Part 2** when those get the primitive pass.
+- **Primitive discovery (affects Tasks 8, 9):** `components/meridian/` **already contains** `CarvedCard.tsx` (= the planned `Card` w/ carved-bay notch), `CountUp.tsx` (= the planned `Counter`), `PocketCard.tsx` + `Pocketed.tsx` + `OrdersPockets.tsx` (the pocket device), `GradientStat.tsx`, `Reveal.tsx`. MASTER.md's `TARGET` markers for these are **stale — they are SHIPPED.** Revised approach: **do not rebuild.** Task 8/9 become "audit the existing `CarvedCard`/`CountUp` against the spec's API, extend if needed, add tests". Only `Icon`, `CardHelp`, `lib/motion.ts`, `lib/appNav.ts` are genuinely new.
+
 ## Global Constraints
 
 - **Namespace:** the design system is `meridian`. CSS scope class `.meridian` (never `:root`). Components in `components/meridian/`. No `kargah` string may remain in `app/`, `components/`, `lib/`, `scripts/`, `tests/`, `types/` after Task 2 — only `docs/` history keeps it. Verify with `grep -rn kargah app components lib scripts tests types`.

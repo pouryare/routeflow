@@ -5,12 +5,12 @@
  *  drift apart. */
 
 export const ACCENT_THEMES = [
+  { id: "ocean", label: "اقیانوسی", swatch: { light: "#0077BC", dark: "#3BA6F5" } },
   { id: "terracotta", label: "خاکی", swatch: { light: "#C0532B", dark: "#E8734A" } },
   { id: "gold", label: "طلایی", swatch: { light: "#896E00", dark: "#BE9A00" } },
   { id: "olive", label: "زیتونی", swatch: { light: "#657C11", dark: "#91AB49" } },
   { id: "emerald", label: "زمردی", swatch: { light: "#008754", dark: "#2EBA7A" } },
   { id: "teal", label: "فیروزه‌ای", swatch: { light: "#008282", dark: "#00B5B5" } },
-  { id: "ocean", label: "اقیانوسی", swatch: { light: "#0077BC", dark: "#3BA6F5" } },
   { id: "indigo", label: "نیلی", swatch: { light: "#5F64C7", dark: "#8A93FA" } },
   { id: "purple", label: "بنفش", swatch: { light: "#914FB6", dark: "#C07DE8" } },
   { id: "raspberry", label: "تمشکی", swatch: { light: "#A74794", dark: "#DA75C3" } },
@@ -20,7 +20,7 @@ export const ACCENT_THEMES = [
 export type AccentId = (typeof ACCENT_THEMES)[number]["id"];
 
 /** What a browser that has never chosen gets, and what the server renders. */
-export const DEFAULT_ACCENT: AccentId = "terracotta";
+export const DEFAULT_ACCENT: AccentId = "ocean";
 
 export function isAccentId(v: unknown): v is AccentId {
   return typeof v === "string" && ACCENT_THEMES.some((t) => t.id === v);

@@ -135,43 +135,43 @@ function dist(a, b) {
 
 const SKINS = {
   light: {
-    bg: "#F4F0E9",
+    bg: "#F1F3F6",
     surface: "#FFFFFF",
-    text: "#231C16",
-    washInkMuted: "#6A6055",
+    text: "#1A1F26",
+    washInkMuted: "#4F5763",
     /* Status colours as they ship today. No theme ever overrides one -- they are what an
        accent hue has to stay clear of, not something to move out of its way. */
     status: { good: "#4F6B4A", warn: "#7A5409", crit: "#A11B3F", info: "#2E6382", plum: "#6B4FA0" },
   },
   dark: {
-    bg: "#141110",
-    surface: "#1E1A17",
-    text: "#F3EEE7",
-    washInkMuted: "#A99C8D",
+    bg: "#0F1214",
+    surface: "#181B20",
+    text: "#EDF1F5",
+    washInkMuted: "#B4BEC8",
     status: { good: "#93C289", warn: "#E0A64A", crit: "#F2789B", info: "#83B9DC", plum: "#B79EEA" },
   },
 };
 
 /* ── surface tint. مریدین only. ─────────────────────────────────────────────────
-   The /sales design system's paper and lines carry a faint warmth today (--bg is
-   #F4F0E9, a cream, not a neutral). A theme should own that warmth: teal paper, not
-   cream paper with a teal button on it. So each structural neutral is read back to its
-   OKLCH lightness and (tiny) chroma, then re-emitted at the theme's hue -- L and C held,
-   only H moved. Chroma is capped hard so "tinted" never becomes "coloured" and the
-   text-on-ground contrast the checker asserts barely shifts.
+   The base ground is a cold blue-grey (--bg #F1F3F6), not a neutral. A theme owns
+   its hue: teal paper, not blue-grey paper with a teal button on it. So each
+   structural neutral is read back to its OKLCH lightness and (tiny) chroma, then
+   re-emitted at the theme's hue -- L and C held, only H moved. Chroma is capped hard
+   so "tinted" never becomes "coloured" and the text-on-ground contrast the checker
+   asserts barely shifts.
 
    Scoped to `.meridian` ONLY. The map reads --bg/--surface/--border too, across two
    thousand lines tuned for its own near-black, so re-skinning those globally is out of
-   scope (MASTER.md "Visual thesis"). terracotta is pinned to today's exact hexes so a
-   reader who keeps the default sees no change at all. */
+   scope (MASTER.md "Visual thesis"). The default is now ocean; terracotta keeps its
+   warm accent but tints from the cold base like every other theme. */
 const SURFACE_BASE = {
   light: {
-    "--bg": "#F4F0E9", "--surface": "#FFFFFF", "--surface-2": "#FDFBF8",
-    "--surface-sunk": "#EFE9E0", "--border": "#EAE2D7", "--border-strong": "#DED4C6",
+    "--bg": "#F1F3F6", "--surface": "#FFFFFF", "--surface-2": "#F8FAFC",
+    "--surface-sunk": "#E8ECF1", "--border": "#E0E5EC", "--border-strong": "#CDD4DE",
   },
   dark: {
-    "--bg": "#141110", "--surface": "#1E1A17", "--surface-2": "#242019",
-    "--surface-sunk": "#2B241E", "--border": "#312A22", "--border-strong": "#3E352B",
+    "--bg": "#0F1214", "--surface": "#181B20", "--surface-2": "#1E2228",
+    "--surface-sunk": "#242A31", "--border": "#2A313B", "--border-strong": "#37414C",
   },
 };
 /* The artifact's own names for the same six rungs -- both sets exist because the map
@@ -197,7 +197,7 @@ function gcardRotate(hue, id) {
   return Math.round(d);
 }
 
-/** The `.meridian` surface tokens for one theme/skin. terracotta → today's exact hexes. */
+/** The `.meridian` surface tokens for one theme/skin. terracotta returns the (now cold) base verbatim. */
 function surfaceTokens(hue, skin, id) {
   const out = {};
   for (const [k, hex] of Object.entries(SURFACE_BASE[skin])) {
@@ -214,8 +214,8 @@ function surfaceTokens(hue, skin, id) {
 /** Inks the surface grounds have to keep carrying. From the `.meridian` blocks in
  *  app/globals.css; --text-faint is non-text (3:1) by design, see MASTER.md. */
 const SURFACE_INKS = {
-  light: { text: "#231C16", muted: "#776C60", faint: "#91887C" },
-  dark: { text: "#F3EEE7", muted: "#9B8F81", faint: "#8A8278" },
+  light: { text: "#1A1F26", muted: "#5C6672", faint: "#828A98" },
+  dark: { text: "#EDF1F5", muted: "#8B98A5", faint: "#828C97" },
 };
 
 /* ── the themes. Hue is the whole definition. ────────────────────────────────── */
@@ -248,12 +248,14 @@ const SHIPPING = {
 };
 
 const THEMES = [
+  /* ocean is the default (themes[0]) — a cold accent for the cold ground. terracotta
+     stays in the set, pinned to its shipped warm hexes, for anyone who wants it. */
+  { id: "ocean",      label: "اقیانوسی",   hue: 245, chroma: 1 },
   { id: "terracotta", label: "خاکی",       hue: 42,  chroma: 1, pinned: SHIPPING },
   { id: "gold",       label: "طلایی",      hue: 92,  chroma: 1 },
   { id: "olive",      label: "زیتونی",     hue: 122, chroma: 0.85 },
   { id: "emerald",    label: "زمردی",      hue: 158, chroma: 1 },
   { id: "teal",       label: "فیروزه‌ای",   hue: 195, chroma: 1 },
-  { id: "ocean",      label: "اقیانوسی",   hue: 245, chroma: 1 },
   { id: "indigo",     label: "نیلی",       hue: 278, chroma: 1 },
   { id: "purple",     label: "بنفش",       hue: 312, chroma: 1.1 },
   /* Asked for as raspberry, and 336 is as close to raspberry as this palette can get.

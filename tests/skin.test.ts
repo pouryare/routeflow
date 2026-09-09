@@ -1,5 +1,28 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
 import { THEME_INIT_SCRIPT, SKIN_KEY } from "@/lib/theme";
+
+/** The meridian ground is cold, not the warm cream it started as. Guards against a
+ *  future edit (or a solver regression) quietly warming --bg back up. "Cold" = the
+ *  blue channel is at least as high as the red channel on the default ground, both
+ *  skins. */
+describe("meridian ground temperature", () => {
+  const css = readFileSync("app/globals.css", "utf8");
+  const bgOf = (block: string) => {
+    const m = css.match(new RegExp(`${block}\\s*{[^}]*?--bg:\\s*(#[0-9A-Fa-f]{6})`, "s"));
+    if (!m) throw new Error(`no --bg found in ${block}`);
+    const hex = m[1];
+    return { r: parseInt(hex.slice(1, 3), 16), b: parseInt(hex.slice(5, 7), 16), hex };
+  };
+  it("light default --bg is cold (blue >= red)", () => {
+    const { r, b, hex } = bgOf("\\.meridian");
+    expect(b, `light --bg ${hex}`).toBeGreaterThanOrEqual(r);
+  });
+  it("dark default --bg is cold (blue >= red)", () => {
+    const { r, b, hex } = bgOf(':root\\[data-skin="dark"\\] \\.meridian');
+    expect(b, `dark --bg ${hex}`).toBeGreaterThanOrEqual(r);
+  });
+});
 
 /** The sales scope reads data-skin; the map reads data-theme. One stored preference
  *  drives both, so the two can never disagree — which is the whole reason applyTheme
