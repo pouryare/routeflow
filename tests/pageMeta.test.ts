@@ -76,3 +76,29 @@ describe("every page opens with its overview card", () => {
     expect(missing, `no <PageHeader> on:\n${missing.join("\n")}`).toEqual([]);
   });
 });
+
+/** loading.tsx only does anything because the shell layout is synchronous (see
+ *  tests/shellLayout.test.ts). Given that, every route should have one — a segment
+ *  without one falls back to the nearest ancestor's, which is the wrong page's shape. */
+describe("every page has an instant loading state", () => {
+  const routes = staticRoutes("app/(shell)");
+
+  it("has a loading.tsx beside its page.tsx", () => {
+    const missing = routes.filter((r) => {
+      const src = readFileSync(join("app/(shell)", r, "page.tsx"), "utf8");
+      if (/redirect\(["'`]/.test(src) && !src.includes("PageHeader")) return false;
+      return !existsSync(join("app/(shell)", r, "loading.tsx"));
+    });
+    expect(missing, `no loading.tsx for:\n${missing.join("\n")}`).toEqual([]);
+  });
+
+  it("each loading state shows the real page title, not a grey box", () => {
+    for (const r of routes) {
+      const p = join("app/(shell)", r, "loading.tsx");
+      if (!existsSync(p)) continue;
+      const src = readFileSync(p, "utf8");
+      expect(src, r).toContain("PageHeaderCard");
+      expect(src, r).toContain(`pageMetaFor("${r}")`);
+    }
+  });
+});
