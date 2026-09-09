@@ -121,3 +121,62 @@ describe("DELETE /api/users/[id]/avatar", () => {
     expect(res.status).toBe(403);
   });
 });
+
+const { GET } = await import("@/app/api/users/[id]/avatar/file/route");
+
+describe("GET /api/users/[id]/avatar/file", () => {
+  it("serves the uploaded avatar", async () => {
+    await POST(uploadReq(me, me, PNG_1PX), ctxFor(me));
+    const req = new NextRequest(`http://x/api/users/${me}/avatar/file`, {
+      headers: { cookie: cookie(me, "salesperson") },
+    });
+    const res = await GET(req, ctxFor(me));
+    expect(res.status).toBe(200);
+    expect(res.headers.get("Content-Type")).toBe("image/webp");
+  });
+
+  it("serves avif when asked", async () => {
+    await POST(uploadReq(me, me, PNG_1PX), ctxFor(me));
+    const req = new NextRequest(`http://x/api/users/${me}/avatar/file?format=avif`, {
+      headers: { cookie: cookie(me, "salesperson") },
+    });
+    const res = await GET(req, ctxFor(me));
+    expect(res.headers.get("Content-Type")).toBe("image/avif");
+  });
+
+  it("404s when the user has no avatar", async () => {
+    const req = new NextRequest(`http://x/api/users/${other}/avatar/file`, {
+      headers: { cookie: cookie(me, "salesperson") },
+    });
+    const res = await GET(req, ctxFor(other));
+    expect(res.status).toBe(404);
+  });
+
+  it("a colleague in the same organization can view it", async () => {
+    await POST(uploadReq(me, me, PNG_1PX), ctxFor(me));
+    const req = new NextRequest(`http://x/api/users/${me}/avatar/file`, {
+      headers: { cookie: cookie(other, "salesperson") },
+    });
+    const res = await GET(req, ctxFor(me));
+    expect(res.status).toBe(200);
+  });
+
+  it("a different organization cannot view it", async () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(now);
+    const otherOrgUser = Number(
+      db
+        .prepare(
+          "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('crossorg','x','x','owner',1,?,2)"
+        )
+        .run(now).lastInsertRowid,
+    );
+    await POST(uploadReq(me, me, PNG_1PX), ctxFor(me));
+    const req = new NextRequest(`http://x/api/users/${me}/avatar/file`, {
+      headers: { cookie: cookie(otherOrgUser, "owner", 2) },
+    });
+    const res = await GET(req, ctxFor(me));
+    expect(res.status).toBe(404);
+  });
+});
