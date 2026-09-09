@@ -1859,10 +1859,14 @@ body {
 }
 .navbar__brand { display: flex; align-items: center; gap: 13px; min-width: 0; flex: none; }
 .navbar__groups {
-  display: flex; align-items: center; gap: 2px; margin: 0; padding: 0; list-style: none;
-  flex: 1; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none;
+  /* NOT overflow-x: auto: an ancestor with overflow-x set to anything but visible forces
+     its overflow-y to auto too (CSS Overflow §3), which clips .navbar__dropdown --
+     position:absolute, top:100% below the pill -- to nothing. wrap instead, so a narrow
+     viewport gets a second row rather than a scrollbar that eats the dropdown. Caught by
+     an actual click on a live page: the group pill's dropdown never appeared. */
+  display: flex; flex-wrap: wrap; align-items: center; gap: 2px; row-gap: 4px;
+  margin: 0; padding: 0; list-style: none; flex: 1; justify-content: center; min-width: 0;
 }
-.navbar__groups::-webkit-scrollbar { display: none; }
 .navbar__navgroup { position: relative; }
 .navbar__pill {
   border: 0; background: transparent; cursor: pointer;

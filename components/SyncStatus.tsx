@@ -5,12 +5,22 @@
  *  cannot see is a queue they cannot trust (plan 4.5).
  *
  *  Browser code -- not unit-tested. Mounted once per app surface.
+ *
+ *  Fixed bottom-left -- the same corner components/kargah/Rail.tsx's icon column occupies
+ *  on /sales (fixed, left:18px, reaching to bottom:24px). Left at left-3 there, this
+ *  island's own pill rendered directly on top of Rail's bottom-most icon, later in DOM
+ *  order so it won, and read as a plain rectangle with the icon "missing" behind it.
+ *  Shifted clear of the rail's 52px-wide column wherever Rail is mounted (/sales,
+ *  /settings); pages with no Rail (e.g. /driver) keep the original corner position.
  */
 
+import { usePathname } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { getSyncEngine } from "@/lib/offline/syncEngine";
 import { OFFLINE_OPS } from "@/lib/offline/safety";
 import type { OutboxRecord } from "@/lib/offline/outbox";
+
+const RAILED_PREFIXES = ["/sales", "/settings"];
 
 function since(iso: string | null): string {
   if (!iso) return "هنوز همگام نشده";
@@ -21,6 +31,8 @@ function since(iso: string | null): string {
 }
 
 export default function SyncStatus() {
+  const pathname = usePathname();
+  const railed = RAILED_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
   const [online, setOnline] = useState(true);
   const [records, setRecords] = useState<OutboxRecord[]>([]);
   const [lastSynced, setLastSynced] = useState<string | null>(null);
@@ -73,7 +85,10 @@ export default function SyncStatus() {
   }
 
   return (
-    <div className="fixed bottom-3 left-3 z-40 text-[length:var(--text-xs)]" dir="rtl">
+    <div
+      className={`fixed bottom-3 z-40 text-[length:var(--text-xs)] ${railed ? "left-[90px]" : "left-3"}`}
+      dir="rtl"
+    >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

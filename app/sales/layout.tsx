@@ -6,7 +6,6 @@ import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import ProfileMenu from "@/components/kargah/ProfileMenu";
-import TabPill from "@/components/kargah/TabPill";
 import Navbar from "@/components/kargah/Navbar";
 import Rail from "@/components/kargah/Rail";
 import Chrome from "@/components/kargah/Chrome";
@@ -19,7 +18,12 @@ export const dynamic = "force-dynamic";
 
 /** The sales section's chrome, laid out exactly as the approved artifact draws it:
  *  gradient mark, title with the date beneath, the map chip, the sun/moon toggle, and
- *  the viewer's initial — then the travelling tab pill.
+ *  the viewer's initial.
+ *
+ *  ONE navbar row, not two: Navbar itself renders the six group pills and each one's
+ *  hover/click dropdown -- TabPill's old persistent second row of the same destinations
+ *  was never removed when Navbar absorbed that job, so the two rendered side by side.
+ *  Fixed by dropping TabPill from this layout entirely.
  *
  *  proxy.ts has already refused a driver by the time this renders -- the redirect below
  *  is the belt to its braces, because a coarse gate on a cookie is not an authorisation
@@ -64,8 +68,6 @@ export default async function SalesLayout({ children }: { children: ReactNode })
             />
           }
         />
-
-        <TabPill tabs={tabs} />
         </Chrome>
 
         {/* One entrance for every sales screen — see RevealRoute for why it is not

@@ -10,15 +10,17 @@ export default function GlassFace({
   tint,
   className,
   children,
+  ...rest
 }: {
   tint?: string;
   className?: string;
   children: React.ReactNode;
-}) {
+} & React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
       className={cn("glass-face", className)}
       style={tint ? ({ "--glass-tint": tint } as React.CSSProperties) : undefined}
+      {...rest}
     >
       {children}
     </div>
