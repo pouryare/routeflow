@@ -1832,6 +1832,50 @@ body {
 .seg > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .seg > span[aria-disabled] { color: var(--faint); cursor: default; }
 
+/* ---- single-row navbar -----------------------------------------------------
+   Spec 2026-09-08 §9a: one row, brand at inline-start, groups centred, utility cluster
+   at inline-end -- logical properties only, matching decision 4 (navbar mirroring). */
+.navbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 18px; padding-block: 4px;
+}
+.navbar__brand { display: flex; align-items: center; gap: 13px; min-width: 0; flex: none; }
+.navbar__groups {
+  display: flex; align-items: center; gap: 2px; margin: 0; padding: 0; list-style: none;
+  flex: 1; justify-content: center; min-width: 0; overflow-x: auto; scrollbar-width: none;
+}
+.navbar__groups::-webkit-scrollbar { display: none; }
+.navbar__navgroup { position: relative; }
+.navbar__pill {
+  border: 0; background: transparent; cursor: pointer;
+  padding: 9px 16px; border-radius: 999px;
+  font-family: var(--font-display); font-weight: 700; font-size: 13.5px;
+  color: var(--text-muted); white-space: nowrap;
+  transition: background 160ms var(--ease), color 160ms var(--ease);
+}
+.navbar__pill:hover { color: var(--text); }
+.navbar__pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.navbar__pill--active { background: var(--primary); color: var(--primary-ink); }
+/* Mouse enhancement only -- touch/keyboard rely on the click-toggle in Navbar.tsx. */
+@media (hover: hover) and (pointer: fine) {
+  .navbar__navgroup:hover .navbar__dropdown,
+  .navbar__navgroup:focus-within .navbar__dropdown { display: flex; }
+}
+.navbar__dropdown {
+  position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: 50;
+  display: flex; flex-direction: column; gap: 2px; min-width: 11rem;
+  border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 6px;
+}
+.navbar__dropitem {
+  display: block; padding: 9px 12px; border-radius: var(--r-sm);
+  font-size: 13px; color: var(--ink-2); text-decoration: none; white-space: nowrap;
+  transition: background 160ms var(--ease);
+}
+.navbar__dropitem:hover { background: var(--sunk); color: var(--ink); }
+.navbar__dropitem[data-active="true"] { color: var(--ink); font-weight: 600; background: var(--sunk); }
+.navbar__dropitem--disabled { color: var(--faint); cursor: default; }
+.navbar__utility { display: flex; align-items: center; gap: 9px; flex: none; }
+
 /* ---- sticky auto-hiding chrome -----------------------------------------------
    The brand bar + both nav rows ride in one position:sticky wrapper that slides up out
    of view on a downward scroll and back on an upward one (components/kargah/Chrome.tsx
