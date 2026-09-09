@@ -3730,3 +3730,18 @@ a.ordline:hover { color: var(--accent); }
 @supports not (backdrop-filter: blur(1px)) {
   .glass-face { background: var(--glass-tint, var(--surface)); }
 }
+
+/* ── SegmentedPill ────────────────────────────────────────────────────────────────
+   Own class names (not .seg/.thumb) so this coexists with TabPill without either
+   stylesheet leaking into the other's instances. Same not-ready/ready transition-gate
+   discipline as TabPill: the thumb starts at width:0 with no transition, is measured and
+   placed, THEN gets its transition enabled one frame later -- without this the first
+   paint animates the thumb flying in from nothing instead of appearing already in place. */
+.seg-pill .seg-thumb {
+  inset-inline-start: 0;
+  width: 0;
+  box-shadow: var(--sh-1);
+}
+.seg-pill.ready .seg-thumb {
+  transition: transform var(--dur-slow) var(--spring-pop), width var(--dur-slow) var(--spring-pop);
+}

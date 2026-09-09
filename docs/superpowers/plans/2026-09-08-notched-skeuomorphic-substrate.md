@@ -2600,15 +2600,23 @@ git commit -m "feat: pill form kit -- IconButton, Field, Select, Textarea, Range
 
 ---
 
-### Task 17: `SegmentedPill` and `AvatarStack` numeric badges
+### Task 17: `SegmentedPill` (`AvatarStack` already has numeric badges — confirmed, not built)
 
 **Files:**
 - Create: `components/kargah/SegmentedPill.tsx`
-- Modify: `components/AvatarStack.tsx`
 
 **Interfaces:**
-- Produces: `<SegmentedPill options={{value,label}[]} value onChange />`,
-  `<AvatarStack items={{src?,initial,badge?}[]} />` (badge is new).
+- Produces: `<SegmentedPill options={{value,label}[]} value onChange />`. `AvatarStack`
+  already exports `StackPerson.count?: number`, rendered as a numeric badge — see Step 4.
+
+**Found during execution — `SegmentedPill` also needed a detail this section's original
+draft omitted: transition-gating.** `TabPill.tsx`'s own `.thumb` (the pattern being
+generalized) is placed at `width: 0` with NO transition, THEN gets its transition enabled
+one animation frame later via a `.ready` class — its own comment explains why: without
+this, the first paint animates the thumb flying in from nothing instead of appearing
+already in place. `SegmentedPill` needed the identical two-phase discipline, with its own
+`.seg-pill`/`.seg-thumb` class names (not `.seg`/`.thumb`) so it does not collide with
+`TabPill`'s stylesheet.
 
 **No component-rendering test** (Global Constraints — no `@testing-library/react`/jsdom
 in this repo). Both the "current option marked active" logic and the click-to-select
@@ -2714,51 +2722,23 @@ verification.
 cat components/AvatarStack.tsx
 ```
 
-- [ ] **Step 5: Add a numeric badge, preserving the existing prop shape**
+**Found reading it — nothing to build.** `AvatarStack.tsx` already has numeric badge
+support, done to a higher standard than this step's draft: `StackPerson.count?: number`,
+rendered by the co-located `Avatar()` as a small circle at the bottom-inline-start corner,
+using `var(--accent)`/`text-accent-ink` (already-retinted tokens, not a new `--info` fill
+as this step's draft assumed) — and gated `count > 0`, not merely `!= null`, with a
+comment explaining why a zero badge is worse than no badge (*"draws the eye to say
+nothing"*). This is a real design decision already made correctly; do not water it down
+by switching the gate to loose nullish-checking.
 
-Add an optional `badge?: number | string` field to whatever item type the file already
-exports, and render it as a small circle at each avatar's bottom edge only when present
-— read the existing component's exact prop/type names first (this task cannot supply them
-sight-unseen) and extend rather than rewrite. Example shape of the addition, to be
-adapted to the file's real structure:
+Skip Step 5 entirely — do not add a second, redundant `badge` field beside the existing
+`count`. Steps 4/5 collapse into this one read-and-confirm step.
 
-```typescript
-// added to the existing item type
-badge?: number | string;
-```
-
-```typescript
-// added inside the existing per-avatar render, after the image/initial:
-{item.badge != null && (
-  <span
-    className="absolute -bottom-1 inline-flex h-4 min-w-4 items-center justify-center
-               rounded-full border border-[var(--surface)] bg-[var(--info)]
-               px-1 text-[9px] font-medium text-white"
-  >
-    {item.badge}
-  </span>
-)}
-```
-
-- [ ] **Step 6: Confirm existing `AvatarStack` consumers still build and render the badge**
+- [ ] **Step 5: Commit**
 
 ```bash
-grep -rln "AvatarStack" --include="*.tsx" . | grep -v node_modules
-npm run build 2>&1 | tail -30
-npm run dev &
-sleep 3
-```
-Open a page that already uses `AvatarStack` (from the grep above), confirm existing
-avatars render unchanged (no `badge` passed = no visual change). If any current caller
-can trivially pass a `badge` value, do so temporarily to confirm it renders, then revert
-— this task does not require wiring badges into real data, only that the prop works.
-Stop the dev server.
-
-- [ ] **Step 7: Commit**
-
-```bash
-git add components/kargah/SegmentedPill.tsx components/AvatarStack.tsx
-git commit -m "feat: SegmentedPill generic control; AvatarStack numeric badges"
+git add components/kargah/SegmentedPill.tsx
+git commit -m "feat: SegmentedPill generic control (AvatarStack already had numeric badges)"
 ```
 
 ---
