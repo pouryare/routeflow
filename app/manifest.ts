@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "سامانه فروش، پخش و مدیریت مسیر",
     start_url: "/",
     display: "standalone",
-    background_color: "#0A0E14",
-    theme_color: "#0A0E14",
+    background_color: "#ECEDEF",
+    theme_color: "#ECEDEF",
     dir: "rtl",
     lang: "fa",
     icons: [

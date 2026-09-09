@@ -10,23 +10,24 @@ import { ALL_FONT_VARS } from "@/app/fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "نقشه پوشش مشتریان",
-  description: "نقشه پوشش مناطق و مشتریان",
+  title: "RouteFlow — پخش و فروش",
+  description: "سامانه فروش، پخش و مدیریت مسیر",
 };
 
-/** `colorScheme: "dark light"` -- dark first, because it is the default and the order is
- *  the preference order. It tells the browser to render its own form controls, scrollbars
- *  and autofill against the right ground; without it a light-mode session gets dark
- *  scrollbars and a dark-mode one gets white autofill boxes.
+/** `colorScheme: "light dark"` -- light first, since the 2026-09-08 substrate redesign
+ *  made light the default and the identity. It tells the browser to render its own form
+ *  controls, scrollbars and autofill against the right ground; without it a light-mode
+ *  session gets dark scrollbars and a dark-mode one gets white autofill boxes.
  *
- *  themeColor is the dark value only. Its media-query form follows the OS, which after
- *  first run is exactly what this app deliberately stops doing -- so the live value is
- *  rewritten by applyTheme instead, keeping the phone's status bar in step with the
- *  choice rather than with the operating system.
+ *  themeColor is the light value only, matching the new default. Its media-query form
+ *  follows the OS, which for anyone whose stored preference is "auto" is exactly what
+ *  this app now DOES want live -- but /driver still pins regardless (see lib/theme.ts),
+ *  so the live value is rewritten by applyResolvedTheme instead, keeping the phone's
+ *  status bar in step with the resolved choice rather than the OS alone.
  */
 export const viewport: Viewport = {
-  colorScheme: "dark light",
-  themeColor: "#0a0e14",
+  colorScheme: "light dark",
+  themeColor: "#ECEDEF",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

@@ -1,0 +1,20 @@
+
+> routeflow@0.1.0 test
+> vitest run
+
+
+ RUN  v4.1.10 /root/pourya/RouteFlow
+
+
+ Test Files  236 passed (236)
+      Tests  1869 passed | 1 skipped (1870)
+   Start at  22:17:30
+   Duration  193.87s (transform 5.68s, setup 0ms, import 28.87s, tests 107.01s, environment 48ms)
+
+npm notice
+npm notice New major version of npm available! 11.16.0 -> 12.0.2
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v12.0.2
+npm notice To update run: npm install -g npm@12.0.2
+npm notice
+
+[exited with code 0]

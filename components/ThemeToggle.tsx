@@ -2,27 +2,35 @@
 
 import { useEffect, useId, useState } from "react";
 import {
-  DEFAULT_THEME,
+  ResolvedTheme,
   THEME_CHANGE_EVENT,
-  Theme,
-  applyTheme,
+  applyResolvedTheme,
+  isDriverRoute,
   readTheme,
+  resolveTheme,
 } from "@/lib/theme";
 
-/** Reads the chosen theme and keeps every mounted copy of the control in step.
+/** Reads the RESOLVED (light/dark) theme and keeps every mounted copy of the control in
+ *  step. This control is a binary toggle, not the three-state auto/light/dark control --
+ *  it always resolves "auto" down to a concrete value for display, and every explicit
+ *  click writes a concrete value, never "auto". Spec's deferred ThemeToggle3 is where
+ *  "auto" becomes choosable again.
  *
  *  Same shape as useNavApp: localStorage fires no event in the tab that wrote it, so the
  *  custom event carries same-tab changes and the storage event carries other tabs.
  */
-export function useTheme(): [Theme, (t: Theme) => void] {
-  // Starts at the default rather than at the stored value, because the server rendered
-  // the default and disagreeing with it here is a hydration mismatch. The real value
-  // arrives in the effect below, one frame later -- by which point the inline init script
-  // has already painted the correct colours, so nothing visible is waiting on this.
-  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
+export function useTheme(): [ResolvedTheme, (t: ResolvedTheme) => void] {
+  // Starts at "light" rather than reading storage synchronously, because the server
+  // rendered the default and disagreeing with it here is a hydration mismatch. The real
+  // value arrives in the effect below, one frame later -- by which point the inline init
+  // script has already painted the correct colours, so nothing visible is waiting on this.
+  const [theme, setThemeState] = useState<ResolvedTheme>("light");
 
   useEffect(() => {
-    const read = () => setTheme(readTheme());
+    const read = () => {
+      const prefersLight = window.matchMedia?.("(prefers-color-scheme: light)").matches ?? true;
+      setThemeState(resolveTheme(readTheme(), prefersLight, isDriverRoute(location.pathname)));
+    };
     read();
     window.addEventListener(THEME_CHANGE_EVENT, read);
     window.addEventListener("storage", read);
@@ -32,7 +40,7 @@ export function useTheme(): [Theme, (t: Theme) => void] {
     };
   }, []);
 
-  return [theme, applyTheme];
+  return [theme, applyResolvedTheme];
 }
 
 /** Sun ⇄ moon, as a morph rather than an icon swap.
