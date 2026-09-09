@@ -7,42 +7,14 @@
  *  unit-tested, per repo convention.
  */
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { faNum } from "@/lib/format";
+import { useUnreadCount } from "@/lib/useUnreadCount";
 import NotificationCenter from "./NotificationCenter";
 
 export default function NotificationBell() {
-  const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
-  const [authed, setAuthed] = useState(true);
-
-  // Poll the unread count on an interval so the badge stays live without a socket.
-  useEffect(() => {
-    let alive = true;
-    async function tick() {
-      try {
-        const res = await fetch("/api/notifications");
-        if (!alive) return;
-        if (!res.ok) {
-          // 401 (logged out) or 403 (role not permitted) -> the bell has nothing to show.
-          if (res.status === 401 || res.status === 403) setAuthed(false);
-          return;
-        }
-        if (res.ok) {
-          const j = await res.json();
-          setUnread(j.unread ?? 0);
-        }
-      } catch {
-        /* transient; next tick retries */
-      }
-    }
-    void tick();
-    const h = setInterval(tick, 60_000);
-    return () => {
-      alive = false;
-      clearInterval(h);
-    };
-  }, []);
+  const { unread, authed, setUnread } = useUnreadCount();
 
   if (!authed) return null;
 
