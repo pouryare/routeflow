@@ -87,8 +87,40 @@ brief calls out:
 | 9 | **Rename `kargah` → `meridian`** (کارگاه "workshop" no longer describes a cold system). `.meridian` scope class, `components/meridian/`, `MASTER.md` title/prose. Mechanical, whole-repo; done in step 1 before new files land so nothing is written twice. If a better name is wanted later it is one more rename. |
 | 10 | **Palette warm → cold.** Cool off-white ground (`--bg` ≈ `#F1F3F6`, `--surface` `#FFFFFF`, sunk/border tokens shifted from warm-grey to blue-grey), cool near-black dark ground (`--bg` ≈ `#0F1214`). **Default accent moves from خاکی (terracotta) to a cold theme** — `اقیانوسی` (ocean) as the pick, with `گرافیت` as the neutral fallback. `scripts/gen-accent-themes.mjs` + `scripts/check-contrast.mjs` are re-run; the build gate is **`npm run check:contrast` green** (260 pairs). Status hues (`--good/--warn/--crit/--info`) keep their meanings; only their values are re-tuned against the new grounds if a pair drops below gate. |
 | 11 | **Bare routes wear the palette, not the shell.** `app/(bare)/layout.tsx` applies the `.meridian` scope class + the theme/accent/font init scripts, so `/driver`, `/login`, `/offline`, `/today` render in the same colours, type and radii — but **no header, no pill, no `PageHeaderCard`, no carved-bay notches, no entrance choreography**. The context (a moving vehicle, a login card) keeps its stripped, purpose-built layout. |
+| 12 | **The document-pocket card is a preserved, promoted device.** The stacked "two documents tucked behind the main card, fanning on hover" effect (`components/pocket/Pocket.tsx`, `OrderPocketCard`; `MASTER.md` "Document pocket card") is **kept exactly as-is** — the card-standardisation and kill-accent-lines sweeps must not flatten it. It is also **extracted into a reusable `<PocketCard>`** and applied wherever a record is really a folder of 1–3 artifacts (see "Preserved & promoted devices" below). It is *not* used for plain data rows. |
 
 ---
+
+## Preserved & promoted devices
+
+The re-temperature and the standardisation sweeps change colour and consolidate
+chrome — they must **not** erase the personality devices `MASTER.md` names. One in
+particular is explicitly protected and extended:
+
+**Document-pocket card** (`components/pocket/Pocket.tsx` → extract to
+`components/meridian/PocketCard.tsx`). A primary card face with 1–3 supporting
+documents stacked behind it, their colour glowing through a frosted edge, fanning
+out on hover / focus. Keep the current look and motion verbatim; only re-point its
+colours at the cold tokens. Then reuse `<PocketCard>` where a record genuinely *is*
+a small folder of artifacts:
+
+| Surface | Primary face | Tucked behind |
+|---|---|---|
+| `/sales/orders` (today) | the order | receipt, invoice — **unchanged** |
+| `/sales/payments` · cheques | the cheque record | cheque scan, linked payment |
+| `/sales/runs` · deliveries | the run/stop | manifest, proof-of-delivery photo |
+| `/sales/complaints` | the complaint | attached photos, resolution note |
+| `/sales/batches` | the batch | QC sheet, production record |
+| `/sales/stock` purchases | the purchase order | supplier invoice, goods-receipt note |
+| `/leads` | the lead | site photos, business-card capture |
+| customer detail | the customer | contract, current price agreement |
+| `/report` | the report | its exported PDF / CSV artifact |
+
+Rule (mirrors the spring-stagger discipline): the pocket is for records that own
+documents. A metric, a status, a name is a plain `Card`, never a pocket — a hundred
+pockets reads as cheap the same way a hundred springs does. Rollout of the reuse
+sites beyond `/sales/orders` is **Part 2** (or later slices for non-shell-critical
+surfaces); this spec's job is to protect the device and name the pattern.
 
 ## Approaches considered
 
