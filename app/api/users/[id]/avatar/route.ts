@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import sharp from "sharp";
-import { getDb, Photo } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
+import { deleteUserAvatar, replaceUserAvatar } from "@/lib/repo/avatars";
 
 const MAX_UPLOAD_BYTES = 8 * 1024 * 1024; // a phone selfie, not a DSLR RAW
 
@@ -64,34 +64,15 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/users/[id]/
   await fs.writeFile(photoFilePath(stem, "avif"), avifBuffer);
   await fs.writeFile(photoFilePath(stem, "webp"), webpBuffer);
 
-  const db = getDb();
   const now = new Date().toISOString();
-  const prior = db
-    .prepare("SELECT file_stem FROM photos WHERE entity_type='user' AND entity_id=?")
-    .get(targetId) as { file_stem: string } | undefined;
-
-  let insertedId: number;
-  db.exec("BEGIN");
-  try {
-    db.prepare("DELETE FROM photos WHERE entity_type='user' AND entity_id=?").run(targetId);
-    const result = db
-      .prepare(
-        "INSERT INTO photos (entity_type, entity_id, file_stem, taken_at, created_at) VALUES ('user', ?, ?, ?, ?)"
-      )
-      .run(targetId, stem, now, now);
-    insertedId = Number(result.lastInsertRowid);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  const { id: insertedId, priorFileStem } = replaceUserAvatar(targetId, stem, now);
 
   // Best-effort cleanup of the file this row replaced -- never lets a storage-cleanup
   // failure fail the request that already succeeded in the database.
-  if (prior) {
+  if (priorFileStem) {
     await Promise.all([
-      fs.unlink(photoFilePath(prior.file_stem, "avif")).catch(() => {}),
-      fs.unlink(photoFilePath(prior.file_stem, "webp")).catch(() => {}),
+      fs.unlink(photoFilePath(priorFileStem, "avif")).catch(() => {}),
+      fs.unlink(photoFilePath(priorFileStem, "webp")).catch(() => {}),
     ]);
   }
 
@@ -107,13 +88,9 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/users/[id
   const guard = guardSelf(req, targetId);
   if (!guard.ok) return guard.response;
 
-  const db = getDb();
-  const row = db
-    .prepare("SELECT * FROM photos WHERE entity_type='user' AND entity_id=?")
-    .get(targetId) as Photo | undefined;
+  const row = deleteUserAvatar(targetId);
   if (!row) return NextResponse.json({ ok: true }); // nothing to delete -- harmless no-op
 
-  db.prepare("DELETE FROM photos WHERE id = ?").run(row.id);
   await Promise.all([
     fs.unlink(photoFilePath(row.file_stem, "avif")).catch(() => {}),
     fs.unlink(photoFilePath(row.file_stem, "webp")).catch(() => {}),

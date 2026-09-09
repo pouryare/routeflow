@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
-import { getDb, Photo, UserRow } from "@/lib/db";
 import { getSession } from "@/lib/session";
 import { photoFilePath } from "@/lib/photos";
 import { canViewUserAvatar } from "@/lib/avatarAccess";
+import { getUserAvatar, getUserOrgId } from "@/lib/repo/avatars";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/users/[id]/avatar/file">) {
   const session = getSession(req);
@@ -15,15 +15,12 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/users/[id]/a
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
 
-  const db = getDb();
-  const target = db.prepare("SELECT * FROM users WHERE id = ?").get(targetId) as UserRow | undefined;
-  if (!target || !canViewUserAvatar(session, target.organization_id)) {
+  const targetOrgId = getUserOrgId(targetId);
+  if (targetOrgId === undefined || !canViewUserAvatar(session, targetOrgId)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  const row = db
-    .prepare("SELECT * FROM photos WHERE entity_type='user' AND entity_id=?")
-    .get(targetId) as Photo | undefined;
+  const row = getUserAvatar(targetId);
   if (!row) return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
 
   const format = new URL(req.url).searchParams.get("format") === "avif" ? "avif" : "webp";
