@@ -21,12 +21,17 @@ is not yet fully shipped says so:
 
 Read this before making a layout decision — it settles most of them.
 
-| Surface | Routes | What it is |
+The app is split by **shell**, not by subject. `app/(shell)/` wears the header, the nav
+pill and the page-overview card; `app/(bare)/` wears the palette and nothing else.
+
+| Group | Routes | What it is |
 |---|---|---|
-| **CRM / ERP** (primary) | `/sales/*`, `/leads`, `/analytics`, `/report` | Order-to-cash, leads, stock, purchasing, commission. Dense records, boards, tables, charts. |
-| **Field** | `/driver`, `/planner` | One thumb, in a moving vehicle. Big targets, minimal chrome. |
-| **Map** | `/`, `/facilities`, `/gallery` | Spatial view of the same records. |
-| **Admin** | `/admin/*`, `/login` | Low-traffic, plain. |
+| **Shell** — CRM / ERP (primary) | `/sales/*`, `/leads`, `/report`, `/analytics` | Order-to-cash, leads, stock, purchasing, commission. Dense records, boards, tables, charts. |
+| **Shell** — spatial | `/map`, `/facilities`, `/gallery`, `/planner` | The same records, placed. `/map` is the only true canvas and is pinned dark; the other three are record pages that follow the skin. |
+| **Shell** — settings | `/settings/*` | Low-traffic, plain, but part of the app. |
+| **Bare** | `/driver`, `/login`, `/offline`, `/today` | One thumb in a moving vehicle, or a login card. Same palette, type and radii; **no chrome at all**. |
+
+`/` is a redirect router that renders nothing, so it sits outside both groups.
 
 The map is no longer "the uncontested hero." It is the spatial *view* of records that
 also have board, table and schedule views. Design the record first; the map renders it.
@@ -57,7 +62,10 @@ is daylight from the north — even, cool, never the warm slant of late afternoo
 `/sales` are standing in a shop in daylight with a phone, or at a desk; a near-black
 screen is worst exactly where the work happens. Dark is a first-class equal — same
 tokens, own palette, own contrast budget, its own gradient mixes — and it is what the
-app looks like at night. The map keeps its own dark identity and is out of scope here.
+app looks like at night. The map **canvas** keeps its own dark identity whatever skin is
+chosen — two thousand lines of map chrome are tuned for a near-black ground — but the
+header above it and the design tokens are unified across it. That is one attribute,
+`[data-surface="map"]`, on one route.
 
 Three devices carry the personality, and they are the reason this reads as designed
 rather than themed:
@@ -83,6 +91,13 @@ and starts reading as lag, so item eleven onward shares item ten's delay.
 
 Everything degrades cleanly under `prefers-reduced-motion`: the entrance becomes an
 immediate paint, not a slow one.
+
+**Two motion layers, one set of values.** The entrance choreography (RevealRoute,
+RouteFade) is pure CSS and stays that way — it is deterministic, fires on every
+navigation, and needs no JavaScript to be correct. Interactive motion added since
+(the nav popover, the help panel) uses `framer-motion`, with `lib/motion.ts` restating
+the curves and durations above in its units so nothing hand-rolls a value. A change to
+the tables above is a change in both places.
 
 ---
 

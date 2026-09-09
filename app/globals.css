@@ -1580,7 +1580,7 @@ body {
      theme value into the generated block below. */
   --gcard-hue-rotate: 0deg;
   --gcard-ink: #1A1F26;
-  --gcard-k: rgba(35,28,22,.68);
+  --gcard-k: rgba(26,31,38,.68);
   --gcard-chip: rgba(255,255,255,.62);
   --gcard-chip-ink: #3F5B3B;
   --gcard-chip-sky: #2C5468;
@@ -1593,7 +1593,7 @@ body {
   --ev-a-ink: #8E3A17; --ev-b-ink: #3B5537; --ev-c-ink: #255670;
   --notice-ink: #7A5409;
   --tick-ink: #FFFFFF;
-  --island-bg: #191410; --island-ink: #F7F2EC; --island-sub: #B9AEA2; --island-edge: transparent;
+  --island-bg: #14181D; --island-ink: #EFF3F7; --island-sub: #AEB6C0; --island-edge: transparent;
 
   --fa: var(--font-fa), system-ui, sans-serif;
   --en: var(--font-en), system-ui, sans-serif;
@@ -1705,21 +1705,21 @@ body {
   --plum: #B79EEA;  --plum-soft: #2A2337;
   --sky: #83B9DC;   --sky-soft: #1B2A34;
 
-  --gcard-ink: #F7F2EC;
-  --gcard-k: rgba(247,242,236,.72);
+  --gcard-ink: #EFF3F7;
+  --gcard-k: rgba(239,243,247,.72);
   --gcard-chip: rgba(0,0,0,.30);
   --gcard-chip-ink: #B6D9AD;
   --gcard-chip-sky: #A7CFE8;
   --gcard-chip-amber: #EFC580;
   --gcard-glass: rgba(0,0,0,.26);
-  --frost: rgba(38,32,27,.62);
+  --frost: rgba(23,27,32,.62);
   --frost-edge: rgba(255,255,255,.07);
   --track: #232A31;
   --serie-b: #6E93B4;
   --ev-a-ink: #F0A183; --ev-b-ink: #AED4A5; --ev-c-ink: #9CC8E4;
   --notice-ink: #E8C489;
   --tick-ink: #152110;
-  --island-bg: #2A231D; --island-ink: #F7F2EC; --island-sub: #B9AEA2; --island-edge: rgba(255,255,255,.10);
+  --island-bg: #202730; --island-ink: #EFF3F7; --island-sub: #AEB6C0; --island-edge: rgba(255,255,255,.10);
 
   --sh-1: 0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6);
   --sh-2: 0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7);

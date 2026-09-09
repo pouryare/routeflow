@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -225,7 +226,9 @@ export default async function AnalyticsPage() {
   const generatedAt = faDateTime(now.toISOString());
 
   return (
-    <div dir="rtl" className="min-h-screen bg-bg p-4 sm:p-6">
+    <>
+    <PageHeader route="/analytics" />
+    <div dir="rtl" className="pagewrap">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <div className="flex items-center justify-between">
           <Link
@@ -405,6 +408,6 @@ export default async function AnalyticsPage() {
           </section>
         )}
       </div>
-    </div>
+    </div>    </>
   );
 }
