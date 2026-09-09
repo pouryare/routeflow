@@ -3100,87 +3100,6 @@ export function getDb(): DatabaseSync {
   // Fold existing customer reminders into the tasks spine (once, guarded).
   backfillReminderTasks(db);
 
-  // User avatars (2026-09-09): widen photos' entity_type CHECK to also accept 'user',
-  // reusing the existing storage/upload pipeline rather than a second one. SQLite
-  // cannot ALTER a CHECK constraint in place -- same rebuild-and-rename idiom as the
-  // Phase 1 'payment' widening above (which this one stacks on top of: the live CHECK
-  // by this point is already ('district','customer','payment'), not the two-value set
-  // an earlier design read of this table assumed -- found by a failing test, not by
-  // re-reading this file closely enough the first time).
-  const photosUserSchema = db
-    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='photos'")
-    .get() as { sql: string } | undefined;
-  if (photosUserSchema && !photosUserSchema.sql.includes("'user'")) {
-    db.exec("PRAGMA foreign_keys = OFF;");
-    db.exec("BEGIN");
-    try {
-      db.exec(`
-        CREATE TABLE photos_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'payment', 'user')),
-          entity_id INTEGER NOT NULL,
-          file_stem TEXT UNIQUE NOT NULL,
-          caption TEXT,
-          taken_at TEXT NOT NULL,
-          created_at TEXT NOT NULL
-        );
-        INSERT INTO photos_new SELECT id, entity_type, entity_id, file_stem, caption, taken_at, created_at FROM photos;
-        DROP TABLE photos;
-        ALTER TABLE photos_new RENAME TO photos;
-        CREATE INDEX IF NOT EXISTS idx_photos_entity ON photos(entity_type, entity_id, taken_at);
-      `);
-      db.exec("COMMIT");
-    } catch (e) {
-      db.exec("ROLLBACK");
-      throw e;
-    } finally {
-      db.exec("PRAGMA foreign_keys = ON;");
-    }
-  }
-  // A user has at most one avatar row at a time -- upload replaces rather than
-  // accumulates (unlike a customer's photo gallery, or a payment's receipt, both of
-  // which are meant to grow). The app layer also deletes-then-inserts inside one
-  // transaction on upload; this index is the real guarantee against a race between two
-  // concurrent uploads for the same user.
-  db.exec(
-    `CREATE UNIQUE INDEX IF NOT EXISTS idx_photos_user_singleton
-       ON photos(entity_id) WHERE entity_type = 'user'`
-  );
-
-  // Complaint resolution workflow (2026-09-09): a fixed, seeded, app-wide step palette
-  // and a task-to-task edge table. Neither carries organization_id -- templates are
-  // global (no admin CRUD, spec 2026-09-08 §15 decision 6), edges reach their tenant
-  // through the tasks they connect, same as order_lines through orders. See
-  // tests/tenancy-schema.test.ts's exempt set.
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS workflow_step_templates (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      key TEXT UNIQUE NOT NULL,
-      label_fa TEXT NOT NULL,
-      sort_order INTEGER NOT NULL DEFAULT 0
-    );
-    CREATE TABLE IF NOT EXISTS workflow_edges (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      from_task_id INTEGER NOT NULL REFERENCES tasks(id),
-      to_task_id INTEGER NOT NULL UNIQUE REFERENCES tasks(id),
-      created_at TEXT NOT NULL
-    );
-    CREATE INDEX IF NOT EXISTS idx_workflow_edges_from ON workflow_edges(from_task_id);
-  `);
-
-  const WORKFLOW_STEP_SEED: { key: string; label_fa: string; sort_order: number }[] = [
-    { key: "initial_review", label_fa: "بررسی اولیه", sort_order: 1 },
-    { key: "lab_check", label_fa: "آزمایش و بررسی فنی", sort_order: 2 },
-    { key: "customer_contact", label_fa: "تماس با مشتری", sort_order: 3 },
-    { key: "resolution", label_fa: "تعویض یا جبران", sort_order: 4 },
-    { key: "customer_notify", label_fa: "اطلاع‌رسانی نتیجه", sort_order: 5 },
-    { key: "satisfaction_call", label_fa: "تماس رضایت‌سنجی", sort_order: 6 },
-  ];
-  const insertStep = db.prepare(
-    "INSERT INTO workflow_step_templates (key, label_fa, sort_order) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM workflow_step_templates WHERE key = ?)"
-  );
-  for (const s of WORKFLOW_STEP_SEED) insertStep.run(s.key, s.label_fa, s.sort_order, s.key);
-
   _db = db;
   return db;
 }
@@ -3236,18 +3155,13 @@ export interface District {
 export type EntityType = "district" | "customer";
 
 /** visit_plans alone accepts a facility: a restock stop at the warehouse is a genuine
- *  leg of the day's route, unlike a reminder, which is always attached to a district or
- *  a customer. Kept as its own union so widening the route model does not quietly
- *  loosen every other entity reference in the schema. */
+ *  leg of the day's route, unlike a reminder or a photo, which are always attached to a
+ *  district or a customer. Kept as its own union so widening the route model does not
+ *  quietly loosen every other entity reference in the schema. */
 export type PlanEntityType = EntityType | "facility";
 /** What activity_log accepts. Same widening as PlanEntityType, for the same reason. */
 export type LoggableEntityType = PlanEntityType;
 export const PLAN_ENTITY_TYPES: PlanEntityType[] = ["district", "customer", "facility"];
-/** What the photos table itself accepts -- wider than EntityType (a receipt photo can
- *  be 'payment', a profile picture is 'user'), but neither of those belongs on a
- *  reminder or in the activity log, so this does not fold into PlanEntityType/
- *  LoggableEntityType the way "facility" does. */
-export type PhotoEntityType = EntityType | "payment" | "user";
 
 export interface ActivityEntry {
   id: number;
@@ -3276,7 +3190,7 @@ export interface Reminder {
 
 export interface Photo {
   id: number;
-  entity_type: PhotoEntityType;
+  entity_type: EntityType;
   entity_id: number;
   file_stem: string;
   caption: string | null;

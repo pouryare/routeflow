@@ -3,16 +3,17 @@
 Canonical source of truth. Every color, font, spacing, radius, elevation and motion
 value in the app comes from this file. No magic numbers in components.
 
-> **2026-09-08.** This document's *rules* were superseded by direct user instruction —
-> the notched, skeuomorphic, cool+black substrate described below is not derived from
-> anything that came before it, and is not open to argument from an earlier version of
-> this file. It is kept up to date as a description of the app's actual design system,
-> not as a source of constraints competing with new instructions. See
-> `docs/superpowers/specs/2026-09-08-notched-skeuomorphic-substrate-design.md` and
-> `docs/superpowers/plans/2026-09-08-notched-skeuomorphic-substrate.md`.
+**Status markers.** This file describes a system mid-migration, so every section that
+is not yet fully shipped says so:
+`SHIPPED` in the app now · `TARGET` agreed, not yet built · `CHANGED` replaces an MVP rule.
 
-**Status markers.** `SHIPPED` in the app now · `TARGET` agreed, not yet built ·
-`CHANGED` replaces the previous (کارگاه/warm-workshop) rule.
+> **What changed from the MVP.** The first version of this file described a single-world
+> dark map console. Two things about the product turned out differently: the CRM/ERP
+> surfaces (orders, leads, runs, stock, commission) are the daily work, not the map, and
+> the app is used both in a vehicle at night and at a desk in daylight. So the system now
+> carries **two themes**, and its component vocabulary is built around **records, boards
+> and schedules** first, with the map as one surface among several rather than the hero
+> everything else defers to.
 
 ---
 
@@ -27,235 +28,248 @@ Read this before making a layout decision — it settles most of them.
 | **Map** | `/`, `/facilities`, `/gallery` | Spatial view of the same records. |
 | **Admin** | `/admin/*`, `/login` | Low-traffic, plain. |
 
-The substrate below reaches every route in this table **except the map's own tile
-canvas** — the map's basemap declares its own ground (dark/light) and is out of scope for
-this palette; the map's surrounding chrome (sidebar, panels, controls) is in scope like
-everywhere else.
+The map is no longer "the uncontested hero." It is the spatial *view* of records that
+also have board, table and schedule views. Design the record first; the map renders it.
 
 ## Visual thesis `CHANGED`
 
-**Machined — cut metal and white paper, not a warm workshop.**
+**کارگاه — a warm workshop, not an instrument panel.**
 
-The previous thesis was «کارگاه — a warm workshop»: cream ground, terracotta accent,
-warmth as the differentiator. It is retired. The new ground is a cool neutral grey and
-the surfaces on it are pure white cards that look **milled** — physically cut, lit from
-above, with a bright inner edge where the cut catches the light and a soft shadow
-underneath where it lifts off the ground. Primary actions are solid near-black pills.
-Colour appears almost nowhere in the chrome; it is reserved for data and status, which is
-what makes the data read.
+The MVP called this "a precise, information-dense operations console that reads as
+instrument panel." That was built and shipped and is exactly what got rejected: three
+successive redesigns handed back the same dark-navy-and-cyan console, because every one
+of them was executed faithfully against the sentence above. A redesign that does not
+replace the thesis cannot happen. This is the replacement.
 
-**Light is the default and the identity.** No `data-theme` (and no stored preference)
-means light. Dark is a first-class equal — same tokens, own palette, own contrast budget
-— reachable by an explicit choice or by `auto` following the OS live. The map keeps its
-own dark identity and is out of scope here.
+The sales section is a **workshop bench**, not a cockpit. Warm off-white ground, white
+surfaces lifted by real shadow, generous radii, and a terracotta accent — warm where
+every other operations tool in the category is cold blue-grey. Numbers stay tabular and
+figures stay honest; what changes is that the app stops performing seriousness at the
+reader and starts being comfortable to stand in front of for eight hours.
 
-Four devices carry the personality:
+**Light is the default and the identity.** This inverts the MVP. The people who use
+`/sales` are standing in a shop in daylight with a phone, or at a desk; a near-black
+screen is worst exactly where the work happens. Dark is a first-class equal — same
+tokens, own palette, own contrast budget, its own gradient mixes — and it is what the
+app looks like at night. The map keeps its own dark identity and is out of scope here.
 
-1. **Cards are notched.** A rounded rectangle is *subtracted* from a card's edge, leaving
-   a stepped profile with a concave inner corner. Icons, avatar clusters and
-   sub-navigation are seated in the bay that removal opens. See **Notch system** below.
-2. **Surfaces are physical.** A bright 1px inner edge along the top, a layered soft
-   shadow beneath, a fine directional grain across the face, and (where wired up) a
-   specular highlight that tracks the pointer and a perspective tilt toward the cursor.
-3. **Documents live in pockets.** An order is not a row; it is a card with its receipt
-   and delivery note tucked behind it, peeking at rest and fanning out on hover. **This
-   pattern is load-bearing brand identity and must never be diluted or removed** — see
-   **Pocket patterns** below for its three live forms.
-4. **Kit primitives are physical, not flat.** Pills everywhere (buttons, tabs, inputs,
-   sliders), circular icon buttons, milled-edge highlights on interactive surfaces.
+Three devices carry the personality, and they are the reason this reads as designed
+rather than themed:
+
+1. **Documents live in pockets.** An order is not a row; it is a card with its receipt
+   and invoice tucked behind it, their colour glowing through a frosted face. Hover and
+   they fan out.
+2. **Cards have bays cut out of them.** A rounded rectangle is *subtracted* from a card's
+   corner and the avatars of the people involved sit in the space it opens.
+3. **Everything arrives.** Sections enter in a staggered sequence; a chart draws its own
+   line and drops its points one at a time.
 
 ## Interaction thesis `CHANGED`
 
-Physical and quiet by default, with tilt/glow reserved for surfaces that earn it.
-Delegated pointer tracking, never per-card React state: one listener per container writes
-`--mx`/`--my` custom properties onto whichever single element is under the pointer, so a
-40-card board costs exactly one listener and one element's style write per frame,
-regardless of board size.
+Warm and physical. Surfaces lift toward the pointer on a soft spring rather than
+snapping; a dragged card tilts and casts a real shadow; a state change is announced by
+the island rather than by a colour quietly changing under the reader.
 
-- **Tilt + glow are desktop-only** (`hover: hover` and `pointer: fine`) and reserved for
-  surfaces deliberately wired up via `TiltCard`/`GlowSurface` — not a blanket effect
-  applied to every element automatically. `/driver` never opts in.
-- **`prefers-reduced-motion` disables all of it** — both the CSS media query and the hook
-  itself gate on it. This is an accessibility floor, not a house-style preference, and
-  survives any future taste change.
-- **RTL-correct by construction.** `--tilt-dir` flips `rotateY`'s sign so a card leans
-  toward the cursor, never away from it, regardless of writing direction.
+Two rules keep it from becoming a toy. **Choreography over animation** — twenty elements
+entering in sequence reads as expensive, a hundred springing independently reads as
+cheap. And **the stagger is capped**: past ten items a sequence stops reading as rhythm
+and starts reading as lag, so item eleven onward shares item ten's delay.
+
+Everything degrades cleanly under `prefers-reduced-motion`: the entrance becomes an
+immediate paint, not a slow one.
 
 ---
 
 ## Theme architecture `SHIPPED`
 
-One token system, one API. Components never branch on theme — they consume
-`var(--surface)`, `var(--text-muted)`, `var(--primary)` and get the right answer in
-every state.
+Two themes, **one token API**. Components never branch on theme — they consume
+`var(--surface)`, `var(--elev-2)`, `var(--text-muted)` and get the right answer in both
+worlds. If a component needs an `if (theme === 'light')`, the token layer is missing
+something; add the token instead.
 
 ```css
-:root { /* light — the default and the identity */ }
-:root[data-theme="dark"] { /* dark — every token redefined, none inherited */ }
+:root { /* dark — the default and the identity */ }
+:root[data-theme="light"] { /* light — every token redefined, none inherited */ }
 ```
 
 Rules:
 
-- **Light is the default.** Bare `:root` is light. `:root[data-theme="dark"]` is dark.
-- **Three stored states, not two:** `auto` (follows `prefers-color-scheme` live via
-  `matchMedia`), `light`, `dark`. `auto` is the default when nothing is stored.
-- **`/driver` never auto-follows.** A moving vehicle must not change theme because the OS
-  flipped under the driver's thumb — it pins to the last explicit choice, defaulting dark
-  if none exists. Every other route follows `auto` live.
-- **Every token is redefined in the dark block.** None inherit. A token defined only in
-  one block is a bug that shows up as an invisible element in the other.
-- **`data-theme` is always written explicitly**, for both resolved values — several rules
-  (`.elevate-*`, `.theme-toggle__*`, `.tiles-quiet`) key on `[data-theme="light"]` being
-  *present*, not merely on the absence of `data-theme="dark"`.
-- **`data-skin` mirrors `data-theme`**, written from the same place — the accent-theme
-  generator's map-relevant dark variants (see below) still key on `data-skin="dark"` and
-  have not been migrated; this keeps the two from drifting apart rather than fighting a
-  second migration inside this one.
-- **The toggle is a two-state sun/moon switch today** (`components/ThemeToggle.tsx`) —
-  always resolves `auto` to a concrete value for display and writes an explicit choice on
-  click, never `auto`. A three-state auto/light/dark control is deferred to the shell
-  sub-project.
-- **The map follows its basemap, not the skin** — unchanged from before this redesign.
-  Each basemap declares a `ground` (`dark`/`light`) that decides district strokes, zone
-  rings and cluster bubbles independent of `data-theme`.
-- **`lib/design/resolveTheme`** is the one pure function this all runs through:
-  `resolveTheme(stored, prefersLight, isDriverRoute) → "light" | "dark"`. Unit-tested,
-  not re-derived per call site.
+- **Dark is the default.** No `data-theme` attribute means dark. `prefers-color-scheme`
+  is consulted **only on first visit** to pick the initial value; after that the user's
+  explicit choice is persisted and wins. A field app must not flip theme under someone
+  at sunset because the OS did.
+- **Every token is redefined in the light block.** None inherit. A token defined only in
+  the dark block is a bug that shows up as an invisible element in light mode.
+- **The toggle is a sun/moon switch in the header**, reachable from every screen. It is
+  also mirrored in settings. The switch animates as a morph, not a swap: the sun's rays
+  retract as the disc slides and a shadow bite crescents it into a moon, on
+  `--spring-snap` / `--dur-base`. It carries `aria-pressed` and a text label for screen
+  readers -- the icon alone does not say which mode you are about to enter.
+- **The map follows its basemap, not the skin.** The two used to be the same thing. With
+  a basemap catalogue holding both near-black and cream styles they are not: each basemap
+  declares a `ground` (`dark`/`light`), and that — not `data-theme` — decides the district
+  strokes (`MAP_INK`), the zone rings, the corridor band, the cluster bubbles and the
+  names overlay. Choosing a cream basemap on the dark skin lightens the map's ink and
+  leaves the surrounding UI alone. Status hues (`--good`/`--warn`/`--crit`) never move:
+  they mean the same thing on `/report`, and only their opacity is tuned per ground.
 
 ## Color `CHANGED`
 
 Same semantic roles in both themes; different values. Status meaning never moves.
-Every figure below is computed by `scripts/check-contrast.mjs`, not eyeballed.
+Every figure below is computed, not eyeballed — see `scripts/check-contrast.mjs`.
 
 ### Light (default)
 
 | Token | Hex | vs `--bg` | vs `--surface` | Role |
 |---|---|---|---|---|
-| `--bg` | `#ECEDEF` | — | — | Cool neutral ground. Never warm, never pure white. |
+| `--bg` | `#F4F0E9` | — | — | Warm ground. Never pure white, never cool grey. |
 | `--surface` | `#FFFFFF` | — | — | Cards lift *off* the ground |
-| `--surface-2` | `#F7F8F9` | — | — | Inset rows, quiet fills |
-| `--surface-sunk` | `#E3E5E8` | — | — | Tab trough, progress track |
-| `--border` | `#E2E4E8` | — | — | Hairlines |
-| `--border-strong` | `#D2D6DC` | — | — | Emphasized borders |
-| `--text` | `#16181D` | 15.16 | 17.76 | Primary text |
-| `--text-muted` | `#5F6672` | ≥4.5 | ≥4.5 | Secondary text |
-| `--text-faint` | `#7E8490` | 3.21 | 3.76 | **Non-text only** |
-| `--primary` | `#101216` | — | — | Solid pill fill. The one loud chrome colour. |
-| `--primary-ink` | `#FFFFFF` | 18.75 on primary | — | Text on a `--primary` fill |
-| `--accent` | `#3D6FD9` | — | — | Data/links **only** — never a chrome fill |
-| `--accent-text` | `#2F5FC4` | ≥4.5 | ≥4.5 | Accent *as text* |
-| `--accent-ink` | `#FFFFFF` | — | — | Text on an `--accent` fill |
-| `--good` | `#1F6B45` | ≥4.5 | ≥4.5 | تحویل‌شده / پرداخت‌شده |
-| `--warn` | `#8A5A00` | ≥4.5 | ≥4.5 | تأییدشده / بخشی |
-| `--crit` | `#A81D3A` | ≥4.5 | ≥4.5 | بدهی بحرانی / لغوشده |
-| `--info` | `#2A5F80` | ≥4.5 | ≥4.5 | در مسیر |
-| `--tint-plum` | `#6B4FA0` | ≥4.5 | ≥4.5 | Avatar tint only — carries no status |
+| `--surface-2` | `#FDFBF8` | — | — | Inset rows, quiet fills |
+| `--surface-sunk` | `#EFE9E0` | — | — | Tab trough, progress track |
+| `--border` | `#EAE2D7` | — | — | Hairlines |
+| `--border-strong` | `#DED4C6` | — | — | Emphasized borders |
+| `--text` | `#231C16` | 14.80 | 16.81 | Primary text |
+| `--text-muted` | `#776C60` | 4.51 | 5.12 | Secondary text |
+| `--text-faint` | `#91887C` | 3.07 | 3.49 | **Non-text only** — see below |
+| `--accent` | `#C0532B` | 4.10 | 4.65 | Terracotta. **Fills only** |
+| `--accent-text` | `#B44E28` | 4.55 | 5.17 | Accent *as text* — links, amounts due |
+| `--accent-ink` | `#FFFFFF` | 4.65 on accent | — | Text on an accent fill |
+| `--good` | `#4F6B4A` | 5.23 | 5.94 | تحویل‌شده / پرداخت‌شده |
+| `--warn` | `#7A5409` | 5.96 | 6.78 | تأییدشده / بخشی |
+| `--crit` | `#A11B3F` | 6.74 | 7.65 | بدهی بحرانی / لغوشده |
+| `--info` | `#2E6382` | 5.74 | 6.52 | در مسیر |
+| `--tint-plum` | `#6B4FA0` | 5.69 | 6.46 | Avatar tint only — carries no status |
 
 ### Dark
 
-| Token | Hex | Note |
-|---|---|---|
-| `--bg` | `#101215` | Cool near-black, not the old warm-black |
-| `--surface` | `#191C21` | |
-| `--surface-2` | `#1F232A` | |
-| `--surface-sunk` | `#0C0E11` | |
-| `--border` | `#262B33` | |
-| `--border-strong` | `#343A44` | |
-| `--text` | `#E8EAEE` | |
-| `--text-muted` | `#9BA3AF` | |
-| `--text-faint` | `#6B7280` | Non-text only |
-| `--primary` | `#F2F4F7` | Inverted — a light pill on a dark ground |
-| `--primary-ink` | `#101216` | |
-| `--accent` | `#6D96EC` | Data/links only, dark too |
-| `--accent-text` | `#8FB0F2` | |
-| `--accent-ink` | `#0B1220` | |
-| `--good` | `#4BB07C` | |
-| `--warn` | `#D9A23B` | |
-| `--crit` | `#E8607F` | |
-| `--info` | `#6BA8CE` | |
-| `--tint-plum` | `#B79EEA` | Unchanged from light |
+| Token | Hex | vs `--bg` | vs `--surface` | Note |
+|---|---|---|---|---|
+| `--bg` | `#141110` | — | — | Warm near-black, **not** the map's blue-black |
+| `--surface` | `#1E1A17` | — | — | |
+| `--surface-2` | `#242019` | — | — | |
+| `--surface-sunk` | `#2B241E` | — | — | |
+| `--border` | `#312A22` | — | — | |
+| `--border-strong` | `#3E352B` | — | — | |
+| `--text` | `#F3EEE7` | 16.28 | 14.97 | |
+| `--text-muted` | `#9B8F81` | 5.94 | 5.46 | |
+| `--text-faint` | `#8A8278` | 4.96 | 4.56 | Clears text here; light's cannot |
+| `--accent` | `#E8734A` | 6.25 | 5.75 | Lifted — light's brick vanishes on black |
+| `--accent-text` | `#E8734A` | 6.25 | 5.75 | Same value; dark needs no split |
+| `--accent-ink` | `#241009` | 6.06 on accent | — | **Near-black, not white** |
+| `--good` | `#93C289` | 9.23 | 8.49 | |
+| `--warn` | `#E0A64A` | 8.70 | 8.00 | |
+| `--crit` | `#F2789B` | 7.10 | 6.53 | |
+| `--info` | `#83B9DC` | 8.89 | 8.18 | |
+| `--tint-plum` | `#B79EEA` | 8.14 | 7.48 | |
+
+Four findings from computing this table rather than trusting the prototype:
+
+- **`--text-faint` cannot be a text colour in light.** The prototype's `#B3A899` sits at
+  2.06:1. Solved to 4.5 it becomes `#736C62`, which is indistinguishable from
+  `--text-muted` — the two roles collapse. So light's faint is demoted to a **non-text**
+  token (out-of-month day numbers, placeholder glyphs, decorative separators) and answers
+  to 3:1. Anything a reader must actually read uses `--text-muted`.
+- **The accent needs a text variant in light and not in dark.** `#C0532B` is a fine fill
+  (white on it clears 4.65) but only 4.10 as text on the warm ground. `--accent-text`
+  darkens it until it passes. Dark's `#E8734A` clears both, so there the two tokens hold
+  the same value — the split exists in the API, not in the palette.
+- **`--accent-ink` does not invert.** White on light's brick is 4.65; white on dark's
+  lifted terracotta is **3.01 and fails**. Dark's button ink is near-black `#241009`
+  (6.06). This is the same trap the MVP hit with cyan, in the opposite direction.
+- **Critical had to move off red.** With a terracotta accent, an orange-red `--crit`
+  (`#B3261E`) sits ΔE 17 from it — near-indistinguishable, and worse under protanopia.
+  `--crit` is now a crimson (`#A11B3F`, ΔE 35; dark `#F2789B`, ΔE 41), separated by
+  **hue**, not merely by lightness.
 
 Rules that hold in both themes:
 
-- **`--accent` is data/links only, never a chrome fill.** `--primary` is the one token
-  for a primary-action pill. This split did not exist before this redesign — every
-  button previously filled with `--accent`; 19 genuine primary-action buttons across
-  `components/sales/` and `app/sales/admin/` were repointed, one at a time, judging each
-  by whether it was an action or a piece of data/status (chart legends, calendar event
-  dots, badge counters, the range-slider fill all correctly stayed on `--accent`, since
-  that is now `--accent`'s actual role, not because they are "decorative").
-- **A color means one thing.** Status colors are never borrowed for chrome; `--tint-plum`
-  and its siblings are avatar identity and are neither status nor interaction.
-- **Color is never the only signal.** The Persian status word sits beside every dot.
-- **`--text-faint` never carries text a reader must read** — 3:1 only, non-text
-  (placeholders, decorative separators, disabled day numbers).
+- **A color means one thing.** `--accent` is interaction and never status; status colors
+  are never borrowed for chrome; `--tint-plum` and its siblings are avatar identity and
+  are neither.
+- **Color is never the only signal.** The Persian status word sits beside every dot, and
+  the pipeline column a card sits in says its status independently of any colour.
+- **Status fills** (dots, pills) are non-text and answer to 3:1 against the surface they
+  sit on, verified per pair — a soft-tinted pill's text answers to 4.5 against the pill,
+  not against the page.
 
-### Accent themes `CHANGED` — retired for kargah, kept for the map
+### Accent themes `SHIPPED`
 
-The reader-chosen accent-theme feature (ten hues, `scripts/gen-accent-themes.mjs`) now
-serves **the map only**. Kargah's `--accent`/`--primary` and family are fixed — the
-generator no longer emits a `.kargah`-scoped half on any of its rules, and a small guard
-block at the true end of `app/globals.css` (`:root .kargah` / `:root[data-theme="dark"]
-.kargah`, re-asserting the 8 tokens the generator can still reach) keeps a chosen map
-accent from leaking into kargah even though both now live at the same `:root` scope.
-Verified empirically with Playwright against the compiled CSS, not by hand-reasoning
-about specificity — see the Task 11 commit for the method.
+The accent is **chosen by the reader**, from ten themes. The terracotta above is one of
+them and stays the default; the other nine are solved, not picked by eye.
+
+| | |
+|---|---|
+| Themes | خاکی (default), طلایی, زیتونی, زمردی, فیروزه‌ای, اقیانوسی, نیلی, بنفش, تمشکی, گرافیت |
+| Stored as | `coverage-accent` in localStorage, applied as `data-accent` on `<html>` before first paint |
+| Generated by | `scripts/gen-accent-themes.mjs` → a marked block in `app/globals.css` and `lib/accentThemes.ts` |
+| Verified by | `npm run check:contrast` — 260 pairs, every theme, every skin |
+
+Rules:
+
+- **A theme chooses a hue and nothing else.** Every other value — the ink on the fill, the
+  accent as text on two grounds, the soft pill under that text, the wash, the map ink — is
+  searched for in OKLCH against the real grounds until it clears its gate. That is what
+  keeps ten themes looking like one system instead of ten.
+- **Status colors are never themed.** Green means visited, amber means needs coverage, red
+  means keep out, and those three are shared with `/report` and `/analytics`. When an
+  accent hue lands on a status color the **accent** moves, by at most 18°, never the
+  status color. تمشکی is at hue 336 rather than its true 8 for exactly this reason: hue 8
+  is `--crit`, and a brand color that is also the danger color is not a theme, it is a bug.
+  مسی was asked for and does not exist — `--warn` sits between خاکی and طلایی, so every
+  copper hue is within 0.048 of the terracotta it would sit next to in the picker.
+- **The theme reaches the map, not just the chrome.** `--map-stroke-major`,
+  `--map-stroke-minor`, `--map-boundary`, `--map-selected` and `--map-unknown` are part of
+  every theme. `--map-unknown` matters most: it is the fill for 429 of 439 districts, so it
+  is what the map mostly *is*, and leaving it warm made every theme look warm.
+- **Map ink follows the basemap's ground, not the skin.** Selected by
+  `[data-ground="..."]`, because a cream basemap needs dark strokes on a dark skin.
+- **The map reads these tokens through `getComputedStyle`, not `var()`.** Leaflet paints
+  districts onto a canvas where `var()` does not resolve and a path would silently draw
+  black. Ten themes × two skins × two grounds is forty palettes; duplicating them in
+  TypeScript would guarantee drift, so there is one definition and it is read at the point
+  of use — re-read whenever the accent, the skin or the ground changes.
 
 ## Elevation `CHANGED`
 
+One API, two implementations — the MVP's structure survives; its values do not.
+
 | Token | Meaning | Light | Dark |
 |---|---|---|---|
-| `--sh-1` | Resting card, list row | `0 1px 2px rgba(24,28,38,.05), 0 4px 14px -6px rgba(24,28,38,.10)` | `0 1px 2px rgba(0,0,0,.30), 0 4px 14px -6px rgba(0,0,0,.45)` |
-| `--sh-2` | Hover lift, dropdown | `0 2px 5px rgba(24,28,38,.06), 0 14px 34px -12px rgba(24,28,38,.16)` | `0 2px 5px rgba(0,0,0,.35), 0 14px 34px -12px rgba(0,0,0,.55)` |
-| `--sh-3` | Modal, island, bottom sheet | `0 4px 10px rgba(24,28,38,.07), 0 28px 60px -18px rgba(24,28,38,.26)` | `0 4px 10px rgba(0,0,0,.40), 0 28px 60px -18px rgba(0,0,0,.65)` |
-| `--sh-lift` | Fanned document, drag ghost | `0 10px 22px -8px rgba(24,28,38,.22), 0 30px 60px -24px rgba(24,28,38,.28)` | `0 10px 22px -8px rgba(0,0,0,.50), 0 30px 60px -24px rgba(0,0,0,.60)` |
-| `--edge-hi` | Milled top inner highlight | `inset 0 1px 0 rgba(255,255,255,.92)` | `inset 0 1px 0 rgba(255,255,255,.06)` |
-| `--edge-lo` | Milled bottom inner shade | `inset 0 -1px 0 rgba(24,28,38,.05)` | `inset 0 -1px 0 rgba(0,0,0,.30)` |
-| `--card-drop` | `filter: drop-shadow` form, for clipped/notched shapes | `drop-shadow(0 1px 2px rgba(24,28,38,.07)) drop-shadow(0 12px 26px rgba(24,28,38,.13))` | `drop-shadow(0 1px 2px rgba(0,0,0,.4)) drop-shadow(0 14px 30px rgba(0,0,0,.55))` |
+| `--sh-1` | Resting card, list row | `0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10)` | `0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6)` |
+| `--sh-2` | Hover lift, dropdown | `0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17)` | `0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7)` |
+| `--sh-3` | Modal, island, bottom sheet | `0 4px 10px rgba(62,44,28,.07), 0 28px 60px -18px rgba(62,44,28,.28)` | `0 4px 10px rgba(0,0,0,.6), 0 28px 60px -18px rgba(0,0,0,.8)` |
+| `--sh-lift` | Fanned document, drag ghost | `0 10px 22px -8px rgba(62,44,28,.24), 0 30px 60px -24px rgba(62,44,28,.30)` | as `--sh-3` |
 
-- **Shadows are cool-tinted in light** (`rgba(24,28,38,…)`), matching the ground's hue —
-  a neutral-black shadow reads correctly here, unlike the old warm ground where it read
-  as dirt were it *not* tinted.
-- **`--edge-hi` is what makes a flat white card read as physically cut.** Near-invisible
-  in dark — a bright inner edge on a dark surface reads as a rendering fault, not as
-  light, so dark leans on the drop shadow alone.
-- **A notched/clipped shape takes `filter: drop-shadow(...)`, never `box-shadow`** — see
-  Notch system below. `--card-drop` is the drop-shadow form and exists for exactly this.
-- **Hardcoded shadow literals are a real, recurring bug class.** Token-based retinting
-  (editing `--sh-*`) cannot fix a raw `rgba(62,44,28,…)` written directly into a rule
-  instead of routed through a token — three were found this way during verification
-  (`.doc`, `.pocketed__slip`, `:root-scrim`, `.sheet`) and fixed. When adding a new
-  shadow, always reference `--sh-*`/`--card-drop`; never hand-type an rgba shadow.
+Two changes of substance:
 
-## Notch system `SHIPPED`
+- **Light shadows are tinted warm** (`rgba(62,44,28,…)`), matching the ground's hue.
+  A neutral-black shadow on a warm ground reads as dirt.
+- **Borders are no longer part of elevation.** The MVP's `--elev-1` was a 1px ring; here
+  a resting card carries shadow only, and `--border` is reserved for genuine dividers.
+  A card that has both a hairline and a shadow reads as two competing edges.
 
-The core visual identity, not a decorative flourish on one component.
+**A clipped shape takes `filter: drop-shadow(...)`, not `box-shadow`.** The carved bay
+card (below) is cut with `clip-path`, and a box-shadow is drawn on the border box, which
+the clip then removes — the card loses its shadow entirely. `--card-drop` is the
+drop-shadow form of `--sh-1` and exists for exactly this case.
 
-- **Geometry:** `lib/design/notch.ts`'s `notchedCardPath(w, h, opts)` — a path computed
-  from the card's *measured* size (a percentage-based mask would stretch the corner radii
-  as the card grows). `side`/`edge`/`dir` are explicit, so any surface in either writing
-  direction can carve the same shape: `side` resolves "start"/"end" the way CSS logical
-  properties do (inline-start is left under `ltr`, right under `rtl`).
-- **The border problem, solved:** `clip-path` removes both `box-shadow` and `border` from
-  a clipped element. `NotchedCard` (`components/kargah/NotchedCard.tsx`) solves both with
-  a stacked layer technique — an absolutely-positioned `.notch-edge` sibling carrying the
-  *same* clip-path, coloured as the border+highlight, inset 1px via a second nested clip
-  so only a thin ring shows.
-- **The shadow problem, solved:** `filter: var(--card-drop)` on the *outer* wrapper —
-  never `box-shadow` on the clipped element itself.
-- **Avatars/shoulder content are SIBLINGS of the clipped element, never descendants** —
-  `clip-path` clips descendants too, so content placed inside would be erased by the very
-  bay meant to hold it. `.notch-shoulder` (opposite `.notch-avatars`) needed its own
-  positioning wrapper; a bare fragment renders unstyled.
-- **`corner-shape` (the CSS property that would make concave corners a one-liner) is
-  Chromium-only as of 2026 — not Baseline, no Safari/Firefox timeline.** `clip-path`
-  remains the implementation; `corner-shape` is a future progressive enhancement only.
-- **Recomputes on `ResizeObserver` and `document.fonts.ready`** — the card's height
-  depends on Persian glyph metrics that move after the webfont lands.
-- **Dropped entirely below the card's `minWidth`** — a notch wide enough to reach the far
-  corner is not a bay, it is a shorter card, and the stepped edge stops reading.
+## Typography `CHANGED`
 
-## Typography `SHIPPED`
+Vazirmatn and JetBrains Mono are retired from `/sales`. Vazirmatn is the safe Persian
+default and reads as such; the console voice it carried is the thing being replaced.
+
+- **UI / Persian:** IBM Plex Sans Arabic (`--font-fa`). Every label, name, sentence.
+  Humanist rather than geometric, and it has a genuine 300–700 range, which the density
+  of a CRM row actually needs.
+- **Data / Latin:** Plus Jakarta Sans (`--font-en`). Every number — amounts, weights,
+  codes, counts, percentages — plus Latin eyebrows. Weights 400–800.
+  **`font-variant-numeric: tabular-nums` is mandatory** on any number in a column or
+  animating.
+
+A note on why the data face is a *sans* and not a mono. Persian digits (`۰-۹`) are drawn
+by the Arabic font, not the Latin one, so a Latin monospace never touched the figures it
+was chosen for — it only ever styled the separators and the Latin labels beside them.
+Tabular figures do the aligning; the mono was decoration.
 
 | Token | Size | Use |
 |---|---|---|
@@ -268,18 +282,24 @@ The core visual identity, not a decorative flourish on one component.
 | `--text-2xl` | 2rem / 32px | KPI figure on a stat tile |
 | `--text-3xl` | 2.875rem / 46px | The one headline number on a dashboard |
 
-`font-variant-numeric: tabular-nums` is mandatory on any number in a column or animating.
-Line-height 1.8 for Persian body. Unchanged from before this redesign — the type scale
-was never warm/cool-coded and needed no retint.
+Display sizes are **`--font-en`, weight 700–800, tracking `-0.03em`**. This reverses the
+MVP, which set them at weight 400 on the argument that "a large number gets loud through
+size, not weight." On a warm ground with soft shadows a 400-weight 46px figure reads as
+washed out rather than as restrained.
+
+Line-height 1.8 for Persian body, 1.3 for figures. Body copy caps at ~65 characters.
 
 ## Spacing `SHIPPED`
 
 Base 4px. `1` 4 · `2` 8 · `3` 12 · `4` 16 · `5` 20 · `6` 24 · `8` 32 · `12` 48.
-Theme-independent — declared once in the light block; dark inherits it unchanged, since
-`:root[data-theme="dark"]` is an *additional* rule matching the same element rather than
-an isolated cascade scope, and undeclared properties simply fall through from `:root`.
+Dense (`3`–`4`) inside sidebars, rows and tables; generous (`8`–`12`) between the major
+regions of a CRM page. The map gets no forced padding — it fills.
 
 ## Radii `CHANGED`
+
+Scaled up across the board. The MVP's 4/6/10 said "sharp reads console"; this system is
+not a console. Radius still scales with surface size — a 420px tile and a 32px chip
+cannot share a value.
 
 | Token | Value | Use |
 |---|---|---|
@@ -287,381 +307,277 @@ an isolated cascade scope, and undeclared properties simply fall through from `:
 | `--radius-md` | 12px | Dense rows, inputs, board cards |
 | `--radius-lg` | 16px | Inner panels, list blocks |
 | `--radius-xl` | 20px | Document cards, tiles |
-| `--radius-2xl` | 28px | Cards, blocks, modals (bumped from 26px to match the video's larger card corners) |
-| `--radius-pill` | 999px | Buttons, tabs, inputs, sliders, avatars — everything interactive |
+| `--radius-2xl` | 26px | Cards, blocks, modals, the bottom sheet |
+| `--radius-pill` | 999px | Buttons, tabs, status pills, avatars |
 
-**Every input, select, textarea-excepted, and button is a pill.** That single rule does
-most of the visual work of matching the reference video.
+Buttons and tabs are **fully rounded** — the single loudest signal that this is not the
+old console. Inner elements always take a smaller radius than the container holding them.
 
 ## Motion `CHANGED`
 
-### Curves and durations — unchanged, theme-independent
+Motion is a headline feature of this app, not a garnish. The MVP banned spring easing
+outright; that ban is lifted. But "more animation" is not the goal -- **choreography** is.
+A hundred elements that each spring independently reads as a toy; twenty that enter in a
+considered sequence reads as expensive. What follows is a tiered system: each tier says
+which curve is correct and, more usefully, which is wrong.
 
-`--ease-out`, `--spring-snap`, `--spring-pop`, `--spring-drop`, `--dur-fast` through
-`--dur-draw`, `--stagger-tight` through `--stagger-loose`, `--pulse-duration`,
-`--pulse-stagger`, `--sweep-duration`, `--drift-duration` — all survive from before this
-redesign unchanged, since none were ever warm/cool-coded. Declared once, theme-
-independent, same reasoning as Spacing above.
+### Curves
 
-### Tilt + glow `SHIPPED`
+| Token | Value | Character |
+|---|---|---|
+| `--ease-out` | `cubic-bezier(0.16, 1, 0.3, 1)` | The default. Fast out, soft landing, no overshoot. |
+| `--spring-snap` | `cubic-bezier(0.34, 1.26, 0.64, 1)` | Slight overshoot. Small controls, toggles, chips. |
+| `--spring-pop` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Clear overshoot. Shape morphs, sheets, entrances. |
+| `--spring-drop` | `cubic-bezier(0.22, 1.61, 0.36, 1)` | Heavy settle. A dragged object landing. |
 
-`lib/design/tilt.ts`'s `useTiltGlow` — one delegated `pointermove` listener per
-container, writing `--mx`/`--my` to whichever `[data-tilt]`/`[data-glow]` descendant is
-currently under the pointer. Never per-card React state.
+A cubic-bezier can only overshoot once. For a true multi-oscillation settle, use CSS
+`linear()` -- supported in every browser this app targets -- and keep it to the two or
+three places where the extra weight is actually felt.
 
-- **`--tilt-max: 8deg`.** `rotateY`'s sign is `--tilt-dir` (`-1` default/rtl, `1` under
-  `ltr`) so a card leans toward the cursor in either writing direction.
-- **Glow is a radial gradient** on a `::after`, positioned from the same `--mx`/`--my`,
-  `mix-blend-mode: plus-lighter`, tinted `var(--accent)` at low opacity.
-- **Gated on `hover: hover` and `pointer: fine`** — no tilt/glow on touch, where there is
-  no hover concept. **Gated on `prefers-reduced-motion`** at both the hook level (bails
-  before attaching the listener) and the CSS level (`transform: none !important`).
-- **`TiltCard`/`GlowSurface`** (`components/kargah/`) are the two consumer wrappers.
-  Neither is wired into a real page yet — that lands with the shell/journey sub-project.
+### Durations
+
+| Token | Value | Use |
+|---|---|---|
+| `--dur-fast` | 120ms | Press/active feedback |
+| `--dur-base` | 180ms | Hover, focus, small transitions |
+| `--dur-slow` | 300ms | Panel/modal enter-exit |
+| `--dur-morph` | 420ms | Island collapse - expand |
+| `--dur-settle` | 320ms | Drag release, card landing |
+| `--dur-draw` | 700ms | Chart line draw, number count-up |
+| `--stagger-tight` | 20ms | Table rows |
+| `--stagger-base` | 40ms | Board cards, list items |
+| `--stagger-loose` | 60ms | Bento tiles, sidebar sections |
+| `--pulse-duration` | 2400ms | Marker radar-ping loop |
+| `--pulse-stagger` | 800ms | Delay between ping rings |
+| `--sweep-duration` | 4000ms | Ambient radar sweep |
+| `--drift-duration` | 12000ms | Gradient wash drift |
+
+### Tier 0 -- Entrance. The section arrives; it does not appear.
+
+Opening a tab plays the section in. Cards rise 16px and fade, `--stagger-base` apart,
+**capped at ten items** — item eleven onward shares item ten's delay. A chart draws its
+line over `--dur-draw`, fades its fill and comparison series in behind it, then lands its
+points one at a time.
+
+Only `opacity` and `transform` animate. Nothing reflows.
+
+**The reset is the hard part, and it is a trap worth writing down.** To replay an
+entrance you must first put the element back to its start state. If the stagger delay is
+still on the element at that moment, the reset inherits it — and *a zero-duration
+transition that carries a delay still holds the old value for the length of that delay*.
+The element does not reset; it waits, and by the time it would have, the entrance has
+already been switched back on. Only the first item (delay 0) ever animates.
+
+So the sequence is fixed: `transition: none` + clear the delay → force a style flush
+(read a layout property) → restore the transition, set the delay, add the class. Getting
+this wrong is silent — no error, just an entrance that mysteriously only plays for one
+element.
+
+### Tier 2 -- Choreography. Stagger, not spring.
+
+This tier is where the impression of quality actually comes from. Elements never mount
+all at once; they cascade, and the cascade has a direction that matches the reading
+order -- in an RTL layout that is right to left, top to bottom.
+
+| What | Treatment |
+|---|---|
+| Board cards entering a column | `--stagger-base`, `--ease-out` 260ms, 8px rise + fade |
+| Bento tiles | `--stagger-loose`, `--ease-out` 300ms, 12px rise + fade |
+| Sidebar sections | `--stagger-loose` (shipped), capped at 8 items |
+| Table rows | `--stagger-tight`, capped at 12 rows, then the rest appear together |
+| Modal card | `--ease-out`, scale 0.97 - 1 |
+| Record - detail navigation | Shared-element: the card's title and status pill persist and travel into the detail header rather than the page cross-fading |
+
+A stagger that runs past ~8 items stops reading as choreography and starts reading as
+lag. Every stagger in this system is capped, and past the cap the remainder appears
+together.
+
+### Tier 3 -- Data. Never spring.
+
+| What | Treatment |
+|---|---|
+| Number count-up | `--ease-out`, `--dur-draw`, `tabular-nums` mandatory |
+| Chart line draw | `--ease-out`, `--dur-draw`, `stroke-dashoffset` |
+| Bar grow | `--ease-out` 500ms + `--stagger-tight` |
+| Donut sweep | `--ease-out` 800ms |
+| Progress / gauge fill | `--ease-out` 500ms |
+| Skeleton - content | 200ms cross-fade, no movement |
+
+**Why spring is forbidden here, specifically.** An overshooting value is briefly *wrong*.
+A bar that springs past its endpoint misreports the number for ~150ms, and a count-up
+that overshoots shows a figure that was never true. In an app where the numbers are
+money, stock and commission, that is not a stylistic objection.
+
+### Tier 4 -- Ambient. Slow, looping, decorative.
+
+Radar sweep (`--sweep-duration`, linear), marker ping (`--pulse-duration`), gradient wash
+drift (`--drift-duration`), cursor-following spotlight on bento tiles (no easing --
+it tracks the pointer directly). All are `pointer-events: none`, none block input, and
+all stop entirely under `prefers-reduced-motion`.
+
+### Where spring stays banned
+
+Not style preferences -- each has a specific cost.
+
+- **Buttons and links on hover.** They are precision targets. A control that overshoots
+  its own bounds is momentarily harder to hit, and at a 1.03 scale over 180ms the
+  overshoot is invisible anyway. Pure cost, no benefit.
+- **Map markers and map controls.** Leaflet already applies its own inertia to pan and
+  zoom. A second physics model layered on top does not compound, it fights -- markers
+  appear to lag the map they are pinned to.
+- **Driver mode, entirely.** `.driver-mode` is, in this codebase's own words, "the same
+  app, sized for one thumb in a moving vehicle." Overshoot animation read inside a moving
+  vehicle is a motion-sickness trigger, and the person is driving. Driver mode gets
+  `--ease-out`, short durations, and no ambient loops.
+- **Anything the user is waiting on.** A spinner, a saving state, a pending request. Added
+  duration on a blocking transition is added latency, whatever the curve.
 
 ### Reduced motion
 
-`prefers-reduced-motion: reduce` collapses everything: springs become instant, staggers
-become simultaneous, ambient loops stop, tilt/glow disable entirely. This is an
-accessibility floor and does not move with taste.
+`prefers-reduced-motion: reduce` collapses all four tiers: springs become `--ease-out`,
+staggers become simultaneous, ambient loops stop, morphs become cross-fades, count-ups
+and chart draws render at their final value immediately. The app must remain fully usable
+and must not lose any information that motion was carrying.
 
----
-
-## Skeuomorphic system `SHIPPED`
-
-The tactile surface language, alongside the notch system.
-
-- **Milled edge** — `--edge-hi`/`--edge-lo` (see Elevation). Combine with `--sh-N` via
-  `box-shadow`'s comma-separated list: `box-shadow: var(--edge-hi), var(--sh-2)`.
-- **Directional noise** — `.noise-surface` utility class, a single inline SVG
-  `feTurbulence` data-URI reused everywhere rather than per-surface (~400 bytes, no extra
-  request). Sits on a `::before` at `z-index: -1` inside an isolated stacking context, 3.5%
-  opacity, `mix-blend-mode: overlay` — verified via `check:contrast` to never affect text
-  contrast. Already applied to `NotchedCard`'s `.notch-card`.
-- **Glass** — `GlassFace` (`components/kargah/GlassFace.tsx`), `backdrop-filter:
-  blur(16px) saturate(1.5)`, extracted from the pocket's frosted face. **Restricted to
-  modal backdrops, the sticky header, and the pocket's own document face — never plain
-  cards.** The reference video's cards are opaque white; "glass everywhere" was a
-  misreading corrected during design. `backdrop-filter` is the single most expensive
-  property in this system.
-  - **`-webkit-backdrop-filter` must be written BEFORE the standard `backdrop-filter`,
-    never after.** A documented, hard-won bug: reversed, a minifier treats the standard
-    declaration as shadowed by the later prefixed one and drops it — leaving only the
-    prefixed property, which Chromium rejects outright (not an alias there). The face
-    then renders as flat translucent colour with no blur at all. Verify the order
-    survives minification in the *compiled* output, not just source, before trusting it.
+Still forbidden regardless of tier: animating `width`/`height`/`top`/`left` (transform and
+opacity only -- the island morphs via `transform: scale` and a clip, never box
+dimensions), and scroll-driven parallax.
 
 ---
 
 ## Base components `SHIPPED`
 
-- **`NotchedCard`** — see Notch system.
-- **`TiltCard` / `GlowSurface`** — see Tilt + glow.
-- **`GlassFace`** — see Skeuomorphic system.
-- **`IconButton`** — circular, `--radius-pill`, `--edge-hi` + `--sh-1`.
-- **`Field` / `Select` / `Textarea`** — pill inputs (textarea uses `--radius-lg`, a pill
-  shape reads wrong on a multi-line box), `--edge-hi`, focus border → `--accent`.
-- **`RangeSlider`** — genuinely interactive (draggable), generalizing
-  `ProcessingModal`'s read-only fill meter. Same hard-stop two-color gradient fill syntax
-  (`var(--accent) 0 X%, var(--surface-sunk) X% 100%)`), confirmed from the real
-  implementation rather than invented. `direction: rtl` on the input so it fills from the
-  right. `lib/design/rangeFill.ts`'s `fillPercent` is the pure math, shared with the
-  original meter's role.
-- **`SegmentedPill`** — generic sliding-pill segmented control, own `.seg-pill`/
-  `.seg-thumb` class names (not `TabPill`'s `.seg`/`.thumb`, so the two coexist). Same
-  transition-gating discipline as `TabPill`: the thumb is measured and placed at
-  `width: 0` with no transition, THEN gets its transition enabled one animation frame
-  later via a `.ready` class — omitting this animates the thumb flying in from nothing on
-  first paint, a real bug the original `TabPill` comment already documents.
-- **`ArcGauge`** — single-value SVG stroke-dasharray progress ring. Deliberately simpler
-  than `DonutChart` (`lib/chartScale.ts`'s `donutArcs` is genuine multi-slice composition
-  math, more than a single-value gauge needs).
-- **`StatefulButton`** — idle → loading → success → idle. **Confirmed live in the
-  reference video** on "Take for Processing" and "Add Case" — not speculative.
-  `lib/design/statefulButton.ts`'s `nextButtonState` is the pure transition reducer.
-- **`GooeyInput`** — SVG-filter (`feGaussianBlur` + `feColorMatrix`) search input,
-  reimplemented from Aceternity's documented mechanism rather than pulled in as a
-  dependency.
-- **`AvatarStack`** (`components/AvatarStack.tsx`) — already had numeric badge support
-  before this redesign touched it (`StackPerson.count?: number`, gated `count > 0`, not
-  loose nullish-checking — a zero badge is worse than none, per its own comment). Left
-  untouched; do not add a second, redundant badge field.
+- **Button** — `--surface` bg, 1px `--border`, `--radius-md`. Primary: `--accent` fill
+  with `#04191C` text (dark) / `#FFFFFF` text (light). Hover: border→accent, text→accent,
+  scale 1.03, `--dur-base`. Active: scale 0.98, `--dur-fast`. Focus: 2px `--accent`
+  outline at 2px offset. Disabled: 40% opacity, no pointer events.
+- **Input / select** — `--surface` bg, 1px `--border`, `--radius-md`, mono for numerics.
+  Focus: border→accent + glow (dark) / border→accent + ring (light).
+- **Card** — `--surface`, `--elev-1`, `--radius-lg`, `padding: var(--space-4)`.
 - **Status pill** — `--radius-sm`, mono `--text-xs` tracked, colored dot + 16% tinted
-  fill, Persian word always present. Unchanged from before this redesign.
+  fill, text in the full status color, Persian word always present.
+- **Map marker** — 14px diamond, status fill, 2px `--bg` ring, status glow, idle ping.
+- **Facility marker** — `--facility`, distinguished by silhouette before color:
+  warehouse a filled hexagon (26×29, center-anchored, crate knocked out); home base a
+  hollow house (24×26, base-anchored). Both static — the ping belongs to live readings,
+  and a building is not one. Drawn above the cluster layer.
 - **Skeleton** — matches the shape of what is loading. Never a spinner.
 
-## Pocket patterns `SHIPPED` — the sacred device, in three live forms
+## CRM / ERP patterns `TARGET`
 
-**Never remove or dilute any of the three.** Verified intact task 2026-09-08 found the
-spec's own first attempt at identifying "the" pocket pattern was wrong — there are three,
-not one, and getting this wrong nearly meant protecting a dead component while missing a
-live bug in the real one.
+The vocabulary the redesign adds. Each exists to serve a specific record in the schema.
+Prototype: the کارگاه artifact (four screens, both themes, all interactions live).
 
-1. **`PocketCard`** (`components/kargah/PocketCard.tsx`, `.pocket`/`.docs`/`.doc`/
-   `.face`/`.pill`) — LIVE, `/sales/orders` via `OrdersPockets.tsx`. An order card with
-   its receipt and delivery note tucked behind it — the literal "two cards behind the
-   main card." Own comment: *"the artifact's `.pocket`."*
-2. **`Pocketed`** (`components/kargah/Pocketed.tsx`, `.pocketed`/`data-papers`/
-   `.pocketed__slips`/`.pocketed__slip`/`.pocketed__face`) — LIVE, the board
-   (`app/sales/board/page.tsx`) and order-pipeline (`app/sales/tasks/page.tsx`) pages.
-   The deliberate generalization of #1: any card can sit in a pocket, `papers` 0–3 real
-   attachments (never decoration), fan toggled per-consumer via `fan`. **This is the
-   primitive future pocket extensions (product→batches, customer→orders+cheques,
-   run→stops, saved-list→members) should build on.**
-3. **`OrderPocketCard`** — DELETED 2026-09-08. Its `.pocket`/`.pocket__papers`/
-   `.pocket__paper`/`.pocket__card` CSS was mistaken for "the" sacred pattern by this
-   document's own first-draft spec. It had zero live imports anywhere in the app —
-   confirmed dead, superseded by #1/#2, never deleted until now. Its bare `.pocket`
-   selector collided with #1's once both lost their old `.kargah` scope wall in the same
-   promotion pass; #1 happened to win by source-order luck, which is accidental safety,
-   not verified safety. Deleting the dead pattern was the actual fix — not renaming
-   either live one.
+### Document pocket card `TARGET` — replaces `OrderPocketCard`
+An order rendered as a card with its documents tucked *behind* it: receipt, invoice,
+route sheet. The face is frosted (`backdrop-filter: blur(16px) saturate(1.5)`) so the
+documents' colour bleeds through as a soft wash. At rest they sit low, peeking ~30px.
+On hover or focus they **fan apart and rise above the face** (`z-index`, not clipping),
+tilting outward, and both become fully readable.
 
-Governing rule for any future extension: **slip/paper count is real data — the record's
-actual attachment count, capped at 3 — never decoration.** An empty pocket (0 papers) is
-a legitimate, informative empty state, not a bug to hide.
+Two constraints, both learned the hard way:
+- The documents move *down* at rest and rise to `y: 0` on hover, so they never leave the
+  card's own box. Moving them up instead puts them outside it, where the section's
+  `overflow: hidden` shaves the top row.
+- Two 138px documents do not fit inside a ~270px card. The fan deliberately **overhangs
+  the card's edges**; the raised `z-index` on the hovered pocket is what makes that legal.
 
-## The shell `SHIPPED` — single navbar, left icon rail, bento grid
+### Carved bay card `TARGET`
+A rounded rectangle **subtracted** from a card's top inline-start corner, leaving a
+stepped edge with a rounded inner corner. The avatars of the people on the record sit in
+the bay it opens. Cut with `clip-path: path()` computed from the card's measured size —
+a mask sized in percentages stretches the corner radii as the card grows — recomputed on
+`ResizeObserver`, and dropped entirely below 360px.
 
-Spec 2026-09-08 §9a/§9b, built in the follow-on `shell/navbar-rail-bento` branch on top
-of the substrate. Three independent pieces:
+The avatars must live in a **sibling** of the carved element. `clip-path` and `mask` clip
+descendants too, so avatars placed inside the card are erased by the very bay meant to
+hold them.
 
-**`Navbar`** (`components/kargah/Navbar.tsx`) replaced the old two-row header (brand bar
-+ `TabPill`'s group row + tab row) with one row: brand at inline-start (visual right
-under RTL), the six sales groups centred, `ProfileMenu` at inline-end — all logical
-properties, per decision 4. Each group pill click-toggles its own dropdown (same open/
-outside-click/Esc pattern as `ProfileMenu`) — the spec's own instruction is hover-only,
-which has no equivalent on touch and is not keyboard-operable alone, so a pure-CSS
-`(hover: hover) and (pointer: fine)` enhancement is layered on top instead of replacing
-click. **The dropdown panel must be unconditionally rendered and hidden by CSS default**
-(`display: none`, revealed by `[data-open="true"]` or the hover/focus-within rule) —
-conditionally *rendering* it on the same React state the click handler toggles was tried
-first and is a real bug: a mouse hover opens it, then the click that follows immediately
-toggles the same state closed, so hovering and clicking together closes what hover just
-opened. Caught by a real Playwright click against the built page, not by reading the
-JSX. `TabPill` (`components/kargah/TabPill.tsx`) shrank to render only the tab row —
-`groups`/`shownGroups`/the `seg-groups` markup all moved into `Navbar`.
+### Travelling tab pill `TARGET`
+One pill that slides and resizes to the selected tab, `--spring-pop`. It is positioned
+before its transition is enabled, so it does not fly in from x=0 on first paint, and it
+re-measures on `ResizeObserver` and on `document.fonts.ready`.
 
-**`Rail`** (`components/kargah/Rail.tsx`) is the left icon column — **named `.iconrail`,
-never bare `.rail`**: `ScheduleBoard.tsx` already renders `.rail` for its own
-day-schedule panel, and the rail's own calendar icon links straight to that page: a bare
-`.rail` here would have collided with it at equal specificity on first paint, exactly the
-`.pocket` collision class documented above. It ships **five items, not the video's nine**
-— back, calendar (`/sales/schedule`), map (`/map`), alerts (the existing
-`NotificationBell` polling logic, extracted to `lib/useUnreadCount.ts` so both consumers
-share one 60s poll instead of two drifting ones), and the three-state theme control
-(`ThemeToggle3.tsx`, decision 3) at the foot. Share/export/star/add/data/send are NOT
-wired: none has a real target anywhere in this app today, and shipping inert icons is
-exactly the decoration the pocket's own governing rule above forbids. **The rail is
-positioned with physical `left`, not `inset-inline-start`** — unlike the navbar, the spec
-names this the "left icon rail" literally and repeatedly rather than by logical role;
-`inset-inline-start` resolves to the visual RIGHT under RTL and would land the rail under
-the navbar's own utility cluster. Also caught by the same Playwright check, not by
-re-reading the spec's prose. Magnification-on-proximity is `useDockMagnify`
-(`lib/design/dockMagnify.ts`) — same one-delegated-listener architecture as
-`useTiltGlow`, writing `--dock-scale` from a single `pointermove` on the rail container.
+### Order pipeline `TARGET` — extends `AssignmentBoard`
+Columns are **statuses** (پیش‌نویس / تأییدشده / در مسیر / تحویل‌شده), not people; the
+assignee is a property shown on the card. Dragging moves the order between statuses.
 
-**`Bento`/`BentoCell`** (`components/kargah/Bento.tsx`) is the general span-grid system —
-`.bento` + `data-span="full|wide|half|narrow"`, 12 columns, phone stacks to one. Distinct
-from `BentoStrip`/`BentoTile`/`BentoGauge` (`components/BentoStrip.tsx`, the fixed-shape
-record-header widget on order pages) and `CustomerBento` (the customer-window widget) —
-same word, three different, non-overlapping things; do not conflate them.
-`lib/design/bentoSpan.ts`'s `bentoSpanForIndex(index, total)` picks a span for a
-dynamic-length tile list (pairs wide+narrow, a lone/odd-leftover tile spans full) — its
-one real consumer is `components/today/Briefing.tsx`'s `kargah` variant, which is the
-`/sales/today` page the redesign brief itself named for "card widths... over-expanding."
+Pointer events, never HTML5 drag-and-drop — the native API does not fire on touch, and
+this board is used on a phone in a shop. Two rules the implementation must keep:
+- **Capture on the card, not the container.** `setPointerCapture` retargets the whole
+  gesture, click included; capturing on the board makes every tap report the board as its
+  target, so a tap can never tell which card it hit.
+- **Never `preventDefault()` on `pointerdown`** — it suppresses the compatibility mouse
+  events, so the card's own click never fires. Guard selection with `user-select: none`
+  on the board and `touch-action: none` on the card instead.
 
-## User avatars `SHIPPED`
+### Processing modal `TARGET`
+Opened by tapping a pipeline card. Creator (read-only), assignee as avatar chips, and a
+**range slider for the amount collected** against the order total, with هیچ / نصف /
+تسویهٔ کامل shortcuts. The filled part of the track is painted by hand as a linear
+gradient — a range input offers no pseudo-element for it — and the input takes
+`direction: rtl` so it fills from the right.
 
-The other genuine §9d gap (alongside the workflow-editor backend, still deferred below)
-is closed: a user can have a real profile picture, not just initials-on-a-tone.
+### Order journey `TARGET`
+Swimlanes for the order lifecycle: ثبت سفارش → تأیید و قیمت‌گذاری → بارگیری و مسیر →
+تحویل و تسویه. Each lane holds task nodes with the responsible person's avatar and a tick
+that toggles. Lanes are joined by a dotted connector that points along the reading
+direction.
 
-Reuses the `photos` table rather than a second storage path — `entity_type` widened to
-also accept `'user'` (it already accepted `'district'`/`'customer'`/`'payment'` by the
-time this landed; the two-value set an earlier design read of this table assumed was
-already stale before this work even started, found by a failing test's real error
-message, not by re-reading the file closely enough the first time). A partial UNIQUE
-index (`idx_photos_user_singleton`) guarantees at most one avatar row per user — upload
-replaces rather than accumulates, unlike a customer's photo gallery or a payment's
-receipt, both of which are meant to grow.
+### Gradient stat card `TARGET`
+The dashboard's headline figures on soft multi-stop mesh gradients, mixed **warm** so
+they sit in the same room as the accent rather than arriving from a different palette.
+Dark carries its own mixes — the light pastels glare on a dark ground.
 
-**Self-service only**: `POST`/`DELETE /api/users/[id]/avatar` accept only the caller's
-own id — no admin-uploads-for-others path, matching the workflow-template decision's
-"no admin CRUD" minimalism (§15 decision 6). **Viewing is org-wide**, not group-scoped
-like `canReachUser` in `lib/session.ts` — a shared task board needs to show a colleague's
-face regardless of which group they're in; `lib/avatarAccess.ts`'s `canViewUserAvatar`
-is the (tenant-safe) rule for that, deliberately looser than `canReachUser` and
-deliberately its own small module rather than a reuse of the stricter one.
+### Spline chart `TARGET` — extends the chart kit
+Catmull-Rom through the points converted to cubic béziers, an area fill under the current
+series, the comparison series as a dotted line, and a tooltip that follows the nearest
+point. In RTL **the oldest day sits on the right**.
 
-All the SQL for this lives in `lib/repo/avatars.ts`, not in the routes themselves —
-`tests/repo-boundary.test.ts` enforces that new raw SQL may only live in `lib/repo/`,
-which the first draft of the routes violated (caught by the full test suite, not by
-anything task-scoped verification alone would have surfaced, since running only the new
-test file in isolation never exercises that repo-wide check).
+### Notification island `SHIPPED`
+Unchanged in behaviour; re-skinned. Still the one primitive behind toasts, the geofence
+prompt and the next-stop bar. The `width`/`height` exemption documented under Motion
+still applies and still has the same justification.
 
-`Avatar.tsx` tries a real picture first (`/api/users/{id}/avatar/file`), falling through
-to the initials chip on a 404/error — no prop signature change, so all ~dozen existing
-call sites (ProfileMenu, AvatarStack, task rows, …) needed zero edits. `ProfileMenu`
-gets upload/remove controls on the viewer's own avatar, mirroring `PhotoGallery.tsx`'s
-established upload idiom (hidden `<input type=file>` under a label, upload-on-select).
+### Bento detail strip `SHIPPED`
+Unchanged in structure; re-skinned. On phones it is the bottom sheet, which is now also
+the customer detail view opened by tapping a pocket card.
 
-**Not built, on purpose**: the spec's "assign realistic AI-generated avatars to demo
-users" is a seed-script concern that needs real image assets nobody has produced — the
-pipe is built, filling it with demo images is separate work.
-
-## Complaint resolution workflow `SHIPPED`
-
-The backend half of the repurposed workflow editor (2026-09-09 decision — see the
-deferred list below for why `/sales/complaints`, not a new generic `/sales/tasks` board).
-
-No new column on `tasks`: a spawned step is `entity_type='complaint'` /
-`entity_id=<complaint id>`, the same polymorphic link photos/reminders/activity_log
-already use. Two new tables only: `workflow_step_templates` (six fixed, seeded,
-app-wide steps — بررسی اولیه / آزمایش و بررسی فنی / تماس با مشتری / تعویض یا جبران /
-اطلاع‌رسانی نتیجه / تماس رضایت‌سنجی — no admin CRUD, spec §15 decision 6) and
-`workflow_edges` (`from_task_id`, `to_task_id UNIQUE`) — the `UNIQUE` on `to_task_id`
-makes "every step has at most one parent" a DB-level guarantee, not just app discipline,
-since a freshly created task can never already have one.
-
-**No `state` column on an edge.** The original spec's draft SQL had one
-(`resolved`/`pending`); this implementation derives it instead from the target task's
-own `status` at read time — a second stored copy of "is this task done" is a second
-place it can drift out of sync, and `lib/repo/workflow.ts`'s `getComplaintSteps` already
-returns the task rows the caller needs to compute solid/dashed itself.
-
-**No new completion endpoint.** Marking a step done reuses the existing
-`PATCH /api/tasks/[id]` (`completeTask` in `lib/repo/tasks.ts`) — it was already fully
-generic (works for any `kind`/`entity_type`, no special-casing needed).
-
-`lib/repo/workflow.ts`: `listStepTemplates()`, `getComplaintSteps(orgId, complaintId)`,
-`linkStep(orgId, complaintId, templateKey, fromTaskId, createdByUserId)`. Routes:
-`GET`/`POST /api/sales/complaints/[id]/steps` — GET open to owner/group_manager/
-salesperson (read parity with the existing complaints list route), POST restricted to
-owner/group_manager (write parity with `ComplaintsPanel.tsx`'s existing `canManage`
-status-change gate).
-
-Neither new table carries `organization_id` — both are in
-`tests/tenancy-schema.test.ts`'s `exempt` set (`workflow_edges` reaches its tenant
-through the tasks it connects, `workflow_step_templates` is not tenant data at all).
-
-**The UI**: `ComplaintWorkflowModal.tsx`, opened from a new "مسیر رسیدگی" button on each
-`/sales/complaints` row (reuses `.kargah-scrim`/`.modal` — `ProcessingModal.tsx` is the
-reference, not a new modal chrome pattern). The drag gesture is
-`AssignmentBoard.tsx`'s proven pointer-capture pattern adapted, not reinvented: a real
-`<button>` wired with both `onPointerDown` (drag) and `onClick` (keyboard/tap fallback,
-opening a target-picker instead), distinguished by a `dragging` ref so a completed drag
-never also fires a click. Two pure, tested modules do the graph's math:
-`lib/design/treeLayout.ts`'s `layoutTree` (row = depth, a parent's column centres over
-its children's — deliberately simple, these graphs are a handful of nodes) and
-`lib/design/connectorPath.ts`'s `bezierPath` (the vertical S-curve between two nodes,
-spec §9c's "curved bezier edges"). Edge solid/dashed is read directly off the target
-task's live `status` — no separate state to keep in sync, per the backend section above.
-
-## Brand mark `SHIPPED`
-
-Replaced the stale placeholder (`public/icon.svg`'s navy #0A0E14 square + cyan #2DE0E6
-diamond, both colours dead since the substrate redesign) after two full rejected rounds
-— see `docs/superpowers/plans/2026-09-09-brand-mark.md` for the concepts that didn't
-make it and why. **The mark: a near-black rounded square containing a white route arc
-with a live pulse riding it** (a solid dot inside a faint ring, positioned mid-path, not
-at either endpoint) — the one element among all twelve concepts shown that actually
-implied movement rather than a static path.
-
-Wired into every Next.js icon convention: `app/icon.svg` (auto-linked `<link
-rel="icon">`), `app/apple-icon.png` 180×180 (auto-linked `<link rel="apple-touch-icon">`),
-`app/favicon.ico` 16+32 (root-only `favicon` convention), and a maskable 512×512 PNG
-(`public/icons/maskable-512.png`, rendered from a *separate* full-bleed SVG with the mark
-scaled into the W3C safe zone — a maskable icon must not pre-round its own corners, the
-OS applies its own mask) referenced from `manifest.ts`. `public/icon.svg` duplicates
-`app/icon.svg`'s content on purpose: Next's own icon route serves at a query-stringed
-URL, not the stable path a PWA manifest needs. `scripts/gen-icons.mjs` does the
-rasterizing (via `sharp`, already a dependency) and hand-assembles the `.ico` container
-directly — modern `.ico` embeds PNG data per entry, no third-party encoder needed.
-
-## Kit primitives not yet wired to real pages
-
-`TiltCard`, `GlowSurface`, the five pill form controls, `SegmentedPill`, `ArcGauge`,
-`StatefulButton`, `GooeyInput` all exist, are tested where they have extractable pure
-logic, and build cleanly — but none is imported by a real page yet. That was deliberate
-at the time: the substrate sub-project's scope was the substrate and the kit, not the
-shell that would consume it. The shell sub-project above is exactly that consumption —
-`Navbar`, `Rail` and `Bento`/`BentoCell` are the wired examples of how a kit primitive
-graduates from "exists" to "used": a real page imports it, a real click does something,
-and (where the primitive has pure logic worth isolating, like `bentoSpanForIndex` or
-`magnifyScale`) a test pins the shape of that logic down. The primitives listed above
-still await the same treatment from whichever future page actually needs them —
-`StatefulButton`/`GooeyInput` in particular are confirmed-from-video but have no current
-call site.
+### Assignment board `SHIPPED`
+Superseded by **Order pipeline** above. Same endpoint, same authorisation surface.
 
 ## Anti-patterns
 
-- No purple/pink AI-gradient anything.
+- No purple/pink AI-gradient anything. (Warm mesh gradients are specified above and are
+  not this: they are warm, low-contrast, and carry a figure.)
 - No emoji as icon.
 - No token defined in only one theme block.
 - No component that branches on theme in JS.
-- No `--accent` carrying a chrome/button fill — that is `--primary`'s job. No status
-  color carrying interaction.
+- No `--accent` carrying status, no status color carrying interaction.
 - No color as the only signal.
-- **No `--text-faint` on anything a reader must read** — it does not clear 4.5:1.
-- **No `box-shadow` on a `clip-path`ed/notched element** — use `--card-drop`.
-- **No hand-typed rgba shadow literal** — reference `--sh-*`/`--card-drop`/`--edge-hi`/
-  `--edge-lo`. A literal survives token-based retinting untouched, which is exactly how
-  three warm shadows survived this whole redesign undetected until Task 19's audit.
-- **No `-webkit-backdrop-filter` written after the standard `backdrop-filter`** — see
-  Skeuomorphic system.
-- **No stagger delay left on an element while resetting its entrance.**
+- **No `--text-faint` on anything a reader must read** — it does not clear 4.5:1 in light.
+- **No white text on the dark theme's accent fill** — it is 3.01:1. Use `--accent-ink`.
+- **No `box-shadow` on a `clip-path`ed element** — use `--card-drop`.
+- **No stagger delay left on an element while resetting its entrance** — see Tier 0.
 - **No `setPointerCapture` on a drag container**, and no `preventDefault()` on
   `pointerdown` — both silently destroy the click.
-- **No `inset-inline-start` for centring a fixed overlay** — physical `left: 50%` instead.
-- No spring/tilt/glow in `/driver`, on hover targets that are precision click targets
-  (buttons/links still use a simple scale, no overshoot), on map layers, or on anything
-  the user is waiting on (spinners, saving states).
+- **No `inset-inline-start` for centring a fixed overlay.** Under RTL it is the *right*
+  edge, so `translate(-50%)` walks the element off toward the left. Centred overlays use
+  physical `left: 50%`.
+- No spring easing in Tier 3 (data), on hover targets, on map layers, or in driver mode.
 - No stagger that runs past its cap; no motion that survives `prefers-reduced-motion`.
-- No animation on `width`/`height`/`top`/`left` outside the notification island's
-  documented exemption.
-- No spinner where a skeleton fits; `StatefulButton` covers the button-specific case.
+- No animation on `width`/`height`/`top`/`left` outside the island's documented exemption.
+- No spinner where a skeleton fits.
 - No proportional figures in a column of numbers.
-- **No renaming a CSS class without grepping for it as a runtime string first** — a
-  `querySelectorAll`/reveal-on-navigate selector list is not caught by TypeScript, and a
-  plain rename silently stops an animation rather than breaking the build. Found once
-  already (`RevealRoute.tsx`'s `.cradlewrap` reference) during this redesign.
-- **No mechanical class-rename regex anchored on a word boundary alone** — `\bkargah\b`
-  (or any `\.NAME\b`-style pattern) matches `NAME` as a *prefix* of any longer class that
-  happens to start with it and continue with a hyphen, since a hyphen is itself a word
-  boundary. `.kargah-scrim` (a real class two live components render) was corrupted this
-  way into the invalid selector `:root-scrim`, silently dropped by every browser rather
-  than erroring — undetected through this entire redesign's build+test verification until
-  the very last task, because neither `npm test` nor a route-list build summary surfaces
-  a dropped CSS selector. Grep the *full* `npm run build` output for `warn`/`error`, not
-  just its tail, after any bulk selector rewrite — and anchor a rename regex to the
-  selector's true edges (`\.kargah(?![\w-])`, or better, an exact set of known selectors)
-  rather than a bare word boundary.
-- **No assuming a component is "the" instance of a pattern from its class name alone** —
-  verify with `grep -rln` for actual imports before treating anything as either sacred or
-  safe to delete. Two components sharing a bare class name (`.pocket`) is exactly how the
-  dead-pattern collision in **Pocket patterns** above happened.
 
-## Not yet decided / deferred to later sub-projects
+## Not yet decided
 
-- Icon set — `lucide-react` approved, now wired via the shell sub-project's `Rail`
-  (`ChevronRight`/`CalendarDays`/`MapPin`/`Bell`) — still the only consumer; the rest of
-  the app's icons (SVG inline, or emoji in places the anti-patterns below already flag)
-  are unmigrated.
-- Journey connector lines (curved bezier edges between task nodes,
-  solid=resolved/dashed=pending) and the drag-to-link workflow editor UI — repurposed
-  onto `/sales/complaints` rather than a new generic `/sales/tasks` board (2026-09-09
-  decision, see "Complaint resolution workflow" below); the backend is done, this UI
-  piece is the remaining part.
-- Route migration + the `loading.tsx`/`<Suspense>`/`next/dynamic`/`Promise.all` speed
-  work, for the routes not yet on this substrate.
-- ~~The workflow-editor UI~~ — shipped, see "Complaint resolution workflow" above.
-  §9c/§9d are now fully shipped: user avatars, the workflow backend, and the drag-to-link
-  graph UI all exist. Deliberately NOT retrofitted onto `OrderJourney.tsx`, which keeps
-  its explicit read-only invariant (ticks derived from real records, never manually
-  toggled, so they can never disagree with the invoice).
-- Global features: command palette, hotkeys, Login-As impersonation, themed error pages,
-  contextual `(i)` help.
-- Module polish: map/GIS cleanup, CRM workflow gaps, logistics (vertical timeline, Lottie
-  empty states), calendar/weather, the Persian i18n sweep.
-- ~~Brand mark, icon/favicon set~~ — shipped, see "Brand mark" above. Splash screen
-  still open (no dedicated splash asset exists yet, only the PWA manifest icons).
+- Whether `/report` print styles get a light-theme pass or keep their own sheet. Print is
+  already the one place the MVP allowed a light world, and it may simply become light
+  mode now.
+- Icon set. The app currently has no consistent one; Lucide and Feather are the AI
+  defaults and are excluded. Phosphor is the leading candidate.
+Decided since: the map's tile sets are hosted styles, not CSS filters. «رادار» is CARTO
+Dark Matter drawn as vector through MapLibre — the pre-redesign basemap itself rather than
+an inversion of a light one, which is what made every filtered attempt look wrong. A CSS
+tone survives only as the no-WebGL fallback. See `lib/mapLayers.ts`.

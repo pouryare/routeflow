@@ -22,11 +22,11 @@ describe("contrast", () => {
     expect(contrastRatio("#FFFFFF", "#000000")).toBeCloseTo(21, 2);
   });
 
-  it("agrees with the substrate spec's published figures", () => {
-    // --text on --bg / --surface, light -- the 2026-09-08 cool+black repalette.
-    expect(contrastRatio("#16181D", "#ECEDEF")).toBeCloseTo(15.16, 1);
-    expect(contrastRatio("#16181D", "#FFFFFF")).toBeCloseTo(17.76, 1);
-    // --primary-ink on --primary, light: the near-black primary pill clears AAA easily.
-    expect(contrastRatio("#FFFFFF", "#101216")).toBeCloseTo(18.75, 1);
+  it("agrees with the figures MASTER.md publishes", () => {
+    expect(contrastRatio("#231C16", "#F4F0E9")).toBeCloseTo(14.8, 1);
+    expect(contrastRatio("#241009", "#E8734A")).toBeCloseTo(6.06, 1);
+    // the two failures that shaped the palette
+    expect(contrastRatio("#C0532B", "#F4F0E9")).toBeLessThan(4.5);
+    expect(contrastRatio("#FFFFFF", "#E8734A")).toBeLessThan(4.5);
   });
 });

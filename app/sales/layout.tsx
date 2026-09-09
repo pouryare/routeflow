@@ -6,24 +6,18 @@ import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import ProfileMenu from "@/components/kargah/ProfileMenu";
-import Navbar from "@/components/kargah/Navbar";
-import Rail from "@/components/kargah/Rail";
+import TabPill from "@/components/kargah/TabPill";
 import Chrome from "@/components/kargah/Chrome";
 import RevealRoute from "@/components/kargah/RevealRoute";
 import RouteFade from "@/components/kargah/RouteFade";
 import SyncStatus from "@/components/SyncStatus";
-import { salesTabs } from "@/lib/salesNav";
+import { SALES_GROUPS, salesTabs } from "@/lib/salesNav";
 
 export const dynamic = "force-dynamic";
 
 /** The sales section's chrome, laid out exactly as the approved artifact draws it:
  *  gradient mark, title with the date beneath, the map chip, the sun/moon toggle, and
- *  the viewer's initial.
- *
- *  ONE navbar row, not two: Navbar itself renders the six group pills and each one's
- *  hover/click dropdown -- TabPill's old persistent second row of the same destinations
- *  was never removed when Navbar absorbed that job, so the two rendered side by side.
- *  Fixed by dropping TabPill from this layout entirely.
+ *  the viewer's initial — then the travelling tab pill.
  *
  *  proxy.ts has already refused a driver by the time this renders -- the redirect below
  *  is the belt to its braces, because a coarse gate on a cookie is not an authorisation
@@ -42,32 +36,30 @@ export default async function SalesLayout({ children }: { children: ReactNode })
     /* `kargah` is the scope the whole design system hangs off. Every token the artifact
        names is defined on this class -- see app/globals.css, "کارگاه". */
     <div className="kargah min-h-screen">
-      <Rail />
-      <div className="app app--railed">
+      <div className="app">
         <Chrome>
-        <Navbar
-          tabs={tabs}
-          brand={
-            <>
-              <div className="mark" aria-hidden="true">
-                <svg viewBox="0 0 44 24" width="26" height="14" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round">
-                  <path d="M22 12c-3.2-4.6-6-6.2-9.4-6.2C8.4 5.8 5 8.6 5 12s3.4 6.2 7.6 6.2c3.4 0 6.2-1.6 9.4-6.2Zm0 0c3.2-4.6 6-6.2 9.4-6.2C35.6 5.8 39 8.6 39 12s-3.4 6.2-7.6 6.2c-3.4 0-6.2-1.6-9.4-6.2Z" />
-                </svg>
-              </div>
-              <div>
-                <h1 className="navbar__wordmark">RouteFlow</h1>
-                <div className="sub">{faJalaliLong(new Date().toISOString())}</div>
-              </div>
-            </>
-          }
-          profile={
+        <div className="top">
+          <div className="brandwrap">
+            <div className="mark" aria-hidden="true">
+              <svg viewBox="0 0 44 24" width="26" height="14" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round">
+                <path d="M22 12c-3.2-4.6-6-6.2-9.4-6.2C8.4 5.8 5 8.6 5 12s3.4 6.2 7.6 6.2c3.4 0 6.2-1.6 9.4-6.2Zm0 0c3.2-4.6 6-6.2 9.4-6.2C35.6 5.8 39 8.6 39 12s-3.4 6.2-7.6 6.2c-3.4 0-6.2-1.6-9.4-6.2Z" />
+              </svg>
+            </div>
+            <div>
+              <h1>RouteFlow</h1>
+              <div className="sub">{faJalaliLong(new Date().toISOString())}</div>
+            </div>
+          </div>
+          <div className="topright">
             <ProfileMenu
               userId={session.user.id}
               name={session.user.display_name}
               roleLabel={ROLE_LABEL[session.role]}
             />
-          }
-        />
+          </div>
+        </div>
+
+        <TabPill tabs={tabs} groups={SALES_GROUPS} />
         </Chrome>
 
         {/* One entrance for every sales screen — see RevealRoute for why it is not

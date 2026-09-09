@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "سامانه فروش، پخش و مدیریت مسیر",
     start_url: "/",
     display: "standalone",
-    background_color: "#ECEDEF",
-    theme_color: "#ECEDEF",
+    background_color: "#0A0E14",
+    theme_color: "#0A0E14",
     dir: "rtl",
     lang: "fa",
     icons: [
@@ -16,12 +16,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icon.svg",
         sizes: "any",
         type: "image/svg+xml",
-      },
-      {
-        src: "/icons/maskable-512.png",
-        sizes: "512x512",
-        type: "image/png",
-        purpose: "maskable",
       },
     ],
   };

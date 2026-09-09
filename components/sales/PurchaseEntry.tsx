@@ -236,7 +236,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           type="button"
           onClick={submit}
           disabled={busy || lines.length === 0}
-          className="rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--primary)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-primary-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-40"
+          className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-40"
         >
           {busy ? "در حال ثبت…" : "ثبت خرید"}
         </button>

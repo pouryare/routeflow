@@ -98,7 +98,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
             type="button"
             disabled={busy}
             onClick={() => void commit()}
-            className="rounded-[var(--radius-md)] bg-[var(--primary)] px-[var(--space-3)] py-[var(--space-1)] text-primary-ink disabled:opacity-50"
+            className="rounded-[var(--radius-md)] bg-[var(--accent)] px-[var(--space-3)] py-[var(--space-1)] text-white disabled:opacity-50"
           >
             تثبیت
           </button>

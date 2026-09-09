@@ -185,7 +185,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         <button
           type="submit"
           disabled={busy}
-          className="rounded bg-primary px-4 py-2 text-sm text-primary-ink disabled:opacity-50"
+          className="rounded bg-accent px-4 py-2 text-sm text-white disabled:opacity-50"
         >
           ثبت دریافت
         </button>

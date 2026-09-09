@@ -1,8 +1,6 @@
 import Link from "next/link";
 import TaskRow from "./TaskRow";
 import type { Briefing as BriefingData, BriefingItem } from "@/lib/repo/briefing";
-import { Bento, BentoCell } from "@/components/kargah/Bento";
-import { bentoSpanForIndex } from "@/lib/design/bentoSpan";
 
 /** "plain" is the driver's standalone /today (generic tokens, phone-width column).
  *  "kargah" is the /sales/today tab — the same panels dressed in the workshop skin so it
@@ -96,10 +94,9 @@ export default function Briefing({
 
   if (variant === "kargah") {
     return (
-      <Bento className="gap-[14px]" >
-        {data.panels.map((p, i) => (
-          <BentoCell key={p.key} span={bentoSpanForIndex(i, data.panels.length)}>
-          <div className="kblock">
+      <div className="flex flex-col gap-[14px]" dir="rtl">
+        {data.panels.map((p) => (
+          <div key={p.key} className="kblock">
             <div className="bhead">
               <div>
                 <h2>{p.title}</h2>
@@ -112,9 +109,8 @@ export default function Briefing({
               ))}
             </ul>
           </div>
-          </BentoCell>
         ))}
-      </Bento>
+      </div>
     );
   }
 

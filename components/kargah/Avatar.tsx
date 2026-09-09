@@ -1,22 +1,14 @@
-"use client";
-
 /** One user, one squircle.
  *
- *  Tries a real avatar first (`/api/users/{id}/avatar/file`), falling through to
- *  initials-on-a-tone on a 404/error -- still honest about what the system actually has
- *  for a user with no picture, just no longer assuming nobody ever will. The colour is
- *  seeded from the user id (not the name, not the name's length), so the same person is
- *  the same colour everywhere they appear (including as the fallback ring around a
- *  broken/missing image), and it does not shuffle when they change their display name.
+ *  The users table has display names and no images, so this is initials on a coloured
+ *  ground -- honest about exactly what the system knows. The colour is seeded from the
+ *  user id (not the name, not the name's length), so the same person is the same colour
+ *  everywhere they appear, and it does not shuffle when they change their display name.
  *
- *  No prop signature change from the initials-only version: every existing caller keeps
- *  passing userId/name/size/title/count exactly as before. There is no cheap way to know
- *  "does this user have an avatar" without either a fetch per avatar or a join at every
- *  one of this component's ~dozen call sites -- the <img>+onError approach costs nothing
- *  extra when the file route 404s (one cached 404, same as any missing image a browser
- *  already handles for free).
+ *  Replaces the ~6 ad-hoc `AV_TONE[...name.length % 4]` copies across /sales. When a real
+ *  avatar column lands later, add an optional `src` here and fall through to the initials
+ *  when it is null.
  */
-import { useState } from "react";
 import { faNum } from "@/lib/format";
 
 const TONES = ["plum", "sage", "sky", "amber"] as const;
@@ -53,9 +45,7 @@ export default function Avatar({
   count,
   className = "",
 }: {
-  /** The user's id when the caller has it -- keeps the colour stable if they rename,
-   *  and is required for the real-picture path (no id, no avatar lookup, straight to
-   *  initials). */
+  /** The user's id when the caller has it -- keeps the colour stable if they rename. */
   userId?: number;
   name: string;
   size?: number;
@@ -65,26 +55,7 @@ export default function Avatar({
   className?: string;
 }) {
   const tone = toneFor(userId ?? name);
-  const [imgFailed, setImgFailed] = useState(false);
-  const showImg = Boolean(userId) && !imgFailed;
-
-  const chip = showImg ? (
-    <img
-      src={`/api/users/${userId}/avatar/file`}
-      alt={title ?? name}
-      title={title ?? name}
-      className={`av ${className}`.trim()}
-      style={{
-        width: size,
-        height: size,
-        borderRadius: "35%",
-        objectFit: "cover",
-        display: "inline-block",
-        flex: "none",
-      }}
-      onError={() => setImgFailed(true)}
-    />
-  ) : (
+  const chip = (
     <span
       aria-hidden="true"
       title={title ?? name}

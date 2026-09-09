@@ -38,14 +38,10 @@ describe("the catalogue and the stylesheet agree", () => {
   // The two are written by the same generator run, so a mismatch means someone edited one
   // by hand -- which is exactly the failure this catches.
   it("has a light and a dark CSS block for every theme", () => {
-    // Map-only since the 2026-09-08 substrate redesign (Task 11) -- these themes no
-    // longer emit a .kargah half at all. kargah's own fixed accent, and the guard that
-    // keeps these themes from leaking into it, live in globals.css's trailing
-    // "kargah accent guard" block instead, unrelated to this generated section.
     for (const t of ACCENT_THEMES) {
-      expect(CSS, `light block for ${t.id}`).toContain(`:root[data-accent="${t.id}"] {`);
+      expect(CSS, `light block for ${t.id}`).toContain(`:root[data-accent="${t.id}"] .kargah,`);
       expect(CSS, `dark block for ${t.id}`).toContain(
-        `:root[data-accent="${t.id}"][data-skin="dark"] {`,
+        `:root[data-accent="${t.id}"][data-skin="dark"] .kargah,`,
       );
     }
   });
@@ -64,7 +60,7 @@ describe("the catalogue and the stylesheet agree", () => {
 
   it("declares the swatch colour the CSS actually uses", () => {
     for (const t of ACCENT_THEMES) {
-      const i = CSS.indexOf(`:root[data-accent="${t.id}"] {`);
+      const i = CSS.indexOf(`:root[data-accent="${t.id}"] .kargah,`);
       const block = CSS.slice(CSS.indexOf("{", i), CSS.indexOf("}", i));
       expect(block, `${t.id} light --accent`).toContain(`--accent: ${t.swatch.light};`);
     }

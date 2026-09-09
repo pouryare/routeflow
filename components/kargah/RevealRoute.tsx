@@ -15,7 +15,7 @@ import { useEffect } from "react";
  *  Longest-prefix match, so /sales/orders/12 uses the orders list.
  */
 const REVEAL: Record<string, string[]> = {
-  "/sales": [".gcard", ".kblock", ".notch-wrap"],
+  "/sales": [".gcard", ".kblock", ".cradlewrap"],
   "/sales/orders": [".bhead", ".pocket"],
   "/sales/orders/new": [".card", ".kblock"],
   "/sales/board": [".hint", ".col"],

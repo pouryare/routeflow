@@ -181,8 +181,6 @@ describe("organization_id backfill", () => {
       "platform_access_log", // vendor audit trail; its organization_id names the tenant
                              // that was looked at, not one that owns the row
       "sales",              // the legacy imported ledger, read-only and being retired
-      "workflow_edges",           // reaches a tenant through the tasks it connects
-      "workflow_step_templates",  // fixed, seeded, app-wide -- not tenant data
     ]);
 
     const unaccounted = all.filter((t) => !exempt.has(t) && !(TENANT_TABLES as readonly string[]).includes(t));

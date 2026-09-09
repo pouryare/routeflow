@@ -561,16 +561,7 @@ function verify(themes) {
         check(!(t2 in k), `emits ${t2}, which themes must never override`);
       }
 
-      /* Dead verification since Task 11 (2026-09-08): surfaceTokens() below still
-         computes a real value, but nothing emits it to CSS anymore -- kargah's surface
-         no longer varies by accent choice at all (see the emit-time comment above). This
-         check now verifies in-memory-only numbers with no shipped counterpart. Left
-         running rather than removed: untangling it needs touching SURFACE_BASE/
-         SURFACE_INKS/SURFACE_ALIAS/SURFACE_C_CEIL, none of which this task's scope
-         (sever kargah from the shipped CSS) requires, and the check is harmless --
-         it costs a few CPU cycles at generator run time and asserts nothing false.
-
-         Surface tint (.kargah only): a tinted ground must carry its inks no worse than
+      /* Surface tint (.kargah only): a tinted ground must carry its inks no worse than
          the shipping cream already does. The bar is terracotta's own value for the same
          pair, not an absolute -- --text-muted/--text-faint on --surface-sunk sit at 4.25
          / 2.89 in the palette on screen today, and a hue rotation at fixed OKLCH L/C
@@ -613,18 +604,13 @@ function css(themes) {
   L.push(`/* ${themes.length} accent themes x 2 skins, solved against the real grounds by`);
   L.push(`   scripts/gen-accent-themes.mjs. Do not hand-edit -- re-run it instead.`);
   L.push(`
-   These themes are MAP-ONLY since the 2026-09-08 substrate redesign (Task 11): kargah
-   (/sales, /settings) is now a fixed cool+black palette, not re-tintable per user, so
-   every rule below sets tokens on bare :root only -- the .kargah half of each selector,
-   and the separate .kargah-only surface-tint block that used to accompany it, are both
-   gone. Do not re-add them; kargah reading a plain :root token here would silently
-   re-couple its colour to the map's accent choice again, which is the exact bug Task 11
-   fixed (an always-set default data-accent value was outspecifying kargah's own retinted
-   :root block).
+   Each theme sets its tokens on :root as well as on .kargah, so one choice re-skins both
+   design systems at once. :root[data-accent=...] outspecifies the bare .kargah block, so
+   inside the کارگاه scope the themed value still wins.
 
-   Dark is still selected by data-skin rather than data-theme, because this generator
-   predates the kargah/map token-scope unification and data-skin remains the signal the
-   map's own dark toggle writes. See lib/theme.ts SKIN_KEY.
+   Dark is selected by data-skin rather than data-theme because .kargah defaults to light
+   and needs a positive signal for dark -- lib/theme.ts writes both attributes, so keying
+   on data-skin is correct for both scopes. See lib/theme.ts SKIN_KEY.
 
    The --map-* tokens are read by JS, not by CSS: Leaflet paints district polygons onto a
    canvas where var() does not resolve, so components/CoverageMap.tsx reads these back with
@@ -634,10 +620,10 @@ function css(themes) {
   /* The default carries no data-accent attribute, so a browser that has never chosen and
      the server render agree without any extra CSS -- and, critically, --map-* exist before
      any choice is made. */
-  L.push(`:root {`);
+  L.push(`:root, :root .kargah {`);
   for (const [k, v] of Object.entries(dflt.skins.light.tokens)) L.push(`  ${k}: ${v};`);
   L.push(`}`);
-  L.push(`:root[data-skin="dark"] {`);
+  L.push(`:root[data-skin="dark"], :root[data-skin="dark"] .kargah {`);
   for (const [k, v] of Object.entries(dflt.skins.dark.tokens)) L.push(`  ${k}: ${v};`);
   L.push(`}`);
 
@@ -658,16 +644,21 @@ function css(themes) {
   for (const t of themes) {
     for (const skin of ["light", "dark"]) {
       const sel = skin === "light"
-        ? `:root[data-accent="${t.id}"]`
-        : `:root[data-accent="${t.id}"][data-skin="dark"]`;
+        ? `:root[data-accent="${t.id}"] .kargah, :root[data-accent="${t.id}"]`
+        : `:root[data-accent="${t.id}"][data-skin="dark"] .kargah, :root[data-accent="${t.id}"][data-skin="dark"]`;
       L.push(`${sel} {`);
       for (const [k, v] of Object.entries(t.skins[skin].tokens)) L.push(`  ${k}: ${v};`);
       L.push(`  --series-single: var(--accent);`);
       L.push(`}`);
 
-      /* No .kargah surface-tint block here anymore (Task 11) -- kargah's --bg/--surface/
-         etc. no longer vary by accent choice at all; they are the fixed retinted values
-         in app/globals.css's promoted :root / :root[data-theme="dark"] blocks. */
+      /* Surface tint -- .kargah ONLY, never bare :root. The map keeps its own neutrals
+         (see surfaceTokens). Separate rule so the selector cannot accidentally widen. */
+      const surfSel = skin === "light"
+        ? `:root[data-accent="${t.id}"] .kargah`
+        : `:root[data-accent="${t.id}"][data-skin="dark"] .kargah`;
+      L.push(`${surfSel} {`);
+      for (const [k, v] of Object.entries(surfaceTokens(t.hue, skin, t.id))) L.push(`  ${k}: ${v};`);
+      L.push(`}`);
     }
     for (const ground of ["light", "dark"]) {
       L.push(`:root[data-accent="${t.id}"] [data-ground="${ground}"] {`);

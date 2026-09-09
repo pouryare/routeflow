@@ -141,7 +141,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
           انقضا
           <input type="date" className="rounded border border-border bg-bg p-1.5 text-sm" value={form.expiry_date} onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))} />
         </label>
-        <button type="submit" className="rounded bg-primary px-4 py-2 text-sm text-primary-ink">
+        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
           ثبت بچ
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}

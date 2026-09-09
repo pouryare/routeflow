@@ -22,11 +22,11 @@ const FIELD =
   "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none transition-colors duration-[var(--dur-base)] focus:border-[var(--accent)]";
 const LABEL = "mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]";
 const BUTTON =
-  "rounded-[var(--radius-md)] border border-[var(--primary)] bg-[var(--primary)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-primary-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50";
+  "rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50";
 const SEG_BTN = (on: boolean) =>
   `rounded-[var(--radius-md)] border px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] font-medium transition-colors duration-[var(--dur-base)] ${
     on
-      ? "border-[var(--primary)] bg-[var(--primary)] text-primary-ink"
+      ? "border-[var(--accent)] bg-[var(--accent)] text-accent-ink"
       : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:border-[var(--border-strong)]"
   }`;
 
