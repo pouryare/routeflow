@@ -1709,6 +1709,9 @@ body {
   padding: 12px; display: flex; flex-direction: column; gap: 4px;
 }
 .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
+.pm__avatarLabel { cursor: pointer; display: inline-flex; border-radius: 35%; }
+.pm__avatarLabel:hover { opacity: 0.85; }
+.pm__avatarLabel input { display: none; }
 .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }
 .pm__link {
