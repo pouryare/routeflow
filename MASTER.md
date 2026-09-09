@@ -509,6 +509,43 @@ established upload idiom (hidden `<input type=file>` under a label, upload-on-se
 users" is a seed-script concern that needs real image assets nobody has produced — the
 pipe is built, filling it with demo images is separate work.
 
+## Complaint resolution workflow `SHIPPED` (backend only)
+
+The backend half of the repurposed workflow editor (2026-09-09 decision — see the
+deferred list below for why `/sales/complaints`, not a new generic `/sales/tasks` board).
+
+No new column on `tasks`: a spawned step is `entity_type='complaint'` /
+`entity_id=<complaint id>`, the same polymorphic link photos/reminders/activity_log
+already use. Two new tables only: `workflow_step_templates` (six fixed, seeded,
+app-wide steps — بررسی اولیه / آزمایش و بررسی فنی / تماس با مشتری / تعویض یا جبران /
+اطلاع‌رسانی نتیجه / تماس رضایت‌سنجی — no admin CRUD, spec §15 decision 6) and
+`workflow_edges` (`from_task_id`, `to_task_id UNIQUE`) — the `UNIQUE` on `to_task_id`
+makes "every step has at most one parent" a DB-level guarantee, not just app discipline,
+since a freshly created task can never already have one.
+
+**No `state` column on an edge.** The original spec's draft SQL had one
+(`resolved`/`pending`); this implementation derives it instead from the target task's
+own `status` at read time — a second stored copy of "is this task done" is a second
+place it can drift out of sync, and `lib/repo/workflow.ts`'s `getComplaintSteps` already
+returns the task rows the caller needs to compute solid/dashed itself.
+
+**No new completion endpoint.** Marking a step done reuses the existing
+`PATCH /api/tasks/[id]` (`completeTask` in `lib/repo/tasks.ts`) — it was already fully
+generic (works for any `kind`/`entity_type`, no special-casing needed).
+
+`lib/repo/workflow.ts`: `listStepTemplates()`, `getComplaintSteps(orgId, complaintId)`,
+`linkStep(orgId, complaintId, templateKey, fromTaskId, createdByUserId)`. Routes:
+`GET`/`POST /api/sales/complaints/[id]/steps` — GET open to owner/group_manager/
+salesperson (read parity with the existing complaints list route), POST restricted to
+owner/group_manager (write parity with `ComplaintsPanel.tsx`'s existing `canManage`
+status-change gate).
+
+Neither new table carries `organization_id` — both are in
+`tests/tenancy-schema.test.ts`'s `exempt` set (`workflow_edges` reaches its tenant
+through the tasks it connects, `workflow_step_templates` is not tenant data at all).
+
+**Not yet built**: the actual drag-to-link graph UI — see the deferred list below.
+
 ## Kit primitives not yet wired to real pages
 
 `TiltCard`, `GlowSurface`, the five pill form controls, `SegmentedPill`, `ArcGauge`,
@@ -579,17 +616,20 @@ call site.
   the app's icons (SVG inline, or emoji in places the anti-patterns below already flag)
   are unmigrated.
 - Journey connector lines (curved bezier edges between task nodes,
-  solid=resolved/dashed=pending) and the drag-to-link workflow editor UI — the shell's
-  navbar/rail/bento are done (see "The shell" above); this is the remaining, larger piece
-  of §9c, and needs the backend bullet below before it can render anything real.
+  solid=resolved/dashed=pending) and the drag-to-link workflow editor UI — repurposed
+  onto `/sales/complaints` rather than a new generic `/sales/tasks` board (2026-09-09
+  decision, see "Complaint resolution workflow" below); the backend is done, this UI
+  piece is the remaining part.
 - Route migration + the `loading.tsx`/`<Suspense>`/`next/dynamic`/`Promise.all` speed
   work, for the routes not yet on this substrate.
-- The workflow-editor backend (`workflow_edges`, `workflow_step_templates`, task→stage
-  assignment) and its `/sales/tasks` UI — deliberately NOT retrofitted onto
+- The workflow-editor UI (the actual drag-to-link graph rendering on
+  `/sales/complaints`) — the backend (`workflow_edges`, `workflow_step_templates`,
+  `lib/repo/workflow.ts`, `GET`/`POST /api/sales/complaints/[id]/steps`) is done, see
+  "Complaint resolution workflow" below. Deliberately NOT retrofitted onto
   `OrderJourney.tsx`, which keeps its explicit read-only invariant (ticks derived from
   real records, never manually toggled, so they can never disagree with the invoice).
-  §9d's OTHER backend gap, user avatars, is done — see "User avatars" above; this is the
-  only piece of §9d still remaining.
+  §9d is now fully shipped on the backend side — both user avatars and the complaint
+  workflow tables/routes exist; only the graph's own UI remains.
 - Global features: command palette, hotkeys, Login-As impersonation, themed error pages,
   contextual `(i)` help.
 - Module polish: map/GIS cleanup, CRM workflow gaps, logistics (vertical timeline, Lottie
