@@ -10,6 +10,35 @@
 
 **Spec:** `docs/superpowers/specs/2026-09-09-app-shell-and-foundations-design.md` (Sections 0 and the primitive halves of Section 3). Part 2 covers Sections 1, 2, 4, 5.
 
+## STATUS: Part 1 complete (branch `app-shell-foundations`)
+
+| Task | Commit | Notes |
+|---|---|---|
+| 1 deps | `036e279` | lucide-react@1.43, framer-motion@13.2 |
+| 2 rename kargah→meridian | `a05311e` | + NUL-byte bug in `lib/repo/notifications.ts` |
+| 3+4 warm→cold palette | `e75d1e9` | default accent → ocean; `check:contrast` 500/500 |
+| 5 MASTER.md | `2c1af6e` | + cool shadows in globals.css |
+| 6 lib/motion.ts | `9850009` | framer-motion presets from MASTER.md Motion |
+| 7 Icon | `9850009` | lucide wrapper, `resolveIcon` pure-tested |
+| 8 Card primitive | — | **dropped** (repo has CarvedCard/GradientStat/.gcard/.card/.kblock) |
+| 9 Counter | — | **already shipped** as `CountUp` + `useCountUp` + tests |
+| 10 CardHelp | `dc31028` | standalone + `lib/help/` registry |
+| 11 appNav + field group | — | **moved to Part 2** (inseparable from HoverPill/shell) |
+| 12 close-out | this | full gate, tag `app-shell-foundations-part1` |
+
+New tests added: `tests/skin.test.ts` (cold-ground guard), `tests/motion.test.ts`,
+`tests/meridian-icon.test.ts`, `tests/meridian-help.test.ts`. Total suite 1870→~1885.
+
+Lint: still the 2 pre-existing `set-state-in-effect` errors in `components/board/`,
+zero new.
+
+**Part 2 carries forward:** `appNav`+`field` group, the route-group shell, `AppShell`,
+one-row header (`HoverPill`, hover `ProfileMenu`, bell relocation, `⌘K` slot),
+`PageHeaderCard`, per-route `loading.tsx`, `/analytics` merge, the whole-app icon/card
+sweep (now that `Icon`/`CardHelp` exist), the decorative warm-token cleanup
+(`--gcard-*`, `--frost`, `--island-*`, `--wash-mint/sand/sky`), and the MASTER.md
+map + motion sections.
+
 ## Progress & deviations (updated during execution)
 
 - **Baseline (branch point):** build ✓, 1868 tests pass, `check:contrast` ✓ (500 pairs, not 260 — plan estimate was low). Lint has **2 pre-existing errors** (`components/board/Board.tsx:79`, `BoardMobile.tsx:40`, both `react-hooks/set-state-in-effect`) unrelated to this slice. Gate for this plan is therefore "no *new* lint errors", not "zero".
