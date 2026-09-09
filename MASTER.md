@@ -509,7 +509,7 @@ established upload idiom (hidden `<input type=file>` under a label, upload-on-se
 users" is a seed-script concern that needs real image assets nobody has produced — the
 pipe is built, filling it with demo images is separate work.
 
-## Complaint resolution workflow `SHIPPED` (backend only)
+## Complaint resolution workflow `SHIPPED`
 
 The backend half of the repurposed workflow editor (2026-09-09 decision — see the
 deferred list below for why `/sales/complaints`, not a new generic `/sales/tasks` board).
@@ -544,7 +544,18 @@ Neither new table carries `organization_id` — both are in
 `tests/tenancy-schema.test.ts`'s `exempt` set (`workflow_edges` reaches its tenant
 through the tasks it connects, `workflow_step_templates` is not tenant data at all).
 
-**Not yet built**: the actual drag-to-link graph UI — see the deferred list below.
+**The UI**: `ComplaintWorkflowModal.tsx`, opened from a new "مسیر رسیدگی" button on each
+`/sales/complaints` row (reuses `.kargah-scrim`/`.modal` — `ProcessingModal.tsx` is the
+reference, not a new modal chrome pattern). The drag gesture is
+`AssignmentBoard.tsx`'s proven pointer-capture pattern adapted, not reinvented: a real
+`<button>` wired with both `onPointerDown` (drag) and `onClick` (keyboard/tap fallback,
+opening a target-picker instead), distinguished by a `dragging` ref so a completed drag
+never also fires a click. Two pure, tested modules do the graph's math:
+`lib/design/treeLayout.ts`'s `layoutTree` (row = depth, a parent's column centres over
+its children's — deliberately simple, these graphs are a handful of nodes) and
+`lib/design/connectorPath.ts`'s `bezierPath` (the vertical S-curve between two nodes,
+spec §9c's "curved bezier edges"). Edge solid/dashed is read directly off the target
+task's live `status` — no separate state to keep in sync, per the backend section above.
 
 ## Kit primitives not yet wired to real pages
 
@@ -622,14 +633,11 @@ call site.
   piece is the remaining part.
 - Route migration + the `loading.tsx`/`<Suspense>`/`next/dynamic`/`Promise.all` speed
   work, for the routes not yet on this substrate.
-- The workflow-editor UI (the actual drag-to-link graph rendering on
-  `/sales/complaints`) — the backend (`workflow_edges`, `workflow_step_templates`,
-  `lib/repo/workflow.ts`, `GET`/`POST /api/sales/complaints/[id]/steps`) is done, see
-  "Complaint resolution workflow" below. Deliberately NOT retrofitted onto
-  `OrderJourney.tsx`, which keeps its explicit read-only invariant (ticks derived from
-  real records, never manually toggled, so they can never disagree with the invoice).
-  §9d is now fully shipped on the backend side — both user avatars and the complaint
-  workflow tables/routes exist; only the graph's own UI remains.
+- ~~The workflow-editor UI~~ — shipped, see "Complaint resolution workflow" above.
+  §9c/§9d are now fully shipped: user avatars, the workflow backend, and the drag-to-link
+  graph UI all exist. Deliberately NOT retrofitted onto `OrderJourney.tsx`, which keeps
+  its explicit read-only invariant (ticks derived from real records, never manually
+  toggled, so they can never disagree with the invoice).
 - Global features: command palette, hotkeys, Login-As impersonation, themed error pages,
   contextual `(i)` help.
 - Module polish: map/GIS cleanup, CRM workflow gaps, logistics (vertical timeline, Lottie
