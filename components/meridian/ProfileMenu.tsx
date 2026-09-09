@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SkinToggle from "@/components/meridian/SkinToggle";
 import FontPicker from "@/components/FontPicker";
@@ -9,9 +9,18 @@ import Avatar from "@/components/meridian/Avatar";
 
 /** The one control at the end of the top bar: the viewer's avatar, opening a dropdown
  *  that holds everything that used to sit loose beside it -- the map link and the
- *  appearance controls (skin / font / accent). Same click-outside + Esc dismissal as
- *  AccentPicker.
+ *  appearance controls (skin / font / accent).
+ *
+ *  Opens on HOVER where hovering is real, matching the nav pill beside it: a pointer
+ *  that arrives here is asking for the menu, and making it click reads as one gesture
+ *  too many. Closing is delayed so a diagonal move from the avatar down into the panel
+ *  does not dismiss it mid-travel.
+ *
+ *  On a touch screen pointerenter fires on the tap that was meant to activate the
+ *  trigger, so hover is gated behind matchMedia("(hover: hover)") and the click toggle
+ *  stays as the touch path. Click-outside and Esc dismissal are unchanged.
  */
+const CLOSE_DELAY_MS = 180;
 export default function ProfileMenu({
   userId,
   name,
@@ -23,6 +32,22 @@ export default function ProfileMenu({
 }) {
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
+  const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const canHover = () =>
+    typeof matchMedia === "function" ? matchMedia("(hover: hover)").matches : false;
+
+  const cancelClose = useCallback(() => {
+    if (closeTimer.current) clearTimeout(closeTimer.current);
+    closeTimer.current = null;
+  }, []);
+
+  const scheduleClose = useCallback(() => {
+    cancelClose();
+    closeTimer.current = setTimeout(() => setOpen(false), CLOSE_DELAY_MS);
+  }, [cancelClose]);
+
+  useEffect(() => cancelClose, [cancelClose]);
 
   useEffect(() => {
     if (!open) return;
@@ -41,7 +66,18 @@ export default function ProfileMenu({
   }, [open]);
 
   return (
-    <div ref={root} className="pm">
+    <div
+      ref={root}
+      className="pm"
+      onPointerEnter={() => {
+        if (!canHover()) return;
+        cancelClose();
+        setOpen(true);
+      }}
+      onPointerLeave={() => {
+        if (canHover()) scheduleClose();
+      }}
+    >
       <button
         type="button"
         className="pm__trigger"

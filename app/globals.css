@@ -1904,6 +1904,29 @@ body {
 .meridian .mhelp__how-label { color: var(--ink-2); font-weight: 600; }
 .meridian .mhelp__todo { color: var(--muted); font-style: italic; }
 
+/* The reserved search affordance. Inert until the command palette lands; it exists now
+   so the header's proportions are final and the ⌘K binding has an owner. Collapses to
+   its icon on narrow viewports, where the label and the hint are both noise. */
+.meridian .searchslot {
+  display: inline-flex; align-items: center; gap: 7px;
+  height: 34px; padding: 0 10px; cursor: pointer;
+  background: var(--sunk); border: 1px solid transparent;
+  border-radius: 999px; color: var(--muted);
+  font: inherit; font-size: 12.5px;
+  transition: border-color var(--dur-base, 160ms) var(--ease), color var(--dur-base, 160ms) var(--ease);
+}
+.meridian .searchslot:hover { border-color: var(--line-2); color: var(--ink-2); }
+.meridian .searchslot:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .searchslot__kbd {
+  font-family: var(--font-num, inherit); font-size: 11px;
+  padding: 1px 5px; border-radius: var(--r-sm);
+  background: var(--card); border: 1px solid var(--line); color: var(--muted);
+}
+@media (max-width: 860px) {
+  .meridian .searchslot__label, .meridian .searchslot__kbd { display: none; }
+  .meridian .searchslot { padding: 0; width: 34px; justify-content: center; }
+}
+
 .meridian .pm { position: relative; }
 .meridian .pm__trigger {
   border: 0; background: transparent; padding: 2px; cursor: pointer;
