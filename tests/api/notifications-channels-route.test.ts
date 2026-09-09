@@ -139,7 +139,7 @@ describe("/api/notifications/telegram-link", () => {
   });
 
   it("POST mints a nonce and returns a t.me deep link", async () => {
-    process.env.TELEGRAM_BOT_USERNAME = "kargah_test_bot";
+    process.env.TELEGRAM_BOT_USERNAME = "meridian_test_bot";
     const res = await linkTelegram(req("/api/notifications/telegram-link", "POST", sellerToken));
     expect(res.status).toBe(200);
     const json = await res.json();

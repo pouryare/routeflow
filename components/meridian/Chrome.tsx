@@ -6,7 +6,7 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 /** The sticky top chrome -- brand bar + both nav rows -- that slides up out of view on a
  *  downward scroll and back on an upward one, the way a mobile browser toolbar does.
- *  Only a class toggle here; all geometry is in `.kargah .chrome` in globals.css.
+ *  Only a class toggle here; all geometry is in `.meridian .chrome` in globals.css.
  *
  *  RTL: the motion is translateY, identical in both writing directions.
  *  Reduced motion: `.chrome-hidden` is never applied and the CSS transition is zeroed.

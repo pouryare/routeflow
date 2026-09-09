@@ -9,8 +9,8 @@ import { allManagerStatements, managerStatementFor, readManagerOverrides } from 
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import CommissionEditor from "@/components/sales/CommissionEditor";
-import Avatar from "@/components/kargah/Avatar";
-import EarnerCard from "@/components/kargah/EarnerCard";
+import Avatar from "@/components/meridian/Avatar";
+import EarnerCard from "@/components/meridian/EarnerCard";
 
 export const dynamic = "force-dynamic";
 

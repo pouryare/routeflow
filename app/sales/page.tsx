@@ -7,10 +7,10 @@ import { salesDashboard } from "@/lib/dashboard";
 import { orderKg, orderTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import GradientStat from "@/components/kargah/GradientStat";
-import SalesSpark, { type SparkPoint } from "@/components/kargah/SalesSpark";
-import CarvedCard from "@/components/kargah/CarvedCard";
-import Avatar from "@/components/kargah/Avatar";
+import GradientStat from "@/components/meridian/GradientStat";
+import SalesSpark, { type SparkPoint } from "@/components/meridian/SalesSpark";
+import CarvedCard from "@/components/meridian/CarvedCard";
+import Avatar from "@/components/meridian/Avatar";
 
 export const dynamic = "force-dynamic";
 

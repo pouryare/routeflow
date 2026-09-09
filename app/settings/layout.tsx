@@ -5,12 +5,12 @@ import Link from "next/link";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
-import ProfileMenu from "@/components/kargah/ProfileMenu";
+import ProfileMenu from "@/components/meridian/ProfileMenu";
 
 export const dynamic = "force-dynamic";
 
 /** Per-user settings, outside /sales because a driver owns their notification prefs too
- *  and /sales redirects drivers away. Deliberately thin: the same `kargah` scope and top
+ *  and /sales redirects drivers away. Deliberately thin: the same `meridian` scope and top
  *  bar as the sales chrome, then a nav list with room for more sections later. */
 const NAV = [{ href: "/settings/notifications", label: "اعلان‌ها" }];
 
@@ -20,7 +20,7 @@ export default async function SettingsLayout({ children }: { children: ReactNode
   if (!session) redirect("/login");
 
   return (
-    <div className="kargah min-h-screen">
+    <div className="meridian min-h-screen">
       <div className="app">
         <div className="top">
           <div className="brandwrap">

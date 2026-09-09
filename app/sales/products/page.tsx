@@ -7,7 +7,7 @@ import { readCatalogue } from "@/lib/catalogue";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
-import ProductsView from "@/components/kargah/ProductsView";
+import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
 
 export const dynamic = "force-dynamic";

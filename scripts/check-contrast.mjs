@@ -3,7 +3,7 @@
  *  Reads the real values out of app/globals.css so the check cannot drift from the
  *  stylesheet -- a table in a markdown file is a promise, and this is the test for it.
  *
- *  Only the .kargah scope is checked. The map and the other CRM surfaces still read the
+ *  Only the .meridian scope is checked. The map and the other CRM surfaces still read the
  *  original :root palette, which this redesign does not touch.
  */
 import fs from "node:fs";
@@ -63,8 +63,8 @@ const say = (ok, line) => {
 };
 
 for (const [theme, selector] of [
-  ["light", ".kargah"],
-  ["dark", ':root[data-skin="dark"] .kargah'],
+  ["light", ".meridian"],
+  ["dark", ':root[data-skin="dark"] .meridian'],
 ]) {
   const t = block(selector);
 
@@ -124,7 +124,7 @@ for (const [theme, selector] of [
 }
 
 /* ── The accent themes ────────────────────────────────────────────────────────
-   Everything above checks the ONE palette written by hand into the .kargah blocks. The
+   Everything above checks the ONE palette written by hand into the .meridian blocks. The
    ten accent themes are generated into the same file by scripts/gen-accent-themes.mjs,
    and a generator that verifies its own output is only half a test -- the values that
    matter are the ones that actually landed in the stylesheet, read back the same way the
@@ -146,7 +146,7 @@ const THEME_IDS = [
   "ocean", "indigo", "purple", "raspberry", "graphite",
 ];
 
-/* The shipping cream, from the hand-written .kargah blocks. scripts/gen-accent-themes.mjs
+/* The shipping cream, from the hand-written .meridian blocks. scripts/gen-accent-themes.mjs
    re-emits each rung at the theme's hue with chroma capped near zero; the tinted value
    must carry its inks no worse than the cream already does. --text-muted / --text-faint
    on --surface-sunk sit at 4.25 / 2.89 in the palette on screen today, so those pairs are
@@ -164,7 +164,7 @@ const SURFACE_INK = {
   dark: { "--text": ["#F3EEE7", 7], "--text-muted": ["#9B8F81", 4.5], "--text-faint": ["#8A8278", 3] },
 };
 
-/* The grounds these themes are solved against, from the .kargah blocks. --surface-raised
+/* The grounds these themes are solved against, from the .meridian blocks. --surface-raised
    is what a cluster bubble sits on; it differs from --surface in dark. */
 const THEME_GROUND = {
   light: { bg: "#F4F0E9", surface: "#FFFFFF", raised: "#FFFFFF", text: "#231C16", washMuted: "#6A6055", map: "#F4F0E9" },
@@ -174,8 +174,8 @@ const THEME_GROUND = {
 let themeChecks = 0;
 for (const id of THEME_IDS) {
   for (const [skin, selector] of [
-    ["light", `:root[data-accent="${id}"] .kargah, :root[data-accent="${id}"]`],
-    ["dark", `:root[data-accent="${id}"][data-skin="dark"] .kargah, :root[data-accent="${id}"][data-skin="dark"]`],
+    ["light", `:root[data-accent="${id}"] .meridian, :root[data-accent="${id}"]`],
+    ["dark", `:root[data-accent="${id}"][data-skin="dark"] .meridian, :root[data-accent="${id}"][data-skin="dark"]`],
   ]) {
     let t;
     try {
@@ -212,13 +212,13 @@ for (const id of THEME_IDS) {
       need(m, G.map, 3, `${m} on the map ground`);
     }
 
-    /* Surface tint (.kargah-scoped block only, without the second `, :root[...]`
+    /* Surface tint (.meridian-scoped block only, without the second `, :root[...]`
        selector). Read it back and assert every tinted ground still carries its inks. */
     let surf;
     try {
-      surf = block(`:root[data-accent="${id}"]${skin === "dark" ? '[data-skin="dark"]' : ""} .kargah`);
+      surf = block(`:root[data-accent="${id}"]${skin === "dark" ? '[data-skin="dark"]' : ""} .meridian`);
     } catch {
-      say(false, `${id}/${skin}: no .kargah surface-tint block — re-run scripts/gen-accent-themes.mjs`);
+      say(false, `${id}/${skin}: no .meridian surface-tint block — re-run scripts/gen-accent-themes.mjs`);
       surf = {};
     }
     for (const [g, cream] of Object.entries(SURFACE_CREAM[skin])) {

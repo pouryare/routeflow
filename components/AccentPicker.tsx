@@ -3,7 +3,7 @@
 /** The accent colour picker: ten swatches, one chosen.
  *
  *  Renders in two shapes from one component, because it lives in two places that want
- *  different things -- a compact popover trigger in the کارگاه header beside the sun/moon
+ *  different things -- a compact popover trigger in the مریدین header beside the sun/moon
  *  toggle, and the same popover hung under the theme button on the map. Rather than two
  *  components drifting apart, the shape is a prop and the behaviour is shared.
  *
@@ -49,7 +49,7 @@ export default function AccentPicker({
   variant = "header",
   className = "",
 }: {
-  /** "header" sits inline in the کارگاه top bar; "map" is a floating square control
+  /** "header" sits inline in the مریدین top bar; "map" is a floating square control
    *  matching the map's other right-edge buttons. */
   variant?: "header" | "map";
   className?: string;

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { faNum } from "@/lib/format";
 import type { Pocket as PocketData, PocketTeamMember } from "@/lib/repo/pocket";
 import type { TaskCard } from "@/lib/repo/taskCard";
-import CustomerSheet from "@/components/kargah/CustomerSheet";
+import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
 
 const KIND_TONE: Record<string, string> = {

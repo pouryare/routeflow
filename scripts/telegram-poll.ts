@@ -1,6 +1,6 @@
 #!/usr/bin/env node --experimental-strip-types
 // Long-polls the Telegram Bot API and redeems «/start <nonce>» deep links, binding a
-// telegram chat to the کارگاه user who minted that nonce. Run standalone by systemd,
+// telegram chat to the مریدین user who minted that nonce. Run standalone by systemd,
 // mirroring scripts/run-sweeps.mjs conventions: config comes from process.env the way
 // systemd's EnvironmentFile= injects it.
 //
@@ -41,10 +41,10 @@ const TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 const OFFSET_PATH = `${DB_PATH}.telegram-offset`;
 
-const LINKED_REPLY = "حساب تلگرام شما به کارگاه متصل شد.";
+const LINKED_REPLY = "حساب تلگرام شما به RouteFlow متصل شد.";
 // Anything that is not a valid deep link gets this instead of silence, so a user who
 // types «سلام» at the bot learns where the button is rather than assuming it is broken.
-const HELP_REPLY = "برای اتصال، از «تنظیمات ← اعلان‌ها» در کارگاه دکمهٔ اتصال تلگرام را بزنید.";
+const HELP_REPLY = "برای اتصال، از «تنظیمات ← اعلان‌ها» در RouteFlow دکمهٔ اتصال تلگرام را بزنید.";
 
 // A missing token is a deployment that has not configured telegram yet, not a fault.
 // Exit 0 so systemd's Restart=always does not hot-loop on a machine that will never have one.

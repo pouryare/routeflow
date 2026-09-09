@@ -1,5 +1,5 @@
 import { faToman, faNum } from "@/lib/format";
-import Avatar from "@/components/kargah/Avatar";
+import Avatar from "@/components/meridian/Avatar";
 
 export interface EarnerLine {
   key: string | number;

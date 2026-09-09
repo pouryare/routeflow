@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { toJalali, jalaliToIsoDate, jalaliMonthGrid } from "@/lib/jalali";
-import ScheduleBoard from "@/components/kargah/ScheduleBoard";
+import ScheduleBoard from "@/components/meridian/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 
 export const dynamic = "force-dynamic";

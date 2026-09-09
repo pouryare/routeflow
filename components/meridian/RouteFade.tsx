@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
 /** Remounts its subtree on every sales path change so the CSS entrance in
- *  app/globals.css (`.kargah .route-fade` -> @keyframes kargah-route-in) replays.
+ *  app/globals.css (`.meridian .route-fade` -> @keyframes meridian-route-in) replays.
  *
  *  Pure CSS: deterministic, fires on every navigation, no requestAnimationFrame. The
  *  keyframe's `from { opacity: 0 }` under `both` also masks the one blank frame before

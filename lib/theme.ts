@@ -10,9 +10,9 @@ export type Theme = "dark" | "light";
 export const THEME_KEY = "coverage-theme";
 /** The same stored preference, surfaced to /sales under its own attribute.
  *
- *  The map reads `data-theme`, where dark is the ABSENCE of the attribute. The کارگاه
- *  scope needs a positive signal for dark instead, because `.kargah` defaults to light
- *  and its dark block is selected by `:root[data-skin="dark"] .kargah`. Writing both
+ *  The map reads `data-theme`, where dark is the ABSENCE of the attribute. The مریدین
+ *  scope needs a positive signal for dark instead, because `.meridian` defaults to light
+ *  and its dark block is selected by `:root[data-skin="dark"] .meridian`. Writing both
  *  from one place is what stops the two scopes drifting apart. */
 export const SKIN_KEY = THEME_KEY;
 export const DEFAULT_THEME: Theme = "dark";

@@ -39,9 +39,9 @@ describe("the catalogue and the stylesheet agree", () => {
   // by hand -- which is exactly the failure this catches.
   it("has a light and a dark CSS block for every theme", () => {
     for (const t of ACCENT_THEMES) {
-      expect(CSS, `light block for ${t.id}`).toContain(`:root[data-accent="${t.id}"] .kargah,`);
+      expect(CSS, `light block for ${t.id}`).toContain(`:root[data-accent="${t.id}"] .meridian,`);
       expect(CSS, `dark block for ${t.id}`).toContain(
-        `:root[data-accent="${t.id}"][data-skin="dark"] .kargah,`,
+        `:root[data-accent="${t.id}"][data-skin="dark"] .meridian,`,
       );
     }
   });
@@ -60,7 +60,7 @@ describe("the catalogue and the stylesheet agree", () => {
 
   it("declares the swatch colour the CSS actually uses", () => {
     for (const t of ACCENT_THEMES) {
-      const i = CSS.indexOf(`:root[data-accent="${t.id}"] .kargah,`);
+      const i = CSS.indexOf(`:root[data-accent="${t.id}"] .meridian,`);
       const block = CSS.slice(CSS.indexOf("{", i), CSS.indexOf("}", i));
       expect(block, `${t.id} light --accent`).toContain(`--accent: ${t.swatch.light};`);
     }

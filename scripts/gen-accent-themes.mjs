@@ -152,7 +152,7 @@ const SKINS = {
   },
 };
 
-/* ── surface tint. کارگاه only. ─────────────────────────────────────────────────
+/* ── surface tint. مریدین only. ─────────────────────────────────────────────────
    The /sales design system's paper and lines carry a faint warmth today (--bg is
    #F4F0E9, a cream, not a neutral). A theme should own that warmth: teal paper, not
    cream paper with a teal button on it. So each structural neutral is read back to its
@@ -160,7 +160,7 @@ const SKINS = {
    only H moved. Chroma is capped hard so "tinted" never becomes "coloured" and the
    text-on-ground contrast the checker asserts barely shifts.
 
-   Scoped to `.kargah` ONLY. The map reads --bg/--surface/--border too, across two
+   Scoped to `.meridian` ONLY. The map reads --bg/--surface/--border too, across two
    thousand lines tuned for its own near-black, so re-skinning those globally is out of
    scope (MASTER.md "Visual thesis"). terracotta is pinned to today's exact hexes so a
    reader who keeps the default sees no change at all. */
@@ -197,7 +197,7 @@ function gcardRotate(hue, id) {
   return Math.round(d);
 }
 
-/** The `.kargah` surface tokens for one theme/skin. terracotta → today's exact hexes. */
+/** The `.meridian` surface tokens for one theme/skin. terracotta → today's exact hexes. */
 function surfaceTokens(hue, skin, id) {
   const out = {};
   for (const [k, hex] of Object.entries(SURFACE_BASE[skin])) {
@@ -211,7 +211,7 @@ function surfaceTokens(hue, skin, id) {
   return out;
 }
 
-/** Inks the surface grounds have to keep carrying. From the `.kargah` blocks in
+/** Inks the surface grounds have to keep carrying. From the `.meridian` blocks in
  *  app/globals.css; --text-faint is non-text (3:1) by design, see MASTER.md. */
 const SURFACE_INKS = {
   light: { text: "#231C16", muted: "#776C60", faint: "#91887C" },
@@ -561,7 +561,7 @@ function verify(themes) {
         check(!(t2 in k), `emits ${t2}, which themes must never override`);
       }
 
-      /* Surface tint (.kargah only): a tinted ground must carry its inks no worse than
+      /* Surface tint (.meridian only): a tinted ground must carry its inks no worse than
          the shipping cream already does. The bar is terracotta's own value for the same
          pair, not an absolute -- --text-muted/--text-faint on --surface-sunk sit at 4.25
          / 2.89 in the palette on screen today, and a hue rotation at fixed OKLCH L/C
@@ -604,11 +604,11 @@ function css(themes) {
   L.push(`/* ${themes.length} accent themes x 2 skins, solved against the real grounds by`);
   L.push(`   scripts/gen-accent-themes.mjs. Do not hand-edit -- re-run it instead.`);
   L.push(`
-   Each theme sets its tokens on :root as well as on .kargah, so one choice re-skins both
-   design systems at once. :root[data-accent=...] outspecifies the bare .kargah block, so
-   inside the کارگاه scope the themed value still wins.
+   Each theme sets its tokens on :root as well as on .meridian, so one choice re-skins both
+   design systems at once. :root[data-accent=...] outspecifies the bare .meridian block, so
+   inside the مریدین scope the themed value still wins.
 
-   Dark is selected by data-skin rather than data-theme because .kargah defaults to light
+   Dark is selected by data-skin rather than data-theme because .meridian defaults to light
    and needs a positive signal for dark -- lib/theme.ts writes both attributes, so keying
    on data-skin is correct for both scopes. See lib/theme.ts SKIN_KEY.
 
@@ -620,10 +620,10 @@ function css(themes) {
   /* The default carries no data-accent attribute, so a browser that has never chosen and
      the server render agree without any extra CSS -- and, critically, --map-* exist before
      any choice is made. */
-  L.push(`:root, :root .kargah {`);
+  L.push(`:root, :root .meridian {`);
   for (const [k, v] of Object.entries(dflt.skins.light.tokens)) L.push(`  ${k}: ${v};`);
   L.push(`}`);
-  L.push(`:root[data-skin="dark"], :root[data-skin="dark"] .kargah {`);
+  L.push(`:root[data-skin="dark"], :root[data-skin="dark"] .meridian {`);
   for (const [k, v] of Object.entries(dflt.skins.dark.tokens)) L.push(`  ${k}: ${v};`);
   L.push(`}`);
 
@@ -644,18 +644,18 @@ function css(themes) {
   for (const t of themes) {
     for (const skin of ["light", "dark"]) {
       const sel = skin === "light"
-        ? `:root[data-accent="${t.id}"] .kargah, :root[data-accent="${t.id}"]`
-        : `:root[data-accent="${t.id}"][data-skin="dark"] .kargah, :root[data-accent="${t.id}"][data-skin="dark"]`;
+        ? `:root[data-accent="${t.id}"] .meridian, :root[data-accent="${t.id}"]`
+        : `:root[data-accent="${t.id}"][data-skin="dark"] .meridian, :root[data-accent="${t.id}"][data-skin="dark"]`;
       L.push(`${sel} {`);
       for (const [k, v] of Object.entries(t.skins[skin].tokens)) L.push(`  ${k}: ${v};`);
       L.push(`  --series-single: var(--accent);`);
       L.push(`}`);
 
-      /* Surface tint -- .kargah ONLY, never bare :root. The map keeps its own neutrals
+      /* Surface tint -- .meridian ONLY, never bare :root. The map keeps its own neutrals
          (see surfaceTokens). Separate rule so the selector cannot accidentally widen. */
       const surfSel = skin === "light"
-        ? `:root[data-accent="${t.id}"] .kargah`
-        : `:root[data-accent="${t.id}"][data-skin="dark"] .kargah`;
+        ? `:root[data-accent="${t.id}"] .meridian`
+        : `:root[data-accent="${t.id}"][data-skin="dark"] .meridian`;
       L.push(`${surfSel} {`);
       for (const [k, v] of Object.entries(surfaceTokens(t.hue, skin, t.id))) L.push(`  ${k}: ${v};`);
       L.push(`}`);

@@ -8,12 +8,12 @@ import type { MapGroup } from "@/components/CoverageMap";
 
 const CoverageMap = dynamic(() => import("@/components/CoverageMap"), {
   ssr: false,
-  /* The splash carries `kargah` itself.
+  /* The splash carries `meridian` itself.
      It cannot inherit it: the scope lives on CoverageMap's own root, and this is what
      stands in for CoverageMap until the chunk arrives — so without the class the first
      thing anyone sees on the map is the pre-redesign ground, then a jump to the warm one. */
   loading: () => (
-    <div className="kargah flex h-screen w-full flex-col items-center justify-center gap-4">
+    <div className="meridian flex h-screen w-full flex-col items-center justify-center gap-4">
       <div className="side__mark" style={{ width: 52, height: 52, borderRadius: 17, fontSize: 21 }}>
         ن
       </div>

@@ -15,7 +15,7 @@ export type Tab = SalesTab;
  *  One measure-then-move for BOTH nav rows; offsetLeft/offsetWidth are read from the
  *  row's own box, so it stays correct wherever the (centred) row sits and in either
  *  writing direction. Call it once BEFORE the row gets `.ready`, so the first placement
- *  is not animated up from width:0 -- see `.kargah .seg.ready .thumb`. */
+ *  is not animated up from width:0 -- see `.meridian .seg.ready .thumb`. */
 function slideThumb(root: HTMLElement | null, current: string) {
   if (!root) return;
   const on = root.querySelector<HTMLElement>(current);

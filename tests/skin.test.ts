@@ -6,7 +6,7 @@ import { THEME_INIT_SCRIPT, SKIN_KEY } from "@/lib/theme";
  *  writes them together rather than each caller remembering to. */
 describe("theme init script", () => {
   it("sets data-skin for BOTH themes, not only for light", () => {
-    // dark removes data-theme, so data-skin is the only signal .kargah has
+    // dark removes data-theme, so data-skin is the only signal .meridian has
     expect(THEME_INIT_SCRIPT).toContain('setAttribute("data-skin"');
     const darkBranch = THEME_INIT_SCRIPT.slice(THEME_INIT_SCRIPT.indexOf("data-skin"));
     expect(darkBranch.length).toBeGreaterThan(0);

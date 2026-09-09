@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import type { PipelineOrder } from "./OrderPipeline";
-import Avatar from "@/components/kargah/Avatar";
+import Avatar from "@/components/meridian/Avatar";
 
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -57,7 +57,7 @@ export default function ProcessingModal({
   return (
     <>
       <div
-        className={`kargah-scrim${order ? " on" : ""}`}
+        className={`meridian-scrim${order ? " on" : ""}`}
         onClick={onClose}
         aria-hidden
       />

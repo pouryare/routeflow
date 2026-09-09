@@ -43,7 +43,7 @@ export default async function SalesTodayPage() {
         )}
       </div>
 
-      <Briefing data={data} variant="kargah" />
+      <Briefing data={data} variant="meridian" />
     </div>
   );
 }

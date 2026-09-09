@@ -2,10 +2,10 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import SkinToggle from "@/components/kargah/SkinToggle";
+import SkinToggle from "@/components/meridian/SkinToggle";
 import FontPicker from "@/components/FontPicker";
 import AccentPicker from "@/components/AccentPicker";
-import Avatar from "@/components/kargah/Avatar";
+import Avatar from "@/components/meridian/Avatar";
 
 /** The one control at the end of the top bar: the viewer's avatar, opening a dropdown
  *  that holds everything that used to sit loose beside it -- the map link and the

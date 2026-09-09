@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ComponentProps } from "react";
-import SkinToggle from "@/components/kargah/SkinToggle";
+import SkinToggle from "@/components/meridian/SkinToggle";
 import AccentPicker, { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
@@ -1266,10 +1266,10 @@ export default function CoverageMap({
   }, [layers.traffic_zone, layers.low_emission]);
 
   return (
-    /* `kargah` is the scope the whole design system hangs off -- the same class /sales
+    /* `meridian` is the scope the whole design system hangs off -- the same class /sales
        wears. Everything below reads --surface, --border, --accent and the rest from it,
        so the chrome is re-skinned by this one word rather than by rewriting two thousand
-       lines of Tailwind. See app/globals.css, "کارگاه". */
+       lines of Tailwind. See app/globals.css, "مریدین". */
     /* data-ground says what the chosen basemap's ground looks like, so the overlays drawn
        through CSS -- cluster bubbles, the corridor band, the zone fills, the names layer
        -- can be tuned for it the way MAP_INK tunes the ones drawn through Leaflet. It
@@ -1278,7 +1278,7 @@ export default function CoverageMap({
     <div
       ref={viewportRef}
       data-ground={activeBasemap.ground}
-      className="kargah map-viewport relative w-full overflow-hidden bg-bg"
+      className="meridian map-viewport relative w-full overflow-hidden bg-bg"
     >
       {/* Stood down in two cases, both while the sidebar is shut -- when it is open this
           button is the only way to close it and has to stay reachable.

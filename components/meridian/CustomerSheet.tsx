@@ -41,7 +41,7 @@ export default function CustomerSheet({
 
   return (
     <>
-      <div className={`kargah-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
+      <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
       <div
         className={`sheet${open ? " on" : ""}`}
         role="dialog"

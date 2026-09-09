@@ -261,7 +261,7 @@ describe("flushNotifications", () => {
       keys: { p256dh: "p", auth: "a" },
     });
     expect(JSON.parse(String(pushSend.mock.calls[0][1]))).toMatchObject({
-      tag: "kargah-digest",
+      tag: "meridian-digest",
       url: "/notifications",
       body: TITLE_B,
     });

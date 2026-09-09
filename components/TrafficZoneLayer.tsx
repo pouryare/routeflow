@@ -78,7 +78,7 @@ export function useTrafficZones(enabled: boolean): {
 const ZONE_COLOR: Record<"light" | "dark", Record<string, string>> = {
   /* Per skin, and the light set is much darker than the dark one rather than the same
      colour reused. Measured: the old #FF5C5C and #E8B93B, composited at the inactive
-     0.55 opacity over the کارگاه cream ground, came to 1.76:1 and 1.30:1 -- the borders
+     0.55 opacity over the مریدین cream ground, came to 1.76:1 and 1.30:1 -- the borders
      were invisible in light mode, which is the bug this fixes. */
   light: {
     limited_traffic: "#8E1026",

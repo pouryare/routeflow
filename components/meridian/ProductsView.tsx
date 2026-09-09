@@ -18,7 +18,7 @@ export interface ProductRow {
   packagings: ProductPack[];
 }
 
-const KEY = "kargah-products-view";
+const KEY = "meridian-products-view";
 
 /** The catalogue, in either of two readings — and the reader chooses.
  *

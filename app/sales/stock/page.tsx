@@ -7,8 +7,8 @@ import { advancedStockPosition, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
-import InventoryBoard from "@/components/kargah/InventoryBoard";
-import GradientStat from "@/components/kargah/GradientStat";
+import InventoryBoard from "@/components/meridian/InventoryBoard";
+import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches } from "@/lib/repo/batches";
 
 export const dynamic = "force-dynamic";

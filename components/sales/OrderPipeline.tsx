@@ -7,8 +7,8 @@ import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import ProcessingModal from "./ProcessingModal";
-import Pocketed from "@/components/kargah/Pocketed";
-import Avatar from "@/components/kargah/Avatar";
+import Pocketed from "@/components/meridian/Pocketed";
+import Avatar from "@/components/meridian/Avatar";
 import { STAGES, stageOf, moveRefusal, type StageKey } from "./orderStage";
 
 /** Documents an order carries by stage: an invoice once priced, a delivery note once on

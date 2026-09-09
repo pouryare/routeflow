@@ -5,12 +5,12 @@ import { faNum } from "@/lib/format";
 import type { Board as BoardData } from "@/lib/repo/board";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import { lanesFor, movePatch, type BoardView } from "@/lib/tasks/lenses";
-import CustomerSheet from "@/components/kargah/CustomerSheet";
+import CustomerSheet from "@/components/meridian/CustomerSheet";
 import OutcomeChips from "@/components/today/OutcomeChips";
 import { useCardDrag } from "./useCardDrag";
 import BoardMobile from "./BoardMobile";
-import Avatar from "@/components/kargah/Avatar";
-import Pocketed from "@/components/kargah/Pocketed";
+import Avatar from "@/components/meridian/Avatar";
+import Pocketed from "@/components/meridian/Pocketed";
 
 const KIND_TONE: Record<string, string> = {
   outreach: "accent",

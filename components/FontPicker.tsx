@@ -3,7 +3,7 @@
 /** The font-family picker: four Persian families, one chosen.
  *
  *  Sibling of AccentPicker in every structural way -- it renders in two shapes from one
- *  component (a compact popover trigger in the کارگاه header beside the accent picker, and
+ *  component (a compact popover trigger in the مریدین header beside the accent picker, and
  *  the same popover as a floating square control on the map), the dismiss/keyboard
  *  behaviour is shared, and the choice is persisted per browser and broadcast to every
  *  mounted copy.
@@ -49,7 +49,7 @@ export default function FontPicker({
   variant = "header",
   className = "",
 }: {
-  /** "header" sits inline in the کارگاه top bar; "map" is a floating square control
+  /** "header" sits inline in the مریدین top bar; "map" is a floating square control
    *  matching the map's other right-edge buttons. */
   variant?: "header" | "map";
   className?: string;

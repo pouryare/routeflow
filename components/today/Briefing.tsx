@@ -3,9 +3,9 @@ import TaskRow from "./TaskRow";
 import type { Briefing as BriefingData, BriefingItem } from "@/lib/repo/briefing";
 
 /** "plain" is the driver's standalone /today (generic tokens, phone-width column).
- *  "kargah" is the /sales/today tab — the same panels dressed in the workshop skin so it
+ *  "meridian" is the /sales/today tab — the same panels dressed in the workshop skin so it
  *  sits flush with every other sales screen. */
-type Variant = "plain" | "kargah";
+type Variant = "plain" | "meridian";
 
 const TONE_PLAIN: Record<string, string> = {
   good: "var(--good)",
@@ -24,11 +24,11 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   if (item.action?.kind === "task_outcome") {
     return <TaskRow taskId={item.action.task_id} label={item.label} sub={item.sub} />;
   }
-  const tone = variant === "kargah" ? TONE_KARGAH : TONE_PLAIN;
+  const tone = variant === "meridian" ? TONE_KARGAH : TONE_PLAIN;
   const inner = (
     <span className="flex items-baseline justify-between gap-[var(--space-2)]">
       <span
-        className={variant === "kargah" ? "text-[var(--ink)]" : "text-[var(--text)]"}
+        className={variant === "meridian" ? "text-[var(--ink)]" : "text-[var(--text)]"}
         style={item.tone ? { color: tone[item.tone] } : undefined}
       >
         {item.label}
@@ -36,7 +36,7 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
       {item.sub && (
         <span
           className={
-            variant === "kargah"
+            variant === "meridian"
               ? "text-[length:12px] text-[var(--muted)]"
               : "text-[length:var(--text-xs)] text-[var(--text-faint)]"
           }
@@ -49,7 +49,7 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   return (
     <li
       className={
-        variant === "kargah"
+        variant === "meridian"
           ? "border-b border-[var(--line)] py-[10px] last:border-b-0"
           : "border-b border-[var(--border)] py-[var(--space-2)]"
       }
@@ -73,7 +73,7 @@ export default function Briefing({
   variant?: Variant;
 }) {
   if (data.panels.length === 0) {
-    return variant === "kargah" ? (
+    return variant === "meridian" ? (
       <p
         style={{
           fontSize: 13,
@@ -92,7 +92,7 @@ export default function Briefing({
     );
   }
 
-  if (variant === "kargah") {
+  if (variant === "meridian") {
     return (
       <div className="flex flex-col gap-[14px]" dir="rtl">
         {data.panels.map((p) => (
@@ -105,7 +105,7 @@ export default function Briefing({
             </div>
             <ul className="m-0 list-none p-0" style={{ padding: "0 22px 16px" }}>
               {p.items.map((it, i) => (
-                <Item key={i} item={it} variant="kargah" />
+                <Item key={i} item={it} variant="meridian" />
               ))}
             </ul>
           </div>

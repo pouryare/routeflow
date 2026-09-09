@@ -7,8 +7,8 @@ import { getDb, plain } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import type { PocketDoc, PocketStatus } from "@/components/kargah/PocketCard";
-import OrdersPockets, { type PocketRow } from "@/components/kargah/OrdersPockets";
+import type { PocketDoc, PocketStatus } from "@/components/meridian/PocketCard";
+import OrdersPockets, { type PocketRow } from "@/components/meridian/OrdersPockets";
 import { statusLabel, isPreConfirm, isFulfilled } from "@/components/sales/orderStage";
 
 export const dynamic = "force-dynamic";

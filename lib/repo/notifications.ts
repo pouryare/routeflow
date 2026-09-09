@@ -695,7 +695,7 @@ const EDIT_WINDOW_MS = 600_000; // within 10 min, update the last digest in plac
 const DIGEST_GROUP_CAP = 4; // show this many group lines, then «و N مورد دیگر»
 /** One tag for every digest: a second web-push with the same tag *replaces* the visible
  *  notification instead of stacking a new one — push's version of an edit. */
-const PUSH_TAG = "kargah-digest";
+const PUSH_TAG = "meridian-digest";
 
 const LOUD_CHANNELS = ["push", "telegram"] as const;
 type LoudChannel = (typeof LOUD_CHANNELS)[number];

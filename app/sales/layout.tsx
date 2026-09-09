@@ -5,11 +5,11 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
-import ProfileMenu from "@/components/kargah/ProfileMenu";
-import TabPill from "@/components/kargah/TabPill";
-import Chrome from "@/components/kargah/Chrome";
-import RevealRoute from "@/components/kargah/RevealRoute";
-import RouteFade from "@/components/kargah/RouteFade";
+import ProfileMenu from "@/components/meridian/ProfileMenu";
+import TabPill from "@/components/meridian/TabPill";
+import Chrome from "@/components/meridian/Chrome";
+import RevealRoute from "@/components/meridian/RevealRoute";
+import RouteFade from "@/components/meridian/RouteFade";
 import SyncStatus from "@/components/SyncStatus";
 import { SALES_GROUPS, salesTabs } from "@/lib/salesNav";
 
@@ -33,9 +33,9 @@ export default async function SalesLayout({ children }: { children: ReactNode })
 
 
   return (
-    /* `kargah` is the scope the whole design system hangs off. Every token the artifact
-       names is defined on this class -- see app/globals.css, "کارگاه". */
-    <div className="kargah min-h-screen">
+    /* `meridian` is the scope the whole design system hangs off. Every token the artifact
+       names is defined on this class -- see app/globals.css, "مریدین". */
+    <div className="meridian min-h-screen">
       <div className="app">
         <Chrome>
         <div className="top">

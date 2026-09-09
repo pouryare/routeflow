@@ -25,7 +25,7 @@ import { coordText } from "@/lib/clipboard";
 import { absoluteMapLink } from "@/lib/deepLink";
 import { useSwipeDismiss } from "./useSwipeDismiss";
 import { faDateTime, faNum } from "@/lib/format";
-import CustomerBento, { useCustomerSummary } from "@/components/kargah/CustomerBento";
+import CustomerBento, { useCustomerSummary } from "@/components/meridian/CustomerBento";
 
 function customerLink(id: number): string {
   return absoluteMapLink({ customerId: id }, "/");
@@ -245,7 +245,7 @@ export default function CustomerDetailPanel({
       {/* پنجرهٔ مشتری — the same designed window the sales pockets open, not a second
           copy of it. The map used to carry its own summary, which is how the two drifted
           apart in the first place. */}
-      <div className="kargah" style={{ background: "transparent" }}>
+      <div className="meridian" style={{ background: "transparent" }}>
         <CustomerBento data={bento} compact />
       </div>
 
