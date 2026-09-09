@@ -4,6 +4,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import ProfileMenu from "@/components/meridian/ProfileMenu";
+import NotificationBell from "@/components/NotificationBell";
 import TabPill from "@/components/meridian/TabPill";
 import Chrome from "@/components/meridian/Chrome";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
@@ -52,6 +53,7 @@ export default async function AppHeader() {
           </div>
         </div>
         <div className="topright">
+          <NotificationBell placement="header" />
           <ProfileMenu
             userId={session.user.id}
             name={session.user.display_name}

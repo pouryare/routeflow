@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /** Why this file exists.
  *
@@ -57,5 +57,41 @@ describe("the shell's session read is suspended", () => {
     const sk = readFileSync("components/meridian/HeaderSkeleton.tsx", "utf8");
     expect(sk).not.toMatch(/from\s+["']next\/headers["']/);
     expect(sk).not.toMatch(/export default async function/);
+  });
+});
+
+describe("the notification bell lives in the header", () => {
+  it("the root layout no longer mounts it", () => {
+    // It used to float at the bottom of every page from app/layout.tsx. The brief asked
+    // for it beside the profile; the shell header is where that is.
+    expect(readFileSync("app/layout.tsx", "utf8")).not.toContain("NotificationBell");
+  });
+
+  it("the shell header does", () => {
+    expect(readFileSync("components/meridian/AppHeader.tsx", "utf8")).toContain("NotificationBell");
+  });
+});
+
+describe("the map canvas keeps its dark identity", () => {
+  it("globals.css pins the ground under data-surface=map", () => {
+    expect(readFileSync("app/globals.css", "utf8")).toContain('[data-surface="map"]');
+  });
+
+  it("only the real canvas is marked — /facilities and /gallery are record pages", () => {
+    // MASTER.md's Product-shape table groups them with the map, but neither renders a
+    // map canvas: one is a form list, the other a photo grid. Darkening them under a
+    // light skin would be a bug dressed as consistency.
+    expect(readFileSync("app/(shell)/map/layout.tsx", "utf8")).toContain('data-surface="map"');
+    for (const r of ["facilities", "gallery"]) {
+      const p = `app/(shell)/${r}/layout.tsx`;
+      if (existsSync(p)) expect(readFileSync(p, "utf8")).not.toContain('data-surface="map"');
+    }
+  });
+
+  it("CoverageMap no longer roots a second meridian scope inside the shell's", () => {
+    // A nested .meridian would redefine --bg back to the light value and defeat the
+    // override above it. It is only ever rendered from app/(shell)/map/page.tsx.
+    const src = readFileSync("components/CoverageMap.tsx", "utf8");
+    expect(src).not.toMatch(/className="meridian /);
   });
 });

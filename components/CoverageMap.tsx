@@ -1266,10 +1266,12 @@ export default function CoverageMap({
   }, [layers.traffic_zone, layers.low_emission]);
 
   return (
-    /* `meridian` is the scope the whole design system hangs off -- the same class /sales
-       wears. Everything below reads --surface, --border, --accent and the rest from it,
-       so the chrome is re-skinned by this one word rather than by rewriting two thousand
-       lines of Tailwind. See app/globals.css, "مریدین". */
+    /* The `meridian` scope used to be rooted HERE, because the map was the one surface
+       that did not sit inside it. app/(shell)/layout.tsx now provides it, and repeating
+       it would be a nested copy that redefines --bg back to the light value -- defeating
+       the [data-surface="map"] override that keeps this canvas dark under a light skin.
+       Everything below still reads --surface, --border, --accent and the rest; it just
+       inherits them now. See app/globals.css, "مریدین". */
     /* data-ground says what the chosen basemap's ground looks like, so the overlays drawn
        through CSS -- cluster bubbles, the corridor band, the zone fills, the names layer
        -- can be tuned for it the way MAP_INK tunes the ones drawn through Leaflet. It
@@ -1278,7 +1280,7 @@ export default function CoverageMap({
     <div
       ref={viewportRef}
       data-ground={activeBasemap.ground}
-      className="meridian map-viewport relative w-full overflow-hidden bg-bg"
+      className="map-viewport relative w-full overflow-hidden bg-bg"
     >
       {/* Stood down in two cases, both while the sidebar is shut -- when it is open this
           button is the only way to close it and has to stay reachable.

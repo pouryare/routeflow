@@ -1832,6 +1832,31 @@ body {
    the shell, once, like every other route's. */
 .meridian .pagewrap { display: flow-root; }
 
+/* The map canvas keeps its dark identity under any skin.
+   Ground tokens only, lifted verbatim from the `:root[data-skin="dark"] .meridian` block
+   above -- not re-derived, so the two can never drift. Everything above this attribute
+   (the header, the nav pill, the profile menu) follows the viewer's chosen skin; only
+   the canvas and the panels floating on it are pinned. Applied by
+   app/(shell)/map/layout.tsx, and by nothing else: /facilities and /gallery are record
+   pages, not canvases. */
+.meridian [data-surface="map"] {
+  --bg: #0F1214;
+  --surface: #171B20;
+  --surface-2: #1D2228;
+  --surface-sunk: #232A31;
+  --border: #28323A;
+  --border-strong: #37414A;
+  --text: #EDF1F5;
+  --text-muted: #8B98A5;
+  --text-faint: #828C97;
+  --card: #171B20;
+  --card-2: #1D2228;
+  --sunk: #232A31;
+  --ink: #EDF1F5;
+  --line: #28323A;
+  --line-2: #37414A;
+}
+
 /* ---- top bar ------------------------------------------------------------- */
 .meridian .top {
   display: flex; align-items: center; justify-content: space-between;
