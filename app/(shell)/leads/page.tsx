@@ -539,7 +539,7 @@ export default function LeadsPage() {
   const activeList = activeListId === null ? null : lists.find((l) => l.id === activeListId) ?? null;
 
   return (
-    <div dir="rtl" className="min-h-screen bg-bg p-4 sm:p-6">
+    <div dir="rtl" className="pagewrap">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
           <div>

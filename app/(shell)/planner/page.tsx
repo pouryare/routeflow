@@ -629,7 +629,7 @@ export default function PlannerPage() {
   }
 
   return (
-    <div dir="rtl" className="print-report min-h-screen bg-bg p-4 sm:p-6">
+    <div dir="rtl" className="print-report pagewrap">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
           <div>

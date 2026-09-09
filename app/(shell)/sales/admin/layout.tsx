@@ -8,15 +8,26 @@ export const dynamic = "force-dynamic";
 
 /** Administration, folded into the same app rather than a second one behind it.
  *
- *  These two pages used to sit under /admin with their own top bar, their own brand
- *  mark, and their own tab row -- so opening "مدیریت" felt like leaving the app rather
- *  than reaching a part of it. They now inherit app/sales/layout.tsx's chrome directly,
- *  and this layout does nothing but the authorisation check that one used to do.
+ *  These pages used to sit under /admin with their own top bar, brand mark and tab row --
+ *  so opening "مدیریت" felt like leaving the app rather than reaching a part of it. They
+ *  now inherit the shell's chrome from app/(shell)/layout.tsx, and this layout does
+ *  nothing but the authorisation check.
  *
- *  proxy.ts already refuses a non-owner before this renders (it gates on the
- *  /sales/admin prefix the same way it gated on /admin); the redirect here is the belt
- *  to its braces, because a coarse gate on a cookie's own claims is not an authorisation
- *  decision -- it cannot see a demotion that happened after the token was issued.
+ *  **This layout is async on purpose, and must stay that way.** Everywhere else in the
+ *  shell an `await cookies()` in a layout was removed, because it blocks navigation and
+ *  disables loading.tsx. Here the cost is worth paying and the check is not optional:
+ *
+ *  - proxy.ts gates the /sales/admin prefix, but only on the token's own claims. It
+ *    cannot see a demotion that happened after the token was issued -- middleware has no
+ *    safe path to SQLite.
+ *  - None of the pages under this layout re-check the role themselves (users/,
+ *    groups/, representatives/ -- verified). requireRole() in lib/session.ts returns a
+ *    NextResponse and serves the API routes, not these pages.
+ *
+ *  So this DB-backed check is the ONLY authorisation standing between a freshly demoted
+ *  user and the user list. Do not make it synchronous to speed up navigation; three
+ *  owner-only pages loading a beat slower is the correct trade. If you want both, move
+ *  the check into each page and let this layout go.
  */
 export default async function SalesAdminLayout({ children }: { children: ReactNode }) {
   const jar = await cookies();
