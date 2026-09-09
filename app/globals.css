@@ -1744,6 +1744,19 @@ body {
 .themeToggle:hover { box-shadow: var(--sh-2); }
 .themeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
+/* ---- three-state theme control (rail foot) -------------------------------
+   Spec 2026-09-08 §9a decision 3: auto/light/dark, all three reachable -- the rail's
+   foot control, distinct from .themeToggle's binary light/dark morph used elsewhere. */
+.theme3 { display: flex; flex-direction: column; gap: 6px; align-items: center; }
+.theme3__opt {
+  width: 30px; height: 30px; border-radius: 999px; border: 1px solid var(--border);
+  background: var(--surface); cursor: pointer; padding: 0;
+  transition: background 160ms var(--ease), transform 160ms var(--ease);
+}
+.theme3__opt:hover { transform: scale(1.06); }
+.theme3__opt[data-active="true"] { background: var(--primary); border-color: var(--primary); }
+.theme3__opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
 /* ---- tabs ----------------------------------------------------------------
    Two rows, both with a pill that travels between their items -- the six groups,
    then the tabs of the active group. The movement is what tells you which way
