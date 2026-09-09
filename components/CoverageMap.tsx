@@ -176,7 +176,7 @@ const QUICK_LINKS = [
 // see a link whose only purpose would be to turn them away.
 const GROUP_WIDE_LINKS = [
   { href: "/report", icon: "chart", label: "گزارش پوشش و مشتریان" },
-  { href: "/analytics", icon: "trend", label: "داشبورد تحلیل" },
+  { href: "/sales/dashboard", icon: "trend", label: "تحلیل فروش و پوشش" },
 ] as const;
 
 // Owner-only, and kept out of QUICK_LINKS rather than filtered out of it: proxy.ts would

@@ -21,6 +21,12 @@ export interface MatchQuality {
   unmatchedRows: number;
   totalRows: number;
   unmatchedRevenue: number;
+  /** False when the reader's scope cannot see the unmatched rows at all, so
+   *  `unmatchedRows: 0` means "not measurable here", NOT "nothing is unmatched".
+   *  The `sales` table predates tenancy and carries no organization_id, so the only
+   *  tenancy it has is the join to `customers` — and that join drops the very rows this
+   *  figure counts. See lib/repo/coverageAnalytics.ts. */
+  measurable: boolean;
 }
 
 const COST_PER_KM_KEY = "coverage_cost_per_km";
@@ -173,6 +179,13 @@ export default function CostToServePanel({
             <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
               تا وقتی هزینه هر کیلومتر را وارد نکنید، فقط نسبت خام فروش به فاصله نمایش داده می‌شود —
               هیچ عدد پیش‌فرضی برای آن وجود ندارد که بتوان به آن تکیه کرد.
+            </p>
+          )}
+
+          {!match.measurable && (
+            <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+              ردیف‌های فروشی که با هیچ مشتری تطبیق نشده‌اند در این سطح دسترسی قابل شمارش نیستند —
+              ارقام زیر فقط فروش‌های تطبیق‌شده را در بر می‌گیرند.
             </p>
           )}
 

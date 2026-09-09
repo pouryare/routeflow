@@ -26,6 +26,8 @@ import KpiStrip from "@/components/analysis/KpiStrip";
 import MarginTable from "@/components/analysis/MarginTable";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
+import CoveragePanels from "@/components/analysis/CoveragePanels";
+import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +98,14 @@ export default async function DashboardPage() {
   const negatives = stock.filter((r) => r.negative);
 
   const drivers = session.role === "salesperson" ? [] : fillRateByDriver(db, session);
+
+  /* ── پوشش و میدان — the former standalone /analytics, folded in.
+     Whole-group coverage, dormancy and cost-to-serve. proxy.ts denied a فروشنده the old
+     page for exactly this reason, and folding it into a page they CAN reach would have
+     handed them the aggregate by the back door -- so the read itself is skipped, not
+     just the markup. One clock for the whole section, so its day boundaries agree. */
+  const coverageNow = new Date();
+  const coverage = session.role === "salesperson" ? null : coverageAnalytics(session, coverageNow, db);
 
   const newThisMonth = d.new_customers_by_month.find((p) => p.key === jalaliMonthKey(period.to))?.value ?? 0;
 
@@ -446,6 +456,12 @@ export default async function DashboardPage() {
               empty={empty}
             />
           </div>
+        </CollapsibleSection>
+      )}
+
+      {coverage && (
+        <CollapsibleSection title="پوشش و میدان" icon="compass" storageKey="dash-coverage">
+          <CoveragePanels data={coverage} now={coverageNow} />
         </CollapsibleSection>
       )}
     </div>    </>

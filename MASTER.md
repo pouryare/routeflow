@@ -26,7 +26,7 @@ pill and the page-overview card; `app/(bare)/` wears the palette and nothing els
 
 | Group | Routes | What it is |
 |---|---|---|
-| **Shell** — CRM / ERP (primary) | `/sales/*`, `/leads`, `/report`, `/analytics` | Order-to-cash, leads, stock, purchasing, commission. Dense records, boards, tables, charts. |
+| **Shell** — CRM / ERP (primary) | `/sales/*`, `/leads`, `/report` | Order-to-cash, leads, stock, purchasing, commission. Dense records, boards, tables, charts. |
 | **Shell** — spatial | `/map`, `/facilities`, `/gallery`, `/planner` | The same records, placed. `/map` is the only true canvas and is pinned dark; the other three are record pages that follow the skin. |
 | **Shell** — settings | `/settings/*` | Low-traffic, plain, but part of the app. |
 | **Bare** | `/driver`, `/login`, `/offline`, `/today` | One thumb in a moving vehicle, or a login card. Same palette, type and radii; **no chrome at all**. |

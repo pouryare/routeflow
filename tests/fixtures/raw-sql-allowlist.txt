@@ -1,4 +1,3 @@
-app/(shell)/analytics/page.tsx
 app/api/activity/route.ts
 app/api/admin/groups/[id]/route.ts
 app/api/admin/groups/route.ts
