@@ -1,3 +1,4 @@
+import type { IconName } from "@/components/meridian/icon-map";
 /** What can be drawn on the map, in one list.
  *
  *  These toggles used to be scattered: satellite behind a floating 🛰 button, the heatmap
@@ -58,7 +59,7 @@ export interface RasterFallback {
 export interface BasemapDef {
   id: BasemapId;
   label: string;
-  icon: string;
+  icon: IconName;
   hint: string;
   /** Raster tile template. Empty for a vector style, which draws from `styleUrl`. */
   url: string;
@@ -181,20 +182,20 @@ export function buildBasemaps(keys: ProviderKeys = {}): BasemapDef[] {
     {
       /* The id stays "dark" even though the tiles are not: renaming it would silently
          reset the basemap for everyone who has ever chosen one. */
-      id: "dark", label: "آرام", icon: "🌙", kind: "base", ground: "dark", hasLabels: true, maxZoom: 19,
+      id: "dark", label: "آرام", icon: "moon", kind: "base", ground: "dark", hasLabels: true, maxZoom: 19,
       url: OSM_URL, attribution: OSM_ATTRIBUTION, toneClass: "tiles-quiet",
       hint: "کم‌رنگ، تا رنگ‌های مشتری‌ها و مناطق دیده شوند. با تم روشن و تیره هماهنگ می‌شود.",
     },
     {
       /* The pre-redesign map itself, not a stand-in for it: CARTO Dark Matter, drawn as
          vector through MapLibre because their raster CDN is watermarked. */
-      id: "radar", label: "رادار", icon: "◎", kind: "base", ground: "dark", hasLabels: true, maxZoom: 20,
+      id: "radar", label: "رادار", icon: "radar", kind: "base", ground: "dark", hasLabels: true, maxZoom: 20,
       url: "", styleUrl: cartoGl("dark-matter-gl-style", ck), attribution: CARTO_ATTRIBUTION,
       rasterFallback: darkFallback,
       hint: "همان نمای تیرهٔ قبلی — زمینهٔ نزدیک به سیاه با خیابان‌های نازک. برای شب و برای دیده‌شدن رنگ وضعیت‌ها.",
     },
     {
-      id: "apple", label: "روشن", icon: "▤", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+      id: "apple", label: "روشن", icon: "sun", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
       ...(st
         ? { url: stadia("alidade_smooth", st), attribution: STADIA_ATTRIBUTION }
         : mt
@@ -203,55 +204,55 @@ export function buildBasemaps(keys: ProviderKeys = {}): BasemapDef[] {
       hint: "روشن، نرم و کم‌رنگ — شبیه نقشهٔ اپل. برای روز و برای چاپ.",
     },
     {
-      id: "positron", label: "سپید", icon: "○", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+      id: "positron", label: "سپید", icon: "dot", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
       url: "", styleUrl: cartoGl("positron-gl-style", ck), attribution: CARTO_ATTRIBUTION,
       rasterFallback: lightFallback,
       hint: "بسیار روشن و کم‌جزئیات — کم‌سروصداترین زمینه برای وقتی داده‌ها شلوغ‌اند.",
     },
     {
-      id: "voyager", label: "رنگی", icon: "◈", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+      id: "voyager", label: "رنگی", icon: "palette", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
       url: "", styleUrl: cartoGl("voyager-gl-style", ck), attribution: CARTO_ATTRIBUTION,
       rasterFallback: lightFallback,
       hint: "متعادل و رنگی، با خیابان‌ها و کاربری‌های متمایز. نمای همه‌منظورهٔ روز.",
     },
     {
-      id: "radar-plain", label: "رادار (بی‌نام)", icon: "◎", kind: "base", ground: "dark", hasLabels: false, maxZoom: 20,
+      id: "radar-plain", label: "رادار (بی‌نام)", icon: "radar", kind: "base", ground: "dark", hasLabels: false, maxZoom: 20,
       url: "", styleUrl: cartoGl("dark-matter-nolabels-gl-style", ck), attribution: CARTO_ATTRIBUTION,
       rasterFallback: darkFallback,
       hint: "رادار بدون هیچ نامی — وقتی برچسب‌های خود نقشه با نام مشتری‌ها تداخل دارند.",
     },
     {
-      id: "positron-plain", label: "سپید (بی‌نام)", icon: "○", kind: "base", ground: "light", hasLabels: false, maxZoom: 20,
+      id: "positron-plain", label: "سپید (بی‌نام)", icon: "dot", kind: "base", ground: "light", hasLabels: false, maxZoom: 20,
       url: "", styleUrl: cartoGl("positron-nolabels-gl-style", ck), attribution: CARTO_ATTRIBUTION,
       rasterFallback: lightFallback,
       hint: "سپید بدون نام. خلوت‌ترین زمینهٔ ممکن زیر مرزها و پین‌ها.",
     },
     {
-      id: "voyager-plain", label: "رنگی (بی‌نام)", icon: "◈", kind: "base", ground: "light", hasLabels: false, maxZoom: 20,
+      id: "voyager-plain", label: "رنگی (بی‌نام)", icon: "palette", kind: "base", ground: "light", hasLabels: false, maxZoom: 20,
       url: "", styleUrl: cartoGl("voyager-nolabels-gl-style", ck), attribution: CARTO_ATTRIBUTION,
       rasterFallback: lightFallback,
       hint: "رنگی بدون نام — شکل شهر بدون متن.",
     },
     {
-      id: "streets", label: "خیابانی", icon: "🛣", kind: "base", ground: "light", hasLabels: true, maxZoom: 19,
+      id: "streets", label: "خیابانی", icon: "route", kind: "base", ground: "light", hasLabels: true, maxZoom: 19,
       url: OSM_URL, attribution: OSM_ATTRIBUTION,
       hint: "نام کامل خیابان‌ها و محله‌ها به فارسی، با رنگ کامل.",
     },
     {
-      id: "satellite", label: "ماهواره‌ای", icon: "🛰", kind: "imagery", ground: "dark", hasLabels: false, maxZoom: 19,
+      id: "satellite", label: "ماهواره‌ای", icon: "satellite", kind: "imagery", ground: "dark", hasLabels: false, maxZoom: 19,
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
       attribution:
         "Tiles &copy; Esri — Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community",
       hint: "برای شناختن ساختمان و ورودی. هیچ نامی روی خودش ندارد — لایه نام‌ها را روشن کنید.",
     },
     {
-      id: "topo", label: "توپوگرافی", icon: "⛰", kind: "base", ground: "light", hasLabels: true, maxZoom: 19,
+      id: "topo", label: "توپوگرافی", icon: "mountain", kind: "base", ground: "light", hasLabels: true, maxZoom: 19,
       url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}",
       attribution: `${ESRI_ATTRIBUTION} — Esri, HERE, Garmin, USGS, NGA`,
       hint: "خطوط ارتفاع و ناهمواری، با نام خیابان‌ها. برای دامنه‌های شمال شهر.",
     },
     {
-      id: "hot", label: "بشردوستانه", icon: "✚", kind: "base", ground: "light", hasLabels: true, maxZoom: 19,
+      id: "hot", label: "بشردوستانه", icon: "plus", kind: "base", ground: "light", hasLabels: true, maxZoom: 19,
       url: "https://{s}.tile.openstreetmap.fr/hot/{z}/{x}/{y}.png", subdomains: "ab",
       attribution: `${OSM_ATTRIBUTION} — tiles courtesy of <a href="https://www.hotosm.org/">HOT</a>`,
       hint: "پرکنتراست، با تأکید بر جزئیات شهری. خوانا روی اینترنت ضعیف.",
@@ -261,17 +262,17 @@ export function buildBasemaps(keys: ProviderKeys = {}): BasemapDef[] {
   if (st) {
     list.push(
       {
-        id: "toner", label: "سیاه‌وسفید", icon: "◐", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+        id: "toner", label: "سیاه‌وسفید", icon: "contrast", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
         url: stadia("stamen_toner", st), attribution: STAMEN_ATTRIBUTION,
         hint: "کنتراست بالا و بدون رنگ — برای وقتی رنگِ داده‌ها باید تنها رنگِ صفحه باشد.",
       },
       {
-        id: "terrain", label: "زمین", icon: "⛰", kind: "base", ground: "light", hasLabels: true, maxZoom: 18,
+        id: "terrain", label: "زمین", icon: "mountain", kind: "base", ground: "light", hasLabels: true, maxZoom: 18,
         url: stadia("stamen_terrain", st), attribution: STAMEN_ATTRIBUTION,
         hint: "ناهمواری و پوشش گیاهی با سایه‌پردازی. برای حاشیهٔ کوهستانی شهر.",
       },
       {
-        id: "watercolor", label: "آبرنگ", icon: "❋", kind: "base", ground: "light", hasLabels: true, maxZoom: 16,
+        id: "watercolor", label: "آبرنگ", icon: "sparkle", kind: "base", ground: "light", hasLabels: true, maxZoom: 16,
         url: stadia("stamen_watercolor", st, "jpg"), attribution: STAMEN_ATTRIBUTION,
         hint: "نمای هنری، برای ارائه و تصویر — نه برای پیدا کردن یک در.",
       },
@@ -280,22 +281,22 @@ export function buildBasemaps(keys: ProviderKeys = {}): BasemapDef[] {
   if (mt) {
     list.push(
       {
-        id: "mt-basic", label: "ساده", icon: "▢", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+        id: "mt-basic", label: "ساده", icon: "square", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
         url: maptiler("basic-v2", mt), attribution: MAPTILER_ATTRIBUTION,
         hint: "روشن و مینیمال، با رنگ‌های ملایم.",
       },
       {
-        id: "mt-streets", label: "خیابانی روشن", icon: "🛣", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+        id: "mt-streets", label: "خیابانی روشن", icon: "route", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
         url: maptiler("streets-v2", mt), attribution: MAPTILER_ATTRIBUTION,
         hint: "خیابان‌ها با رنگ‌بندی کامل و برچسب‌های واضح.",
       },
       {
-        id: "mt-outdoor", label: "طبیعت‌گردی", icon: "🌲", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
+        id: "mt-outdoor", label: "طبیعت‌گردی", icon: "trees", kind: "base", ground: "light", hasLabels: true, maxZoom: 20,
         url: maptiler("outdoor-v2", mt), attribution: MAPTILER_ATTRIBUTION,
         hint: "مسیرها، ارتفاع و پوشش گیاهی — برای بیرون از بافت شهری.",
       },
       {
-        id: "mt-satellite", label: "ماهواره‌ای (نو)", icon: "🛰", kind: "imagery", ground: "dark", hasLabels: false, maxZoom: 20,
+        id: "mt-satellite", label: "ماهواره‌ای (نو)", icon: "satellite", kind: "imagery", ground: "dark", hasLabels: false, maxZoom: 20,
         url: maptiler("satellite", mt, "jpg"), attribution: MAPTILER_ATTRIBUTION,
         hint: "تصویر ماهواره‌ای مپ‌تایلر — در برخی نواحی تازه‌تر از نسخهٔ Esri.",
       },
@@ -344,7 +345,7 @@ export type OverlayGroup = "names" | "restrictions" | "data";
 export interface OverlayDef {
   id: OverlayId;
   label: string;
-  icon: string;
+  icon: IconName;
   hint: string;
   group: OverlayGroup;
 }
@@ -359,56 +360,56 @@ export const OVERLAYS: OverlayDef[] = [
   {
     id: "labels",
     label: "نام خیابان‌ها و محله‌ها",
-    icon: "🔤",
+    icon: "labels",
     hint: "روی نقشه تیره و ماهواره‌ای. نقشه خیابانی خودش نام دارد.",
     group: "names",
   },
   {
     id: "traffic_zone",
     label: "محدوده طرح ترافیک",
-    icon: "⛔",
+    icon: "ban",
     hint: "محدوده مرکزی. در ساعت طرح بدون مجوز نمی‌شود وارد شد.",
     group: "restrictions",
   },
   {
     id: "low_emission",
     label: "محدوده کنترل آلودگی هوا",
-    icon: "🌫",
+    icon: "fog",
     hint: "محدوده بزرگ‌تر بیرونی (همت، بعثت، امام علی، نواب/چمران). ورود در ساعت طرح، یک روز از سهمیه فصلی کم می‌کند.",
     group: "restrictions",
   },
   {
     id: "customers",
     label: "مشتریان",
-    icon: "📍",
+    icon: "map-pin",
     hint: "پین همه مشتری‌های فیلترشده.",
     group: "data",
   },
   {
     id: "districts",
     label: "مناطق و محله‌ها",
-    icon: "🗺",
+    icon: "map",
     hint: "مرز و رنگ وضعیت پوشش.",
     group: "data",
   },
   {
     id: "facilities",
     label: "انبار و مبدأ",
-    icon: "🏢",
+    icon: "building",
     hint: "جایگاه‌های خودمان.",
     group: "data",
   },
   {
     id: "heatmap",
     label: "نقشه حرارتی",
-    icon: "🔥",
+    icon: "flame",
     hint: "تراکم مشتری‌ها.",
     group: "data",
   },
   {
     id: "corridor",
     label: "کریدور بین انبارها",
-    icon: "🛣",
+    icon: "route",
     hint: "نواری به عرض دلخواه دور مسیر واقعی بین دو انبار.",
     group: "data",
   },

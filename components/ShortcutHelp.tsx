@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Icon } from "@/components/meridian/Icon";
 
 export interface Shortcut {
   keys: string;
@@ -56,7 +57,7 @@ export default function ShortcutHelp({ onClose }: { onClose: () => void }) {
             aria-label="بستن"
             className="rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
           >
-            ✕
+            <Icon name="x" size="sm" />
           </button>
         </div>
 

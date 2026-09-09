@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { copyText } from "@/lib/clipboard";
 import { useToast } from "./ToastProvider";
+import { Icon } from "@/components/meridian/Icon";
 
 /** A one-tap copy for a value that exists to be pasted somewhere else -- an address into
  *  a maps app, a phone number into the dialler, a coordinate pair into anything.
@@ -63,7 +64,7 @@ export default function CopyButton({
           : "border-border text-text-faint hover:border-accent hover:text-accent"
       } ${className}`}
     >
-      <span aria-hidden="true">{copied ? "✓" : "⧉"}</span>
+      <Icon name={copied ? "check" : "file"} size="sm" />
       {label && <span>{copied ? "کپی شد" : label}</span>}
     </button>
   );

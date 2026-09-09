@@ -1,3 +1,5 @@
+import { Icon, type IconName } from "@/components/meridian/Icon";
+
 /** What a list says when it has nothing in it.
  *
  *  An empty region of a page is ambiguous in a way a full one never is: it could mean
@@ -16,9 +18,9 @@ export default function EmptyState({
   action,
   className = "",
 }: {
-  /** One emoji. Gives the block a shape at a glance, so it reads as a considered state
-   *  rather than as a rendering that stopped halfway. */
-  icon: string;
+  /** One glyph from the app's icon vocabulary. Gives the block a shape at a glance, so
+   *  it reads as a considered state rather than as a rendering that stopped halfway. */
+  icon: IconName;
   title: string;
   /** Why it is empty, or what would fill it. Omit when the title already says both. */
   hint?: string;
@@ -29,8 +31,8 @@ export default function EmptyState({
     <div
       className={`flex flex-col items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-border px-4 py-6 text-center ${className}`}
     >
-      <span aria-hidden="true" className="text-[length:var(--text-lg)] opacity-60">
-        {icon}
+      <span aria-hidden="true" className="text-text-faint opacity-80">
+        <Icon name={icon} size="lg" />
       </span>
       <p className="text-[length:var(--text-sm)] text-text-muted">{title}</p>
       {hint && <p className="max-w-sm text-[length:var(--text-xs)] leading-5 text-text-faint">{hint}</p>}

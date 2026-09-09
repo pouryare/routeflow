@@ -30,6 +30,7 @@ import EmptyState from "@/components/EmptyState";
    section's siblings stay reachable from the header pill. */
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { Icon } from "@/components/meridian/Icon";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
@@ -728,7 +729,15 @@ export default function PlannerPage() {
                 disabled={locating}
                 className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-50"
               >
-                {locating ? "در حال یافتن…" : myPos ? "موقعیت من ✓" : "موقعیت من"}
+                {locating ? (
+                  "در حال یافتن…"
+                ) : myPos ? (
+                  <>
+                    موقعیت من <Icon name="check" size="sm" />
+                  </>
+                ) : (
+                  "موقعیت من"
+                )}
               </button>
               {googleRoute && (
                 <a
@@ -885,7 +894,7 @@ export default function PlannerPage() {
             </>
           ) : dayPlans.length === 0 ? (
             <EmptyState
-              icon="🗓"
+              icon="calendar"
               title="برای این روز هنوز چیزی برنامه‌ریزی نشده"
               hint="از کادر «افزودن مشتری به برنامه» بالای همین صفحه، یا از دکمه «+ برنامه امروز» در پنل هر مشتری روی نقشه، توقف اضافه کنید."
             />
@@ -936,7 +945,7 @@ export default function PlannerPage() {
                     </button>
                   </div>
                   <div className="flex-1 truncate text-[length:var(--text-sm)] text-text">
-                    {p.entity_type === "district" ? "🗺 " : ""}
+                    {p.entity_type === "district" ? <Icon name="map" size="sm" /> : null}{" "}
                     {p.label}
                   </div>
                   <span
@@ -965,21 +974,21 @@ export default function PlannerPage() {
                       aria-label="انجام شد"
                       className="rounded-[var(--radius-sm)] px-1.5 py-1 text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                     >
-                      ✓
+                      <Icon name="check" size="sm" />
                     </button>
                     <button
                       onClick={() => setStatus(p.id, "skipped")}
                       aria-label="رد شد"
                       className="rounded-[var(--radius-sm)] px-1.5 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                     >
-                      ✗
+                      <Icon name="x" size="sm" />
                     </button>
                     <button
                       onClick={() => removePlan(p.id)}
                       aria-label="حذف"
                       className="rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                     >
-                      🗑
+                      <Icon name="trash" size="sm" />
                     </button>
                   </div>
                 </div>

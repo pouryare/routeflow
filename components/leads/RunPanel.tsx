@@ -3,6 +3,7 @@
 import { faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
 import { NavAppId, navApp, routeIsSingleLeg, droppedWaypoints } from "@/lib/navApps";
+import { Icon } from "@/components/meridian/Icon";
 
 export interface RunStop {
   id: number;
@@ -155,7 +156,7 @@ export default function RunPanel({
                 aria-label={`حذف ${s.name} از مسیر`}
                 className="shrink-0 rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 disabled:opacity-50"
               >
-                ✕
+                <Icon name="x" size="sm" />
               </button>
             </div>
           </li>

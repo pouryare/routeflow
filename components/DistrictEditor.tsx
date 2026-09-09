@@ -7,6 +7,7 @@ import HistoryTimeline from "./HistoryTimeline";
 import AddReminder from "./AddReminder";
 import PhotoGallery from "./PhotoGallery";
 import { useToast } from "./ToastProvider";
+import { Icon } from "@/components/meridian/Icon";
 
 /** Kept in step with the .modal-exit duration in globals.css. */
 const EXIT_MS = 180;
@@ -79,7 +80,7 @@ export default function DistrictEditor({
             aria-label="بستن"
             className="shrink-0 rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
           >
-            ✕
+            <Icon name="x" size="sm" />
           </button>
         </div>
         {district.properties.parent_name && (

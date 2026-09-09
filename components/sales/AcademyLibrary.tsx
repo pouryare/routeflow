@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 
 interface Card {
   id: number;
@@ -57,7 +58,13 @@ export default function AcademyLibrary({
                 disabled={complete.includes(m.slug)}
                 className="rounded-full border border-[var(--border)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)] disabled:opacity-50"
               >
-                {complete.includes(m.slug) ? "تمام شد ✓" : "تمام کردم"}
+                {complete.includes(m.slug) ? (
+                  <>
+                    تمام شد <Icon name="check" size="sm" />
+                  </>
+                ) : (
+                  "تمام کردم"
+                )}
               </button>
             </li>
           ))}

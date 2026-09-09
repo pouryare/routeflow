@@ -1,3 +1,4 @@
+import type { IconName } from "@/components/meridian/icon-map";
 /** Scoring a prospect after visiting it.
  *
  *  A list of places you have been to is not the same thing as a list of places worth
@@ -26,7 +27,7 @@ export interface LeadCriterionMeta {
   /** What a high score means here. Shown next to the stars, because "4 out of 5" is
    *  only meaningful if two people would agree what it is 4 out of. */
   hint: string;
-  icon: string;
+  icon: IconName;
 }
 
 export const LEAD_CRITERIA: LeadCriterionMeta[] = [
@@ -34,19 +35,19 @@ export const LEAD_CRITERIA: LeadCriterionMeta[] = [
     key: "potential",
     label: "احتمال خرید",
     hint: "چقدر احتمال دارد از ما خرید کند؟",
-    icon: "🎯",
+    icon: "target",
   },
   {
     key: "volume",
     label: "حجم سفارش",
     hint: "اگر خرید کند، اندازه سفارش‌هایش چقدر است؟",
-    icon: "📦",
+    icon: "package",
   },
   {
     key: "ease",
     label: "سهولت همکاری",
     hint: "دسترسی، برخورد و تسویه‌حساب چطور بود؟",
-    icon: "🤝",
+    icon: "handshake",
   },
 ];
 

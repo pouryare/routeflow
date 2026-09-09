@@ -6,6 +6,7 @@ import { faNum } from "@/lib/format";
 import { useToast } from "./ToastProvider";
 import { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
+import { Icon } from "@/components/meridian/Icon";
 
 interface PlanRow {
   id: number;
@@ -188,7 +189,7 @@ export default function NextStopBar({
           title="انجام شد"
           className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
         >
-          ✓
+          <Icon name="check" size="sm" />
         </button>
 
         <button
@@ -196,7 +197,7 @@ export default function NextStopBar({
           aria-label="پنهان کردن نوار توقف بعدی"
           className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
-          ✕
+          <Icon name="x" size="sm" />
         </button>
       </div>
     </div>

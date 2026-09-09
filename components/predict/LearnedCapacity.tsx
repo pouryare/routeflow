@@ -1,3 +1,4 @@
+import { Icon } from "@/components/meridian/Icon";
 export interface CapacityRow {
   condition_code: string;
   stop_factor: number;
@@ -55,7 +56,7 @@ export default function LearnedCapacity({ rows }: { rows: CapacityRow[] }) {
                   style={{ color: r.learned_n >= MIN_LEARN_N ? "var(--good)" : "var(--text-faint)" }}
                 >
                   {r.learned_n.toLocaleString("fa-IR")}
-                  {r.learned_n >= MIN_LEARN_N ? " ✓" : ""}
+                  {r.learned_n >= MIN_LEARN_N ? <Icon name="check" size="sm" /> : null}
                 </td>
               </tr>
             ))}

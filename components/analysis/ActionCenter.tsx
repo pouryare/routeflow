@@ -9,10 +9,14 @@ interface Item {
   href?: string;
 }
 
-const COLUMN: { bucket: "critical" | "warning" | "opportunity"; label: string; tone: string; mark: string }[] = [
-  { bucket: "critical", label: "بحرانی — همین حالا", tone: "var(--crit)", mark: "🔴" },
-  { bucket: "warning", label: "هشدار — بررسی کن", tone: "var(--warn)", mark: "🟠" },
-  { bucket: "opportunity", label: "فرصت", tone: "var(--good)", mark: "🟢" },
+/* No `mark` glyph any more. The bucket's meaning was carried twice — once by `tone`
+   and once by a 🔴/🟠/🟢 emoji that rendered in the font vendor's red, not the
+   theme's --crit. The dot below is drawn from `tone`, so the two can no longer
+   disagree and the column re-tints with the skin. */
+const COLUMN: { bucket: "critical" | "warning" | "opportunity"; label: string; tone: string }[] = [
+  { bucket: "critical", label: "بحرانی — همین حالا", tone: "var(--crit)" },
+  { bucket: "warning", label: "هشدار — بررسی کن", tone: "var(--warn)" },
+  { bucket: "opportunity", label: "فرصت", tone: "var(--good)" },
 ];
 
 /** The three ranked buckets. Source §5: "the manager should see 30, not 1,000" —
@@ -40,7 +44,8 @@ export default function ActionCenter({
                 className="m-0 mb-[var(--space-1)] text-[length:var(--text-xs)] font-medium"
                 style={{ color: col.tone }}
               >
-                {col.mark} {col.label} ({buckets[col.bucket].length})
+                <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full align-middle" style={{ background: col.tone }} />{" "}
+                {col.label} ({buckets[col.bucket].length})
               </h3>
               <ul className="m-0 flex list-none flex-col gap-[var(--space-1)] p-0">
                 {buckets[col.bucket].length === 0 && (

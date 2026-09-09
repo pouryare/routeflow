@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { repHealth } from "@/lib/repo/repHealth";
 import { repsRepo, listOnboarding } from "@/lib/repo/representatives";
 import { faNum } from "@/lib/format";
+import { Icon } from "@/components/meridian/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -59,7 +60,7 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
                 {s.label_fa}
               </span>
               <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
-                {s.completed_at ? "✓" : "در انتظار"}
+                {s.completed_at ? <Icon name="check" size="sm" /> : "در انتظار"}
               </span>
             </li>
           ))}

@@ -19,6 +19,7 @@ import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
    section's siblings stay reachable from the header pill. */
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { Icon } from "@/components/meridian/Icon";
 
 // Leaflet touches window on import, so the picker can't be server-rendered.
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -334,7 +335,13 @@ export default function FacilitiesPage() {
                       }}
                       className="accent-[color:var(--accent)]"
                     />
-                    {f.is_default_origin === 1 ? "مبدأ پیش‌فرض ✓" : "انتخاب به‌عنوان مبدأ"}
+                    {f.is_default_origin === 1 ? (
+                      <>
+                        مبدأ پیش‌فرض <Icon name="check" size="sm" />
+                      </>
+                    ) : (
+                      "انتخاب به‌عنوان مبدأ"
+                    )}
                   </label>
 
                   <div className="mr-auto flex flex-wrap items-center gap-2">

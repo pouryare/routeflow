@@ -6,6 +6,7 @@ import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { matchesQuery } from "@/lib/persian";
 import { faToman, faNum } from "@/lib/format";
 import { roundToman } from "@/lib/money";
+import { Icon } from "@/components/meridian/Icon";
 
 interface Customer {
   id: number;
@@ -297,7 +298,7 @@ export default function OrderForm({
                     onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
                     className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
                   >
-                    ✕
+                    <Icon name="x" size="sm" />
                   </button>
                 </div>
               </li>

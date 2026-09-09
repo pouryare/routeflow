@@ -28,6 +28,7 @@ import type { LeadPoint } from "@/components/LeadsMap";
    section's siblings stay reachable from the header pill. */
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { Icon } from "@/components/meridian/Icon";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -634,7 +635,7 @@ export default function LeadsPage() {
 
           {run.length === 0 ? (
             <EmptyState
-              icon="🧭"
+              icon="compass"
               title="مسیری انتخاب نشده"
               hint="از فهرست پایین یا از روی نقشه، هر جایی را که می‌خواهید بروید بزنید. توقف‌ها دقیقاً به همان ترتیبی که انتخاب می‌کنید می‌مانند."
             />
@@ -682,7 +683,7 @@ export default function LeadsPage() {
         {/* ---- automatic day split ---------------------------------------------- */}
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <CollapsibleSection
-            title="تقسیم خودکار بین روزها" icon="🗂"
+            title="تقسیم خودکار بین روزها" icon="folders"
             storageKey="leads_split"
             keywords="خوشه‌بندی روز مسیر تقسیم"
           >
@@ -797,12 +798,12 @@ export default function LeadsPage() {
             </>
           ) : locations.length === 0 ? (
             <EmptyState
-              icon="📍"
+              icon="map-pin"
               title="هنوز مکان پیشنهادی‌ای ذخیره نشده"
               hint="لینک یا نتیجه جستجوی گوگل‌مپس را در کادر بالا بچسبانید تا مکان‌های تازه برای بررسی اینجا جمع شوند."
             />
           ) : visible.length === 0 ? (
-            <EmptyState icon="🔍" title="چیزی با این جستجو پیدا نشد" className="py-4" />
+            <EmptyState icon="search" title="چیزی با این جستجو پیدا نشد" className="py-4" />
           ) : (
             <ul className="flex flex-col gap-1.5">
               {visible.map(({ loc: l, km }) => {
@@ -847,7 +848,7 @@ export default function LeadsPage() {
                               className="shrink-0 font-mono text-[length:var(--text-xs)] text-warn"
                               title="میانگین امتیاز"
                             >
-                              ★ {faNum(Math.round(avg * 10) / 10)}
+                              <Icon name="star" size="sm" filled /> {faNum(Math.round(avg * 10) / 10)}
                             </span>
                           )}
                           {km !== null ? (
@@ -856,7 +857,9 @@ export default function LeadsPage() {
                             </span>
                           ) : (
                             l.lat === null && (
-                              <span className="shrink-0 text-[length:var(--text-xs)] text-warn">⚠ بدون مختصات</span>
+                              <span className="shrink-0 text-[length:var(--text-xs)] text-warn">
+                                <Icon name="warn" size="sm" /> بدون مختصات
+                              </span>
                             )
                           )}
                         </div>
@@ -884,7 +887,7 @@ export default function LeadsPage() {
                           aria-label="حذف"
                           className="rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                         >
-                          🗑
+                          <Icon name="trash" size="sm" />
                         </button>
                       </div>
                     </div>
@@ -916,7 +919,14 @@ export default function LeadsPage() {
                             : "border-border text-text-muted hover:border-accent hover:text-accent"
                         }`}
                       >
-                        {scoring ? "بستن امتیاز" : avg !== null ? "★ امتیاز" : "☆ امتیازدهی"}
+                        {scoring ? (
+                          "بستن امتیاز"
+                        ) : (
+                          <>
+                            <Icon name="star" size="sm" filled={avg !== null} />{" "}
+                            {avg !== null ? "امتیاز" : "امتیازدهی"}
+                          </>
+                        )}
                       </button>
 
                       {l.lat === null ? (
@@ -924,7 +934,13 @@ export default function LeadsPage() {
                           onClick={() => setPinningId(pinningId === l.id ? null : l.id)}
                           className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
                         >
-                          {pinningId === l.id ? "بستن نقشه" : "📍 تعیین موقعیت روی نقشه"}
+                          {pinningId === l.id ? (
+                            "بستن نقشه"
+                          ) : (
+                            <>
+                              <Icon name="map-pin" size="sm" /> تعیین موقعیت روی نقشه
+                            </>
+                          )}
                         </button>
                       ) : (
                         <button
@@ -932,7 +948,13 @@ export default function LeadsPage() {
                           disabled={converting === l.id}
                           className="rounded-[var(--radius-sm)] border border-good px-2 py-1 text-[length:var(--text-xs)] text-good hover:bg-good/10 disabled:opacity-50"
                         >
-                          {converting === l.id ? "در حال تبدیل…" : "✓ تبدیل به مشتری"}
+                          {converting === l.id ? (
+                            "در حال تبدیل…"
+                          ) : (
+                            <>
+                              <Icon name="check" size="sm" /> تبدیل به مشتری
+                            </>
+                          )}
                         </button>
                       )}
                     </div>
@@ -943,8 +965,8 @@ export default function LeadsPage() {
                           <div key={c.key} className="flex flex-wrap items-center justify-between gap-2">
                             <span className="min-w-0">
                               <span className="block text-[length:var(--text-sm)] text-text">
-                                <span aria-hidden="true" className="me-1">
-                                  {c.icon}
+                                <span aria-hidden="true" className="me-1 inline-flex align-[-0.2em]">
+                                  <Icon name={c.icon} size="sm" />
                                 </span>
                                 {c.label}
                               </span>
@@ -991,7 +1013,7 @@ export default function LeadsPage() {
         />
 
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <CollapsibleSection title="تنظیمات" icon="⚙️" storageKey="leads_settings" keywords="مسیریابی برنامه نشان بلد ویز گوگل">
+          <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه نشان بلد ویز گوگل">
             <NavAppSetting />
           </CollapsibleSection>
         </section>

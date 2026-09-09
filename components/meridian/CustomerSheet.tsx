@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import Link from "next/link";
 import CustomerBento, { useCustomerSummary } from "./CustomerBento";
+import { Icon } from "@/components/meridian/Icon";
 
 /** پنجرهٔ مشتری — the artifact's bottom bento sheet.
  *
@@ -64,7 +65,7 @@ export default function CustomerSheet({
             </div>
           </div>
           <button className="x" type="button" aria-label="بستن" onClick={onClose}>
-            ✕
+            <Icon name="x" size="sm" />
           </button>
         </div>
 

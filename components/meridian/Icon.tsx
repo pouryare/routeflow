@@ -15,11 +15,16 @@ export function Icon({
   size = "md",
   label,
   className,
+  filled = false,
 }: {
   name: IconName;
   size?: IconSize;
   label?: string;
   className?: string;
+  /** Fills the glyph with `currentColor` instead of leaving it hollow. Only for the
+   *  handful of icons whose on/off state IS fill — a rated star, a pinned marker. It is
+   *  not a colour knob: filled or not, the icon is still one ink. */
+  filled?: boolean;
 }) {
   const r = resolveIcon(name, size, label);
   const Comp = r.Comp;
@@ -27,6 +32,7 @@ export function Icon({
     <Comp
       width={r.size}
       height={r.size}
+      fill={filled ? "currentColor" : "none"}
       stroke="currentColor"
       strokeWidth={r.strokeWidth}
       className={className}

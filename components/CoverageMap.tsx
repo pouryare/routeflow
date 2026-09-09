@@ -91,6 +91,8 @@ import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery }
 import { copyText, coordText } from "@/lib/clipboard";
 import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
 import CopyButton from "./CopyButton";
+import { Icon } from "@/components/meridian/Icon";
+import { MAP_PIN_SVG } from "@/components/meridian/icon-map";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
@@ -162,27 +164,27 @@ function writeStoredView(v: MapView): void {
 }
 
 const QUICK_LINKS = [
-  { href: "/sales", icon: "🧾", label: "فروش و سفارش‌ها" },
-  { href: "/planner", icon: "🧭", label: "برنامه‌ریزی مسیر و پوشش" },
-  { href: "/leads", icon: "📍", label: "لیست مکان‌های پیشنهادی" },
-  { href: "/facilities", icon: "🏢", label: "مکان‌های ما (انبارها و مبدأ)" },
-  { href: "/gallery", icon: "🖼", label: "گالری تصاویر" },
+  { href: "/sales", icon: "receipt", label: "فروش و سفارش‌ها" },
+  { href: "/planner", icon: "compass", label: "برنامه‌ریزی مسیر و پوشش" },
+  { href: "/leads", icon: "map-pin", label: "لیست مکان‌های پیشنهادی" },
+  { href: "/facilities", icon: "building", label: "مکان‌های ما (انبارها و مبدأ)" },
+  { href: "/gallery", icon: "image", label: "گالری تصاویر" },
 ] as const;
 
 // Whole-group aggregates. A فروشنده is scoped to their own orders, so proxy.ts sends
 // them to /sales instead -- and by the same rule as ADMIN_LINKS below, they should not
 // see a link whose only purpose would be to turn them away.
 const GROUP_WIDE_LINKS = [
-  { href: "/report", icon: "📊", label: "گزارش پوشش و مشتریان" },
-  { href: "/analytics", icon: "📈", label: "داشبورد تحلیل" },
+  { href: "/report", icon: "chart", label: "گزارش پوشش و مشتریان" },
+  { href: "/analytics", icon: "trend", label: "داشبورد تحلیل" },
 ] as const;
 
 // Owner-only, and kept out of QUICK_LINKS rather than filtered out of it: proxy.ts would
 // bounce a manager or driver off these anyway, and a link that exists only to refuse you
 // is worse than no link.
 const ADMIN_LINKS = [
-  { href: "/sales/admin/groups", icon: "🗂", label: "گروه‌ها و محدوده‌ها" },
-  { href: "/sales/admin/users", icon: "👥", label: "حساب‌های کاربری" },
+  { href: "/sales/admin/groups", icon: "folders", label: "گروه‌ها و محدوده‌ها" },
+  { href: "/sales/admin/users", icon: "users", label: "حساب‌های کاربری" },
 ] as const;
 /** Map geometry colours.
  *
@@ -353,7 +355,7 @@ function clusterIcon(cluster: { getChildCount: () => number }) {
 function foundLocationIcon() {
   return divIcon({
     className: "",
-    html: `<div class="found-location-marker">📍</div>`,
+    html: `<div class="found-location-marker">${MAP_PIN_SVG}</div>`,
     iconSize: [26, 26],
     iconAnchor: [13, 26],
   });
@@ -1325,7 +1327,7 @@ export default function CoverageMap({
         hidden={!sidebarOpen && (searchExpanded || panelOwnsScreen)}
         className="absolute right-4 top-4 z-[var(--z-sidebar-toggle)] flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:border-accent active:scale-[0.98]"
       >
-        {sidebarOpen ? "✕" : "☰"}
+        <Icon name={sidebarOpen ? "x" : "menu"} size="md" />
         {!sidebarOpen && dueReminders.length > 0 && (
           <span className="absolute -left-1.5 -top-1.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-crit px-1 font-mono text-[10px] font-bold text-white">
             {faNum(dueReminders.length)}
@@ -1375,7 +1377,7 @@ export default function CoverageMap({
 
           {positionStatus === "denied" && (
             <p className="mt-2 flex flex-wrap items-center gap-1.5 text-[length:var(--text-xs)] leading-5 text-crit">
-              <span aria-hidden="true">⚠</span>
+              <Icon name="warn" size="sm" />
               {positionError ?? "دسترسی به موقعیت داده نشده"} — موقعیت شما روی نقشه نشان داده نمی‌شود.
               <button
                 onClick={retryPosition}
@@ -1406,7 +1408,7 @@ export default function CoverageMap({
                 aria-label="پاک کردن فیلتر"
                 className="absolute left-1.5 top-1/2 -translate-y-1/2 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
               >
-                ✕
+                <Icon name="x" size="sm" />
               </button>
             )}
           </div>
@@ -1423,7 +1425,7 @@ export default function CoverageMap({
 
         {dueReminders.length > 0 && (
           <CollapsibleSection
-            title="یادآوری‌های امروز" icon="🔔"
+            title="یادآوری‌های امروز" icon="bell"
             count={dueReminders.length}
             defaultOpen
           >
@@ -1445,7 +1447,7 @@ export default function CoverageMap({
                     aria-label="انجام شد"
                     className="shrink-0 text-good hover:opacity-80"
                   >
-                    ✓
+                    <Icon name="check" size="sm" />
                   </button>
                 </div>
               ))}
@@ -1455,7 +1457,7 @@ export default function CoverageMap({
 
         {myPosition && (
           <CollapsibleSection
-            title="مشتریان نزدیک" icon="📍"
+            title="مشتریان نزدیک" icon="map-pin"
             count={nearbyCustomers.length}
             defaultOpen
             right={
@@ -1495,7 +1497,7 @@ export default function CoverageMap({
         )}
 
         {pinnedCustomers.length > 0 && (
-          <CollapsibleSection title="سنجاق‌شده" icon="⭐" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
+          <CollapsibleSection title="سنجاق‌شده" icon="star" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
             <div className="flex flex-col gap-1.5">
               {pinnedCustomers.map((c) => (
                 <div
@@ -1514,7 +1516,7 @@ export default function CoverageMap({
                     title="برداشتن سنجاق"
                     className="shrink-0 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-crit"
                   >
-                    ★
+                    <Icon name="star" size="sm" />
                   </button>
                 </div>
               ))}
@@ -1523,7 +1525,7 @@ export default function CoverageMap({
         )}
 
         {recentCustomers.length > 0 && (
-          <CollapsibleSection title="اخیراً دیده‌شده" icon="🕘" count={recentCustomers.length} storageKey="recent">
+          <CollapsibleSection title="اخیراً دیده‌شده" icon="clock" count={recentCustomers.length} storageKey="recent">
             <div className="flex flex-col gap-1.5">
               {recentCustomers.map((c) => (
                 <div
@@ -1542,7 +1544,7 @@ export default function CoverageMap({
                     title="سنجاق کردن"
                     className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
                   >
-                    ☆
+                    <Icon name="star" size="sm" />
                   </button>
                 </div>
               ))}
@@ -1550,7 +1552,7 @@ export default function CoverageMap({
           </CollapsibleSection>
         )}
 
-        <CollapsibleSection title="لینک‌های سریع" icon="🧭" storageKey="links" keywords="برنامه گزارش تحلیل گالری مکان پیشنهادی پیوند اشتراک" defaultOpen>
+        <CollapsibleSection title="لینک‌های سریع" icon="compass" storageKey="links" keywords="برنامه گزارش تحلیل گالری مکان پیشنهادی پیوند اشتراک" defaultOpen>
             {/* The current view as a link. Everything on screen -- where the map sits,
                 which customer is open, how the markers are coloured -- is already in the
                 address bar; this is the button that says so, because nobody thinks to
@@ -1577,7 +1579,7 @@ export default function CoverageMap({
                   className="group flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface py-2 pe-3 ps-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent focus-visible:border-accent"
                 >
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white/5 text-[length:var(--text-md)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:bg-accent/15 group-focus-visible:bg-accent/15">
-                    {l.icon}
+                    <Icon name={l.icon} size="md" />
                   </span>
                   <span className="flex-1 text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:text-accent group-focus-visible:text-accent">
                     {l.label}
@@ -1601,7 +1603,7 @@ export default function CoverageMap({
           filteredCount={filteredCustomers.length}
         />
 
-        <CollapsibleSection title="رنگ‌بندی مشتریان" icon="🎨" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
+        <CollapsibleSection title="رنگ‌بندی مشتریان" icon="palette" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
             {/* Five modes no longer fit a single row at sidebar width on a phone, so this
                 is a grid rather than a flex row -- the fifth would otherwise squeeze the
                 other four into unreadable slivers. */}
@@ -1650,20 +1652,20 @@ export default function CoverageMap({
             customers" is itself worth knowing. The count in the heading answers it
             without opening. */}
         <CollapsibleSection
-          title="مشتریان راکد" icon="💤"
+          title="مشتریان راکد" icon="moon"
           count={hasPurchaseHistory ? dormantCustomers.length : undefined}
           storageKey="dormant"
           keywords="بی‌خرید قدیمی سفارش"
         >
           {!hasPurchaseHistory ? (
             <EmptyState
-              icon="🧾"
+              icon="receipt"
               title="تاریخ خرید هیچ مشتری‌ای ثبت نشده"
               hint="این فهرست از برگه «فروش» اکسل ساخته می‌شود. تا وارد شدن سفارش‌ها، «راکد بودن» قابل تشخیص نیست — و این با «هیچ مشتری راکدی نیست» یکی نیست."
               className="py-4"
             />
           ) : dormantCustomers.length === 0 ? (
-            <EmptyState icon="✓" title="هیچ مشتری فعالی بیش از ۳۰ روز بدون خرید نیست" className="py-4" />
+            <EmptyState icon="check" title="هیچ مشتری فعالی بیش از ۳۰ روز بدون خرید نیست" className="py-4" />
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {dormantCustomers.map(({ customer, days }) => (
@@ -1686,13 +1688,13 @@ export default function CoverageMap({
         </CollapsibleSection>
 
         <CollapsibleSection
-          title="بدون مختصات" icon="❓"
+          title="بدون مختصات" icon="help"
           count={noCoordCustomers.length}
           storageKey="nocoord"
           keywords="مختصات نقشه جای‌گذاری"
         >
           {noCoordCustomers.length === 0 ? (
-            <EmptyState icon="✓" title="همه مشتریان فعال روی نقشه جای گرفته‌اند" className="py-4" />
+            <EmptyState icon="check" title="همه مشتریان فعال روی نقشه جای گرفته‌اند" className="py-4" />
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {noCoordCustomers.map((customer) => (
@@ -1716,7 +1718,7 @@ export default function CoverageMap({
 
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}
-        <CollapsibleSection title="تأسیسات ما" icon="🏢" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
+        <CollapsibleSection title="تأسیسات ما" icon="building" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
             <div className="flex flex-col gap-1">
               {initialFacilities.map((f) => (
                 <button
@@ -1799,7 +1801,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="راهنمای رنگ مناطق" icon="🗺" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
+        <CollapsibleSection title="راهنمای رنگ مناطق" icon="map" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
             {/* One meaning at a time. The fill cannot say both "needs coverage" and
                 "belongs to گروه غرب" at once without an amber district being ambiguous,
                 so the mode switches and the legend below switches with it. Hidden
@@ -1856,7 +1858,7 @@ export default function CoverageMap({
 
         {/* Switching it on lives in the layers panel with every other layer; how it is
             weighted is a property of the layer, and belongs next to the data it weights. */}
-        <CollapsibleSection title="نقشه حرارتی" icon="🔥" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
+        <CollapsibleSection title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
             {heatmapOn ? (
               <label className="flex items-center gap-2 text-[length:var(--text-sm)] text-text-muted">
                 <input
@@ -1872,7 +1874,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" icon="⚙️" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی نشان بلد ویز گوگل">
+        <CollapsibleSection title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی نشان بلد ویز گوگل">
           <div className="flex flex-col gap-4">
 
             <div className="flex items-center justify-between gap-2">

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { faNum } from "@/lib/format";
+import { Icon } from "@/components/meridian/Icon";
 
 interface Assignment {
   vehicle_key: number;
@@ -119,7 +120,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
               <div className="flex flex-wrap gap-[var(--space-2)]">
                 {plan.weather.notes_fa.map((note) => (
                   <span key={note} className="text-[var(--text)]">
-                    ⛅ {note}
+                    <Icon name="weather" size="sm" /> {note}
                   </span>
                 ))}
               </div>

@@ -1,5 +1,6 @@
 import { faJalaliDate } from "@/lib/jalali";
 import type { JourneyNode } from "@/lib/orderJourney";
+import { Icon } from "@/components/meridian/Icon";
 
 const TONE = ["plum", "sage", "sky", "amber"] as const;
 
@@ -52,7 +53,7 @@ export default function OrderJourney({ nodes }: { nodes: JourneyNode[] }) {
                 role="img"
                 aria-label={n.done ? "انجام شد" : "انجام نشده"}
               >
-                ✓
+                <Icon name="check" size="sm" />
               </span>
             </div>
 

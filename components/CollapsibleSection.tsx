@@ -3,6 +3,7 @@
 import { createContext, useContext, useState } from "react";
 import { faNum } from "@/lib/format";
 import { matchesQuery } from "@/lib/persian";
+import { Icon, type IconName } from "@/components/meridian/Icon";
 
 // Progressive disclosure for the map sidebar. Originally written for the two customer
 // lists that can legitimately run to dozens of rows; now every sidebar section uses it,
@@ -35,7 +36,7 @@ export default function CollapsibleSection({
    *  and finding one means reading all of them. A glyph is what the eye actually lands
    *  on, and it survives being scanned at arm's length in a vehicle, which the 11px
    *  label does not. */
-  icon?: string;
+  icon?: IconName;
   /** Rendered as "title (count)" when given. Omit for sections that aren't a list. */
   count?: number;
   /** localStorage suffix. Omitted means the section does not remember its state --
@@ -97,7 +98,7 @@ export default function CollapsibleSection({
         >
           {icon && (
             <span aria-hidden="true" className="sect__icon">
-              {icon}
+              <Icon name={icon} size="sm" />
             </span>
           )}
           <span className="sect__title">{title}</span>

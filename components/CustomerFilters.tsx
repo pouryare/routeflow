@@ -33,7 +33,7 @@ export default function CustomerFilters({
   return (
     <CollapsibleSection
       title="فیلتر مشتری‌ها"
-      icon="🔎"
+      icon="search"
       /* The count belongs in the chip, not spliced into the title -- and "N of M" is
          what makes a filter's state readable without opening it. */
       right={

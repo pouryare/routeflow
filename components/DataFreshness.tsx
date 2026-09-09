@@ -1,5 +1,6 @@
 import { faDate, faNum } from "@/lib/format";
 import { daysSince, freshnessTier } from "@/lib/freshness";
+import { Icon } from "@/components/meridian/Icon";
 
 /** How old the imported data is, said where it will be noticed.
  *
@@ -32,7 +33,7 @@ export default function DataFreshness({
       className={`flex items-start gap-1.5 text-[length:var(--text-xs)] leading-5 ${className}`}
       style={{ color }}
     >
-      <span aria-hidden="true">⚠</span>
+      <Icon name="warn" size="sm" />
       <span>
         {tier === "unknown" ? (
           "هنوز هیچ داده‌ای از اکسل وارد نشده — ارقام این صفحه خالی است، نه صفر."

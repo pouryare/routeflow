@@ -203,7 +203,7 @@ export default async function DashboardPage() {
         <GradientStat
           tone="mint"
           small
-          icon="✦"
+          icon="sparkle"
           label="مشتریان جدید این ماه"
           value={<CountUp value={newThisMonth} suffix=" مشتری" />}
           chip="اولین سفارش عمر مشتری در این ماه بوده"
@@ -265,7 +265,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <CollapsibleSection title="روند فروش و مشتریان" icon="📈" storageKey="dash-trends">
+      <CollapsibleSection title="روند فروش و مشتریان" icon="trend" storageKey="dash-trends">
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <BarChart
             title="فروش به تفکیک روز هفته"
@@ -327,7 +327,7 @@ export default async function DashboardPage() {
         />
       </div>
 
-      <CollapsibleSection title="فروش به تفکیک" icon="📊" storageKey="dash-breakdown" defaultOpen>
+      <CollapsibleSection title="فروش به تفکیک" icon="chart" storageKey="dash-breakdown" defaultOpen>
         <div className="grid gap-[var(--space-4)] md:grid-cols-2">
           <BarChart
             title="فروش هر کالا"
@@ -367,7 +367,7 @@ export default async function DashboardPage() {
         </div>
       </CollapsibleSection>
 
-      <CollapsibleSection title="بدهی و پورسانت" icon="💰" storageKey="dash-money">
+      <CollapsibleSection title="بدهی و پورسانت" icon="wallet" storageKey="dash-money">
         <p className="m-0 mb-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
           مانده کل پورسانت -- فروشنده، راننده و مدیر گروه با هم -- {faToman(owedTotal)}.
         </p>
@@ -418,7 +418,7 @@ export default async function DashboardPage() {
       </CollapsibleSection>
 
       {session.role !== "salesperson" && (
-        <CollapsibleSection title="انبار و تحویل" icon="📦" storageKey="dash-stock">
+        <CollapsibleSection title="انبار و تحویل" icon="package" storageKey="dash-stock">
           <div className="grid gap-[var(--space-4)] md:grid-cols-2">
             <BarChart
               title="موجودی انبار"

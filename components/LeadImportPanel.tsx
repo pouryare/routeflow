@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
+import { Icon, type IconName } from "@/components/meridian/Icon";
 
 interface ParsedItem {
   key: string;
@@ -17,12 +18,15 @@ interface ParsedItem {
   duplicateOf: { kind: "location" | "customer"; name: string } | null;
 }
 
-const RESOLUTION_META: Record<ParsedItem["resolution"], { label: string; color: string }> = {
-  direct: { label: "✓ دقیق", color: "var(--good)" },
-  pluscode: { label: "✓ دقیق", color: "var(--good)" },
-  nominatim: { label: "~ تقریبی", color: "var(--accent)" },
-  manual: { label: "📍 دستی", color: "var(--good)" },
-  unresolved: { label: "⚠ نیاز به مکان‌یابی دستی", color: "var(--warn)" },
+const RESOLUTION_META: Record<
+  ParsedItem["resolution"],
+  { icon: IconName; label: string; color: string }
+> = {
+  direct: { icon: "check", label: "دقیق", color: "var(--good)" },
+  pluscode: { icon: "check", label: "دقیق", color: "var(--good)" },
+  nominatim: { icon: "target", label: "تقریبی", color: "var(--accent)" },
+  manual: { icon: "map-pin", label: "دستی", color: "var(--good)" },
+  unresolved: { icon: "warn", label: "نیاز به مکان‌یابی دستی", color: "var(--warn)" },
 };
 
 export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
@@ -188,6 +192,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
                       className="shrink-0 font-mono text-[length:var(--text-xs)]"
                       style={{ color: RESOLUTION_META[it.resolution].color }}
                     >
+                      <Icon name={RESOLUTION_META[it.resolution].icon} size="sm" />{" "}
                       {RESOLUTION_META[it.resolution].label}
                     </span>
                   </div>
@@ -195,7 +200,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
                   {it.alreadySaved && <p className="text-[length:var(--text-xs)] text-text-faint">قبلاً در لیست ذخیره شده</p>}
                   {!it.alreadySaved && it.duplicateOf && (
                     <p className="truncate text-[length:var(--text-xs)] text-warn">
-                      ⚠ شبیه «{it.duplicateOf.name}» ({it.duplicateOf.kind === "customer" ? "مشتری موجود" : "لیست مکان‌ها"})
+                      <Icon name="warn" size="sm" /> شبیه «{it.duplicateOf.name}» ({it.duplicateOf.kind === "customer" ? "مشتری موجود" : "لیست مکان‌ها"})
                     </p>
                   )}
                 </div>

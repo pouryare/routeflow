@@ -9,6 +9,7 @@ import { faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jal
 import { faToman, faNum } from "@/lib/format";
 import DriverRun from "@/components/driver/DriverRun";
 import SyncStatus from "@/components/SyncStatus";
+import { Icon } from "@/components/meridian/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -19,7 +20,7 @@ function weatherLine(run: { weather_json?: string | null }): string | null {
     const w = JSON.parse(run.weather_json) as { notes_fa?: string[]; cold_chain_capped?: boolean };
     const parts = w.notes_fa ?? [];
     if (w.cold_chain_capped) parts.push("زنجیرهٔ سرد — زمان مسیر محدود است");
-    return parts.length ? `⛅ ${parts.join(" · ")}` : null;
+    return parts.length ? parts.join(" · ") : null;
   } catch {
     return null;
   }
@@ -77,7 +78,8 @@ export default async function DriverPage() {
       </header>
 
       {run && weatherLine(run as unknown as { weather_json?: string | null }) && (
-        <p className="mb-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
+        <p className="mb-[var(--space-3)] flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
+          <Icon name="weather" size="sm" />
           {weatherLine(run as unknown as { weather_json?: string | null })}
         </p>
       )}

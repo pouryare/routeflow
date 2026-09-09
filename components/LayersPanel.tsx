@@ -15,6 +15,8 @@ import {
 } from "@/lib/mapLayers";
 import { faDigits } from "@/lib/format";
 import type { ZoneKind, ZoneStatus } from "@/lib/trafficZones";
+import type { IconName } from "@/components/meridian/icon-map";
+import { Icon } from "@/components/meridian/Icon";
 
 /** The layers button, sitting with Leaflet's own controls.
  *
@@ -91,7 +93,7 @@ function Row({
 }: {
   checked: boolean;
   onChange: (next: boolean) => void;
-  icon: string;
+  icon: IconName;
   label: string;
   hint: string;
   disabled?: boolean;
@@ -112,7 +114,7 @@ function Row({
       />
       <span className="min-w-0 flex-1">
         <span className="flex items-center gap-1.5 text-[length:var(--text-sm)] text-text">
-          <span aria-hidden="true">{icon}</span>
+          <Icon name={icon} size="sm" />
           <span>{label}</span>
           {suffix}
         </span>
@@ -188,7 +190,7 @@ export default function LayersPanel({
           aria-label="بستن"
           className="rounded-[var(--radius-sm)] px-2 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
         >
-          ✕
+          <Icon name="x" size="sm" />
         </button>
       </div>
 
@@ -231,7 +233,7 @@ export default function LayersPanel({
                       on ? "bg-accent font-medium text-accent-ink" : "bg-surface text-text-muted"
                     }`}
                   >
-                    <span aria-hidden="true">{b.icon}</span>
+                    <Icon name={b.icon} size="sm" />
                     <span className="truncate">{b.label}</span>
                   </span>
                 </button>

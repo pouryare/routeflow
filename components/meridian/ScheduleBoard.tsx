@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { faJalaliDate, jalaliToIsoDate, JALALI_MONTHS } from "@/lib/jalali";
 import { tripPurpose } from "@/lib/tripPurpose";
+import { Icon } from "@/components/meridian/Icon";
 
 export interface ScheduleRun {
   id: number;
@@ -122,7 +123,7 @@ export default function ScheduleBoard({
                 const p = tripPurpose(v.purpose);
                 return (
                   <div className="slot" key={`v${v.id}`}>
-                    <div className="h">{p ? p.icon : "•"}</div>
+                    <div className="h">{p ? <Icon name={p.icon} size="sm" /> : "•"}</div>
                     <div className="lane">
                       <div
                         className="ev"
@@ -135,7 +136,7 @@ export default function ScheduleBoard({
                           className="dot"
                           style={{ background: "color-mix(in srgb, currentColor 16%, transparent)" }}
                         >
-                          {p ? p.icon : "•"}
+                          {p ? <Icon name={p.icon} size="sm" /> : "•"}
                         </span>
                         <div>
                           <div className="t">{v.who}</div>
@@ -153,10 +154,14 @@ export default function ScheduleBoard({
 
               {runsForDay.map((r) => (
                 <div className="slot" key={`r${r.id}`}>
-                  <div className="h">🚚</div>
+                  <div className="h">
+                      <Icon name="truck" size="sm" />
+                    </div>
                   <div className="lane">
                     <div className="ev a">
-                      <span className="dot">🚚</span>
+                      <span className="dot">
+                        <Icon name="truck" size="sm" />
+                      </span>
                       <div>
                         <div className="t">مسیر {r.driver}</div>
                         <div className="s">

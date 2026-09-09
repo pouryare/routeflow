@@ -26,6 +26,7 @@ import { absoluteMapLink } from "@/lib/deepLink";
 import { useSwipeDismiss } from "./useSwipeDismiss";
 import { faDateTime, faNum } from "@/lib/format";
 import CustomerBento, { useCustomerSummary } from "@/components/meridian/CustomerBento";
+import { Icon } from "@/components/meridian/Icon";
 
 function customerLink(id: number): string {
   return absoluteMapLink({ customerId: id }, "/");
@@ -222,7 +223,7 @@ export default function CustomerDetailPanel({
               pinned ? "text-accent hover:text-crit" : "text-text-faint hover:text-accent"
             }`}
           >
-            {pinned ? "★" : "☆"}
+            <Icon name="star" size="sm" filled={pinned} />
           </button>
         )}
         <button
@@ -238,7 +239,7 @@ export default function CustomerDetailPanel({
           aria-label="بستن"
           className="shrink-0 rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
         >
-          ✕
+          <Icon name="x" size="sm" />
         </button>
       </div>
 
@@ -281,7 +282,17 @@ export default function CustomerDetailPanel({
             disabled={planState !== "idle"}
             className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:hover:border-border disabled:hover:text-text-muted"
           >
-            {planState === "added" ? "✓ افزوده شد" : planState === "saving" ? "..." : "+ برنامه امروز"}
+            {planState === "added" ? (
+              <>
+                <Icon name="check" size="sm" /> افزوده شد
+              </>
+            ) : planState === "saving" ? (
+              "..."
+            ) : (
+              <>
+                <Icon name="plus" size="sm" /> برنامه امروز
+              </>
+            )}
           </button>
         </div>
       </div>

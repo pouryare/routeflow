@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
 import { faToman, faNum } from "@/lib/format";
+import { Icon } from "@/components/meridian/Icon";
 
 interface Product {
   id: number;
@@ -175,7 +176,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
                   onClick={() => setLines((cur) => cur.filter((l) => l.key !== line.key))}
                   className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--crit)]"
                 >
-                  ✕
+                  <Icon name="x" size="sm" />
                 </button>
               </div>
             </li>

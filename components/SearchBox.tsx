@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
 import { matchesQuery } from "@/lib/persian";
+import { Icon } from "@/components/meridian/Icon";
 
 // leaflet-geosearch's own SearchResult type lives at a package-internal path that
 // isn't reliably resolvable through its published exports map -- only the fields
@@ -281,7 +282,7 @@ export default function SearchBox({
           aria-label="بستن جستجو"
           className="absolute inset-y-0 left-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
-          ✕
+          <Icon name="x" size="sm" />
         </button>
       )}
       </div>
@@ -295,7 +296,7 @@ export default function SearchBox({
                 disabled={linkLoading}
                 className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-60"
               >
-                {linkLoading ? "در حال شناسایی لینک…" : "🔗 نمایش این لینک روی نقشه"}
+                {linkLoading ? "در حال شناسایی لینک…" : <><Icon name="link" size="sm" /> نمایش این لینک روی نقشه</>}
               </button>
               {linkError && <p className="mt-2 px-1 text-[length:var(--text-xs)] text-crit">{linkError}</p>}
               <p className="mt-2 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">
@@ -308,7 +309,7 @@ export default function SearchBox({
                 onClick={goToCoords}
                 className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
               >
-                📍 نمایش این مختصات روی نقشه ({coordMatch[1]}, {coordMatch[2]})
+                <Icon name="map-pin" size="sm" /> نمایش این مختصات روی نقشه ({coordMatch[1]}, {coordMatch[2]})
               </button>
             </div>
           ) : geoResults !== null ? (
@@ -319,7 +320,7 @@ export default function SearchBox({
                   onClick={() => selectGeoResult(r)}
                   className="flex w-full items-start gap-2 border-b border-border px-3 py-2 text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] last:border-b-0 hover:bg-white/5"
                 >
-                  <span>📍</span>
+                  <Icon name="map-pin" size="sm" />
                   <span className="truncate">{r.label}</span>
                 </button>
               ))
@@ -358,7 +359,13 @@ export default function SearchBox({
                 disabled={geoLoading}
                 className="w-full rounded-[var(--radius-sm)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-60"
               >
-                {geoLoading ? "در حال جستجو…" : `🔍 جستجوی «${trimmed}» به‌عنوان آدرس`}
+                {geoLoading ? (
+                  "در حال جستجو…"
+                ) : (
+                  <>
+                    <Icon name="search" size="sm" /> جستجوی «{trimmed}» به‌عنوان آدرس
+                  </>
+                )}
               </button>
             </div>
           )}

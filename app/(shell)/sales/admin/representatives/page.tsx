@@ -10,6 +10,7 @@ import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/rep
    section's siblings stay reachable from the header pill. */
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { Icon } from "@/components/meridian/Icon";
 
 interface RepRow {
   id: number;
@@ -217,7 +218,7 @@ export default function AdminRepresentativesPage() {
             {steps.map((s) => (
               <li key={s.id} className="flex items-center gap-2 text-[length:var(--text-sm)]">
                 <span className={s.completed_at ? "text-[var(--good)]" : "text-text-muted"}>
-                  {s.completed_at ? "✓" : "○"}
+                  <Icon name={s.completed_at ? "check" : "dot"} size="sm" />
                 </span>
                 <span className={s.completed_at ? "text-text-muted line-through" : "text-text"}>
                   {s.label_fa}

@@ -7,6 +7,7 @@ import type { Pocket as PocketData, PocketTeamMember } from "@/lib/repo/pocket";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
+import { Icon, type IconName } from "@/components/meridian/Icon";
 
 const KIND_TONE: Record<string, string> = {
   outreach: "accent",
@@ -26,11 +27,11 @@ const DUE_LABEL = (c: TaskCard, now = new Date().toISOString().slice(0, 10)) =>
         : "این هفته";
 
 const TILE_WASH = ["sand", "mint", "peach", "sky"] as const;
-const TILE_ICON: Record<string, string> = {
-  reminders_today: "🔔",
-  tasks_today: "✓",
-  orders_open: "📦",
-  visits_week: "📍",
+const TILE_ICON: Record<string, IconName> = {
+  reminders_today: "bell",
+  tasks_today: "check",
+  orders_open: "package",
+  visits_week: "map-pin",
 };
 
 export default function Pocket({
@@ -219,7 +220,9 @@ export default function Pocket({
       <div className="statrow" style={{ marginTop: 14 }}>
         {data.tiles.map((t, i) => (
           <div key={t.key} className={`gcard ${TILE_WASH[i]}`}>
-            <div className="ico">{TILE_ICON[t.key]}</div>
+            <div className="ico">
+              <Icon name={TILE_ICON[t.key]} size="md" />
+            </div>
             <div className="k">{t.label}</div>
             <div className="v">{faNum(t.n)}</div>
             <div className="d">{t.hint}</div>

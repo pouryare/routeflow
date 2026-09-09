@@ -104,7 +104,7 @@ export default function PhotoGallery({
           <SkeletonLabel>در حال بارگذاری تصاویر…</SkeletonLabel>
         </>
       ) : photos.length === 0 ? (
-        <EmptyState icon="🖼" title="هنوز عکسی ثبت نشده" className="py-4" />
+        <EmptyState icon="image" title="هنوز عکسی ثبت نشده" className="py-4" />
       ) : (
         <div className="grid grid-cols-4 gap-1.5">
           {photos.map((p) => (

@@ -2,6 +2,7 @@
 
 import { MAX_STARS } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
+import { Icon } from "@/components/meridian/Icon";
 
 /** A row of stars for one criterion.
  *
@@ -40,7 +41,7 @@ export default function StarRating({
               filled ? "text-warn" : "text-text-faint hover:text-warn"
             }`}
           >
-            {filled ? "★" : "☆"}
+            <Icon name="star" size="sm" filled={filled} />
           </button>
         );
       })}

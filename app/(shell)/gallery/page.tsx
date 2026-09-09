@@ -94,7 +94,7 @@ export default function GalleryPage() {
           </>
         ) : photos.length === 0 ? (
           <EmptyState
-            icon="🖼"
+            icon="image"
             title="هنوز عکسی ثبت نشده"
             hint="عکس‌ها از پنل هر مشتری یا منطقه روی نقشه اضافه می‌شوند و بعد همه‌شان اینجا جمع می‌شوند."
           />

@@ -6,6 +6,7 @@ import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import type { PipelineOrder } from "./OrderPipeline";
 import Avatar from "@/components/meridian/Avatar";
+import { Icon } from "@/components/meridian/Icon";
 
 
 const PAYMENT_LABEL: Record<string, string> = {
@@ -80,7 +81,7 @@ export default function ProcessingModal({
                 </div>
               </div>
               <button className="x" type="button" aria-label="بستن" onClick={onClose}>
-                ✕
+                <Icon name="x" size="sm" />
               </button>
             </div>
 

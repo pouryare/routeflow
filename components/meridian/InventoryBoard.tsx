@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { splinePath, type Pt } from "@/lib/design/spline";
 import { faNum, faToman } from "@/lib/format";
 import { matchesQuery } from "@/lib/persian";
+import { Icon } from "@/components/meridian/Icon";
 
 export interface InventoryRow {
   product_id: number;
@@ -80,7 +81,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
       {critical.length > 0 && (
         <div className="stalert">
           <div className="stalert__head">
-            <span aria-hidden="true">⚠</span>
+            <Icon name="warn" size="sm" />
             <span className="mono">{faNum(critical.length)}</span>
             <span>کالا از نقطهٔ سفارش پایین‌تر رفته و منتظر خرید تازه‌اند</span>
           </div>

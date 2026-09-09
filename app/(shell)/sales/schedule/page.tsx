@@ -7,6 +7,7 @@ import { toJalali, jalaliToIsoDate, jalaliMonthGrid } from "@/lib/jalali";
 import ScheduleBoard from "@/components/meridian/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 import PageHeader from "@/components/meridian/PageHeader";
+import { Icon } from "@/components/meridian/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -98,7 +99,7 @@ export default async function SchedulePage() {
         <span className="legend2__t">هدف سفر:</span>
         {TRIP_PURPOSES.map((p) => (
           <span key={p.id} className="legend2__i" style={{ background: p.soft, color: p.ink }}>
-            <span aria-hidden>{p.icon}</span>
+            <Icon name={p.icon} size="sm" />
             {p.label}
           </span>
         ))}

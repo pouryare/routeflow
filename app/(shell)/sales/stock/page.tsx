@@ -79,7 +79,7 @@ export default async function StockPage() {
         <GradientStat
           tone="sand"
           small
-          icon="⚠"
+          icon="warn"
           label="کالای بحرانی"
           value={faNum(critCount)}
           chip={critCount > 0 ? "زیر نقطهٔ سفارش -- نیاز به خرید فوری" : "چیزی زیر نقطهٔ سفارش نیست"}

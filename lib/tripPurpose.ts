@@ -1,3 +1,4 @@
+import type { IconName } from "@/components/meridian/icon-map";
 /** Why a visit is being made — the four kinds of trip this business actually does.
  *
  *  One list, read by the schedule, the planner and the API, so a value can never be
@@ -14,7 +15,7 @@ export interface TripPurposeDef {
   id: TripPurpose;
   label: string;
   /** One glyph, for the rail and the calendar dot. */
-  icon: string;
+  icon: IconName;
   /** The token pair this purpose paints with: ink on its own soft ground. */
   ink: string;
   soft: string;
@@ -27,7 +28,7 @@ export const TRIP_PURPOSES: TripPurposeDef[] = [
   {
     id: "first_visit",
     label: "ویزیت اولیه",
-    icon: "◎",
+    icon: "flag",
     ink: "var(--sky)",
     soft: "var(--sky-soft)",
     dot: "var(--sky)",
@@ -35,7 +36,7 @@ export const TRIP_PURPOSES: TripPurposeDef[] = [
   {
     id: "sample",
     label: "نمونه بردن",
-    icon: "❦",
+    icon: "sparkle",
     ink: "var(--plum)",
     soft: "var(--plum-soft)",
     dot: "var(--plum)",
@@ -43,7 +44,7 @@ export const TRIP_PURPOSES: TripPurposeDef[] = [
   {
     id: "delivery",
     label: "بار بردن",
-    icon: "🚚",
+    icon: "truck",
     ink: "var(--sage)",
     soft: "var(--sage-soft)",
     dot: "var(--sage)",
@@ -51,7 +52,7 @@ export const TRIP_PURPOSES: TripPurposeDef[] = [
   {
     id: "collect",
     label: "پول گرفتن",
-    icon: "₸",
+    icon: "banknote",
     ink: "var(--amber)",
     soft: "var(--amber-soft)",
     dot: "var(--amber)",
