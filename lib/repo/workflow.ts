@@ -1,5 +1,5 @@
-import { getDb, TaskRow } from "@/lib/db";
-import { createTask } from "@/lib/repo/tasks";
+import { getDb } from "@/lib/db";
+import { createTask, type TaskRow } from "@/lib/repo/tasks";
 
 export class WorkflowError extends Error {}
 
@@ -14,7 +14,7 @@ export interface StepTemplate {
 export function listStepTemplates(): StepTemplate[] {
   return getDb()
     .prepare("SELECT key, label_fa FROM workflow_step_templates ORDER BY sort_order")
-    .all() as StepTemplate[];
+    .all() as unknown as StepTemplate[];
 }
 
 /** Every task spawned for this complaint's resolution graph, plus the edges connecting
@@ -29,7 +29,7 @@ export function getComplaintSteps(
     .prepare(
       "SELECT * FROM tasks WHERE organization_id = ? AND entity_type = 'complaint' AND entity_id = ? ORDER BY created_at"
     )
-    .all(organizationId, complaintId) as TaskRow[];
+    .all(organizationId, complaintId) as unknown as TaskRow[];
   const ids = tasks.map((t) => t.id);
   const edges =
     ids.length === 0
@@ -38,7 +38,7 @@ export function getComplaintSteps(
           .prepare(
             `SELECT from_task_id, to_task_id FROM workflow_edges WHERE to_task_id IN (${ids.map(() => "?").join(",")})`
           )
-          .all(...ids) as { from_task_id: number; to_task_id: number }[]);
+          .all(...ids) as unknown as { from_task_id: number; to_task_id: number }[]);
   return { tasks, edges };
 }
 
