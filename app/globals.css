@@ -1675,12 +1675,16 @@ body {
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent); flex: none;
 }
 .mark svg { display: block; }
-.navbar__brand h1 {
+/* .navbar__wordmark, NOT a bare ".navbar__brand h1" -- the settings layout's navbar puts
+   a real Persian h1 ("تنظیمات") inside .navbar__brand too, and pinning THAT ltr would
+   reverse its glyphs. Only the Latin "RouteFlow" wordmark gets this class. */
+.navbar__brand h1.navbar__wordmark {
   margin: 0; font-family: var(--font-display); font-size: 20px; font-weight: 800;
   letter-spacing: -.01em;
   /* A Latin wordmark in an RTL bar -- pin it LTR so the glyphs are not reordered. */
   direction: ltr; unicode-bidi: isolate;
 }
+.navbar__brand h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; }
 .navbar__brand .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
 
 /* ---- profile menu ------------------------------------------------------------

@@ -51,7 +51,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
                 </svg>
               </div>
               <div>
-                <h1>RouteFlow</h1>
+                <h1 className="navbar__wordmark">RouteFlow</h1>
                 <div className="sub">{faJalaliLong(new Date().toISOString())}</div>
               </div>
             </>
