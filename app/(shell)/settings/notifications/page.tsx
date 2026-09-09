@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getPrefsMatrix } from "@/lib/repo/notifications";
 import NotificationSettings from "@/components/settings/NotificationSettings";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -23,5 +24,10 @@ export default async function NotificationSettingsPage() {
   // the signed session, never the request.
   const initial = getPrefsMatrix(session.user.id, session.organizationId);
 
-  return <NotificationSettings initial={initial} />;
+  return (
+    <>
+      <PageHeader route="/settings/notifications" />
+      <NotificationSettings initial={initial} />
+    </>
+  );
 }

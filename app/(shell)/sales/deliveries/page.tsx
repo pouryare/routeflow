@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { listDeliveries, type DeliveryStatus } from "@/lib/repo/deliveries";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +33,8 @@ export default async function DeliveriesPage() {
   const rows = listDeliveries(session.organizationId).slice(0, 200);
 
   return (
+    <>
+    <PageHeader route="/sales/deliveries" />
     <div className="kblock">
       <div className="bhead">
         <div>
@@ -75,6 +78,6 @@ export default async function DeliveriesPage() {
           ))}
         </tbody>
       </table>
-    </div>
+    </div>    </>
   );
 }

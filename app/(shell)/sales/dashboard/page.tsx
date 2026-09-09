@@ -25,6 +25,7 @@ import ActionCenter from "@/components/analysis/ActionCenter";
 import KpiStrip from "@/components/analysis/KpiStrip";
 import MarginTable from "@/components/analysis/MarginTable";
 import SweepButton from "@/components/SweepButton";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -115,6 +116,8 @@ export default async function DashboardPage() {
   const risky = health.filter((h) => h.band === "risk").slice(0, 8);
 
   return (
+    <>
+    <PageHeader route="/sales/dashboard" />
     <div className="flex flex-col gap-[var(--space-5)]">
       <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
         همه ارقام بر اساس مقدار تحویل‌شده است — نه سفارش‌شده. تا {faJalaliDate(period.to)}.
@@ -445,6 +448,6 @@ export default async function DashboardPage() {
           </div>
         </CollapsibleSection>
       )}
-    </div>
+    </div>    </>
   );
 }

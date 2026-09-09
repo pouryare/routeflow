@@ -2282,6 +2282,40 @@ body {
 .meridian .cradlebody h2 { margin: 0 0 4px; font-size: 18px; font-weight: 600; }
 .meridian .cradlebody p { margin: 0; font-size: 13.5px; color: var(--muted); }
 
+/* ---- page-overview card -------------------------------------------------- */
+/* The first card on every shell page: what the screen is, with the section's sibling
+   tabs in a bay cut out of its top edge. Same carve device as .cradlewrap, but the bay
+   is measured to the tab row rather than assumed — see PageHeaderCard. */
+.meridian .phcwrap { position: relative; margin-bottom: 20px; }
+.meridian .phc { background: var(--card); filter: var(--card-drop); border-radius: var(--r-2xl); }
+.meridian .phc.carved { border-radius: 0; }
+.meridian .phc__body { padding: 26px; }
+.meridian .phc.carved .phc__body { padding-block-start: 74px; }
+.meridian .phc__title { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
+.meridian .phc__overview { margin: 0; max-width: 68ch; font-size: 13.5px; line-height: 1.75; color: var(--muted); }
+
+/* The tab row that sits in the bay. A sibling of the carved element, never a child:
+   clip-path clips descendants, so tabs inside would be erased by the bay meant to hold
+   them. */
+.meridian .phc__tabs {
+  position: absolute; top: 0; inset-inline-start: 26px; z-index: 2;
+  height: 56px; display: flex; align-items: center; gap: 4px;
+  max-width: calc(100% - 140px); overflow-x: auto; scrollbar-width: none;
+}
+.meridian .phc__tabs > a {
+  padding: 7px 12px; border-radius: 999px; white-space: nowrap;
+  font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none;
+  transition: background var(--dur-base, 160ms) var(--ease), color var(--dur-base, 160ms) var(--ease);
+}
+.meridian .phc__tabs > a:hover { background: var(--sunk); color: var(--ink); }
+.meridian .phc__tabs > a[aria-current="page"] { background: var(--sunk); color: var(--ink); }
+.meridian .phc__tabs > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Too narrow to carve: the tabs sit above the card instead of in it. */
+.meridian .phc--flat + .phc__tabs, .meridian .phcwrap:has(.phc--flat) .phc__tabs {
+  position: static; height: auto; max-width: 100%; margin-bottom: 10px;
+}
+
 /* ---- 4 · document-pocket cards ------------------------------------------- */
 .meridian .pockets {
   display: grid; grid-template-columns: repeat(auto-fill, minmax(clamp(240px, 20vw, 300px), 1fr));

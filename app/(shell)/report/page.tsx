@@ -14,6 +14,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, groupFilterWithShared } from "@/lib/session";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,8 @@ export default async function ReportPage({
   const generatedAt = faDateTime(now.toISOString());
 
   return (
+    <>
+    <PageHeader route="/report" />
     <div dir="rtl" className="print-report pagewrap">
       <div className="mx-auto flex max-w-4xl flex-col gap-6">
         <div className="no-print flex items-center justify-between">
@@ -303,6 +306,6 @@ export default async function ReportPage({
           </div>
         </section>
       </div>
-    </div>
+    </div>    </>
   );
 }

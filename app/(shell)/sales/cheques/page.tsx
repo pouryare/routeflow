@@ -5,6 +5,7 @@ import { getSessionFromCookies, scopeGroupIds } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { readCustomers } from "@/lib/customers";
 import ChequesBoard from "@/components/sales/ChequesBoard";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +21,10 @@ export default async function ChequesPage() {
     customer_code: c.customer_code,
   }));
 
-  return <ChequesBoard customers={customers} />;
+  return (
+    <>
+      <PageHeader route="/sales/cheques" />
+      <ChequesBoard customers={customers} />
+    </>
+  );
 }

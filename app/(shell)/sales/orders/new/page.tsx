@@ -6,6 +6,7 @@ import { getDb, plain } from "@/lib/db";
 import { readCatalogue } from "@/lib/catalogue";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
 import OrderForm from "@/components/sales/OrderForm";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -92,11 +93,13 @@ export default async function NewOrderPage({
       : null;
 
   return (
+    <>
+    <PageHeader route="/sales/orders/new" />
     <OrderForm
       customers={customers}
       products={products}
       sellers={sellers}
       initialCustomerId={initialCustomerId}
-    />
+    />    </>
   );
 }

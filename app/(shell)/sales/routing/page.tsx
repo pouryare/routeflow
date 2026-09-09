@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { listVehicles } from "@/lib/repo/routing";
 import RoutingPlanner from "@/components/sales/RoutingPlanner";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,6 +21,8 @@ export default async function RoutingPage() {
   for (const v of vehicles) names[v.id] = v.plate ? `${v.name} (${v.plate})` : v.name;
 
   return (
+    <>
+    <PageHeader route="/sales/routing" />
     <div className="kblock">
       <div className="bhead">
         <div>
@@ -34,6 +37,6 @@ export default async function RoutingPage() {
       <div className="px-[var(--space-4)] pb-[var(--space-5)]">
         <RoutingPlanner vehicleNames={names} />
       </div>
-    </div>
+    </div>    </>
   );
 }

@@ -6,6 +6,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { repsOverview } from "@/lib/repo/repHealth";
 import { faNum } from "@/lib/format";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -25,6 +26,8 @@ export default async function RepsPage() {
   const reps = repsOverview(session.organizationId);
 
   return (
+    <>
+    <PageHeader route="/sales/reps" />
     <div className="kblock" dir="rtl">
       <div className="bhead">
         <div>
@@ -64,6 +67,6 @@ export default async function RepsPage() {
           ))}
         </tbody>
       </table>
-    </div>
+    </div>    </>
   );
 }

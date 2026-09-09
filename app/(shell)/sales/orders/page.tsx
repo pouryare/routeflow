@@ -10,6 +10,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import type { PocketDoc, PocketStatus } from "@/components/meridian/PocketCard";
 import OrdersPockets, { type PocketRow } from "@/components/meridian/OrdersPockets";
 import { statusLabel, isPreConfirm, isFulfilled } from "@/components/sales/orderStage";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -96,6 +97,8 @@ export default async function OrdersPage({
   const customerCount = new Set(orders.map((o) => o.customer_name)).size;
 
   return (
+    <>
+    <PageHeader route="/sales/orders" />
     <div className="kblock">
       <div className="bhead">
         <div>
@@ -176,5 +179,6 @@ export default async function OrdersPage({
         />
       )}
     </div>
+    </>
   );
 }

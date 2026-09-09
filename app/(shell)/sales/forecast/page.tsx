@@ -11,6 +11,7 @@ import DemandTable from "@/components/predict/DemandTable";
 import ChurnList from "@/components/predict/ChurnList";
 import LearnedCapacity from "@/components/predict/LearnedCapacity";
 import SweepButton from "@/components/SweepButton";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,8 @@ export default async function ForecastPage() {
   const computedAt = newestForecastAt(org);
 
   return (
+    <>
+    <PageHeader route="/sales/forecast" />
     <div className="flex flex-col gap-[var(--space-4)]" dir="rtl">
       <div className="flex items-baseline justify-between">
         <h1 className="text-[length:var(--text-lg)] font-bold text-[var(--text)]">پیش‌بینی</h1>
@@ -45,6 +48,6 @@ export default async function ForecastPage() {
       <DemandTable entries={entries} />
       <ChurnList rows={churn} />
       <LearnedCapacity rows={capacityRows} />
-    </div>
+    </div>    </>
   );
 }

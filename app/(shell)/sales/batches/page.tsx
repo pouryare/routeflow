@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { readCatalogue } from "@/lib/catalogue";
 import BatchesPanel from "@/components/sales/BatchesPanel";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +21,10 @@ export default async function BatchesPage() {
     base_unit: p.base_unit,
   }));
 
-  return <BatchesPanel products={products} />;
+  return (
+    <>
+      <PageHeader route="/sales/batches" />
+      <BatchesPanel products={products} />
+    </>
+  );
 }

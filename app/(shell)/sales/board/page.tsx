@@ -5,6 +5,7 @@ import { getSessionFromCookies, orderFilter } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { readOrders } from "@/lib/orders";
 import OrderPipeline, { type PipelineOrder } from "@/components/sales/OrderPipeline";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -49,6 +50,8 @@ export default async function BoardPage() {
   }));
 
   return (
+    <>
+    <PageHeader route="/sales/board" />
     <div className="kblock">
       <div className="bhead">
         <div>
@@ -62,6 +65,6 @@ export default async function BoardPage() {
         <b>روی موبایل:</b> انگشت را روی کارت نگه دارید و بکشید — همان کار را می‌کند.
       </div>
       <OrderPipeline orders={board} />
-    </div>
+    </div>    </>
   );
 }

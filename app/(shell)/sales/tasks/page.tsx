@@ -7,6 +7,7 @@ import { boardFor } from "@/lib/repo/board";
 import { getPrefs } from "@/lib/repo/prefs";
 import Board from "@/components/board/Board";
 import type { BoardView } from "@/lib/tasks/lenses";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -28,10 +29,12 @@ export default async function TasksBoardPage() {
   // boardFor returns fresh object literals (rowToCard rebuilds each row), so it already
   // crosses the server→client boundary cleanly — no plain() needed.
   return (
+    <>
+    <PageHeader route="/sales/tasks" />
     <Board
       initialBoard={board}
       initialView={view}
       mobileMode={prefs.board_mobile_mode ?? "pager"}
-    />
+    />    </>
   );
 }

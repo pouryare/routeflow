@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { faDateTime } from "@/lib/format";
 import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
+/* PageHeaderCard, not PageHeader: this page is a Client Component, and
+   PageHeader reads cookies() to work out which sibling tabs the viewer may
+   reach — a server-only concern that cannot cross into here. The title and
+   overview are pure data, so they come straight from the registry; the
+   section's siblings stay reachable from the header pill. */
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 interface RepRow {
   id: number;
@@ -102,6 +109,8 @@ export default function AdminRepresentativesPage() {
   }
 
   return (
+    <>
+    <PageHeaderCard {...pageMetaFor("/sales/admin/representatives")} />
     <div className="flex flex-col gap-[var(--space-5)]">
       <h1 className="m-0 text-[length:var(--text-lg)]">نمایندگان</h1>
 
@@ -232,6 +241,6 @@ export default function AdminRepresentativesPage() {
           </ul>
         </div>
       )}
-    </div>
+    </div>    </>
   );
 }

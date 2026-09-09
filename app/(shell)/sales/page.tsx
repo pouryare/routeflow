@@ -11,6 +11,7 @@ import GradientStat from "@/components/meridian/GradientStat";
 import SalesSpark, { type SparkPoint } from "@/components/meridian/SalesSpark";
 import CarvedCard from "@/components/meridian/CarvedCard";
 import Avatar from "@/components/meridian/Avatar";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -95,6 +96,8 @@ export default async function SalesHomePage() {
 
 
   return (
+    <>
+    <PageHeader route="/sales" />
     <>
       <div className="statrow">
         <GradientStat
@@ -193,6 +196,6 @@ export default async function SalesHomePage() {
           )}
         </CarvedCard>
       </div>
-    </>
+    </>    </>
   );
 }

@@ -4,6 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import GroupTerritoryEditor from "@/components/GroupTerritoryEditor";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
+/* PageHeaderCard, not PageHeader: this page is a Client Component, and
+   PageHeader reads cookies() to work out which sibling tabs the viewer may
+   reach — a server-only concern that cannot cross into here. The title and
+   overview are pure data, so they come straight from the registry; the
+   section's siblings stay reachable from the header pill. */
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 interface GroupRow {
   id: number;
@@ -99,6 +106,8 @@ export default function AdminGroupsPage() {
   }
 
   return (
+    <>
+    <PageHeaderCard {...pageMetaFor("/sales/admin/groups")} />
     <div className="flex flex-col gap-[var(--space-4)]">
 
       {error && (
@@ -202,6 +211,6 @@ export default function AdminGroupsPage() {
       {groups && groups.length > 0 && (
         <GroupTerritoryEditor districts={districts} groups={groups} onSaved={load} />
       )}
-    </div>
+    </div>    </>
   );
 }

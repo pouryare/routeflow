@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db";
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import SweepButton from "@/components/SweepButton";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,8 @@ export default async function SalesTodayPage() {
   const data = todayFor(session);
 
   return (
+    <>
+    <PageHeader route="/sales/today" />
     <div style={{ marginTop: 14 }}>
       <div
         className="bhead"
@@ -44,6 +47,6 @@ export default async function SalesTodayPage() {
       </div>
 
       <Briefing data={data} variant="meridian" />
-    </div>
+    </div>    </>
   );
 }

@@ -9,6 +9,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
 import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,8 @@ export default async function ProductsPage() {
   ).filter((s) => s.rows.length >= 2);
 
   return (
+    <>
+    <PageHeader route="/sales/products" />
     <div className="flex flex-col gap-[var(--space-5)]">
       {products.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
@@ -165,6 +168,6 @@ export default async function ProductsPage() {
           )}
         </section>
       )}
-    </div>
+    </div>    </>
   );
 }

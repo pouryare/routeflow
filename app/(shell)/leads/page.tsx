@@ -21,6 +21,13 @@ import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import StarRating from "@/components/StarRating";
 import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
 import type { LeadPoint } from "@/components/LeadsMap";
+/* PageHeaderCard, not PageHeader: this page is a Client Component, and
+   PageHeader reads cookies() to work out which sibling tabs the viewer may
+   reach — a server-only concern that cannot cross into here. The title and
+   overview are pure data, so they come straight from the registry; the
+   section's siblings stay reachable from the header pill. */
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -539,6 +546,8 @@ export default function LeadsPage() {
   const activeList = activeListId === null ? null : lists.find((l) => l.id === activeListId) ?? null;
 
   return (
+    <>
+    <PageHeaderCard {...pageMetaFor("/leads")} />
     <div dir="rtl" className="pagewrap">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
@@ -987,6 +996,6 @@ export default function LeadsPage() {
           </CollapsibleSection>
         </section>
       </div>
-    </div>
+    </div>    </>
   );
 }

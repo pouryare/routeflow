@@ -6,6 +6,7 @@ import { getDb, plain } from "@/lib/db";
 import { toJalali, jalaliToIsoDate, jalaliMonthGrid } from "@/lib/jalali";
 import ScheduleBoard from "@/components/meridian/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -91,6 +92,8 @@ export default async function SchedulePage() {
 
   return (
     <>
+    <PageHeader route="/sales/schedule" />
+    <>
       <div className="legend2">
         <span className="legend2__t">هدف سفر:</span>
         {TRIP_PURPOSES.map((p) => (
@@ -112,6 +115,6 @@ export default async function SchedulePage() {
         visits={visits}
         marks={marks}
       />
-    </>
+    </>    </>
   );
 }

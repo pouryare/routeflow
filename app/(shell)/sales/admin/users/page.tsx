@@ -3,6 +3,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { faDate } from "@/lib/format";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
+/* PageHeaderCard, not PageHeader: this page is a Client Component, and
+   PageHeader reads cookies() to work out which sibling tabs the viewer may
+   reach — a server-only concern that cannot cross into here. The title and
+   overview are pure data, so they come straight from the registry; the
+   section's siblings stay reachable from the header pill. */
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 interface UserRow {
   id: number;
@@ -122,6 +129,8 @@ export default function AdminUsersPage() {
   }
 
   return (
+    <>
+    <PageHeaderCard {...pageMetaFor("/sales/admin/users")} />
     <div className="flex flex-col gap-[var(--space-4)]">
 
       {error && (
@@ -297,6 +306,6 @@ export default function AdminUsersPage() {
           بی‌اعتبار می‌شوند.
         </p>
       </section>
-    </div>
+    </div>    </>
   );
 }

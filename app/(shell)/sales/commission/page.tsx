@@ -11,6 +11,7 @@ import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import CommissionEditor from "@/components/sales/CommissionEditor";
 import Avatar from "@/components/meridian/Avatar";
 import EarnerCard from "@/components/meridian/EarnerCard";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -86,6 +87,8 @@ export default async function CommissionPage() {
     session.role === "owner" ? readManagerOverrides(db, session.organizationId).slice(0, 12) : [];
 
   return (
+    <>
+    <PageHeader route="/sales/commission" />
     <div className="flex flex-col gap-[var(--space-5)]">
       <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
         دوره {faJalaliDate(period.from)} تا {faJalaliDate(period.to)} · پورسانت فروشنده و
@@ -244,6 +247,6 @@ export default async function CommissionPage() {
           )}
         </section>
       )}
-    </div>
+    </div>    </>
   );
 }

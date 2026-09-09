@@ -1,0 +1,44 @@
+import { cookies } from "next/headers";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
+import { activeGroup, appTabs } from "@/lib/appNav";
+import { pageMetaFor } from "@/lib/pageMeta";
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+
+/** The server half of the page-overview card: it knows the session, so it knows which
+ *  sibling tabs this reader may actually reach.
+ *
+ *  `route` is passed explicitly because a server component cannot read the pathname, and
+ *  guessing it from headers would be a worse kind of magic — one line per page, and the
+ *  route it names is the one pageMeta is keyed on, so a typo fails the page's own copy
+ *  lookup immediately.
+ *
+ *  Async, and that is fine: this renders inside a PAGE, not a layout. loading.tsx covers
+ *  a page's own awaits — it is only an await in a layout that blocks navigation.
+ */
+export default async function PageHeader({ route }: { route: string }) {
+  const meta = pageMetaFor(route);
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+
+  if (!session) {
+    return <PageHeaderCard title={meta.title} overview={meta.overview} />;
+  }
+
+  const all = appTabs(session);
+  const group = activeGroup(route, all);
+  const siblings = all.filter((t) => t.group === group && t.ready);
+  const current = all
+    .filter((t) => t.ready && (route === t.href || route.startsWith(`${t.href}/`)))
+    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+
+  /* One sibling is not a section — a lone tab in the bay reads as a stray chip. */
+  return (
+    <PageHeaderCard
+      title={meta.title}
+      overview={meta.overview}
+      tabs={siblings.length > 1 ? siblings : []}
+      currentHref={current}
+    />
+  );
+}

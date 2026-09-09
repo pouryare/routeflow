@@ -5,6 +5,7 @@ import { getSessionFromCookies, scopeGroupIds } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { readCustomers } from "@/lib/customers";
 import PaymentsPanel from "@/components/sales/PaymentsPanel";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -20,5 +21,10 @@ export default async function PaymentsPage() {
     customer_code: c.customer_code,
   }));
 
-  return <PaymentsPanel customers={customers} />;
+  return (
+    <>
+      <PageHeader route="/sales/payments" />
+      <PaymentsPanel customers={customers} />
+    </>
+  );
 }

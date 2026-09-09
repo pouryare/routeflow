@@ -10,6 +10,7 @@ import PurchaseEntry from "@/components/sales/PurchaseEntry";
 import InventoryBoard from "@/components/meridian/InventoryBoard";
 import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches } from "@/lib/repo/batches";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -70,6 +71,8 @@ export default async function StockPage() {
   }));
 
   return (
+    <>
+    <PageHeader route="/sales/stock" />
     <div className="flex flex-col gap-[var(--space-5)]">
       <div className="statrow">
         <GradientStat tone="peach" label="ارزش کل انبار" value={faNum(totalValue)} unit="تومان" chip={`از ${faNum(stock.length)} کالای فعال`} />
@@ -170,6 +173,6 @@ export default async function StockPage() {
           </ul>
         </section>
       )}
-    </div>
+    </div>    </>
   );
 }

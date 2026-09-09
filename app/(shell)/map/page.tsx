@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
 import { readGroups } from "@/lib/groups";
+import PageHeader from "@/components/meridian/PageHeader";
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
 // SQLite is local and these reads are sub-millisecond, so paying for them inline is
@@ -42,6 +43,8 @@ export default async function Home() {
 
   return (
     <>
+    <PageHeader route="/map" />
+    <>
       {/* React hoists this into <head>, so the browser starts pulling the polygons
           while the JS bundle is still downloading instead of after it runs.
           crossOrigin="use-credentials" is load-bearing: a preload only satisfies a
@@ -58,6 +61,6 @@ export default async function Home() {
         role={session.role}
         geometryVersion={version}
       />
-    </>
+    </>    </>
   );
 }

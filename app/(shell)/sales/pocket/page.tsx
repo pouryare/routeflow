@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { pocketFor, pocketTeam } from "@/lib/repo/pocket";
 import Pocket from "@/components/pocket/Pocket";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -19,10 +20,12 @@ export default async function PocketPage() {
 
   // pocketFor / pocketTeam return fresh object literals — safe across the boundary.
   return (
+    <>
+    <PageHeader route="/sales/pocket" />
     <Pocket
       initial={pocketFor(session, {})}
       team={pocketTeam(session)}
       viewerName={session.user.display_name}
-    />
+    />    </>
   );
 }

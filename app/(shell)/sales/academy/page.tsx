@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { listObjectionCards, academyManifest, lessonProgress } from "@/lib/repo/academy";
 import AcademyLibrary from "@/components/sales/AcademyLibrary";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,8 @@ export default async function AcademyPage() {
   const done = lessonProgress(session.organizationId, session.user.id).map((p) => p.lesson_slug);
 
   return (
+    <>
+    <PageHeader route="/sales/academy" />
     <div className="kblock p-[var(--space-4)]" dir="rtl">
       <div className="bhead">
         <div>
@@ -29,6 +32,6 @@ export default async function AcademyPage() {
         </div>
       </div>
       <AcademyLibrary cards={cards} modules={modules} done={done} />
-    </div>
+    </div>    </>
   );
 }

@@ -7,6 +7,13 @@ import { parseIdParam } from "@/lib/deepLink";
 import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+/* PageHeaderCard, not PageHeader: this page is a Client Component, and
+   PageHeader reads cookies() to work out which sibling tabs the viewer may
+   reach — a server-only concern that cannot cross into here. The title and
+   overview are pure data, so they come straight from the registry; the
+   section's siblings stay reachable from the header pill. */
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 interface PhotoItem {
   id: number;
@@ -59,6 +66,8 @@ export default function GalleryPage() {
   }
 
   return (
+    <>
+    <PageHeaderCard {...pageMetaFor("/gallery")} />
     <div dir="rtl" className="pagewrap">
       <div className="mx-auto flex max-w-5xl flex-col gap-5">
         <div className="flex items-center justify-between">
@@ -166,6 +175,6 @@ export default function GalleryPage() {
           </div>
         </div>
       )}
-    </div>
+    </div>    </>
   );
 }

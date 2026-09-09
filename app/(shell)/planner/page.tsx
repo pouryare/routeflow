@@ -23,6 +23,13 @@ import { navApp, navigateUrl } from "@/lib/navApps";
 import PrintButton from "@/components/PrintButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
+/* PageHeaderCard, not PageHeader: this page is a Client Component, and
+   PageHeader reads cookies() to work out which sibling tabs the viewer may
+   reach — a server-only concern that cannot cross into here. The title and
+   overview are pure data, so they come straight from the registry; the
+   section's siblings stay reachable from the header pill. */
+import PageHeaderCard from "@/components/meridian/PageHeaderCard";
+import { pageMetaFor } from "@/lib/pageMeta";
 
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
@@ -629,6 +636,8 @@ export default function PlannerPage() {
   }
 
   return (
+    <>
+    <PageHeaderCard {...pageMetaFor("/planner")} />
     <div dir="rtl" className="print-report pagewrap">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between">
@@ -996,6 +1005,6 @@ export default function PlannerPage() {
           <PlannerRouteMap stops={routeStops} facilities={facilities} />
         </div>
       </div>
-    </div>
+    </div>    </>
   );
 }

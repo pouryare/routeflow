@@ -9,6 +9,7 @@ import { readJourney, buildJourney } from "@/lib/orderJourney";
 import { faNum, faToman } from "@/lib/format";
 import OrderJourney from "@/components/sales/OrderJourney";
 import { faJalaliDate } from "@/lib/jalali";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -56,6 +57,8 @@ export default async function JourneyPage({
   const current = nodes.find((n) => n.state === "current");
 
   return (
+    <>
+    <PageHeader route="/sales/journey" />
     <div className="kblock">
       <div className="bhead">
         <div>
@@ -125,6 +128,6 @@ export default async function JourneyPage({
           هنوز سفارشی برای نمایش مسیرش ثبت نشده است.
         </p>
       )}
-    </div>
+    </div>    </>
   );
 }

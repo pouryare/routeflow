@@ -6,6 +6,7 @@ import { getDb } from "@/lib/db";
 import { readCustomers } from "@/lib/customers";
 import { readCatalogue } from "@/lib/catalogue";
 import ComplaintsPanel from "@/components/sales/ComplaintsPanel";
+import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
 
@@ -23,10 +24,12 @@ export default async function ComplaintsPage() {
   const products = readCatalogue(db, session.organizationId).map((p) => ({ id: p.id, name: p.name }));
 
   return (
+    <>
+    <PageHeader route="/sales/complaints" />
     <ComplaintsPanel
       customers={customers}
       products={products}
       canManage={session.role === "owner" || session.role === "group_manager"}
-    />
+    />    </>
   );
 }
