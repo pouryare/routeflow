@@ -471,6 +471,44 @@ dynamic-length tile list (pairs wide+narrow, a lone/odd-leftover tile spans full
 one real consumer is `components/today/Briefing.tsx`'s `kargah` variant, which is the
 `/sales/today` page the redesign brief itself named for "card widths... over-expanding."
 
+## User avatars `SHIPPED`
+
+The other genuine §9d gap (alongside the workflow-editor backend, still deferred below)
+is closed: a user can have a real profile picture, not just initials-on-a-tone.
+
+Reuses the `photos` table rather than a second storage path — `entity_type` widened to
+also accept `'user'` (it already accepted `'district'`/`'customer'`/`'payment'` by the
+time this landed; the two-value set an earlier design read of this table assumed was
+already stale before this work even started, found by a failing test's real error
+message, not by re-reading the file closely enough the first time). A partial UNIQUE
+index (`idx_photos_user_singleton`) guarantees at most one avatar row per user — upload
+replaces rather than accumulates, unlike a customer's photo gallery or a payment's
+receipt, both of which are meant to grow.
+
+**Self-service only**: `POST`/`DELETE /api/users/[id]/avatar` accept only the caller's
+own id — no admin-uploads-for-others path, matching the workflow-template decision's
+"no admin CRUD" minimalism (§15 decision 6). **Viewing is org-wide**, not group-scoped
+like `canReachUser` in `lib/session.ts` — a shared task board needs to show a colleague's
+face regardless of which group they're in; `lib/avatarAccess.ts`'s `canViewUserAvatar`
+is the (tenant-safe) rule for that, deliberately looser than `canReachUser` and
+deliberately its own small module rather than a reuse of the stricter one.
+
+All the SQL for this lives in `lib/repo/avatars.ts`, not in the routes themselves —
+`tests/repo-boundary.test.ts` enforces that new raw SQL may only live in `lib/repo/`,
+which the first draft of the routes violated (caught by the full test suite, not by
+anything task-scoped verification alone would have surfaced, since running only the new
+test file in isolation never exercises that repo-wide check).
+
+`Avatar.tsx` tries a real picture first (`/api/users/{id}/avatar/file`), falling through
+to the initials chip on a 404/error — no prop signature change, so all ~dozen existing
+call sites (ProfileMenu, AvatarStack, task rows, …) needed zero edits. `ProfileMenu`
+gets upload/remove controls on the viewer's own avatar, mirroring `PhotoGallery.tsx`'s
+established upload idiom (hidden `<input type=file>` under a label, upload-on-select).
+
+**Not built, on purpose**: the spec's "assign realistic AI-generated avatars to demo
+users" is a seed-script concern that needs real image assets nobody has produced — the
+pipe is built, filling it with demo images is separate work.
+
 ## Kit primitives not yet wired to real pages
 
 `TiltCard`, `GlowSurface`, the five pill form controls, `SegmentedPill`, `ArcGauge`,
@@ -550,6 +588,8 @@ call site.
   assignment) and its `/sales/tasks` UI — deliberately NOT retrofitted onto
   `OrderJourney.tsx`, which keeps its explicit read-only invariant (ticks derived from
   real records, never manually toggled, so they can never disagree with the invoice).
+  §9d's OTHER backend gap, user avatars, is done — see "User avatars" above; this is the
+  only piece of §9d still remaining.
 - Global features: command palette, hotkeys, Login-As impersonation, themed error pages,
   contextual `(i)` help.
 - Module polish: map/GIS cleanup, CRM workflow gaps, logistics (vertical timeline, Lottie
