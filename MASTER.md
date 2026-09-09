@@ -33,7 +33,7 @@ also have board, table and schedule views. Design the record first; the map rend
 
 ## Visual thesis `CHANGED`
 
-**کارگاه — a warm workshop, not an instrument panel.**
+**مریدین — a cool, quiet workbench, lit from the north.**
 
 The MVP called this "a precise, information-dense operations console that reads as
 instrument panel." That was built and shipped and is exactly what got rejected: three
@@ -41,11 +41,17 @@ successive redesigns handed back the same dark-navy-and-cyan console, because ev
 of them was executed faithfully against the sentence above. A redesign that does not
 replace the thesis cannot happen. This is the replacement.
 
-The sales section is a **workshop bench**, not a cockpit. Warm off-white ground, white
-surfaces lifted by real shadow, generous radii, and a terracotta accent — warm where
-every other operations tool in the category is cold blue-grey. Numbers stay tabular and
-figures stay honest; what changes is that the app stops performing seriousness at the
-reader and starts being comfortable to stand in front of for eight hours.
+The sales section is a **workbench**, not a cockpit. A cool blue-grey ground, white
+surfaces lifted by real shadow, generous radii, and an **ocean** accent — calm and
+exact where every other operations tool in the category shouts. Numbers stay tabular
+and figures stay honest; what changes is that the app stops performing seriousness at
+the reader and starts being comfortable to stand in front of for eight hours. The light
+is daylight from the north — even, cool, never the warm slant of late afternoon.
+
+> **What changed 2026-09.** This thesis shipped warm — a cream ground (`#F4F0E9`) and a
+> terracotta accent. It was re-temperatured to cold: cool ground (`#F1F3F6`), ocean the
+> default accent. The devices, the light-default, and the anti-cockpit stance are
+> unchanged — the rejected thesis was a *dark* console, and this stays light.
 
 **Light is the default and the identity.** This inverts the MVP. The people who use
 `/sales` are standing in a shop in daylight with a phone, or at a desk; a near-black
@@ -66,7 +72,7 @@ rather than themed:
 
 ## Interaction thesis `CHANGED`
 
-Warm and physical. Surfaces lift toward the pointer on a soft spring rather than
+Cool and physical. Surfaces lift toward the pointer on a soft spring rather than
 snapping; a dragged card tilts and casts a real shadow; a state change is announced by
 the island rather than by a colour quietly changing under the reader.
 
@@ -122,64 +128,65 @@ Every figure below is computed, not eyeballed — see `scripts/check-contrast.mj
 
 | Token | Hex | vs `--bg` | vs `--surface` | Role |
 |---|---|---|---|---|
-| `--bg` | `#F4F0E9` | — | — | Warm ground. Never pure white, never cool grey. |
+| `--bg` | `#F1F3F6` | — | — | Cool ground. Never pure white, never warm. |
 | `--surface` | `#FFFFFF` | — | — | Cards lift *off* the ground |
-| `--surface-2` | `#FDFBF8` | — | — | Inset rows, quiet fills |
-| `--surface-sunk` | `#EFE9E0` | — | — | Tab trough, progress track |
-| `--border` | `#EAE2D7` | — | — | Hairlines |
-| `--border-strong` | `#DED4C6` | — | — | Emphasized borders |
-| `--text` | `#231C16` | 14.80 | 16.81 | Primary text |
-| `--text-muted` | `#776C60` | 4.51 | 5.12 | Secondary text |
-| `--text-faint` | `#91887C` | 3.07 | 3.49 | **Non-text only** — see below |
-| `--accent` | `#C0532B` | 4.10 | 4.65 | Terracotta. **Fills only** |
-| `--accent-text` | `#B44E28` | 4.55 | 5.17 | Accent *as text* — links, amounts due |
-| `--accent-ink` | `#FFFFFF` | 4.65 on accent | — | Text on an accent fill |
-| `--good` | `#4F6B4A` | 5.23 | 5.94 | تحویل‌شده / پرداخت‌شده |
-| `--warn` | `#7A5409` | 5.96 | 6.78 | تأییدشده / بخشی |
-| `--crit` | `#A11B3F` | 6.74 | 7.65 | بدهی بحرانی / لغوشده |
-| `--info` | `#2E6382` | 5.74 | 6.52 | در مسیر |
-| `--tint-plum` | `#6B4FA0` | 5.69 | 6.46 | Avatar tint only — carries no status |
+| `--surface-2` | `#F8FAFC` | — | — | Inset rows, quiet fills |
+| `--surface-sunk` | `#E8ECF1` | — | — | Tab trough, progress track |
+| `--border` | `#E0E5EC` | — | — | Hairlines |
+| `--border-strong` | `#CDD4DE` | — | — | Emphasized borders |
+| `--text` | `#1A1F26` | 14.90 | 16.56 | Primary text |
+| `--text-muted` | `#5C6672` | 5.25 | 5.84 | Secondary text |
+| `--text-faint` | `#828A98` | 3.13 | 3.48 | **Non-text only** — see below |
+| `--accent` | `#0077BC` | 4.33 | 4.81 | Ocean. **Fills only** |
+| `--accent-text` | `#006EAE` | 4.92 | 5.47 | Accent *as text* — links, amounts due |
+| `--accent-ink` | `#FFFFFF` | 4.81 on accent | — | Text on an accent fill |
+| `--good` | `#4F6B4A` | 5.34 | 5.94 | تحویل‌شده / پرداخت‌شده |
+| `--warn` | `#7A5409` | 6.09 | 6.78 | تأییدشده / بخشی |
+| `--crit` | `#A11B3F` | 6.88 | 7.65 | بدهی بحرانی / لغوشده |
+| `--info` | `#2E6382` | 5.86 | 6.52 | در مسیر |
+| `--tint-plum` | `#6B4FA0` | 5.81 | 6.46 | Avatar tint only — carries no status |
 
 ### Dark
 
 | Token | Hex | vs `--bg` | vs `--surface` | Note |
 |---|---|---|---|---|
-| `--bg` | `#141110` | — | — | Warm near-black, **not** the map's blue-black |
-| `--surface` | `#1E1A17` | — | — | |
-| `--surface-2` | `#242019` | — | — | |
-| `--surface-sunk` | `#2B241E` | — | — | |
-| `--border` | `#312A22` | — | — | |
-| `--border-strong` | `#3E352B` | — | — | |
-| `--text` | `#F3EEE7` | 16.28 | 14.97 | |
-| `--text-muted` | `#9B8F81` | 5.94 | 5.46 | |
-| `--text-faint` | `#8A8278` | 4.96 | 4.56 | Clears text here; light's cannot |
-| `--accent` | `#E8734A` | 6.25 | 5.75 | Lifted — light's brick vanishes on black |
-| `--accent-text` | `#E8734A` | 6.25 | 5.75 | Same value; dark needs no split |
-| `--accent-ink` | `#241009` | 6.06 on accent | — | **Near-black, not white** |
-| `--good` | `#93C289` | 9.23 | 8.49 | |
-| `--warn` | `#E0A64A` | 8.70 | 8.00 | |
-| `--crit` | `#F2789B` | 7.10 | 6.53 | |
-| `--info` | `#83B9DC` | 8.89 | 8.18 | |
-| `--tint-plum` | `#B79EEA` | 8.14 | 7.48 | |
+| `--bg` | `#0F1214` | — | — | Cool near-black, **not** the map's blue-black |
+| `--surface` | `#171B20` | — | — | |
+| `--surface-2` | `#1D2228` | — | — | |
+| `--surface-sunk` | `#232A31` | — | — | |
+| `--border` | `#28323A` | — | — | |
+| `--border-strong` | `#37414A` | — | — | |
+| `--text` | `#EDF1F5` | 16.56 | 15.21 | |
+| `--text-muted` | `#8B98A5` | 6.39 | 5.86 | |
+| `--text-faint` | `#828C97` | 5.50 | 5.05 | Clears text here; light's cannot |
+| `--accent` | `#3BA6F5` | 7.13 | 6.54 | Lifted — light's ocean is muddy on black |
+| `--accent-text` | `#46A6EF` | 7.13 | 6.54 | Near-same value; dark needs no split |
+| `--accent-ink` | `#030E19` | 7.36 on accent | — | **Near-black, not white** |
+| `--good` | `#93C289` | 9.24 | 8.48 | |
+| `--warn` | `#E0A64A` | 8.70 | 7.99 | |
+| `--crit` | `#F2789B` | 7.10 | 6.52 | |
+| `--info` | `#83B9DC` | 8.90 | 8.17 | |
+| `--tint-plum` | `#B79EEA` | 8.14 | 7.47 | |
 
 Four findings from computing this table rather than trusting the prototype:
 
-- **`--text-faint` cannot be a text colour in light.** The prototype's `#B3A899` sits at
-  2.06:1. Solved to 4.5 it becomes `#736C62`, which is indistinguishable from
-  `--text-muted` — the two roles collapse. So light's faint is demoted to a **non-text**
-  token (out-of-month day numbers, placeholder glyphs, decorative separators) and answers
-  to 3:1. Anything a reader must actually read uses `--text-muted`.
-- **The accent needs a text variant in light and not in dark.** `#C0532B` is a fine fill
-  (white on it clears 4.65) but only 4.10 as text on the warm ground. `--accent-text`
-  darkens it until it passes. Dark's `#E8734A` clears both, so there the two tokens hold
-  the same value — the split exists in the API, not in the palette.
-- **`--accent-ink` does not invert.** White on light's brick is 4.65; white on dark's
-  lifted terracotta is **3.01 and fails**. Dark's button ink is near-black `#241009`
-  (6.06). This is the same trap the MVP hit with cyan, in the opposite direction.
-- **Critical had to move off red.** With a terracotta accent, an orange-red `--crit`
-  (`#B3261E`) sits ΔE 17 from it — near-indistinguishable, and worse under protanopia.
-  `--crit` is now a crimson (`#A11B3F`, ΔE 35; dark `#F2789B`, ΔE 41), separated by
-  **hue**, not merely by lightness.
+- **`--text-faint` is still non-text in light.** On the cool ground it clears only
+  ~3.1:1. Solved to 4.5 it collapses into `--text-muted` — the two roles stop being
+  distinguishable. So light's faint stays a **non-text** token (out-of-month day
+  numbers, placeholder glyphs, decorative separators), held to 3:1. Anything a reader
+  must actually read uses `--text-muted`.
+- **The accent still needs a text variant in light and not in dark.** `#0077BC` is a
+  fine fill (white on it clears 4.81) but only ~4.33 as text on the cool ground.
+  `--accent-text` (`#006EAE`) darkens it until it passes. Dark's `#3BA6F5` clears both
+  as text and fill, so there the split exists in the API, not in the palette.
+- **`--accent-ink` does not invert.** White on light's ocean clears 4.81; white on
+  dark's lifted `#3BA6F5` fails. Dark's button ink is near-black `#030E19` (7.36). Same
+  trap the MVP hit with cyan, opposite direction.
+- **`--crit` returned toward true red.** Against the warm terracotta it had to be a
+  crimson (hue-separated from an orange-red accent). With an **ocean** accent the ΔE to
+  a red `--crit` is large by hue alone, so the crimson is kept for continuity rather
+  than necessity — `#A11B3F` light, `#F2789B` dark, both well clear of the blue accent
+  under every simulated colour-vision deficiency.
 
 Rules that hold in both themes:
 
@@ -194,15 +201,17 @@ Rules that hold in both themes:
 
 ### Accent themes `SHIPPED`
 
-The accent is **chosen by the reader**, from ten themes. The terracotta above is one of
-them and stays the default; the other nine are solved, not picked by eye.
+The accent is **chosen by the reader**, from ten themes. The ocean (اقیانوسی) above is
+the default; خاکی (the old warm terracotta) stays in the set, pinned to its shipped
+hexes; the rest are solved, not picked by eye. `themes[0]` in
+`scripts/gen-accent-themes.mjs` is the default — reorder to change it.
 
 | | |
 |---|---|
-| Themes | خاکی (default), طلایی, زیتونی, زمردی, فیروزه‌ای, اقیانوسی, نیلی, بنفش, تمشکی, گرافیت |
+| Themes | اقیانوسی (default), خاکی, طلایی, زیتونی, زمردی, فیروزه‌ای, نیلی, بنفش, تمشکی, گرافیت |
 | Stored as | `coverage-accent` in localStorage, applied as `data-accent` on `<html>` before first paint |
 | Generated by | `scripts/gen-accent-themes.mjs` → a marked block in `app/globals.css` and `lib/accentThemes.ts` |
-| Verified by | `npm run check:contrast` — 260 pairs, every theme, every skin |
+| Verified by | `npm run check:contrast` — 500 pairs, every theme, every skin |
 
 Rules:
 
@@ -220,7 +229,7 @@ Rules:
 - **The theme reaches the map, not just the chrome.** `--map-stroke-major`,
   `--map-stroke-minor`, `--map-boundary`, `--map-selected` and `--map-unknown` are part of
   every theme. `--map-unknown` matters most: it is the fill for 429 of 439 districts, so it
-  is what the map mostly *is*, and leaving it warm made every theme look warm.
+  is what the map mostly *is*, so it takes the theme's hue rather than sitting neutral.
 - **Map ink follows the basemap's ground, not the skin.** Selected by
   `[data-ground="..."]`, because a cream basemap needs dark strokes on a dark skin.
 - **The map reads these tokens through `getComputedStyle`, not `var()`.** Leaflet paints
@@ -235,15 +244,16 @@ One API, two implementations — the MVP's structure survives; its values do not
 
 | Token | Meaning | Light | Dark |
 |---|---|---|---|
-| `--sh-1` | Resting card, list row | `0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10)` | `0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6)` |
-| `--sh-2` | Hover lift, dropdown | `0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17)` | `0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7)` |
-| `--sh-3` | Modal, island, bottom sheet | `0 4px 10px rgba(62,44,28,.07), 0 28px 60px -18px rgba(62,44,28,.28)` | `0 4px 10px rgba(0,0,0,.6), 0 28px 60px -18px rgba(0,0,0,.8)` |
-| `--sh-lift` | Fanned document, drag ghost | `0 10px 22px -8px rgba(62,44,28,.24), 0 30px 60px -24px rgba(62,44,28,.30)` | as `--sh-3` |
+| `--sh-1` | Resting card, list row | `0 1px 2px rgba(30,41,59,.05), 0 4px 14px -6px rgba(30,41,59,.10)` | `0 1px 2px rgba(0,0,0,.5), 0 4px 14px -6px rgba(0,0,0,.6)` |
+| `--sh-2` | Hover lift, dropdown | `0 2px 5px rgba(30,41,59,.06), 0 14px 34px -12px rgba(30,41,59,.17)` | `0 2px 5px rgba(0,0,0,.55), 0 14px 34px -12px rgba(0,0,0,.7)` |
+| `--sh-3` | Modal, island, bottom sheet | `0 4px 10px rgba(30,41,59,.07), 0 28px 60px -18px rgba(30,41,59,.28)` | `0 4px 10px rgba(0,0,0,.6), 0 28px 60px -18px rgba(0,0,0,.8)` |
+| `--sh-lift` | Fanned document, drag ghost | `0 10px 22px -8px rgba(30,41,59,.24), 0 30px 60px -24px rgba(30,41,59,.30)` | as `--sh-3` |
 
 Two changes of substance:
 
-- **Light shadows are tinted warm** (`rgba(62,44,28,…)`), matching the ground's hue.
-  A neutral-black shadow on a warm ground reads as dirt.
+- **Light shadows are tinted cool** (`rgba(30,41,59,…)`), matching the ground's hue.
+  A neutral-black shadow on the cool ground reads as grime; a cool-tinted one reads as
+  depth.
 - **Borders are no longer part of elevation.** The MVP's `--elev-1` was a 1px ring; here
   a resting card carries shadow only, and `--border` is reserved for genuine dividers.
   A card that has both a hairline and a shadow reads as two competing edges.
@@ -463,12 +473,13 @@ dimensions), and scroll-driven parallax.
   and a building is not one. Drawn above the cluster layer.
 - **Skeleton** — matches the shape of what is loading. Never a spinner.
 
-## CRM / ERP patterns `TARGET`
+## CRM / ERP patterns `SHIPPED`
 
 The vocabulary the redesign adds. Each exists to serve a specific record in the schema.
-Prototype: the کارگاه artifact (four screens, both themes, all interactions live).
+Most are now built and in `components/meridian/` or `components/sales/`; a subsection
+still marked `TARGET` is the spec ahead of its code.
 
-### Document pocket card `TARGET` — replaces `OrderPocketCard`
+### Document pocket card `SHIPPED` — `components/meridian/PocketCard.tsx` (+ `Pocketed`, `OrdersPockets`)
 An order rendered as a card with its documents tucked *behind* it: receipt, invoice,
 route sheet. The face is frosted (`backdrop-filter: blur(16px) saturate(1.5)`) so the
 documents' colour bleeds through as a soft wash. At rest they sit low, peeking ~30px.
@@ -482,7 +493,7 @@ Two constraints, both learned the hard way:
 - Two 138px documents do not fit inside a ~270px card. The fan deliberately **overhangs
   the card's edges**; the raised `z-index` on the hovered pocket is what makes that legal.
 
-### Carved bay card `TARGET`
+### Carved bay card `SHIPPED` — `components/meridian/CarvedCard.tsx`
 A rounded rectangle **subtracted** from a card's top inline-start corner, leaving a
 stepped edge with a rounded inner corner. The avatars of the people on the record sit in
 the bay it opens. Cut with `clip-path: path()` computed from the card's measured size —
@@ -493,12 +504,12 @@ The avatars must live in a **sibling** of the carved element. `clip-path` and `m
 descendants too, so avatars placed inside the card are erased by the very bay meant to
 hold them.
 
-### Travelling tab pill `TARGET`
+### Travelling tab pill `SHIPPED` — `components/meridian/TabPill.tsx` (becomes `HoverPill` in the shell slice)
 One pill that slides and resizes to the selected tab, `--spring-pop`. It is positioned
 before its transition is enabled, so it does not fly in from x=0 on first paint, and it
 re-measures on `ResizeObserver` and on `document.fonts.ready`.
 
-### Order pipeline `TARGET` — extends `AssignmentBoard`
+### Order pipeline `SHIPPED` — `components/sales/OrderPipeline.tsx`
 Columns are **statuses** (پیش‌نویس / تأییدشده / در مسیر / تحویل‌شده), not people; the
 assignee is a property shown on the card. Dragging moves the order between statuses.
 
@@ -511,25 +522,25 @@ this board is used on a phone in a shop. Two rules the implementation must keep:
   events, so the card's own click never fires. Guard selection with `user-select: none`
   on the board and `touch-action: none` on the card instead.
 
-### Processing modal `TARGET`
+### Processing modal `SHIPPED` — `components/sales/ProcessingModal.tsx`
 Opened by tapping a pipeline card. Creator (read-only), assignee as avatar chips, and a
 **range slider for the amount collected** against the order total, with هیچ / نصف /
 تسویهٔ کامل shortcuts. The filled part of the track is painted by hand as a linear
 gradient — a range input offers no pseudo-element for it — and the input takes
 `direction: rtl` so it fills from the right.
 
-### Order journey `TARGET`
+### Order journey `SHIPPED` — `/sales/journey`
 Swimlanes for the order lifecycle: ثبت سفارش → تأیید و قیمت‌گذاری → بارگیری و مسیر →
 تحویل و تسویه. Each lane holds task nodes with the responsible person's avatar and a tick
 that toggles. Lanes are joined by a dotted connector that points along the reading
 direction.
 
-### Gradient stat card `TARGET`
-The dashboard's headline figures on soft multi-stop mesh gradients, mixed **warm** so
+### Gradient stat card `SHIPPED` — `components/meridian/GradientStat.tsx`
+The dashboard's headline figures on soft multi-stop mesh gradients, mixed **cool** so
 they sit in the same room as the accent rather than arriving from a different palette.
 Dark carries its own mixes — the light pastels glare on a dark ground.
 
-### Spline chart `TARGET` — extends the chart kit
+### Spline chart `SHIPPED` — `components/meridian/SalesSpark.tsx`
 Catmull-Rom through the points converted to cubic béziers, an area fill under the current
 series, the comparison series as a dotted line, and a tooltip that follows the nearest
 point. In RTL **the oldest day sits on the right**.

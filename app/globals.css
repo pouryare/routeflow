@@ -1599,12 +1599,12 @@ body {
   --en: var(--font-en), system-ui, sans-serif;
 
   /* ---- Elevation. Warm-tinted; a neutral shadow on a warm ground reads as dirt. */
-  --sh-1: 0 1px 2px rgba(62,44,28,.05), 0 4px 14px -6px rgba(62,44,28,.10);
-  --sh-2: 0 2px 5px rgba(62,44,28,.06), 0 14px 34px -12px rgba(62,44,28,.17);
-  --sh-3: 0 4px 10px rgba(62,44,28,.07), 0 28px 60px -18px rgba(62,44,28,.28);
-  --sh-lift: 0 10px 22px -8px rgba(62,44,28,.24), 0 30px 60px -24px rgba(62,44,28,.30);
+  --sh-1: 0 1px 2px rgba(30,41,59,.05), 0 4px 14px -6px rgba(30,41,59,.10);
+  --sh-2: 0 2px 5px rgba(30,41,59,.06), 0 14px 34px -12px rgba(30,41,59,.17);
+  --sh-3: 0 4px 10px rgba(30,41,59,.07), 0 28px 60px -18px rgba(30,41,59,.28);
+  --sh-lift: 0 10px 22px -8px rgba(30,41,59,.24), 0 30px 60px -24px rgba(30,41,59,.30);
   /* drop-shadow form: a clip-path'd element loses box-shadow entirely */
-  --card-drop: drop-shadow(0 1px 2px rgba(62,44,28,.07)) drop-shadow(0 12px 26px rgba(62,44,28,.13));
+  --card-drop: drop-shadow(0 1px 2px rgba(30,41,59,.07)) drop-shadow(0 12px 26px rgba(30,41,59,.13));
 
   /* ---- Radii. Scaled up; this system is not a console. -------------------- */
   --radius-sm: 9px;
@@ -2216,7 +2216,7 @@ body {
 .meridian .doc {
   position: absolute; inset-block-start: 0; width: 138px; background: var(--card);
   border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(62,44,28,.10), 0 10px 24px -12px rgba(62,44,28,.3);
+  box-shadow: 0 2px 6px rgba(30,41,59,.10), 0 10px 24px -12px rgba(30,41,59,.3);
   padding: 10px 12px;
   transition: transform 520ms var(--spring), box-shadow 340ms var(--ease);
 }
@@ -2308,7 +2308,7 @@ body {
   inset-inline-end: calc(var(--si, 0) * 30px);
   width: min(64%, 148px); height: 42px;
   background: var(--card); border-radius: 10px 10px 4px 4px;
-  box-shadow: 0 2px 6px rgba(62,44,28,.10), 0 10px 24px -12px rgba(62,44,28,.30);
+  box-shadow: 0 2px 6px rgba(30,41,59,.10), 0 10px 24px -12px rgba(30,41,59,.30);
   transform: translateY(calc(16px + var(--si, 0) * 4px))
     rotate(calc((var(--si, 0) - .5) * 6deg));
   transform-origin: bottom center;
@@ -2712,7 +2712,7 @@ body {
 .meridian .sheet {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 71;
   background: var(--bg); border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-  box-shadow: 0 -12px 40px -12px rgba(62,44,28,.35);
+  box-shadow: 0 -12px 40px -12px rgba(30,41,59,.35);
   transform: translateY(102%); transition: transform 480ms var(--spring);
   max-height: 88vh; overflow-y: auto; direction: rtl;
 }
