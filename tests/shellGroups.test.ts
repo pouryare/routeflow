@@ -23,6 +23,23 @@ describe("route groups", () => {
     expect(src, "must NOT mount the shell").not.toContain("AppShell");
   });
 
+  const shell = ["sales", "map", "facilities", "gallery", "planner", "report", "leads", "settings"];
+
+  it("every themed route lives under app/(shell)", () => {
+    for (const r of shell) {
+      expect(existsSync(`app/(shell)/${r}`), `app/(shell)/${r} should exist`).toBe(true);
+      expect(existsSync(`app/${r}`), `app/${r} should have moved`).toBe(false);
+    }
+  });
+
+  it("the redirect-only root page stays outside both groups", () => {
+    // app/page.tsx renders no UI — it reads the session and redirects — so it needs no
+    // shell, and putting it in a group would make the group own the home route.
+    expect(existsSync("app/page.tsx")).toBe(true);
+    expect(existsSync("app/(shell)/page.tsx")).toBe(false);
+    expect(existsSync("app/(bare)/page.tsx")).toBe(false);
+  });
+
   it("the bare layout is synchronous — nothing there may block a navigation", () => {
     const src = readFileSync("app/(bare)/layout.tsx", "utf8");
     expect(src).not.toMatch(/export default async function/);

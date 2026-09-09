@@ -25,6 +25,15 @@ function readList(text: string): string[] {
     .filter(Boolean);
 }
 
+/** Route groups — `app/(shell)/…`, `app/(bare)/…` — are organisational only: they change
+ *  no URL and move no code between files. Moving a page into one must not read as a new
+ *  raw-SQL offender to the ratchet below, which exists to stop raw SQL appearing in NEW
+ *  files, not to freeze the directory layout. Comparing on the group-stripped path keeps
+ *  that guarantee while letting the app be reorganised. */
+function withoutRouteGroups(p: string): string {
+  return p.replace(/\/\([^)]+\)/g, "");
+}
+
 describe("raw SQL lives in lib/repo/ or on the grandfather allowlist", () => {
   it("introduces no new raw-SQL file outside lib/repo/", () => {
     const allow = new Set(readList(fs.readFileSync(ALLOWLIST, "utf8")));
@@ -34,10 +43,10 @@ describe("raw SQL lives in lib/repo/ or on the grandfather allowlist", () => {
 
   it("the allowlist only shrinks — no path added versus git HEAD", () => {
     const headText = execSync(`git show HEAD:${ALLOWLIST} 2>/dev/null || true`, { encoding: "utf8" });
-    const headList = readList(headText);
+    const headList = readList(headText).map(withoutRouteGroups);
     if (headList.length === 0) return; // first commit that introduces the allowlist
     const nowList = readList(fs.readFileSync(ALLOWLIST, "utf8"));
-    const added = nowList.filter((p) => !headList.includes(p));
+    const added = nowList.filter((p) => !headList.includes(withoutRouteGroups(p)));
     expect(added, `allowlist grew:\n${added.join("\n")}`).toEqual([]);
   });
 
