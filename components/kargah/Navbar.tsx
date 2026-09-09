@@ -66,12 +66,7 @@ export default function Navbar({
           const isActive = g.id === activeGroup;
           const isOpen = openGroup === g.id;
           return (
-            <li
-              key={g.id}
-              className="navbar__navgroup"
-              onMouseEnter={() => setOpenGroup(g.id)}
-              onMouseLeave={() => setOpenGroup((v) => (v === g.id ? null : v))}
-            >
+            <li key={g.id} className="navbar__navgroup">
               <button
                 type="button"
                 className={cn("navbar__pill", isActive && "navbar__pill--active")}
@@ -81,27 +76,31 @@ export default function Navbar({
               >
                 {g.label}
               </button>
-              {isOpen && (
-                <GlassFace className="navbar__dropdown">
-                  {groupTabs.map((t) =>
-                    t.ready ? (
-                      <Link
-                        key={t.href}
-                        href={t.href}
-                        className="navbar__dropitem"
-                        data-active={pathname === t.href || pathname.startsWith(`${t.href}/`) ? "true" : undefined}
-                        onClick={() => setOpenGroup(null)}
-                      >
-                        {t.label}
-                      </Link>
-                    ) : (
-                      <span key={t.href} className="navbar__dropitem navbar__dropitem--disabled">
-                        {t.label} · به‌زودی
-                      </span>
-                    ),
-                  )}
-                </GlassFace>
-              )}
+              {/* Always in the DOM, hidden by CSS default -- NOT gated on isOpen. A mouse
+                  user's hover never touches React state at all (pure :hover/:focus-within
+                  CSS, gated to fine pointers); click drives `isOpen` via data-open for
+                  keyboard and touch. Conditionally RENDERING this on isOpen (the first
+                  version of this component did) breaks the hover case entirely -- CSS
+                  can only reveal a node that already exists. */}
+              <GlassFace className="navbar__dropdown" data-open={isOpen || undefined}>
+                {groupTabs.map((t) =>
+                  t.ready ? (
+                    <Link
+                      key={t.href}
+                      href={t.href}
+                      className="navbar__dropitem"
+                      data-active={pathname === t.href || pathname.startsWith(`${t.href}/`) ? "true" : undefined}
+                      onClick={() => setOpenGroup(null)}
+                    >
+                      {t.label}
+                    </Link>
+                  ) : (
+                    <span key={t.href} className="navbar__dropitem navbar__dropitem--disabled">
+                      {t.label} · به‌زودی
+                    </span>
+                  ),
+                )}
+              </GlassFace>
             </li>
           );
         })}

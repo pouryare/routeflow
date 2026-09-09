@@ -1655,12 +1655,15 @@ body {
    (pockets / ptiles / tables) take the whole width and answer it with more columns. */
 .app { direction: rtl; width: 100%; max-width: none; margin: 0; padding: 26px clamp(16px, 3vw, 72px) 120px; }
 @media (max-width: 620px) { .app { padding: 18px 14px 110px; } }
-/* The rail is fixed at 52px wide + 18px inset-inline-start (Task 5) -- give the content
-   area the same inline-start gutter so nothing sits under it. Mirrors automatically:
-   padding-inline-start is a logical property, so this is the correct edge in both
-   writing directions without a direction check. */
-.app--railed { padding-inline-start: 90px; }
-@media (max-width: 900px) { .app--railed { padding-inline-start: clamp(16px, 3vw, 72px); } }
+/* The rail is fixed at 52px wide + 18px from the LEFT (Task 5) -- give the content area
+   the same left gutter so nothing sits under it. Physical `left`, not padding-inline-
+   start: the spec (2026-09-08 §9a) names this the "left icon rail" literally and
+   repeatedly, unlike the navbar (decision 4), which the spec DOES mirror by logical
+   role -- a real Playwright check against the built page caught this rail sitting on
+   the visual RIGHT when it was first written with a logical property, which would have
+   put it under the navbar's own utility cluster instead of beside the content. */
+.app--railed { padding-left: 90px; }
+@media (max-width: 900px) { .app--railed { padding-left: clamp(16px, 3vw, 72px); } }
 /* Sentence-heavy surfaces keep a readable measure when the page is 3000px wide. */
 .prose { max-width: 72ch; }
 
@@ -1765,11 +1768,13 @@ body {
 .theme3__opt:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* ---- left icon rail --------------------------------------------------------
-   Spec 2026-09-08 §9a: a narrow vertical column of circular icon buttons, flush to the
-   inline-start edge, fixed so it stays put while the page scrolls under it. NEVER
-   inset-inline-start for a fixed element's own position (MASTER.md anti-pattern) --
-   this uses physical `inset-inline-start` on purpose here because the rail is a real
-   logical-edge dock, not a centred overlay; the forbidden case is centring, not docking.
+   Spec 2026-09-08 §9a: a narrow vertical column of circular icon buttons, fixed so it
+   stays put while the page scrolls under it. PHYSICAL `left`, not `inset-inline-start`:
+   the spec names this the "left icon rail" literally and repeatedly (unlike the navbar,
+   which decision 4 DOES mirror by logical role under RTL) -- a bare inline-start here
+   would resolve to the visual RIGHT under RTL, landing the rail under the navbar's own
+   utility cluster instead of beside the content. Caught by Task 10's Playwright check
+   against the actual built page, not by reasoning about the CSS.
 
    NAMED .iconrail, NOT .rail: ScheduleBoard.tsx already renders a bare `.rail` for its
    own day-schedule panel (app/globals.css:2559, `.rail { padding: 6px 22px 22px; }`) --
@@ -1777,7 +1782,7 @@ body {
    here would have collided with it at equal specificity, exactly the `.pocket` bug
    class from the previous plan's Task 19. Found and renamed before this ever shipped. */
 .iconrail {
-  position: fixed; top: 96px; inset-inline-start: 18px; bottom: 24px; z-index: 40;
+  position: fixed; top: 96px; left: 18px; bottom: 24px; z-index: 40;
   display: flex; flex-direction: column; align-items: center;
   gap: 14px; width: 52px;
 }
@@ -1866,15 +1871,22 @@ body {
 .navbar__pill:hover { color: var(--text); }
 .navbar__pill:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .navbar__pill--active { background: var(--primary); color: var(--primary-ink); }
-/* Mouse enhancement only -- touch/keyboard rely on the click-toggle in Navbar.tsx. */
+/* Always in the DOM (Navbar.tsx), hidden here by default. [data-open="true"] is the
+   click-driven path (works for touch and keyboard, any pointer type); the :hover/
+   :focus-within rule below is a mouse-only enhancement gated to fine pointers, and
+   needs the node to already exist in the DOM to have anything to reveal -- which is
+   exactly the bug an early version of this component had (dropdown was conditionally
+   RENDERED on the same React state the click handler toggled, so hovering then
+   clicking closed what hover had just opened; a real Playwright click caught it). */
+.navbar__dropdown {
+  position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: 50;
+  display: none; flex-direction: column; gap: 2px; min-width: 11rem;
+  border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 6px;
+}
+.navbar__dropdown[data-open="true"] { display: flex; }
 @media (hover: hover) and (pointer: fine) {
   .navbar__navgroup:hover .navbar__dropdown,
   .navbar__navgroup:focus-within .navbar__dropdown { display: flex; }
-}
-.navbar__dropdown {
-  position: absolute; top: calc(100% + 6px); inset-inline-start: 0; z-index: 50;
-  display: flex; flex-direction: column; gap: 2px; min-width: 11rem;
-  border-radius: var(--r-lg); box-shadow: var(--sh-3); padding: 6px;
 }
 .navbar__dropitem {
   display: block; padding: 9px 12px; border-radius: var(--r-sm);
