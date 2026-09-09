@@ -3186,11 +3186,14 @@ Add to `app/globals.css`:
 }
 ```
 
-- [ ] **Step 2: Apply it to `NotchedCard`'s base surface**
+- [ ] **Step 2: Already done in Task 13** — `components/kargah/NotchedCard.tsx`'s
+  `.notch-card` element already carries `noise-surface` in its className (written ahead
+  of this task, since the class name was decided while building the component). Confirm
+  rather than re-apply:
 
-In `components/kargah/NotchedCard.tsx`, add `noise-surface` to the `notch-card`
-element's className (via `cn("notch-card", ...)`), so every notched card carries the
-grain by default.
+```bash
+grep -n "noise-surface" components/kargah/NotchedCard.tsx
+```
 
 - [ ] **Step 3: Confirm it does not affect text contrast**
 
