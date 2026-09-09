@@ -4,7 +4,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
-/** The sticky top chrome -- brand bar + both nav rows -- that slides up out of view on a
+/** The sticky top chrome -- Navbar + the active group's tab row -- that slides up out of view on a
  *  downward scroll and back on an upward one, the way a mobile browser toolbar does.
  *  Only a class toggle here; all geometry is in `.kargah .chrome` in globals.css.
  *

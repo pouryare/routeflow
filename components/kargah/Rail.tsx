@@ -33,39 +33,39 @@ export default function Rail({ className }: { className?: string }) {
   const BackIcon = ChevronRight;
 
   return (
-    <nav ref={rail as React.RefObject<HTMLElement>} className={cn("rail", className)} aria-label="ابزارهای کناری" dir="rtl">
+    <nav ref={rail as React.RefObject<HTMLElement>} className={cn("iconrail", className)} aria-label="ابزارهای کناری" dir="rtl">
       <button
         type="button"
         data-dock-item
-        className="rail__item rail__back"
+        className="iconrail__item iconrail__back"
         aria-label="بازگشت"
         onClick={() => router.back()}
       >
         <BackIcon size={18} aria-hidden />
       </button>
 
-      <div className="rail__group">
+      <div className="iconrail__group">
         <Link
           href="/sales/schedule"
           data-dock-item
-          className="rail__item"
+          className="iconrail__item"
           aria-current={pathname.startsWith("/sales/schedule") ? "page" : undefined}
           aria-label="برنامهٔ بازدید"
         >
           <CalendarDays size={18} aria-hidden />
         </Link>
-        <Link href="/map" data-dock-item className="rail__item" aria-label="نقشهٔ پوشش">
+        <Link href="/map" data-dock-item className="iconrail__item" aria-label="نقشهٔ پوشش">
           <MapPin size={18} aria-hidden />
         </Link>
         {authed && (
-          <Link href="/settings/notifications" data-dock-item className="rail__item rail__alerts" aria-label="اعلان‌ها">
+          <Link href="/settings/notifications" data-dock-item className="iconrail__item iconrail__alerts" aria-label="اعلان‌ها">
             <Bell size={18} aria-hidden />
-            {unread > 0 && <span className="rail__dot" aria-hidden />}
+            {unread > 0 && <span className="iconrail__dot" aria-hidden />}
           </Link>
         )}
       </div>
 
-      <ThemeToggle3 className="theme3 rail__foot" />
+      <ThemeToggle3 className="theme3 iconrail__foot" />
     </nav>
   );
 }
