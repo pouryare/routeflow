@@ -421,13 +421,70 @@ Governing rule for any future extension: **slip/paper count is real data — the
 actual attachment count, capped at 3 — never decoration.** An empty pocket (0 papers) is
 a legitimate, informative empty state, not a bug to hide.
 
+## The shell `SHIPPED` — single navbar, left icon rail, bento grid
+
+Spec 2026-09-08 §9a/§9b, built in the follow-on `shell/navbar-rail-bento` branch on top
+of the substrate. Three independent pieces:
+
+**`Navbar`** (`components/kargah/Navbar.tsx`) replaced the old two-row header (brand bar
++ `TabPill`'s group row + tab row) with one row: brand at inline-start (visual right
+under RTL), the six sales groups centred, `ProfileMenu` at inline-end — all logical
+properties, per decision 4. Each group pill click-toggles its own dropdown (same open/
+outside-click/Esc pattern as `ProfileMenu`) — the spec's own instruction is hover-only,
+which has no equivalent on touch and is not keyboard-operable alone, so a pure-CSS
+`(hover: hover) and (pointer: fine)` enhancement is layered on top instead of replacing
+click. **The dropdown panel must be unconditionally rendered and hidden by CSS default**
+(`display: none`, revealed by `[data-open="true"]` or the hover/focus-within rule) —
+conditionally *rendering* it on the same React state the click handler toggles was tried
+first and is a real bug: a mouse hover opens it, then the click that follows immediately
+toggles the same state closed, so hovering and clicking together closes what hover just
+opened. Caught by a real Playwright click against the built page, not by reading the
+JSX. `TabPill` (`components/kargah/TabPill.tsx`) shrank to render only the tab row —
+`groups`/`shownGroups`/the `seg-groups` markup all moved into `Navbar`.
+
+**`Rail`** (`components/kargah/Rail.tsx`) is the left icon column — **named `.iconrail`,
+never bare `.rail`**: `ScheduleBoard.tsx` already renders `.rail` for its own
+day-schedule panel, and the rail's own calendar icon links straight to that page: a bare
+`.rail` here would have collided with it at equal specificity on first paint, exactly the
+`.pocket` collision class documented above. It ships **five items, not the video's nine**
+— back, calendar (`/sales/schedule`), map (`/map`), alerts (the existing
+`NotificationBell` polling logic, extracted to `lib/useUnreadCount.ts` so both consumers
+share one 60s poll instead of two drifting ones), and the three-state theme control
+(`ThemeToggle3.tsx`, decision 3) at the foot. Share/export/star/add/data/send are NOT
+wired: none has a real target anywhere in this app today, and shipping inert icons is
+exactly the decoration the pocket's own governing rule above forbids. **The rail is
+positioned with physical `left`, not `inset-inline-start`** — unlike the navbar, the spec
+names this the "left icon rail" literally and repeatedly rather than by logical role;
+`inset-inline-start` resolves to the visual RIGHT under RTL and would land the rail under
+the navbar's own utility cluster. Also caught by the same Playwright check, not by
+re-reading the spec's prose. Magnification-on-proximity is `useDockMagnify`
+(`lib/design/dockMagnify.ts`) — same one-delegated-listener architecture as
+`useTiltGlow`, writing `--dock-scale` from a single `pointermove` on the rail container.
+
+**`Bento`/`BentoCell`** (`components/kargah/Bento.tsx`) is the general span-grid system —
+`.bento` + `data-span="full|wide|half|narrow"`, 12 columns, phone stacks to one. Distinct
+from `BentoStrip`/`BentoTile`/`BentoGauge` (`components/BentoStrip.tsx`, the fixed-shape
+record-header widget on order pages) and `CustomerBento` (the customer-window widget) —
+same word, three different, non-overlapping things; do not conflate them.
+`lib/design/bentoSpan.ts`'s `bentoSpanForIndex(index, total)` picks a span for a
+dynamic-length tile list (pairs wide+narrow, a lone/odd-leftover tile spans full) — its
+one real consumer is `components/today/Briefing.tsx`'s `kargah` variant, which is the
+`/sales/today` page the redesign brief itself named for "card widths... over-expanding."
+
 ## Kit primitives not yet wired to real pages
 
 `TiltCard`, `GlowSurface`, the five pill form controls, `SegmentedPill`, `ArcGauge`,
 `StatefulButton`, `GooeyInput` all exist, are tested where they have extractable pure
-logic, and build cleanly — but none is imported by a real page yet. That is deliberate:
-this sub-project's scope is the substrate and the kit, not the shell that will consume
-it. Wiring them in is the shell/journey sub-project's job.
+logic, and build cleanly — but none is imported by a real page yet. That was deliberate
+at the time: the substrate sub-project's scope was the substrate and the kit, not the
+shell that would consume it. The shell sub-project above is exactly that consumption —
+`Navbar`, `Rail` and `Bento`/`BentoCell` are the wired examples of how a kit primitive
+graduates from "exists" to "used": a real page imports it, a real click does something,
+and (where the primitive has pure logic worth isolating, like `bentoSpanForIndex` or
+`magnifyScale`) a test pins the shape of that logic down. The primitives listed above
+still await the same treatment from whichever future page actually needs them —
+`StatefulButton`/`GooeyInput` in particular are confirmed-from-video but have no current
+call site.
 
 ## Anti-patterns
 
@@ -479,10 +536,14 @@ it. Wiring them in is the shell/journey sub-project's job.
 
 ## Not yet decided / deferred to later sub-projects
 
-- Icon set — `lucide-react` approved (published the same day this redesign shipped,
-  actively maintained), not yet wired into any component.
-- Global shell — single navbar, left icon rail, bento grid, journey connector lines
-  (curved bezier edges between task nodes, solid=resolved/dashed=pending).
+- Icon set — `lucide-react` approved, now wired via the shell sub-project's `Rail`
+  (`ChevronRight`/`CalendarDays`/`MapPin`/`Bell`) — still the only consumer; the rest of
+  the app's icons (SVG inline, or emoji in places the anti-patterns below already flag)
+  are unmigrated.
+- Journey connector lines (curved bezier edges between task nodes,
+  solid=resolved/dashed=pending) and the drag-to-link workflow editor UI — the shell's
+  navbar/rail/bento are done (see "The shell" above); this is the remaining, larger piece
+  of §9c, and needs the backend bullet below before it can render anything real.
 - Route migration + the `loading.tsx`/`<Suspense>`/`next/dynamic`/`Promise.all` speed
   work, for the routes not yet on this substrate.
 - The workflow-editor backend (`workflow_edges`, `workflow_step_templates`, task→stage
