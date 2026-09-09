@@ -3147,6 +3147,40 @@ export function getDb(): DatabaseSync {
        ON photos(entity_id) WHERE entity_type = 'user'`
   );
 
+  // Complaint resolution workflow (2026-09-09): a fixed, seeded, app-wide step palette
+  // and a task-to-task edge table. Neither carries organization_id -- templates are
+  // global (no admin CRUD, spec 2026-09-08 §15 decision 6), edges reach their tenant
+  // through the tasks they connect, same as order_lines through orders. See
+  // tests/tenancy-schema.test.ts's exempt set.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS workflow_step_templates (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      key TEXT UNIQUE NOT NULL,
+      label_fa TEXT NOT NULL,
+      sort_order INTEGER NOT NULL DEFAULT 0
+    );
+    CREATE TABLE IF NOT EXISTS workflow_edges (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      from_task_id INTEGER NOT NULL REFERENCES tasks(id),
+      to_task_id INTEGER NOT NULL UNIQUE REFERENCES tasks(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_workflow_edges_from ON workflow_edges(from_task_id);
+  `);
+
+  const WORKFLOW_STEP_SEED: { key: string; label_fa: string; sort_order: number }[] = [
+    { key: "initial_review", label_fa: "بررسی اولیه", sort_order: 1 },
+    { key: "lab_check", label_fa: "آزمایش و بررسی فنی", sort_order: 2 },
+    { key: "customer_contact", label_fa: "تماس با مشتری", sort_order: 3 },
+    { key: "resolution", label_fa: "تعویض یا جبران", sort_order: 4 },
+    { key: "customer_notify", label_fa: "اطلاع‌رسانی نتیجه", sort_order: 5 },
+    { key: "satisfaction_call", label_fa: "تماس رضایت‌سنجی", sort_order: 6 },
+  ];
+  const insertStep = db.prepare(
+    "INSERT INTO workflow_step_templates (key, label_fa, sort_order) SELECT ?, ?, ? WHERE NOT EXISTS (SELECT 1 FROM workflow_step_templates WHERE key = ?)"
+  );
+  for (const s of WORKFLOW_STEP_SEED) insertStep.run(s.key, s.label_fa, s.sort_order, s.key);
+
   _db = db;
   return db;
 }
