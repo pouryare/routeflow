@@ -557,6 +557,27 @@ its children's — deliberately simple, these graphs are a handful of nodes) and
 spec §9c's "curved bezier edges"). Edge solid/dashed is read directly off the target
 task's live `status` — no separate state to keep in sync, per the backend section above.
 
+## Brand mark `SHIPPED`
+
+Replaced the stale placeholder (`public/icon.svg`'s navy #0A0E14 square + cyan #2DE0E6
+diamond, both colours dead since the substrate redesign) after two full rejected rounds
+— see `docs/superpowers/plans/2026-09-09-brand-mark.md` for the concepts that didn't
+make it and why. **The mark: a near-black rounded square containing a white route arc
+with a live pulse riding it** (a solid dot inside a faint ring, positioned mid-path, not
+at either endpoint) — the one element among all twelve concepts shown that actually
+implied movement rather than a static path.
+
+Wired into every Next.js icon convention: `app/icon.svg` (auto-linked `<link
+rel="icon">`), `app/apple-icon.png` 180×180 (auto-linked `<link rel="apple-touch-icon">`),
+`app/favicon.ico` 16+32 (root-only `favicon` convention), and a maskable 512×512 PNG
+(`public/icons/maskable-512.png`, rendered from a *separate* full-bleed SVG with the mark
+scaled into the W3C safe zone — a maskable icon must not pre-round its own corners, the
+OS applies its own mask) referenced from `manifest.ts`. `public/icon.svg` duplicates
+`app/icon.svg`'s content on purpose: Next's own icon route serves at a query-stringed
+URL, not the stable path a PWA manifest needs. `scripts/gen-icons.mjs` does the
+rasterizing (via `sharp`, already a dependency) and hand-assembles the `.ico` container
+directly — modern `.ico` embeds PNG data per entry, no third-party encoder needed.
+
 ## Kit primitives not yet wired to real pages
 
 `TiltCard`, `GlowSurface`, the five pill form controls, `SegmentedPill`, `ArcGauge`,
@@ -642,5 +663,5 @@ call site.
   contextual `(i)` help.
 - Module polish: map/GIS cleanup, CRM workflow gaps, logistics (vertical timeline, Lottie
   empty states), calendar/weather, the Persian i18n sweep.
-- Brand mark, full icon/favicon set, splash screen — user reviews the mark before it
-  ships.
+- ~~Brand mark, icon/favicon set~~ — shipped, see "Brand mark" above. Splash screen
+  still open (no dedicated splash asset exists yet, only the PWA manifest icons).
