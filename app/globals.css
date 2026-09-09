@@ -133,74 +133,22 @@ body {
   text-wrap: balance;
 }
 
-/* ---- Document-pocket card -----------------------------------------------------------
-   The card is a pocket and its attachments peek over the top edge. The wrapper carries the
-   top padding that the papers occupy, so they overlap the card without being clipped by it
-   and without the list having to know they exist.                                        */
-.pocket {
-  position: relative;
-  padding-top: 14px;
-}
+/* ---- Document-pocket card -- DELETED (2026-09-08, Task 19). This was
+   components/sales/OrderPocketCard.tsx's exclusive CSS -- that component has zero
+   imports anywhere in the app (confirmed by grep before deletion) and is superseded by
+   PocketCard.tsx (".pocket"/".docs"/".doc"/".face", the live "two documents behind the
+   card" pattern on /sales/orders) and its generalization Pocketed.tsx (".pocketed",
+   used by the board and order-pipeline pages). Both survive untouched; only the dead
+   third pattern is gone.
 
-.pocket__papers {
-  position: absolute;
-  inset-inline-start: var(--space-5);
-  top: 0;
-  height: 20px;
-  pointer-events: none;
-}
-
-/* A sheet of paper, seen edge-on. Only the top ~14px is ever visible; the rest is behind
-   the card, which is what makes it read as tucked in rather than stuck on. */
-.pocket__paper {
-  position: absolute;
-  top: 0;
-  width: 46px;
-  height: 34px;
-  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
-  background: var(--surface-raised);
-  border: 1px solid var(--border-strong);
-  border-bottom: none;
-  transform-origin: bottom center;
-}
-
-.pocket__card {
-  position: relative;
-  z-index: 5;
-  display: block;
-  padding: var(--space-4);
-  border-radius: var(--radius-lg);
-  border: 1px solid var(--border);
-  background: var(--surface);
-  text-decoration: none;
-  transition:
-    border-color var(--dur-base) var(--ease-out),
-    box-shadow var(--dur-base) var(--ease-out),
-    transform var(--dur-base) var(--spring-snap);
-}
-
-/* The wash. A radial bleeding up from the top edge in the status colour, so the card is
-   tinted by its own state without the state becoming the whole surface. */
-.pocket__card {
-  background-image: radial-gradient(
-    120% 90% at 50% 0%,
-    color-mix(in srgb, var(--pocket-tone) 14%, transparent) 0%,
-    transparent 58%
-  );
-}
-
-.pocket__card:hover {
-  border-color: var(--border-strong);
-  box-shadow: var(--elev-2);
-  transform: translateY(-1px);
-}
-/* The papers lift a touch further than the card, so the stack separates on hover instead
-   of moving as one slab. */
-.pocket:hover .pocket__paper {
-  transform: translateX(calc(var(--paper-i) * 26px)) translateY(-3px)
-    rotate(calc((var(--paper-i) - 0.5) * -7deg));
-  transition: transform var(--dur-base) var(--spring-snap);
-}
+   THIS WAS A LIVE, ACTIVE BUG, not just dead-code hygiene: OrderPocketCard's ".pocket"
+   selector and PocketCard's ".pocket" selector collided at equal specificity once Task 3
+   promoted PocketCard's rule out of its old .kargah scope. The two rules happened to
+   define non-conflicting property sets in a way that left PocketCard rendering correctly
+   by source-order luck (its rule sits later in the file) -- but that was accidental
+   safety, not verified safety, and any future reordering or resurrection of the dead
+   component would have broken the pattern the user explicitly protected. See
+   docs/superpowers/plans/2026-09-08-notched-skeuomorphic-substrate.md Task 19. */
 
 /* ---- Run timeline blocks ------------------------------------------------------------
    One block per stop, in sequence. The bar is a child rather than the <li> itself so the
@@ -2042,7 +1990,7 @@ body {
 .doc {
   position: absolute; inset-block-start: 0; width: 138px; background: var(--card);
   border-radius: 12px;
-  box-shadow: 0 2px 6px rgba(62,44,28,.10), 0 10px 24px -12px rgba(62,44,28,.3);
+  box-shadow: 0 2px 6px rgba(24,28,38,.10), 0 10px 24px -12px rgba(24,28,38,.3);
   padding: 10px 12px;
   transition: transform 520ms var(--spring), box-shadow 340ms var(--ease);
 }
@@ -2134,7 +2082,7 @@ body {
   inset-inline-end: calc(var(--si, 0) * 30px);
   width: min(64%, 148px); height: 42px;
   background: var(--card); border-radius: 10px 10px 4px 4px;
-  box-shadow: 0 2px 6px rgba(62,44,28,.10), 0 10px 24px -12px rgba(62,44,28,.30);
+  box-shadow: 0 2px 6px rgba(24,28,38,.10), 0 10px 24px -12px rgba(24,28,38,.30);
   transform: translateY(calc(16px + var(--si, 0) * 4px))
     rotate(calc((var(--si, 0) - .5) * 6deg));
   transform-origin: bottom center;
@@ -2530,7 +2478,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offs
 
 /* ---- 8 · bottom bento sheet (پنجرهٔ مشتری) -------------------------------- */
 :root-scrim {
-  position: fixed; inset: 0; background: rgba(35,28,22,.34);
+  position: fixed; inset: 0; background: rgba(15,18,25,.34);
   backdrop-filter: blur(3px); opacity: 0; pointer-events: none;
   transition: opacity 300ms var(--ease); z-index: 70;
 }
@@ -2538,7 +2486,7 @@ input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offs
 .sheet {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 71;
   background: var(--bg); border-radius: var(--r-2xl) var(--r-2xl) 0 0;
-  box-shadow: 0 -12px 40px -12px rgba(62,44,28,.35);
+  box-shadow: 0 -12px 40px -12px rgba(24,28,38,.35);
   transform: translateY(102%); transition: transform 480ms var(--spring);
   max-height: 88vh; overflow-y: auto; direction: rtl;
 }

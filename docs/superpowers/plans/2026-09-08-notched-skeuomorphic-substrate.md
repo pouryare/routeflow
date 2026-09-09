@@ -3030,61 +3030,122 @@ git commit -m "feat: ArcGauge, StatefulButton (confirmed from reference), GooeyI
 
 ### Task 19: Verify the pocket survives intact
 
-**Files:** none changed if verification passes; `app/globals.css` if it does not.
+**Rewritten entirely during execution — the spec's §9.1 identification of "the" pocket
+pattern was wrong, and following this task's original steps as written would have
+verified the wrong CSS while missing a live, active bug in the real one.**
 
-- [ ] **Step 1: Locate the pocket's current CSS**
+There are THREE pocket-family implementations in this codebase, not one:
 
-```bash
-grep -n "^\.pocket\b\|^\.pocket__" app/globals.css
-```
+1. **`.pocket`/`.pocket__papers`/`.pocket__paper`/`.pocket__card`**
+   ([globals.css:136](../../app/globals.css#L136) at plan-write time) — this is what the
+   spec called "sacred." It is `components/sales/OrderPocketCard.tsx`'s exclusive CSS.
+   **`OrderPocketCard.tsx` has zero imports anywhere in the app** (confirmed by grep) — it
+   is dead code, superseded and never deleted.
+2. **`.pocket`/`.docs`/`.doc`/`.face`/`.pill`** — `components/kargah/PocketCard.tsx`'s
+   CSS, LIVE (imported by `OrdersPockets.tsx` → `app/sales/orders/page.tsx`). Its own doc
+   comment: *"An order as a card with its documents tucked behind it — the artifact's
+   `.pocket`."* It renders exactly the receipt+delivery-note pair the user's own words
+   ("two cards behind the main cards") describe.
+3. **`.pocketed`/`data-papers`/`.pocketed__slips`/`.pocketed__slip`/`.pocketed__face`** —
+   `components/kargah/Pocketed.tsx`'s CSS, LIVE (used by `components/board/Board.tsx` →
+   `app/sales/board/page.tsx` and `components/sales/OrderPipeline.tsx` →
+   `app/sales/tasks/page.tsx`). Its own comment: *"the same way the bespoke PocketCard on
+   /sales/orders always has."* This is the DELIBERATE GENERALIZATION of pattern 2 — 0–3
+   slips on any card — and is very likely the exact primitive spec's pocket extensions
+   (product→batches, customer→orders, run→stops, saved-list→members) should build on.
 
-- [ ] **Step 2: Confirm the three palette-dependent declarations retinted correctly**
+**Patterns 2 and 3 are the real sacred pattern, in two forms. Pattern 1 is dead weight
+that happened to share a class name with pattern 2** — and after Task 3's promotion
+removed pattern 2's `.kargah` scope wall, both became bare, equal-specificity `.pocket`
+selectors, colliding. Verified precisely: they defined conflicting `padding-top` (14px
+vs 82px). Pattern 2's rule happened to sit LATER in the file, so it won by source order
+and the live page rendered correctly — but that was accidental, order-dependent safety,
+not a verified-safe state, and would have broken the instant anyone reordered the file or
+resurrected the dead component.
 
-Per spec §9.1, exactly three declarations are palette-dependent:
-
-```bash
-grep -n "pocket__paper" app/globals.css | grep -i "background\|border"
-```
-Confirm `background` reads `var(--surface-2)` (not a hardcoded old hex) and `border`
-reads `var(--border-strong)`. If either is a literal hex left over from before the
-promotion, replace it with the token.
-
-```bash
-grep -n "pocket-tone\|color-mix" app/globals.css | grep -i pocket
-```
-Confirm the radial status wash still uses `color-mix(in srgb, var(--pocket-tone) 14%, ...)`
-— unchanged, since it retints automatically once the status tokens (`--good`/`--warn`/
-`--crit`) were retinted in Tasks 4–5.
-
-- [ ] **Step 3: Confirm every geometry declaration is untouched**
-
-```bash
-grep -n "paper-i\|translateX(calc\|transform-origin: bottom" app/globals.css
-```
-These lines must be byte-identical to before this plan started — compare against the
-Task 1 baseline if in doubt:
-
-```bash
-git show <task-1-commit-sha>:app/globals.css | grep -n "paper-i\|translateX(calc\|transform-origin: bottom"
-```
-
-- [ ] **Step 4: Visual smoke test**
+- [ ] **Step 1: Confirm pattern 1 is genuinely dead before touching anything**
 
 ```bash
-npm run dev &
-sleep 3
+grep -rln "OrderPocketCard" --include="*.tsx" . | grep -v node_modules
 ```
-Open `/sales`, find a pocket card (an order with attachments), confirm: slips peek at
-rest, fan out and rise on hover, colours match the new cool palette, nothing about the
-fan animation itself changed. Stop dev server.
+Expect exactly one hit: the file itself. If anything else imports it, STOP — the
+situation has changed since this was written and needs fresh investigation, not this
+task's prescribed deletion.
 
-- [ ] **Step 5: Commit only if a fix was needed**
+- [ ] **Step 2: Delete the dead component and its exclusive CSS**
 
 ```bash
-git add app/globals.css
-git commit -m "fix: restore a pocket declaration that did not retint correctly"
+git rm components/sales/OrderPocketCard.tsx
 ```
-(Skip this step entirely if Steps 2–4 found nothing to fix.)
+Delete pattern 1's CSS block entirely (header comment through
+`.pocket:hover .pocket__paper`) — confirmed complete boundaries at plan-write time:
+`app/globals.css` lines 136–204, immediately before the `/* ---- Run timeline blocks
+---- */` comment. Do NOT touch `.pockets` (plural — pattern 2's live grid container),
+pattern 2's own `.pocket`/`.docs`/`.doc`/`.face`/`.pill`, or pattern 3's `.pocketed*` —
+all three survive.
+
+- [ ] **Step 3: Verify the collision is resolved**
+
+```bash
+npm run build
+CSS=$(find .next/static/chunks -name "*.css" | xargs grep -l "\.pocket{")
+grep -o "\.pocket{[^}]*}" "$CSS"
+```
+Expect exactly ONE `.pocket{}` rule now, containing pattern 2's own properties
+(`padding-top:82px` at plan-write time, plus `cursor:pointer`/`z-index:0`).
+
+- [ ] **Step 4: Check patterns 2 and 3 for hardcoded (non-token) colour literals Tasks
+  4–8 would have missed**
+
+Tasks 4–8 retinted CSS custom properties; they cannot retint a raw hex/rgba literal that
+was never routed through a token. Search specifically for the old warm-brown family:
+
+```bash
+grep -noE "rgba\([0-9]+,[0-9]+,[0-9]+" app/globals.css | awk -F'[(,]' '{r=$2;g=$3;b=$4; if (r>g && g>=b && (r-b)>10) print}' | sort -u
+```
+**Found at plan-write time:** `.doc`'s and `.pocketed__slip`'s own `box-shadow` both had
+`rgba(62,44,28,...)` hardcoded directly (not through `--sh-*`) — the exact old warm
+shadow tint, missed because these are one-off literals, not token references. Fixed to
+`rgba(24,28,38,...)`, matching `--sh-*`'s new cool family. Also found and fixed (found in
+the same sweep, not pocket-specific but adjacent): `:root-scrim`'s backdrop tint and
+`.sheet`'s box-shadow (the customer detail bottom sheet), both still `rgba(35,28,22,...)`/
+`rgba(62,44,28,...)`. **Left alone deliberately:** `.notice`'s border
+(`rgba(154,107,16,...)`) — this is a semantically amber warning colour, not neutral
+chrome, and correctly stays warm-toned; cooling it would remove meaning from a warning
+indicator, the same distinction the button/data retinting in Task 4 already drew.
+
+For each literal this search surfaces going forward, use the same judgement: neutral
+structural chrome (shadows, scrims, dividers) cools to the `rgba(24,28,38,...)` family;
+anything carrying real status/warning/category meaning stays in its semantic hue family,
+merely re-solved from the already-retinted token (`--warn`, `--good`, etc.), never
+flattened to grey.
+
+- [ ] **Step 5: Confirm every geometry declaration in patterns 2 and 3 is untouched**
+
+```bash
+grep -n "paper-i\|--si\b\|translateY(calc\|transform-origin: bottom" app/globals.css
+```
+These lines (the fan/rotation math, patterns 2 and 3's equivalents of the old
+`--paper-i` mechanism) must be byte-identical to the Task 1 baseline — compare against it
+if in doubt:
+
+```bash
+git show <task-1-commit-sha>:app/globals.css | grep -n "paper-i\|--si\b\|translateY(calc\|transform-origin: bottom"
+```
+
+- [ ] **Step 6: Full test suite and build**
+
+```bash
+npm run build
+npm test
+```
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add -A
+git commit -m "fix: delete dead OrderPocketCard.tsx -- was colliding with the live pocket pattern"
+```
 
 ---
 

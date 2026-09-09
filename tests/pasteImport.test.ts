@@ -106,4 +106,25 @@ describe("parsePastedChat", () => {
   it("returns an empty array for text with no map links", () => {
     expect(parsePastedChat("[8/22/2026 1:26 PM] Nazanin Rezaee: just chatting, no links here")).toEqual([]);
   });
+
+  it("parses the user's exact paste", () => {
+    const text = `[9/4/2026 3:54 PM] M.s parsa: تهران کباب شعبه پیروزی
+https://maps.app.goo.gl/2uC6TXV5e7Y8n3qSA
+[9/4/2026 3:54 PM] M.s parsa: کباب حلیم پیروزی 
+https://maps.app.goo.gl/PLyWGAXbrUKK7nih6
+[9/4/2026 3:54 PM] M.s parsa: کباب خوب ذغالی پیروزی 
+https://maps.app.goo.gl/hp89fHAbeAHfNS8V7
+[9/4/2026 3:54 PM] M.s parsa: کبابخانه محفل
+https://maps.app.goo.gl/ZN8ZgSZQbCbExmYf9
+[9/4/2026 3:54 PM] M.s parsa: کباب گلپایگانی اعتماد 
+https://maps.app.goo.gl/oYakW3oLxkJJu2XL9
+[9/4/2026 3:54 PM] M.s parsa: رستوران کباب بازاری 
+https://maps.app.goo.gl/fN9u6Jj5Ei6ToCee8
+[9/4/2026 3:54 PM] M.s parsa: رستوران ایرانی عربی شاهپسند 
+https://maps.app.goo.gl/9NUW4MEr8rNKAknRA`;
+
+    const res = parsePastedChat(text);
+    console.log("TEST RESULT:", JSON.stringify(res, null, 2));
+    expect(res).toHaveLength(7);
+  });
 });
