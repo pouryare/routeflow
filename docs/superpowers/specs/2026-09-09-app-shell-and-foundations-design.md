@@ -36,8 +36,10 @@ brief calls out:
 
 ## Goals
 
-1. One shared shell + theme across every surface **except `/driver`** (and
-   `/login`, `/offline`). `/driver` keeps its bare phone-width identity.
+1. One shared shell + theme across every surface **except `/driver`, `/login`,
+   `/offline`, `/today`** — and those excepted routes still wear the family
+   **palette, type, and tokens** (they just don't get `<AppShell>` or the
+   signature devices). "Match the theme, not fully."
 2. `/map`, `/facilities`, `/gallery` join the shell but their **canvas and map
    panels stay dark** regardless of the viewer's light/dark skin.
 3. One header row: brand · travelling pill (hover-opens group tabs) · global-search
@@ -47,7 +49,14 @@ brief calls out:
    the app**, not just `/sales`.
 5. Instant page transitions: the target layout + a high-fidelity per-page skeleton
    mount immediately on navigation; slow data streams in behind `<Suspense>`.
-6. `MASTER.md` updated in lockstep so it stays the source of truth.
+6. **Re-temperature the palette from warm to cold** — cool off-white ground
+   instead of cream, a cold default accent instead of terracotta, cool near-black
+   for dark. The `Color` and `Accent themes` sections of `MASTER.md` are
+   contrast-computed, so this is a re-solve + regenerate, not a hand-edit.
+7. **Rename the `kargah` design-system namespace** to `meridian` — `.kargah` CSS
+   scope → `.meridian`, `components/kargah/` → `components/meridian/`, `lib` token
+   references, and all `MASTER.md` prose.
+8. `MASTER.md` updated in lockstep so it stays the source of truth.
 
 ## Non-goals
 
@@ -69,12 +78,15 @@ brief calls out:
 |---|----------|
 | 1 | A and B ship as **one spec / one plan** — they touch the same files. |
 | 2 | **Keep the travelling-pill aesthetic.** One row, beside the brand, hover opens the group's tabs as a popover. Do not replace it with a plain menubar. |
-| 3 | **Every surface except `/driver`** gets the unified header/shell/theme. `/map` canvas keeps dark styling; header + tokens unify across it. This overrides `MASTER.md`'s current "the map is out of scope here" line. |
+| 3 | **Every surface except `/driver`, `/login`, `/offline`, `/today`** gets the unified header/shell/theme. Those four still inherit the family palette/type/tokens ("match, not fully") but render no `<AppShell>`. `/map` canvas keeps dark styling; header + tokens unify across it. This overrides `MASTER.md`'s current "the map is out of scope here" line. |
 | 4 | **Primitives + whole-app rollout.** Build the primitives and convert every card and icon across the whole app in this slice. |
 | 5 | Add **`lucide-react` + `framer-motion`.** `framer-motion` becomes the motion layer for new work going forward; existing pure-CSS entrance motion stays until independently touched. |
 | 6 | **Per-page high-fidelity skeletons** — a hand-built `loading.tsx` per route segment mirroring that page's real layout, plus per-section `<Suspense>`. |
 | 7 | The page-header card's notch holds the **active section's sibling tabs** as a persistent inline row (siblings always visible without hovering the header). |
-| 8 | Structure: **root theming + methodical page-group rollout.** Move the `.kargah` scope to a near-root `(shell)` layout; `/driver` is the explicit opt-out; roll primitives out page-group by page-group, each step green. |
+| 8 | Structure: **root theming + methodical page-group rollout.** Move the `.meridian` scope to a near-root `(shell)` layout; the four bare routes are the opt-out; roll primitives out page-group by page-group, each step green. |
+| 9 | **Rename `kargah` → `meridian`** (کارگاه "workshop" no longer describes a cold system). `.meridian` scope class, `components/meridian/`, `MASTER.md` title/prose. Mechanical, whole-repo; done in step 1 before new files land so nothing is written twice. If a better name is wanted later it is one more rename. |
+| 10 | **Palette warm → cold.** Cool off-white ground (`--bg` ≈ `#F1F3F6`, `--surface` `#FFFFFF`, sunk/border tokens shifted from warm-grey to blue-grey), cool near-black dark ground (`--bg` ≈ `#0F1214`). **Default accent moves from خاکی (terracotta) to a cold theme** — `اقیانوسی` (ocean) as the pick, with `گرافیت` as the neutral fallback. `scripts/gen-accent-themes.mjs` + `scripts/check-contrast.mjs` are re-run; the build gate is **`npm run check:contrast` green** (260 pairs). Status hues (`--good/--warn/--crit/--info`) keep their meanings; only their values are re-tuned against the new grounds if a pair drops below gate. |
+| 11 | **Bare routes wear the palette, not the shell.** `app/(bare)/layout.tsx` applies the `.meridian` scope class + the theme/accent/font init scripts, so `/driver`, `/login`, `/offline`, `/today` render in the same colours, type and radii — but **no header, no pill, no `PageHeaderCard`, no carved-bay notches, no entrance choreography**. The context (a moving vehicle, a login card) keeps its stripped, purpose-built layout. |
 
 ---
 
@@ -96,6 +108,84 @@ brief calls out:
 
 ---
 
+## Section 0 — Namespace rename & palette re-temperature
+
+Done **first**, as its own commit(s), before any new file lands — so nothing is
+authored against the old name or the warm palette and then rewritten.
+
+### 0a — `kargah` → `meridian`
+
+Purely mechanical, whole-repo:
+
+- `app/globals.css` — the `کارگاه` marked block and every `.kargah` selector →
+  `.meridian`. Keep the Persian comment, note the rename.
+- `components/kargah/` → `components/meridian/` (`git mv`), update the `@/` import
+  paths that name the folder (grep `components/kargah`).
+- `MASTER.md` — title `MASTER — RouteFlow Design System`, the thesis heading, and
+  every prose mention of "کارگاه"/"kargah".
+- Any `data-*`, class, or string literal containing `kargah` (grep the whole repo
+  incl. `tests/`, `scripts/`, `content/`).
+- `salesNav.ts` → `appNav.ts` rename (Section 2) folds into this pass.
+
+Gate: `npm run build && npm test && npm run lint` green with zero `kargah`
+occurrences remaining (`grep -ri kargah` returns nothing but changelog/spec
+history).
+
+### 0b — warm → cold
+
+The `Color` and `Accent themes` sections of `MASTER.md` are computed by
+`scripts/gen-accent-themes.mjs` and verified by `scripts/check-contrast.mjs`
+(260 pairs). So:
+
+1. Re-anchor the **ground** tokens in `app/globals.css` (the hand-authored,
+   non-generated block):
+
+   | Token | Warm (now) | Cold (target anchor — solver may nudge) |
+   |---|---|---|
+   | light `--bg` | `#F4F0E9` | `#F1F3F6` (cool off-white, faint blue-grey) |
+   | light `--surface` | `#FFFFFF` | `#FFFFFF` (unchanged) |
+   | light `--surface-2` | `#FDFBF8` | `#F8FAFC` |
+   | light `--surface-sunk` | `#EFE9E0` | `#E7EBF0` |
+   | light `--border` | `#EAE2D7` | `#E1E6EC` |
+   | light `--border-strong` | `#DED4C6` | `#CFD6DF` |
+   | light `--text` | `#231C16` | `#1A1F24` (cool near-black) |
+   | light `--text-muted` | `#776C60` | `#5C6672` |
+   | light `--text-faint` | `#91887C` | `#8A93A0` (non-text, ≥3:1) |
+   | dark `--bg` | `#141110` | `#0F1214` (cool near-black, still **not** the map's blue-black) |
+   | dark `--surface` | `#1E1A17` | `#171B1F` |
+   | dark `--surface-2` | `#242019` | `#1D2226` |
+   | dark `--surface-sunk` | `#2B241E` | `#232A2F` |
+   | dark `--border` | `#312A22` | `#2A3238` |
+   | dark `--border-strong` | `#3E352B` | `#37414A` |
+   | dark `--text` | `#F3EEE7` | `#EEF2F5` |
+   | dark `--text-muted` | `#9B8F81` | `#8A97A2` |
+
+2. **Default accent** moves from `خاکی` (terracotta) to **`اقیانوسی`** (ocean) —
+   already one of the ten solved themes. `گرافیت` (graphite) is the documented
+   neutral fallback if ocean reads too saturated in context. Update the default in
+   `lib/accent.ts` / `ACCENT_INIT_SCRIPT` and the `MASTER.md` "Accent themes" row
+   («خاکی (default)» → «اقیانوسی (default)»).
+3. Re-run `node scripts/gen-accent-themes.mjs` to regenerate the marked block in
+   `app/globals.css` and `lib/accentThemes.ts` against the new grounds.
+4. Re-run `npm run check:contrast`. Fix any pair below gate by nudging the failing
+   **token**, never by loosening the gate. Status hues (`--good/--warn/--crit/
+   --info`) keep their semantics; re-tune only values that fail against the cooler
+   grounds. Re-check the "critical had to move off red" finding — with an ocean
+   accent, `--crit` can likely return toward a truer red (ΔE from a blue accent is
+   large); let the solver decide, don't hand-pick.
+5. `MASTER.md` "Visual thesis" / "Interaction thesis" prose: rewrite "warm
+   workshop", "warm off-white ground", "terracotta accent", "warm where every
+   other operations tool is cold blue-grey", "warm and physical" to the cold
+   framing — **a cool, quiet workbench lit from the north**: still calm, still not
+   a cockpit, but daylight-cool rather than afternoon-warm. Keep the anti-cockpit
+   stance (the rejected thesis was a *dark-navy-cyan console*, which this is not —
+   light stays the default, the devices stay).
+
+Gate: `npm run check:contrast` green, `npm run build` green, one manual visual
+pass of `/sales` in both skins.
+
+---
+
 ## Section 1 — Shell & routing architecture
 
 ### Route groups
@@ -106,7 +196,7 @@ app/
                              #   scripts, ServiceWorkerRegister, ToastProvider,
                              #   MyPositionProvider. NO NotificationBell here anymore.
   (shell)/
-    layout.tsx               # <div className="kargah min-h-screen"> + <AppShell>
+    layout.tsx               # <div className="meridian min-h-screen"> + <AppShell>
     not-found.tsx            # baseline, inside the shell (themed version = Slice C)
     error.tsx                # baseline route error boundary (themed version = Slice C)
     sales/…                  # moved from app/sales
@@ -118,7 +208,9 @@ app/
     leads/…                  # moved from app/leads
     settings/…               # moved from app/settings
   (bare)/
-    driver/…                 # moved from app/driver — bare, phone-width, unchanged
+    layout.tsx               # <div className="meridian"> only — palette/type/tokens,
+                             #   NO <AppShell>. "Match the theme, not fully."
+    driver/…                 # moved from app/driver — bare, phone-width
     login/…                  # moved from app/login
     offline/…                # moved from app/offline
     today/…                  # moved from app/today — driver-only briefing route
@@ -139,17 +231,28 @@ absolute imports almost everywhere, so import paths survive. The plan must sweep
 ### Theme scope
 
 Today `.kargah` is a class on a `<div>` in `app/sales/layout.tsx`, and every token
-in `app/globals.css` is defined under `.kargah`. Move the class onto the wrapper
-`<div>` in `app/(shell)/layout.tsx`. Token definitions in `globals.css` are
-untouched. `(bare)` routes never carried `.kargah`, so nothing regresses; if any
-bare page turns out to read a `.kargah` token, give that page an explicit local
-value (documented as a bare-route exception).
+in `app/globals.css` is defined under `.kargah`. After the rename (step 1) it is
+`.meridian`. Two wrappers now carry it:
+
+- `app/(shell)/layout.tsx` — `<div className="meridian min-h-screen">` **plus**
+  `<AppShell>` (header, pill, transitions, sync, notifications).
+- `app/(bare)/layout.tsx` — `<div className="meridian">` **only**. The theme,
+  accent and font init scripts run here too (share them from a `lib/` helper so
+  the root layout and both group layouts call one function). `/driver`, `/login`,
+  `/offline`, `/today` get the palette, type, radii and token API — and nothing
+  else. No `AppShell`, no `PageHeaderCard`, no carved-bay notches, no entrance
+  choreography. This is decision #11, "match the theme, not fully."
+
+Token definitions in `globals.css` move from `.kargah …` to `.meridian …`
+wholesale (step 1). The bare routes previously had no design-system tokens at all,
+so they only gain consistency here — but audit each bare page for a hard-coded
+colour/spacing that now clashes with the cold palette and swap it for the token.
 
 ### Map dark override
 
 `/map`, `/facilities`, `/gallery` layouts set `data-surface="map"` on their content
 wrapper. `globals.css` gains a block that pins the map **canvas and its floating
-panels** to the dark palette values under `.kargah [data-surface="map"]`, so the
+panels** to the dark palette values under `.meridian [data-surface="map"]`, so the
 map reads dark even when the viewer's skin is light. The header, the
 `PageHeaderCard`, and any non-map chrome on those routes follow the normal theme.
 
@@ -159,7 +262,7 @@ keeps its dark identity while the header and design tokens are unified across it
 
 ### `AppShell`
 
-`components/kargah/AppShell.tsx`:
+`components/meridian/AppShell.tsx`:
 
 ```
 <AppShell>
@@ -218,7 +321,7 @@ right ────────────────────────�
 - On narrow viewports the pill scrolls horizontally (as the group row does today);
   the search slot collapses to an icon button.
 
-### `HoverPill` (refactor of `components/kargah/TabPill.tsx`)
+### `HoverPill` (refactor of `components/meridian/TabPill.tsx`)
 
 - The pill carries the **group labels only** (7 groups after the registry
   extension — see below). The animated `.thumb` sits under the active group. All of
@@ -261,7 +364,7 @@ update all importers and delete `salesNav.ts`.
   a `⌘K` hint) occupying the slot.
 - A global `keydown` listener (`⌘K` on mac, `Ctrl-K` elsewhere) focuses/клicks the
   slot. In this slice it does nothing more than focus; Slice C mounts the palette.
-- The listener lives in a small `components/kargah/SearchSlot.tsx` client
+- The listener lives in a small `components/meridian/SearchSlot.tsx` client
   component so Slice C can replace its body without touching `AppHeader`.
 
 ### `ProfileMenu` — click → hover
@@ -278,11 +381,11 @@ update all importers and delete `salesNav.ts`.
 
 ## Section 3 — Design-system primitives (whole-app rollout)
 
-All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
+All live in `components/meridian/`, all values sourced from `MASTER.md` tokens.
 
 ### `Icon`
 
-`components/kargah/Icon.tsx` — wrapper over `lucide-react`.
+`components/meridian/Icon.tsx` — wrapper over `lucide-react`.
 
 - API: `<Icon name="truck" size="md" className? />`. `size` ∈ `sm | md | lg` →
   `16 | 20 | 24` px (tokens). `strokeWidth` fixed to the `MASTER.md` value.
@@ -299,7 +402,7 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 
 ### `Card`
 
-`components/kargah/Card.tsx` — the one card primitive.
+`components/meridian/Card.tsx` — the one card primitive.
 
 - Removes the top coloured accent line wherever it appears. Plan audits for
   `border-top`, `border-t-*`, and `::before` accent bars across `globals.css` and
@@ -315,7 +418,7 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 
 ### `PageHeaderCard`
 
-`components/kargah/PageHeaderCard.tsx` — the first card on every `(shell)` page.
+`components/meridian/PageHeaderCard.tsx` — the first card on every `(shell)` page.
 
 - Props: `title: string`, `overview: ReactNode` (2–3 lines), `route: string`
   (used to look up the active group and its sibling tabs).
@@ -332,7 +435,7 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 
 ### `Counter`
 
-`components/kargah/Counter.tsx` — `framer-motion`.
+`components/meridian/Counter.tsx` — `framer-motion`.
 
 - API: `<Counter to={1234} format={faNum} from={0} trigger="in-view" | "mount" />`.
 - Uses `useInView` + `animate` on a `useMotionValue`; eased with a `lib/motion.ts`
@@ -347,7 +450,7 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 
 ### `CardHelp`
 
-`components/kargah/CardHelp.tsx`.
+`components/meridian/CardHelp.tsx`.
 
 - An `(i)` `<Icon name="info">` button rendered in the `CardHeader` `help` slot.
 - Click (not hover — this is a deliberate, readable action) opens a `framer-motion`
@@ -408,14 +511,19 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 
 ### Rollout order (each step must ship green: `npm run build`, `npm test`, `npm run lint`)
 
+0. **Rename + re-temperature (Section 0).** `kargah` → `meridian` whole-repo
+   (0a); warm → cold palette re-solve + regenerate + `check:contrast` green (0b).
+   Two or more commits, no new files. Everything after this is authored against
+   the final name and the cold palette.
 1. **Deps + leaf primitives.** Add `lucide-react`, `framer-motion`. Build `Icon`,
    `Card` (+ `CardHeader`), `lib/motion.ts`. Extract `lib/appNav.ts` from
-   `salesNav.ts` with the `"field"` group and adopted routes; move/extend tests.
-   No visual change yet.
-2. **Shell.** Create `app/(shell)/` and `app/(bare)/`; `git mv` the route dirs;
-   build `AppShell`; move the `.kargah` scope; add `data-surface="map"` + the
-   dark override; remove `NotificationBell` from the root and mount it in
-   `AppShell`. Sales looks ~unchanged; adopted pages gain the shell.
+   `appNav.ts`/`salesNav.ts` with the `"field"` group and adopted routes;
+   move/extend tests. No visual change yet.
+2. **Shell.** Create `app/(shell)/` and `app/(bare)/` (+ its palette-only
+   `layout.tsx`); `git mv` the route dirs; build `AppShell`; move the `.meridian`
+   scope; add `data-surface="map"` + the dark override; remove `NotificationBell`
+   from the root and mount it in `AppShell`. Sales looks ~unchanged; adopted pages
+   gain the shell; bare pages gain the palette only.
 3. **Header.** `AppHeader` + `HoverPill` (from `TabPill`) + `ProfileMenu` hover +
    `SearchSlot` (inert) + `⌘K` listener.
 4. **`PageHeaderCard` + `lib/pageMeta.ts`.** Add to every `(shell)` page — the
@@ -470,7 +578,7 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 **New**
 - `app/(shell)/layout.tsx`, `app/(shell)/not-found.tsx`, `app/(shell)/error.tsx`
 - `app/(bare)/layout.tsx` (if any shared bare chrome is needed; else none)
-- `components/kargah/AppShell.tsx`, `AppHeader.tsx`, `HoverPill.tsx`,
+- `components/meridian/AppShell.tsx`, `AppHeader.tsx`, `HoverPill.tsx`,
   `SearchSlot.tsx`, `Icon.tsx`, `Card.tsx`, `PageHeaderCard.tsx`, `Counter.tsx`,
   `CardHelp.tsx`
 - `lib/appNav.ts`, `lib/pageMeta.ts`, `lib/motion.ts`, `lib/help/*.ts`
@@ -487,9 +595,9 @@ All live in `components/kargah/`, all values sourced from `MASTER.md` tokens.
 - `app/layout.tsx` (drop `NotificationBell`)
 - `app/globals.css` (theme scope note, `data-surface="map"` block, remove card
   accent lines, carved-bay styles)
-- `components/kargah/TabPill.tsx` → `HoverPill.tsx` (refactor)
-- `components/kargah/ProfileMenu.tsx` (hover)
-- `components/kargah/Chrome.tsx` (wrap one row)
+- `components/meridian/TabPill.tsx` → `HoverPill.tsx` (refactor)
+- `components/meridian/ProfileMenu.tsx` (hover)
+- `components/meridian/Chrome.tsx` (wrap one row)
 - `app/sales/layout.tsx` (thin to nothing / fold into `(shell)` layout;
   keep the driver/role redirects where they belong)
 - `MASTER.md` (map, motion, Base components, "top card of every page" rule,
