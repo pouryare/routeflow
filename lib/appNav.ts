@@ -1,9 +1,14 @@
-/** The /sales navigation: 26 destinations, grouped into six.
+/** The app navigation: 30 destinations, grouped into seven.
  *
- *  Extracted from app/sales/layout.tsx so the shape can be tested -- the invariants that
+ *  Was `salesNav` and covered `/sales/*` only. Now that one shell wraps every themed
+ *  surface, the field routes (/map, /planner, /leads) are first-class destinations in
+ *  their own group and /report joins مالی — so the header can reach them without the
+ *  reader leaving the shell.
+ *
+ *  Extracted from the layout so the shape can be tested -- the invariants that
  *  matter (every ready tab lands in exactly one group, no two visible tabs share a label
  *  or an href, nothing still points at the retired /sales/analysis) are asserted in
- *  tests/salesNav.test.ts.
+ *  tests/appNav.test.ts.
  *
  *  `ready` still gates a tab the way it did inline: a tab whose page does not exist for
  *  this role renders as a disabled span, because Next prefetches every <Link> and a link
@@ -11,21 +16,29 @@
  */
 import type { Role } from "./roles";
 
-export type SalesGroupId = "day" | "sales" | "delivery" | "money" | "stock" | "admin";
+export type AppGroupId =
+  | "day"
+  | "sales"
+  | "delivery"
+  | "money"
+  | "stock"
+  | "admin"
+  | "field";
 
-export const SALES_GROUPS: { id: SalesGroupId; label: string }[] = [
+export const APP_GROUPS: { id: AppGroupId; label: string }[] = [
   { id: "day", label: "روز من" },
   { id: "sales", label: "فروش و سفارش" },
   { id: "delivery", label: "تحویل" },
   { id: "money", label: "مالی" },
   { id: "stock", label: "انبار" },
   { id: "admin", label: "مدیریت" },
+  { id: "field", label: "میدان و نقشه" },
 ];
 
-export type SalesTab = {
+export type AppTab = {
   href: string;
   label: string;
-  group: SalesGroupId;
+  group: AppGroupId;
   /** False → renders as a disabled span for this role. */
   ready: boolean;
 };
@@ -41,7 +54,7 @@ const isRepLead = (r: Role) => r === "owner" || r === "group_manager" || r === "
  *  «تعریف نمایندگی»; «داشبورد» / «تحلیل» / «تحلیل و KPI» collapsed to one «تحلیل فروش»
  *  (/sales/dashboard), leaving «داشبورد» for the /sales landing overview only.
  */
-export function salesTabs(session: { role: Role }): SalesTab[] {
+export function appTabs(session: { role: Role }): AppTab[] {
   const r = session.role;
   return [
     // روز من
@@ -67,6 +80,9 @@ export function salesTabs(session: { role: Role }): SalesTab[] {
     // مالی
     { href: "/sales/payments", label: "دریافت‌ها", group: "money", ready: true },
     { href: "/sales/cheques", label: "چک‌ها", group: "money", ready: isManager(r) },
+    /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report
+       because it aggregates a whole group's revenue, debt and coverage. */
+    { href: "/report", label: "گزارش پوشش", group: "money", ready: r !== "salesperson" },
 
     // انبار
     { href: "/sales/stock", label: "انبار و خرید", group: "stock", ready: true },
@@ -85,15 +101,20 @@ export function salesTabs(session: { role: Role }): SalesTab[] {
       group: "admin",
       ready: r === "owner" || r === "rep_manager",
     },
+
+    // میدان و نقشه — the spatial surfaces, first-class now that one shell wraps them.
+    { href: "/map", label: "نقشهٔ پوشش", group: "field", ready: true },
+    { href: "/planner", label: "برنامه‌ریز مسیر", group: "field", ready: r !== "salesperson" },
+    { href: "/leads", label: "سرنخ‌ها", group: "field", ready: isRepLead(r) },
   ];
 }
 
 /** The group whose tab is currently active, by longest-prefix match on the pathname.
  *  Falls back to the first group that has a ready tab. */
-export function activeSalesGroup(pathname: string, tabs: SalesTab[]): SalesGroupId {
+export function activeGroup(pathname: string, tabs: AppTab[]): AppGroupId {
   const hit = tabs
     .filter((t) => t.ready && (pathname === t.href || pathname.startsWith(`${t.href}/`)))
     .sort((a, b) => b.href.length - a.href.length)[0];
   if (hit) return hit.group;
-  return tabs.find((t) => t.ready)?.group ?? SALES_GROUPS[0].id;
+  return tabs.find((t) => t.ready)?.group ?? APP_GROUPS[0].id;
 }

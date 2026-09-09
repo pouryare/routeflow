@@ -4,12 +4,12 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import {
-  activeSalesGroup,
-  type SalesGroupId,
-  type SalesTab,
-} from "@/lib/salesNav";
+  activeGroup,
+  type AppGroupId,
+  type AppTab,
+} from "@/lib/appNav";
 
-export type Tab = SalesTab;
+export type Tab = AppTab;
 
 /** Slides the `.thumb` inside `root` to sit under whichever child matches `current`.
  *  One measure-then-move for BOTH nav rows; offsetLeft/offsetWidth are read from the
@@ -34,14 +34,14 @@ export default function TabPill({
   tabs,
   groups,
 }: {
-  tabs: SalesTab[];
-  groups: { id: SalesGroupId; label: string }[];
+  tabs: AppTab[];
+  groups: { id: AppGroupId; label: string }[];
 }) {
   const seg = useRef<HTMLElement | null>(null);
   const grp = useRef<HTMLElement | null>(null);
   const pathname = usePathname();
 
-  const activeGroup = activeSalesGroup(pathname, tabs);
+  const currentGroup = activeGroup(pathname, tabs);
 
   const shownGroups = useMemo(
     () =>
@@ -52,8 +52,8 @@ export default function TabPill({
   );
 
   const visibleTabs = useMemo(
-    () => tabs.filter((t) => t.group === activeGroup),
-    [tabs, activeGroup],
+    () => tabs.filter((t) => t.group === currentGroup),
+    [tabs, currentGroup],
   );
 
   /* Longest match, not equality: /sales/orders/new must light سفارش‌ها, and /sales is a
@@ -87,7 +87,7 @@ export default function TabPill({
       cancelAnimationFrame(id);
       ro.disconnect();
     };
-  }, [move, active, pathname, activeGroup]);
+  }, [move, active, pathname, currentGroup]);
 
   return (
     <div className="segwrap">
@@ -101,7 +101,7 @@ export default function TabPill({
           <Link
             key={g.id}
             href={g.first}
-            aria-current={g.id === activeGroup ? "true" : undefined}
+            aria-current={g.id === currentGroup ? "true" : undefined}
           >
             {g.label}
           </Link>

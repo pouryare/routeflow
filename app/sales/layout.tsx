@@ -11,7 +11,7 @@ import Chrome from "@/components/meridian/Chrome";
 import RevealRoute from "@/components/meridian/RevealRoute";
 import RouteFade from "@/components/meridian/RouteFade";
 import SyncStatus from "@/components/SyncStatus";
-import { SALES_GROUPS, salesTabs } from "@/lib/salesNav";
+import { APP_GROUPS, appTabs } from "@/lib/appNav";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +29,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
   if (!session) redirect("/login");
   if (session.role === "driver") redirect("/driver");
 
-  const tabs = salesTabs(session);
+  const tabs = appTabs(session);
 
 
   return (
@@ -59,7 +59,7 @@ export default async function SalesLayout({ children }: { children: ReactNode })
           </div>
         </div>
 
-        <TabPill tabs={tabs} groups={SALES_GROUPS} />
+        <TabPill tabs={tabs} groups={APP_GROUPS} />
         </Chrome>
 
         {/* One entrance for every sales screen — see RevealRoute for why it is not
