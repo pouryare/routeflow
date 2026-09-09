@@ -3301,13 +3301,45 @@ npm run check:contrast
 ```
 Expected: every line `✓`.
 
-- [ ] **Step 3: Production build**
+- [ ] **Step 3: Production build — check the FULL output, not just the route list**
 
 ```bash
-npm run build 2>&1 | tail -50
+npm run build 2>&1 | grep -iE "warn|error"
 ```
-Expected: succeeds with no new warnings about the deleted files
-(`lib/design/carve.ts`, `components/kargah/CarvedCard.tsx`).
+**Found at exactly this step, on the very last task of this plan:** two Turbopack CSS
+parse warnings — `':root-scrim' is not recognized as a valid pseudo-class."` A `tail -50`
+of the build output (which only shows the final route-list summary) would never surface
+this; it has to be greeped for specifically. Traced to the source: Task 3's promotion
+script's `\.kargah\b` pass matched `.kargah` as a PREFIX of the real class name
+`.kargah-scrim` — a hyphen counts as a word-boundary transition, so `\b` fired inside the
+name rather than only at its true edges, corrupting it into the invalid `:root-scrim`.
+Invalid CSS selectors are silently dropped by browsers rather than erroring the file, so
+this was undetected through every prior task's build+test verification — `npm test` and
+`npm run build`'s route list both stayed green throughout, because neither surfaces a
+dropped-selector CSS warning by default.
+
+**Real, live impact:** `components/kargah/CustomerSheet.tsx` and
+`components/sales/ProcessingModal.tsx` both render `className="kargah-scrim"` — the
+backdrop behind the customer detail bottom sheet and the order processing modal. Both
+have had a completely unstyled backdrop (no dark tint, no blur, no fade transition) since
+Task 3, on two of the most frequently used surfaces in the app.
+
+**Fix:** restore the selector to `.kargah-scrim`, exactly matching what the components
+render — not a further rename. Then swept the whole file for other victims of the same
+regex-prefix-matching bug class:
+
+```bash
+grep -noE ':root[^ {[\n]' app/globals.css | sort -u
+```
+Every other hit was either legitimate pre-existing compound CSS (`:root,`,
+`:root:not(...)`, `:root.driver-mode`) or harmless prose in a comment — `.kargah-scrim`
+was the only genuine victim. Rebuilt and confirmed the warnings are gone; confirmed the
+compiled CSS actually contains a working `.kargah-scrim{}` rule with correct
+`-webkit-backdrop-filter`-before-`backdrop-filter` ordering.
+
+Also expected (already verified, no NEW build warnings from these specifically): the
+deleted files (`lib/design/carve.ts`, `components/kargah/CarvedCard.tsx`,
+`components/sales/OrderPocketCard.tsx`) produce no dangling-import warnings.
 
 - [ ] **Step 4: Full manual smoke test**
 

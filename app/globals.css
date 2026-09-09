@@ -2477,12 +2477,22 @@ input[type=range]:focus-visible { outline: 2px solid var(--accent); outline-offs
 .notice b { font-weight: 700; }
 
 /* ---- 8 · bottom bento sheet (پنجرهٔ مشتری) -------------------------------- */
-:root-scrim {
+/* Found during Task 22's final build check: Task 3's mechanical promotion script
+   (`\.kargah\b` -> `:root`) matched ".kargah" as a PREFIX of this class's real name,
+   ".kargah-scrim" -- a hyphen counts as a word-boundary transition, so \b fired inside
+   the name rather than only at its true edges. The corrupted ":root-scrim" is invalid
+   CSS (an unrecognized pseudo-class attempt) that browsers silently drop rather than
+   error on, so this went undetected through every other task's build+test verification
+   until Turbopack's build-time CSS parser finally surfaced it here. Two live components
+   -- CustomerSheet.tsx and ProcessingModal.tsx -- render className="kargah-scrim" and
+   have had a completely unstyled backdrop (no tint, no blur, no fade) since Task 3.
+   Restored to the exact name the components actually render, not renamed further. */
+.kargah-scrim {
   position: fixed; inset: 0; background: rgba(15,18,25,.34);
   backdrop-filter: blur(3px); opacity: 0; pointer-events: none;
   transition: opacity 300ms var(--ease); z-index: 70;
 }
-:root-scrim.on { opacity: 1; pointer-events: auto; }
+.kargah-scrim.on { opacity: 1; pointer-events: auto; }
 .sheet {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 71;
   background: var(--bg); border-radius: var(--r-2xl) var(--r-2xl) 0 0;

@@ -461,6 +461,17 @@ it. Wiring them in is the shell/journey sub-project's job.
   `querySelectorAll`/reveal-on-navigate selector list is not caught by TypeScript, and a
   plain rename silently stops an animation rather than breaking the build. Found once
   already (`RevealRoute.tsx`'s `.cradlewrap` reference) during this redesign.
+- **No mechanical class-rename regex anchored on a word boundary alone** — `\bkargah\b`
+  (or any `\.NAME\b`-style pattern) matches `NAME` as a *prefix* of any longer class that
+  happens to start with it and continue with a hyphen, since a hyphen is itself a word
+  boundary. `.kargah-scrim` (a real class two live components render) was corrupted this
+  way into the invalid selector `:root-scrim`, silently dropped by every browser rather
+  than erroring — undetected through this entire redesign's build+test verification until
+  the very last task, because neither `npm test` nor a route-list build summary surfaces
+  a dropped CSS selector. Grep the *full* `npm run build` output for `warn`/`error`, not
+  just its tail, after any bulk selector rewrite — and anchor a rename regex to the
+  selector's true edges (`\.kargah(?![\w-])`, or better, an exact set of known selectors)
+  rather than a bare word boundary.
 - **No assuming a component is "the" instance of a pattern from its class name alone** —
   verify with `grep -rln` for actual imports before treating anything as either sacred or
   safe to delete. Two components sharing a bare class name (`.pocket`) is exactly how the
