@@ -504,10 +504,21 @@ The avatars must live in a **sibling** of the carved element. `clip-path` and `m
 descendants too, so avatars placed inside the card are erased by the very bay meant to
 hold them.
 
-### Travelling tab pill `SHIPPED` — `components/meridian/TabPill.tsx` (becomes `HoverPill` in the shell slice)
-One pill that slides and resizes to the selected tab, `--spring-pop`. It is positioned
+### Travelling tab pill `SHIPPED` — `components/meridian/HoverPill.tsx`
+One pill that slides and resizes to the selected group, `--spring-pop`. It is positioned
 before its transition is enabled, so it does not fly in from x=0 on first paint, and it
 re-measures on `ResizeObserver` and on `document.fonts.ready`.
+
+It used to be **two** permanent rows: the groups, then the active group's tabs. It is now
+one row of group chips beside the brand, and a group's tabs arrive in a popover on hover
+— twenty-odd destinations for one row of chrome instead of two. The popover is
+`position: fixed`, placed from the chip's measured rect, because the row is a horizontal
+scroll container and would otherwise clip it.
+
+Reachability without hover is deliberate and lives elsewhere: the page-overview card
+carries the active group's siblings inline, so a touch or keyboard reader never needs the
+popover to move between neighbours. On a touch screen the first tap opens the group
+rather than jumping to its first tab.
 
 ### Order pipeline `SHIPPED` — `components/sales/OrderPipeline.tsx`
 Columns are **statuses** (پیش‌نویس / تأییدشده / در مسیر / تحویل‌شده), not people; the

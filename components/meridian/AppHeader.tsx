@@ -5,7 +5,7 @@ import { ROLE_LABEL } from "@/lib/roles";
 import { faJalaliLong } from "@/lib/jalali";
 import ProfileMenu from "@/components/meridian/ProfileMenu";
 import NotificationBell from "@/components/NotificationBell";
-import TabPill from "@/components/meridian/TabPill";
+import HoverPill from "@/components/meridian/HoverPill";
 import Chrome from "@/components/meridian/Chrome";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
 import { APP_GROUPS, appTabs } from "@/lib/appNav";
@@ -62,7 +62,7 @@ export default async function AppHeader() {
         </div>
       </div>
 
-      <TabPill tabs={tabs} groups={APP_GROUPS} />
+      <HoverPill tabs={tabs} groups={APP_GROUPS} />
     </Chrome>
   );
 }
