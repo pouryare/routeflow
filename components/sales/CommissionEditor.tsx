@@ -112,7 +112,7 @@ export default function CommissionEditor({
 
   return (
     <section className="flex flex-col gap-[var(--space-4)] card p-[var(--space-4)]">
-      <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">نرخ و پرداخت</h2>
+      <h2 className="sechead__title">نرخ و پرداخت</h2>
 
       {message && (
         <p className={`m-0 text-[length:var(--text-sm)] ${message.kind === "ok" ? "text-[var(--good)]" : "text-[var(--crit)]"}`}>

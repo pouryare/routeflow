@@ -94,7 +94,7 @@ export default function Briefing({
 
   if (variant === "meridian") {
     return (
-      <div className="flex flex-col gap-[14px]" dir="rtl">
+      <div className="briefing-grid" dir="rtl">
         {data.panels.map((p) => (
           <div key={p.key} className="kblock">
             <div className="bhead">
@@ -118,7 +118,7 @@ export default function Briefing({
     <div className="flex flex-col gap-[var(--space-4)]" dir="rtl">
       {data.panels.map((p) => (
         <section key={p.key} className="rounded-[var(--radius-lg)] border border-[var(--border)] p-[var(--space-3)]">
-          <h3 className="m-0 mb-[var(--space-1)] text-[length:var(--text-sm)] font-medium text-[var(--text)]">
+          <h3 className="sechead__title sechead__title--minor mb-[var(--space-1)]">
             {p.title}
           </h3>
           <ul className="m-0 list-none p-0">

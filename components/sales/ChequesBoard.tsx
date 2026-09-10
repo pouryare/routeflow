@@ -155,7 +155,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
       <div className="grid gap-4 md:grid-cols-3">
         {COLUMNS.map((col) => (
           <div key={col} className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-3">
-            <h2 className="text-sm font-bold text-text-muted">
+            <h2 className="sechead__title">
               {CHEQUE_STATUS_LABEL[col]} ({byStatus(col).length})
             </h2>
             {byStatus(col).map((c) => {

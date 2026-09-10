@@ -1,5 +1,6 @@
 "use client";
 
+import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { faNum, faToman } from "@/lib/format";
@@ -23,12 +24,9 @@ interface ProductMix {
   total_toman: number;
 }
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "پیش‌نویس",
-  confirmed: "تأییدشده",
-  delivered: "تحویل‌شده",
-  cancelled: "لغوشده",
-};
+/* ORDER_STATUS_LABEL, not a local map: a local one keyed `draft`/`delivered` never
+   matched the real, uppercase statuses and printed «DELIVERED» to Persian readers. */
+const STATUS_LABEL = ORDER_STATUS_LABEL as Record<string, string>;
 
 /** What this shop has bought, inside the map's customer panel.
  *
@@ -132,7 +130,7 @@ export default function PurchaseHistory({
                         <span className="font-mono tabular-nums text-text-faint">
                           {faJalaliDate(o.order_date)}
                         </span>{" "}
-                        {STATUS_LABEL[o.status] ?? o.status}
+                        {STATUS_LABEL[o.status] ?? "نامشخص"}
                       </span>
                       <span className="shrink-0 font-mono tabular-nums text-text">
                         {faToman(o.total_toman)}

@@ -193,7 +193,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
       </form>
 
       <div className="flex flex-col gap-2">
-        <h2 className="text-sm font-bold text-text-muted">دریافت‌های اخیر</h2>
+        <h2 className="sechead__title">دریافت‌های اخیر</h2>
         {payments === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : payments.length === 0 ? (

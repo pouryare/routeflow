@@ -98,7 +98,7 @@ export default async function StockPage() {
 
       {expiring.length > 0 && (
         <section className="card p-[var(--space-4)]">
-          <h2 className="m-0 text-[length:var(--text-base)] font-medium" style={{ color: "var(--warn)" }}>
+          <h2 className="sechead__title" style={{ color: "var(--warn)" }}>
             انقضا — {faNum(expiring.length)} بچ
           </h2>
           <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
@@ -149,7 +149,7 @@ export default async function StockPage() {
 
       {purchases.length > 0 && (
         <section className="card p-[var(--space-4)]">
-          <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
+          <h2 className="sechead__title">
             خریدهای اخیر
           </h2>
           <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">

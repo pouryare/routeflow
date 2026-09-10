@@ -586,7 +586,7 @@ export default function LeadsPage() {
         {/* ---- the run ---------------------------------------------------------- */}
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+            <h2 className="sechead__title">
               {activeList ? `مسیر: ${activeList.name}` : "مسیر فعلی"} ({faNum(run.length)})
             </h2>
             <div className="flex flex-wrap items-center gap-1.5">
@@ -757,7 +757,7 @@ export default function LeadsPage() {
         {/* ---- all leads --------------------------------------------------------- */}
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+            <h2 className="sechead__title">
               همه مکان‌ها ({faNum(locations.length)})
             </h2>
             <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">

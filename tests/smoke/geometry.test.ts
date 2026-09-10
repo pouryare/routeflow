@@ -233,3 +233,36 @@ describe("search overlay", () => {
     await close();
   }, 90_000);
 });
+
+describe("layout", () => {
+  /* Items 4 and 6. The pocket's four stat tiles came out on two rows because .statrow
+     was a three-column grid; the day briefing stacked its short panels one per row across
+     the full width. Measured, because only a browser knows where a wrap happens. */
+  it.each(["/sales/pocket", "/sales/dashboard", "/sales", "/sales/stock"])(
+    "every stat row on %s stays on one line at laptop width",
+    async (route) => {
+      const { page, close } = await open(route, { width: 1280, height: 800 });
+      const broken = await page.evaluate(() =>
+        Array.from(document.querySelectorAll<HTMLElement>(".statrow"))
+          .map((row, i) => {
+            const tops = Array.from(row.children).map((c) => Math.round(c.getBoundingClientRect().top));
+            return { i, n: tops.length, spread: Math.max(...tops) - Math.min(...tops) };
+          })
+          .filter((r) => r.n > 1 && r.spread > 4),
+      );
+      await close();
+      expect(broken, `stat rows that wrapped: ${JSON.stringify(broken)}`).toEqual([]);
+    },
+    90_000,
+  );
+
+  it("the day briefing puts its panels side by side", async () => {
+    const { page, close } = await open("/sales/today", { width: 1440, height: 900 });
+    const { panels, columns } = await page.evaluate(() => {
+      const cards = Array.from(document.querySelectorAll<HTMLElement>(".briefing-grid > .kblock"));
+      return { panels: cards.length, columns: new Set(cards.map((c) => Math.round(c.getBoundingClientRect().left))).size };
+    });
+    await close();
+    if (panels >= 2) expect(columns, `${panels} panels in ${columns} column(s)`).toBeGreaterThanOrEqual(2);
+  }, 90_000);
+});

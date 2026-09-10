@@ -1,19 +1,11 @@
 "use client";
 
+import { taskKindLabel } from "@/lib/tasks/labels";
 import { useEffect, useState } from "react";
 import { faNum } from "@/lib/format";
 import type { BoardLane } from "@/lib/repo/board";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import { lanesFor, type BoardView } from "@/lib/tasks/lenses";
-
-const KIND_FA: Record<string, string> = {
-  outreach: "پیگیری",
-  order: "سفارش",
-  visit: "بازدید",
-  reminder: "یادآوری",
-  note: "یادداشت",
-  admin: "اداری",
-};
 
 /** The Board on a phone: no side-by-side lanes, no horizontal scroll. Either a lane
  *  pager (one lane, full width, stepped by a segmented control) or a vertical accordion.
@@ -32,13 +24,13 @@ export default function BoardMobile({
   onCustomer: (id: number) => void;
 }) {
   const [mode, setMode] = useState<"pager" | "stack">(initialMode);
-  const [laneIx, setLaneIx] = useState(0);
+  const [laneIxRaw, setLaneIx] = useState(0);
+  /* Lanes can shrink under the cursor (a refetch, a view switch). Clamp at render rather
+     than resetting from an effect, which set state after every such render. */
+  const laneIx = laneIxRaw < lanes.length ? laneIxRaw : 0;
   const [accOpen, setAccOpen] = useState(0);
   const [sheetFor, setSheetFor] = useState<{ card: TaskCard; laneId: string } | null>(null);
 
-  useEffect(() => {
-    if (laneIx >= lanes.length) setLaneIx(0);
-  }, [lanes.length, laneIx]);
 
   function pickMode(m: "pager" | "stack") {
     setMode(m);
@@ -69,7 +61,7 @@ export default function BoardMobile({
             {c.customer.name}
           </button>
         ) : null}
-        <span>{KIND_FA[c.kind] ?? c.kind}</span>
+        <span>{taskKindLabel(c.kind)}</span>
       </div>
       <button
         type="button"

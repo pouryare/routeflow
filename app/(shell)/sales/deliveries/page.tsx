@@ -70,7 +70,7 @@ export default async function DeliveriesPage() {
                   {faNum(d.seq)}
                 </td>
                 <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">
-                  {D_LABEL[d.status] ?? d.status}
+                  {D_LABEL[d.status] ?? "نامشخص"}
                 </td>
                 <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
                   {d.completed_at ? faJalaliDate(d.completed_at) : d.planned_date ? faJalaliDate(d.planned_date) : "—"}

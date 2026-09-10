@@ -79,7 +79,7 @@ export default function PhotoGallery({
   return (
     <div className="mt-4 border-t border-border pt-3">
       <div className="mb-2 flex items-center justify-between">
-        <h3 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+        <h3 className="sechead__title sechead__title--minor">
           گالری تصاویر{photos && photos.length > 0 ? ` (${faNum(photos.length)})` : ""}
         </h3>
         <label className="cursor-pointer rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent">

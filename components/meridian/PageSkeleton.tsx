@@ -1,15 +1,20 @@
-import { SkeletonBlock, SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
+import { SkeletonBlock, SkeletonLabel } from "@/components/Skeleton";
 
 /** The body of a route's loading state, shaped like the page that is coming.
  *
  *  Five shapes rather than thirty-four bespoke files. A skeleton's job is to reserve the
  *  right amount of space in roughly the right arrangement so nothing jumps when the data
- *  lands; past that, detail is cost without benefit — and thirty-four hand-drawn
- *  skeletons is thirty-four more things to drift out of sync with their pages.
+ *  lands; past that, detail is cost without benefit.
+ *
+ *  **Silhouettes, not tile scatters (item 20).** Each shape is at most four shimmering
+ *  masses: the board used to be twelve small tiles and the grid five, which read as
+ *  "multiple tiny cards" rather than as a page about to appear.
+ *  tests/page-skeleton.test.ts caps the count per shape.
  *
  *  Server component: no state, no effects.
  */
-export type PageShape = "rows" | "grid" | "board" | "chart" | "form";
+export const PAGE_SHAPES = ["rows", "grid", "board", "chart", "form"] as const;
+export type PageShape = (typeof PAGE_SHAPES)[number];
 
 export default function PageSkeleton({ shape = "rows" }: { shape?: PageShape }) {
   return (
@@ -22,46 +27,37 @@ export default function PageSkeleton({ shape = "rows" }: { shape?: PageShape }) 
 
 function body(shape: PageShape) {
   switch (shape) {
-    /* Stat tiles over a chart: dashboards and day views. */
+    /* A stat strip over one big panel: dashboards and day views. */
     case "grid":
       return (
         <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-            {Array.from({ length: 4 }, (_, i) => (
-              <SkeletonBlock key={i} className="h-24 rounded-[var(--r-lg)]" />
-            ))}
-          </div>
-          <SkeletonBlock className="h-64 rounded-[var(--r-2xl)]" />
+          <SkeletonBlock className="h-28" />
+          <SkeletonBlock className="h-80" />
         </div>
       );
-    /* Columns of cards: the assignment board, the order pipeline, run lanes. */
+    /* Three tall columns: the assignment board, the order pipeline, run lanes. */
     case "board":
       return (
-        <div className="grid gap-3 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-3">
           {Array.from({ length: 3 }, (_, c) => (
-            <div key={c} className="flex flex-col gap-2">
-              <SkeletonBlock className="h-7 w-28 rounded-[var(--r-sm)]" />
-              {Array.from({ length: 3 }, (_, i) => (
-                <SkeletonBlock key={i} className="h-24 rounded-[var(--r-lg)]" />
-              ))}
-            </div>
+            <SkeletonBlock key={c} className="h-[26rem]" />
           ))}
         </div>
       );
     /* One big canvas: the map, the planner, the gallery. */
     case "chart":
-      return <SkeletonBlock className="h-[60vh] rounded-[var(--r-2xl)]" />;
-    /* A column of fields. */
+      return <SkeletonBlock className="h-[60vh]" />;
+    /* A form is one card of fields. */
     case "form":
-      return (
-        <div className="flex max-w-2xl flex-col gap-3">
-          {Array.from({ length: 5 }, (_, i) => (
-            <SkeletonBlock key={i} className="h-14 rounded-[var(--r-lg)]" />
-          ))}
-        </div>
-      );
+      return <SkeletonBlock className="h-[26rem] max-w-2xl" />;
+    /* A toolbar over one list card. */
     case "rows":
     default:
-      return <SkeletonRows rows={7} />;
+      return (
+        <div className="flex flex-col gap-4">
+          <SkeletonBlock className="h-11 w-full max-w-md" />
+          <SkeletonBlock className="h-[28rem]" />
+        </div>
+      );
   }
 }

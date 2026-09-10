@@ -678,7 +678,7 @@ export default function PlannerPage() {
         </div>
 
         <section className="no-print rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          <h2 className="sechead__title mb-2">
             افزودن مشتری به برنامه
           </h2>
           <div className="relative">
@@ -707,7 +707,7 @@ export default function PlannerPage() {
 
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+            <h2 className="sechead__title">
               برنامه {dayLabel(new Date(selectedDate))} ({faNum(dayPlans.length)})
             </h2>
             <div className="no-print flex items-center gap-2">

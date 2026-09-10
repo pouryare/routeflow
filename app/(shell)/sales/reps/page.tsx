@@ -55,7 +55,7 @@ export default async function RepsPage() {
                     {r.rep_code} · {r.business_name}
                   </Link>
                 </td>
-                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{REP_STAGE_LABEL[r.stage as RepStage] ?? r.stage}</td>
+                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{REP_STAGE_LABEL[r.stage as RepStage] ?? "نامشخص"}</td>
                 <td className="border-b border-[var(--border)] py-2 text-left tabular-nums" style={{ color: BAND[r.band].tone }}>
                   {faNum(r.score)} · {BAND[r.band].label}
                 </td>

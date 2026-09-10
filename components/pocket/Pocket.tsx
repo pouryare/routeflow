@@ -1,5 +1,6 @@
 "use client";
 
+import { TASK_KIND_TONE } from "@/lib/tasks/labels";
 import { useCallback, useState } from "react";
 import Link from "next/link";
 import { faNum } from "@/lib/format";
@@ -9,14 +10,7 @@ import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
-const KIND_TONE: Record<string, string> = {
-  outreach: "accent",
-  order: "amber",
-  visit: "sage",
-  reminder: "crit",
-  note: "plum",
-  admin: "plum",
-};
+const KIND_TONE = TASK_KIND_TONE as Record<string, string>;
 const DUE_LABEL = (c: TaskCard, now = new Date().toISOString().slice(0, 10)) =>
   c.status === "done"
     ? "انجام‌شده"

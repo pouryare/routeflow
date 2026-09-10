@@ -32,7 +32,7 @@ export default function CoveragePanels({
       <DataFreshness syncedAt={newestSync(data.customers)} now={now} />
 
       <section>
-        <h3 className="mb-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-[var(--text-muted)]">
+        <h3 className="sechead__title sechead__title--minor mb-[var(--space-2)]">
           وضعیت مناطق ({faNum(data.districtTotal)})
         </h3>
         <div className="grid grid-cols-2 gap-[var(--space-2)] sm:grid-cols-4">
@@ -91,7 +91,7 @@ export default function CoveragePanels({
 
       {data.dayLog.length > 0 && (
         <section>
-          <h3 className="mb-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-[var(--text-muted)]">
+          <h3 className="sechead__title sechead__title--minor mb-[var(--space-2)]">
             روزهای کاری اخیر
           </h3>
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-[var(--border)]">

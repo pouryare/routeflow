@@ -35,7 +35,14 @@ export async function startDevServer(): Promise<() => Promise<void>> {
    *  when the leak happened. A smoke suite that tests yesterday's build while reporting
    *  success is the worst thing this file could do, and it did it once already. Killing
    *  the negated pid signals the whole group. */
+  /* vitest runs with NODE_ENV=test and a child inherits it; next dev under NODE_ENV=test
+     is a non-standard mode (it warns, and next.config's dev-only branches misfire). Let
+     next set its own. */
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => k !== "NODE_ENV"),
+  ) as NodeJS.ProcessEnv;
   const proc = spawn("npx", ["next", "dev", "-p", String(PORT)], {
+    env,
     cwd: new URL("../..", import.meta.url).pathname,
     stdio: "ignore",
     detached: true,

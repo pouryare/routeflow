@@ -82,7 +82,7 @@ export default function GroupTerritoryEditor({
 
   return (
     <section className="rounded-lg border border-border bg-surface p-4">
-      <h2 className="mb-3 text-base font-bold text-text">تخصیص محدوده</h2>
+      <h2 className="sechead__title mb-3">تخصیص محدوده</h2>
 
       <div className="mb-3 flex flex-wrap gap-2">
         <input

@@ -133,7 +133,7 @@ export default function AdminUsersPage() {
       )}
 
       <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="mb-3 text-base font-bold text-text">حساب تازه</h2>
+        <h2 className="sechead__title mb-3">حساب تازه</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <input
             value={form.display_name}
@@ -198,7 +198,7 @@ export default function AdminUsersPage() {
       </form>
 
       <section className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="mb-3 text-base font-bold text-text">حساب‌ها</h2>
+        <h2 className="sechead__title mb-3">حساب‌ها</h2>
         {users === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : (

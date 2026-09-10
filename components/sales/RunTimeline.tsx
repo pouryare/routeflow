@@ -56,7 +56,7 @@ export default function RunTimeline({ runs }: { runs: TimelineRun[] }) {
     <section aria-labelledby="timeline-heading">
       <h2
         id="timeline-heading"
-        className="m-0 mb-[var(--space-1)] text-[length:var(--text-md)] font-medium text-[var(--text)]"
+        className="sechead__title mb-[var(--space-1)]"
       >
         بار مسیرها
       </h2>

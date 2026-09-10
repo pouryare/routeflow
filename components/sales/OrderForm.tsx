@@ -269,7 +269,7 @@ export default function OrderForm({
       </section>
 
       <section className="card p-[var(--space-4)]">
-        <h2 className="m-0 mb-[var(--space-3)] text-[length:var(--text-base)] font-medium text-[var(--text)]">
+        <h2 className="sechead__title mb-[var(--space-3)]">
           اقلام سفارش
         </h2>
 

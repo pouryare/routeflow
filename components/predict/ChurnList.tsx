@@ -47,7 +47,7 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
               <span className="flex items-center gap-[var(--space-2)] tabular-nums text-[var(--text-muted)]">
                 <span>{r.reason_fa ?? ""}</span>
                 <span style={{ color: BAND[r.band]?.tone ?? "var(--text-muted)" }}>
-                  {Math.round(r.probability * 100).toLocaleString("fa-IR")}٪ · {BAND[r.band]?.label ?? r.band}
+                  {Math.round(r.probability * 100).toLocaleString("fa-IR")}٪ · {BAND[r.band]?.label ?? "نامشخص"}
                 </span>
               </span>
             </li>

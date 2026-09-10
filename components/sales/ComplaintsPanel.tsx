@@ -193,9 +193,9 @@ export default function ComplaintsPanel({
               <tr key={c.id} className="border-b border-border last:border-0">
                 <td className="p-2">{label.customer(c.customer_id)}</td>
                 <td className="p-2">{label.product(c.product_id)}</td>
-                <td className="p-2">{CATEGORY_LABEL[c.category] ?? c.category}</td>
-                <td className="p-2">{SEVERITY_LABEL[c.severity] ?? c.severity}</td>
-                <td className="p-2">{STATUS_LABEL[c.status] ?? c.status}</td>
+                <td className="p-2">{CATEGORY_LABEL[c.category] ?? "نامشخص"}</td>
+                <td className="p-2">{SEVERITY_LABEL[c.severity] ?? "نامشخص"}</td>
+                <td className="p-2">{STATUS_LABEL[c.status] ?? "نامشخص"}</td>
                 <td className="p-2">{faJalaliDateTime(c.reported_at)}</td>
                 {canManage && (
                   <td className="p-2 text-left">

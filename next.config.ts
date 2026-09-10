@@ -1,4 +1,5 @@
 import type { NextConfig } from "next";
+import { PHASE_DEVELOPMENT_SERVER } from "next/constants";
 
 // Pragmatic CSP, not a strict nonce-based one: this app's login page ships one
 // inline <style> keyframe and Next's own hydration/RSC payloads rely on inline
@@ -13,11 +14,13 @@ import type { NextConfig } from "next";
 // for a plain <img src>, but not for the SW's cache-then-fetch path, which silently
 // fails under a mismatched CSP with no violation reported on the page itself (the
 // failure happens inside the worker's scope) and just shows up as tiles never loading.
-const CSP = [
+/* React's development build rebuilds server call stacks with eval(); without it every dev
+   page logs an error. Keyed on Next's own phase, not on NODE_ENV: a dev server spawned by
+   the test runner inherits NODE_ENV=test, which silently dropped the flag. Production
+   never evals, so production never gets it. */
+const csp = (dev: boolean) => [
   "default-src 'self'",
-  /* React's development build rebuilds server call stacks with eval(); without it every
-     dev page logs an error. Production never evals, so production never gets the flag. */
-  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
+  `script-src 'self' 'unsafe-inline'${dev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com",
   "font-src 'self' data:",
@@ -33,8 +36,9 @@ const CSP = [
   "object-src 'none'",
 ].join("; ");
 
-const nextConfig: NextConfig = {
+const nextConfig = (phase: string): NextConfig => ({
   async headers() {
+    const CSP = csp(phase === PHASE_DEVELOPMENT_SERVER);
     return [
       {
         source: "/(.*)",
@@ -58,6 +62,6 @@ const nextConfig: NextConfig = {
       },
     ];
   },
-};
+});
 
 export default nextConfig;
