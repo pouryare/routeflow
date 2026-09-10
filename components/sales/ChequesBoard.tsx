@@ -1,5 +1,6 @@
 "use client";
 
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
@@ -139,12 +140,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
         />
         <label className="flex items-center gap-2 text-xs text-text-muted">
           سررسید
-          <input
-            type="date"
-            className="rounded border border-border bg-bg p-2 text-sm"
-            value={form.due_date}
-            onChange={(e) => setForm((f) => ({ ...f, due_date: e.target.value }))}
-          />
+          <JalaliDateInput value={form.due_date} onChange={(iso) => setForm((f) => ({ ...f, due_date: iso }))} aria-label="تاریخ سررسید" />
         </label>
         <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
           ثبت چک

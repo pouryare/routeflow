@@ -77,6 +77,18 @@ async function open(
     await context.close();
     throw new Error(`${route} redirected to ${landed} — the smoke session was not accepted`);
   }
+
+  /* RevealRoute lifts cards 16px and staggers them, so a box measured mid-entrance sits a
+     few pixels off its neighbour: a stat row read as "wrapped" by 5px on a slow run. Wait
+     for every finite animation to land; infinite ones (spinners, pulses) never would. */
+  await page.evaluate(() =>
+    Promise.all(
+      document
+        .getAnimations()
+        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .map((a) => a.finished.catch(() => undefined)),
+    ),
+  );
   return { page, close: () => context.close() };
 }
 
@@ -423,5 +435,73 @@ describe("order pipeline drag", () => {
     expect(Math.abs(ghost!.top - (end.y - 10)), "the ghost left the grab point").toBeLessThanOrEqual(2);
     expect(res.status(), "the drop did not confirm the order").toBeLessThan(300);
     expect(cursors.filter((c) => c === "grab")).toEqual([]);
+  }, 120_000);
+});
+
+describe("global services", () => {
+  /* Slice N. The app had no not-found page at all: a mistyped address showed the
+     framework's bare English default. */
+  it("an unknown address gets the themed 404, in Persian, with a clean console", async () => {
+    const { page, close } = await open("/sales/dashboard", { width: 1440, height: 900 });
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => {
+      if (m.type() === "error" && !/404|Not Found/i.test(m.text())) errors.push(m.text());
+    });
+    const res = await page.goto(`${BASE}/this-page-does-not-exist`, { waitUntil: "load" });
+    const heading = await page.locator(".statepage__title").textContent();
+    await close();
+    expect(res?.status()).toBe(404);
+    expect(heading ?? "").toMatch(/[؀-ۿ]/);
+    expect(errors, errors.join("\n")).toEqual([]);
+  }, 90_000);
+
+  /* Items 19/21, the input half: the browser's Gregorian date picker is gone from every
+     form; the Shamsi picker stores the same ISO value. */
+  it("the date field picks a Shamsi date", async () => {
+    const { page, close } = await open("/sales/routing", { width: 1440, height: 900 });
+    await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
+    const field = page.locator(".jdate__field").first();
+    await field.click();
+    await page.locator(".jdate__pop").waitFor({ state: "visible", timeout: 5000 });
+    await page.locator(".jdate__day").nth(9).click();
+    const shown = (await field.textContent()) ?? "";
+    const native = await page.locator('input[type="date"]').count();
+    await close();
+    expect(shown).toMatch(/^۱۴[۰-۹]{2}/);
+    expect(native).toBe(0);
+  }, 90_000);
+
+  /* Login-As, end to end, on the database snapshot: start, see the banner, come back. */
+  it("an owner can act as a salesperson and come back", async () => {
+    const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
+    const target = db
+      .prepare("SELECT id, display_name FROM users WHERE role = 'salesperson' AND active = 1 ORDER BY id LIMIT 1")
+      .get() as { id: number; display_name: string } | undefined;
+    db.close();
+    expect(target, "the snapshot has no active salesperson").toBeTruthy();
+
+    const { page, close } = await open("/sales/dashboard", { width: 1440, height: 900 });
+    const started = await page.context().request.post(`${BASE}/api/admin/impersonate`, { data: { user_id: target!.id } });
+    expect(started.status(), await started.text()).toBe(200);
+
+    await page.goto(`${BASE}/sales/pocket`, { waitUntil: "networkidle" });
+    const banner = page.locator(".actas");
+    await banner.waitFor({ state: "visible", timeout: 10_000 });
+    const text = (await banner.textContent()) ?? "";
+
+    await page.getByRole("button", { name: "بازگشت به حساب خودم" }).click();
+    await page.waitForURL(/\/sales$/, { timeout: 15_000 });
+    await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
+    const after = await page.locator(".actas").count();
+    await close();
+
+    const log = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
+    const kinds = (log.prepare("SELECT kind FROM events WHERE kind LIKE 'auth.impersonation_%' ORDER BY id").all() as { kind: string }[]).map((r) => r.kind);
+    log.close();
+
+    expect(text).toContain(target!.display_name);
+    expect(after, "the banner survived «بازگشت»").toBe(0);
+    expect(kinds).toEqual(["auth.impersonation_started", "auth.impersonation_ended"]);
   }, 120_000);
 });

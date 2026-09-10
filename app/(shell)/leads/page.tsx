@@ -867,7 +867,7 @@ export default function LeadsPage() {
                             aria-label={`مسیریابی به ${l.name}`}
                             className="rounded-[var(--radius-sm)] px-1.5 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                           >
-                            ↗
+                            <Icon name="external-link" size="sm" />
                           </a>
                         )}
                         <CopyButton

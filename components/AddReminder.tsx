@@ -1,5 +1,6 @@
 "use client";
 
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
 
@@ -71,12 +72,7 @@ export default function AddReminder({
         </button>
       ) : (
         <div className="flex flex-col gap-2">
-          <input
-            type="date"
-            value={dueDate}
-            onChange={(e) => setDueDate(e.target.value)}
-            className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent"
-          />
+          <JalaliDateInput value={dueDate} onChange={setDueDate} aria-label="تاریخ یادآوری" />
           <input
             value={message}
             onChange={(e) => setMessage(e.target.value)}

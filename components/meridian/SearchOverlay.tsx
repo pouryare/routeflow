@@ -13,14 +13,14 @@ import {
   type SearchHit, type SearchKind,
 } from "@/lib/searchModel";
 
-const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt" };
+const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user" };
 const SECTION: Record<SearchKind | "recent", string> = {
-  recent: "اخیر", page: "صفحه‌ها", customer: "مشتریان", order: "سفارش‌ها",
+  recent: "اخیر", page: "صفحه‌ها", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر",
 };
 
 type Section = { key: SearchKind | "recent"; hits: SearchHit[] };
-type Remote = { customers: SearchHit[]; orders: SearchHit[] };
-const NO_REMOTE: Remote = { customers: [], orders: [] };
+type Remote = { customers: SearchHit[]; orders: SearchHit[]; users: SearchHit[] };
+const NO_REMOTE: Remote = { customers: [], orders: [], users: [] };
 
 /** One search for the whole app (spec D4): pages, customers and orders, full-screen.
  *
@@ -84,7 +84,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
     const t = window.setTimeout(() => {
       fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
         .then((r) => (r.ok ? r.json() : NO_REMOTE))
-        .then((j) => setRemote({ customers: j.customers ?? [], orders: j.orders ?? [], for: q }))
+        .then((j) => setRemote({ customers: j.customers ?? [], orders: j.orders ?? [], users: j.users ?? [], for: q }))
         .catch(() => { /* aborted by the next keystroke, or offline: pages still answer */ });
     }, 180);
     return () => { window.clearTimeout(t); ctl.abort(); };
@@ -99,6 +99,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
       { key: "page", hits: rankPages(tabs, q) },
       { key: "customer", hits: fresh ? remote.customers : [] },
       { key: "order", hits: fresh ? remote.orders : [] },
+      { key: "user", hits: fresh ? remote.users : [] },
     ] as Section[]).filter((s) => s.hits.length > 0);
   }, [q, recent, remote, fresh, tabs]);
 
@@ -109,6 +110,22 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   const setActive = (i: number) => setCursor({ i, for: listKey });
 
   const choose = (hit: SearchHit) => {
+    /* Login-As acts, it does not navigate: confirm, start it, reload into their view. It
+       is never stored as a recent, so it cannot be re-run by a stray Enter later. */
+    if (hit.kind === "user") {
+      if (!window.confirm(`برنامه را به‌جای «${hit.label}» ببینید؟ تا وقتی «بازگشت» را نزنید، هر کاری به نام او ثبت می‌شود.`)) return;
+      onClose();
+      void fetch("/api/admin/impersonate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: Number(hit.id.split(":")[1]) }),
+      }).then((r) => {
+        if (!r.ok) return;
+        router.push("/sales");
+        router.refresh();
+      });
+      return;
+    }
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(pushRecent(recent, hit))); } catch { /* per-viewer nicety only */ }
     onClose();
     /* Already on the map: hand the customer to it. A push to /map?c= from /map changes

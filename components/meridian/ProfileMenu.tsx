@@ -1,5 +1,7 @@
 "use client";
 
+import SyncRow from "@/components/meridian/SyncRow";
+import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import SkinToggle from "@/components/meridian/SkinToggle";
@@ -101,14 +103,16 @@ export default function ProfileMenu({
           </div>
 
           <Link className="pm__link" href="/map" onClick={() => setOpen(false)}>
-            ↗ نقشهٔ پوشش
+            <Icon name="arrow-up-right" size="sm" /> نقشهٔ پوشش
           </Link>
 
           <Link className="pm__link" href="/settings/notifications" onClick={() => setOpen(false)}>
-            ↗ تنظیمات اعلان‌ها
+            <Icon name="arrow-up-right" size="sm" /> تنظیمات اعلان‌ها
           </Link>
 
           <div className="pm__sep" />
+
+          <SyncRow />
 
           <div className="pm__row">
             <span>پوسته</span>

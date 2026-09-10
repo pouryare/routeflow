@@ -28,14 +28,12 @@ export default function EmptyState({
   className?: string;
 }) {
   return (
-    <div
-      className={`flex flex-col items-center gap-2 rounded-[var(--radius-md)] border border-dashed border-border px-4 py-6 text-center ${className}`}
-    >
-      <span aria-hidden="true" className="text-text-faint opacity-80">
-        <Icon name={icon} size="lg" />
+    <div className={`empty ${className}`.trim()}>
+      <span className="empty__icon" aria-hidden="true">
+        <Icon name={icon} size="md" />
       </span>
-      <p className="text-[length:var(--text-sm)] text-text-muted">{title}</p>
-      {hint && <p className="max-w-sm text-[length:var(--text-xs)] leading-5 text-text-faint">{hint}</p>}
+      <p className="empty__title">{title}</p>
+      {hint && <p className="empty__hint">{hint}</p>}
       {action}
     </div>
   );

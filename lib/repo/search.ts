@@ -6,6 +6,7 @@ import { faDigits } from "@/lib/format";
 import { buildMapLink } from "@/lib/deepLink";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/orderStateMachine";
 import { MIN_REMOTE_QUERY, type SearchHit } from "@/lib/searchModel";
+import { ROLE_LABEL } from "@/lib/roles";
 
 /** The server half of the search overlay (components/meridian/SearchOverlay.tsx).
  *
@@ -69,5 +70,31 @@ export function searchOrders(db: DatabaseSync, session: Session, q: string, limi
       label: `سفارش ${faDigits(r.order_no)}`,
       sub: `${r.customer_name} · ${ORDER_STATUS_LABEL[r.status] ?? "نامشخص"}`,
       href: `/sales/orders/${r.id}`,
+    }));
+}
+
+/** Login-As candidates for the overlay's «ورود به‌جای کاربر» section: owners only, their
+ *  own organisation only, and never someone the Login-As route would refuse (another
+ *  owner, a platform owner, a deactivated account, themselves). lib/impersonation.ts is
+ *  the rule; this only avoids offering what it would turn down. */
+export function searchUsers(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+  if (session.role !== "owner" || tooShort(q)) return [];
+  const rows = db
+    .prepare(
+      `SELECT id, display_name, username, role FROM users
+        WHERE organization_id = ? AND active = 1 AND id <> ?
+          AND role NOT IN ('owner', 'platform_owner')
+        ORDER BY display_name`,
+    )
+    .all(session.organizationId, session.user.id) as unknown as { id: number; display_name: string; username: string; role: string }[];
+  return rows
+    .filter((u) => matchesQuery(`${u.display_name} ${u.username}`, q))
+    .slice(0, limit)
+    .map((u) => ({
+      kind: "user",
+      id: `user:${u.id}`,
+      label: u.display_name,
+      sub: (ROLE_LABEL as Record<string, string>)[u.role] ?? "کاربر",
+      href: "/sales",
     }));
 }

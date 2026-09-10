@@ -99,7 +99,11 @@ export function proxy(req: NextRequest) {
     return deny("/sales");
   }
 
-  if (isAdmin && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
+  /* Login-As: «بازگشت» is called while the session is still the impersonated user's, so
+     this one method on this one path is open to any signed-in session. The route itself
+     refuses anything that is not a genuine impersonation by the saved owner. */
+  const isEndImpersonation = pathname === "/api/admin/impersonate" && req.method === "DELETE";
+  if (isAdmin && !isEndImpersonation && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
   if (isDriver && claims.role !== "driver") return deny("/sales");

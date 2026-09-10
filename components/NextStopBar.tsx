@@ -178,7 +178,7 @@ export default function NextStopBar({
             aria-label="مسیریابی به این توقف"
             className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
           >
-            مسیریابی ↗
+            مسیریابی <Icon name="external-link" size="sm" />
           </a>
         )}
 

@@ -1,3 +1,4 @@
+import ImpersonationBanner from "@/components/meridian/ImpersonationBanner";
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
@@ -40,6 +41,8 @@ export default async function AppHeader() {
 
   return (
     <Chrome>
+      {/* Login-As: an owner seeing the app as this user. Not dismissible, see the banner. */}
+      {session.actorId ? <ImpersonationBanner asName={session.user.display_name} /> : null}
       <div className="top">
         <HoverPill tabs={tabs} groups={APP_GROUPS} />
         <div className="topright">

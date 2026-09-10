@@ -1,5 +1,6 @@
 "use client";
 
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 
@@ -63,20 +64,7 @@ export default function QuickAdd({
         {kind === "reminder" ? "+ یادآوری بگذار" : "+ یادداشت"}
       </div>
       {kind === "reminder" ? (
-        <input
-          type="date"
-          value={due}
-          onChange={(e) => setDue(e.target.value)}
-          style={{
-            fontFamily: "var(--fa)",
-            fontSize: 12.5,
-            color: "var(--ink)",
-            background: "var(--card)",
-            border: "1px solid var(--line-2)",
-            borderRadius: 8,
-            padding: "7px 9px",
-          }}
-        />
+        <JalaliDateInput value={due} onChange={setDue} aria-label="تاریخ یادآوری" />
       ) : null}
       <input
         value={text}

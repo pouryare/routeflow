@@ -86,7 +86,7 @@ describe("English enums never reach Persian copy", () => {
        the map misses, a Persian reader gets «DELIVERED». The journey page's map was keyed
        `draft`/`delivered` against uppercase statuses, so it missed every time and printed
        English on every order. Fall back to Persian («نامشخص») instead. */
-    const FALLBACK = /\?\?\s*[\w.?]+\.(status|payment_status|stage|kind|role|band|severity|category|state|type|lifecycle|action|key)\s*[}),]/g;
+    const FALLBACK = /\?\?\s*[\w.?]+\.(status|payment_status|stage|kind|role|band|severity|category|state|type|lifecycle|action|key|op)\s*[}),]/g;
     const offenders: string[] = [];
     for (const f of sourceFiles()) {
       const src = readFileSync(join(ROOT, f), "utf8");

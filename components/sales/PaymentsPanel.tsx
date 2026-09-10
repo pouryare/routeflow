@@ -1,5 +1,6 @@
 "use client";
 
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import { faJalaliDateTime } from "@/lib/jalali";
@@ -156,12 +157,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         <div className="grid grid-cols-2 gap-3">
           <label className="flex flex-col gap-1 text-sm">
             تاریخ
-            <input
-              type="date"
-              className="rounded border border-border bg-bg p-2"
-              value={receivedAt}
-              onChange={(e) => setReceivedAt(e.target.value)}
-            />
+            <JalaliDateInput value={receivedAt} onChange={setReceivedAt} required aria-label="تاریخ دریافت" />
           </label>
           <label className="flex flex-col gap-1 text-sm">
             شمارهٔ پیگیری / کارت‌خوان

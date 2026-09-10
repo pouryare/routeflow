@@ -61,8 +61,9 @@ export default function RunPanel({
             className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
           >
             {singleLeg
-              ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label} ↗`
-              : `شروع مسیر با ${faNum(stops.length)} توقف ↗`}
+              ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label}`
+              : `شروع مسیر با ${faNum(stops.length)} توقف`}{" "}
+            <Icon name="external-link" size="sm" />
           </a>
         )}
 
@@ -148,7 +149,7 @@ export default function RunPanel({
                 aria-label={`مسیریابی به ${s.name}`}
                 className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
               >
-                ↗
+                <Icon name="external-link" size="sm" />
               </a>
               <button
                 onClick={() => onRemove(s.id)}

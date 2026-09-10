@@ -7,7 +7,8 @@ import { normalisePersian } from "@/lib/persian";
  *  makes the overlay testable in a repo that does not render components in tests: the
  *  same arrangement as HoverPill's pillModel. Safe to import on the server: no DOM. */
 
-export type SearchKind = "page" | "customer" | "order";
+/** `user` is Login-As: choosing one acts rather than navigates, and is never a recent. */
+export type SearchKind = "page" | "customer" | "order" | "user";
 
 export type SearchHit = {
   kind: SearchKind;

@@ -7,13 +7,78 @@
  *  Browser code -- not unit-tested. Mounted once per app surface.
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
 import { getSyncEngine } from "@/lib/offline/syncEngine";
 import { OFFLINE_OPS } from "@/lib/offline/safety";
 import { faNum } from "@/lib/format";
-import type { OutboxRecord } from "@/lib/offline/outbox";
+import type { OutboxRecord, OutboxStatus } from "@/lib/offline/outbox";
 
-function since(iso: string | null): string {
+/** What each outbox state is called. The list printed the raw status («held»,
+ *  «conflict») to Persian readers before this map. */
+export const OUTBOX_STATUS_LABEL: Record<OutboxStatus, string> = {
+  held: "در انتظار ارسال، هنوز قابل لغو",
+  pending: "در صف ارسال",
+  sending: "در حال ارسال",
+  applied: "ثبت شد",
+  conflict: "ناسازگار با سرور",
+  failed: "ناموفق",
+};
+
+/** Online, as the browser reports it. useSyncExternalStore rather than an effect that
+ *  copies navigator.onLine into state: that effect set state on mount and was one of the
+ *  app's suppressed lint errors. The server snapshot is "online", which is what the first
+ *  client render must match. */
+const subscribeOnline = (cb: () => void) => {
+  window.addEventListener("online", cb);
+  window.addEventListener("offline", cb);
+  return () => {
+    window.removeEventListener("online", cb);
+    window.removeEventListener("offline", cb);
+  };
+};
+export function useOnline(): boolean {
+  return useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
+}
+
+/** The outbox and the last sync time, kept current from the engine's change events.
+ *  Shared by the floating indicator and the profile menu's sync row, so the two can never
+ *  disagree. It does not start the engine; SyncStatus, mounted once per surface, does. */
+export function useSyncState() {
+  const online = useOnline();
+  const [records, setRecords] = useState<OutboxRecord[]>([]);
+  const [lastSynced, setLastSynced] = useState<string | null>(null);
+
+  const refresh = useCallback(async () => {
+    const eng = getSyncEngine();
+    const [list, last] = [await eng.outbox.list(), eng.lastSyncedAt()];
+    setRecords(list);
+    setLastSynced(last);
+  }, []);
+
+  useEffect(() => {
+    const eng = getSyncEngine();
+    let alive = true;
+    const onChange = () => {
+      void eng.outbox.list().then((list) => {
+        if (!alive) return;
+        setRecords(list);
+        setLastSynced(eng.lastSyncedAt());
+      });
+    };
+    eng.addEventListener("change", onChange);
+    onChange();
+    return () => {
+      alive = false;
+      eng.removeEventListener("change", onChange);
+    };
+  }, []);
+
+  const pending = records.filter((r) => r.status === "held" || r.status === "pending" || r.status === "sending").length;
+  const trouble = records.filter((r) => r.status === "failed" || r.status === "conflict").length;
+  return { online, records, lastSynced, pending, trouble, refresh };
+}
+
+export function since(iso: string | null): string {
   if (!iso) return "هنوز همگام نشده";
   const mins = Math.round((Date.now() - Date.parse(iso)) / 60000);
   if (mins < 1) return "همین حالا";
@@ -46,39 +111,14 @@ export function syncBadge(s: {
 }
 
 export default function SyncStatus() {
-  const [online, setOnline] = useState(true);
-  const [records, setRecords] = useState<OutboxRecord[]>([]);
-  const [lastSynced, setLastSynced] = useState<string | null>(null);
+  const { online, records, lastSynced, pending, trouble, refresh } = useSyncState();
   const [open, setOpen] = useState(false);
 
-  const refresh = useCallback(async () => {
-    const eng = getSyncEngine();
-    setRecords(await eng.outbox.list());
-    setLastSynced(eng.lastSyncedAt());
+  /* This component owns the engine's lifetime: mounted once per surface. */
+  useEffect(() => {
+    getSyncEngine().start();
   }, []);
 
-  useEffect(() => {
-    const eng = getSyncEngine();
-    eng.start();
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setOnline(navigator.onLine);
-    const onOnline = () => setOnline(true);
-    const onOffline = () => setOnline(false);
-    window.addEventListener("online", onOnline);
-    window.addEventListener("offline", onOffline);
-    eng.addEventListener("change", refresh);
-    void refresh();
-    return () => {
-      window.removeEventListener("online", onOnline);
-      window.removeEventListener("offline", onOffline);
-      eng.removeEventListener("change", refresh);
-    };
-  }, [refresh]);
-
-  const pending = records.filter(
-    (r) => r.status === "held" || r.status === "pending" || r.status === "sending"
-  ).length;
-  const trouble = records.filter((r) => r.status === "failed" || r.status === "conflict").length;
   const badge = syncBadge({ online, pending, trouble });
 
   async function undo(id: string) {
@@ -124,9 +164,9 @@ export default function SyncStatus() {
             {records.map((r) => (
               <li key={r.id} className="flex items-center justify-between gap-2">
                 <span className="text-[var(--text)]">
-                  {OFFLINE_OPS[r.op]?.label_fa ?? r.op}
+                  {OFFLINE_OPS[r.op]?.label_fa ?? "عملیات"}
                   <span className="block text-[var(--text-faint)]">
-                    {r.status} · {new Date(r.occurred_at).toLocaleTimeString("fa-IR")}
+                    {OUTBOX_STATUS_LABEL[r.status] ?? "نامشخص"} · {new Date(r.occurred_at).toLocaleTimeString("fa-IR")}
                   </span>
                 </span>
                 {r.status === "held" && (

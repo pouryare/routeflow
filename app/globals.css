@@ -1963,6 +1963,11 @@ body {
 }
 .meridian .pm__link:hover { background: var(--sunk); color: var(--ink); }
 .meridian .pm__sep { height: 1px; background: var(--line); margin: 4px 0; }
+.meridian .pm__sync { font-size: 12px; font-weight: 600; }
+.meridian .pm__sync--good { color: var(--good); }
+.meridian .pm__sync--warn { color: var(--warn); }
+.meridian .pm__sync--crit { color: var(--crit); }
+.meridian .pm__sync--muted { color: var(--muted); }
 .meridian .pm__row {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
@@ -2903,6 +2908,70 @@ body {
   .meridian .acad__progress { grid-template-columns: 1fr; }
   .meridian .acad__search input { min-width: 0; width: 100%; }
 }
+
+/* ---- whole-screen states: 404, error, offline (StatePage.tsx, slice N) ------------ */
+.meridian .statepage { min-height: 70vh; display: grid; place-items: center; padding: 32px 16px; }
+.meridian .statepage__card {
+  width: min(32rem, 100%); display: flex; flex-direction: column; align-items: center; gap: 10px;
+  text-align: center; padding: 32px 28px; border-radius: var(--r-2xl);
+  background: var(--card); border: 1px solid var(--line); box-shadow: var(--sh-2);
+}
+.meridian .statepage__icon { width: 56px; height: 56px; border-radius: 999px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent-text); }
+.meridian .statepage__eyebrow { margin: 4px 0 0; font-size: 12px; font-weight: 700; color: var(--accent-text); }
+.meridian .statepage__title { margin: 0; font-size: 20px; font-weight: 800; color: var(--ink); }
+.meridian .statepage__hint { margin: 0; max-width: 28rem; font-size: 13.5px; line-height: 1.8; color: var(--muted); }
+.meridian .statepage__actions { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 6px; }
+.meridian .statepage__code { margin: 4px 0 0; font-size: 11.5px; color: var(--muted); }
+
+/* ---- Login-As banner (ImpersonationBanner.tsx) ---------------------------------------
+   Warm and unmissable on purpose: acting as someone else is the one state the reader
+   must never forget they are in. */
+.meridian .actas {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;
+  padding: 10px 14px; border-radius: var(--r-lg); font-size: 13px; color: var(--ink);
+  background: color-mix(in srgb, var(--warn) 16%, var(--card));
+  border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent);
+}
+.meridian .actas__text { flex: 1; min-width: 0; }
+
+/* ---- the Jalali date field (JalaliDateInput.tsx, items 19/21) ------------------------ */
+.meridian .jdate { position: relative; display: inline-block; }
+.meridian .jdate__field {
+  display: inline-flex; align-items: center; gap: 8px; min-width: 10rem; padding: 7px 10px;
+  border-radius: var(--r-md); border: 1px solid var(--line); background: var(--card);
+  color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer;
+}
+.meridian .jdate__field:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .jdate__placeholder { color: var(--muted); }
+.meridian .jdate__pop {
+  position: absolute; z-index: 70; top: calc(100% + 6px); inset-inline-start: 0; width: 17rem;
+  padding: 10px; border-radius: var(--r-lg); border: 1px solid var(--line);
+  background: var(--surface); box-shadow: var(--sh-3);
+}
+.meridian .jdate__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+.meridian .jdate__month { font-size: 13.5px; font-weight: 700; color: var(--ink); }
+.meridian .jdate__nav { width: 28px; height: 28px; border-radius: 999px; border: 0; background: var(--sunk); color: var(--ink-2); display: grid; place-items: center; cursor: pointer; }
+.meridian .jdate__grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.meridian .jdate__wd { font-size: 11px; color: var(--muted); text-align: center; padding: 4px 0; }
+.meridian .jdate__day {
+  height: 32px; border: 0; border-radius: var(--r-sm); background: transparent; color: var(--ink);
+  font: inherit; font-size: 13px; cursor: pointer; font-variant-numeric: tabular-nums;
+}
+.meridian .jdate__day:hover, .meridian .jdate__day.is-cursor { background: var(--sunk); }
+.meridian .jdate__day.is-today { box-shadow: inset 0 0 0 1px var(--accent); }
+.meridian .jdate__day.is-picked { background: var(--accent); color: var(--accent-ink); }
+.meridian .jdate__foot { display: flex; justify-content: space-between; margin-top: 8px; }
+
+/* ---- empty states (EmptyState.tsx) ---------------------------------------------------
+   A considered state, not a rendering that stopped halfway: an icon disc, what is empty,
+   and why or what would fill it. Quiet, because an empty list is not an error. */
+.meridian .empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 28px 16px;
+  text-align: center; border-radius: var(--r-lg); background: var(--card-2); border: 1px dashed var(--line-2);
+}
+.meridian .empty__icon { width: 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; background: var(--sunk); color: var(--muted); }
+.meridian .empty__title { margin: 0; font-size: 14px; font-weight: 600; color: var(--ink); }
+.meridian .empty__hint { margin: 0; max-width: 26rem; font-size: 12.5px; line-height: 1.7; color: var(--muted); }
 
 /* ---- the action centre (ActionCenter.tsx, item 10) ------------------------------
    Three columns of expandable decision cards. Tone is in the column header (dot + count),

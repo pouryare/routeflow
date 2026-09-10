@@ -34,6 +34,9 @@ export interface SessionClaims {
   tv: number;
   exp: number;
   name: string;
+  /** Set only while an owner is acting as this user (Login-As, lib/impersonation.ts): the
+   *  owner's user id. lib/session.ts re-validates it on every request. */
+  act?: number;
 }
 
 /** Token shape: "<base64url(JSON claims)>.<hmac-sha256 of that same base64url string>".

@@ -1,5 +1,6 @@
 "use client";
 
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useState } from "react";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
@@ -80,12 +81,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
   return (
     <div className="flex flex-col gap-[var(--space-3)]" dir="rtl">
       <div className="flex flex-wrap items-center gap-[var(--space-2)]">
-        <input
-          type="date"
-          value={date}
-          onChange={(e) => setDate(e.target.value)}
-          className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-2)] py-[var(--space-1)]"
-        />
+        <JalaliDateInput value={date} onChange={setDate} required aria-label="تاریخ مسیریابی" />
         <button
           type="button"
           disabled={busy}

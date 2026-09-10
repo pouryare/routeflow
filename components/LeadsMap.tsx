@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
@@ -197,7 +198,7 @@ export default function LeadsMap({
                       rel="noopener noreferrer"
                       className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent"
                     >
-                      مسیریابی ↗
+                      مسیریابی <Icon name="external-link" size="sm" />
                     </a>
                     {l.runIndex === null ? (
                       <button

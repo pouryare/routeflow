@@ -1,19 +1,21 @@
 import Link from "next/link";
+import StatePage from "@/components/meridian/StatePage";
 
+/** What the service worker serves when a page is not cached and there is no connection.
+ *  On the shared StatePage like the 404 and the error pages; the eyebrow used to be the
+ *  English word «Offline». The bare layout provides the `.meridian` scope. */
 export default function OfflinePage() {
   return (
-    <div dir="rtl" className="flex min-h-screen flex-col items-center justify-center gap-3 bg-bg p-6 text-center">
-      <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">Offline</div>
-      <h1 className="text-[length:var(--text-xl)] font-bold text-text">این صفحه در حالت آفلاین در دسترس نیست</h1>
-      <p className="max-w-sm text-[length:var(--text-sm)] text-text-muted">
-        نقشه و اطلاعات ذخیره‌شده قبلی ممکن است همچنان قابل مشاهده باشند. وقتی اتصال اینترنت برقرار شد دوباره تلاش کنید.
-      </p>
-      <Link
-        href="/map"
-        className="mt-2 rounded-[var(--radius-md)] border border-accent bg-accent px-4 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
-      >
-        بازگشت به نقشه
-      </Link>
-    </div>
+    <StatePage
+      icon="satellite"
+      eyebrow="بدون اتصال"
+      title="این صفحه بدون اینترنت در دسترس نیست"
+      hint="نقشه و اطلاعاتی که قبلاً باز کرده‌اید ممکن است همچنان دیده شوند. وقتی اتصال برقرار شد دوباره تلاش کنید."
+      actions={
+        <Link className="btn solid" href="/map">
+          بازگشت به نقشه
+        </Link>
+      }
+    />
   );
 }

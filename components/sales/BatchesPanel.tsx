@@ -1,5 +1,6 @@
 "use client";
 
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
@@ -136,11 +137,11 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
         <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="مرجع بچ تأمین‌کننده" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} />
         <label className="flex items-center gap-1 text-xs text-text-muted">
           تولید
-          <input type="date" className="rounded border border-border bg-bg p-1.5 text-sm" value={form.produced_at} onChange={(e) => setForm((f) => ({ ...f, produced_at: e.target.value }))} />
+          <JalaliDateInput value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />
         </label>
         <label className="flex items-center gap-1 text-xs text-text-muted">
           انقضا
-          <input type="date" className="rounded border border-border bg-bg p-1.5 text-sm" value={form.expiry_date} onChange={(e) => setForm((f) => ({ ...f, expiry_date: e.target.value }))} />
+          <JalaliDateInput value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
         </label>
         <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
           ثبت بچ

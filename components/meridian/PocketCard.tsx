@@ -70,7 +70,7 @@ export default function PocketCard({
         <div className="foot">
           <span className={`pill ${status}`}>{statusLabel}</span>
           <span className="more">
-            {docs.length > 0 ? `${docs.length === 1 ? "۱" : "۲"} سند ↖` : "هنوز سندی ندارد"}
+            {docs.length > 0 ? `${docs.length === 1 ? "۱" : "۲"} سند` : "هنوز سندی ندارد"}
           </span>
         </div>
       </div>

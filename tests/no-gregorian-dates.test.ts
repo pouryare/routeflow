@@ -46,6 +46,19 @@ describe("no Gregorian dates in rendered output", () => {
     ).toEqual([]);
   });
 
+  it("no file uses the browser's Gregorian date picker", () => {
+    /* The display half was fixed in slice H; the input half was not. <input type="date">
+       opens the browser's own calendar, which is Gregorian, so a reader choosing an expiry
+       date or a cheque's due date was asked to think in the wrong calendar. Seven fields
+       did this. components/meridian/JalaliDateInput is the Shamsi picker; it stores the
+       same ISO value, so nothing behind the field changes. */
+    const DATE_INPUT = /type=["']date["']/;
+    const offenders = renderedFiles().filter((f) =>
+      f !== "components/meridian/JalaliDateInput.tsx" && DATE_INPUT.test(readFileSync(join(ROOT, f), "utf8")),
+    );
+    expect(offenders, `use JalaliDateInput from components/meridian/JalaliDateInput:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
   it("the Jalali helpers this rule depends on still exist", () => {
     /* If someone renames these, the rule above silently becomes unenforceable — every
        file passes because nobody can import the thing it is steering them towards. */

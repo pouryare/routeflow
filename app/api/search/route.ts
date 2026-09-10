@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { searchCustomers, searchOrders } from "@/lib/repo/search";
+import { searchCustomers, searchOrders, searchUsers } from "@/lib/repo/search";
 
 /** GET /api/search?q=… for the search overlay. Pages are matched client-side from the
  *  tabs the header already holds; this answers only what needs the database. Each half
@@ -14,7 +14,12 @@ export async function GET(req: NextRequest) {
   const q = (new URL(req.url).searchParams.get("q") ?? "").slice(0, 80);
   const db = getDb();
   return NextResponse.json(
-    { ok: true, customers: searchCustomers(db, guard.session, q), orders: searchOrders(db, guard.session, q) },
+    {
+      ok: true,
+      customers: searchCustomers(db, guard.session, q),
+      orders: searchOrders(db, guard.session, q),
+      users: searchUsers(db, guard.session, q),
+    },
     { headers: { "Cache-Control": "no-store" } },
   );
 }

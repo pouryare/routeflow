@@ -9,6 +9,8 @@ export interface Session {
   groupId: number | null;
   /** The tenant. Every business read is narrowed to this, except for a platform_owner. */
   organizationId: number;
+  /** The owner acting as this user (Login-As), or undefined for an ordinary session. */
+  actorId?: number;
 }
 
 export type Guard = { ok: true; session: Session } | { ok: false; response: NextResponse };
@@ -42,7 +44,18 @@ export function getSessionFromCookies(token: string | undefined | null): Session
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
 
-  return { user, role: user.role, groupId: user.group_id, organizationId: user.organization_id };
+  /* An impersonation is only as valid as the owner behind it. A deactivated, demoted or
+     cross-tenant actor ends it on the very next request, not when the cookie expires. */
+  let actorId: number | undefined;
+  if (claims.act !== undefined) {
+    const actor = getDb()
+      .prepare("SELECT id, role, organization_id, active FROM users WHERE id = ?")
+      .get(claims.act) as { id: number; role: string; organization_id: number; active: number } | undefined;
+    if (!actor || !actor.active || actor.role !== "owner" || actor.organization_id !== user.organization_id) return null;
+    actorId = actor.id;
+  }
+
+  return { user, role: user.role, groupId: user.group_id, organizationId: user.organization_id, actorId };
 }
 
 export function requireRole(req: NextRequest, roles: Role[]): Guard {

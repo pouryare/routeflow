@@ -11,7 +11,7 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder } = await import("@/lib/orders");
-const { searchCustomers, searchOrders } = await import("@/lib/repo/search");
+const { searchCustomers, searchOrders, searchUsers } = await import("@/lib/repo/search");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -110,5 +110,31 @@ describe("searchOrders", () => {
 
   it("gives a driver nothing", () => {
     expect(searchOrders(getDb(), sess(sellerA, "driver", groupA), "سوپر")).toEqual([]);
+  });
+});
+
+describe("searchUsers (Login-As candidates)", () => {
+  it("an owner finds their people by name", () => {
+    const ids = searchUsers(getDb(), sess(owner, "owner", null), "ف").map((h) => h.id);
+    expect(ids).toEqual([]); // one letter is too short
+    const hits = searchUsers(getDb(), sess(owner, "owner", null), "مد");
+    expect(hits.map((h) => h.id)).toEqual([`user:${mgrA}`]);
+    expect(hits[0].sub).toMatch(/[؀-ۿ]/);
+  });
+
+  it("nobody but an owner gets the section", () => {
+    expect(searchUsers(getDb(), sess(mgrA, "group_manager", groupA), "ف۲")).toEqual([]);
+    expect(searchUsers(getDb(), sess(sellerA, "salesperson", groupA), "ف۲")).toEqual([]);
+  });
+
+  it("never offers themselves, another owner or a deactivated account", () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,?,?,1)")
+      .run(`o2${Date.now()}`, "x", "مالک دوم", "owner", null, 1, now);
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,?,?,1)")
+      .run(`gone${Date.now()}`, "x", "مالک رفته", "salesperson", null, 0, now);
+    const labels = searchUsers(db, sess(owner, "owner", null), "مالک").map((h) => h.label);
+    expect(labels).toEqual([]);
   });
 });

@@ -2027,7 +2027,7 @@ export default function CoverageMap({
                 className="flex items-center justify-between gap-2 text-[length:var(--text-sm)] text-text hover:text-accent"
               >
                 <span>تنظیمات اعلان‌ها</span>
-                <span aria-hidden="true">↗</span>
+                <Icon name="arrow-up-right" size="sm" />
               </Link>
 
             </div>
@@ -2310,7 +2310,7 @@ export default function CoverageMap({
                         rel="noopener noreferrer"
                         className="text-[length:var(--text-xs)] text-accent hover:underline"
                       >
-                        مسیریابی ↗
+                        مسیریابی <Icon name="external-link" size="sm" />
                       </a>
                       <Link
                         href={`/facilities?f=${f.id}`}
