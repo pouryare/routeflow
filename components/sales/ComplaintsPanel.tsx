@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useCallback, useMemo, useState } from "react";
 import { faJalaliDateTime } from "@/lib/jalali";
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -84,10 +85,7 @@ export default function ComplaintsPanel({
     } else setComplaints([]);
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+  useRunAfterMount(load);
 
   async function file(e: React.FormEvent) {
     e.preventDefault();

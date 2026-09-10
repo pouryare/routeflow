@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, useSyncExternalStore } from "react";
 
 /** The browser half of the push channel, lifted verbatim out of the map's
  *  `NotificationToggle` when Phase 2 moved subscribing to /settings/notifications.
@@ -17,6 +17,16 @@ function urlBase64ToUint8Array(base64: string): Uint8Array {
   return Uint8Array.from([...raw].map((c) => c.charCodeAt(0)));
 }
 
+const noSubscribe = () => () => {};
+
+function pushSupported(): boolean {
+  return typeof window !== "undefined" && "Notification" in window && "serviceWorker" in navigator;
+}
+
+function pushRefused(): boolean {
+  return pushSupported() && Notification.permission === "denied";
+}
+
 export function usePushSubscription(): {
   state: PushState;
   enable: () => Promise<boolean>;
@@ -24,18 +34,15 @@ export function usePushSubscription(): {
 } {
   const [state, setState] = useState<PushState>("off");
 
+  /* Support and a standing refusal are facts about the browser, read as snapshots rather
+     than copied into state by an effect. Neither API exists during the server render, so
+     the server (and the hydrating render) says "supported, not refused" and the browser
+     answers for itself on the next render. */
+  const supported = useSyncExternalStore(noSubscribe, pushSupported, () => true);
+  const refused = useSyncExternalStore(noSubscribe, pushRefused, () => false);
+
   useEffect(() => {
-    if (typeof window === "undefined" || !("Notification" in window) || !("serviceWorker" in navigator)) {
-      // Feature detection: neither API exists during the server render, so this cannot be
-      // decided in useState's initialiser without a hydration mismatch.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setState("unsupported");
-      return;
-    }
-    if (Notification.permission === "denied") {
-      setState("denied");
-      return;
-    }
+    if (!pushSupported() || pushRefused()) return;
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription();
       setState(sub ? "on" : "off");
@@ -95,5 +102,5 @@ export function usePushSubscription(): {
     }
   }, []);
 
-  return { state, enable, disable };
+  return { state: !supported ? "unsupported" : refused ? "denied" : state, enable, disable };
 }

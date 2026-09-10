@@ -6,7 +6,8 @@
  *  per repo convention (tests/ has no React-render tests).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useCallback, useState } from "react";
 import { faNum } from "@/lib/format";
 
 interface Item {
@@ -49,10 +50,7 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
       setLoading(false);
     }
   }, [onUnread]);
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- load() only setStates after an awaited fetch; same pattern as components/SyncStatus.tsx
-    void load();
-  }, [load]);
+  useRunAfterMount(load);
 
   async function markAll() {
     const res = await fetch("/api/notifications", {

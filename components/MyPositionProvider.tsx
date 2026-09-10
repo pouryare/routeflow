@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 export interface MyPosition {
   lat: number;
@@ -50,6 +50,12 @@ const MyPositionContext = createContext<MyPositionValue>({
  *  the app claiming to know nothing while the device is telling it something. The
  *  accuracy travels with the fix instead, so each consumer can decide.
  */
+const noSubscribe = () => () => {};
+
+function hasGeolocation(): boolean {
+  return typeof navigator !== "undefined" && !!navigator.geolocation;
+}
+
 export function MyPositionProvider({ children }: { children: React.ReactNode }) {
   const [position, setPosition] = useState<MyPosition | null>(null);
   const [status, setStatus] = useState<PositionStatus>("idle");
@@ -57,17 +63,13 @@ export function MyPositionProvider({ children }: { children: React.ReactNode }) 
   const [attempt, setAttempt] = useState(0);
   const watchIdRef = useRef<number | null>(null);
 
-  useEffect(() => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) {
-      // Cannot be an initial state: this provider sits in the root layout and is
-      // therefore server-rendered, where there is no navigator to ask.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setStatus("unavailable");
-      setError("این مرورگر موقعیت‌یابی ندارد");
-      return;
-    }
+  /* Whether this browser can locate at all is a fact about the browser, read as a
+     snapshot: null on the server and the hydrating render (this provider sits in the root
+     layout, where there is no navigator to ask), a real answer on the next render. */
+  const canLocate = useSyncExternalStore(noSubscribe, hasGeolocation, () => null);
 
-    setStatus((s) => (s === "active" ? s : "locating"));
+  useEffect(() => {
+    if (!hasGeolocation()) return;
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -113,11 +115,17 @@ export function MyPositionProvider({ children }: { children: React.ReactNode }) 
 
   const retry = useCallback(() => {
     setError(null);
+    setStatus((s) => (s === "active" ? s : "locating"));
     setAttempt((a) => a + 1);
   }, []);
 
+  // A watch is asked for as soon as the browser can answer, so "idle" means "locating".
+  const shownStatus: PositionStatus =
+    canLocate === null ? status : !canLocate ? "unavailable" : status === "idle" ? "locating" : status;
+  const shownError = canLocate === false ? "این مرورگر موقعیت‌یابی ندارد" : error;
+
   return (
-    <MyPositionContext.Provider value={{ position, status, error, retry }}>
+    <MyPositionContext.Provider value={{ position, status: shownStatus, error: shownError, retry }}>
       {children}
     </MyPositionContext.Provider>
   );

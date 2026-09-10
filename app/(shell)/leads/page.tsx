@@ -1,6 +1,8 @@
 "use client";
 
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { distanceKm, formatDistanceKm, routeLengthKm, twoOptOrder } from "@/lib/geo";
@@ -75,6 +77,17 @@ const SORT_LABEL: Record<SortMode, string> = {
  *  third stop. */
 const SCRATCH_KEY = "coverage_lead_run";
 
+function readScratchRun(): number[] | null {
+  try {
+    const raw = localStorage.getItem(SCRATCH_KEY);
+    const parsed: unknown = raw ? JSON.parse(raw) : null;
+    return Array.isArray(parsed) ? parsed.filter((x): x is number => Number.isInteger(x)) : null;
+  } catch {
+    // Nothing worth recovering.
+    return null;
+  }
+}
+
 /** How far the user has to move before the "nearest" ordering is recomputed.
  *
  *  A GPS fix jitters by tens of metres while stationary. Re-sorting on every one of those
@@ -109,17 +122,12 @@ export default function LeadsPage() {
 
   // ---- position, held steady enough to sort against -------------------------------
   const [sortAnchor, setSortAnchor] = useState<{ lat: number; lng: number } | null>(null);
-  useEffect(() => {
-    if (!position) return;
-    // Positions arrive asynchronously from the device; there is no render in which this
-    // could be computed instead. Returning the previous object unchanged when the move
-    // is below the threshold is what stops it re-rendering the list on GPS jitter.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSortAnchor((prev) => {
-      if (prev && distanceKm(prev, position) < RESORT_THRESHOLD_KM) return prev;
-      return { lat: position.lat, lng: position.lng };
-    });
-  }, [position]);
+  // Follows the device only past the threshold, adjusted during render (React's way of
+  // keeping state in step with a changing input). Below it the anchor, and so the order
+  // of the list, stays put: GPS jitter never re-sorts it.
+  if (position && (!sortAnchor || distanceKm(sortAnchor, position) >= RESORT_THRESHOLD_KM)) {
+    setSortAnchor({ lat: position.lat, lng: position.lng });
+  }
 
   // ---- loading ---------------------------------------------------------------------
   const load = useCallback(async () => {
@@ -137,29 +145,17 @@ export default function LeadsPage() {
     }
   }, [toast]);
 
-  useEffect(() => {
-    // Fetch on mount. The setState is inside the async function, past its first
-    // await; the rule sees only that the call starts synchronously. Moving the data
-    // fetch out of an effect entirely is the real answer, and that is a data-layer
-    // change rather than a lint fix.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+  useRunAfterMount(load);
 
-  // The scratch run is restored once, on mount, and only when no list is active.
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(SCRATCH_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed)) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
-        setRun(parsed.filter((x): x is number => Number.isInteger(x)));
-      }
-    } catch {
-      // Nothing worth recovering.
-    }
-  }, []);
+  // The scratch run is restored once, on the first render after hydration: localStorage
+  // does not exist on the server.
+  const hydrated = useHydrated();
+  const [scratchRestored, setScratchRestored] = useState(false);
+  if (hydrated && !scratchRestored) {
+    setScratchRestored(true);
+    const saved = readScratchRun();
+    if (saved) setRun(saved);
+  }
 
   useEffect(() => {
     if (linkedId === undefined) return;

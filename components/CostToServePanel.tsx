@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect } from "react";
+import { useMemo, useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import { toCsv } from "@/lib/csv";
 import { useToast } from "./ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
@@ -31,6 +32,14 @@ export interface MatchQuality {
 
 const COST_PER_KM_KEY = "coverage_cost_per_km";
 
+function readSavedCost(): string {
+  try {
+    return localStorage.getItem(COST_PER_KM_KEY) ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export default function CostToServePanel({
   rows,
   originName,
@@ -44,12 +53,15 @@ export default function CostToServePanel({
   const [sortBy, setSortBy] = useState<"revenue" | "km" | "ratio">("ratio");
   const toast = useToast();
 
-  useEffect(() => {
-    // Browser-only read: localStorage does not exist during the server render, so this
-    // cannot move into useState's initialiser without a hydration mismatch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setCostPerKm(localStorage.getItem(COST_PER_KM_KEY) ?? "");
-  }, []);
+  /* Adopted on the first render after hydration, not in an effect: localStorage does not
+     exist on the server, and reading it on the hydrating render would disagree with the
+     server's HTML. The flag makes it happen exactly once. */
+  const hydrated = useHydrated();
+  const [restored, setRestored] = useState(false);
+  if (hydrated && !restored) {
+    setRestored(true);
+    setCostPerKm(readSavedCost());
+  }
 
   function updateCost(value: string) {
     setCostPerKm(value);

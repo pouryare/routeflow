@@ -1,7 +1,8 @@
 "use client";
 
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
 import { faJalaliDate } from "@/lib/jalali";
@@ -47,10 +48,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     setCheques(res.ok ? body.cheques : []);
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+  useRunAfterMount(load);
 
   const today = new Date().toISOString().slice(0, 10);
 

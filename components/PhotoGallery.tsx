@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useRef, useState, useCallback } from "react";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
@@ -26,21 +27,17 @@ export default function PhotoGallery({
   const inputRef = useRef<HTMLInputElement>(null);
   const toast = useToast();
 
-  async function load() {
+  /* Only the newest request may write: opening another customer while this one's photos
+     are still loading must not let the slower, older answer land on the new customer. */
+  const latest = useRef(0);
+  const load = useCallback(async () => {
+    const ticket = ++latest.current;
     const res = await fetch(`/api/photos?entity_type=${entityType}&entity_id=${entityId}`);
     const data = await res.json();
-    setPhotos(data.photos ?? []);
-  }
-
-  useEffect(() => {
-    // Fetch on mount. The setState is inside the async function, past its first
-    // await; the rule sees only that the call starts synchronously. Moving the data
-    // fetch out of an effect entirely is the real answer, and that is a data-layer
-    // change rather than a lint fix.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (ticket === latest.current) setPhotos(data.photos ?? []);
   }, [entityType, entityId]);
+
+  useRunAfterMount(load);
 
   async function handleFile(file: File) {
     setUploading(true);

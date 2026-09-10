@@ -1,7 +1,8 @@
 "use client";
 
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import { faJalaliDateTime } from "@/lib/jalali";
 
@@ -57,10 +58,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
     setPayments(res.ok ? body.payments : []);
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+  useRunAfterMount(load);
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();

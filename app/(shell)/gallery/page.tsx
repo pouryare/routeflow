@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useState, useCallback } from "react";
 import Link from "next/link";
 import { faNum } from "@/lib/format";
 import { parseIdParam } from "@/lib/deepLink";
@@ -27,31 +28,22 @@ export default function GalleryPage() {
   const [linkedId] = useState<number | undefined>(() =>
     typeof window === "undefined" ? undefined : parseIdParam(window.location.search, "p")
   );
-  const linkAppliedRef = useRef(false);
-
-  useEffect(() => {
-    if (linkedId === undefined || linkAppliedRef.current || !photos) return;
+  const [linkApplied, setLinkApplied] = useState(false);
+  if (linkedId !== undefined && !linkApplied && photos) {
     const hit = photos.find((x) => x.id === linkedId);
-    if (!hit) return;
-    linkAppliedRef.current = true;
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setLightbox(hit);
-  }, [photos, linkedId]);
+    if (hit) {
+      setLinkApplied(true);
+      setLightbox(hit);
+    }
+  }
 
-  async function load() {
+  const load = useCallback(async () => {
     const res = await fetch("/api/photos");
     const data = await res.json();
     setPhotos(data.photos ?? []);
-  }
-
-  useEffect(() => {
-    // Fetch on mount. The setState is inside the async function, past its first
-    // await; the rule sees only that the call starts synchronously. Moving the data
-    // fetch out of an effect entirely is the real answer, and that is a data-layer
-    // change rather than a lint fix.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
   }, []);
+
+  useRunAfterMount(load);
 
   async function remove(id: number) {
     await fetch(`/api/photos/${id}`, { method: "DELETE" });

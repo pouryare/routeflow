@@ -1,26 +1,27 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
+
+const QUERY = "(prefers-reduced-motion: reduce)";
+
+function subscribe(onChange: () => void): () => void {
+  if (typeof matchMedia !== "function") return () => {};
+  const mq = matchMedia(QUERY);
+  mq.addEventListener("change", onChange);
+  return () => mq.removeEventListener("change", onChange);
+}
+
+function getSnapshot(): boolean {
+  return typeof matchMedia === "function" && matchMedia(QUERY).matches;
+}
 
 /** True when the OS asks for reduced motion.
  *
- *  SSR-safe: `false` until mounted, so the server and the first client paint agree, then
- *  it subscribes to the media query and re-renders if the answer is different or later
- *  changes. Every animation in /sales checks this (or the CSS `@media
- *  (prefers-reduced-motion: no-preference)` equivalent) and falls back to the finished
- *  state with no transition.
+ *  SSR-safe: `false` on the server and the hydrating render, so the two agree, then the
+ *  browser's answer, kept current by the media query's change event. Every animation in
+ *  /sales checks this (or the CSS `@media (prefers-reduced-motion: no-preference)`
+ *  equivalent) and falls back to the finished state with no transition.
  */
 export function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-
-  useEffect(() => {
-    if (typeof matchMedia !== "function") return;
-    const mq = matchMedia("(prefers-reduced-motion: reduce)");
-    const sync = () => setReduced(mq.matches);
-    sync();
-    mq.addEventListener("change", sync);
-    return () => mq.removeEventListener("change", sync);
-  }, []);
-
-  return reduced;
+  return useSyncExternalStore(subscribe, getSnapshot, () => false);
 }

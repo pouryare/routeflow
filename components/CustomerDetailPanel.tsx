@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import {
   CustomerRow,
@@ -35,6 +36,16 @@ function customerLink(id: number): string {
 
 /** Kept in step with the .customer-panel-exit duration in globals.css. */
 const EXIT_MS = 180;
+
+function readSavedOrient(): "side" | "bottom" | null {
+  try {
+    const saved = localStorage.getItem("coverage_panel_orient");
+    return saved === "bottom" || saved === "side" ? saved : null;
+  } catch {
+    // Private-window storage denial; the default orientation is still correct.
+    return null;
+  }
+}
 
 function debtTier(c: CustomerRow): { label: string; color: string; amount: number } | null {
   const d = c.debt;
@@ -186,15 +197,14 @@ export default function CustomerDetailPanel({
      shops are spread east-west. Remembered, because it is a preference about the screen,
      not about the customer. */
   const [orient, setOrient] = useState<"side" | "bottom">("side");
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem("coverage_panel_orient");
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (saved === "bottom" || saved === "side") setOrient(saved);
-    } catch {
-      // Private-window storage denial; the default orientation is still correct.
-    }
-  }, []);
+  const hydrated = useHydrated();
+  const [orientRestored, setOrientRestored] = useState(false);
+  if (hydrated && !orientRestored) {
+    // First render after hydration: localStorage does not exist on the server.
+    setOrientRestored(true);
+    const saved = readSavedOrient();
+    if (saved) setOrient(saved);
+  }
   function flip() {
     const next = orient === "side" ? "bottom" : "side";
     setOrient(next);

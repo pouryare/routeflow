@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useCallback, useState } from "react";
 import GroupTerritoryEditor from "@/components/GroupTerritoryEditor";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
@@ -34,13 +35,7 @@ export default function AdminGroupsPage() {
     setDistricts(dData.districts ?? []);
   }, []);
 
-  useEffect(() => {
-    // Fetch-on-mount. The setState calls happen in load()'s async continuation, not
-    // synchronously in the effect body, so there is no cascading render here -- but the
-    // rule cannot see through the await. Same disable the gallery page uses.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+  useRunAfterMount(load);
 
   async function create(e: React.FormEvent) {
     e.preventDefault();

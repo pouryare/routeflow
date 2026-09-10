@@ -1,7 +1,8 @@
 "use client";
 
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
 import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
@@ -56,10 +57,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
     setBatches(res.ok ? body.batches : []);
   }, []);
 
-  useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void load();
-  }, [load]);
+  useRunAfterMount(load);
 
   const today = new Date().toISOString().slice(0, 10);
 

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import { faToman, faNum } from "@/lib/format";
 
 export interface ProductPack {
@@ -20,6 +21,16 @@ export interface ProductRow {
 
 const KEY = "meridian-products-view";
 
+function readSavedView(): "list" | "tiles" | null {
+  try {
+    const saved = localStorage.getItem(KEY);
+    return saved === "tiles" || saved === "list" ? saved : null;
+  } catch {
+    // Private-window storage denial. The default view is still correct.
+    return null;
+  }
+}
+
 /** The catalogue, in either of two readings — and the reader chooses.
  *
  *  فهرست is the dense one: every packaging of a product on its own row, priced, sortable
@@ -33,17 +44,16 @@ const KEY = "meridian-products-view";
 export default function ProductsView({ products }: { products: ProductRow[] }) {
   const [view, setView] = useState<"list" | "tiles">("list");
 
-  useEffect(() => {
-    try {
-      const saved = localStorage.getItem(KEY);
-      // Browser-only read: localStorage does not exist during the server render, so this
-      // cannot move into useState's initialiser without a hydration mismatch.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      if (saved === "tiles" || saved === "list") setView(saved);
-    } catch {
-      // Private-window storage denial. The default view is still correct.
-    }
-  }, []);
+  /* Adopted on the first render after hydration, not in an effect: localStorage does not
+     exist on the server, and reading it on the hydrating render would disagree with the
+     server's HTML. The flag makes it happen exactly once. */
+  const hydrated = useHydrated();
+  const [restored, setRestored] = useState(false);
+  if (hydrated && !restored) {
+    setRestored(true);
+    const saved = readSavedView();
+    if (saved) setView(saved);
+  }
 
   function choose(v: "list" | "tiles") {
     setView(v);

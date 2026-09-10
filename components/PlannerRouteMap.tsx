@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useLatest } from "@/lib/useLatest";
 import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
@@ -36,13 +37,21 @@ function RoutingLayer({
   const map = useMap();
   const key = useMemo(() => stops.map((s) => `${s.lat.toFixed(5)},${s.lng.toFixed(5)}`).join("|"), [stops]);
 
+  /* The control is rebuilt only when the map or the route itself changes (`key`). What it
+     reads is always the newest: the stops through a ref, and the callback, which the parent
+     recreates every render, through another. Listing the callback as a dependency would
+     rebuild the control on every render. */
+  const stopsRef = useLatest(stops);
+  const onSummaryRef = useLatest(onSummary);
+
   useEffect(() => {
-    if (stops.length < 2) {
-      onSummary(null);
+    const route = stopsRef.current;
+    if (route.length < 2) {
+      onSummaryRef.current(null);
       return;
     }
     const control = (L as unknown as WithRouting).Routing.control({
-      waypoints: stops.map((s) => L.latLng(s.lat, s.lng)),
+      waypoints: route.map((s) => L.latLng(s.lat, s.lng)),
       routeWhileDragging: false,
       addWaypoints: false,
       draggableWaypoints: false,
@@ -51,7 +60,7 @@ function RoutingLayer({
       lineOptions: { styles: [{ color: "#2DE0E6", weight: 4, opacity: 0.85 }], extendToWaypoints: true, missingRouteTolerance: 0 },
       createMarker: (i: number, wp: { latLng: L.LatLng }) => {
         const isFirst = i === 0;
-        const isLast = i === stops.length - 1;
+        const isLast = i === route.length - 1;
         /* The start marker is the filled accent disc (.route-stop-marker--start); it
            needs no glyph, and «◎» was a text character standing in for an icon. */
         const label = isFirst || isLast ? "" : String(i);
@@ -63,21 +72,20 @@ function RoutingLayer({
             iconAnchor: [11, 11],
           }),
           zIndexOffset: 900,
-        }).bindTooltip(stops[i].label);
+        }).bindTooltip(route[i].label);
       },
     });
     control.on("routesfound", (e: RoutesFoundEvent) => {
       const r = e.routes?.[0];
       if (!r) return;
-      onSummary({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });
+      onSummaryRef.current({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });
     });
-    control.on("routingerror", () => onSummary(null));
+    control.on("routingerror", () => onSummaryRef.current(null));
     control.addTo(map);
     return () => {
       control.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, key]);
+  }, [map, key, stopsRef, onSummaryRef]);
 
   return null;
 }

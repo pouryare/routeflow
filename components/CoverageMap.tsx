@@ -1,6 +1,9 @@
 "use client";
 
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useLatest } from "@/lib/useLatest";
+import { useHydrated } from "@/lib/useHydrated";
 import type { ComponentProps } from "react";
 import { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
@@ -405,7 +408,6 @@ export default function CoverageMap({
     () => incoming.view ?? linkTargetView(incoming, initialCustomers, initialDistricts) ?? readStoredView()
   );
   const viewRef = useRef<MapView | null>(startView);
-  const linkAppliedRef = useRef({ customer: false, district: false });
 
   const [facilityGeofenceOn, setFacilityGeofenceOn] = useState(false);
   const [corridorWidthKm, setCorridorWidthKm] = useState(5);
@@ -572,16 +574,16 @@ export default function CoverageMap({
       .catch(() => {});
   }, []);
 
+  /* Every remembered toggle is adopted once, on the first render after hydration (the
+     block below the reminders): localStorage does not exist on the server, and reading
+     it on the hydrating render would disagree with the server's HTML. Writers that run
+     as effects wait for `restored`, or the first commit would save the defaults over
+     what was remembered before anyone read it. */
+  const hydrated = useHydrated();
+  const [restored, setRestored] = useState(false);
   useEffect(() => {
-    const stored = localStorage.getItem("coverage_precision");
-    // Browser-only read: localStorage does not exist during the server render, so this
-    // cannot move into useState's initialiser without a hydration mismatch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (isPrecisionMode(stored)) setPrecisionMode(stored);
-  }, []);
-  useEffect(() => {
-    localStorage.setItem("coverage_precision", precisionMode);
-  }, [precisionMode]);
+    if (restored) localStorage.setItem("coverage_precision", precisionMode);
+  }, [precisionMode, restored]);
 
   const activeTier: PrecisionTier = resolveTier(precisionMode, zoom);
 
@@ -666,19 +668,12 @@ export default function CoverageMap({
     setDueReminders(data.reminders ?? []);
   }, []);
 
-  useEffect(() => {
-    // Fetch on mount. The setState is inside the async function, past its first
-    // await; the rule sees only that the call starts synchronously. Moving the data
-    // fetch out of an effect entirely is the real answer, and that is a data-layer
-    // change rather than a lint fix.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadReminders();
-  }, [loadReminders]);
+  useRunAfterMount(loadReminders);
 
-  useEffect(() => {
-    // Browser-only read: localStorage does not exist during the server render, so this
-    // cannot move into useState's initialiser without a hydration mismatch.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+  if (hydrated && !restored) {
+    setRestored(true);
+    const storedPrecision = localStorage.getItem("coverage_precision");
+    if (isPrecisionMode(storedPrecision)) setPrecisionMode(storedPrecision);
     setGeofenceOn(localStorage.getItem("coverage_geofence_on") === "1");
     setFacilityGeofenceOn(localStorage.getItem("coverage_geofence_sites") === "1");
 
@@ -703,23 +698,21 @@ export default function CoverageMap({
     // A customer arrived at by link has been viewed as surely as one arrived at by
     // click. That path sets the selection in a lazy initialiser, before this list
     // exists, so it is recorded here instead.
-    const stored = readIds(RECENT_KEY);
-    if (incoming.customerId !== undefined && initialCustomers.some((c) => c.id === incoming.customerId)) {
-      const withLink = addRecent(stored, incoming.customerId);
-      writeIds(RECENT_KEY, withLink);
-      setRecentIds(withLink);
-    } else {
-      setRecentIds(stored);
-    }
+    const storedRecent = readIds(RECENT_KEY);
+    const linked = incoming.customerId !== undefined && initialCustomers.some((c) => c.id === incoming.customerId);
+    // Saved by the effect below: rendering does not write to storage.
+    setRecentIds(linked ? addRecent(storedRecent, incoming.customerId as number) : storedRecent);
     const storedWidth = Number(localStorage.getItem("coverage_corridor_km"));
     if (CORRIDOR_WIDTHS.includes(storedWidth)) setCorridorWidthKm(storedWidth);
-    // Mount only. Re-running would overwrite toggles the user has changed since load
-    // with whatever storage held when the page opened.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }
+  // The restore above may add a linked customer to the recent list; this keeps storage in
+  // step with it and with every later change.
   useEffect(() => {
-    localStorage.setItem("coverage_geofence_on", geofenceOn ? "1" : "0");
-  }, [geofenceOn]);
+    if (restored) writeIds(RECENT_KEY, recentIds);
+  }, [recentIds, restored]);
+  useEffect(() => {
+    if (restored) localStorage.setItem("coverage_geofence_on", geofenceOn ? "1" : "0");
+  }, [geofenceOn, restored]);
 
   /** One toggle for every layer, so nothing has to remember its own storage key. */
   const setLayer = useCallback((id: OverlayId, on: boolean) => {
@@ -767,24 +760,19 @@ export default function CoverageMap({
     }
   }
 
-  // The district half does need an effect: unlike a customer, a district is only a
-  // selectable thing once its polygon geometry has been fetched, and that is async. The
-  // map is already pointing at the right place by then (startView used the centroid) --
-  // this only opens the panel for it.
-  //
-  // Guarded by a ref rather than an empty dependency list: the effect has to be allowed
-  // to re-run until the geometry arrives, but must not re-select once the user has moved
-  // on to another district.
-  useEffect(() => {
-    if (incoming.districtId === undefined || linkAppliedRef.current.district || !districts) return;
+  // The district half waits for data: unlike a customer, a district is only a selectable
+  // thing once its polygon geometry has been fetched, and that is async. The map is
+  // already pointing at the right place by then (startView used the centroid) -- this
+  // only opens the panel for it, on the first render that has the feature, and never
+  // again once it has, so moving on to another district is not undone.
+  const [districtLinkApplied, setDistrictLinkApplied] = useState(false);
+  if (incoming.districtId !== undefined && !districtLinkApplied && districts) {
     const d = districts.features.find((f) => f.properties.id === incoming.districtId);
-    if (!d) return;
-    linkAppliedRef.current.district = true;
-    // There is no earlier moment: the feature this selects does not exist until the
-    // geometry fetch above resolves.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    setSelectedDistrict(d);
-  }, [districts, incoming]);
+    if (d) {
+      setDistrictLinkApplied(true);
+      setSelectedDistrict(d);
+    }
+  }
 
   const filteredCustomers = useMemo(() => {
     return customers.filter((c) => {
@@ -930,18 +918,21 @@ export default function CoverageMap({
   // limitation on `data`) -- selection highlighting is applied imperatively instead,
   // directly on the layers captured in onEachDistrict, so toggling a handful of
   // districts doesn't force a full remount of all ~419 polygons.
+  //
+  // districtStyle is a new function every render, so it is read through a ref and the
+  // dependencies name what should trigger a restyle. `ink` is among them because the
+  // skin changes the stroke and selection colours, and these polygons are already drawn:
+  // without it, flipping the theme leaves 419 districts outlined in the other skin's ink
+  // until something else happens to restyle them.
+  const districtStyleRef = useLatest(districtStyle);
   useEffect(() => {
     districtLayersRef.current.forEach((layer) => {
       const feature = (layer as unknown as { feature?: DistrictFeature }).feature;
       if (feature && "setStyle" in layer) {
-        (layer as unknown as { setStyle: (s: object) => void }).setStyle(districtStyle(feature));
+        (layer as unknown as { setStyle: (s: object) => void }).setStyle(districtStyleRef.current(feature));
       }
     });
-    // `ink` is here because the skin changes the stroke and selection colours, and these
-    // polygons are already drawn: without it, flipping the theme leaves 419 districts
-    // outlined in the other skin's ink until something else happens to restyle them.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bulkSelectedIds, districtColorMode, groupColors, ink]);
+  }, [bulkSelectedIds, districtColorMode, groupColors, ink, districtStyleRef]);
 
 
 

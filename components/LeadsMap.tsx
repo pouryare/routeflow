@@ -2,6 +2,7 @@
 
 import { Icon } from "@/components/meridian/Icon";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useLatest } from "@/lib/useLatest";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
@@ -65,13 +66,21 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
   const map = useMap();
   const key = useMemo(() => points.map((p) => p.join(",")).join("|"), [points]);
 
+  /* The control is rebuilt only when the map or the route itself changes (`key`). What it
+     reads is always the newest: the points through a ref, and the callback, which the parent
+     recreates every render, through another. Listing the callback as a dependency would
+     rebuild the control on every render. */
+  const pointsRef = useLatest(points);
+  const onSummaryRef = useLatest(onSummary);
+
   useEffect(() => {
-    if (points.length < 2) {
-      onSummary(null);
+    const pts = pointsRef.current;
+    if (pts.length < 2) {
+      onSummaryRef.current(null);
       return;
     }
     const control = (L as unknown as WithRouting).Routing.control({
-      waypoints: points.map(([lat, lng]) => L.latLng(lat, lng)),
+      waypoints: pts.map(([lat, lng]) => L.latLng(lat, lng)),
       routeWhileDragging: false,
       addWaypoints: false,
       draggableWaypoints: false,
@@ -86,15 +95,14 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
     });
     control.on("routesfound", (e: RoutesFoundEvent) => {
       const r = e.routes?.[0];
-      if (r) onSummary({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });
+      if (r) onSummaryRef.current({ distanceKm: r.summary.totalDistance / 1000, minutes: Math.round(r.summary.totalTime / 60) });
     });
-    control.on("routingerror", () => onSummary(null));
+    control.on("routingerror", () => onSummaryRef.current(null));
     control.addTo(map);
     return () => {
       control.remove();
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [map, key]);
+  }, [map, key, pointsRef, onSummaryRef]);
 
   return null;
 }

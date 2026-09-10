@@ -1,6 +1,8 @@
 "use client";
 
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useHydrated } from "@/lib/useHydrated";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
@@ -73,6 +75,14 @@ interface Origin {
 // default.
 const RETURN_KEY = "coverage_return_to_origin";
 
+function readReturnToOrigin(): boolean {
+  try {
+    return localStorage.getItem(RETURN_KEY) !== "0";
+  } catch {
+    return true;
+  }
+}
+
 const STATUS_META: Record<PlanRow["status"], { label: string; color: string }> = {
   planned: { label: "برنامه‌ریزی‌شده", color: "var(--warn)" },
   done: { label: "انجام شد", color: "var(--good)" },
@@ -121,29 +131,24 @@ export default function PlannerPage() {
 
   // /planner?date=2026-08-24 -- "here is tomorrow's round".
   //
-  // Applied in an effect rather than as the initial state, even though the value is
-  // available synchronously: this page is prerendered, so the server has no query string
-  // and would render today while the browser rendered the linked day. React resolves
-  // that disagreement by discarding the server's HTML, which is a real cost paid for one
-  // frame's head start.
+  // Adopted on the first render after hydration (see `restored` below) rather than as
+  // the initial state, even though the value is available synchronously: this page is
+  // prerendered, so the server has no query string and would render today while the
+  // browser rendered the linked day. React resolves that disagreement by discarding the
+  // server's HTML, which is a real cost paid for one frame's head start.
   //
   // Only a date the strip actually offers is honoured -- a date outside the week has no
   // tab to select and would strand the page on a day it cannot navigate away from.
-  useEffect(() => {
-    const wanted = new URLSearchParams(window.location.search).get("date");
-    const offered = days.map(toDateStr);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    if (wanted && offered.includes(wanted)) setSelectedDate(wanted);
-    // Mount only: this reads the URL the page was opened with, and the effect below is
-    // what keeps the address bar in step from then on.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const hydrated = useHydrated();
+  const [restored, setRestored] = useState(false);
 
   // Keeps the address bar on the day being looked at, so the link is copyable at any
-  // moment rather than only the one the page was opened with.
+  // moment rather than only the one the page was opened with. It waits until the link
+  // has been read: the first commit would otherwise replace ?date= with today before
+  // anyone looked at it.
   useEffect(() => {
-    replaceUrlQuery(`?date=${selectedDate}`);
-  }, [selectedDate]);
+    if (restored) replaceUrlQuery(`?date=${selectedDate}`);
+  }, [selectedDate, restored]);
   const [plansByDate, setPlansByDate] = useState<Record<string, PlanRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
@@ -173,14 +178,7 @@ export default function PlannerPage() {
     setLoading(false);
   }, [days]);
 
-  useEffect(() => {
-    // Fetch on mount. The setState is inside the async function, past its first
-    // await; the rule sees only that the call starts synchronously. Moving the data
-    // fetch out of an effect entirely is the real answer, and that is a data-layer
-    // change rather than a lint fix.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    loadWeek();
-  }, [loadWeek]);
+  useRunAfterMount(loadWeek);
 
   useEffect(() => {
     fetch("/api/customers")
@@ -188,12 +186,14 @@ export default function PlannerPage() {
       .then((d) => setCustomers(d.customers ?? []));
   }, []);
 
-  useEffect(() => {
-    // Read once on mount rather than in useState's initialiser: localStorage is not
-    // available during the server render.
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- see above.
-    setReturnToOrigin(localStorage.getItem(RETURN_KEY) !== "0");
-  }, []);
+  // What the browser alone knows -- the link's ?date= and the saved return-to-origin
+  // toggle -- adopted once, on the first render after hydration.
+  if (hydrated && !restored) {
+    setRestored(true);
+    const wanted = new URLSearchParams(window.location.search).get("date");
+    if (wanted && days.map(toDateStr).includes(wanted)) setSelectedDate(wanted);
+    setReturnToOrigin(readReturnToOrigin());
+  }
 
   useEffect(() => {
     fetch("/api/facilities")

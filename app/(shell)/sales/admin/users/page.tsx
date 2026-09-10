@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { useCallback, useState } from "react";
 
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
@@ -75,12 +76,7 @@ export default function AdminUsersPage() {
     setGroups(gData.groups ?? []);
   }, []);
 
-  useEffect(() => {
-    // See the note on the groups page: the setState calls run in load()'s async
-    // continuation, which the rule cannot see through.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    load();
-  }, [load]);
+  useRunAfterMount(load);
 
   async function send(url: string, method: string, payload: unknown): Promise<boolean> {
     const res = await fetch(url, {
