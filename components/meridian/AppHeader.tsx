@@ -2,7 +2,6 @@ import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { ROLE_LABEL } from "@/lib/roles";
-import { faJalaliLong } from "@/lib/jalali";
 import ProfileMenu from "@/components/meridian/ProfileMenu";
 import NotificationBell from "@/components/NotificationBell";
 import SearchSlot from "@/components/meridian/SearchSlot";
@@ -11,8 +10,8 @@ import Chrome from "@/components/meridian/Chrome";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
 import { APP_GROUPS, appTabs } from "@/lib/appNav";
 
-/** The shell's top chrome: brand mark, title with the date beneath, the viewer's avatar
- *  menu, and the travelling nav pill.
+/** The shell's top chrome, on one row: the travelling nav pill, then search, the bell and
+ *  the viewer's avatar menu. No brand block — see tests/app-header.test.ts.
  *
  *  **This is the only async part of the shell, and it is deliberately isolated here.**
  *  It reads the session — which tabs a role may reach, whose name sits in the corner —
@@ -42,19 +41,9 @@ export default async function AppHeader() {
   return (
     <Chrome>
       <div className="top">
-        <div className="brandwrap">
-          <div className="mark" aria-hidden="true">
-            <svg viewBox="0 0 44 24" width="26" height="14" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round">
-              <path d="M22 12c-3.2-4.6-6-6.2-9.4-6.2C8.4 5.8 5 8.6 5 12s3.4 6.2 7.6 6.2c3.4 0 6.2-1.6 9.4-6.2Zm0 0c3.2-4.6 6-6.2 9.4-6.2C35.6 5.8 39 8.6 39 12s-3.4 6.2-7.6 6.2c-3.4 0-6.2-1.6-9.4-6.2Z" />
-            </svg>
-          </div>
-          <div>
-            <h1>RouteFlow</h1>
-            <div className="sub">{faJalaliLong(new Date().toISOString())}</div>
-          </div>
-        </div>
+        <HoverPill tabs={tabs} groups={APP_GROUPS} />
         <div className="topright">
-          <SearchSlot />
+          <SearchSlot tabs={tabs} />
           <NotificationBell placement="header" />
           <ProfileMenu
             userId={session.user.id}
@@ -63,8 +52,6 @@ export default async function AppHeader() {
           />
         </div>
       </div>
-
-      <HoverPill tabs={tabs} groups={APP_GROUPS} />
     </Chrome>
   );
 }

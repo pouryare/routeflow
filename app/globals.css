@@ -1761,28 +1761,10 @@ body {
    ═══════════════════════════════════════════════════════════════════════════ */
 
 /* ---- Entrance ---------------------------------------------------------------
-   Opacity and transform only, staggered, and CAPPED -- past ten items a stagger
-   stops reading as choreography and starts reading as lag. The reset order is
-   the fragile part; see components/meridian/Reveal.tsx.                          */
-/* Two entrances, and which one a screen gets is decided by how many cards it has.
-   
-   The spring's 1.32 control point overshoots: every card visibly passes its resting place
-   and comes back. On three big cards that reads as liveliness; on twelve it reads as the
-   whole page wobbling. So the lift is used where cards are few and the plain fade where
-   they are many — RevealRoute counts them and picks. */
-.meridian .rev { opacity: 0; }
-.meridian .rev.rev-lift { transform: translateY(16px); }
-.meridian .rev.rev-in {
-  opacity: 1;
-  transform: none;
-  transition: opacity 300ms var(--ease);
-}
-.meridian .rev.rev-lift.rev-in {
-  transition: opacity 460ms var(--ease), transform 620ms var(--spring);
-}
-@media (prefers-reduced-motion: reduce) {
-  .meridian .rev { opacity: 1; transform: none; }
-}
+   Per-card staggered entrance, played by components/meridian/RevealRoute.tsx with the Web
+   Animations API rather than classes (classes on not-yet-hydrated cards were a hydration
+   mismatch on every sales screen). Opacity and transform only, capped, and the lift is
+   dropped for a plain fade where cards are many -- see RevealRoute for the numbers.     */
 
 /* Route transition: the whole sales view fades + rises on every path change, driven by a
    key={pathname} remount of the .route-fade wrapper (components/meridian/RouteFade.tsx) so
@@ -1866,19 +1848,17 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   gap: 18px; margin-bottom: 20px;
 }
-.meridian .brandwrap { display: flex; align-items: center; gap: 13px; min-width: 0; }
-.meridian .mark {
-  width: 46px; height: 46px; border-radius: 15px;
-  background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff 20%), var(--accent-2));
-  color: var(--accent-ink); display: grid; place-items: center;
-  box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent); flex: none;
-}
-.meridian .mark svg { display: block; }
-.meridian .top h1 {
-  margin: 0; font-family: var(--font-display); font-size: 22px; font-weight: 800;
-  letter-spacing: -.01em;
-  /* A Latin wordmark in an RTL bar -- pin it LTR so the glyphs are not reordered. */
-  direction: ltr; unicode-bidi: isolate;
+/* The nav pill lives IN the top row now (item 1: the brand block that used to hold this
+   space is gone). It takes whatever the action cluster leaves and scrolls inside itself
+   if that is not enough. Below 1024px seven chips and the actions no longer fit side by
+   side, so the nav drops to its own full-width row: a breakpoint by design, not overflow.
+   tests/app-header.test.ts and the smoke suite's header block hold both halves. */
+.meridian .top > .segwrap { flex: 1 1 auto; min-width: 0; margin-bottom: 0; }
+.meridian .top > .topright { flex: none; }
+@media (max-width: 1023px) {
+  .meridian .top { flex-wrap: wrap; row-gap: 12px; }
+  .meridian .top > .segwrap { order: 2; flex-basis: 100%; }
+  .meridian .top > .topright { margin-inline-start: auto; }
 }
 
 /* ---- profile menu ------------------------------------------------------------
@@ -1908,9 +1888,8 @@ body {
 .meridian .mhelp__how-label { color: var(--ink-2); font-weight: 600; }
 .meridian .mhelp__todo { color: var(--muted); font-style: italic; }
 
-/* The reserved search affordance. Inert until the command palette lands; it exists now
-   so the header's proportions are final and the ⌘K binding has an owner. Collapses to
-   its icon on narrow viewports, where the label and the hint are both noise. */
+/* The header's search button. Opens SearchOverlay (.sov below). Collapses to its icon on
+   narrow viewports, where the label and the hint are noise. */
 .meridian .searchslot {
   display: inline-flex; align-items: center; gap: 7px;
   height: 34px; padding: 0 10px; cursor: pointer;
@@ -1929,6 +1908,53 @@ body {
 @media (max-width: 860px) {
   .meridian .searchslot__label, .meridian .searchslot__kbd { display: none; }
   .meridian .searchslot { padding: 0; width: 34px; justify-content: center; }
+}
+
+/* ---- search overlay (SearchOverlay.tsx) --------------------------------------
+   Full-screen, portalled into .meridian so it inherits the tokens but escapes .chrome's
+   containing block. The panel is capped for reading, not stretched to the viewport. */
+.meridian .sov {
+  position: fixed; inset: 0; z-index: 100;
+  display: flex; justify-content: center; align-items: flex-start;
+  padding: min(12vh, 96px) 16px 16px;
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
+  backdrop-filter: blur(8px);
+}
+.meridian .sov__panel {
+  width: min(40rem, 100%); max-height: min(70vh, 36rem);
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-2xl); box-shadow: var(--sh-3);
+}
+.meridian .sov__field {
+  display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-bottom: 1px solid var(--line); color: var(--muted);
+}
+.meridian .sov__input {
+  flex: 1; min-width: 0; border: 0; outline: 0; background: transparent;
+  font: inherit; font-size: 16px; color: var(--ink);
+}
+.meridian .sov__input::placeholder { color: var(--muted); }
+.meridian .sov__close {
+  border: 0; background: var(--sunk); color: var(--muted); cursor: pointer;
+  width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
+}
+.meridian .sov__close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .sov__list { overflow-y: auto; padding: 8px; }
+.meridian .sov__section + .sov__section { margin-top: 6px; }
+.meridian .sov__heading { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.meridian .sov__opt {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px; border-radius: var(--r-sm);
+  color: var(--ink-2); text-decoration: none; font-size: 13.5px;
+}
+.meridian .sov__opt[aria-selected="true"] { background: var(--sunk); color: var(--ink); }
+.meridian .sov__label { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.meridian .sov__sub { margin-inline-start: auto; flex: none; font-size: 12px; color: var(--muted); }
+.meridian .sov__empty { margin: 0; padding: 18px 10px; text-align: center; font-size: 13px; color: var(--muted); }
+@media (max-width: 620px) {
+  .meridian .sov { padding: 0; }
+  .meridian .sov__panel { width: 100%; max-height: 100%; height: 100%; border-radius: 0; border: 0; }
 }
 
 .meridian .pm { position: relative; }
@@ -1960,7 +1986,6 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
 }
-.meridian .top .sub { font-size: 13px; color: var(--muted); margin-top: -5px; }
 .meridian .topright { display: flex; align-items: center; gap: 9px; }
 .meridian .chip {
   background: var(--card); border: 1px solid var(--line); border-radius: 999px;
@@ -1994,11 +2019,9 @@ body {
 .meridian .themeToggle:hover { box-shadow: var(--sh-2); }
 .meridian .themeToggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
-/* ---- tabs ----------------------------------------------------------------
-   Two rows, both with a pill that travels between their items -- the six groups,
-   then the tabs of the active group. The movement is what tells you which way
-   you just went. Both rows are centred and, if a row is wider than the bar, it
-   scrolls inside itself rather than pushing the page wide.                    */
+/* ---- tabs ---- One row of group chips with a pill that travels between them; a group's
+   tabs open on hover (HoverPill). The row is centred in the space the header gives it
+   and scrolls inside itself rather than pushing the page wide. */
 .meridian .segwrap {
   display: flex; flex-direction: column; align-items: center;
   gap: 10px; margin-bottom: 20px;
@@ -2012,8 +2035,23 @@ body {
 /* The group row: same pill mechanics, a touch smaller and quieter than the tab row.
    Each chip is wrapped in .seg-item so the thumb has something to measure and the
    popover has something to anchor to — hence the descendant selector rather than `> a`. */
-.meridian .seg-item { position: relative; display: inline-flex; }
-.meridian .seg-groups > .seg-item > a { font-family: var(--font-display); font-weight: 800; font-size: 13px; padding-block: 8px; }
+.meridian .seg-item { position: relative; display: inline-flex; flex: none; }
+/* A chip never shrinks or wraps: squeezed into the header row, «فروش و سفارش» broke onto
+   two lines and every chip came out taller than wide. The row scrolls instead. */
+.meridian .seg-groups > .seg-item > a {
+  white-space: nowrap; padding-inline: 14px; line-height: 1.5;
+  /* Persian is compact: «مالی» is 15px of text, so padding alone left it 43px wide by
+     33px tall. A floor keeps the shortest label a pill (72 / ~30 = 0.41). */
+  min-width: 72px; text-align: center;
+}
+.meridian .seg-groups > .seg-item > a { font-family: var(--font-display); font-weight: 800; font-size: 13px; padding-block: 5px; }
+/* Item 13: the group chips are `.seg-item > a`, so `.seg > a`'s 18px inline padding never
+   reached them and the thumb was exactly as wide as the text: on «مالی» 15px wide by
+   36px tall, a circle standing on end. 14px inline padding + a 3px row + 5px block
+   padding makes every chip clearly wider than tall. The thumb inset must equal the row
+   padding or it sits off-centre. */
+.meridian .seg.seg-groups { padding: 3px; }
+.meridian .seg-groups .thumb { top: 3px; bottom: 3px; }
 
 /* The group's tabs, on hover. position:fixed and placed from a measured rect (see
    HoverPill) because .seg is a horizontal scroll container and would otherwise clip
@@ -2296,6 +2334,7 @@ body {
 .meridian .phc__body { padding: 26px; }
 .meridian .phc.carved .phc__body { padding-block-start: 74px; }
 .meridian .phc__title { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
+.meridian .phc__date { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); }
 .meridian .phc__overview { margin: 0; max-width: 68ch; font-size: 13.5px; line-height: 1.75; color: var(--muted); }
 
 /* The tab row that sits in the bay. A sibling of the carved element, never a child:
@@ -2873,7 +2912,6 @@ body {
   .meridian .board, .meridian .hint { padding-inline: 16px; }
   .meridian .cal, .meridian .rail { padding-inline: 16px; }
   .meridian .bhead { padding-inline: 16px; }
-  .meridian .top h1 { font-size: 18px; }
 }
 
 /* ---- the section card, for surfaces the artifact does not draw ------------

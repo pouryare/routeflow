@@ -54,11 +54,16 @@ afterAll(async () => {
   await stop?.();
 });
 
-async function open(route: string, viewport: { width: number; height: number }) {
+async function open(
+  route: string,
+  viewport: { width: number; height: number },
+  /* Map tiles can keep the network busy past networkidle; /map waits for load instead. */
+  waitUntil: "networkidle" | "load" = "networkidle",
+) {
   const context = await browser.newContext({ locale: "fa-IR", viewport });
   await context.addCookies([{ ...sessionCookie(), url: BASE }]);
   const page = await context.newPage();
-  await page.goto(`${BASE}${route}`, { waitUntil: "networkidle" });
+  await page.goto(`${BASE}${route}`, { waitUntil });
 
   /* A rejected cookie redirects to /login, which is a perfectly well-laid-out page — so
      every assertion below would pass while testing none of the routes named above. This
@@ -156,4 +161,75 @@ describe.each(ROUTES)("%s", (route) => {
       expect(escaped, `these cannot be reached at all:\n${escaped.join("\n")}`).toEqual([]);
     }, 90_000);
   });
+});
+
+describe("header", () => {
+  /* Item 1, rendered. The static test proves the markup order; only a browser proves the
+     chips and the actions actually share a line at the widths the user works at. */
+  it.each([
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "laptop", width: 1280, height: 800 },
+    { name: "small laptop", width: 1024, height: 768 },
+  ])("keeps nav and actions on one row at $name", async (viewport) => {
+    const { page, close } = await open("/sales/dashboard", viewport);
+    const [nav, actions] = await page.evaluate(() =>
+      [".chrome .top .seg-groups", ".chrome .top .topright"].map((s) => {
+        const r = document.querySelector(s)!.getBoundingClientRect();
+        return { mid: r.top + r.height / 2, h: r.height };
+      }),
+    );
+    await close();
+    expect(nav.h, "the nav did not render").toBeGreaterThan(0);
+    expect(Math.abs(nav.mid - actions.mid), "nav and actions sit on different rows").toBeLessThanOrEqual(4);
+  }, 90_000);
+
+  it("every group chip is clearly wider than tall", async () => {
+    const { page, close } = await open("/sales/dashboard", { width: 1440, height: 900 });
+    const ratios = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>(".seg-groups .seg-item > a")).map((a) => {
+        const r = a.getBoundingClientRect();
+        return { label: (a.textContent ?? "").trim(), ratio: r.height / r.width };
+      }),
+    );
+    await close();
+    expect(ratios.length).toBeGreaterThan(3);
+    /* 0.45 separates the two states: 36/71 = 0.51 was the circle, 30/71 = 0.42 the pill. */
+    const round = ratios.filter((r) => r.ratio > 0.45).map((r) => `«${r.label}» ${r.ratio.toFixed(2)}`);
+    expect(round, `chips that read as circles:\n${round.join("\n")}`).toEqual([]);
+  }, 90_000);
+});
+
+describe("search overlay", () => {
+  /* Items 9 and 29. The search box was inert: Ctrl-K focused it and nothing else. The
+     overlay is one component on every shell page, the map included, so both halves are
+     asserted from the same key. Page results are used because they exist for every role,
+     which keeps this independent of whichever user the smoke session mints. */
+  it.each([
+    { route: "/sales/dashboard", wait: "networkidle" as const },
+    { route: "/map", wait: "load" as const },
+  ])("Ctrl-K opens it full-screen on $route, finds a page, Escape closes it", async ({ route, wait }) => {
+    const { page, close } = await open(route, { width: 1440, height: 900 }, wait);
+    const errors: string[] = [];
+    page.on("pageerror", (e) => errors.push(e.message));
+    page.on("console", (m) => { if (m.type() === "error") errors.push(m.text()); });
+    /* Pressed before hydration the key goes nowhere; /map hydrates well after load. */
+    await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
+    await page.keyboard.press("Control+k");
+    const dialog = page.locator('[role="dialog"][aria-label="جستجو"]');
+    await dialog.waitFor({ state: "visible", timeout: 5000 }).catch((e) => {
+      throw new Error(`${e.message}\npage errors:\n${errors.join("\n")}`);
+    });
+
+    const box = await dialog.boundingBox();
+    expect(box, "the overlay has no box").not.toBeNull();
+    expect(box!.width, "the overlay does not cover the viewport: is it trapped in .chrome?").toBeGreaterThanOrEqual(1439);
+    expect(box!.height).toBeGreaterThanOrEqual(899);
+
+    await page.keyboard.type("سفارش");
+    await page.locator('a[role="option"][href="/sales/orders"]').waitFor({ timeout: 5000 });
+
+    await page.keyboard.press("Escape");
+    await dialog.waitFor({ state: "detached", timeout: 5000 });
+    await close();
+  }, 90_000);
 });
