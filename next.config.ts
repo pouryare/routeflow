@@ -15,7 +15,9 @@ import type { NextConfig } from "next";
 // failure happens inside the worker's scope) and just shows up as tiles never loading.
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  /* React's development build rebuilds server call stacks with eval(); without it every
+     dev page logs an error. Production never evals, so production never gets the flag. */
+  `script-src 'self' 'unsafe-inline'${process.env.NODE_ENV === "development" ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://server.arcgisonline.com https://tile.openstreetmap.org https://*.tile.openstreetmap.fr https://tiles.stadiamaps.com https://api.maptiler.com https://*.basemaps.cartocdn.com https://basemaps.cartocdn.com",
   "font-src 'self' data:",

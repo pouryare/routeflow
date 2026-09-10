@@ -41,6 +41,10 @@ const LIFT_MAX = 6;
 /** Past this many the stagger stops reading as rhythm and starts reading as lag, so the
  *  delay stops growing rather than the cards stopping. */
 const CAP = 8;
+/** `--ease` and `--spring` from app/globals.css. The Web Animations API takes an easing
+ *  string, not a custom property, so they are repeated here. */
+const EASE = "cubic-bezier(.16,1,.3,1)";
+const SPRING = "cubic-bezier(.34,1.32,.5,1)";
 
 function selectorsFor(pathname: string): string[] {
   const key = Object.keys(REVEAL)
@@ -53,6 +57,15 @@ function selectorsFor(pathname: string): string[] {
  *
  *  Lives in the layout rather than in each page: wiring it per page is what let three
  *  screens drift — one with no entrance, one animating its list but not its header.
+ *
+ *  **Web Animations, not classes.** This effect runs when the layout hydrates, which is
+ *  before the page below it (inside its own Suspense boundary) has. It used to add
+ *  `rev rev-in` classes and an inline transition-delay to those cards, so React then
+ *  hydrated a page whose className and style no longer matched the server's, and logged
+ *  a hydration error on every sales screen. `el.animate()` touches no attribute, so there
+ *  is nothing to mismatch; `fill: "backwards"` holds the hidden first frame through the
+ *  stagger delay, and a finished animation removes itself, so it can never outlive the
+ *  entrance and override a card's own hover transition.
  */
 export default function RevealRoute() {
   const pathname = usePathname();
@@ -60,6 +73,7 @@ export default function RevealRoute() {
   useEffect(() => {
     const selectors = selectorsFor(pathname);
     if (!selectors.length) return;
+    if (typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches) return;
 
     const items: HTMLElement[] = [];
     for (const sel of selectors) {
@@ -68,51 +82,33 @@ export default function RevealRoute() {
         if (!items.includes(el)) items.push(el);
       }
     }
-    if (!items.length) return;
+    if (!items.length || typeof items[0].animate !== "function") return;
 
-    const reduced =
-      typeof matchMedia === "function" && matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    /* The reset must not itself be delayed.
-     *
-     * A zero-duration transition that carries a DELAY still holds the old value for the
-     * length of that delay. Leaving the stagger on here postpones the reset past the
-     * moment the entrance is switched back on, so the element never leaves its finished
-     * state and only the first card — the one with delay 0 — ever animates. It fails
-     * silently: no error, just a stagger of one. */
     const lift = items.length <= LIFT_MAX;
-    for (const el of items) {
-      el.classList.add("rev");
-      el.classList.toggle("rev-lift", lift);
-      el.classList.remove("rev-in");
-      el.style.transition = "none";
-      el.style.transitionDelay = "";
-    }
-    void document.body.offsetHeight;
-
-    /* Once a card has finished entering, take the entrance classes back off it. Left on,
-     * `.rev.rev-in` keeps overriding the card's own `transition` for the life of the
-     * page, so a later hover snaps (or wobbles on a spring) instead of easing at the
-     * rate the stylesheet asks for. The opacity transition is the one to listen for --
-     * every card has it; the lift's transform transition may be absent. */
-    const cleanups: Array<() => void> = [];
+    const running: Animation[] = [];
     items.forEach((el, i) => {
-      el.style.transition = "";
-      el.style.transitionDelay = reduced ? "0ms" : `${Math.min(i, CAP) * STAGGER}ms`;
-      el.classList.add("rev-in");
-
-      const done = (e: TransitionEvent) => {
-        if (e.target !== el || e.propertyName !== "opacity") return;
-        el.classList.remove("rev", "rev-lift", "rev-in");
-        el.style.transition = "";
-        el.style.transitionDelay = "";
-        el.removeEventListener("transitionend", done);
-      };
-      el.addEventListener("transitionend", done);
-      cleanups.push(() => el.removeEventListener("transitionend", done));
+      const delay = Math.min(i, CAP) * STAGGER;
+      running.push(
+        el.animate([{ opacity: 0 }, { opacity: 1 }], {
+          duration: lift ? 460 : 300,
+          easing: EASE,
+          delay,
+          fill: "backwards",
+        }),
+      );
+      if (lift) {
+        running.push(
+          el.animate([{ transform: "translateY(16px)" }, { transform: "none" }], {
+            duration: 620,
+            easing: SPRING,
+            delay,
+            fill: "backwards",
+          }),
+        );
+      }
     });
 
-    return () => cleanups.forEach((fn) => fn());
+    return () => running.forEach((a) => a.cancel());
   }, [pathname]);
 
   return null;
