@@ -1,5 +1,6 @@
 "use client";
 
+import { SkeletonBlock, SkeletonLabel } from "@/components/Skeleton";
 import dynamic from "next/dynamic";
 import { CustomerRow, DistrictProperties } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
@@ -15,13 +16,11 @@ const CoverageMap = dynamic(() => import("@/components/CoverageMap"), {
      overflows by the height of the header. A tall-but-bounded box holds the space
      without pushing the page. */
   loading: () => (
-    <div className="flex min-h-[60vh] w-full flex-col items-center justify-center gap-4">
-      <div className="side__mark" style={{ width: 52, height: 52, borderRadius: 17, fontSize: 21 }}>
-        ن
-      </div>
-      <p className="m-0 text-[13.5px]" style={{ color: "var(--muted)" }}>
-        در حال بارگذاری نقشه…
-      </p>
+    /* The map's own silhouette while its chunk loads. It used to be the pre-rename «ن»
+       tile (item 28), which survived here after the sidebar copy was fixed. */
+    <div className="flex w-full flex-col gap-2" aria-busy="true">
+      <SkeletonLabel>در حال بارگذاری نقشه…</SkeletonLabel>
+      <SkeletonBlock className="h-[70vh] w-full rounded-[var(--r-2xl)]" />
     </div>
   ),
 });

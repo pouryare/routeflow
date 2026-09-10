@@ -2,14 +2,14 @@
 
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import type { AppTab } from "@/lib/appNav";
 import { DUR, EASE } from "@/lib/motion";
 import { normalisePersian } from "@/lib/persian";
 import {
-  MIN_REMOTE_QUERY, RECENT_KEY, moveActive, parseRecent, pushRecent, rankPages,
+  MAP_FOCUS_EVENT, MIN_REMOTE_QUERY, RECENT_KEY, moveActive, parseRecent, pushRecent, rankPages,
   type SearchHit, type SearchKind,
 } from "@/lib/searchModel";
 
@@ -58,6 +58,7 @@ function readRecent(): SearchHit[] {
 
 function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   const router = useRouter();
+  const pathname = usePathname();
   const reduce = useReducedMotion();
   const [q, setQ] = useState("");
   const [remote, setRemote] = useState<Remote & { for: string }>({ ...NO_REMOTE, for: "" });
@@ -110,6 +111,12 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   const choose = (hit: SearchHit) => {
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(pushRecent(recent, hit))); } catch { /* per-viewer nicety only */ }
     onClose();
+    /* Already on the map: hand the customer to it. A push to /map?c= from /map changes
+       the address bar and nothing else, because the map reads ?c= once, at mount. */
+    if (hit.kind === "customer" && pathname === "/map") {
+      window.dispatchEvent(new CustomEvent(MAP_FOCUS_EVENT, { detail: Number(hit.id.split(":")[1]) }));
+      return;
+    }
     router.push(hit.href);
   };
 

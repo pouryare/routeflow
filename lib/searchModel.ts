@@ -21,6 +21,9 @@ export type SearchHit = {
 
 export const RECENT_KEY = "meridian.search.recent";
 export const RECENT_MAX = 6;
+/** Window event the search overlay fires on /map instead of navigating to the page it is
+ *  already on; CoverageMap listens and flies to the customer (detail: customer id). */
+export const MAP_FOCUS_EVENT = "meridian:map-focus-customer";
 /** Below this the server is not asked: one letter matches most of the customer table. */
 export const MIN_REMOTE_QUERY = 2;
 

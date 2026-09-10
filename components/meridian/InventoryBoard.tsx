@@ -114,7 +114,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
 
       <div className="sttoolbar">
         <label className="stsearch">
-          <span aria-hidden="true">⌕</span>
+          <Icon name="search" size="sm" />
           <input type="text" placeholder="جست‌وجوی کالا…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="stchips" role="group" aria-label="فیلتر وضعیت">

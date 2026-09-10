@@ -65,7 +65,7 @@ describe("no emoji where an icon belongs", () => {
        disclosure, «▲▼» and «↑↓» for direction, «◎» for locate. They take the font's weight instead
        of the icon stroke and are read aloud as their Unicode names. Sixteen were found in
        one sweep. Typography («·», «—», «→» in a sentence) is deliberately not in the set. */
-    const GLYPH = /[ⓘ⋯✓✔✕✖☰⚙★☆▲▼◀▶⌘⏱⇄↻⟳⟲✎✏⊕⊖⊗⨯◉◎▸▾▴◂♥♡✚➕➖➜➤⮕⬅⬆⬇↑↓]/u;
+    const GLYPH = /[ⓘ⋯✓✔✕✖☰⚙★☆▲▼◀▶⌘⏱⇄↻⟳⟲✎✏⊕⊖⊗⨯◉◎▸▾▴◂♥♡✚➕➖➜➤⮕⬅⬆⬇↑↓⌕⧉]/u;
     const offenders: string[] = [];
     for (const f of sourceFiles()) {
       const body = stripComments(readFileSync(join(ROOT, f), "utf8"));

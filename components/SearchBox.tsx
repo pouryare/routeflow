@@ -253,9 +253,9 @@ export default function SearchBox({
           onClick={expand}
           aria-label="جستجوی مشتری، منطقه یا آدرس"
           aria-expanded={false}
-          className="flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent active:scale-[0.98]"
+          className="mapbtn"
         >
-          ⌕
+          <Icon name="search" size="md" />
         </button>
       ) : (
       <>
@@ -270,7 +270,7 @@ export default function SearchBox({
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
         placeholder="جستجوی مشتری، منطقه، آدرس یا لینک نقشه…"
-        className={`w-full rounded-[var(--radius-md)] border border-border bg-surface-raised py-2 pe-3 text-[length:var(--text-sm)] text-text outline-none elevate-accent transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent ${
+        className={`mapsearch__input ${
           isNarrow ? "ps-9" : "ps-3"
         }`}
       />
@@ -288,7 +288,7 @@ export default function SearchBox({
       </div>
 
       {open && trimmed && (
-        <div className="mt-1 max-h-80 overflow-y-auto rounded-[var(--radius-md)] border border-border bg-surface-raised elevate-accent">
+        <div className="mapsearch__panel">
           {isUrl ? (
             <div className="p-2">
               <button
@@ -318,10 +318,10 @@ export default function SearchBox({
                 <button
                   key={i}
                   onClick={() => selectGeoResult(r)}
-                  className="flex w-full items-start gap-2 border-b border-border px-3 py-2 text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] last:border-b-0 hover:bg-white/5"
+                  className="mapsearch__opt"
                 >
                   <Icon name="map-pin" size="sm" />
-                  <span className="truncate">{r.label}</span>
+                  <span className="mapsearch__label">{r.label}</span>
                 </button>
               ))
             ) : (
@@ -332,18 +332,20 @@ export default function SearchBox({
               <button
                 key={i}
                 onClick={() => select(r)}
-                className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] last:border-b-0 hover:bg-white/5"
+                className="mapsearch__opt"
               >
                 {r.kind === "customer" ? (
                   <>
-                    <span className="truncate">{r.customer.business_name}</span>
+                    <Icon name="building" size="sm" />
+                    <span className="mapsearch__label">{r.customer.business_name}</span>
                     <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">
                       {r.customer.customer_code}
                     </span>
                   </>
                 ) : (
                   <>
-                    <span className="truncate">{r.district.properties.name}</span>
+                    <Icon name="map" size="sm" />
+                    <span className="mapsearch__label">{r.district.properties.name}</span>
                     <span className="shrink-0 text-[length:var(--text-xs)] text-text-faint">
                       {r.district.properties.parent_name ?? ""}
                     </span>

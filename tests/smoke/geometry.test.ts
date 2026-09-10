@@ -311,3 +311,41 @@ describe("runs", () => {
     expect(bad).toEqual([]);
   }, 90_000);
 });
+
+describe("map", () => {
+  /* Item 26: the map was a 100dvh pane under the header and the page card, so the page
+     scrolled and the map read as an embedded frame. It now wears the page: the whole
+     frame is on screen without scrolling, at desktop and phone widths. */
+  it.each([
+    { name: "desktop", width: 1440, height: 900 },
+    { name: "phone", width: 390, height: 844 },
+  ])("the map frame fits the viewport at $name", async (viewport) => {
+    const { page, close } = await open("/map", viewport, "load");
+    await page.locator(".map-viewport").waitFor({ timeout: 30_000 });
+    const r = await page.evaluate(() => {
+      const b = document.querySelector(".map-viewport")!.getBoundingClientRect();
+      return { top: b.top, bottom: b.bottom, h: b.height, vh: window.innerHeight };
+    });
+    await close();
+    expect(r.h, "the map has no height").toBeGreaterThan(300);
+    expect(r.bottom, `the map runs ${Math.round(r.bottom - r.vh)}px below the fold`).toBeLessThanOrEqual(r.vh + 1);
+  }, 90_000);
+
+  /* Item 27: the sidebar is an instrument panel, not a menu. With nothing selected it
+     leads with the worklist for the area on screen; the duplicated nav links are gone,
+     and so are the map's own copies of the skin and accent controls the header already
+     carries. */
+  it("the sidebar leads with the worklist, and repeats no navigation", async () => {
+    const { page, close } = await open("/map", { width: 1440, height: 900 }, "load");
+    await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
+    await page.getByRole("button", { name: "باز کردن پنل" }).click();
+    await page.locator("#mwork-heading").waitFor({ state: "visible", timeout: 10_000 });
+    const found = await page.evaluate(() => ({
+      quickLinks: document.body.innerText.includes("لینک‌های سریع"),
+      floatingSkin: document.querySelectorAll('[data-surface="map"] > .map-viewport > div > .themeToggle').length,
+    }));
+    await close();
+    expect(found.quickLinks, "«لینک‌های سریع» is still in the sidebar").toBe(false);
+    expect(found.floatingSkin).toBe(0);
+  }, 90_000);
+});

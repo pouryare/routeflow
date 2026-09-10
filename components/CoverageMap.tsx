@@ -2,8 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import type { ComponentProps } from "react";
-import SkinToggle from "@/components/meridian/SkinToggle";
-import AccentPicker, { useAccent } from "@/components/AccentPicker";
+import { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -92,6 +91,9 @@ import { copyText, coordText } from "@/lib/clipboard";
 import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
 import CopyButton from "./CopyButton";
 import { Icon } from "@/components/meridian/Icon";
+import MapWorklist from "./MapWorklist";
+import { buildWorklist, type Bounds } from "@/lib/mapWorklist";
+import { MAP_FOCUS_EVENT } from "@/lib/searchModel";
 import { MAP_PIN_SVG } from "@/components/meridian/icon-map";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
@@ -163,29 +165,6 @@ function writeStoredView(v: MapView): void {
   }
 }
 
-const QUICK_LINKS = [
-  { href: "/sales", icon: "receipt", label: "فروش و سفارش‌ها" },
-  { href: "/planner", icon: "compass", label: "برنامه‌ریزی مسیر و پوشش" },
-  { href: "/leads", icon: "map-pin", label: "لیست مکان‌های پیشنهادی" },
-  { href: "/facilities", icon: "building", label: "مکان‌های ما (انبارها و مبدأ)" },
-  { href: "/gallery", icon: "image", label: "گالری تصاویر" },
-] as const;
-
-// Whole-group aggregates. A فروشنده is scoped to their own orders, so proxy.ts sends
-// them to /sales instead -- and by the same rule as ADMIN_LINKS below, they should not
-// see a link whose only purpose would be to turn them away.
-const GROUP_WIDE_LINKS = [
-  { href: "/report", icon: "chart", label: "گزارش پوشش و مشتریان" },
-  { href: "/sales/dashboard", icon: "trend", label: "تحلیل فروش و پوشش" },
-] as const;
-
-// Owner-only, and kept out of QUICK_LINKS rather than filtered out of it: proxy.ts would
-// bounce a manager or driver off these anyway, and a link that exists only to refuse you
-// is worse than no link.
-const ADMIN_LINKS = [
-  { href: "/sales/admin/groups", icon: "folders", label: "گروه‌ها و محدوده‌ها" },
-  { href: "/sales/admin/users", icon: "users", label: "حساب‌های کاربری" },
-] as const;
 /** Map geometry colours.
  *
  *  These cannot be `var(--map-stroke-major)`: the map runs with `preferCanvas`, and
@@ -250,6 +229,23 @@ interface DueReminder {
   due_date: string;
   message: string;
   label: string;
+}
+
+const toBounds = (b: LatLngBounds): Bounds => ({
+  south: b.getSouth(),
+  west: b.getWest(),
+  north: b.getNorth(),
+  east: b.getEast(),
+});
+
+/** Reports the visible area once on mount and again whenever the map settles, for the
+ *  sidebar's worklist (lib/mapWorklist.ts). */
+function BoundsReporter({ onBounds }: { onBounds: (b: Bounds) => void }) {
+  const map = useMapEvents({ moveend: () => onBounds(toBounds(map.getBounds())) });
+  useEffect(() => {
+    onBounds(toBounds(map.getBounds()));
+  }, [map, onBounds]);
+  return null;
 }
 
 function DebugMapExpose() {
@@ -444,6 +440,8 @@ export default function CoverageMap({
   const [cityBoundary, setCityBoundary] = useState<GeoJSON.Feature | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [dueReminders, setDueReminders] = useState<DueReminder[]>([]);
+  /* What is on screen, for the worklist. Null until the map has reported once. */
+  const [viewBounds, setViewBounds] = useState<Bounds | null>(null);
   const [heatmapByDebt, setHeatmapByDebt] = useState(false);
   const [basemap, setBasemap] = useState<BasemapId>("dark");
   const [nearbyRadiusKm, setNearbyRadiusKm] = useState(2);
@@ -871,6 +869,23 @@ export default function CoverageMap({
      effect below lists `ink` as a dependency, which is what repaints the already-drawn
      district layers once a new one arrives. */
   const viewportRef = useRef<HTMLDivElement>(null);
+  /* Item 26: the map fills what the shell leaves below it, and no more. At 100dvh it
+     ran a full screen below the header and the page card, so the page scrolled and the
+     map read as an embedded frame. Measured rather than guessed, because the header
+     wraps to two rows below 1024px and the page card's height depends on its copy. */
+  useEffect(() => {
+    const el = viewportRef.current;
+    if (!el) return;
+    const fit = () => {
+      const top = el.getBoundingClientRect().top + window.scrollY;
+      el.style.height = `${Math.max(360, Math.floor(window.innerHeight - top - 16))}px`;
+      mapRef.current?.invalidateSize();
+    };
+    fit();
+    document.fonts?.ready.then(fit).catch(() => {});
+    window.addEventListener("resize", fit);
+    return () => window.removeEventListener("resize", fit);
+  }, []);
   const [accent] = useAccent();
   const [skin] = useTheme();
   const [ink, setInk] = useState<MapInk>(() => MAP_INK_FALLBACK[activeBasemap.ground]);
@@ -1030,6 +1045,32 @@ export default function CoverageMap({
       writeIds(RECENT_KEY, next);
       return next;
     });
+  }, []);
+
+  /* Item 27: with nothing selected the panel leads with the work in the area on screen.
+     Rebuilt whenever the map settles somewhere new (BoundsReporter). */
+  const worklist = useMemo(
+    () =>
+      viewBounds
+        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, new Date().toISOString().slice(0, 10))
+        : null,
+    [customers, dueReminders, districtProps, viewBounds],
+  );
+
+  /* The header's search overlay sends a picked customer here when the map is already open,
+     rather than navigating to the page it is on: CoverageMap reads ?c= once, at mount, so
+     a same-route push would have changed the address bar and nothing else. */
+  const focusCustomerRef = useRef<(id: number) => void>(() => {});
+  useEffect(() => {
+    focusCustomerRef.current = (id) => {
+      const c = customers.find((x) => x.id === id);
+      if (c) flyToCustomer(c);
+    };
+  });
+  useEffect(() => {
+    const on = (e: Event) => focusCustomerRef.current((e as CustomEvent<number>).detail);
+    window.addEventListener(MAP_FOCUS_EVENT, on);
+    return () => window.removeEventListener(MAP_FOCUS_EVENT, on);
   }, []);
 
   function flyToCustomer(c: CustomerRow) {
@@ -1295,37 +1336,12 @@ export default function CoverageMap({
           -- covering the name of what you are looking at with a menu button that would
           only bury it further. With a panel owning the screen there is nothing here worth
           reaching, so it stands down until the panel is closed. */}
-      {/* The skin toggle, in the map's own chrome.
-          Below the sidebar button rather than beside it: the top-centre belongs to the
-          search box, which on a phone takes the whole row. It stands down with the
-          sidebar button for the same reasons, so an open panel never has two floating
-          controls parked on its title. */}
-      <div
-        /* Also stands down while the sidebar is OPEN: it floats above the sidebar in the
-           stacking scale, so with the panel out it sat on top of the panel's own title.
-           The sidebar carries its own copy in the brand row instead. */
-        hidden={sidebarOpen || searchExpanded || panelOwnsScreen}
-        className="absolute right-4 top-[68px] z-[var(--z-sidebar-toggle)]"
-      >
-        <SkinToggle />
-      </div>
-
-      {/* The accent picker, directly under the skin toggle: the two are the same kind of
-          decision -- what the app looks like -- and stand down together for the same
-          reasons. 116px is 68 plus the toggle's 40px and the 8px gap. */}
-      <div
-        hidden={sidebarOpen || searchExpanded || panelOwnsScreen}
-        className="absolute right-4 top-[116px] z-[var(--z-sidebar-toggle)]"
-      >
-        <AccentPicker variant="map" />
-      </div>
-
       <button
         onClick={() => setSidebarOpen((v) => !v)}
         aria-label={sidebarOpen ? "بستن پنل" : "باز کردن پنل"}
         aria-expanded={sidebarOpen}
-        hidden={!sidebarOpen && (searchExpanded || panelOwnsScreen)}
-        className="absolute right-4 top-4 z-[var(--z-sidebar-toggle)] flex h-10 w-10 items-center justify-center rounded-[var(--radius-md)] border border-border bg-surface-raised text-[length:var(--text-md)] text-text elevate-accent transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:border-accent active:scale-[0.98]"
+        hidden={selectedCustomer !== null || (!sidebarOpen && (searchExpanded || panelOwnsScreen))}
+        className="mapbtn absolute right-4 top-4 z-[var(--z-sidebar-toggle)]"
       >
         <Icon name={sidebarOpen ? "x" : "menu"} size="md" />
         {!sidebarOpen && dueReminders.length > 0 && (
@@ -1354,24 +1370,18 @@ export default function CoverageMap({
 
       <aside
         ref={asideRef}
-        className={`absolute inset-y-0 right-0 z-[var(--z-sidebar)] flex w-80 flex-col gap-5 overflow-y-auto border-l border-border bg-surface/95 p-4 pt-16 backdrop-blur transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] ${
-          sidebarOpen ? "sidebar-stagger translate-x-0" : "translate-x-full"
+        className={`mapside absolute inset-y-3 right-3 z-[var(--z-sidebar)] flex w-80 max-w-[calc(100%-1.5rem)] flex-col gap-5 overflow-y-auto p-4 pt-16 transition-transform duration-[var(--dur-slow)] ease-[var(--ease-out)] ${
+          sidebarOpen && !selectedCustomer ? "sidebar-stagger translate-x-0" : "translate-x-[calc(100%+1rem)]"
         }`}
       >
         <div>
-          {/* The same brand row the sales header wears, so the two halves of the app
-              introduce themselves the same way. */}
-          <div className="side__brand">
-            <div className="side__mark" aria-hidden="true">
-            <svg viewBox="0 0 44 24" width="24" height="13" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round">
-              <path d="M22 12c-3.2-4.6-6-6.2-9.4-6.2C8.4 5.8 5 8.6 5 12s3.4 6.2 7.6 6.2c3.4 0 6.2-1.6 9.4-6.2Zm0 0c3.2-4.6 6-6.2 9.4-6.2C35.6 5.8 39 8.6 39 12s-3.4 6.2-7.6 6.2c-3.4 0-6.2-1.6-9.4-6.2Z" />
-            </svg>
-          </div>
-            <div className="min-w-0 flex-1">
-              <h1>نقشه پوشش</h1>
-              <div className="s">مشتری‌ها، مناطق و مسیرها</div>
-            </div>
-            <SkinToggle />
+          {/* No brand row: the logo went with item 1, and the page header above already
+              names this page. What stays is the one map-native action the old «لینک‌های
+              سریع» section held: the current view as a link. */}
+          <div className="mapside__bar">
+            <button type="button" className="mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی پیوند این نما" title="کپی پیوند این نما">
+              <Icon name="link" size="sm" />
+            </button>
           </div>
 
           {/* Silent while the data is current. Every figure on this map -- debts,
@@ -1417,6 +1427,21 @@ export default function CoverageMap({
             )}
           </div>
         </div>
+
+        {worklist && !selectedCustomer ? (
+          <MapWorklist
+            worklist={worklist}
+            onCustomer={flyToCustomer}
+            onDistrict={(d) => {
+              const f = districts?.features.find((x) => x.properties.id === d.id);
+              if (f) flyToDistrict(f);
+            }}
+            onReminder={(r) => {
+              const due = dueReminders.find((x) => x.id === r.id);
+              if (due) openReminderEntity(due);
+            }}
+          />
+        ) : null}
 
         {/* Everything below is filterable. An empty panel with no explanation reads as a
             failure, so a filter that matches nothing says so. */}
@@ -1555,49 +1580,6 @@ export default function CoverageMap({
             </div>
           </CollapsibleSection>
         )}
-
-        <CollapsibleSection title="لینک‌های سریع" icon="compass" storageKey="links" keywords="برنامه گزارش تحلیل گالری مکان پیشنهادی پیوند اشتراک" defaultOpen>
-            {/* The current view as a link. Everything on screen -- where the map sits,
-                which customer is open, how the markers are coloured -- is already in the
-                address bar; this is the button that says so, because nobody thinks to
-                check the address bar of a map. */}
-            <button
-              onClick={shareView}
-              className="mb-1.5 flex w-full items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface py-2 pe-3 ps-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-            >
-              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white/5 text-[length:var(--text-md)]">
-                ⧉
-              </span>
-              <span className="flex-1 text-[length:var(--text-sm)] text-text">کپی پیوند این نما</span>
-            </button>
-
-            <div className="flex flex-col gap-1.5">
-              {[
-                ...QUICK_LINKS,
-                ...(role === "salesperson" ? [] : GROUP_WIDE_LINKS),
-                ...(role === "owner" ? ADMIN_LINKS : []),
-              ].map((l) => (
-                <Link
-                  key={l.href}
-                  href={l.href}
-                  className="group flex items-center gap-3 rounded-[var(--radius-md)] border border-border bg-surface py-2 pe-3 ps-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent focus-visible:border-accent"
-                >
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-[var(--radius-sm)] bg-white/5 text-[length:var(--text-md)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:bg-accent/15 group-focus-visible:bg-accent/15">
-                    <Icon name={l.icon} size="md" />
-                  </span>
-                  <span className="flex-1 text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:text-accent group-focus-visible:text-accent">
-                    {l.label}
-                  </span>
-                  <span
-                    aria-hidden
-                    className="shrink-0 text-text-faint transition-[transform,color] duration-[var(--dur-base)] ease-[var(--ease-out)] group-hover:-translate-x-0.5 group-hover:text-accent group-focus-visible:-translate-x-0.5 group-focus-visible:text-accent"
-                  >
-                    ‹
-                  </span>
-                </Link>
-              ))}
-            </div>
-        </CollapsibleSection>
 
         <CustomerFilters
           salespeople={salespeople}
@@ -2379,6 +2361,7 @@ export default function CoverageMap({
           <FullscreenControl />
           <LayersControl open={layersOpen} count={changedFromDefault(layers)} onClick={() => setLayersOpen((v) => !v)} />
           <DebugMapExpose />
+          <BoundsReporter onBounds={setViewBounds} />
         </MapContainer>
 
         {selectedCustomer && (
