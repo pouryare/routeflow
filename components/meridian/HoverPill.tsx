@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type React from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { activeGroup, type AppGroupId, type AppTab } from "@/lib/appNav";
 import { popover, withReducedMotion } from "@/lib/motion";
@@ -52,6 +53,23 @@ export function pillModel(
     }));
 
   return { groups: shown, tabsByGroup, currentHref: hit?.href };
+}
+
+export type PopAnchor = { left: number; top: number };
+
+/** Where the hover panel sits, as a style object.
+ *
+ *  `left` — physical — because the number comes from getBoundingClientRect, which is
+ *  physical. This used to be `insetInlineStart`, which in RTL resolves to `right`: the
+ *  panel was placed its measured distance from the OPPOSITE edge, so hovering the first
+ *  chip opened a menu under the last one. Logical properties are for values expressed in
+ *  logical terms; a measured viewport offset is not one.
+ *
+ *  Pure, so tests/hoverPill.test.ts can hold the rule without rendering anything.
+ */
+export function popoverStyle(anchor: PopAnchor | null): React.CSSProperties | undefined {
+  if (!anchor) return undefined;
+  return { position: "fixed", top: anchor.top, left: anchor.left };
 }
 
 /** Slides the `.thumb` inside `root` to sit under whichever child matches `current`.
@@ -109,7 +127,7 @@ export default function HoverPill({
   /* The group row is a horizontal scroll container, so an absolutely-positioned popover
      inside it would be clipped at the row's edge. Measure the chip and place the panel
      with position:fixed instead — it then escapes every ancestor's overflow. */
-  const [anchor, setAnchor] = useState<{ left: number; right: number; top: number } | null>(null);
+  const [anchor, setAnchor] = useState<PopAnchor | null>(null);
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reduced = usePrefersReducedMotion();
 
@@ -155,7 +173,7 @@ export default function HoverPill({
     const chip = el?.closest<HTMLElement>(".seg-item");
     if (chip) {
       const r = chip.getBoundingClientRect();
-      setAnchor({ left: r.left, right: window.innerWidth - r.right, top: r.bottom + 8 });
+      setAnchor({ left: r.left, top: r.bottom + 8 });
     }
     setOpen(id);
   };
@@ -222,11 +240,7 @@ export default function HoverPill({
                     className="seg-pop"
                     role="menu"
                     aria-label={g.label}
-                    style={
-                      anchor
-                        ? { position: "fixed", top: anchor.top, insetInlineStart: anchor.left }
-                        : undefined
-                    }
+                    style={popoverStyle(anchor)}
                     initial={popover.initial}
                     animate={withReducedMotion(popover.animate, reduced)}
                     exit={withReducedMotion(popover.exit, reduced)}

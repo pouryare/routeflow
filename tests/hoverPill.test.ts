@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { pillModel } from "@/components/meridian/HoverPill";
+import { pillModel, popoverStyle } from "@/components/meridian/HoverPill";
 import { APP_GROUPS, appTabs } from "@/lib/appNav";
 
 /** HoverPill renders; pillModel decides. Keeping the decision in a pure function is what
@@ -53,5 +53,29 @@ describe("pillModel", () => {
   it("an unknown path leaves no group active rather than guessing", () => {
     const m = pillModel(owner, APP_GROUPS, "/nowhere");
     expect(m.currentHref).toBeUndefined();
+  });
+});
+
+describe("popoverStyle", () => {
+  /* The popover is placed from a rect measured with getBoundingClientRect, whose `left`
+     is a PHYSICAL offset from the viewport's left edge. `inset-inline-start` resolves to
+     `right` in RTL, so writing that number there positions the panel its own distance
+     from the WRONG edge — the bug the user reported as "the menu opens on mirror":
+     hovering «روز من», the first chip, opened a panel under «میدان و نقشه», the last.
+     Physical measurement demands a physical property. */
+  it("positions with a physical property, never a logical one", () => {
+    const style = popoverStyle({ left: 300, top: 64 })!;
+    expect(style.left).toBe(300);
+    expect(style).not.toHaveProperty("insetInlineStart");
+    expect(style).not.toHaveProperty("insetInlineEnd");
+    expect(style).not.toHaveProperty("right");
+  });
+
+  it("is fixed, so a scroll container cannot clip it", () => {
+    expect(popoverStyle({ left: 10, top: 20 })!.position).toBe("fixed");
+  });
+
+  it("returns undefined before the chip has been measured", () => {
+    expect(popoverStyle(null)).toBeUndefined();
   });
 });
