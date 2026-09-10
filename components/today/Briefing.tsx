@@ -103,7 +103,7 @@ export default function Briefing({
                 {p.more ? <div className="n">+ {p.more} مورد بیشتر</div> : null}
               </div>
             </div>
-            <ul className="m-0 list-none p-0" style={{ padding: "0 22px 16px" }}>
+            <ul className="kblock__body m-0 list-none">
               {p.items.map((it, i) => (
                 <Item key={i} item={it} variant="meridian" />
               ))}

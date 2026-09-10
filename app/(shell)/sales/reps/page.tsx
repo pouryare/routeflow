@@ -35,38 +35,40 @@ export default async function RepsPage() {
           <div className="n">{reps.length === 0 ? "نماینده‌ای ثبت نشده" : `${faNum(reps.length)} نماینده`}</div>
         </div>
       </div>
-      <table className="w-full border-collapse text-[length:var(--text-sm)]">
-        <thead>
-          <tr className="text-[var(--text-muted)]">
-            <th className="border-b border-[var(--border)] py-2 text-right font-medium">کد / نام</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">مرحله</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">سلامت</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">راه‌اندازی</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">آخرین سفارش</th>
-          </tr>
-        </thead>
-        <tbody>
-          {reps.map((r) => (
-            <tr key={r.representative_id}>
-              <td className="border-b border-[var(--border)] py-2 text-[var(--text)]">
-                <Link href={`/sales/reps/${r.representative_id}`} className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
-                  {r.rep_code} · {r.business_name}
-                </Link>
-              </td>
-              <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{r.stage}</td>
-              <td className="border-b border-[var(--border)] py-2 text-left tabular-nums" style={{ color: BAND[r.band].tone }}>
-                {faNum(r.score)} · {BAND[r.band].label}
-              </td>
-              <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
-                {faNum(r.onboarding_done)}/{faNum(r.onboarding_total)}
-              </td>
-              <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
-                {r.last_order_date ?? "—"}
-              </td>
+      <div className="kblock__body overflow-x-auto">
+        <table className="w-full border-collapse text-[length:var(--text-sm)]">
+          <thead>
+            <tr className="text-[var(--text-muted)]">
+              <th className="border-b border-[var(--border)] py-2 text-right font-medium">کد / نام</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">مرحله</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">سلامت</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">راه‌اندازی</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">آخرین سفارش</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {reps.map((r) => (
+              <tr key={r.representative_id}>
+                <td className="border-b border-[var(--border)] py-2 text-[var(--text)]">
+                  <Link href={`/sales/reps/${r.representative_id}`} className="text-[var(--text)] no-underline hover:text-[var(--accent)]">
+                    {r.rep_code} · {r.business_name}
+                  </Link>
+                </td>
+                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{r.stage}</td>
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums" style={{ color: BAND[r.band].tone }}>
+                  {faNum(r.score)} · {BAND[r.band].label}
+                </td>
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
+                  {faNum(r.onboarding_done)}/{faNum(r.onboarding_total)}
+                </td>
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
+                  {r.last_order_date ?? "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>    </>
   );
 }

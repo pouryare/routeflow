@@ -239,7 +239,7 @@ export default function Pocket({
             </div>
           </div>
         </div>
-        <div style={{ padding: "0 22px 20px" }}>
+        <div className="kblock__body">
           {group("امروز", data.today)}
           {group("این هفته", data.week)}
           {group("انجام‌شده", data.done)}

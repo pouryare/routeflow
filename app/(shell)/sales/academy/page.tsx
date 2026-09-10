@@ -31,7 +31,9 @@ export default async function AcademyPage() {
           <div className="n">درس‌ها و پاسخ به مخالفت مشتری</div>
         </div>
       </div>
-      <AcademyLibrary cards={cards} modules={modules} done={done} />
+      <div className="kblock__body">
+        <AcademyLibrary cards={cards} modules={modules} done={done} />
+      </div>
     </div>    </>
   );
 }

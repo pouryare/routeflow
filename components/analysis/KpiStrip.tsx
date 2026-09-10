@@ -59,7 +59,7 @@ export default function KpiStrip({ cards, period }: { cards: KpiCard[]; period: 
       <div className="bhead">
         <h2>شاخص‌های کلیدی</h2>
       </div>
-      <div className="grid grid-cols-2 gap-[var(--space-2)] sm:grid-cols-3 lg:grid-cols-4">
+      <div className="kblock__body grid grid-cols-2 gap-[var(--space-2)] sm:grid-cols-3 lg:grid-cols-4">
         {cards.map((c) => {
           const tone = c.value === null ? "var(--text-faint)" : c.on_track ? "var(--good)" : "var(--crit)";
           return (

@@ -34,7 +34,7 @@ export default async function RoutingPage() {
           </div>
         </div>
       </div>
-      <div className="px-[var(--space-4)] pb-[var(--space-5)]">
+      <div className="kblock__body">
         <RoutingPlanner vehicleNames={names} />
       </div>
     </div>    </>

@@ -45,39 +45,41 @@ export default async function DeliveriesPage() {
         </div>
       </div>
 
-      <table className="w-full border-collapse text-[length:var(--text-sm)]">
-        <thead>
-          <tr className="text-[var(--text-muted)]">
-            <th className="border-b border-[var(--border)] py-2 text-right font-medium">سفارش</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">تلاش</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">وضعیت</th>
-            <th className="border-b border-[var(--border)] py-2 text-left font-medium">تاریخ</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((d) => (
-            <tr key={d.id}>
-              <td className="border-b border-[var(--border)] py-2 text-[var(--text)]">
-                <Link
-                  href={`/sales/orders/${d.order_id}`}
-                  className="text-[var(--text)] no-underline hover:text-[var(--accent)]"
-                >
-                  {d.order_no}
-                </Link>
-              </td>
-              <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
-                {faNum(d.seq)}
-              </td>
-              <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">
-                {D_LABEL[d.status] ?? d.status}
-              </td>
-              <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
-                {d.completed_at ? faJalaliDate(d.completed_at) : d.planned_date ? faJalaliDate(d.planned_date) : "—"}
-              </td>
+      <div className="kblock__body overflow-x-auto">
+        <table className="w-full border-collapse text-[length:var(--text-sm)]">
+          <thead>
+            <tr className="text-[var(--text-muted)]">
+              <th className="border-b border-[var(--border)] py-2 text-right font-medium">سفارش</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">تلاش</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">وضعیت</th>
+              <th className="border-b border-[var(--border)] py-2 text-left font-medium">تاریخ</th>
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {rows.map((d) => (
+              <tr key={d.id}>
+                <td className="border-b border-[var(--border)] py-2 text-[var(--text)]">
+                  <Link
+                    href={`/sales/orders/${d.order_id}`}
+                    className="text-[var(--text)] no-underline hover:text-[var(--accent)]"
+                  >
+                    {d.order_no}
+                  </Link>
+                </td>
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
+                  {faNum(d.seq)}
+                </td>
+                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">
+                  {D_LABEL[d.status] ?? d.status}
+                </td>
+                <td className="border-b border-[var(--border)] py-2 text-left tabular-nums text-[var(--text-muted)]">
+                  {d.completed_at ? faJalaliDate(d.completed_at) : d.planned_date ? faJalaliDate(d.planned_date) : "—"}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>    </>
   );
 }
