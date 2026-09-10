@@ -11,7 +11,7 @@
  *  unit-tested, per repo convention.
  */
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { faNum } from "@/lib/format";
 import NotificationCenter from "./NotificationCenter";
 import { Icon } from "@/components/meridian/Icon";
@@ -25,6 +25,8 @@ export default function NotificationBell({
 } = {}) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
+  const [shift, setShift] = useState(0);
+  const wrapRef = useRef<HTMLDivElement>(null);
   const [authed, setAuthed] = useState(true);
 
   // Poll the unread count on an interval so the badge stays live without a socket.
@@ -62,8 +64,22 @@ export default function NotificationBell({
      top bar beside the profile, with the panel hanging below it instead of above. */
   const inHeader = placement === "header";
 
+  /* The header panel hangs from the bell's outer edge, then slides back just far enough
+     to stay on screen: on a phone the bell sits ~60px from the edge, and a 22rem panel
+     anchored there ran off the other side. Measured in the click that opens it. */
+  function toggle() {
+    if (!open && inHeader && wrapRef.current) {
+      const r = wrapRef.current.getBoundingClientRect();
+      const w = Math.min(window.innerWidth * 0.92, 352) + 2; // NotificationCenter's width + border
+      const left = Math.max(8, Math.min(r.left, window.innerWidth - 8 - w));
+      setShift(left - r.left);
+    }
+    setOpen((v) => !v);
+  }
+
   return (
     <div
+      ref={wrapRef}
       className={
         inHeader
           ? "relative"
@@ -73,9 +89,11 @@ export default function NotificationBell({
     >
       {open && (
         <div
+          data-pane="notifications"
+          style={inHeader ? { left: shift, right: "auto" } : undefined}
           className={
             inHeader
-              ? "absolute top-[calc(100%+8px)] inset-inline-end-0 z-50 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-3)]"
+              ? "absolute top-[calc(100%+8px)] end-0 z-50 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-3)]"
               : "mb-[var(--space-2)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-3)]"
           }
         >
@@ -84,7 +102,7 @@ export default function NotificationBell({
       )}
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={toggle}
         aria-label="اعلان‌ها"
         aria-expanded={open}
         className={

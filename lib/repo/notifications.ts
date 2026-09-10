@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { faNum } from "@/lib/format";
-import { toJalali } from "@/lib/jalali";
+import { faJalaliDate, toJalali } from "@/lib/jalali";
 import { configureWebPush, webpush } from "@/lib/push";
 import { editTelegram, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
@@ -111,7 +111,9 @@ const TEMPLATES: Record<string, (m: Record<string, unknown>) => { title_fa: stri
     const due = metaStr(m, "due_date");
     return {
       title_fa: "سررسید چک نزدیک است",
-      body_fa: [no ? `چک ${no}` : null, due].filter(Boolean).join(" — ") || null,
+      // meta carries the cheque's ISO due date; the reader gets the Jalali one. This row is
+      // stored, so a raw «2026-09-12» here stays in the feed for good.
+      body_fa: [no ? `چک ${no}` : null, due ? `سررسید ${faJalaliDate(due)}` : null].filter(Boolean).join(" — ") || null,
     };
   },
   "reminder.due": (m) => ({ title_fa: "یادآوری سررسید", body_fa: metaStr(m, "message") }),

@@ -72,20 +72,13 @@ describe("the notification bell lives in the header", () => {
   });
 });
 
-describe("the map canvas keeps its dark identity", () => {
-  it("globals.css pins the ground under data-surface=map", () => {
-    expect(readFileSync("app/globals.css", "utf8")).toContain('[data-surface="map"]');
-  });
-
-  it("only the real canvas is marked — /facilities and /gallery are record pages", () => {
-    // MASTER.md's Product-shape table groups them with the map, but neither renders a
-    // map canvas: one is a form list, the other a photo grid. Darkening them under a
-    // light skin would be a bug dressed as consistency.
-    expect(readFileSync("app/(shell)/map/layout.tsx", "utf8")).toContain('data-surface="map"');
-    for (const r of ["facilities", "gallery"]) {
-      const p = `app/(shell)/${r}/layout.tsx`;
-      if (existsSync(p)) expect(readFileSync(p, "utf8")).not.toContain('data-surface="map"');
-    }
+describe("the map follows the skin", () => {
+  it("nothing pins a surface to the dark palette", () => {
+    // The map was pinned dark under [data-surface="map"], which overrode fifteen of the
+    // skin's tokens and left the rest (--muted, --ink-2, --accent-text…) at their
+    // light-skin values: grey text on a near-black sidebar under a light skin.
+    expect(readFileSync("app/globals.css", "utf8")).not.toContain("data-surface");
+    expect(existsSync("app/(shell)/map/layout.tsx")).toBe(false);
   });
 
   it("CoverageMap no longer roots a second meridian scope inside the shell's", () => {

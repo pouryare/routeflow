@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import {
@@ -27,6 +28,14 @@ import { Icon } from "@/components/meridian/Icon";
 function LayersButton({ open, count, onClick }: { open: boolean; count: number; onClick: () => void }) {
   const map = useMap();
   const buttonRef = useRef<HTMLAnchorElement | null>(null);
+  /* Made once, in the browser (the map never renders on the server), so there is an
+     element to portal the icon into from the first render. Leaflet only places it. */
+  const [button] = useState(() => {
+    const a = document.createElement("a");
+    a.href = "#";
+    a.setAttribute("role", "button");
+    return a;
+  });
   // Written in an effect rather than during render: the control is created once and its
   // click handler closes over this ref, so it needs the latest callback without the
   // control being torn down and rebuilt every time the parent re-renders.
@@ -39,9 +48,7 @@ function LayersButton({ open, count, onClick }: { open: boolean; count: number; 
     const Button = L.Control.extend({
       onAdd() {
         const container = L.DomUtil.create("div", "leaflet-bar leaflet-control layers-toggle-control");
-        const button = L.DomUtil.create("a", "", container) as HTMLAnchorElement;
-        button.href = "#";
-        button.setAttribute("role", "button");
+        container.appendChild(button);
         L.DomEvent.disableClickPropagation(container);
         L.DomEvent.on(button, "click", (e) => {
           L.DomEvent.preventDefault(e);
@@ -59,7 +66,7 @@ function LayersButton({ open, count, onClick }: { open: boolean; count: number; 
     return () => {
       control.remove();
     };
-  }, [map]);
+  }, [map, button]);
 
   useEffect(() => {
     const button = buttonRef.current;
@@ -71,11 +78,12 @@ function LayersButton({ open, count, onClick }: { open: boolean; count: number; 
     /* No count badge. It reported "how many layers differ from their defaults", which is
        a number nobody was keeping in their head — and on a control that already says what
        it opens, a numeral just asks a question the panel answers. */
-    button.innerHTML = "▤";
     button.classList.toggle("is-open", open);
   }, [open, count]);
 
-  return null;
+  /* The icon is rendered into the control's own element rather than typed into it as a
+     text glyph («▤»). */
+  return createPortal(<Icon name="layers" size="md" />, button);
 }
 
 export function LayersControl(props: { open: boolean; count: number; onClick: () => void }) {
@@ -314,10 +322,10 @@ export function LayerHint({
     <button
       onClick={onOpen}
       className={`rounded-[var(--radius-sm)] border border-border text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent ${
-        compact ? "shrink-0 px-2 py-1" : "w-full px-2 py-2 text-right"
+        compact ? "inline-flex shrink-0 items-center gap-1.5 px-2 py-1" : "flex w-full items-center gap-1.5 px-2 py-2 text-right"
       }`}
     >
-      ▤ {compact ? "روشن کردن" : `${what} خاموش است — از دکمه لایه‌ها روشنش کنید`}
+      <Icon name="layers" size="sm" /> {compact ? "روشن کردن" : `${what} خاموش است — از دکمه لایه‌ها روشنش کنید`}
     </button>
   );
 }

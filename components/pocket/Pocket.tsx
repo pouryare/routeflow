@@ -111,7 +111,7 @@ export default function Pocket({
           >
             {DUE_LABEL(c)}
           </span>
-          {c.recur ? <span>↺</span> : null}
+          {c.recur ? <Icon name="repeat" size="sm" label="تکرارشونده" /> : null}
           {c.customer ? (
             <button
               type="button"

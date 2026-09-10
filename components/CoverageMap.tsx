@@ -69,12 +69,15 @@ import type { LatLng } from "@/lib/geo";
 import { fetchDrivingRoute, type DrivingRoute } from "@/lib/osrm";
 import {
   BASEMAP_KEY,
+  BASEMAPS_KEY,
+  DEFAULT_BASEMAPS,
+  parseBasemaps,
+  type BasemapBySkin,
   LABELS_TILE,
   LAYERS_KEY,
   QUIET_TILES,
   basemapDef,
   changedFromDefault,
-  isBasemapId,
   parseLayerPrefs,
   type BasemapId,
   type LayerPrefs,
@@ -445,7 +448,11 @@ export default function CoverageMap({
   /* What is on screen, for the worklist. Null until the map has reported once. */
   const [viewBounds, setViewBounds] = useState<Bounds | null>(null);
   const [heatmapByDebt, setHeatmapByDebt] = useState(false);
-  const [basemap, setBasemap] = useState<BasemapId>("dark");
+  /* One basemap per skin (lib/mapLayers.ts, BasemapBySkin): the map follows the
+     light/dark switch like every other surface. */
+  const [skin] = useTheme();
+  const [basemaps, setBasemaps] = useState<BasemapBySkin>(DEFAULT_BASEMAPS);
+  const basemap = basemaps[skin];
   const [nearbyRadiusKm, setNearbyRadiusKm] = useState(2);
   const [bulkMode, setBulkMode] = useState(false);
   const [bulkSelectedIds, setBulkSelectedIds] = useState<Set<number>>(new Set());
@@ -687,8 +694,7 @@ export default function CoverageMap({
       restored.heatmap = localStorage.getItem("coverage_heatmap_on") === "1";
     }
     setLayers(restored);
-    const storedBasemap = localStorage.getItem(BASEMAP_KEY);
-    if (isBasemapId(storedBasemap)) setBasemap(storedBasemap);
+    setBasemaps(parseBasemaps(localStorage.getItem(BASEMAPS_KEY), localStorage.getItem(BASEMAP_KEY)));
     // Defaults on -- it costs nothing on a day with no plan, since the bar renders
     // nothing at all then.
     setNextStopOn(localStorage.getItem("coverage_nextstop_off") !== "1");
@@ -723,10 +729,16 @@ export default function CoverageMap({
     });
   }, []);
 
-  const chooseBasemap = useCallback((id: BasemapId) => {
-    setBasemap(id);
-    localStorage.setItem(BASEMAP_KEY, id);
-  }, []);
+  const chooseBasemap = useCallback(
+    (id: BasemapId) => {
+      setBasemaps((prev) => {
+        const next = { ...prev, [skin]: id };
+        localStorage.setItem(BASEMAPS_KEY, JSON.stringify(next));
+        return next;
+      });
+    },
+    [skin],
+  );
 
   // The class goes on <html>, not on a wrapper here: it has to reach the Leaflet
   // popups, the toasts and the bottom bar, none of which render inside this tree.
@@ -875,7 +887,6 @@ export default function CoverageMap({
     return () => window.removeEventListener("resize", fit);
   }, []);
   const [accent] = useAccent();
-  const [skin] = useTheme();
   const [ink, setInk] = useState<MapInk>(() => MAP_INK_FALLBACK[activeBasemap.ground]);
   useEffect(() => {
     // A frame later than the attribute write, so getComputedStyle sees the new cascade
@@ -1302,8 +1313,7 @@ export default function CoverageMap({
   return (
     /* The `meridian` scope used to be rooted HERE, because the map was the one surface
        that did not sit inside it. app/(shell)/layout.tsx now provides it, and repeating
-       it would be a nested copy that redefines --bg back to the light value -- defeating
-       the [data-surface="map"] override that keeps this canvas dark under a light skin.
+       it would be a second copy of the tokens nested under the skin's own.
        Everything below still reads --surface, --border, --accent and the rest; it just
        inherits them now. See app/globals.css, "مریدین". */
     /* data-ground says what the chosen basemap's ground looks like, so the overlays drawn

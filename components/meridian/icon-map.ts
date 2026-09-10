@@ -8,6 +8,7 @@ import {
   ArrowUpRight, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, ArrowLeftRight,
   RotateCcw, Layers, Camera, FileText, Waypoints, ClipboardList,
   Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
+  List, LayoutGrid, Repeat, PanelBottom, PanelRight,
   type LucideIcon,
 } from "lucide-react";
 
@@ -104,6 +105,12 @@ export const ICONS = {
   /* «⋯» and «◎» were typed as text glyphs where these belonged. */
   more: Ellipsis,
   locate: LocateFixed,
+  /* «▤ ▥ ▦ ↺ ⌄» were typed as text glyphs where these belonged. */
+  list: List,
+  grid: LayoutGrid,
+  repeat: Repeat,
+  "panel-bottom": PanelBottom,
+  "panel-side": PanelRight,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

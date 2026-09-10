@@ -104,7 +104,7 @@ export default function CollapsibleSection({
           <span className="sect__title">{title}</span>
           {count !== undefined && <span className="sect__count mono">{faNum(count)}</span>}
           <span aria-hidden="true" className="sect__chev">
-            ⌄
+            <Icon name="chevron-down" size="sm" />
           </span>
         </button>
         {right}

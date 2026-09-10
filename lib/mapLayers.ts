@@ -434,6 +434,38 @@ export const DEFAULT_LAYERS: LayerPrefs = {
 export const LAYERS_KEY = "coverage_layers";
 export const BASEMAP_KEY = "coverage_basemap";
 
+/** The basemap chosen for each skin.
+ *
+ *  The map used to keep one basemap and pin its whole canvas dark whatever skin the
+ *  reader chose, so a light page opened onto a black map with its panels re-coloured by
+ *  half. Now the map follows the skin like every other surface: each skin remembers its
+ *  own basemap, dark starts on «آرام» and light on «روشن», and flipping the skin swaps
+ *  between the two. Picking a basemap from the layers panel changes only the current
+ *  skin's choice. */
+export type BasemapBySkin = { dark: BasemapId; light: BasemapId };
+export const DEFAULT_BASEMAPS: BasemapBySkin = { dark: "dark", light: "apple" };
+export const BASEMAPS_KEY = "coverage_basemaps";
+
+/** Reads the per-skin choice. A browser that only has the old single-basemap key keeps
+ *  that choice for the skin whose ground it matches. */
+export function parseBasemaps(raw: string | null, legacy: string | null): BasemapBySkin {
+  const out: BasemapBySkin = { ...DEFAULT_BASEMAPS };
+  if (raw) {
+    try {
+      const v = JSON.parse(raw) as Partial<Record<keyof BasemapBySkin, unknown>> | null;
+      if (v && typeof v === "object") {
+        if (isBasemapId(v.dark)) out.dark = v.dark;
+        if (isBasemapId(v.light)) out.light = v.light;
+        return out;
+      }
+    } catch {
+      // Unreadable: fall back to the old key below.
+    }
+  }
+  if (isBasemapId(legacy)) out[basemapDef(legacy).ground] = legacy;
+  return out;
+}
+
 /** Merged over the defaults rather than trusted wholesale: a stored blob written by an
  *  older version is missing whatever has been added since, and a missing key must read as
  *  its default rather than as "off". */

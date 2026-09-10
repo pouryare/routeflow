@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
 import { faToman, faNum } from "@/lib/format";
@@ -74,7 +75,7 @@ export default function ProductsView({ products }: { products: ProductRow[] }) {
             aria-pressed={view === "list"}
             onClick={() => choose("list")}
           >
-            ▤ فهرست
+            <Icon name="list" size="sm" /> فهرست
           </button>
           <button
             type="button"
@@ -82,7 +83,7 @@ export default function ProductsView({ products }: { products: ProductRow[] }) {
             aria-pressed={view === "tiles"}
             onClick={() => choose("tiles")}
           >
-            ▦ کاشی
+            <Icon name="grid" size="sm" /> کاشی
           </button>
         </div>
         <span className="viewbar__n">{faNum(products.length)} کالا</span>

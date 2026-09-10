@@ -358,7 +358,7 @@ describe("map", () => {
     await page.locator("#mwork-heading").waitFor({ state: "visible", timeout: 10_000 });
     const found = await page.evaluate(() => ({
       quickLinks: document.body.innerText.includes("لینک‌های سریع"),
-      floatingSkin: document.querySelectorAll('[data-surface="map"] > .map-viewport > div > .themeToggle').length,
+      floatingSkin: document.querySelectorAll('.map-viewport > div > .themeToggle').length,
     }));
     await close();
     expect(found.quickLinks, "«لینک‌های سریع» is still in the sidebar").toBe(false);
@@ -503,5 +503,131 @@ describe("global services", () => {
     expect(text).toContain(target!.display_name);
     expect(after, "the banner survived «بازگشت»").toBe(0);
     expect(kinds).toEqual(["auth.impersonation_started", "auth.impersonation_ended"]);
+  }, 120_000);
+});
+
+describe("panels and controls stay where they belong", () => {
+  /* Measured in a browser, because each of these was a layout that only a browser gets
+     wrong: a Tailwind class that compiles to nothing, a grid that was never declared, a
+     one-link menu in its own column, a surface pinned to the wrong palette. */
+
+  it.each([
+    { name: "desktop", width: 1280, height: 800 },
+    { name: "phone", width: 390, height: 844 },
+  ])("the notification panel opens inside the viewport on $name", async (viewport) => {
+    // `inset-inline-end-0` is not a Tailwind utility, so the panel had no inline anchor
+    // and hung off the left edge of the screen from the bell.
+    const { page, close } = await open("/sales", viewport);
+    await page.locator('button[aria-label="اعلان‌ها"]').first().click();
+    const pane = page.locator('[data-pane="notifications"]');
+    await pane.waitFor({ state: "visible", timeout: 10_000 });
+    const box = (await pane.boundingBox())!;
+    await close();
+    expect(box.x, "the panel starts left of the screen").toBeGreaterThanOrEqual(0);
+    expect(box.x + box.width, "the panel ends right of the screen").toBeLessThanOrEqual(viewport.width);
+  }, 90_000);
+
+  it("the customer window's close icon sits in the middle of its circle", async () => {
+    // The orders grid opens پنجرهٔ مشتری from every pocket; the snapshot always has orders.
+    const { page, close } = await open("/sales/orders", { width: 1280, height: 800 });
+    const opener = page.locator(".pockets > *").first();
+    await opener.waitFor({ state: "visible", timeout: 10_000 });
+    await opener.click();
+    const x = page.locator('.sheet.on button[aria-label="بستن"]');
+    await x.waitFor({ state: "visible", timeout: 10_000 });
+    await page.waitForTimeout(600); // the sheet slides in
+    const off = await x.evaluate((b) => {
+      const r = b.getBoundingClientRect();
+      const i = b.querySelector("svg")!.getBoundingClientRect();
+      return { dx: Math.abs(r.x + r.width / 2 - (i.x + i.width / 2)), dy: Math.abs(r.y + r.height / 2 - (i.y + i.height / 2)) };
+    });
+    await close();
+    expect(off.dx, "icon off-centre horizontally").toBeLessThanOrEqual(1);
+    expect(off.dy, "icon off-centre vertically").toBeLessThanOrEqual(1);
+  }, 90_000);
+
+  it.each(ROUTES)("every icon-only button on %s centres its icon", async (route) => {
+    const { page, close } = await open(route, { width: 1280, height: 800 });
+    const off = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLButtonElement>("button"))
+        .filter((b) => {
+          const kids = Array.from(b.children);
+          return kids.length === 1 && kids[0].tagName.toLowerCase() === "svg" && !b.textContent?.trim() && b.offsetParent !== null;
+        })
+        .map((b) => {
+          const r = b.getBoundingClientRect();
+          const i = b.firstElementChild!.getBoundingClientRect();
+          return {
+            label: b.getAttribute("aria-label") ?? b.className,
+            dx: Math.round(Math.abs(r.x + r.width / 2 - (i.x + i.width / 2))),
+            dy: Math.round(Math.abs(r.y + r.height / 2 - (i.y + i.height / 2))),
+          };
+        })
+        .filter((o) => o.dx > 1 || o.dy > 1),
+    );
+    await close();
+    expect(off, `icon-only buttons whose icon is off-centre: ${JSON.stringify(off)}`).toEqual([]);
+  }, 90_000);
+
+  it("/settings/notifications has neither a stray one-link menu nor another section's tabs", async () => {
+    const { page, close } = await open("/settings/notifications", { width: 1280, height: 800 });
+    const found = await page.evaluate(() => ({
+      menu: document.querySelectorAll('nav[aria-label="بخش‌های تنظیمات"]').length,
+      tabs: document.querySelectorAll(".phc__tabs").length,
+    }));
+    await close();
+    expect(found.menu, "a settings menu with one link came back").toBe(0);
+    expect(found.tabs, "the settings page is wearing another section's tabs").toBe(0);
+  }, 90_000);
+
+  it.each(["light", "dark"] as const)("the map follows the %s skin and its sidebar text is readable", async (skin) => {
+    const { page, close } = await open("/map", { width: 1440, height: 900 }, "load");
+    await page.evaluate((s) => localStorage.setItem("coverage-theme", s), skin);
+    await page.reload({ waitUntil: "load", timeout: 60_000 });
+    await page.locator("#mwork-heading").waitFor({ state: "visible", timeout: 30_000 });
+    const found = await page.evaluate(() => {
+      const parse = (c: string): [number, number, number] | null => {
+        let m = c.match(/rgba?\(\s*([\d.]+)[,\s]+([\d.]+)[,\s]+([\d.]+)/);
+        if (m) return [Number(m[1]), Number(m[2]), Number(m[3])];
+        m = c.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)/);
+        if (m) return [Number(m[1]) * 255, Number(m[2]) * 255, Number(m[3]) * 255];
+        return null;
+      };
+      const transparent = (c: string) => c === "transparent" || /rgba\([^)]*,\s*0\)$/.test(c) || /\/\s*0\)$/.test(c);
+      const lum = ([r, g, b]: [number, number, number]) => {
+        const f = (v: number) => ((v /= 255) <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+        return 0.2126 * f(r) + 0.7152 * f(g) + 0.0722 * f(b);
+      };
+      const bgOf = (el: Element | null): string => {
+        for (let e = el; e; e = e.parentElement) {
+          const c = getComputedStyle(e).backgroundColor;
+          if (!transparent(c)) return c;
+        }
+        return "rgb(255, 255, 255)";
+      };
+      const side = document.querySelector(".mapside");
+      const low: string[] = [];
+      if (side) {
+        for (const el of Array.from(side.querySelectorAll<HTMLElement>("*"))) {
+          const own = Array.from(el.childNodes).some((n) => n.nodeType === 3 && n.textContent!.trim());
+          if (!own || el.offsetParent === null) continue;
+          const fg = parse(getComputedStyle(el).color);
+          const bg = parse(bgOf(el));
+          if (!fg || !bg) continue;
+          const [a, b] = [lum(fg), lum(bg)].sort((x, y) => y - x);
+          const ratio = (a + 0.05) / (b + 0.05);
+          if (ratio < 3) low.push(`${el.textContent!.trim().slice(0, 24)} (${ratio.toFixed(2)})`);
+        }
+      }
+      return {
+        ground: document.querySelector(".map-viewport")?.getAttribute("data-ground"),
+        hasSide: !!side,
+        low: low.slice(0, 12),
+      };
+    });
+    await close();
+    expect(found.hasSide, "no .mapside on /map").toBe(true);
+    expect(found.ground, `the ${skin} skin opened onto a map of the other ground`).toBe(skin);
+    expect(found.low, `sidebar text under 3:1 contrast in the ${skin} skin`).toEqual([]);
   }, 120_000);
 });

@@ -241,14 +241,14 @@ export default function CustomerDetailPanel({
           onClick={flip}
           aria-label={orient === "side" ? "نمایش افقی در پایین صفحه" : "نمایش عمودی در کنار صفحه"}
           title={orient === "side" ? "نمایش افقی" : "نمایش عمودی"}
-          className="shrink-0 rounded-[var(--radius-sm)] p-1 text-[length:var(--text-md)] leading-none text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
+          className="grid shrink-0 place-items-center rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
         >
-          {orient === "side" ? "▤" : "▥"}
+          <Icon name={orient === "side" ? "panel-bottom" : "panel-side"} size="sm" />
         </button>
         <button
           onClick={handleClose}
           aria-label="بستن"
-          className="shrink-0 rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
+          className="grid shrink-0 place-items-center rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
         >
           <Icon name="x" size="sm" />
         </button>

@@ -220,7 +220,7 @@ export default function Board({
                         style={{ color: `var(--${KIND_TONE[card.kind] ?? "muted"})`, fontSize: 11 }}
                       >
                         {taskKindLabel(card.kind)}
-                        {card.recur ? " ↺" : ""}
+                        {card.recur ? <Icon name="repeat" size="sm" label="تکرارشونده" /> : null}
                       </span>
                       {card.priority === "CRITICAL" || card.priority === "HIGH" ? (
                         <span
@@ -391,7 +391,7 @@ export default function Board({
       )}
 
       <div className="hint" aria-live="polite">
-        {log ? <span>◆ {log}</span> : <span>یک کارت را جابه‌جا کنید تا در هر سه نما هم‌گام شود.</span>}
+        {log ? <span>{log}</span> : <span>یک کارت را جابه‌جا کنید تا در هر سه نما هم‌گام شود.</span>}
       </div>
 
       <CustomerSheet customerId={custId} onClose={() => setCustId(null)} />

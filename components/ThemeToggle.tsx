@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useId, useSyncExternalStore } from "react";
 import {
   DEFAULT_THEME,
   THEME_CHANGE_EVENT,
@@ -9,30 +9,25 @@ import {
   readTheme,
 } from "@/lib/theme";
 
+function subscribe(onChange: () => void): () => void {
+  window.addEventListener(THEME_CHANGE_EVENT, onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    window.removeEventListener(THEME_CHANGE_EVENT, onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
 /** Reads the chosen theme and keeps every mounted copy of the control in step.
  *
- *  Same shape as useNavApp: localStorage fires no event in the tab that wrote it, so the
- *  custom event carries same-tab changes and the storage event carries other tabs.
+ *  A store read: the server (and the hydrating render) says DEFAULT_THEME, the browser
+ *  answers from localStorage on the next render, and a client-only render -- the map is
+ *  one -- gets the real skin on its first. The custom event carries same-tab changes
+ *  and the storage event carries other tabs, since localStorage fires no event in the
+ *  tab that wrote it.
  */
 export function useTheme(): [Theme, (t: Theme) => void] {
-  // Starts at the default rather than at the stored value, because the server rendered
-  // the default and disagreeing with it here is a hydration mismatch. The real value
-  // arrives in the effect below, one frame later -- by which point the inline init script
-  // has already painted the correct colours, so nothing visible is waiting on this.
-  const [theme, setTheme] = useState<Theme>(DEFAULT_THEME);
-
-  useEffect(() => {
-    const read = () => setTheme(readTheme());
-    read();
-    window.addEventListener(THEME_CHANGE_EVENT, read);
-    window.addEventListener("storage", read);
-    return () => {
-      window.removeEventListener(THEME_CHANGE_EVENT, read);
-      window.removeEventListener("storage", read);
-    };
-  }, []);
-
-  return [theme, applyTheme];
+  return [useSyncExternalStore(subscribe, readTheme, () => DEFAULT_THEME), applyTheme];
 }
 
 /** Sun ⇄ moon, as a morph rather than an icon swap.

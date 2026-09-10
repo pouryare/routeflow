@@ -42,13 +42,16 @@ export default async function PageHeader({ route }: { route: string }) {
     .filter((t) => t.ready && (route === t.href || route.startsWith(`${t.href}/`)))
     .sort((a, b) => b.href.length - a.href.length)[0]?.href;
 
-  /* One sibling is not a section — a lone tab in the bay reads as a stray chip. */
+  /* One sibling is not a section — a lone tab in the bay reads as a stray chip. And a
+     route that is none of the tabs (/settings/notifications) shows none: activeGroup
+     falls back to the first group so the header pill always has one, but printing that
+     group's tabs here dressed the settings page up as a sales page. */
   return (
     <PageHeaderCard
       title={meta.title}
       overview={meta.overview}
       date={date}
-      tabs={siblings.length > 1 ? siblings : []}
+      tabs={current && siblings.length > 1 ? siblings : []}
       currentHref={current}
     />
   );

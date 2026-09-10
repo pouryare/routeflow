@@ -16,6 +16,10 @@ import Link from "next/link";
 const NAV = [{ href: "/settings/notifications", label: "اعلان‌ها" }];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
+  /* One section is not a menu: a single link in its own 12rem column printed «اعلان‌ها»
+     alone beside the page, pushing the content off-centre. The column returns when a
+     second settings page does. */
+  if (NAV.length < 2) return <main className="min-w-0">{children}</main>;
   return (
     <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-start">
       <nav aria-label="بخش‌های تنظیمات" className="shrink-0 md:w-48">
