@@ -60,22 +60,13 @@ describe("pageMeta", () => {
   });
 });
 
-/** The copy existing is half of it; the card actually being on the page is the other. */
-describe("every page opens with its overview card", () => {
-  const routes = staticRoutes("app/(shell)");
-
-  it("renders PageHeader, except redirect-only pages", () => {
-    const missing: string[] = [];
-    for (const r of routes) {
-      const src = readFileSync(join("app/(shell)", r, "page.tsx"), "utf8");
-      if (src.includes("PageHeader")) continue; // PageHeader or PageHeaderCard
-      // A page whose whole body is redirect() has nothing to head.
-      if (/redirect\(["'`]/.test(src)) continue;
-      missing.push(r);
-    }
-    expect(missing, `no <PageHeader> on:\n${missing.join("\n")}`).toEqual([]);
-  });
-});
+/* "The card is actually on the page" now lives in tests/shell-pages-have-tabs.test.ts.
+ *
+ *  The assertion that used to sit here accepted the substring "PageHeader", which matches
+ *  PageHeaderCard too — so it passed for the seven client-component pages that had the
+ *  tab-less card and no navigation at all. It permitted the defect it looked like it was
+ *  guarding. The replacement requires the real async PageHeader, follows ancestor
+ *  layouts, and additionally checks that any layout rendering it wraps it in Suspense. */
 
 /** loading.tsx only does anything because the shell layout is synchronous (see
  *  tests/shellLayout.test.ts). Given that, every route should have one — a segment

@@ -12,13 +12,6 @@ import { parseIdParam } from "@/lib/deepLink";
 import { coordText } from "@/lib/clipboard";
 import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
-/* PageHeaderCard, not PageHeader: this page is a Client Component, and
-   PageHeader reads cookies() to work out which sibling tabs the viewer may
-   reach — a server-only concern that cannot cross into here. The title and
-   overview are pure data, so they come straight from the registry; the
-   section's siblings stay reachable from the header pill. */
-import PageHeaderCard from "@/components/meridian/PageHeaderCard";
-import { pageMetaFor } from "@/lib/pageMeta";
 import { Icon } from "@/components/meridian/Icon";
 
 // Leaflet touches window on import, so the picker can't be server-rendered.
@@ -196,7 +189,6 @@ export default function FacilitiesPage() {
 
   return (
     <>
-    <PageHeaderCard {...pageMetaFor("/facilities")} />
     <div dir="rtl" className="pagewrap">
       <div className="mx-auto flex max-w-3xl flex-col gap-5">
         <div className="flex items-center justify-between gap-3">

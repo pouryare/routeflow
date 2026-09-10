@@ -13,8 +13,14 @@ import PageHeaderCard from "@/components/meridian/PageHeaderCard";
  *  route it names is the one pageMeta is keyed on, so a typo fails the page's own copy
  *  lookup immediately.
  *
- *  Async, and that is fine: this renders inside a PAGE, not a layout. loading.tsx covers
- *  a page's own awaits — it is only an await in a layout that blocks navigation.
+ *  Async. Rendered from a page that is itself a server component, that costs nothing —
+ *  loading.tsx covers a page's own awaits.
+ *
+ *  Rendered from a LAYOUT — which seven client-component routes must do, since a client
+ *  file cannot import this — it MUST be wrapped in that layout's own <Suspense>. Per
+ *  Next's layout.js docs, loading.tsx sits below layout.tsx and cannot cover a layout's
+ *  await, so an unwrapped one blocks every navigation into the route and silently
+ *  disables loading.tsx. tests/shell-pages-have-tabs.test.ts holds both rules.
  */
 export default async function PageHeader({ route }: { route: string }) {
   const meta = pageMetaFor(route);
