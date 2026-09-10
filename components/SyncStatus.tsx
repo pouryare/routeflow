@@ -10,6 +10,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { getSyncEngine } from "@/lib/offline/syncEngine";
 import { OFFLINE_OPS } from "@/lib/offline/safety";
+import { faNum } from "@/lib/format";
 import type { OutboxRecord } from "@/lib/offline/outbox";
 
 function since(iso: string | null): string {
@@ -18,6 +19,30 @@ function since(iso: string | null): string {
   if (mins < 1) return "همین حالا";
   if (mins < 60) return `${mins} دقیقه پیش`;
   return `${Math.round(mins / 60)} ساعت پیش`;
+}
+
+/** What the indicator should say, or null for "say nothing".
+ *
+ *  Ranked, because these overlap. Offline is the most actionable and hides the rest —
+ *  nothing drains while there is no connection, so a queue length underneath it is noise.
+ *  Then failures, which need a decision. Then a queue that is merely waiting.
+ *
+ *  Returning null for "online, nothing queued" is the point: that is the state the app is
+ *  in almost all the time, and a badge that is always lit is a badge nobody reads. It used
+ *  to print «آنلاین» permanently.
+ *
+ *  Pure, so the ranking is testable — the component around it is browser glue and is not
+ *  unit-tested, per repo convention.
+ */
+export function syncBadge(s: {
+  online: boolean;
+  pending: number;
+  trouble: number;
+}): { tone: "crit" | "warn" | "muted"; label: string } | null {
+  if (!s.online) return { tone: "muted", label: "آفلاین" };
+  if (s.trouble > 0) return { tone: "crit", label: `${faNum(s.trouble)} مشکل در همگام‌سازی` };
+  if (s.pending > 0) return { tone: "warn", label: `${faNum(s.pending)} در صف` };
+  return null;
 }
 
 export default function SyncStatus() {
@@ -54,6 +79,7 @@ export default function SyncStatus() {
     (r) => r.status === "held" || r.status === "pending" || r.status === "sending"
   ).length;
   const trouble = records.filter((r) => r.status === "failed" || r.status === "conflict").length;
+  const badge = syncBadge({ online, pending, trouble });
 
   async function undo(id: string) {
     await getSyncEngine().outbox.undo(id);
@@ -72,6 +98,10 @@ export default function SyncStatus() {
     await refresh();
   }
 
+  /* Nothing worth reporting: online, nothing queued, nothing failed. The outbox is still
+     reachable from /settings; this island is only for states that need a person. */
+  if (!badge) return null;
+
   return (
     <div className="fixed bottom-3 left-3 z-40 text-[length:var(--text-xs)]" dir="rtl">
       <button
@@ -81,13 +111,9 @@ export default function SyncStatus() {
       >
         <span
           className="inline-block h-2 w-2 rounded-full"
-          style={{ background: online ? "var(--good)" : "var(--text-faint)" }}
+          style={{ background: `var(--${badge.tone === "muted" ? "text-faint" : badge.tone})` }}
         />
-        <span className="text-[var(--text-muted)]">
-          {online ? "آنلاین" : "آفلاین"}
-          {pending > 0 && ` · ${pending} در صف`}
-          {trouble > 0 && ` · ${trouble} مشکل`}
-        </span>
+        <span className="text-[var(--text-muted)]">{badge.label}</span>
       </button>
 
       {open && (
