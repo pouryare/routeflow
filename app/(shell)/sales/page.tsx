@@ -114,7 +114,7 @@ export default async function SalesHomePage() {
         <GradientStat
           tone="mint"
           small
-          icon="◷"
+          icon="clock"
           label="در انتظار تحویل"
           value={`${faNum(awaiting)} سفارش`}
           chip={`${faNum(Math.round(d.kg))} کیلو · نرخ تحویل ${faNum(Math.round(d.fill_rate * 100))}٪`}
@@ -123,7 +123,7 @@ export default async function SalesHomePage() {
         <GradientStat
           tone="sand"
           small
-          icon="₸"
+          icon="banknote"
           label="مانده حساب مشتریان"
           value={fa1(d.debt.total / M)}
           unit="میلیون"

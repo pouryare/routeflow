@@ -88,7 +88,7 @@ export default async function StockPage() {
         <GradientStat
           tone="mint"
           small
-          icon="↷"
+          icon="receipt"
           label="خرید این ماه"
           value={`${faNum(monthPurchases.n)} فقره`}
           chip={`به ارزش ${faToman(monthPurchases.total)}`}

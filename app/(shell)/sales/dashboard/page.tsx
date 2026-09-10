@@ -151,7 +151,7 @@ export default async function DashboardPage() {
         <GradientStat
           tone="mint"
           small
-          icon="⇄"
+          icon="truck"
           label="نرخ تحویل"
           value={<CountUp value={d.fill_rate} mode="pct" />}
           chip={
@@ -164,7 +164,7 @@ export default async function DashboardPage() {
         <GradientStat
           tone="sand"
           small
-          icon="₸"
+          icon="banknote"
           label="مانده حساب مشتریان"
           value={<CountUp value={d.debt.total} />}
           unit="تومان"
@@ -187,7 +187,7 @@ export default async function DashboardPage() {
           <GradientStat
             tone="peach"
             small
-            icon="◎"
+            icon="target"
             label="سود ناخالص (تحویل‌شده)"
             value={<CountUp value={d.margin_toman} />}
             unit="تومان"
@@ -204,7 +204,7 @@ export default async function DashboardPage() {
         <GradientStat
           tone="sand"
           small
-          icon="⏱"
+          icon="clock"
           label="میانگین زمان تحویل"
           value={d.avg_lead_days === null ? "—" : `${faNum(Math.round(d.avg_lead_days * 10) / 10)}`}
           unit={d.avg_lead_days === null ? undefined : "روز"}

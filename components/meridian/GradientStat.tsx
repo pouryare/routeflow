@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Icon, type IconName } from "@/components/meridian/Icon";
 
 export type WashTone = "peach" | "mint" | "sand";
 export type ChipTone = "sage" | "sky" | "amber";
@@ -31,12 +32,22 @@ export default function GradientStat({
   unit?: string;
   chip?: ReactNode;
   chipTone?: ChipTone;
-  icon?: ReactNode;
+  /** An icon NAME, not a node.
+   *
+   *  This was `ReactNode`, and the call sites had filled it with «⇄», «₸», «◎», «⏱» —
+   *  and, on one card, the literal string "sparkle", which rendered the English word
+   *  inside a 40px tile and pushed 14px of it out past the edge. A prop that accepts any
+   *  node accepts a mistake that looks exactly like a success at the call site. */
+  icon?: IconName;
   small?: boolean;
 }) {
   return (
     <div className={`gcard ${tone}${small ? " small" : ""}`}>
-      {icon ? <div className="ico" aria-hidden>{icon}</div> : null}
+      {icon ? (
+        <div className="ico" aria-hidden>
+          <Icon name={icon} />
+        </div>
+      ) : null}
       <div className="k">{label}</div>
       <div className="v mono">
         {value}
