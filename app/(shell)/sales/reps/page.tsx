@@ -5,6 +5,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { repsOverview } from "@/lib/repo/repHealth";
+import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { faNum } from "@/lib/format";
 import PageHeader from "@/components/meridian/PageHeader";
 
@@ -54,7 +55,7 @@ export default async function RepsPage() {
                     {r.rep_code} · {r.business_name}
                   </Link>
                 </td>
-                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{r.stage}</td>
+                <td className="border-b border-[var(--border)] py-2 text-left text-[var(--text-muted)]">{REP_STAGE_LABEL[r.stage as RepStage] ?? r.stage}</td>
                 <td className="border-b border-[var(--border)] py-2 text-left tabular-nums" style={{ color: BAND[r.band].tone }}>
                   {faNum(r.score)} · {BAND[r.band].label}
                 </td>

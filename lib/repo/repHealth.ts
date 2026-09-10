@@ -1,6 +1,18 @@
 import { getDb } from "@/lib/db";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 
+/** The band, in the language the app is written in.
+ *
+ *  `band` is a three-value enum in English and it was reaching the page raw — «good» in
+ *  the middle of a Persian sentence, alongside the raw `stage` enum next to it. A field
+ *  is either an identifier or copy; this map is what turns one into the other.
+ */
+export const REP_HEALTH_BAND_FA: Record<RepHealth["band"], string> = {
+  good: "خوب",
+  watch: "نیازمند پیگیری",
+  risk: "پرخطر",
+};
+
 export interface RepHealth {
   representative_id: number;
   score: number;

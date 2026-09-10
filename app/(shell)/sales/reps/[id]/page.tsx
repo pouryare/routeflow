@@ -4,7 +4,8 @@ import Link from "next/link";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
-import { repHealth } from "@/lib/repo/repHealth";
+import { repHealth, REP_HEALTH_BAND_FA } from "@/lib/repo/repHealth";
+import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { repsRepo, listOnboarding } from "@/lib/repo/representatives";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
@@ -32,7 +33,8 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
         </Link>
         <h2 className="m-0 mt-[var(--space-1)]">{rep.rep_code}</h2>
         <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          مرحله: {rep.stage} · سلامت {faNum(health.score)} ({health.band})
+          مرحله: {REP_STAGE_LABEL[rep.stage as RepStage] ?? rep.stage} · سلامت {faNum(health.score)} (
+          {REP_HEALTH_BAND_FA[health.band]})
         </p>
       </div>
 
