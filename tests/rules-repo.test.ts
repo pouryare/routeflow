@@ -20,7 +20,6 @@ afterAll(() => {
 });
 
 let owner = 0;
-let mgr = 0;
 let custId = 0;
 
 beforeEach(() => {
@@ -33,7 +32,8 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  mgr = Number(u.run(`m${Date.now()}`, "x", "مد", "group_manager", now).lastInsertRowid);
+  /* A group manager exists in the org, as in production; no test addresses them. */
+  u.run(`m${Date.now()}`, "x", "مد", "group_manager", now);
   custId = Number(
     db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)").run().lastInsertRowid
   );

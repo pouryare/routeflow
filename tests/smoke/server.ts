@@ -1,7 +1,10 @@
 import { spawn } from "node:child_process";
 
 const PORT = 3100;
-export const BASE = `http://127.0.0.1:${PORT}`;
+/* localhost, not 127.0.0.1: next dev refuses its dev assets and HMR socket to any origin
+   but the one it started on (allowedDevOrigins), so on 127.0.0.1 every page rendered its
+   server HTML and never hydrated. Geometry still passed; anything interactive could not. */
+export const BASE = `http://localhost:${PORT}`;
 
 async function answers(): Promise<boolean> {
   try {

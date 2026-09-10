@@ -12,15 +12,8 @@ export default function HeaderSkeleton() {
   return (
     <div className="chrome" aria-hidden="true">
       <div className="top">
-        <div className="brandwrap">
-          <span className="skeleton" style={{ width: 26, height: 14, display: "block" }} />
-          <div>
-            <span className="skeleton" style={{ width: 108, height: 17, display: "block" }} />
-            <span
-              className="skeleton"
-              style={{ width: 152, height: 12, display: "block", marginTop: 6 }}
-            />
-          </div>
+        <div className="segwrap">
+          <nav className="seg seg-groups" />
         </div>
         <div className="topright">
           <span
@@ -28,9 +21,6 @@ export default function HeaderSkeleton() {
             style={{ width: 34, height: 34, borderRadius: 999, display: "block" }}
           />
         </div>
-      </div>
-      <div className="segwrap">
-        <nav className="seg seg-groups" />
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { activeGroup, appTabs } from "@/lib/appNav";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { faJalaliLong } from "@/lib/jalali";
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 
 /** The server half of the page-overview card: it knows the session, so it knows which
@@ -23,12 +24,15 @@ import PageHeaderCard from "@/components/meridian/PageHeaderCard";
  *  disables loading.tsx. tests/shell-pages-have-tabs.test.ts holds both rules.
  */
 export default async function PageHeader({ route }: { route: string }) {
+  /* Computed here on the server and passed down, so the client card cannot hydrate a
+     different day. It used to sit under the wordmark the header no longer has. */
+  const date = faJalaliLong(new Date().toISOString());
   const meta = pageMetaFor(route);
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
 
   if (!session) {
-    return <PageHeaderCard title={meta.title} overview={meta.overview} />;
+    return <PageHeaderCard title={meta.title} overview={meta.overview} date={date} />;
   }
 
   const all = appTabs(session);
@@ -43,6 +47,7 @@ export default async function PageHeader({ route }: { route: string }) {
     <PageHeaderCard
       title={meta.title}
       overview={meta.overview}
+      date={date}
       tabs={siblings.length > 1 ? siblings : []}
       currentHref={current}
     />

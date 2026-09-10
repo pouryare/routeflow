@@ -32,9 +32,11 @@ export default function PageHeaderCard({
   overview,
   tabs = [],
   currentHref,
+  date,
 }: {
   title: string;
   overview: string;
+  date?: string;
   tabs?: AppTab[];
   currentHref?: string;
 }) {
@@ -86,6 +88,7 @@ export default function PageHeaderCard({
       )}
       <div className="phc" ref={card}>
         <div className="phc__body">
+          {date ? <p className="phc__date">{date}</p> : null}
           <h1 className="phc__title">{title}</h1>
           {overview ? <p className="phc__overview">{overview}</p> : null}
         </div>

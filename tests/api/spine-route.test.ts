@@ -11,7 +11,6 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { createTask } = await import("@/lib/repo/tasks");
 const { GET: TODAY } = await import("@/app/api/today/route");
 const { GET: TASKS_GET, POST: TASKS_POST } = await import("@/app/api/tasks/route");
 const { PATCH: TASK_PATCH } = await import("@/app/api/tasks/[id]/route");
