@@ -2468,46 +2468,12 @@ body {
   }
 }
 
-/* ---- the image-3 top bar : a lit accent strip whose ends melt into the card edge ----
-   Opt-in, never on a page-section shell (.card / .kblock). It rides real cards: the
-   gradient stat tiles, product rows/tiles, kanban tasks, and anything given `.kbar`.
-   `--bar` is the single glow hue, so one rule covers the gradient default AND every
-   data-tone, and the halo always matches the strip.                                  */
-.meridian .kbar::after,
-.meridian .gcard::after,
-.meridian .prow::after,
-.meridian .ptile::after,
-.meridian .task::after {
-  content: "";
-  position: absolute; inset-block-start: 0; inset-inline: 0; height: 3px;
-  z-index: 2; pointer-events: none;
-  --bar: var(--accent-2);
-  background: linear-gradient(90deg, var(--accent), var(--accent-2), var(--tint-plum));
-  /* Ends fade to transparent; the fade zone is wider than the largest card corner
-     radius (--r-2xl 26px) so the strip never collides with the rounded corner. */
-  --bar-fade: clamp(20px, 12%, 44px);
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 var(--bar-fade), #000 calc(100% - var(--bar-fade)), transparent 100%);
-          mask-image: linear-gradient(90deg, transparent 0, #000 var(--bar-fade), #000 calc(100% - var(--bar-fade)), transparent 100%);
-  /* Light skin: no blur (it smears on the cream ground) -- a 1px hairline of the same
-     hue is the only lift that survives on paper-white. */
-  filter: drop-shadow(0 1px 0 color-mix(in srgb, var(--bar) 26%, transparent));
-}
-/* Status mode: the strip AND the glow both follow --bar. */
-.meridian [data-tone="good"]::after { background: var(--good); --bar: var(--good); }
-.meridian [data-tone="warn"]::after { background: var(--warn); --bar: var(--warn); }
-.meridian [data-tone="crit"]::after { background: var(--crit); --bar: var(--crit); }
-.meridian [data-tone="info"]::after { background: var(--info); --bar: var(--info); }
-/* Dark skin: the neon bloom -- drop-shadow (NOT box-shadow) so the halo inherits the
-   end-fade mask and, with the card's overflow:hidden, spreads downward onto the surface.
-   .gcard is left out: an accent bloom over its mesh muddies it. */
-:root[data-skin="dark"] .meridian .kbar::after,
-:root[data-skin="dark"] .meridian .prow::after,
-:root[data-skin="dark"] .meridian .ptile::after,
-:root[data-skin="dark"] .meridian .task::after {
-  filter:
-    drop-shadow(0 0 5px  color-mix(in srgb, var(--bar) 70%, transparent))
-    drop-shadow(0 2px 12px color-mix(in srgb, var(--bar) 32%, transparent));
-}
+/* No top accent bar. There was a 3px gradient ::after riding .kbar, .gcard, .prow,
+   .ptile and .task -- one rule, five selectors, which is why the user reported it as
+   separate bugs on /sales/products and /sales/pocket. Removed 2026-09-10 at their
+   request. tests/no-card-accent-bar.test.ts matches the SHAPE (a zero-inset full-width
+   1-4px ::after inside .meridian), so the device cannot return under a new class name.
+   The pocket slip's border-top above is a DIFFERENT device and stays. */
 
 /* ---- 5 · the board (drag and drop) --------------------------------------- */
 .meridian .board {
