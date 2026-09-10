@@ -134,13 +134,6 @@ for (const [theme, selector] of [
    cluster bubble and the layers badge compose their colours in CSS, and both were failing
    for every theme INCLUDING the shipping one until this check was written. */
 
-/** color-mix(in srgb, a p%, b) as the browser computes it. */
-function mix(a, b, p) {
-  const g = (hex, i) => parseInt(hex.replace("#", "").slice(i, i + 2), 16);
-  const c = (i) => Math.round(g(a, i) * p + g(b, i) * (1 - p));
-  return `#${[0, 2, 4].map((i) => c(i).toString(16).padStart(2, "0")).join("")}`;
-}
-
 const THEME_IDS = [
   "terracotta", "gold", "olive", "emerald", "teal",
   "ocean", "indigo", "purple", "raspberry", "graphite",
