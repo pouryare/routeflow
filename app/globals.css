@@ -2902,9 +2902,10 @@ body {
 .meridian .side__mark {
   width: 40px; height: 40px; border-radius: 13px; flex: none;
   background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 80%, #fff 20%), var(--accent-2));
-  color: var(--accent-ink); display: grid; place-items: center; font-size: 17px; font-weight: 600;
+  color: var(--accent-ink); display: grid; place-items: center;
   box-shadow: 0 6px 16px -6px color-mix(in srgb, var(--accent) 55%, transparent);
 }
+.meridian .side__mark svg { display: block; }
 .meridian .side__brand h1 { margin: 0; font-family: var(--font-display); font-size: 18px; font-weight: 800; letter-spacing: -.015em; color: var(--ink); }
 .meridian .side__brand .s { font-size: 12px; color: var(--muted); margin-top: -3px; }
 

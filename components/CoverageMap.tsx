@@ -1362,7 +1362,11 @@ export default function CoverageMap({
           {/* The same brand row the sales header wears, so the two halves of the app
               introduce themselves the same way. */}
           <div className="side__brand">
-            <div className="side__mark">ن</div>
+            <div className="side__mark" aria-hidden="true">
+            <svg viewBox="0 0 44 24" width="24" height="13" fill="none" stroke="currentColor" strokeWidth="3.6" strokeLinecap="round">
+              <path d="M22 12c-3.2-4.6-6-6.2-9.4-6.2C8.4 5.8 5 8.6 5 12s3.4 6.2 7.6 6.2c3.4 0 6.2-1.6 9.4-6.2Zm0 0c3.2-4.6 6-6.2 9.4-6.2C35.6 5.8 39 8.6 39 12s-3.4 6.2-7.6 6.2c-3.4 0-6.2-1.6-9.4-6.2Z" />
+            </svg>
+          </div>
             <div className="min-w-0 flex-1">
               <h1>نقشه پوشش</h1>
               <div className="s">مشتری‌ها، مناطق و مسیرها</div>
