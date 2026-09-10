@@ -6,13 +6,13 @@
 
 **Architecture:** Eight tasks. Seven are source fixes, each shipping with a vitest ratchet in the existing suite. The eighth adds a small Playwright *geometric* smoke harness — explicitly not screenshots — because half these defects are invisible to source analysis.
 
-**Tech Stack:** Next.js 16.3.1 (App Router), React 19.2, TypeScript 5, Tailwind v4, vitest 4. Playwright 1.62 is already a devDependency — the bare `playwright` library, **not** `@playwright/test`, which is a separate package and is not installed. Task 8 drives `chromium` from an ordinary vitest test rather than adding a second runner.
+**Tech Stack:** Next.js 16.3.1 (App Router), React 19.2, TypeScript 5, Tailwind v4, vitest 4, `@playwright/test` (installed for this slice — see Task 8).
 
 **Spec:** `docs/superpowers/specs/2026-09-10-remediation-and-design-language-design.md`
 
 ## Global Constraints
 
-- **NEVER run `npm run build` in this repo.** The `routeflow` systemd service has `WorkingDirectory=/root/pourya/RouteFlow` and serves `next start` from `.next/`. A build overwrites the artifacts the *running* process still holds a manifest for, and production starts returning 500s for chunk files while `systemctl is-active` still reports `active`. Verify with `npx tsc --noEmit` and `npm test`. Building is a deploy and requires the user's say-so.
+- **Building is allowed; leaving the service down is not.** (Revised 2026-09-10: the user confirmed the app is not yet in real production and may be stopped.) The `routeflow` systemd service has `WorkingDirectory=/root/pourya/RouteFlow` and serves `next start` from `.next/`, so a build still overwrites the artifacts a *running* process holds a manifest for — it will serve 500s for chunk files while `systemctl is-active` still reports `active`. Therefore: `systemctl stop routeflow` **before** building, and `systemctl start routeflow` after. Never build under a live process.
 - Production runs on `127.0.0.1:3003`. **Port 3000 is a different application** (`/root/Lightlinesllc/lightlinesllc`) — never probe it to judge RouteFlow.
 - No hardcoded colours. Tokens only, or `npm run check:contrast` (500 pairs × 10 accent themes × 2 skins) stops meaning anything.
 - Dates shown to a user are **Jalali**. Column naming decides which helper: `*_date` → `faJalaliDate`, `*_at` → `faJalaliDateTime`.
