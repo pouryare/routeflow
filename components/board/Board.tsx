@@ -1,5 +1,6 @@
 "use client";
 
+import { TASK_KIND_TONE, taskKindLabel } from "@/lib/tasks/labels";
 import { useCallback, useEffect, useState } from "react";
 import { faNum } from "@/lib/format";
 import type { Board as BoardData } from "@/lib/repo/board";
@@ -12,22 +13,7 @@ import BoardMobile from "./BoardMobile";
 import Avatar from "@/components/meridian/Avatar";
 import Pocketed from "@/components/meridian/Pocketed";
 
-const KIND_TONE: Record<string, string> = {
-  outreach: "accent",
-  order: "amber",
-  visit: "sage",
-  reminder: "crit",
-  note: "plum",
-  admin: "plum",
-};
-const KIND_FA: Record<string, string> = {
-  outreach: "پیگیری",
-  order: "سفارش",
-  visit: "بازدید",
-  reminder: "یادآوری",
-  note: "یادداشت",
-  admin: "اداری",
-};
+const KIND_TONE = TASK_KIND_TONE as Record<string, string>;
 const WF_KINDS: { key: string; label: string }[] = [
   { key: "outreach", label: "پیگیری تماس" },
   { key: "order", label: "سفارش" },
@@ -75,9 +61,17 @@ export default function Board({
     []
   );
 
-  useEffect(() => {
-    void refetch(view, wfKind);
-  }, [view, wfKind, refetch]);
+  /* A view or workflow switch refetches from the handler that made it, not from an effect
+     watching the state: the effect set state on every render that followed it, and the
+     first board already arrives from the server, so there is nothing to fetch on mount. */
+  const pickView = (v: BoardView) => {
+    setView(v);
+    void refetch(v, wfKind);
+  };
+  const pickKind = (k: string) => {
+    setWfKind(k);
+    void refetch("workflow", k);
+  };
 
   const commitMove = useCallback(
     async (card: TaskCard, toLane: string, outcomeCode?: string) => {
@@ -131,7 +125,7 @@ export default function Board({
             key={v}
             type="button"
             className={`btn ${view === v ? "solid" : "ghost"}`}
-            onClick={() => setView(v)}
+            onClick={() => pickView(v)}
           >
             {v === "status" ? "وضعیت" : v === "time" ? "زمان" : "گردش‌کار"}
           </button>
@@ -144,7 +138,7 @@ export default function Board({
               key={k.key}
               type="button"
               className={`btn ${wfKind === k.key ? "solid" : "ghost"}`}
-              onClick={() => setWfKind(k.key)}
+              onClick={() => pickKind(k.key)}
             >
               {k.label}
             </button>
@@ -224,7 +218,7 @@ export default function Board({
                         className="n"
                         style={{ color: `var(--${KIND_TONE[card.kind] ?? "muted"})`, fontSize: 11 }}
                       >
-                        {KIND_FA[card.kind] ?? card.kind}
+                        {taskKindLabel(card.kind)}
                         {card.recur ? " ↺" : ""}
                       </span>
                       {card.priority === "CRITICAL" || card.priority === "HIGH" ? (

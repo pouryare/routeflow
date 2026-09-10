@@ -31,9 +31,9 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
         <Link href="/sales/reps" className="text-[length:var(--text-sm)] text-[var(--text-muted)] no-underline">
           ← همه نمایندگان
         </Link>
-        <h2 className="m-0 mt-[var(--space-1)]">{rep.rep_code}</h2>
+        <h2 className="sechead__title mt-[var(--space-1)]">{rep.rep_code}</h2>
         <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          مرحله: {REP_STAGE_LABEL[rep.stage as RepStage] ?? rep.stage} · سلامت {faNum(health.score)} (
+          مرحله: {REP_STAGE_LABEL[rep.stage as RepStage] ?? "نامشخص"} · سلامت {faNum(health.score)} (
           {REP_HEALTH_BAND_FA[health.band]})
         </p>
       </div>
@@ -54,7 +54,7 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
       </section>
 
       <section>
-        <h3 className="m-0 mb-[var(--space-1)] text-[length:var(--text-sm)] font-medium">مراحل راه‌اندازی</h3>
+        <h3 className="sechead__title sechead__title--minor mb-[var(--space-1)]">مراحل راه‌اندازی</h3>
         <ul className="m-0 list-none p-0 text-[length:var(--text-sm)]">
           {steps.map((s) => (
             <li key={s.id} className="flex items-center justify-between border-b border-[var(--border)] py-[var(--space-1)]">

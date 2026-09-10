@@ -154,6 +154,16 @@ export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
   RETURNED: "مرجوعی",
 };
 
+/** What an order's `payment_status` is called. There were three copies (the journey page,
+ *  the processing modal and the Excel export) and they disagreed: «بخشی» against
+ *  «بخشی پرداخت‌شده», «پرداخت‌شده» against «تسویه‌شده». One map, the whole CHECK union. */
+export type PaymentStatus = "unpaid" | "partial" | "paid";
+export const PAYMENT_STATUS_LABEL: Record<PaymentStatus, string> = {
+  unpaid: "پرداخت‌نشده",
+  partial: "بخشی پرداخت‌شده",
+  paid: "تسویه‌شده",
+};
+
 /** Colour role names from MASTER.md -- callers map to CSS vars. */
 export const ORDER_STATUS_TONE: Record<OrderStatus, "good" | "warn" | "crit" | "info" | "faint"> = {
   DRAFT: "faint",

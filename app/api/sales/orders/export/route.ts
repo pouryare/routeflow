@@ -1,3 +1,4 @@
+import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { NextRequest } from "next/server";
 import ExcelJS from "exceljs";
 import { getDb } from "@/lib/db";
@@ -5,18 +6,11 @@ import { requireRole, orderFilter } from "@/lib/session";
 import { readOrders } from "@/lib/orders";
 import { faJalaliDate } from "@/lib/jalali";
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "پیش‌نویس",
-  confirmed: "تأییدشده",
-  delivered: "تحویل‌شده",
-  cancelled: "لغوشده",
-};
+/* ORDER_STATUS_LABEL, not a local map: a local one keyed `draft`/`delivered` never
+   matched the real, uppercase statuses and printed «DELIVERED» to Persian readers. */
+const STATUS_LABEL = ORDER_STATUS_LABEL as Record<string, string>;
 
-const PAYMENT_LABEL: Record<string, string> = {
-  unpaid: "پرداخت‌نشده",
-  partial: "بخشی",
-  paid: "پرداخت‌شده",
-};
+const PAYMENT_LABEL = PAYMENT_STATUS_LABEL as Record<string, string>;
 
 /** The orders, as a spreadsheet.
  *
@@ -63,8 +57,8 @@ export async function GET(req: NextRequest) {
       order_date: faJalaliDate(order.order_date),
       customer: order.customer_name,
       salesperson: order.salesperson_name ?? "",
-      status: STATUS_LABEL[order.status] ?? order.status,
-      payment: PAYMENT_LABEL[order.payment_status] ?? order.payment_status,
+      status: STATUS_LABEL[order.status] ?? "نامشخص",
+      payment: PAYMENT_LABEL[order.payment_status] ?? "نامشخص",
       lines: order.line_count,
       kg: order.kg,
       total: order.total_toman,

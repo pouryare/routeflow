@@ -1,5 +1,6 @@
 "use client";
 
+import { PAYMENT_STATUS_LABEL } from "@/lib/orderStateMachine";
 import Link from "next/link";
 import { useEffect, useRef } from "react";
 import { faNum } from "@/lib/format";
@@ -9,11 +10,7 @@ import Avatar from "@/components/meridian/Avatar";
 import { Icon } from "@/components/meridian/Icon";
 
 
-const PAYMENT_LABEL: Record<string, string> = {
-  unpaid: "پرداخت‌نشده",
-  partial: "بخشی",
-  paid: "تسویه‌شده",
-};
+const PAYMENT_LABEL = PAYMENT_STATUS_LABEL as Record<string, string>;
 
 /** Opened by tapping a pipeline card — the artifact's `.modal`.
  *
@@ -113,7 +110,7 @@ export default function ProcessingModal({
                     <span className="big mono">{faNum(order.paid_toman)}</span>
                     <span className="of">
                       از <span className="mono">{faNum(order.total_toman)}</span> تومان ·{" "}
-                      {PAYMENT_LABEL[order.payment_status] ?? order.payment_status}
+                      {PAYMENT_LABEL[order.payment_status] ?? "نامشخص"}
                     </span>
                   </div>
                   <div
