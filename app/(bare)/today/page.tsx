@@ -2,6 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
+import { homePathFor } from "@/lib/roles";
 import { getDb } from "@/lib/db";
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
@@ -16,8 +17,7 @@ export default async function TodayPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "platform_owner") redirect("/platform");
-  if (session.role !== "driver") redirect("/sales/today");
+  if (session.role !== "driver") redirect(homePathFor(session.role));
 
   getDb();
   const data = todayFor(session);

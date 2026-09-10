@@ -15,6 +15,7 @@ import { stockLevels } from "@/lib/repo/stock";
 import { customerHealthFor } from "@/lib/repo/health";
 import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
+import { customerHref } from "@/lib/deepLink";
 
 /** Alert categories, in Persian.
  *
@@ -156,7 +157,7 @@ function overdueCandidates(session: Session): Candidate[] {
       impact: norm(over),
       probability: 1,
       urgency: 0.7,
-      href: `/sales/customers/${id}`,
+      href: customerHref(id),
     });
   }
   return out;
@@ -206,7 +207,7 @@ function atRiskCandidates(session: Session): Candidate[] {
       impact: 0.5,
       probability: Math.max(0, Math.min(1, (70 - s.score) / 70)),
       urgency: 0.5,
-      href: `/sales/customers/${s.id}`,
+      href: customerHref(s.id),
     }));
 }
 
@@ -319,7 +320,7 @@ function crossSellCandidates(session: Session): Candidate[] {
       impact: norm(top.avg_line || 0),
       probability: penetration,
       urgency: 0.3,
-      href: `/sales/customers/${c.id}`,
+      href: customerHref(c.id),
     }));
 }
 
@@ -357,7 +358,7 @@ function churnCandidates(session: Session): Candidate[] {
       impact: 0.5,
       probability: Math.max(0, Math.min(1, r.probability)),
       urgency: 0.5,
-      href: `/sales/customers/${r.customer_id}`,
+      href: customerHref(r.customer_id),
     }));
 }
 

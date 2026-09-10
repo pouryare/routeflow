@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { Role } from "@/lib/roles";
-import { APP_GROUPS, appTabs, activeGroup } from "@/lib/appNav";
+import { APP_GROUPS, appTabs, activeGroup, type AppGroupId } from "@/lib/appNav";
+import { pillModel } from "@/components/meridian/HoverPill";
 
 const ROLES: Role[] = [
   "platform_owner",
@@ -11,7 +12,7 @@ const ROLES: Role[] = [
 ];
 const GROUP_IDS = new Set(APP_GROUPS.map((g) => g.id));
 
-describe("the sales nav, for every role", () => {
+describe("the app nav, for every role", () => {
   for (const role of ROLES) {
     const tabs = appTabs({ role });
 
@@ -49,12 +50,12 @@ describe("the group list", () => {
   it("is the seven documented groups, in order", () => {
     expect(APP_GROUPS.map((g) => g.id)).toEqual([
       "day",
+      "customers",
       "sales",
-      "delivery",
-      "money",
-      "stock",
-      "admin",
-      "field",
+      "ops",
+      "reports",
+      "team",
+      "org",
     ]);
   });
 
@@ -65,23 +66,97 @@ describe("the group list", () => {
   });
 });
 
-/** The field group and /report join the registry when one shell starts wrapping every
- *  themed surface — before that, these routes had no header to be reached from. */
+/** The groups follow the work, not the org chart. Each assertion below is one of the
+ *  misfilings the regroup fixed, so a later edit that drifts back fails by name. */
+describe("where each destination lives", () => {
+  const owner = appTabs({ role: "owner" });
+  const groupOf = (href: string) => owner.find((t) => t.href === href)?.group;
+  const hrefsIn = (g: AppGroupId) => owner.filter((t) => t.group === g).map((t) => t.href).sort();
+
+  it("customers: the map, leads, complaints and the photo gallery", () => {
+    expect(hrefsIn("customers")).toEqual(["/gallery", "/leads", "/map", "/sales/complaints"]);
+  });
+
+  it("the order pipeline board sits with orders, not with team management", () => {
+    expect(groupOf("/sales/board")).toBe("sales");
+    expect(groupOf("/sales/journey")).toBe("sales");
+  });
+
+  it("money tabs join the order flow they settle", () => {
+    expect(groupOf("/sales/payments")).toBe("sales");
+    expect(groupOf("/sales/cheques")).toBe("sales");
+    expect(groupOf("/sales/commission")).toBe("sales");
+  });
+
+  it("delivery and stock share one operations group", () => {
+    expect(hrefsIn("ops")).toEqual(
+      ["/sales/batches", "/sales/deliveries", "/sales/routing", "/sales/runs", "/sales/stock"].sort(),
+    );
+  });
+
+  it("every read-only overview is a report, the forecast included", () => {
+    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast"].sort());
+  });
+
+  it("academy is team material, not administration", () => {
+    expect(hrefsIn("team")).toEqual(["/sales/academy", "/sales/reps", "/sales/tasks"].sort());
+  });
+
+  it("organisation settings hold users, groups and our own sites", () => {
+    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/groups", "/sales/admin/users"].sort());
+  });
+
+  it("the visit planner sits beside the visit schedule", () => {
+    expect(groupOf("/planner")).toBe("day");
+    expect(groupOf("/sales/schedule")).toBe("day");
+  });
+
+  it("no two tabs open with «مسیر», the word four of them used to share", () => {
+    const starts = owner.filter((t) => t.label.startsWith("مسیر ")).map((t) => t.label);
+    expect(starts).toEqual([]);
+  });
+});
+
+/** The single-tab chip problem, per role: a group that opens a menu with one item in it
+ *  is a click that goes nowhere new. The pill turns those into plain links, and these
+ *  tests pin that every role's menu stays small and mostly real menus. */
+describe("each role's menu", () => {
+  const menu = (role: Role) => pillModel(appTabs({ role }), APP_GROUPS, "/sales/today");
+
+  it("a salesperson gets no organisation settings and no team tools beyond academy", () => {
+    const m = menu("salesperson");
+    const ids = m.groups.map((g) => g.id);
+    expect(ids).not.toContain("org");
+    const offered = Object.values(m.tabsByGroup).flat().map((t) => t.href);
+    expect(offered).not.toContain("/sales/tasks");
+    expect(offered).not.toContain("/sales/reps");
+    expect(offered).toContain("/sales/academy");
+  });
+
+  it("the salesperson's lone stock and academy tabs are direct links, not menus", () => {
+    const m = menu("salesperson");
+    const solo = m.groups.filter((g) => g.solo).map((g) => g.href).sort();
+    expect(solo).toEqual(["/sales/academy", "/sales/stock"]);
+  });
+
+  it("a rep manager's team group leads with nothing they cannot open", () => {
+    const team = menu("rep_manager").tabsByGroup.team.map((t) => t.href);
+    expect(team).toEqual(["/sales/tasks", "/sales/reps", "/sales/academy"]);
+  });
+
+  it("only the owner sees organisation settings", () => {
+    expect(menu("owner").groups.map((g) => g.id)).toContain("org");
+    expect(menu("group_manager").groups.map((g) => g.id)).not.toContain("org");
+  });
+});
+
 describe("the surfaces that join the shell", () => {
   const tabs = appTabs({ role: "owner" });
 
-  it("the field group carries map, planner and leads", () => {
-    const hrefs = tabs.filter((t) => t.group === "field").map((t) => t.href).sort();
-    expect(hrefs).toEqual(["/leads", "/map", "/planner"]);
-  });
-
-  it("/report is a money-group destination", () => {
-    expect(tabs.find((t) => t.href === "/report")?.group).toBe("money");
-  });
-
-  it("activeGroup resolves a field path", () => {
-    expect(activeGroup("/planner", tabs)).toBe("field");
-    expect(activeGroup("/map", tabs)).toBe("field");
+  it("activeGroup resolves the spatial and report paths", () => {
+    expect(activeGroup("/planner", tabs)).toBe("day");
+    expect(activeGroup("/map", tabs)).toBe("customers");
+    expect(activeGroup("/report", tabs)).toBe("reports");
     expect(activeGroup("/sales/orders/12", tabs)).toBe("sales");
   });
 

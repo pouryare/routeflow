@@ -105,6 +105,10 @@ describe("todayFor", () => {
     const keys = b.panels.map((p) => p.key);
     expect(keys).toContain("credit_waiting");
     expect(keys).toContain("unplanned");
+    // Each parked order links to itself, where «تأیید اعتبار» is decided — not to the
+    // /sales/admin/credit-approvals page that was never built.
+    const credit = b.panels.find((p) => p.key === "credit_waiting")!;
+    expect(credit.items.map((i) => i.href)).toContain(`/sales/orders/${o.id}`);
   });
 
   it("puts no raw English enum on screen", () => {

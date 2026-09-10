@@ -106,7 +106,7 @@ export function buildJourney(o: JourneyInput): JourneyNode[] {
       note: o.run
         ? `روی مسیر ${o.run.driver_name ?? "بدون راننده"}`
         : confirmed
-          ? "هنوز روی هیچ مسیری نیست — از صفحهٔ «مسیر تحویل» اضافه شود"
+          ? "هنوز روی هیچ مسیری نیست — از صفحهٔ «سفرهای تحویل» اضافه شود"
           : "اول باید تأیید شود",
     },
     {

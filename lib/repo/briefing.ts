@@ -7,6 +7,7 @@ import { listAlerts } from "./alerts";
 import { targetProgress } from "./targets";
 import { SEVERITY_FA } from "@/lib/repo/actionCenter";
 import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
+import { customerHref } from "@/lib/deepLink";
 
 export interface BriefingItem {
   label: string;
@@ -78,7 +79,7 @@ export function todayFor(session: Session): Briefing {
         overdue.map((c) => ({
           label: c.business_name,
           sub: `آخرین خرید ${c.last}`,
-          href: `/sales/customers/${c.id}`,
+          href: customerHref(c.id),
         }))
       )
     );
@@ -96,7 +97,7 @@ export function todayFor(session: Session): Briefing {
           {
             label: `${Math.round(p.fraction * 100)}%`,
             sub: `${p.actual.toLocaleString("fa-IR")} از ${p.target.toLocaleString("fa-IR")}`,
-            href: "/sales/me",
+            href: "/sales/commission",
             tone: p.fraction >= 1 ? "good" : p.fraction >= 0.6 ? "info" : "warn",
           },
         ],
@@ -181,18 +182,29 @@ export function todayFor(session: Session): Briefing {
       )
     );
 
+    /* One item per parked order, linking to that order: the decision is the
+       «تأیید اعتبار» action on the order's own page. This used to be a bare count linking
+       to /sales/admin/credit-approvals, a page that was never built. */
     const waiting = db
       .prepare(
-        "SELECT COUNT(*) AS n FROM credit_approvals WHERE organization_id = ? AND status = 'pending'"
+        `SELECT ca.order_id, o.order_no, ca.overage_toman
+           FROM credit_approvals ca JOIN orders o ON o.id = ca.order_id
+          WHERE ca.organization_id = ? AND ca.status = 'pending'
+          ORDER BY ca.requested_at`
       )
-      .get(org) as { n: number };
-    if (waiting.n > 0) {
-      panels.push({
-        key: "credit_waiting",
-        title: "تأیید اعتبار در انتظار شما",
-        items: [{ label: `${waiting.n} درخواست`, tone: "crit", href: "/sales/admin/credit-approvals" }],
-      });
-    }
+      .all(org) as { order_id: number; order_no: string; overage_toman: number }[];
+    panels.push(
+      panel(
+        "credit_waiting",
+        "تأیید اعتبار در انتظار شما",
+        waiting.map((w) => ({
+          label: `سفارش ${w.order_no}`,
+          sub: `${w.overage_toman.toLocaleString("fa-IR")} تومان بیش از سقف`,
+          tone: "crit" as const,
+          href: `/sales/orders/${w.order_id}`,
+        }))
+      )
+    );
 
     const unplanned = db
       .prepare(
@@ -244,7 +256,7 @@ export function todayFor(session: Session): Briefing {
         byStage.map((s) => ({
           label: REP_STAGE_LABEL[s.stage as RepStage] ?? s.stage,
           sub: String(s.n),
-          href: "/sales/admin/representatives",
+          href: "/sales/reps",
         }))
       )
     );

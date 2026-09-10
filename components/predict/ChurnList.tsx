@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { customerHref } from "@/lib/deepLink";
 
 export interface ChurnRow {
   customer_id: number;
@@ -39,7 +40,7 @@ export default function ChurnList({ rows }: { rows: ChurnRow[] }) {
               className="flex items-center justify-between border-b border-[var(--border)] py-[var(--space-1)]"
             >
               <Link
-                href={`/sales/customers/${r.customer_id}`}
+                href={customerHref(r.customer_id)}
                 className="text-[var(--text)] no-underline hover:text-[var(--accent)]"
               >
                 {r.business_name}

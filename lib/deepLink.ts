@@ -115,6 +115,13 @@ export function replaceUrlQuery(query: string): void {
   window.history.replaceState(window.history.state, "", next);
 }
 
+/** Where "open this customer" goes. The map is the one page that shows a customer's
+ *  file -- there is no /sales/customers page, and six links once pointed at it anyway --
+ *  and it opens that customer's panel from `?c=`. */
+export function customerHref(customerId: number): string {
+  return `/map${buildMapLink({ customerId })}`;
+}
+
 /** The absolute URL for a state -- what the share button puts on the clipboard. */
 export function absoluteMapLink(state: MapLinkState, pathname = "/map"): string {
   if (typeof window === "undefined") return `${pathname}${buildMapLink(state)}`;

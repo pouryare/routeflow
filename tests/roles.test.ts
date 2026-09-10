@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { ROLES, ROLE_LABEL, type Role } from "@/lib/roles";
+import { ROLES, ROLE_LABEL, homePathFor, type Role } from "@/lib/roles";
 
 describe("the role list", () => {
   test("is the six roles the app has, widest access first", () => {
@@ -58,6 +58,17 @@ describe("the bootstrap script", () => {
       .map((s) => s.trim().replace(/^["']|["']$/g, ""))
       .filter(Boolean);
     expect(scriptRoles).toEqual(ROLES);
+  });
+});
+
+describe("homePathFor", () => {
+  test("sends a driver to their own app and everyone else to the day's briefing", () => {
+    // platform_owner used to be sent to /platform, a page that was never built — every
+    // vendor login landed on a 404. /sales/today already scopes itself to "all" for them.
+    expect(homePathFor("driver")).toBe("/driver");
+    for (const role of ROLES.filter((r) => r !== "driver")) {
+      expect(homePathFor(role), role).toBe("/sales/today");
+    }
   });
 });
 

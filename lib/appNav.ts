@@ -1,14 +1,16 @@
-/** The app navigation: 30 destinations, grouped into seven.
+/** The app navigation: 30 destinations, grouped by the work they serve.
  *
- *  Was `salesNav` and covered `/sales/*` only. Now that one shell wraps every themed
- *  surface, the field routes (/map, /planner, /leads) are first-class destinations in
- *  their own group and /report joins مالی — so the header can reach them without the
- *  reader leaving the shell.
+ *  The groups used to follow the org chart -- فروش، تحویل، مالی، انبار، مدیریت -- which
+ *  read well for an owner and badly for everyone else: once a role's unreachable tabs were
+ *  hidden, a salesperson was left with three one-item menus and a «مدیریت» menu while
+ *  managing nobody. Each group now answers "what am I doing": my day, a customer, an order
+ *  and the money it brings, getting goods out, reading the numbers, running the team,
+ *  setting up the organisation. A group that holds one tab for a role is drawn as a plain
+ *  link (see pillModel), so no role pays for a menu it cannot fill.
  *
- *  Extracted from the layout so the shape can be tested -- the invariants that
- *  matter (every ready tab lands in exactly one group, no two visible tabs share a label
- *  or an href, nothing still points at the retired /sales/analysis) are asserted in
- *  tests/appNav.test.ts.
+ *  Extracted from the layout so the shape can be tested -- the invariants that matter
+ *  (every ready tab lands in exactly one group, no two visible tabs share a label or an
+ *  href, where each destination lives) are asserted in tests/appNav.test.ts.
  *
  *  `ready` still gates a tab the way it did inline: a tab whose page does not exist for
  *  this role renders as a disabled span, because Next prefetches every <Link> and a link
@@ -18,21 +20,21 @@ import type { Role } from "./roles";
 
 export type AppGroupId =
   | "day"
+  | "customers"
   | "sales"
-  | "delivery"
-  | "money"
-  | "stock"
-  | "admin"
-  | "field";
+  | "ops"
+  | "reports"
+  | "team"
+  | "org";
 
 export const APP_GROUPS: { id: AppGroupId; label: string }[] = [
   { id: "day", label: "روز من" },
-  { id: "sales", label: "فروش و سفارش" },
-  { id: "delivery", label: "تحویل" },
-  { id: "money", label: "مالی" },
-  { id: "stock", label: "انبار" },
-  { id: "admin", label: "مدیریت" },
-  { id: "field", label: "میدان و نقشه" },
+  { id: "customers", label: "مشتریان" },
+  { id: "sales", label: "فروش و دریافت" },
+  { id: "ops", label: "تحویل و انبار" },
+  { id: "reports", label: "گزارش‌ها" },
+  { id: "team", label: "تیم" },
+  { id: "org", label: "تنظیمات سازمان" },
 ];
 
 export type AppTab = {
@@ -48,11 +50,10 @@ const isRepLead = (r: Role) => r === "owner" || r === "group_manager" || r === "
 
 /** The full tab list for a role, in display order, each tab tagged with its group.
  *
- *  Labels are chosen so no two sit next to each other reading alike: the day dashboard is
- *  «امروز» and the visit plan is «برنامهٔ بازدید»; the assignment board is «تقسیم کار» and
- *  the personal task board is «کارتابل»; the three «نمایندگان» became «نمایندگان فروش» /
- *  «تعریف نمایندگی»; «داشبورد» / «تحلیل» / «تحلیل و KPI» collapsed to one «تحلیل فروش»
- *  (/sales/dashboard), leaving «داشبورد» for the /sales landing overview only.
+ *  Labels are chosen so no two sit next to each other reading alike. Four used to open
+ *  with «مسیر»; now the order pipeline is «تابلوی سفارش‌ها», one order's life is
+ *  «پیگیری سفارش», the day's van trips are «سفرهای تحویل», and only «مسیریابی» (building
+ *  the routes) and «برنامه‌ریز مسیر» (ordering a day's visits) keep the word.
  */
 export function appTabs(session: { role: Role }): AppTab[] {
   const r = session.role;
@@ -61,45 +62,47 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
     { href: "/sales/pocket", label: "پاکت", group: "day", ready: true },
     { href: "/sales/schedule", label: "برنامهٔ بازدید", group: "day", ready: true },
-    { href: "/sales/journey", label: "مسیر سفارش", group: "day", ready: true },
+    { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "salesperson" },
 
-    // فروش و سفارش
-    { href: "/sales/dashboard", label: "تحلیل فروش", group: "sales", ready: true },
-    { href: "/sales", label: "داشبورد", group: "sales", ready: true },
+    // مشتریان
+    { href: "/map", label: "نقشهٔ پوشش", group: "customers", ready: true },
+    { href: "/leads", label: "سرنخ‌ها", group: "customers", ready: isRepLead(r) },
+    { href: "/sales/complaints", label: "شکایات", group: "customers", ready: true },
+    { href: "/gallery", label: "گالری تصاویر", group: "customers", ready: true },
+
+    // فروش و دریافت
     { href: "/sales/orders", label: "سفارش‌ها", group: "sales", ready: true },
-    { href: "/sales/forecast", label: "پیش‌بینی", group: "sales", ready: isManager(r) },
+    { href: "/sales/board", label: "تابلوی سفارش‌ها", group: "sales", ready: true },
+    { href: "/sales/journey", label: "پیگیری سفارش", group: "sales", ready: true },
     { href: "/sales/products", label: "کالاها و قیمت‌ها", group: "sales", ready: true },
+    { href: "/sales/payments", label: "دریافت‌ها", group: "sales", ready: true },
+    { href: "/sales/cheques", label: "چک‌ها", group: "sales", ready: isManager(r) },
     { href: "/sales/commission", label: "پورسانت", group: "sales", ready: true },
 
-    // تحویل
-    { href: "/sales/runs", label: "مسیر تحویل", group: "delivery", ready: r !== "salesperson" },
-    { href: "/sales/deliveries", label: "تحویل‌ها", group: "delivery", ready: isManager(r) },
-    { href: "/sales/batches", label: "بچ‌ها", group: "stock", ready: isManager(r) },
-    { href: "/sales/routing", label: "مسیریابی", group: "delivery", ready: isManager(r) },
+    // تحویل و انبار
+    { href: "/sales/runs", label: "سفرهای تحویل", group: "ops", ready: r !== "salesperson" },
+    { href: "/sales/deliveries", label: "تحویل‌ها", group: "ops", ready: isManager(r) },
+    { href: "/sales/routing", label: "مسیریابی", group: "ops", ready: isManager(r) },
+    { href: "/sales/stock", label: "انبار و خرید", group: "ops", ready: true },
+    { href: "/sales/batches", label: "بچ‌ها", group: "ops", ready: isManager(r) },
 
-    // مالی
-    { href: "/sales/payments", label: "دریافت‌ها", group: "money", ready: true },
-    { href: "/sales/cheques", label: "چک‌ها", group: "money", ready: isManager(r) },
+    // گزارش‌ها
+    { href: "/sales", label: "داشبورد", group: "reports", ready: true },
+    { href: "/sales/dashboard", label: "تحلیل فروش", group: "reports", ready: true },
+    { href: "/sales/forecast", label: "پیش‌بینی", group: "reports", ready: isManager(r) },
     /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report
        because it aggregates a whole group's revenue, debt and coverage. */
-    { href: "/report", label: "گزارش پوشش", group: "money", ready: r !== "salesperson" },
+    { href: "/report", label: "گزارش پوشش", group: "reports", ready: r !== "salesperson" },
 
-    // انبار
-    { href: "/sales/stock", label: "انبار و خرید", group: "stock", ready: true },
+    // تیم
+    { href: "/sales/tasks", label: "کارتابل", group: "team", ready: isRepLead(r) },
+    { href: "/sales/reps", label: "نمایندگان فروش", group: "team", ready: isRepLead(r) },
+    { href: "/sales/academy", label: "آموزش", group: "team", ready: true },
 
-    // مدیریت
-    { href: "/sales/board", label: "تقسیم کار", group: "admin", ready: true },
-    { href: "/sales/tasks", label: "کارتابل", group: "admin", ready: isRepLead(r) },
-    { href: "/sales/reps", label: "نمایندگان فروش", group: "admin", ready: isRepLead(r) },
-    { href: "/sales/academy", label: "آموزش", group: "admin", ready: true },
-    { href: "/sales/complaints", label: "شکایات", group: "admin", ready: true },
-    { href: "/sales/admin/users", label: "کاربران", group: "admin", ready: r === "owner" },
-    { href: "/sales/admin/groups", label: "گروه‌ها", group: "admin", ready: r === "owner" },
-
-    // میدان و نقشه — the spatial surfaces, first-class now that one shell wraps them.
-    { href: "/map", label: "نقشهٔ پوشش", group: "field", ready: true },
-    { href: "/planner", label: "برنامه‌ریز مسیر", group: "field", ready: r !== "salesperson" },
-    { href: "/leads", label: "سرنخ‌ها", group: "field", ready: isRepLead(r) },
+    // تنظیمات سازمان
+    { href: "/sales/admin/users", label: "کاربران", group: "org", ready: r === "owner" },
+    { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: r === "owner" },
+    { href: "/facilities", label: "مکان‌های ما", group: "org", ready: r === "owner" },
   ];
 }
 

@@ -72,7 +72,7 @@ export default async function JourneyPage({
       <div className="kblock">
         <div className="bhead">
           <div>
-            <h2>{mode === "all" ? "همهٔ سفارش‌ها" : "مسیر سفارش"}</h2>
+            <h2>{mode === "all" ? "همهٔ سفارش‌ها" : "پیگیری سفارش"}</h2>
             <div className="n">
               {mode === "all"
                 ? "هر سفارش تا کجا رسیده و کجا مانده — برای همهٔ سفارش‌هایی که می‌بینید."

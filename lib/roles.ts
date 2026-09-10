@@ -47,3 +47,10 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   salesperson: "فقط سفارش‌هایی که خودش ثبت کرده و پورسانت خودش",
   driver: "فقط مسیر و تحویل‌های امروز خودش",
 };
+
+/** Where a signed-in person lands. A driver never enters the sales shell; everyone else,
+ *  the vendor's platform_owner included, starts on the day's briefing, which already
+ *  scopes itself to "all" for them. */
+export function homePathFor(role: Role): string {
+  return role === "driver" ? "/driver" : "/sales/today";
+}

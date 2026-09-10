@@ -19,8 +19,25 @@ describe("pillModel", () => {
     expect(m.groups.find((g) => g.active)?.id).toBe("sales");
   });
 
-  it("resolves a field route to the field group", () => {
-    expect(pillModel(owner, APP_GROUPS, "/planner").groups.find((g) => g.active)?.id).toBe("field");
+  it("resolves a spatial route to the group it now lives in", () => {
+    expect(pillModel(owner, APP_GROUPS, "/map").groups.find((g) => g.active)?.id).toBe("customers");
+  });
+
+  /* A chip whose menu holds one item is a click that only shows you where you were going
+     anyway. Such a group becomes a plain link, labelled with the tab it goes to. */
+  it("a group with one reachable tab is a solo link carrying that tab's label", () => {
+    const m = pillModel(appTabs({ role: "salesperson" }), APP_GROUPS, "/sales");
+    const stock = m.groups.find((g) => g.href === "/sales/stock");
+    expect(stock?.solo).toBe(true);
+    expect(stock?.label).toBe("انبار و خرید");
+  });
+
+  it("a group with several reachable tabs keeps its menu and its own label", () => {
+    const m = pillModel(owner, APP_GROUPS, "/sales");
+    for (const g of m.groups) {
+      expect(g.solo).toBe(m.tabsByGroup[g.id].length === 1);
+      if (!g.solo) expect(g.label).toBe(APP_GROUPS.find((x) => x.id === g.id)?.label);
+    }
   });
 
   it("a group's href is its first ready tab, so clicking the chip goes somewhere real", () => {
@@ -33,9 +50,8 @@ describe("pillModel", () => {
     for (const list of Object.values(m.tabsByGroup)) {
       for (const t of list) expect(t.ready).toBe(true);
     }
-    /* The مدیریت group survives for a salesperson because تقسیم کار, آموزش and شکایات
-       are open to everyone — but the owner-only destinations inside it must not be
-       offered, and neither must the manager-only field ones. */
+    /* The owner-only organisation settings and the manager-only report and planner
+       must not be offered, while the map everyone shares must be. */
     const offered = Object.values(m.tabsByGroup).flat().map((t) => t.href);
     expect(offered).not.toContain("/sales/admin/users");
     expect(offered).not.toContain("/sales/admin/groups");

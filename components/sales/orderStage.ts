@@ -52,7 +52,7 @@ export function moveRefusal(from: StageKey, to: StageKey): string | null {
   if (from === to) return null;
   if (from === "draft" && to === "confirmed") return null;
   if (to === "draft") return "سفارش تأییدشده به پیش‌نویس برنمی‌گردد.";
-  if (to === "on_route") return "بارگیری از صفحهٔ «مسیر تحویل» ثبت می‌شود.";
+  if (to === "on_route") return "بارگیری از صفحهٔ «سفرهای تحویل» ثبت می‌شود.";
   if (to === "delivered") return "تحویل و تسویه را راننده سر درِ مغازه ثبت می‌کند.";
   return "این جابه‌جایی از اینجا انجام نمی‌شود.";
 }

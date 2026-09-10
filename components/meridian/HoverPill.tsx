@@ -9,7 +9,9 @@ import { activeGroup, type AppGroupId, type AppTab } from "@/lib/appNav";
 import { popover, withReducedMotion } from "@/lib/motion";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
-export type PillGroup = { id: AppGroupId; label: string; href: string; active: boolean };
+/** `solo`: the role can reach exactly one tab in this group, so the chip is a plain link
+ *  to it, named after it, with no menu. */
+export type PillGroup = { id: AppGroupId; label: string; href: string; active: boolean; solo: boolean };
 export type PillModel = {
   groups: PillGroup[];
   tabsByGroup: Record<string, AppTab[]>;
@@ -44,8 +46,11 @@ export function pillModel(
     .filter((g) => tabsByGroup[g.id])
     .map((g) => ({
       id: g.id,
-      label: g.label,
+      /* A menu holding one item only shows you where you were going anyway, so a one-tab
+         group is that tab: its label, its href, no popover. */
+      label: tabsByGroup[g.id].length === 1 ? tabsByGroup[g.id][0].label : g.label,
       href: tabsByGroup[g.id][0].href,
+      solo: tabsByGroup[g.id].length === 1,
       /* Only light a chip when the path actually resolved to a tab. activeGroup falls
          back to the first ready group for an unknown path, which is the right default for
          "which tabs do I show" but would be a lie on the chip. */
@@ -197,6 +202,17 @@ export default function HoverPill({
       <nav className="seg seg-groups" ref={grp as React.RefObject<HTMLElement>} aria-label="بخش‌های برنامه">
         <span className="thumb" aria-hidden="true" />
         {model.groups.map((g) => {
+          if (g.solo) {
+            /* No aria-haspopup promising a menu, no first-tap-opens on touch. Hovering it
+               closes a neighbour's popover, as moving onto any other chip would. */
+            return (
+              <span key={g.id} className="seg-item" onPointerEnter={() => setOpen(null)}>
+                <Link href={g.href} aria-current={g.active ? "true" : undefined}>
+                  {g.label}
+                </Link>
+              </span>
+            );
+          }
           const isOpen = open === g.id;
           return (
             <span

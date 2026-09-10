@@ -12,8 +12,9 @@ describe("rankPages", () => {
 
   it("ranks a label that STARTS with the query above one that merely contains it", () => {
     const hrefs = rankPages(owner, "مسیر").map((h) => h.href);
-    // «مسیر سفارش» / «مسیر تحویل» start with it; «برنامه‌ریز مسیر» only contains it.
-    expect(hrefs.indexOf("/planner")).toBeGreaterThan(hrefs.indexOf("/sales/journey"));
+    // «مسیریابی» starts with it; «برنامه‌ریز مسیر» only contains it.
+    expect(hrefs.indexOf("/sales/routing")).toBeGreaterThanOrEqual(0);
+    expect(hrefs.indexOf("/planner")).toBeGreaterThan(hrefs.indexOf("/sales/routing"));
   });
 
   it("folds Arabic ي/ك into Persian ی/ک, so a keyboard layout cannot hide a page", () => {
