@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { chromium, type Browser } from "playwright";
+import { DatabaseSync } from "node:sqlite";
 import { startDevServer, BASE } from "./server";
 import { sessionCookie } from "./session";
 
@@ -63,7 +64,10 @@ async function open(
   const context = await browser.newContext({ locale: "fa-IR", viewport });
   await context.addCookies([{ ...sessionCookie(), url: BASE }]);
   const page = await context.newPage();
-  await page.goto(`${BASE}${route}`, { waitUntil });
+  /* 60s, not the 30s default: a dev server compiling a page on first visit while the
+     machine is busy can miss 30s without anything being wrong with the page, and a layout
+     check that fails on load is one nobody trusts. */
+  await page.goto(`${BASE}${route}`, { waitUntil, timeout: 60_000 });
 
   /* A rejected cookie redirects to /login, which is a perfectly well-laid-out page — so
      every assertion below would pass while testing none of the routes named above. This
@@ -348,4 +352,76 @@ describe("map", () => {
     expect(found.quickLinks, "«لینک‌های سریع» is still in the sidebar").toBe(false);
     expect(found.floatingSkin).toBe(0);
   }, 90_000);
+});
+
+describe("order pipeline drag", () => {
+  /* Item 22. The board runs on a database SNAPSHOT (tests/smoke/server.ts), so this test
+     may create and move a real order without touching production.
+
+     Two defects: the ghost was drawn at a fixed x+14, y-18 from the pointer instead of
+     where the card was grabbed («۵ سانت دورتر»), and with no draft orders nothing on the
+     board could move while every card still wore the grab cursor. */
+  it("a draft dragged to «تأییدشده» follows the grab point and is confirmed", async () => {
+    const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
+    const org = (db.prepare("SELECT organization_id AS o FROM users WHERE role = 'owner' AND active = 1 ORDER BY id LIMIT 1").get() as { o: number }).o;
+    const line = db
+      .prepare(
+        `SELECT pp.product_id, pk.id AS packaging_id FROM product_prices pp
+           JOIN products p ON p.id = pp.product_id AND p.active = 1 AND p.organization_id = ?
+           JOIN packagings pk ON pk.product_id = p.id
+          LIMIT 1`,
+      )
+      .get(org) as { product_id: number; packaging_id: number } | undefined;
+    const customer = db.prepare("SELECT id FROM customers WHERE organization_id = ? ORDER BY id LIMIT 1").get(org) as { id: number } | undefined;
+    db.close();
+    expect(line, "the snapshot has no priced product to order").toBeTruthy();
+    expect(customer, "the snapshot has no customer").toBeTruthy();
+
+    const { page, close } = await open("/sales/dashboard", { width: 1440, height: 900 });
+    const created = await page.context().request.post(`${BASE}/api/sales/orders`, {
+      data: {
+        customer_id: customer!.id,
+        order_date: new Date().toISOString().slice(0, 10),
+        lines: [{ product_id: line!.product_id, packaging_id: line!.packaging_id, packs: 1 }],
+      },
+    });
+    expect(created.status(), await created.text()).toBeLessThan(300);
+    const reader = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
+    const order = reader.prepare("SELECT id, order_no FROM orders ORDER BY id DESC LIMIT 1").get() as { id: number; order_no: string };
+    reader.close();
+
+    await page.goto(`${BASE}/sales/board`, { waitUntil: "networkidle" });
+    await page.locator(".searchslot[data-ready]").waitFor({ timeout: 30_000 });
+    const card = page.locator(`[data-stage="draft"] button.task[aria-label*="${order.order_no}"]`);
+    await card.waitFor({ timeout: 10_000 });
+    const box = (await card.boundingBox())!;
+    const target = (await page.locator('[data-stage="confirmed"]').boundingBox())!;
+    const grab = { x: box.x + 25, y: box.y + 10 };
+    const end = { x: target.x + target.width / 2, y: target.y + 60 };
+
+    const confirmed = page.waitForResponse((r) => r.url().includes(`/api/sales/orders/${order.id}`) && r.request().method() !== "GET", { timeout: 15_000 });
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+    for (let i = 1; i <= 10; i++) await page.mouse.move(grab.x + ((end.x - grab.x) * i) / 10, grab.y + ((end.y - grab.y) * i) / 10);
+    const ghost = await page.evaluate(() => {
+      const g = Array.from(document.querySelectorAll<HTMLElement>(".task")).find((t) => t.style.position === "fixed");
+      return g ? { left: parseFloat(g.style.left), top: parseFloat(g.style.top) } : null;
+    });
+    await page.mouse.up();
+    const res = await confirmed;
+
+    const cursors = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>(".board.pipe .task:not([data-movable])"))
+        .slice(0, 5)
+        .map((t) => getComputedStyle(t).cursor),
+    );
+    await close();
+
+    expect(ghost, "no ghost while dragging").not.toBeNull();
+    /* The ghost's own left/top: the pointer minus where the card was grabbed. */
+    expect(Math.abs(ghost!.left - (end.x - 25)), "the ghost left the grab point").toBeLessThanOrEqual(2);
+    expect(Math.abs(ghost!.top - (end.y - 10)), "the ghost left the grab point").toBeLessThanOrEqual(2);
+    expect(res.status(), "the drop did not confirm the order").toBeLessThan(300);
+    expect(cursors.filter((c) => c === "grab")).toEqual([]);
+  }, 120_000);
 });

@@ -9,7 +9,8 @@ import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
 import InventoryBoard from "@/components/meridian/InventoryBoard";
 import GradientStat from "@/components/meridian/GradientStat";
-import { expiringBatches } from "@/lib/repo/batches";
+import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
+import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -44,6 +45,18 @@ export default async function StockPage() {
   const negatives = stock.filter((row) => row.negative);
   const stockName = new Map(stock.map((r) => [r.product_id, r.name]));
   const expiring = expiringBatches(session.organizationId);
+  /* Item 18: the batch list lives with the stock it makes up. The quarantine, release and
+     recall actions stay on /sales/batches, for the roles that tab is open to. */
+  const canManageBatches = session.role === "owner" || session.role === "group_manager";
+  const batches = listBatchesWithProduct(session.organizationId).map((b) => ({
+    id: b.id,
+    batch_code: b.batch_code,
+    product: b.product_name,
+    produced_at: b.produced_at,
+    expiry_date: b.expiry_date,
+    on_hand: b.on_hand,
+    status: b.status,
+  }));
 
   const today = toJalali(new Date().toISOString())!;
   const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
@@ -144,6 +157,8 @@ export default async function StockPage() {
       ) : (
         <InventoryBoard rows={rows} canEdit={session.role === "owner"} />
       )}
+
+      <BatchList rows={batches} canManage={canManageBatches} />
 
       {session.role === "owner" && <PurchaseEntry products={products} />}
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { faJalaliDate } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { splinePath, type Pt } from "@/lib/design/spline";
@@ -171,7 +172,7 @@ function ProductCard({ row: r, canEdit, onSaved }: { row: InventoryRow; canEdit:
       <div className="stcard__top">
         <div>
           <div className="stcard__name">{r.name}</div>
-          {r.last_purchase_date && <div className="stcard__pack">آخرین خرید {r.last_purchase_date}</div>}
+          {r.last_purchase_date && <div className="stcard__pack">آخرین خرید {faJalaliDate(r.last_purchase_date)}</div>}
         </div>
         <span className="stpill" data-s={r.status}>
           <i /> {STATUS_LABEL[r.status]}

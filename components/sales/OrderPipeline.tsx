@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -55,7 +56,7 @@ const CLICK_GUARD_MS = 60;
  *  the overflow is stated in words with a link to the full list, never silently dropped. */
 const LANE_CAP = 8;
 
-type Drag = { order: PipelineOrder; from: StageKey; x: number; y: number; width: number };
+type Drag = { order: PipelineOrder; from: StageKey; x: number; y: number; width: number; dx: number; dy: number };
 
 /** The order board (MASTER.md, "Order pipeline").
  *
@@ -76,10 +77,14 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
   const [hover, setHover] = useState<StageKey | null>(null);
   const [open, setOpen] = useState<PipelineOrder | null>(null);
   const [busy, setBusy] = useState(false);
+  /* The one move this board makes is draft → confirmed. Say so, and say when there is
+     nothing to move: with no drafts every card is click-only, and an unexplained board
+     that will not drag is what the user reported as broken (item 22). */
+  const drafts = orders.filter((o) => o.status === "DRAFT").length;
 
   /* Refs, not state: the pointer handlers run on every move, and reading these from
      state would close over whatever the values were when the gesture began. */
-  const press = useRef<{ order: PipelineOrder; from: StageKey; x: number; y: number; width: number } | null>(null);
+  const press = useRef<Drag | null>(null);
   const dragging = useRef(false);
   const suppressClick = useRef(false);
   /* The lane under the pointer is kept in a ref as well as in state. pointerup can land
@@ -120,12 +125,19 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
        And NO preventDefault() here: it suppresses the compatibility mouse events and the
        card's own click never fires. Selection is guarded by CSS instead -- see .board. */
     e.currentTarget.setPointerCapture(e.pointerId);
+    const r = e.currentTarget.getBoundingClientRect();
     press.current = {
       order,
       from,
       x: e.clientX,
       y: e.clientY,
-      width: e.currentTarget.getBoundingClientRect().width,
+      width: r.width,
+      /* Where inside the card the grab happened. The ghost is drawn at the pointer MINUS
+         this, so it stays under the finger exactly where it was picked up. It used to be
+         drawn at a fixed x+14, y-18 from the pointer: the card jumped away from the hand
+         (item 22, «۵ سانت دورتر»). Physical coordinates on both sides, so RTL is moot. */
+      dx: e.clientX - r.left,
+      dy: e.clientY - r.top,
     };
   }
 
@@ -145,7 +157,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
     const key = (lane?.dataset.stage as StageKey | undefined) ?? null;
     hoverRef.current = key;
     setHover(key);
-    setDrag({ order: p.order, from: p.from, x: e.clientX, y: e.clientY, width: p.width });
+    setDrag({ order: p.order, from: p.from, x: e.clientX, y: e.clientY, width: p.width, dx: p.dx, dy: p.dy });
   }
 
   function onPointerUp() {
@@ -176,6 +188,12 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
 
   return (
     <>
+      <p className="pipe__note">
+        <Icon name="info" size="sm" />
+        {drafts > 0
+          ? "سفارش پیش‌نویس را به ستون «تأییدشده» بکشید تا قیمتش قفل و تأیید شود. بقیهٔ کارت‌ها با کلیک باز می‌شوند."
+          : "الان سفارش پیش‌نویسی نیست. روی این تابلو فقط پیش‌نویس به «تأییدشده» کشیده می‌شود؛ مراحل بعدی از خود سفارش جلو می‌روند."}
+      </p>
       <div className="board pipe">
         {STAGES.map((stage) => {
           const rows = laneOrders(stage.key);
@@ -207,6 +225,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                   <button
                     type="button"
                     data-tone={docs.tone}
+                    data-movable={movable ? "" : undefined}
                     className={`task${drag?.order.id === o.id ? " dragging" : ""}`}
                     onPointerDown={movable ? (e) => onPointerDown(e, o, stage.key) : undefined}
                     onPointerMove={movable ? onPointerMove : undefined}
@@ -266,8 +285,8 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
             position: "fixed",
             zIndex: 90,
             pointerEvents: "none",
-            left: drag.x + 14,
-            top: drag.y - 18,
+            left: drag.x - drag.dx,
+            top: drag.y - drag.dy,
             width: drag.width,
             boxShadow: "var(--sh-3)",
             transform: "rotate(-2deg) scale(1.03)",

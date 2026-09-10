@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { listObjectionCards, academyManifest, lessonProgress } from "@/lib/repo/academy";
-import AcademyLibrary from "@/components/sales/AcademyLibrary";
+import AcademyPath from "@/components/sales/AcademyPath";
 import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +28,11 @@ export default async function AcademyPage() {
       <div className="bhead">
         <div>
           <h2>آموزش</h2>
-          <div className="n">درس‌ها و پاسخ به مخالفت مشتری</div>
+          <div className="n">مسیر درس‌ها، و پاسخ آماده به مخالفت‌های رایج مشتری</div>
         </div>
       </div>
       <div className="kblock__body">
-        <AcademyLibrary cards={cards} modules={modules} done={done} />
+        <AcademyPath cards={cards} modules={modules} done={done} />
       </div>
     </div>    </>
   );

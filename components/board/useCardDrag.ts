@@ -25,6 +25,10 @@ export interface DragState<T> {
   x: number;
   y: number;
   width: number;
+  /** Where inside the card the grab happened; draw the ghost at x - dx, y - dy so it stays
+   *  under the pointer exactly where it was picked up (item 22). */
+  dx: number;
+  dy: number;
 }
 
 export interface CardDrag<T> {
@@ -61,12 +65,15 @@ export function useCardDrag<T>(opts: {
       onPointerDown(e: React.PointerEvent) {
         if (e.pointerType === "mouse" && e.button !== 0) return;
         (e.currentTarget as Element).setPointerCapture(e.pointerId);
+        const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
         press.current = {
           item,
           from: fromLane,
           x: e.clientX,
           y: e.clientY,
-          width: (e.currentTarget as HTMLElement).getBoundingClientRect().width,
+          width: r.width,
+          dx: e.clientX - r.left,
+          dy: e.clientY - r.top,
         };
       },
       onPointerMove(e: React.PointerEvent) {
@@ -79,7 +86,7 @@ export function useCardDrag<T>(opts: {
         const lane = opts.resolveLane(e.clientX, e.clientY);
         hoverRef.current = lane;
         setHoverLane(lane);
-        setDrag({ item: p.item, from: p.from, x: e.clientX, y: e.clientY, width: p.width });
+        setDrag({ ...p, x: e.clientX, y: e.clientY });
       },
       onPointerUp() {
         const p = press.current;

@@ -356,3 +356,19 @@ export function batchTrace(organizationId: number, batchId: number): BatchTrace 
 
   return { batch, purchase, deliveries, complaints };
 }
+
+/** Every batch with its product's name, soonest expiry first, for the batch list on
+ *  /sales/stock (item 18). One query; the name join is why this is not listBatches. */
+export function listBatchesWithProduct(organizationId: number): Array<BatchRow & { on_hand: number; product_name: string }> {
+  return batchesRepo
+    .db()
+    .prepare(
+      `SELECT b.*, p.name AS product_name,
+              COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.batch_id = b.id), 0) AS on_hand
+         FROM batches b
+         JOIN products p ON p.id = b.product_id
+        WHERE b.organization_id = ?
+        ORDER BY (b.expiry_date IS NULL), b.expiry_date, b.id`,
+    )
+    .all(organizationId) as unknown as Array<BatchRow & { on_hand: number; product_name: string }>;
+}

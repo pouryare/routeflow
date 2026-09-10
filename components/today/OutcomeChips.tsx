@@ -1,14 +1,12 @@
 "use client";
+import { outcomeLabel } from "@/lib/tasks/labels";
 
 /** The four sales-call outcome pills — shared by the /today briefing row and the Board's
  *  "drop into انجام‌شده" flow so the wording and the codes live in one place. Each
  *  consumer adds its own trailing action (dismiss on /today, "بدون نتیجه" on the Board). */
-export const OUTCOMES: { code: string; label: string }[] = [
-  { code: "CONTACTED", label: "تماس شد" },
-  { code: "ORDERED", label: "خرید کرد" },
-  { code: "PRICE_OBJECTION", label: "قیمت" },
-  { code: "NOT_INTERESTED", label: "رد کرد" },
-];
+export const OUTCOMES: { code: string; label: string }[] = ["CONTACTED", "ORDERED", "PRICE_OBJECTION", "NOT_INTERESTED"].map(
+  (code) => ({ code, label: outcomeLabel(code) }),
+);
 
 export default function OutcomeChips({
   disabled,

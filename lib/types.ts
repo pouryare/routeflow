@@ -141,6 +141,18 @@ export type CustomerType =
   | "WHOLESALE"
   | "OTHER";
 
+/** What a customer's `customer_type` is called. The academy printed these raw
+ *  («RESTAURANT») beside Persian titles before this map existed. */
+export const CUSTOMER_TYPE_LABEL: Record<CustomerType, string> = {
+  RESTAURANT: "رستوران",
+  HOTEL: "هتل",
+  CATERING: "کترینگ",
+  CAFE: "کافه",
+  RETAIL: "خرده‌فروشی",
+  WHOLESALE: "عمده‌فروشی",
+  OTHER: "سایر",
+};
+
 export const LIFECYCLE_LABEL: Record<CustomerLifecycle, string> = {
   lead: "سرنخ",
   qualified: "در حال پیگیری",

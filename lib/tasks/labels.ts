@@ -46,3 +46,21 @@ export function taskKindLabel(kind: string): string {
 export function taskKindTone(kind: string): string {
   return (TASK_KIND_TONE as Record<string, string>)[kind] ?? "plum";
 }
+
+/** A call's outcome, as the /today chips, the Board's drop flow and the academy's
+ *  objection cards all name it. The chips offer four; the academy seeds cards for eight,
+ *  and it printed the other four as raw codes («PRICE_OBJECTION») before this map. */
+export const OUTCOME_LABEL: Record<string, string> = {
+  CONTACTED: "تماس شد",
+  ORDERED: "خرید کرد",
+  PRICE_OBJECTION: "قیمت",
+  NOT_INTERESTED: "رد کرد",
+  ALREADY_SUPPLIED: "تأمین‌کننده دارد",
+  NO_TIME: "وقت ندارد",
+  PAYMENT_TERMS: "شرایط پرداخت",
+  QUALITY_DOUBT: "تردید در کیفیت",
+};
+
+export function outcomeLabel(code: string): string {
+  return OUTCOME_LABEL[code] ?? "نتیجهٔ دیگر";
+}

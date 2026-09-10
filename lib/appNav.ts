@@ -74,7 +74,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     // تحویل
     { href: "/sales/runs", label: "مسیر تحویل", group: "delivery", ready: r !== "salesperson" },
     { href: "/sales/deliveries", label: "تحویل‌ها", group: "delivery", ready: isManager(r) },
-    { href: "/sales/batches", label: "بچ‌ها", group: "delivery", ready: isManager(r) },
+    { href: "/sales/batches", label: "بچ‌ها", group: "stock", ready: isManager(r) },
     { href: "/sales/routing", label: "مسیریابی", group: "delivery", ready: isManager(r) },
 
     // مالی
@@ -95,12 +95,6 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/complaints", label: "شکایات", group: "admin", ready: true },
     { href: "/sales/admin/users", label: "کاربران", group: "admin", ready: r === "owner" },
     { href: "/sales/admin/groups", label: "گروه‌ها", group: "admin", ready: r === "owner" },
-    {
-      href: "/sales/admin/representatives",
-      label: "تعریف نمایندگی",
-      group: "admin",
-      ready: r === "owner" || r === "rep_manager",
-    },
 
     // میدان و نقشه — the spatial surfaces, first-class now that one shell wraps them.
     { href: "/map", label: "نقشهٔ پوشش", group: "field", ready: true },
