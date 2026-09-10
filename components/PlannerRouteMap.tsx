@@ -52,7 +52,9 @@ function RoutingLayer({
       createMarker: (i: number, wp: { latLng: L.LatLng }) => {
         const isFirst = i === 0;
         const isLast = i === stops.length - 1;
-        const label = isFirst ? "◎" : isLast ? "" : String(i);
+        /* The start marker is the filled accent disc (.route-stop-marker--start); it
+           needs no glyph, and «◎» was a text character standing in for an icon. */
+        const label = isFirst || isLast ? "" : String(i);
         return L.marker(wp.latLng, {
           icon: L.divIcon({
             className: "",

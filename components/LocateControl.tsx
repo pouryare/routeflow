@@ -5,6 +5,9 @@ import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useMyPosition } from "./MyPositionProvider";
 
+const LOCATE_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>';
+
 /** The ◎ button: recentre on me.
  *
  *  It used to *be* the location feature -- one getCurrentPosition, one marker dropped
@@ -47,7 +50,9 @@ export default function LocateControl() {
         const button = L.DomUtil.create("a", "", container) as HTMLAnchorElement;
         button.href = "#";
         button.title = "رفتن به موقعیت من";
-        button.innerHTML = "◎";
+        /* Leaflet builds this control as raw DOM, so a React <Icon> cannot render here. This
+           is lucide's locate-fixed, the same glyph as <Icon name="locate" />, inline. */
+        button.innerHTML = LOCATE_SVG;
         button.setAttribute("role", "button");
         button.setAttribute("aria-label", "رفتن به موقعیت من");
         L.DomEvent.disableClickPropagation(container);

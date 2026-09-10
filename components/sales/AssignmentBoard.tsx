@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
-import { Avatar } from "@/components/AvatarStack";
+import Avatar from "@/components/meridian/Avatar";
 import SectionHead from "@/components/meridian/SectionHead";
 
 export interface BoardRun {

@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -88,7 +89,7 @@ export default function PurchaseHistory({
           className="transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)]"
           style={{ transform: open ? "rotate(180deg)" : "rotate(0deg)" }}
         >
-          ▾
+          <Icon name="chevron-down" size="sm" />
         </span>
       </button>
 

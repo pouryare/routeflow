@@ -1,7 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import WhyDrilldown, { type Rung } from "./WhyDrilldown";
+import Sparkline from "@/components/charts/Sparkline";
+import { Icon } from "@/components/meridian/Icon";
+import { DUR, EASE } from "@/lib/motion";
 
 export interface KpiCard {
   metric: string;
@@ -26,17 +30,53 @@ const RATIO = new Set([
   "sample_conversion",
 ]);
 const WHYABLE = new Set(["net_sales", "gross_profit", "orders"]);
+/** The metric that leads the section, large. Net sales is the number the owner opens the
+ *  page for; the rest explain it. */
+const HERO = "net_sales";
 
 function show(metric: string, v: number | null): string {
   if (v === null) return "—";
   if (RATIO.has(metric)) return `${Math.round(v * 100).toLocaleString("fa-IR")}٪`;
   return Math.round(v).toLocaleString("fa-IR");
 }
-const deltaLabel = (n: number) =>
-  `${n >= 0 ? "+" : ""}${Math.round(n * 100).toLocaleString("fa-IR")}٪`;
 
-export default function KpiStrip({ cards, period }: { cards: KpiCard[]; period: string }) {
-  const [openInfo, setOpenInfo] = useState<string | null>(null);
+/** The change against last period, as a chip with an icon AND a colour (the colour alone
+ *  fails for anyone who cannot tell the two hues apart, and on paper). Good or bad follows
+ *  the metric's own direction: a rising return rate is not good news. */
+function DeltaChip({ c }: { c: KpiCard }) {
+  if (c.prev_value === null || c.value === null) return null;
+  const flat = Math.abs(c.delta_pct) < 0.0005;
+  const up = c.delta_pct > 0;
+  const good = flat ? null : (up ? "up" : "down") === c.direction;
+  return (
+    <span className={`kpichip kpichip--${good === null ? "flat" : good ? "good" : "bad"}`}>
+      <Icon name={flat ? "dot" : up ? "arrow-up" : "arrow-down"} size="sm" />
+      {Math.abs(Math.round(c.delta_pct * 100)).toLocaleString("fa-IR")}٪
+    </span>
+  );
+}
+
+/** Item 10: «شاخص‌های کلیدی» as one instrument.
+ *
+ *  It was a grid of loose bordered tiles, each with a «ⓘ» glyph, which read as a dozen
+ *  unrelated numbers. Now: the headline metric as a hero card with its trend, the rest as
+ *  one connected bar (`stats-connected-kpi-bar-with-trends`) with a sparkline and a
+ *  change chip per segment, and a segment expands its definition, the suggested action
+ *  and the «چرا؟» drill-down underneath (the expandable card the user pointed at).
+ *
+ *  `trends` is metric → recent periods, oldest FIRST as kpiHistory returns them; reversed
+ *  here into Sparkline's oldest-last. */
+export default function KpiStrip({
+  cards,
+  period,
+  trends = {},
+}: {
+  cards: KpiCard[];
+  period: string;
+  trends?: Record<string, (number | null)[]>;
+}) {
+  const reduce = useReducedMotion();
+  const [open, setOpen] = useState<string | null>(null);
   const [why, setWhy] = useState<Record<string, Rung[] | "loading">>({});
 
   async function loadWhy(metric: string) {
@@ -54,68 +94,97 @@ export default function KpiStrip({ cards, period }: { cards: KpiCard[]; period: 
     setWhy((w) => ({ ...w, [metric]: j.ok ? (j.chain as Rung[]) : [] }));
   }
 
+  const series = (metric: string) => [...(trends[metric] ?? [])].reverse();
+  const toggle = (metric: string) => setOpen((m) => (m === metric ? null : metric));
+  const hero = cards.find((c) => c.metric === HERO) ?? cards[0];
+  const rest = cards.filter((c) => c !== hero);
+  const detail = cards.find((c) => c.metric === open) ?? null;
+
   return (
     <div className="kblock" dir="rtl">
       <div className="bhead">
-        <h2>شاخص‌های کلیدی</h2>
+        <div>
+          <h2>شاخص‌های کلیدی</h2>
+          <div className="n">روی هر شاخص بزنید تا تعریفش، کار پیشنهادی و «چرا؟» باز شود.</div>
+        </div>
       </div>
-      <div className="kblock__body grid grid-cols-2 gap-[var(--space-2)] sm:grid-cols-3 lg:grid-cols-4">
-        {cards.map((c) => {
-          const tone = c.value === null ? "var(--text-faint)" : c.on_track ? "var(--good)" : "var(--crit)";
-          return (
-            <div
+      <div className="kblock__body">
+        {hero ? (
+          <button
+            type="button"
+            className="kpihero"
+            aria-expanded={open === hero.metric}
+            aria-controls="kpi-detail"
+            onClick={() => toggle(hero.metric)}
+          >
+            <span className="kpihero__text">
+              <span className="kpihero__k">{hero.title_fa}</span>
+              <span className={`kpihero__v${hero.value !== null && !hero.on_track ? " kpibar__v--off" : ""}`}>
+                {show(hero.metric, hero.value)}
+              </span>
+              <span className="kpihero__row">
+                <DeltaChip c={hero} />
+                {hero.prev_value !== null ? <span>ماه قبل {show(hero.metric, hero.prev_value)}</span> : null}
+                {hero.target !== null ? <span>هدف {show(hero.metric, hero.target)}</span> : null}
+              </span>
+              {hero.target !== null && hero.value !== null && hero.target > 0 ? (
+                <span className="kpihero__goal" aria-label="پیشرفت تا هدف">
+                  <span style={{ width: `${Math.min(100, (hero.value / hero.target) * 100)}%` }} />
+                </span>
+              ) : null}
+            </span>
+            <Sparkline values={series(hero.metric)} height={64} area />
+          </button>
+        ) : null}
+
+        <div className="kpibar">
+          {rest.map((c) => (
+            <button
               key={c.metric}
-              className="flex flex-col rounded-[var(--radius-sm)] border border-[var(--border)] p-[var(--space-2)]"
+              type="button"
+              className="kpibar__seg"
+              aria-expanded={open === c.metric}
+              aria-controls="kpi-detail"
+              onClick={() => toggle(c.metric)}
             >
-              <div className="flex items-center justify-between">
-                <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">{c.title_fa}</span>
-                <button
-                  type="button"
-                  onClick={() => setOpenInfo((m) => (m === c.metric ? null : c.metric))}
-                  className="cursor-pointer border-0 bg-transparent text-[length:var(--text-xs)] text-[var(--text-faint)]"
-                  aria-label="تعریف"
-                >
-                  ⓘ
-                </button>
-              </div>
-              <span className="text-[length:var(--text-lg)] font-bold tabular-nums" style={{ color: tone }}>
+              <span className="kpibar__k">{c.title_fa}</span>
+              <span className={`kpibar__v${c.value !== null && !c.on_track ? " kpibar__v--off" : ""}`}>
                 {show(c.metric, c.value)}
               </span>
-              <div className="flex items-center gap-[var(--space-1)] text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
-                {c.prev_value !== null && (
-                  <span style={{ color: c.delta_pct >= 0 ? "var(--good)" : "var(--crit)" }}>
-                    {deltaLabel(c.delta_pct)}
-                  </span>
-                )}
-                {c.target !== null && <span>هدف {Math.round(c.target).toLocaleString("fa-IR")}</span>}
-                {c.sample_size !== null && c.sample_size < 5 && (
-                  <span className="text-[var(--text-faint)]">نمونهٔ کم</span>
-                )}
-              </div>
+              <span className="kpibar__meta">
+                <DeltaChip c={c} />
+                {c.target !== null ? <span>هدف {show(c.metric, c.target)}</span> : null}
+                {c.sample_size !== null && c.sample_size < 5 ? <span>نمونهٔ کم</span> : null}
+              </span>
+              <Sparkline values={series(c.metric)} height={22} />
+            </button>
+          ))}
+        </div>
 
-              {openInfo === c.metric && (
-                <div className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                  <div>{c.definition_fa}</div>
-                  <div className="mt-[var(--space-1)] text-[var(--text-faint)]">{c.action_fa}</div>
-                </div>
-              )}
-
-              {WHYABLE.has(c.metric) && (
-                <button
-                  type="button"
-                  onClick={() => loadWhy(c.metric)}
-                  className="mt-[var(--space-1)] cursor-pointer self-start border-0 bg-transparent p-0 text-[length:var(--text-xs)] text-[var(--accent)]"
-                >
-                  چرا؟
+        <AnimatePresence initial={false}>
+          {detail ? (
+            <motion.div
+              key={detail.metric}
+              id="kpi-detail"
+              className="kpibar__detail"
+              initial={reduce ? false : { opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={reduce ? undefined : { opacity: 0, y: -6 }}
+              transition={{ duration: reduce ? 0 : DUR.base, ease: EASE.out }}
+            >
+              <h3 className="sechead__title sechead__title--minor">{detail.title_fa}</h3>
+              {detail.definition_fa ? <p>{detail.definition_fa}</p> : null}
+              {detail.action_fa ? <p className="kpibar__action">{detail.action_fa}</p> : null}
+              {WHYABLE.has(detail.metric) ? (
+                <button type="button" className="btn ghost" onClick={() => loadWhy(detail.metric)}>
+                  <Icon name="help" size="sm" /> چرا؟
                 </button>
-              )}
-              {why[c.metric] === "loading" && (
-                <div className="text-[length:var(--text-xs)] text-[var(--text-faint)]">در حال محاسبه…</div>
-              )}
-              {Array.isArray(why[c.metric]) && <WhyDrilldown chain={why[c.metric] as Rung[]} />}
-            </div>
-          );
-        })}
+              ) : null}
+              {why[detail.metric] === "loading" ? <p className="kpibar__action">در حال محاسبه…</p> : null}
+              {Array.isArray(why[detail.metric]) ? <WhyDrilldown chain={why[detail.metric] as Rung[]} /> : null}
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </div>
   );

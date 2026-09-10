@@ -108,7 +108,7 @@ export default async function SalesHomePage() {
           chip={
             delta === null
               ? `از ابتدا ${faToman(d.revenue_toman)}`
-              : `${delta >= 0 ? "▲" : "▼"} ${faNum(Math.abs(delta))}٪ نسبت به دیروز`
+              : `${delta >= 0 ? "+" : "−"}${faNum(Math.abs(delta))}٪ نسبت به دیروز`
           }
         />
         <GradientStat

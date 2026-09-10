@@ -13,7 +13,7 @@ import { allManagerStatements, managerStatementFor } from "@/lib/managerCommissi
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, faJalaliDateTime, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { movingAverage } from "@/lib/chartScale";
-import { kpiBoard, newestComputedAt } from "@/lib/repo/kpiSnapshots";
+import { kpiBoard, kpiHistory, newestComputedAt } from "@/lib/repo/kpiSnapshots";
 import { actionCenterFor } from "@/lib/repo/actionCenter";
 import { customersHealthOverview } from "@/lib/repo/health";
 import { currentPeriod, shiftPeriod } from "@/lib/analysis/period";
@@ -114,6 +114,12 @@ export default async function DashboardPage() {
   const aPeriod = currentPeriod();
   const aPrev = shiftPeriod(aPeriod, 1);
   const kpiCards = kpiBoard(session.organizationId, aPeriod, aPrev, session);
+  /* Six periods of every metric for the KPI bar's sparklines, oldest first (item 10). */
+  const kpiTrends = kpiHistory(
+    session.organizationId,
+    [5, 4, 3, 2, 1, 0].map((n) => shiftPeriod(aPeriod, n)),
+    session,
+  );
   const buckets = actionCenterFor(session);
   const health = customersHealthOverview(session);
   const kpiComputedAt = newestComputedAt(session.organizationId, aPeriod);
@@ -241,7 +247,7 @@ export default async function DashboardPage() {
         </div>
 
         <ActionCenter buckets={buckets} />
-        <KpiStrip cards={kpiCards} period={aPeriod} />
+        <KpiStrip cards={kpiCards} period={aPeriod} trends={kpiTrends} />
         {isManager && <MarginTable period={aPeriod} />}
 
         <div className="kblock" dir="rtl">

@@ -567,6 +567,35 @@ function boardScope(session: Session): MetricScope {
   return { scope_type: "org", scope_id: 0 };
 }
 
+/** The last few periods of every metric, for the KPI bar's sparklines (item 10). One read,
+ *  same scope as kpiBoard. Periods oldest first; a period with no snapshot is `null`, a
+ *  gap in the line rather than a fall to zero, because "not computed" is not "none". */
+export function kpiHistory(
+  organizationId: number,
+  periods: string[],
+  session: Session
+): Record<string, (number | null)[]> {
+  if (periods.length === 0) return {};
+  const scope = boardScope(session);
+  const rows = getDb()
+    .prepare(
+      `SELECT metric, period, value FROM kpi_snapshots
+        WHERE organization_id = ? AND scope_type = ? AND scope_id = ?
+          AND period IN (${periods.map(() => "?").join(", ")})`
+    )
+    .all(organizationId, scope.scope_type, scope.scope_id, ...periods) as {
+    metric: string;
+    period: string;
+    value: number;
+  }[];
+  const out: Record<string, (number | null)[]> = {};
+  for (const r of rows) {
+    const series = (out[r.metric] ??= periods.map(() => null));
+    series[periods.indexOf(r.period)] = r.value;
+  }
+  return out;
+}
+
 /** One `kpi_snapshots` read for two periods + one `targets` read + the definitions
  *  join. Never touches `orders`. */
 export function kpiBoard(

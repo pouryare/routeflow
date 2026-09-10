@@ -7,6 +7,9 @@ import { readOrders } from "@/lib/orders";
 import RunPlanner from "@/components/sales/RunPlanner";
 import AssignmentBoard from "@/components/sales/AssignmentBoard";
 import RunTimeline, { TimelineStop } from "@/components/sales/RunTimeline";
+import DriverStreaks from "@/components/sales/DriverStreaks";
+import { readDriverActivity } from "@/lib/repo/driverActivity";
+import { buildStreak } from "@/lib/streak";
 import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -40,7 +43,7 @@ export default async function RunsPage() {
   const runs = plain(
     db
       .prepare(
-        `SELECT dr.id, dr.run_date, dr.status, u.display_name AS driver_name,
+        `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, u.display_name AS driver_name,
                 COUNT(ds.id) AS stop_count,
                 COALESCE(SUM(CASE WHEN ds.status = 'pending' THEN 1 ELSE 0 END), 0) AS remaining
            FROM delivery_runs dr
@@ -56,6 +59,7 @@ export default async function RunsPage() {
     id: number;
     run_date: string;
     status: string;
+    driver_user_id: number;
     driver_name: string;
     stop_count: number;
     remaining: number;
@@ -90,6 +94,10 @@ export default async function RunsPage() {
     stopsByRun.get(run_id)!.push(stop);
   }
 
+  /* Item 14: who has actually been on the road, as a streak of days. Same group scope as
+     the runs above (lib/repo/driverActivity.ts). */
+  const today = new Date().toISOString().slice(0, 10);
+
   // Confirmed orders not already on a run -- the pool a manager is choosing from.
   const scope = orderFilter(session);
   const unassigned = readOrders(db, scope, { status: "CONFIRMED", limit: 200 }).filter((order) => {
@@ -118,6 +126,13 @@ export default async function RunsPage() {
         runs={runs
           .filter((r) => r.status !== "done")
           .map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}
+      />
+      <DriverStreaks
+        people={readDriverActivity(db, session, today).map((d) => ({
+          id: d.id,
+          name: d.name,
+          streak: buildStreak(d.dates, today, 12),
+        }))}
       />
     </div>    </>
   );

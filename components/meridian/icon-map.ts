@@ -7,7 +7,7 @@ import {
   Target, Palette, Trees, CloudFog, CircleHelp, Ban, Circle, Menu, Sparkles,
   ArrowUpRight, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, ArrowLeftRight,
   RotateCcw, Layers, Camera, FileText, Waypoints, ClipboardList,
-  Radar, Sun, Contrast, Square, Banknote, Flag,
+  Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
   type LucideIcon,
 } from "lucide-react";
 
@@ -101,6 +101,9 @@ export const ICONS = {
   "arrow-down": ArrowDown,
   "arrow-swap": ArrowLeftRight,
   undo: RotateCcw,
+  /* «⋯» and «◎» were typed as text glyphs where these belonged. */
+  more: Ellipsis,
+  locate: LocateFixed,
 } as const satisfies Record<string, LucideIcon>;
 
 export type IconName = keyof typeof ICONS;

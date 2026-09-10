@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { taskKindLabel } from "@/lib/tasks/labels";
 import { useEffect, useState } from "react";
 import { faNum } from "@/lib/format";
@@ -78,7 +79,7 @@ export default function BoardMobile({
           cursor: "pointer",
         }}
       >
-        ⋯ انتقال
+        <Icon name="more" size="sm" /> انتقال
       </button>
     </div>
   );

@@ -1,6 +1,7 @@
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import { Avatar } from "@/components/AvatarStack";
+import Avatar from "@/components/meridian/Avatar";
+import SectionHead from "@/components/meridian/SectionHead";
 
 export interface TimelineStop {
   id: number;
@@ -15,15 +16,9 @@ export interface TimelineRun {
   run_date: string;
   status: string;
   driver_name: string;
+  driver_user_id?: number;
   stops: TimelineStop[];
 }
-
-const STOP_TONE: Record<TimelineStop["status"], string> = {
-  pending: "var(--neutral)",
-  delivered: "var(--good)",
-  refused: "var(--crit)",
-  skipped: "var(--warn)",
-};
 
 const STOP_LABEL: Record<TimelineStop["status"], string> = {
   pending: "در انتظار",
@@ -32,114 +27,105 @@ const STOP_LABEL: Record<TimelineStop["status"], string> = {
   skipped: "رد شد",
 };
 
-/** Every open run's load on one axis.
+/** «بار مسیرها»: every open run as a lane on one shared axis (item 16, `timeline-multi-track`).
  *
- *  **This is a sequence, not a clock.** `delivery_stops` records `sort_order` and, once a
- *  stop is done, `delivered_at` -- there is no planned arrival time anywhere in the
- *  schema. So the axis here is "first stop to last stop", and each block is one stop,
- *  equally wide.
+ *  It used to be one long bar per run, a progress bar impersonating a schedule. A run IS
+ *  a lane with events along it, so this draws exactly that: one row per run with its
+ *  driver at the head, one node per stop, every lane on the same axis so a column is
+ *  "the Nth stop" in every van at once and the longer lane is visibly the heavier day.
  *
- *  Drawing this against a real time axis would mean inventing durations, and a chart that
- *  invents its own x-values is worse than no chart: it would show a van arriving at 10:40
- *  on the authority of nothing. If planned times are ever added to the schema, this
- *  becomes a real gantt by changing the width calculation and nothing else.
+ *  **The axis is a sequence, not a clock.** `delivery_stops` records the stop order and,
+ *  once done, `delivered_at`; nothing records a planned arrival time. Drawing this on a
+ *  time axis would invent durations. If planned times are ever added, only the column
+ *  placement changes.
  *
- *  Right to left, like every other series in this app: the first stop of the day is the
- *  rightmost block, because that is where a Persian reader starts.
- */
+ *  Right to left like every other series here: stop 1 sits at the lane's start edge,
+ *  where a Persian reader begins. Server component. */
 export default function RunTimeline({ runs }: { runs: TimelineRun[] }) {
   if (runs.length === 0) return null;
 
   const busiest = Math.max(...runs.map((r) => r.stops.length), 1);
+  const all = runs.flatMap((r) => r.stops);
+  const tally = (Object.keys(STOP_LABEL) as TimelineStop["status"][])
+    .map((k) => ({ k, n: all.filter((s) => s.status === k).length }))
+    .filter((x) => x.n > 0);
+  const cols = { ["--stops" as string]: busiest };
 
   return (
-    <section aria-labelledby="timeline-heading">
-      <h2
+    <section
+      aria-labelledby="timeline-heading"
+      className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]"
+    >
+      <SectionHead
         id="timeline-heading"
-        className="sechead__title mb-[var(--space-1)]"
-      >
-        بار مسیرها
-      </h2>
-      <p className="m-0 mb-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-        هر بلوک یک ایستگاه است، به ترتیب توقف — نه بر حسب ساعت.
-      </p>
+        title="بار مسیرها"
+        sub="هر ردیف یک مسیر و هر نقطه یک ایستگاه است، به ترتیب توقف — نه بر حسب ساعت."
+        actions={
+          tally.length > 0 ? (
+            <ul className="mlanes__legend" aria-label="راهنما">
+              {tally.map(({ k, n }) => (
+                <li key={k}>
+                  <span className={`mlanes__swatch mlanes__swatch--${k}`} aria-hidden="true" />
+                  {STOP_LABEL[k]} {faNum(n)}
+                </li>
+              ))}
+            </ul>
+          ) : null
+        }
+      />
 
-      <div className="board-stagger flex flex-col gap-[var(--space-3)]">
-        {runs.map((run) => (
-          <article
-            key={run.id}
-            className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]"
-          >
-            <header className="mb-[var(--space-3)] flex items-center gap-[var(--space-2)]">
-              <Avatar name={run.driver_name} count={run.stops.length} />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-[length:var(--text-sm)] text-[var(--text)]">
-                  {run.driver_name}
-                </span>
-                <span className="block font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                  {faJalaliDate(run.run_date)}
-                </span>
-              </span>
-              <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                {faToman(run.stops.reduce((a, s) => a + s.total_toman, 0))}
-              </span>
-            </header>
+      <div className="mlanes" style={cols}>
+        <div className="mlanes__axis" aria-hidden="true">
+          <span className="mlanes__head" />
+          <ol className="mlanes__ticks">
+            {Array.from({ length: busiest }, (_, i) => (
+              <li key={i}>{faNum(i + 1)}</li>
+            ))}
+          </ol>
+        </div>
 
-            {run.stops.length === 0 ? (
-              <p className="m-0 text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                هنوز ایستگاهی روی این مسیر نیست.
-              </p>
-            ) : (
-              <>
-                {/* Width is proportional to the busiest run, so two rows side by side say
-                    which van is carrying more. Without it every row fills its container
-                    and a three-stop run looks exactly as loaded as a twelve-stop one. */}
+        {runs.map((run) => {
+          const load = run.stops.reduce((a, s) => a + s.total_toman, 0);
+          const done = run.stops.filter((s) => s.status !== "pending").length;
+          return (
+            <article key={run.id} className="mlanes__lane" aria-label={`مسیر ${run.driver_name}`}>
+              <header className="mlanes__head">
+                <Avatar userId={run.driver_user_id} name={run.driver_name} size={32} />
+                <span className="mlanes__who">
+                  <span className="mlanes__name">{run.driver_name}</span>
+                  <span className="mlanes__meta">
+                    {faJalaliDate(run.run_date)} · {faNum(done)}/{faNum(run.stops.length)} · {faToman(load)}
+                  </span>
+                </span>
+              </header>
+              {run.stops.length === 0 ? (
+                <p className="mlanes__empty">هنوز ایستگاهی روی این مسیر نیست.</p>
+              ) : (
                 <ol
-                  className="m-0 flex list-none gap-[3px] p-0"
-                  style={{ width: `${(run.stops.length / busiest) * 100}%` }}
+                  className="mlanes__track"
+                  style={{ ["--filled" as string]: run.stops.length }}
                 >
                   {run.stops.map((s, i) => (
-                    <li
-                      key={s.id}
-                      className="run-block group relative flex-1"
-                      style={{ ["--block-tone" as string]: STOP_TONE[s.status] }}
-                    >
-                      <span className="sr-only">
-                        {faNum(i + 1)}. {s.customer_name} — {STOP_LABEL[s.status]}
-                      </span>
-                      <span aria-hidden="true" className="run-block__bar" />
-                      <span aria-hidden="true" className="run-block__tip">
-                        {faNum(i + 1)}. {s.customer_name}
-                        <span className="block font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    <li key={s.id} className={`mlanes__stop mlanes__stop--${s.status}`} tabIndex={0}>
+                      <span className="mlanes__dot" aria-hidden="true" />
+                      <span className="mlanes__tip" role="tooltip">
+                        <b>
+                          {faNum(i + 1)}. {s.customer_name}
+                        </b>
+                        <span>
                           {s.order_no} · {STOP_LABEL[s.status]}
                         </span>
+                      </span>
+                      <span className="sr-only">
+                        ایستگاه {faNum(i + 1)}: {s.customer_name}، {STOP_LABEL[s.status]}
                       </span>
                     </li>
                   ))}
                 </ol>
-
-                <ul className="m-0 mt-[var(--space-3)] flex list-none flex-wrap gap-x-[var(--space-4)] gap-y-[var(--space-1)] p-0">
-                  {(Object.keys(STOP_LABEL) as TimelineStop["status"][])
-                    .map((k) => ({ k, n: run.stops.filter((s) => s.status === k).length }))
-                    .filter((x) => x.n > 0)
-                    .map(({ k, n }) => (
-                      <li
-                        key={k}
-                        className="flex items-center gap-[var(--space-1)] font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]"
-                      >
-                        <span
-                          aria-hidden="true"
-                          className="inline-block size-[8px] rounded-[2px]"
-                          style={{ backgroundColor: STOP_TONE[k] }}
-                        />
-                        {STOP_LABEL[k]} {faNum(n)}
-                      </li>
-                    ))}
-                </ul>
-              </>
-            )}
-          </article>
-        ))}
+              )}
+            </article>
+          );
+        })}
       </div>
     </section>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { Icon } from "@/components/meridian/Icon";
 import { TASK_KIND_TONE, taskKindLabel } from "@/lib/tasks/labels";
 import { useCallback, useEffect, useState } from "react";
 import { faNum } from "@/lib/format";
@@ -146,7 +147,7 @@ export default function Board({
         </div>
       ) : (
         <span className="n" style={{ fontFamily: "var(--fa)" }}>
-          بکشید و رها کنید — یا از منوی ⋯
+          بکشید و رها کنید — یا از منوی هر کارت
         </span>
       )}
     </div>
@@ -278,7 +279,7 @@ export default function Board({
                             setMenuId(menuId === card.id ? null : card.id);
                         }}
                       >
-                        ⋯
+                        <Icon name="more" size="sm" />
                       </button>
                     </div>
 

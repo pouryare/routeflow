@@ -779,7 +779,7 @@ export default function PlannerPage() {
                   {origin ? origin.label : "تعیین نشده"}
                   {origin?.source === "gps" && " (GPS)"}
                   {origin?.source === "override" && " (برای امروز)"}
-                  <span className="no-print">{" ▾"}</span>
+                  <span className="no-print"> <Icon name="chevron-down" size="sm" /></span>
                 </button>
 
                 <label className="mr-auto flex cursor-pointer items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
@@ -910,7 +910,7 @@ export default function PlannerPage() {
                 <li key={p.id} className="flex flex-col gap-2">
                 {legKm.has(p.id) && (
                   <div className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
-                    <span aria-hidden="true" className="text-text-faint">↓</span>
+                    <span aria-hidden="true" className="text-text-faint"><Icon name="arrow-down" size="sm" /></span>
                     <span>{formatDistanceKm(legKm.get(p.id) as number)}</span>
                     <span className="h-px flex-1 bg-border" aria-hidden="true" />
                   </div>
@@ -925,7 +925,7 @@ export default function PlannerPage() {
                       aria-label="بالا"
                       className="text-text-faint hover:text-text disabled:opacity-30"
                     >
-                      ▲
+                      <Icon name="arrow-up" size="sm" />
                     </button>
                     <button
                       onClick={() => move(p.id, 1)}
@@ -933,7 +933,7 @@ export default function PlannerPage() {
                       aria-label="پایین"
                       className="text-text-faint hover:text-text disabled:opacity-30"
                     >
-                      ▼
+                      <Icon name="arrow-down" size="sm" />
                     </button>
                   </div>
                   <div className="flex-1 truncate text-[length:var(--text-sm)] text-text">
@@ -991,7 +991,7 @@ export default function PlannerPage() {
               ))}
               {returnLegKm !== null && origin && (
                 <li className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
-                  <span aria-hidden="true">↓</span>
+                  <span aria-hidden="true"><Icon name="arrow-down" size="sm" /></span>
                   <span>{formatDistanceKm(returnLegKm)}</span>
                   <span>بازگشت به {origin.label}</span>
                   <span className="h-px flex-1 bg-border" aria-hidden="true" />

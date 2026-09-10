@@ -266,3 +266,48 @@ describe("layout", () => {
     if (panels >= 2) expect(columns, `${panels} panels in ${columns} column(s)`).toBeGreaterThanOrEqual(2);
   }, 90_000);
 });
+
+describe("runs", () => {
+  /* Item 16. «بار مسیرها» was one long bar per run; it is now lanes on a shared axis, and
+     the whole point of the form is that stop N sits in the same column in every lane. If a
+     lane drifts off the axis, the chart silently lies about which van is further along. */
+  it("every lane's stops sit on the shared stop axis, on one row", async () => {
+    const { page, close } = await open("/sales/runs", { width: 1440, height: 900 });
+    const report = await page.evaluate(() => {
+      const ticks = Array.from(document.querySelectorAll<HTMLElement>(".mlanes__ticks > li")).map((t) => {
+        const r = t.getBoundingClientRect();
+        return r.left + r.width / 2;
+      });
+      const lanes = Array.from(document.querySelectorAll<HTMLElement>(".mlanes__lane"));
+      const off: string[] = [];
+      let dots = 0;
+      lanes.forEach((lane, li) => {
+        const rects = Array.from(lane.querySelectorAll<HTMLElement>(".mlanes__dot")).map((d) => d.getBoundingClientRect());
+        dots += rects.length;
+        const mids = rects.map((r) => r.top + r.height / 2);
+        if (mids.length && Math.max(...mids) - Math.min(...mids) > 2) off.push(`lane ${li} wraps`);
+        rects.forEach((r, k) => {
+          const x = r.left + r.width / 2;
+          if (ticks[k] === undefined || Math.abs(x - ticks[k]) > 2) off.push(`lane ${li} stop ${k + 1} off the axis`);
+        });
+      });
+      return { lanes: lanes.length, dots, off };
+    });
+    await close();
+    expect(report.off, report.off.join("\n")).toEqual([]);
+    /* Honest about an empty day: with no open runs there is nothing to measure, and the
+       test says so rather than passing silently. */
+    if (report.lanes === 0) console.warn("runs smoke: no open runs in the database, lanes unmeasured");
+  }, 90_000);
+
+  it("the driver streak grid is seven days tall in every week", async () => {
+    const { page, close } = await open("/sales/runs", { width: 1440, height: 900 });
+    const bad = await page.evaluate(() =>
+      Array.from(document.querySelectorAll<HTMLElement>(".streak__week"))
+        .map((w) => w.querySelectorAll(".streak__cell").length)
+        .filter((n) => n !== 7),
+    );
+    await close();
+    expect(bad).toEqual([]);
+  }, 90_000);
+});

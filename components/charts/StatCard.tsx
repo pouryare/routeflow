@@ -1,6 +1,7 @@
+import { Icon } from "@/components/meridian/Icon";
+import Sparkline from "@/components/charts/Sparkline";
 import type { ReactNode } from "react";
-import { smoothLinePath } from "@/lib/chartScale";
-import { SINGLE_SERIES_COLOR, seriesColor } from "@/lib/chartPalette";
+import { seriesColor } from "@/lib/chartPalette";
 import { faNum } from "@/lib/format";
 
 /** One number, large. The right answer more often than a chart is.
@@ -91,31 +92,13 @@ export default function StatCard({
           >
             {/* An arrow as well as a colour. The chip has to survive being read by someone
                 who cannot separate the two hues, and by anyone printing the page. */}
-            <span aria-hidden="true">{deltaFlat ? "→" : deltaUp ? "↑" : "↓"}</span>
+            <Icon name={deltaFlat ? "dot" : deltaUp ? "arrow-up" : "arrow-down"} size="sm" />
             {faNum(Math.abs(Math.round(delta * 1000) / 10))}٪
           </span>
         )}
       </div>
 
-      {trend && trend.length > 1 && (
-        <svg
-          viewBox="0 0 120 28"
-          width="100%"
-          height={28}
-          className="mt-[var(--space-2)] block"
-          aria-hidden
-        >
-          <path
-            d={smoothLinePath(trend, 120, 24)}
-            fill="none"
-            stroke={SINGLE_SERIES_COLOR}
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            opacity={0.8}
-          />
-        </svg>
-      )}
+      {trend && trend.length > 1 && <Sparkline values={trend} className="mt-[var(--space-2)]" />}
 
       {hint && (
         <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">

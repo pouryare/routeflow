@@ -111,7 +111,7 @@ export default function RunPanel({
           <li key={s.id} className="flex flex-col gap-1">
             {s.legKm !== null && (
               <div className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
-                <span aria-hidden="true">↓</span>
+                <span aria-hidden="true"><Icon name="arrow-down" size="sm" /></span>
                 <span>{formatDistanceKm(s.legKm)}</span>
                 <span className="h-px flex-1 bg-border" aria-hidden="true" />
               </div>
@@ -129,7 +129,7 @@ export default function RunPanel({
                   aria-label="بالا"
                   className="text-text-faint hover:text-text disabled:opacity-30"
                 >
-                  ▲
+                  <Icon name="arrow-up" size="sm" />
                 </button>
                 <button
                   onClick={() => onMove(s.id, 1)}
@@ -137,7 +137,7 @@ export default function RunPanel({
                   aria-label="پایین"
                   className="text-text-faint hover:text-text disabled:opacity-30"
                 >
-                  ▼
+                  <Icon name="arrow-down" size="sm" />
                 </button>
               </div>
 

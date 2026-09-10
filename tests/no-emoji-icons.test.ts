@@ -60,6 +60,22 @@ describe("no emoji where an icon belongs", () => {
     expect(offenders, `use <Icon name="…" /> instead:\n${offenders.join("\n")}`).toEqual([]);
   });
 
+  it("no text glyph stands in for an icon either", () => {
+    /* Not emoji, so the rule above missed them: «ⓘ» for info, «⋯» for a menu, «▾» for a
+       disclosure, «▲▼» and «↑↓» for direction, «◎» for locate. They take the font's weight instead
+       of the icon stroke and are read aloud as their Unicode names. Sixteen were found in
+       one sweep. Typography («·», «—», «→» in a sentence) is deliberately not in the set. */
+    const GLYPH = /[ⓘ⋯✓✔✕✖☰⚙★☆▲▼◀▶⌘⏱⇄↻⟳⟲✎✏⊕⊖⊗⨯◉◎▸▾▴◂♥♡✚➕➖➜➤⮕⬅⬆⬇↑↓]/u;
+    const offenders: string[] = [];
+    for (const f of sourceFiles()) {
+      const body = stripComments(readFileSync(join(ROOT, f), "utf8"));
+      body.split("\n").forEach((line, i) => {
+        if (GLYPH.test(line)) offenders.push(`${f}:${i + 1}  ${line.trim().slice(0, 80)}`);
+      });
+    }
+    expect(offenders, `use <Icon name="…" /> instead:\n${offenders.join("\n")}`).toEqual([]);
+  });
+
   it("feature code never imports lucide-react directly", () => {
     const offenders = sourceFiles().filter(
       (f) =>
