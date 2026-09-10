@@ -107,6 +107,31 @@ describe("todayFor", () => {
     expect(keys).toContain("unplanned");
   });
 
+  it("puts no raw English enum on screen", () => {
+    /* The briefing builds its panels straight from SQL rows, which is how two English
+       enums reached a Persian page: `sub: a.severity` printed «critical» under «هشدارها»,
+       and `label: s.stage` printed «prospect» under «نمایندگان بر اساس مرحله». The user
+       reported the first; the second was found next to it.
+
+       Asserted over every panel rather than the two that were wrong, because the next
+       panel added here will be built the same way. */
+    const db = getDb();
+    db.prepare(
+      "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','credit','درخواست اعتبار در انتظار تصمیم',?)",
+    ).run(new Date().toISOString());
+    db.prepare(
+      "INSERT INTO representative_profiles (organization_id,customer_id,rep_code,stage,created_at,updated_at) VALUES (1,?,'R1','prospect',?,?)",
+    ).run(custId, new Date().toISOString(), new Date().toISOString());
+
+    const b = todayFor(sess(owner, "owner", null));
+    for (const panel of b.panels) {
+      for (const item of panel.items) {
+        expect(item.label ?? "", `panel ${panel.key}`).not.toMatch(/[A-Za-z]{3,}/);
+        expect(item.sub ?? "", `panel ${panel.key}`).not.toMatch(/[A-Za-z]{3,}/);
+      }
+    }
+  });
+
   it("omits a panel with nothing actionable", () => {
     const b = todayFor(sess(seller, "salesperson", groupId));
     // no tasks, no target -> neither panel present

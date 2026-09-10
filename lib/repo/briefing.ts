@@ -5,6 +5,8 @@ import { toJalali } from "@/lib/jalali";
 import { listTasks } from "./tasks";
 import { listAlerts } from "./alerts";
 import { targetProgress } from "./targets";
+import { SEVERITY_FA } from "@/lib/repo/actionCenter";
+import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 
 export interface BriefingItem {
   label: string;
@@ -214,7 +216,11 @@ export function todayFor(session: Session): Briefing {
         "هشدارها",
         listAlerts(org, { open: true }).map((a) => ({
           label: a.title,
-          sub: a.severity,
+          /* SEVERITY_FA, not the raw column. `severity` is an English enum
+             («critical»/«warning»/«opportunity») and this panel put it straight on screen
+             under a Persian heading -- the user reported reading «critical» in «هشدارها».
+             The tone below already encodes the same thing in colour. */
+          sub: SEVERITY_FA[a.severity] ?? a.severity,
           tone: a.severity === "critical" ? "crit" : "warn",
           href: "/sales",
         }))
@@ -232,7 +238,14 @@ export function todayFor(session: Session): Briefing {
       panel(
         "reps_by_stage",
         "نمایندگان بر اساس مرحله",
-        byStage.map((s) => ({ label: s.stage, sub: String(s.n), href: "/sales/admin/representatives" }))
+        /* REP_STAGE_LABEL, not the raw enum: `stage` is «prospect»/«onboarding»/… and
+           was rendering as-is beside a Persian heading. Same leak as the alert severity
+           above; found while fixing that one. */
+        byStage.map((s) => ({
+          label: REP_STAGE_LABEL[s.stage as RepStage] ?? s.stage,
+          sub: String(s.n),
+          href: "/sales/admin/representatives",
+        }))
       )
     );
   }

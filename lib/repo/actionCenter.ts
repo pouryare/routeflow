@@ -16,6 +16,30 @@ import { customerHealthFor } from "@/lib/repo/health";
 import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
 
+/** Alert categories, in Persian.
+ *
+ *  `alerts.category` is free text and falls back to the firing rule's `code`, so this map
+ *  can never be exhaustive. An unmapped category yields NO subtitle rather than an English
+ *  one: «webhook_failed» under a Persian headline is worse than nothing, and the bucket
+ *  colour and the title already carry the meaning. The user found «credit» this way.
+ */
+export const ALERT_CATEGORY_FA: Record<string, string> = {
+  stock: "انبار",
+  credit: "اعتبار",
+  delivery: "تحویل",
+  payment: "پرداخت",
+  quality: "کیفیت",
+  route: "مسیر",
+};
+
+/** severity is CHECK-constrained to these three in the schema, so this map IS exhaustive.
+ *  Exported for the buckets' own headings — see components/analysis/ActionCenter.tsx. */
+export const SEVERITY_FA: Record<string, string> = {
+  critical: "بحرانی",
+  warning: "هشدار",
+  opportunity: "فرصت",
+};
+
 const DAY_MS = 86_400_000;
 /** Toman figures are normalised against this before clamping to [0,1]. */
 const IMPACT_REF_TOMAN = 20_000_000;
@@ -55,7 +79,7 @@ function alertCandidates(session: Session): Candidate[] {
         key: `alert:${a.id}`,
         kind: "alert" as const,
         title_fa: a.title,
-        sub_fa: a.category,
+        sub_fa: ALERT_CATEGORY_FA[a.category],
         bucket: a.severity,
         impact: a.category === "stock" || a.category === "credit" ? 0.7 : 0.5,
         probability: 1,

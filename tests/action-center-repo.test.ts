@@ -114,3 +114,34 @@ describe("action center repo", () => {
     expect(r.warning.length).toBeLessThanOrEqual(12);
   });
 });
+
+describe("action centre never leaks English into Persian copy", () => {
+  it("gives an unmapped alert category no subtitle rather than an English one", () => {
+    getDb()
+      .prepare(
+        "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','webhook_failed','بچ رو به انقضا',?)",
+      )
+      .run(iso(1));
+    const r = actionCenterFor(session("owner", owner, null));
+    const all = [...r.critical, ...r.warning, ...r.opportunity];
+    expect(all.length).toBeGreaterThan(0);
+    for (const item of all) {
+      /* Three or more Latin letters in a row. Shorter runs are fine -- «KPI» and «SMS»
+         are read as-is in Persian copy -- but a word is a leak. title_fa comes from the
+         alert row and is authored Persian; sub_fa is the one this repo sets. */
+      expect(item.sub_fa ?? "").not.toMatch(/[A-Za-z]{3,}/);
+    }
+  });
+
+  it("labels a known alert category in Persian", () => {
+    getDb()
+      .prepare(
+        "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','credit','سقف اعتبار',?)",
+      )
+      .run(iso(1));
+    const hit = actionCenterFor(session("owner", owner, null)).critical.find(
+      (c) => c.kind === "alert",
+    );
+    expect(hit?.sub_fa).toBe("اعتبار");
+  });
+});
