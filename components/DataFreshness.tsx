@@ -1,6 +1,7 @@
-import { faDate, faNum } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import { daysSince, freshnessTier } from "@/lib/freshness";
 import { Icon } from "@/components/meridian/Icon";
+import { faJalaliDate } from "@/lib/jalali";
 
 /** How old the imported data is, said where it will be noticed.
  *
@@ -40,7 +41,7 @@ export default function DataFreshness({
         ) : (
           <>
             داده‌ها {faNum(days as number)} روز پیش به‌روزرسانی شده
-            {syncedAt && <> ({faDate(syncedAt)})</>}
+            {syncedAt && <> ({faJalaliDate(syncedAt)})</>}
             {tier === "stale" && " — بدهی‌ها و وضعیت‌ها احتمالاً دوره قبل را نشان می‌دهند."}
           </>
         )}

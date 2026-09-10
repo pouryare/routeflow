@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { faDate } from "@/lib/format";
+
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 /* PageHeaderCard, not PageHeader: this page is a Client Component, and
    PageHeader reads cookies() to work out which sibling tabs the viewer may
@@ -10,6 +10,7 @@ import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
    section's siblings stay reachable from the header pill. */
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { faJalaliDate } from "@/lib/jalali";
 
 interface UserRow {
   id: number;
@@ -270,7 +271,7 @@ export default function AdminUsersPage() {
                     {/* Unused until Phase 2, but showing it now costs nothing and makes
                         the consent state visible before anything depends on it. */}
                     <td className="p-2 font-mono text-xs text-text-muted">
-                      {u.location_consent_at ? faDate(u.location_consent_at) : "—"}
+                      {u.location_consent_at ? faJalaliDate(u.location_consent_at) : "—"}
                     </td>
                     <td className="p-2 text-xs">
                       <span className={u.active ? "text-good" : "text-neutral"}>

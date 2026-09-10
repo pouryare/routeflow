@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { faDateTime } from "@/lib/format";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 const CATEGORY_LABEL: Record<string, string> = {
   spoilage: "فساد",
@@ -196,7 +196,7 @@ export default function ComplaintsPanel({
                 <td className="p-2">{CATEGORY_LABEL[c.category] ?? c.category}</td>
                 <td className="p-2">{SEVERITY_LABEL[c.severity] ?? c.severity}</td>
                 <td className="p-2">{STATUS_LABEL[c.status] ?? c.status}</td>
-                <td className="p-2">{faDateTime(c.reported_at)}</td>
+                <td className="p-2">{faJalaliDateTime(c.reported_at)}</td>
                 {canManage && (
                   <td className="p-2 text-left">
                     <div className="flex flex-wrap justify-end gap-1">

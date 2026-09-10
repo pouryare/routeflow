@@ -24,9 +24,10 @@ import CopyButton from "./CopyButton";
 import { coordText } from "@/lib/clipboard";
 import { absoluteMapLink } from "@/lib/deepLink";
 import { useSwipeDismiss } from "./useSwipeDismiss";
-import { faDateTime, faNum } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import CustomerBento, { useCustomerSummary } from "@/components/meridian/CustomerBento";
 import { Icon } from "@/components/meridian/Icon";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 function customerLink(id: number): string {
   return absoluteMapLink({ customerId: id }, "/");
@@ -406,7 +407,7 @@ export default function CustomerDetailPanel({
         <p className="mt-4 text-[length:var(--text-xs)] text-text-faint">
           به‌روزرسانی:{" "}
           <span dir="ltr" className="inline-block font-mono">
-            {faDateTime(customer.synced_at)}
+            {faJalaliDateTime(customer.synced_at)}
           </span>
         </p>
       )}

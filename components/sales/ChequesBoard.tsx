@@ -1,8 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { faToman, faDateTime } from "@/lib/format";
+import { faToman } from "@/lib/format";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
+import { faJalaliDate } from "@/lib/jalali";
 
 interface Customer {
   id: number;
@@ -166,7 +167,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                     <span className="font-mono">{faToman(c.amount_toman)}</span>
                   </div>
                   <div className="text-xs text-text-faint">
-                    چک {c.cheque_no} · سررسید {faDateTime(c.due_date)}
+                    چک {c.cheque_no} · سررسید {faJalaliDate(c.due_date)}
                     {overdue && <span className="mr-1 text-danger"> (گذشته)</span>}
                   </div>
                   <div className="mt-1 flex flex-wrap gap-1">

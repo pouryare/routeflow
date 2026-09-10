@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { faDateTime, faNum } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonLine } from "./Skeleton";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 interface ActivityEntry {
   id: number;
@@ -69,7 +70,7 @@ export default function HistoryTimeline({
             {items.map((e) => (
               <li key={e.id} className="text-[length:var(--text-xs)] leading-5 text-text-muted">
                 <span className="inline-block font-mono text-text-faint">
-                  {faDateTime(e.created_at)}
+                  {faJalaliDateTime(e.created_at)}
                 </span>{" "}
                 — {describe(e)}
                 {e.changed_by && <span className="text-text-faint"> ({e.changed_by})</span>}

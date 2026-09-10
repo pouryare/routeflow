@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { faDateTime } from "@/lib/format";
+
 import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 /* PageHeaderCard, not PageHeader: this page is a Client Component, and
    PageHeader reads cookies() to work out which sibling tabs the viewer may
@@ -11,6 +11,7 @@ import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/rep
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
 import { Icon } from "@/components/meridian/Icon";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 interface RepRow {
   id: number;
@@ -165,7 +166,7 @@ export default function AdminRepresentativesPage() {
               <td className="px-3 py-2 font-mono text-text-faint">{r.rep_code}</td>
               <td className="px-3 py-2 text-text">{r.business_name}</td>
               <td className="px-3 py-2 text-text-muted">{REP_STAGE_LABEL[r.stage]}</td>
-              <td className="px-3 py-2 text-text-muted">{faDateTime(r.created_at)}</td>
+              <td className="px-3 py-2 text-text-muted">{faJalaliDateTime(r.created_at)}</td>
               <td className="px-3 py-2 text-left">
                 <button onClick={() => openDrawer(r)} className="text-accent hover:underline">
                   پذیرش و مرحله
@@ -234,7 +235,7 @@ export default function AdminRepresentativesPage() {
                 )}
                 {s.completed_at && (
                   <span className="mr-auto text-[length:var(--text-xs)] text-text-faint">
-                    {faDateTime(s.completed_at)}
+                    {faJalaliDateTime(s.completed_at)}
                   </span>
                 )}
               </li>

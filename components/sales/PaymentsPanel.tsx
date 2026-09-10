@@ -1,7 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { faDateTime, faToman } from "@/lib/format";
+import { faToman } from "@/lib/format";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: "نقد",
@@ -216,7 +217,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                     {faToman(p.amount_toman)}
                   </td>
                   <td className="p-2">{METHOD_LABEL[p.method] ?? p.method}</td>
-                  <td className="p-2">{faDateTime(p.received_at)}</td>
+                  <td className="p-2">{faJalaliDateTime(p.received_at)}</td>
                   <td className="p-2 text-left">
                     {p.voided_at ? (
                       <span className="text-xs text-text-faint">باطل شد</span>

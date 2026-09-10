@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment, useCallback, useEffect, useMemo, useState } from "react";
-import { faNum, faDateTime } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
+import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 
 interface Product {
   id: number;
@@ -170,7 +171,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                     <td className="p-2">{productName(b.product_id)}</td>
                     <td className="p-2 font-mono text-xs">{b.batch_code}</td>
                     <td className={`p-2 ${overdue ? "text-danger" : ""}`}>
-                      {b.expiry_date ? faDateTime(b.expiry_date) : "—"}
+                      {b.expiry_date ? faJalaliDate(b.expiry_date) : "—"}
                     </td>
                     <td className={`p-2 text-left font-mono ${b.on_hand < 0 ? "text-danger" : ""}`}>{faNum(b.on_hand)}</td>
                     <td className="p-2">{BATCH_STATUS_LABEL[b.status]}</td>
@@ -201,7 +202,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                             {trace.map((d, i) => (
                               <li key={i}>
                                 {d.customer_name} — سفارش {d.order_no} — {faNum(d.base_qty)} واحد
-                                {d.delivered_at ? ` — ${faDateTime(d.delivered_at)}` : ""}
+                                {d.delivered_at ? ` — ${faJalaliDateTime(d.delivered_at)}` : ""}
                               </li>
                             ))}
                           </ul>

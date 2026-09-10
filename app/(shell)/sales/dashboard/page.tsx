@@ -8,8 +8,8 @@ import { stockPosition } from "@/lib/purchases";
 import { allStatements, statementFor } from "@/lib/commissionLedger";
 import { allDriverStatements } from "@/lib/driverCommissionLedger";
 import { allManagerStatements, managerStatementFor } from "@/lib/managerCommissionLedger";
-import { faToman, faNum, faDateTime } from "@/lib/format";
-import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
+import { faToman, faNum } from "@/lib/format";
+import { faJalaliDate, faJalaliDateTime, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { movingAverage } from "@/lib/chartScale";
 import { kpiBoard, newestComputedAt } from "@/lib/repo/kpiSnapshots";
 import { actionCenterFor } from "@/lib/repo/actionCenter";
@@ -233,7 +233,7 @@ export default async function DashboardPage() {
           </h2>
           <div className="flex items-center gap-[var(--space-2)]">
             <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
-              {kpiComputedAt ? `عددها تا ${faDateTime(kpiComputedAt)}` : "هنوز محاسبه نشده"}
+              {kpiComputedAt ? `عددها تا ${faJalaliDateTime(kpiComputedAt)}` : "هنوز محاسبه نشده"}
             </span>
             {isManager && (
               <SweepButton endpoint="/api/analysis/refresh" idleLabel="به‌روزرسانی تحلیل" />

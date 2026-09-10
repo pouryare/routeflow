@@ -6,12 +6,13 @@ import { getDb } from "@/lib/db";
 import { demandBoard, newestForecastAt } from "@/lib/repo/forecast";
 import { churnBoard } from "@/lib/repo/churn";
 import { resolvedCapacityFactorsFor, learnedCapacityCounts } from "@/lib/repo/capacityLearning";
-import { faDateTime } from "@/lib/format";
+
 import DemandTable from "@/components/predict/DemandTable";
 import ChurnList from "@/components/predict/ChurnList";
 import LearnedCapacity from "@/components/predict/LearnedCapacity";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export default async function ForecastPage() {
         <h1 className="text-[length:var(--text-lg)] font-bold text-[var(--text)]">پیش‌بینی</h1>
         <div className="flex items-center gap-[var(--space-2)]">
           <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">
-            {computedAt ? `عددها تا ${faDateTime(computedAt)}` : "هنوز محاسبه نشده"}
+            {computedAt ? `عددها تا ${faJalaliDateTime(computedAt)}` : "هنوز محاسبه نشده"}
           </span>
           <SweepButton endpoint="/api/predict/refresh" idleLabel="به‌روزرسانی پیش‌بینی" />
         </div>

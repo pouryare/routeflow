@@ -6,7 +6,7 @@ import { distanceKm } from "@/lib/geo";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import PrintButton from "@/components/PrintButton";
 import CsvExportButton from "@/components/CsvExportButton";
-import { faDateTime, faFixed, faNum } from "@/lib/format";
+import { faFixed, faNum } from "@/lib/format";
 import DataFreshness from "@/components/DataFreshness";
 import { newestSync } from "@/lib/freshness";
 import { cookies } from "next/headers";
@@ -15,6 +15,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, groupFilterWithShared } from "@/lib/session";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
 import PageHeader from "@/components/meridian/PageHeader";
+import { faJalaliDateTime } from "@/lib/jalali";
 
 export const dynamic = "force-dynamic";
 
@@ -106,7 +107,7 @@ export default async function ReportPage({
   );
 
   const now = new Date();
-  const generatedAt = faDateTime(now.toISOString());
+  const generatedAt = faJalaliDateTime(now.toISOString());
 
   return (
     <>

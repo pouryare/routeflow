@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { faDate, faNum } from "@/lib/format";
+import { faNum } from "@/lib/format";
 import { parseIdParam } from "@/lib/deepLink";
 import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
@@ -14,6 +14,7 @@ import EmptyState from "@/components/EmptyState";
    section's siblings stay reachable from the header pill. */
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import { faJalaliDate } from "@/lib/jalali";
 
 interface PhotoItem {
   id: number;
@@ -121,7 +122,7 @@ export default function GalleryPage() {
                 <div className="p-2">
                   <div className="truncate text-[length:var(--text-sm)] text-text">{p.label}</div>
                   <div dir="ltr" className="mt-0.5 inline-block font-mono text-[length:var(--text-xs)] text-text-faint">
-                    {faDate(p.taken_at)}
+                    {faJalaliDate(p.taken_at)}
                   </div>
                 </div>
               </button>
@@ -148,7 +149,7 @@ export default function GalleryPage() {
               <div className="text-[length:var(--text-sm)] text-text">
                 {lightbox.label}{" "}
                 <span dir="ltr" className="font-mono text-[length:var(--text-xs)] text-text-faint">
-                  {faDate(lightbox.taken_at)}
+                  {faJalaliDate(lightbox.taken_at)}
                 </span>
               </div>
               <div className="flex gap-2">
