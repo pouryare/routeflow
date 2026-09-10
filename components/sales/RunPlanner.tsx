@@ -61,7 +61,7 @@ export default function RunPlanner({
       )}
 
       <section className="card p-[var(--space-4)]">
-        <h2 className="m-0 mb-[var(--space-3)] text-[length:var(--text-base)] font-medium text-[var(--text)]">
+        <h2 className="sechead__title mb-[var(--space-3)]">
           مسیر تازه
         </h2>
         {drivers.length === 0 ? (

@@ -50,7 +50,7 @@ export default async function OrderDetailPage({
     <div className="flex flex-col gap-[var(--space-4)]">
       <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
         <div>
-          <h2 className="m-0 text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
+          <h2 className="sechead__title tabular-nums">
             سفارش {faNum(Number(order.order_no.split("-")[1]))}#
           </h2>
           <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--text-muted)]">

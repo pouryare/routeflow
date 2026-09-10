@@ -41,7 +41,7 @@ export default function ActionCenter({
           {COLUMN.map((col) => (
             <section key={col.bucket}>
               <h3
-                className="m-0 mb-[var(--space-1)] text-[length:var(--text-xs)] font-medium"
+                className="sechead__title sechead__title--minor mb-[var(--space-1)]"
                 style={{ color: col.tone }}
               >
                 <span aria-hidden="true" className="inline-block h-2 w-2 rounded-full align-middle" style={{ background: col.tone }} />{" "}

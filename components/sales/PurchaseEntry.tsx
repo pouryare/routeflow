@@ -105,7 +105,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
 
   return (
     <section className="flex flex-col gap-[var(--space-4)] card p-[var(--space-4)]">
-      <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
+      <h2 className="sechead__title">
         ثبت خرید
       </h2>
 

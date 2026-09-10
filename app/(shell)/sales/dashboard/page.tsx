@@ -1,3 +1,5 @@
+import { REP_HEALTH_BAND_FA } from "@/lib/repo/repHealth";
+import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -31,14 +33,11 @@ import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
 
 export const dynamic = "force-dynamic";
 
-const STATUS_LABEL: Record<string, string> = {
-  draft: "پیش‌نویس",
-  confirmed: "تأییدشده",
-  delivered: "تحویل‌شده",
-  cancelled: "لغوشده",
-};
+/* ORDER_STATUS_LABEL, not a local map: a local one keyed `draft`/`delivered` never
+   matched the real, uppercase statuses and printed «DELIVERED» to Persian readers. */
+const STATUS_LABEL = ORDER_STATUS_LABEL as Record<string, string>;
 
-const BAND_LABEL: Record<string, string> = { good: "خوب", watch: "مراقبت", risk: "پرخطر" };
+const BAND_LABEL = REP_HEALTH_BAND_FA as Record<string, string>;
 
 const pct = (n: number) => `${faNum(Math.round(n * 100))}٪`;
 
@@ -183,7 +182,7 @@ export default async function DashboardPage() {
           buried in the revenue chip. Sized 1fr rather than sharing .statrow's validated
           1.5fr/1fr/1fr split, which assumes exactly three cards. */}
       {session.role !== "salesperson" && (
-        <div className="statrow" style={{ gridTemplateColumns: "1fr", marginTop: -4 }}>
+        <div className="statrow" style={{ marginTop: -4 }}>
           <GradientStat
             tone="peach"
             small
@@ -200,7 +199,7 @@ export default async function DashboardPage() {
           waits, and whether the customer base is actually growing or just repeating.
           Visible to everyone -- neither is cost, so there is nothing here a فروشنده
           should not see. */}
-      <div className="statrow" style={{ gridTemplateColumns: "1fr 1fr", marginTop: -4 }}>
+      <div className="statrow" style={{ marginTop: -4 }}>
         <GradientStat
           tone="sand"
           small
@@ -226,7 +225,7 @@ export default async function DashboardPage() {
       <section className="flex flex-col gap-[var(--space-4)]">
         <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
           <h2
-            className="m-0 text-[length:var(--text-lg)] font-extrabold text-[var(--text)]"
+            className="sechead__title"
             style={{ fontFamily: "var(--font-display)" }}
           >
             تحلیل عمیق
@@ -367,7 +366,7 @@ export default async function DashboardPage() {
           <DonutChart
             title="وضعیت سفارش‌ها"
             data={d.status_mix.map((p) => ({
-              label: STATUS_LABEL[p.key] ?? p.key,
+              label: STATUS_LABEL[p.key] ?? "نامشخص",
               value: p.value,
             }))}
             formatValue={(v) => faNum(v)}

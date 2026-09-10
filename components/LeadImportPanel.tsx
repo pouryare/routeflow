@@ -127,7 +127,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-      <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+      <h2 className="sechead__title mb-2">
         استخراج مکان از گفتگو
       </h2>
 

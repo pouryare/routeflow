@@ -19,7 +19,7 @@ const REVEAL: Record<string, string[]> = {
   "/sales/orders": [".bhead", ".pocket"],
   "/sales/orders/new": [".card", ".kblock"],
   "/sales/board": [".hint", ".col"],
-  "/sales/journey": [".bhead", ".lane2"],
+  "/sales/journey": [".bhead", ".spine__step", ".funnel__row"],
   "/sales/schedule": [".notice", ".sched > .kblock"],
   "/sales/dashboard": [".gcard", ".dash-top > .card", ".sect"],
   "/sales/products": [".card", ".kblock"],

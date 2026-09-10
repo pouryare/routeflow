@@ -111,7 +111,7 @@ export default function CostToServePanel({
   return (
     <section>
       <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-        <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+        <h2 className="sechead__title">
           هزینه خدمات‌رسانی
         </h2>
         {withRevenue > 0 && (

@@ -169,7 +169,7 @@ export default async function ReportPage({
         </div>
 
         <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          <h2 className="sechead__title mb-2">
             خلاصه وضعیت مناطق ({faNum(districts.length)} منطقه)
           </h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -185,7 +185,7 @@ export default async function ReportPage({
         </section>
 
         <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          <h2 className="sechead__title mb-2">
             جمع بدهی مشتریان
           </h2>
           <div className="grid grid-cols-3 gap-2">
@@ -213,7 +213,7 @@ export default async function ReportPage({
         {attention.length > 0 && (
           <section>
             <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+              <h2 className="sechead__title">
                 مناطق نیازمند توجه ({faNum(attention.length)})
               </h2>
               {origin && (
@@ -270,7 +270,7 @@ export default async function ReportPage({
         )}
 
         <section>
-          <h2 className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          <h2 className="sechead__title mb-2">
             فهرست مشتریان ({faNum(customers.length)})
           </h2>
           <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">

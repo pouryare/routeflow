@@ -121,7 +121,7 @@ export default async function CommissionPage() {
       {/* ---- راننده‌ها ------------------------------------------------------ */}
       {driverStatements.length > 0 && (
         <>
-          <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">پورسانت راننده‌ها</h2>
+          <h2 className="sechead__title">پورسانت راننده‌ها</h2>
           <div className="pcards">
             {driverStatements.map((s) => (
               <EarnerCard
@@ -145,7 +145,7 @@ export default async function CommissionPage() {
           arithmetic in words instead of pretending it is one more EarnerCard. */}
       {managerStatements.length > 0 && (
         <>
-          <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">پورسانت مدیران گروه</h2>
+          <h2 className="sechead__title">پورسانت مدیران گروه</h2>
           <div className="pcards">
             {managerStatements.map((m) => (
               <article className="pcard" key={m.manager_user_id}>
@@ -193,14 +193,14 @@ export default async function CommissionPage() {
 
       {(rates.length > 0 || driverRates.length > 0 || managerOverrides.length > 0) && (
         <section className="card p-[var(--space-4)]">
-          <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">نرخ‌های پورسانت</h2>
+          <h2 className="sechead__title">نرخ‌های پورسانت</h2>
           <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
             نرخ‌ها پاک نمی‌شوند. هر تغییر یک سطر تازه است.
           </p>
 
           {rates.length > 0 && (
             <>
-              <h3 className="mt-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-[var(--text-muted)]">فروشنده</h3>
+              <h3 className="sechead__title sechead__title--minor mt-[var(--space-4)]">فروشنده</h3>
               <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
                 {rates.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
@@ -216,7 +216,7 @@ export default async function CommissionPage() {
 
           {driverRates.length > 0 && (
             <>
-              <h3 className="mt-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-[var(--text-muted)]">راننده</h3>
+              <h3 className="sechead__title sechead__title--minor mt-[var(--space-4)]">راننده</h3>
               <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
                 {driverRates.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
@@ -232,7 +232,7 @@ export default async function CommissionPage() {
 
           {managerOverrides.length > 0 && (
             <>
-              <h3 className="mt-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-[var(--text-muted)]">مدیر گروه</h3>
+              <h3 className="sechead__title sechead__title--minor mt-[var(--space-4)]">مدیر گروه</h3>
               <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
                 {managerOverrides.map((r) => (
                   <li key={r.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">

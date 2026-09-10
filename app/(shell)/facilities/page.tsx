@@ -375,7 +375,7 @@ export default function FacilitiesPage() {
         </section>
 
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-          <h2 className="mb-3 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted">
+          <h2 className="sechead__title mb-3">
             افزودن مکان
           </h2>
           <div className="flex flex-wrap gap-2">

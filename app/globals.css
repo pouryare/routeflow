@@ -1440,6 +1440,15 @@ body {
   animation: skeleton-sweep 1400ms var(--ease-out) infinite;
 }
 
+/* Item 20: in the meridian light theme the block was --surface-raised (#FFFFFF) on a
+   near-white page and the sweep a 6%-white band: white on white, a static pale tile with
+   no visible shimmer. A sunk tone for the block and a sweep mixed from the card colour
+   show in both skins. tests/page-skeleton.test.ts pins both. */
+.meridian .skeleton { background: var(--sunk); border-radius: var(--r-lg); }
+.meridian .skeleton::after {
+  background: linear-gradient(90deg, transparent 0%, color-mix(in srgb, var(--surface) 75%, transparent) 50%, transparent 100%);
+}
+
 @keyframes skeleton-sweep {
   100% {
     transform: translateX(100%);
@@ -2143,7 +2152,22 @@ body {
   display: flex; align-items: center; justify-content: space-between;
   gap: 14px; padding: 20px 24px 14px; flex-wrap: wrap;
 }
-.meridian .bhead h2 { margin: 0; font-size: 16.5px; font-weight: 600; }
+.meridian .bhead h2 { margin: 0; }
+/* One heading for a section, inside a card (.bhead) or outside one (SectionHead.tsx), so
+   no two sections can disagree again (item 15). Typography only: unlayered rules beat
+   Tailwind's layered utilities, so a margin set here would erase every heading's own
+   spacing. tests/section-headings.test.ts pins the shared selector. */
+.meridian .bhead h2,
+.meridian .sechead__title { font-size: 16.5px; font-weight: 600; color: var(--ink); }
+.meridian .sechead__title--minor,
+.meridian .sechead--minor .sechead__title { font-size: 14px; }
+/* Outside .meridian (the bare /today page) the same heading, from the base tokens. */
+.sechead__title { font-size: 1rem; font-weight: 600; }
+.sechead__title--minor { font-size: .875rem; }
+.sechead { display: flex; align-items: flex-end; justify-content: space-between; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.sechead__text { min-width: 0; }
+.sechead__sub { margin: 2px 0 0; font-size: 12.5px; color: var(--muted, var(--text-muted)); }
+.sechead__actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .meridian .bhead .n { font-size: 12.5px; color: var(--muted); margin-top: -3px; }
 .meridian .acts { display: flex; gap: 8px; flex-wrap: wrap; }
 .meridian .btn {
@@ -2166,11 +2190,15 @@ body {
    Mesh gradients, mixed warm so they sit in the same room as the terracotta
    accent instead of arriving from a different palette.                       */
 .meridian .statrow {
-  display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 14px; margin-bottom: 14px;
-  /* The hierarchy (one wide identity tile, two figures) only reads at a sane width; on a
-     full-bleed page the row stops here and aligns to the start edge. */
+  /* Items 4 and 6: a wrapping flex row, not a three-column grid. The grid put the pocket's
+     four tiles on two rows and needed a breakpoint per column count; this fits three or
+     four on one line at any desktop width and wraps on its own when they no longer fit.
+     The first tile keeps its extra share, so the hierarchy survives. */
+  display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 14px;
   max-width: 1400px;
 }
+.meridian .statrow > * { flex: 1 1 13rem; min-width: 0; }
+.meridian .statrow > :first-child { flex-grow: 1.5; }
 .meridian .gcard {
   position: relative; border-radius: var(--r-2xl); padding: 24px 26px;
   overflow: hidden; box-shadow: var(--sh-2); isolation: isolate;
@@ -2334,6 +2362,12 @@ body {
 .meridian .phc__body { padding: 26px; }
 .meridian .phc.carved .phc__body { padding-block-start: 74px; }
 .meridian .phc__title { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
+/* The day briefing's panels (Briefing.tsx, meridian variant). Item 4: they were a
+   full-width single column, each a short list stretched across the page. */
+.meridian .briefing-grid {
+  display: grid; gap: 14px; align-items: start;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
+}
 .meridian .phc__date { margin: 0 0 2px; font-size: 12.5px; color: var(--muted); }
 .meridian .phc__overview { margin: 0; max-width: 68ch; font-size: 13.5px; line-height: 1.75; color: var(--muted); }
 
@@ -2670,73 +2704,75 @@ body {
 .meridian .quick button:hover { border-color: var(--accent); color: var(--accent); }
 .meridian .mfoot { display: flex; gap: 9px; justify-content: flex-end; padding: 0 24px 22px; }
 
-/* ---- 5d · the journey swimlane ------------------------------------------- */
-.meridian .lanes {
-  display: grid; grid-template-columns: repeat(4, minmax(0, 380px)); gap: 14px;
-  justify-content: center; padding: 6px 24px 26px; align-items: start;
+/* ---- 5d · the journey: a spine for one order, a funnel for all of them --------
+   Item 7 / spec D5. The four side-by-side lanes read as a board and broke into a 2x2 grid
+   below 1080px; a spine reads top to bottom at every width. Icons come from the icon
+   library (OrderSpine.tsx); the current step is ringed in the accent. */
+.meridian .jmode { display: inline-flex; gap: 6px; }
+.meridian .spine { list-style: none; margin: 0; padding: 4px 0 8px; max-width: 46rem; }
+.meridian .spine__step {
+  position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr);
+  gap: 14px; padding-bottom: 22px;
 }
-.meridian .lane2 { position: relative; }
-.meridian .lane2 .lh { display: flex; align-items: center; gap: 9px; padding: 0 4px 12px; }
-.meridian .lane2 .lh .idx {
-  font-family: var(--en); font-size: 11px; font-weight: 700; color: var(--muted);
-  background: var(--sunk); border-radius: 999px; width: 22px; height: 22px;
-  display: grid; place-items: center; flex: none;
+.meridian .spine__step:last-child { padding-bottom: 0; }
+.meridian .spine__step:not(:last-child)::before {
+  content: ""; position: absolute; inset-inline-start: 17px; top: 40px; bottom: 4px;
+  width: 2px; border-radius: 2px; background: var(--line);
 }
-.meridian .lane2 .lh .t { font-size: 14px; font-weight: 600; }
-/* the connector runs between lanes; RTL means it points leftward */
-.meridian .lane2:not(:last-child)::after {
-  content: ""; position: absolute; top: 11px; inset-inline-start: -14px;
-  width: 14px; border-top: 2px dotted var(--line-2);
+.meridian .spine__step--done:not(:last-child)::before { background: var(--accent); }
+.meridian .spine__dot {
+  width: 36px; height: 36px; border-radius: 999px; display: grid; place-items: center;
+  background: var(--sunk); color: var(--muted); box-shadow: inset 0 0 0 1px var(--line);
 }
-/* The step the order is actually sitting in. Everything before it is finished and
-   everything after is not started, so only this one gets the accent. */
-.meridian .lane2 .lh .now {
-  font-size: 11px; font-weight: 700; color: var(--accent);
+.meridian .spine__step--done .spine__dot { background: var(--accent); color: var(--accent-ink); box-shadow: none; }
+.meridian .spine__step--current .spine__dot {
+  background: var(--card); color: var(--accent-text);
+  box-shadow: 0 0 0 4px var(--accent-soft), inset 0 0 0 2px var(--accent);
+}
+.meridian .spine__step--todo .spine__body { opacity: .62; }
+.meridian .spine__body { min-width: 0; }
+.meridian .spine__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 36px; }
+.meridian .spine__icon { display: inline-flex; color: var(--muted); }
+.meridian .spine__label { font-size: 14.5px; font-weight: 600; color: var(--ink); }
+.meridian .spine__now {
+  font-size: 11px; font-weight: 700; color: var(--accent-text);
   background: var(--accent-soft); border-radius: 999px; padding: 2px 9px;
 }
-.meridian .lane2--todo { opacity: .62; }
-.meridian .lane2--current .node { box-shadow: var(--sh-2), inset 0 0 0 1.5px var(--accent); }
-.meridian .lane2__what {
-  margin: 0 4px 10px; font-size: 12px; line-height: 1.65; color: var(--muted);
+.meridian .spine__at { margin-inline-start: auto; font-size: 12px; color: var(--muted); }
+.meridian .spine__what { margin: 2px 0 6px; font-size: 12.5px; line-height: 1.7; color: var(--muted); }
+.meridian .spine__who { margin: 0 0 4px; display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.meridian .spine__role { color: var(--muted); }
+.meridian .spine__note { margin: 0; font-size: 12.5px; line-height: 1.6; color: var(--ink-2); }
+.meridian .spine__step--current .spine__note { color: var(--accent-text); font-weight: 600; }
+.meridian .spine__events {
+  list-style: none; margin: 10px 0 0; padding: 8px 12px; border-radius: var(--r-md);
+  background: var(--sunk); display: flex; flex-direction: column; gap: 6px;
+  font-size: 12px; color: var(--ink-2);
 }
-.meridian .lane2__note {
-  margin: 8px 4px 0; font-size: 11.5px; line-height: 1.6; color: var(--ink-2);
-}
-.meridian .lane2--current .lane2__note { color: var(--accent); font-weight: 600; }
+.meridian .spine__events li { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: baseline; }
+.meridian .spine__evstatus { font-weight: 600; color: var(--ink); }
+.meridian .spine__evat { margin-inline-start: auto; color: var(--muted); }
+.meridian .spine__evnote { flex-basis: 100%; color: var(--muted); }
 
-.meridian .node {
-  background: var(--card); border-radius: var(--r-lg); box-shadow: var(--sh-1);
-  padding: 12px 13px; margin-bottom: 9px; display: flex; align-items: center;
-  gap: 10px; cursor: pointer;
-  transition: transform 220ms var(--spring), box-shadow 220ms var(--ease);
+.meridian .funnel { list-style: none; margin: 0; padding: 4px 0 8px; display: flex; flex-direction: column; gap: 12px; max-width: 54rem; }
+.meridian .funnel__row {
+  display: grid; align-items: center; gap: 12px;
+  grid-template-columns: 7.5rem minmax(0, 1fr) 3rem minmax(0, 13rem);
 }
-.meridian .node:hover { transform: translateY(-2px); box-shadow: var(--sh-2); }
-.meridian .node .av {
-  width: 34px; height: 34px; border-radius: 12px; display: grid; place-items: center;
-  font-size: 13px; font-weight: 700; flex: none;
+.meridian .funnel__label { font-size: 13px; font-weight: 600; color: var(--ink); }
+.meridian .funnel__track { height: 14px; border-radius: 999px; background: var(--sunk); overflow: hidden; }
+.meridian .funnel__bar { display: block; height: 100%; min-width: 3px; border-radius: 999px; background: var(--accent); }
+.meridian .funnel__n { font-size: 13px; font-weight: 700; color: var(--ink); text-align: end; font-variant-numeric: tabular-nums; }
+.meridian .funnel__meta { display: flex; flex-wrap: wrap; gap: 4px 8px; font-size: 11.5px; }
+.meridian .funnel__drop { color: var(--crit); font-weight: 600; }
+.meridian .funnel__wait { color: var(--ink-2); }
+.meridian .funnel__exit { color: var(--muted); }
+.meridian .funnel__empty { margin: 0; font-size: 13.5px; color: var(--muted); }
+@media (max-width: 620px) {
+  .meridian .funnel__row { grid-template-columns: 5.5rem minmax(0, 1fr) 2.5rem; }
+  .meridian .funnel__meta { grid-column: 1 / -1; }
 }
-.meridian .node .nb { flex: 1; min-width: 0; }
-.meridian .node .nb b { display: block; font-size: 13.5px; font-weight: 600; }
-.meridian .node .nb span { font-size: 11.5px; color: var(--muted); }
-.meridian .node .tick {
-  width: 26px; height: 26px; border-radius: 999px; border: 1.5px solid var(--line-2);
-  background: transparent; color: transparent; flex: none; cursor: pointer;
-  display: grid; place-items: center; font-size: 13px;
-  transition: background 220ms var(--ease), border-color 220ms var(--ease),
-              color 220ms var(--ease), transform 260ms var(--spring);
-}
-.meridian .node .tick[data-done="true"] {
-  background: var(--sage); border-color: var(--sage); color: var(--tick-ink); transform: scale(1.06);
-}
-.meridian .node.done .nb b {
-  color: var(--muted); text-decoration: line-through; text-decoration-thickness: 1px;
-}
-.meridian .addnode {
-  width: 100%; border: 1px dashed var(--line-2); background: transparent;
-  color: var(--muted); border-radius: var(--r-lg); padding: 12px;
-  font-family: var(--fa); font-size: 13px; cursor: pointer;
-}
-.meridian .addnode:hover { border-color: var(--accent); color: var(--accent); }
+
 
 /* ---- the journey's order picker and summary ------------------------------ */
 .meridian .picker { padding: 0 24px 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
@@ -2892,20 +2928,14 @@ body {
 /* ---- responsive, exactly as the artifact draws it ------------------------ */
 @media (max-width: 1080px) {
   .meridian .board.pipe { grid-template-columns: 1fr 1fr; }
-  .meridian .lanes { grid-template-columns: 1fr 1fr; }
-  .meridian .lane2:not(:last-child)::after { display: none; }
 }
 @media (max-width: 940px) {
-  .meridian .statrow { grid-template-columns: 1fr 1fr; }
-  .meridian .statrow .gcard:first-child { grid-column: 1/-1; }
   .meridian .board, .meridian .board.pipe { grid-template-columns: 1fr; }
-  .meridian .lanes { grid-template-columns: 1fr; }
   .meridian .sched { grid-template-columns: 1fr; }
   .meridian .bento { grid-template-columns: 1fr 1fr; }
   .meridian .bento .tile:first-child { grid-column: 1/-1; }
 }
 @media (max-width: 620px) {
-  .meridian .statrow { grid-template-columns: 1fr; }
   .meridian .gcard .v { font-size: 38px; }
   .meridian .pockets { grid-template-columns: 1fr; padding-inline: 16px; }
   .meridian .bento { grid-template-columns: 1fr; padding-inline: 16px; }

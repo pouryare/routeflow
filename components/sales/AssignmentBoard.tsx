@@ -6,6 +6,7 @@ import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import { Avatar } from "@/components/AvatarStack";
+import SectionHead from "@/components/meridian/SectionHead";
 
 export interface BoardRun {
   id: number;
@@ -168,15 +169,11 @@ export default function AssignmentBoard({
           aria-labelledby="pool-heading"
           className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]"
         >
-          <h2
+          <SectionHead
             id="pool-heading"
-            className="m-0 mb-[var(--space-1)] text-[length:var(--text-md)] font-medium text-[var(--text)]"
-          >
-            سفارش‌های بدون مسیر
-          </h2>
-          <p className="m-0 mb-[var(--space-4)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-            {faNum(orders.length)} سفارش · بکشید و روی یک مسیر رها کنید، یا با کلید Enter انتخاب کنید.
-          </p>
+            title="سفارش‌های بدون مسیر"
+            sub={`${faNum(orders.length)} سفارش · بکشید و روی یک مسیر رها کنید، یا با کلید Enter انتخاب کنید.`}
+          />
 
           {orders.length === 0 ? (
             <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
@@ -223,13 +220,17 @@ export default function AssignmentBoard({
         </section>
 
         {/* ---- The runs ---- */}
-        <section aria-labelledby="runs-heading">
-          <h2
+        {/* Same frame and the same heading as the pool beside it (item 15): the two are one
+            task, choosing where an order goes, and read as a pair. */}
+        <section
+          aria-labelledby="runs-heading"
+          className="rounded-[var(--radius-xl)] border border-[var(--border)] bg-[var(--surface)] p-[var(--space-4)]"
+        >
+          <SectionHead
             id="runs-heading"
-            className="m-0 mb-[var(--space-3)] text-[length:var(--text-md)] font-medium text-[var(--text)]"
-          >
-            مسیرهای باز
-          </h2>
+            title="مسیرهای باز"
+            sub={`${faNum(openRuns.length)} مسیر · سفارش را روی یکی از این‌ها رها کنید.`}
+          />
 
           {openRuns.length === 0 ? (
             <p className="m-0 text-[length:var(--text-sm)] text-[var(--text-muted)]">
@@ -305,10 +306,7 @@ export default function AssignmentBoard({
             onClick={(e) => e.stopPropagation()}
             className="modal-card-enter w-full max-w-md rounded-[var(--radius-2xl)] border border-[var(--border-strong)] bg-[var(--surface-2)] p-[var(--space-5)] shadow-[var(--sh-3)]"
           >
-            <h3
-              id="assign-title"
-              className="m-0 mb-[var(--space-4)] text-[length:var(--text-lg)] font-medium text-[var(--text)]"
-            >
+            <h3 id="assign-title" className="sechead__title mb-[var(--space-4)]">
               افزودن به مسیر
             </h3>
 

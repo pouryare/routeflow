@@ -21,19 +21,20 @@ export function SkeletonBlock({ className = "" }: { className?: string }) {
   return <span className={`skeleton block ${className}`} />;
 }
 
-/** The repeated-row case -- the shape of every list in this app: a bordered card with a
- *  label on one side and a short figure on the other. */
+/** The repeated-row case -- the shape of every list in this app: one bordered card with
+ *  a label and a short figure per line. ONE card, not a card per row: a stack of little
+ *  bordered boxes is the "multiple tiny cards" of item 20. */
 export function SkeletonRows({ rows = 3, className = "" }: { rows?: number; className?: string }) {
   // Varied widths, cycled rather than random: a random width would change on every
   // render and make the placeholder itself flicker.
   const widths = ["w-2/3", "w-1/2", "w-3/4", "w-5/12"];
   return (
-    <div className={`flex flex-col gap-1.5 ${className}`} aria-hidden="true">
+    <div
+      className={`flex flex-col gap-3.5 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-3.5 ${className}`}
+      aria-hidden="true"
+    >
       {Array.from({ length: rows }, (_, i) => (
-        <div
-          key={i}
-          className="flex items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2.5"
-        >
+        <div key={i} className="flex items-center justify-between gap-2">
           <SkeletonLine w={widths[i % widths.length]} />
           <SkeletonLine w="w-10" className="shrink-0" />
         </div>

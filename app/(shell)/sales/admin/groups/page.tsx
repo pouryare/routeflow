@@ -109,7 +109,7 @@ export default function AdminGroupsPage() {
       )}
 
       <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="mb-3 text-base font-bold text-text">گروه تازه</h2>
+        <h2 className="sechead__title mb-3">گروه تازه</h2>
         <div className="flex flex-wrap items-center gap-2">
           <input
             value={name}
@@ -147,7 +147,7 @@ export default function AdminGroupsPage() {
       </form>
 
       <section className="rounded-lg border border-border bg-surface p-4">
-        <h2 className="mb-3 text-base font-bold text-text">گروه‌های موجود</h2>
+        <h2 className="sechead__title mb-3">گروه‌های موجود</h2>
         {groups === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : groups.length === 0 ? (

@@ -227,7 +227,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
           <section key={ch} className="card p-4">
             <div className="mb-3 flex items-center justify-between gap-3">
               <div className="min-w-0">
-                <h2 className="text-[length:var(--text-sm)] font-semibold text-text">{CHANNEL_LABEL[ch]}</h2>
+                <h2 className="sechead__title">{CHANNEL_LABEL[ch]}</h2>
                 <p className="mt-0.5 text-[length:var(--text-xs)] text-text-faint">
                   {off ? "در دسترس نیست" : s.connected ? "متصل" : "متصل نیست"}
                 </p>
@@ -326,14 +326,14 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
       })}
 
       <section className="card p-4">
-        <h2 className="mb-1 text-[length:var(--text-sm)] font-semibold text-text">کدام اعلان‌ها بلند باشند</h2>
+        <h2 className="sechead__title mb-1">کدام اعلان‌ها بلند باشند</h2>
         <p className="mb-3 text-[length:var(--text-xs)] text-text-faint">
           خاموش‌کردن یک ردیف فقط جلوی اعلان بلند را می‌گیرد؛ همه‌چیز همچنان در زنگولهٔ بالای صفحه می‌آید.
         </p>
 
         {grouped.map(([category, rows]) => (
           <div key={category} className="mb-4 last:mb-0">
-            <h3 className="mb-2 text-[length:var(--text-xs)] font-semibold text-text-muted">
+            <h3 className="sechead__title sechead__title--minor mb-2">
               {CATEGORY_LABEL[category] ?? category}
             </h3>
             <ul className="flex flex-col gap-1">

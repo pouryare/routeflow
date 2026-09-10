@@ -110,7 +110,7 @@ export default async function ProductsPage() {
 
       {priceRows.length > 0 && (
         <section className="card p-[var(--space-4)]">
-          <h2 className="m-0 text-[length:var(--text-base)] font-medium text-[var(--text)]">
+          <h2 className="sechead__title">
             تاریخچه قیمت‌ها
           </h2>
           <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
