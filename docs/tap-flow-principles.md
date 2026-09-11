@@ -43,16 +43,21 @@ standing up?* If yes, it's a tap flow.
 └───────────────────────────────┘
           ⋮  (next question)
 ┌───────────────────────────────┐
-│  What will be saved            │  summary chips: outcome · contact · side-effects
-│  ┌ Next action ─────────────┐  │  prefilled from the answers
-│  │ Call again · me          │  │
-│  │ (فردا ۱۰:۰۰) (۳ روز) ... │  │  time chips, first one selected
-│  └──────────────────────────┘  │
-│  [          ثبت          ]     │  one big primary button
-│        بدون کار بعدی…          │  escape hatch — asks for a one-tap reason
+│  Last question: "when next?"   │  time answers for the prefilled next action
+│  [ فردا ۱۰:۰۰ · پیشنهادی ]      │  ← tapping an answer on the last step SAVES. No save button.
+│  [ ۲ ساعت دیگر ] [ فردا عصر ]   │
+│        بدون کار بعدی…          │  escape hatch — asks for a one-tap reason, then saves
 └───────────────────────────────┘
-          ↓
-   Confirmation: what was saved + where it now appears ("in کارهای من and امروز")
+          ↓ (autosaved)
+┌───────────────────────────────┐
+│  ✓ ثبت شد                      │  summary chips: outcome · contact · side-effects · next action
+│  برگشت به فهرست در ۳…          │  auto-returns to where the flow started after 3 s
+│  همین حالا برگرد               │  (or now, with one tap)
+├───────────────────────────────┤
+│ ثبت شد · تماس دوباره · فردا  [لغو (۵)] │  toast with a 5 s countdown bar, stays over the list
+└───────────────────────────────┘
+   The card that changed is highlighted in the list. After 5 s the toast says where the
+   record went («در کارهای من و امروز») and the write is committed.
 ```
 
 ## 3. The rules
@@ -71,38 +76,52 @@ standing up?* If yes, it's a tap flow.
    they own the choice and the tap counts as a confirmation.
 7. **Destructive or terminal answers** (closed for good, cancel order) are tinted and always
    followed by one confirmation step that also offers the gentler alternative.
+8. **Verify before you trust imported data.** The first contact with a record that came from
+   outside (Google Maps, a pasted list, a spreadsheet) starts by confirming it still exists
+   as recorded: right business? renamed? moved? closed? a different business on this number?
+   not a fit? Invalid records leave every queue but keep their history; nothing is deleted.
+9. **Ask for the role, not the name, the first time.** Nobody is known on a first call.
+   Offer role chips grouped by *decision-maker* (owner, manager, purchasing, chef) and
+   *staff* (receptionist/cashier, accountant, storekeeper, staff). The name is an optional
+   field on the same screen. People already known appear first, above the roles.
+10. **Gatekeepers route to the decision-maker.** Picking a staff role asks "who buys?" and
+    "when can we reach them?", or "they put me through", which returns to the role question.
 
 ### Typing
-8. **Typing only for what the app can't know**: a new phone number, a new person's name, an
+11. **Typing only for what the app can't know**: a new phone number, a new person's name, an
    amount that differs from the expected one. Everything else is a chip.
-9. **Notes are optional, everywhere.** A flow never requires free text to finish.
-10. **Prefill from context.** Contact = the primary contact, amount = the order total,
+12. **Notes are optional, everywhere.** A flow never requires free text to finish.
+13. **Prefill from context.** Contact = the primary contact, amount = the order total,
     quantity = the last order's quantity, date = the rule's default. Show the prefilled
     value; never apply it silently.
 
 ### Moving
-11. **Back goes up one step and keeps the answers below it.**
-12. **Closing the sheet saves a draft**, not nothing. The card shows «نتیجه ثبت نشده»
+14. **Back goes up one step and keeps the answers below it.**
+15. **Closing the sheet saves a draft**, not nothing. The card shows «نتیجه ثبت نشده»
     (outcome not logged) until it's finished or discarded.
-13. **One sheet, content swaps in place.** No modal on top of a modal. A calendar or product
+16. **One sheet, content swaps in place.** No modal on top of a modal. A calendar or product
     picker is a step in the flow, not a pop-up over it.
-14. **Auto-open when it's obviously next.** After a `tel:` call, the flow opens when the
+17. **Auto-open when it's obviously next.** After a `tel:` call, the flow opens when the
     app becomes visible again (`visibilitychange`). After scanning a delivery, the
     delivery flow opens.
 
 ### Finishing
-15. **The last screen shows what will be saved**: summary chips for every recorded fact
-    and side-effect (temperature change, quote sent, sample created).
-16. **Every flow ends with what happens next**: a prefilled next action with an owner and a
-    time, saved with one tap. Skipping it asks for a one-tap reason.
-17. **The confirmation says where things went.** «ثبت شد · در کارهای من و امروز» (saved,
-    now in my tasks and today), with **undo** from the toast, not an "are you sure?" dialog
-    before saving.
+18. **Every flow ends with what happens next.** The last question is the prefilled next
+    action's time (owner = me unless changed). Skipping it asks for a one-tap reason.
+19. **Autosave: the last answer saves.** There is no save button. The done screen lists
+    every recorded fact and side-effect as chips (outcome, contact, verification,
+    temperature change, quote sent, sample created, next action).
+20. **Undo, not "are you sure?".** A toast shows what was saved with «لغو» and a **5-second**
+    countdown bar. Undo reopens the sheet on the last question with every answer kept.
+    After 5 s the write commits and the toast says where it went («در کارهای من و امروز»).
+21. **Return on your own.** The done screen goes back to where the flow started after
+    **3 seconds** (or at once with «همین حالا»). The toast stays on screen over the list
+    until its 5 s are up, and the item that changed is highlighted.
 
 ## 4. Tap budget
 
-- The **most common path must finish in ≤ 5 taps**, including the final save.
-  (Missed call: جواب نداد → فردا ۱۰:۰۰ → ثبت = 3 taps.)
+- The **most common path must finish in ≤ 5 taps**. Saving is automatic, so it costs none.
+  (Missed call: جواب نداد → فردا ۱۰:۰۰ = 2 taps after hanging up.)
 - The **longest path should stay ≤ 9 taps**. If it's longer, fold two questions together
   or move the rare branch behind «سایر».
 - Measure it: each flow's tests assert the tap count of its common path (see §6).
@@ -139,6 +158,10 @@ Every flow is **config + one generic sheet + one write path**:
    - every effect is a known key.
 5. **Offline:** a flow's final submit is a queued "fact" operation (`lib/offline/safety.ts`)
    whenever it records something that already happened.
+6. **Undo window = outbox hold.** The 5-second undo is the offline outbox holding the
+   mutation before sending it, so undo never has to reverse a server write. Today
+   `OUTBOX_HOLD_MS` (`lib/offline/constants.ts`) is 9000 and `ToastProvider.ACTION_LIFETIME_MS`
+   shares it; tap flows need a 5000 ms hold.
 
 ## 7. Where to apply it next in RouteFlow
 
@@ -159,6 +182,9 @@ Every flow is **config + one generic sheet + one write path**:
 - A **dropdown inside a sheet.** If it needs a dropdown, it needs chips or a search step.
 - **Required free text** ("describe the outcome").
 - **"Are you sure?" before saving** instead of undo after saving.
+- **A save button** at the end of a tap flow. The last answer is the save.
+- **Asking for a name** on a first contact, when a role is all anyone knows.
+- **Trusting imported data**: acting on a Google Maps record without confirming it first.
 - **Silent defaults**: a value applied without appearing on the final summary.
 - **Stacked modals**: calendar over sheet over page.
 - **Ending on "Saved"** with no next action and no hint of where the record went.
@@ -170,9 +196,12 @@ Every flow is **config + one generic sheet + one write path**:
 - [ ] Recommended answers highlighted, not pre-selected
 - [ ] Typing only for data the app can't know; notes optional
 - [ ] Back keeps answers; closing keeps a draft
-- [ ] Final screen lists everything that will be saved, including side-effects
+- [ ] Records from outside sources are verified on first contact
+- [ ] People are asked for by role first; names optional; known people first
 - [ ] Ends with a next action (or a reason for none)
-- [ ] Confirmation says where the record now appears, with undo
+- [ ] Last answer autosaves; done screen lists everything saved, including side-effects
+- [ ] Toast with «لغو» and a 5 s countdown; undo reopens the last question with answers kept
+- [ ] Auto-return after 3 s; the changed item is highlighted; toast says where it went
 - [ ] Server applies effects from the same config the UI renders
 - [ ] Works offline if it records something that already happened
 - [ ] RTL, Persian digits, Shamsi dates, `<Icon>`, focus rings, reduced motion
