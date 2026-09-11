@@ -30,8 +30,8 @@ export default function BatchList({ rows, canManage }: { rows: BatchListRow[]; c
     <section className="card p-[var(--space-4)]" aria-labelledby="batch-list-heading">
       <SectionHead
         id="batch-list-heading"
-        title="بچ‌ها"
-        sub={rows.length === 0 ? "هنوز بچی ثبت نشده است." : `${faNum(rows.length)} بچ، زودتر منقضی‌شونده اول`}
+        title="سری‌های ساخت"
+        sub={rows.length === 0 ? "هنوز سری ساختی ثبت نشده است." : `${faNum(rows.length)} سری ساخت، زودتر منقضی‌شونده اول`}
         actions={
           canManage ? (
             <Link className="btn ghost" href="/sales/batches">
@@ -45,7 +45,7 @@ export default function BatchList({ rows, canManage }: { rows: BatchListRow[]; c
           <table className="w-full border-collapse text-[length:var(--text-sm)]">
             <thead>
               <tr className="text-[var(--text-muted)]">
-                <th className="border-b border-[var(--border)] py-2 text-right font-medium">بچ</th>
+                <th className="border-b border-[var(--border)] py-2 text-right font-medium">سری ساخت</th>
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">کالا</th>
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">تولید</th>
                 <th className="border-b border-[var(--border)] py-2 text-right font-medium">انقضا</th>

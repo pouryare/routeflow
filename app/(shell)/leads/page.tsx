@@ -286,7 +286,7 @@ export default function LeadsPage() {
   async function createList(name: string, ids: number[]) {
     const trimmed = name.trim();
     if (!trimmed) {
-      toast("برای لیست یک نام بنویسید", "error");
+      toast("برای فهرست یک نام بنویسید", "error");
       return;
     }
     setBusy(true);
@@ -302,9 +302,9 @@ export default function LeadsPage() {
       setActiveListId(data.id);
       setRun(ids);
       setNewListName("");
-      toast(`لیست «${trimmed}» ساخته شد.`, "success");
+      toast(`فهرست «${trimmed}» ساخته شد.`, "success");
     } catch (e) {
-      toast(e instanceof Error && e.message ? e.message : "خطا در ساخت لیست", "error");
+      toast(e instanceof Error && e.message ? e.message : "خطا در ساخت فهرست", "error");
     } finally {
       setBusy(false);
     }
@@ -338,12 +338,12 @@ export default function LeadsPage() {
         setActiveListId(null);
         setRun([]);
       }
-      toast(`لیست «${data.deleted.name}» حذف شد.`, "success", {
+      toast(`فهرست «${data.deleted.name}» حذف شد.`, "success", {
         label: "بازگردان",
         onClick: () => createList(data.deleted.name, data.deleted.location_ids),
       });
     } catch {
-      toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف لیست", "error");
+      toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف فهرست", "error");
     }
   }
 
@@ -460,7 +460,7 @@ export default function LeadsPage() {
       // The database cascade already dropped it from every saved list; this keeps the
       // run on screen in step without a reload.
       setRun((prev) => prev.filter((x) => x !== id));
-      toast("از لیست حذف شد.", "info");
+      toast("از فهرست حذف شد.", "info");
     } catch {
       toast("خطا در حذف", "error");
     } finally {
@@ -524,7 +524,7 @@ export default function LeadsPage() {
       const res = await fetch(`/api/locations/${id}/convert`, { method: "POST" });
       const data = await res.json();
       if (!data.ok) throw new Error(data.error);
-      toast("به لیست مشتریان اضافه شد.", "success");
+      toast("به فهرست مشتریان اضافه شد.", "success");
       load();
     } catch (e) {
       toast(e instanceof Error && e.message ? e.message : "خطا در تبدیل به مشتری", "error");
@@ -544,7 +544,7 @@ export default function LeadsPage() {
             <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
               Prospect Locations
             </div>
-            <h1 className="text-[length:var(--text-xl)] font-bold text-text">لیست مکان‌های پیشنهادی</h1>
+            <h1 className="text-[length:var(--text-xl)] font-bold text-text">فهرست مکان‌های پیشنهادی</h1>
           </div>
           <Link
             href="/map"
@@ -589,7 +589,7 @@ export default function LeadsPage() {
               <select
                 value={activeListId ?? ""}
                 onChange={(e) => openList(e.target.value === "" ? null : Number(e.target.value))}
-                aria-label="انتخاب لیست"
+                aria-label="انتخاب فهرست"
                 className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
               >
                 <option value="">مسیر موقت (ذخیره‌نشده)</option>
@@ -603,7 +603,7 @@ export default function LeadsPage() {
                 <>
                   <button
                     onClick={() => {
-                      const name = window.prompt("نام تازه لیست:", activeList.name);
+                      const name = window.prompt("نام تازه فهرست:", activeList.name);
                       if (name) renameList(activeList.id, name);
                     }}
                     className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
@@ -614,7 +614,7 @@ export default function LeadsPage() {
                     onClick={() => deleteList(activeList.id)}
                     className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
                   >
-                    حذف لیست
+                    حذف فهرست
                   </button>
                 </>
               )}
@@ -662,7 +662,7 @@ export default function LeadsPage() {
                 disabled={busy}
                 className="rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50"
               >
-                ذخیره به‌عنوان لیست
+                ذخیره به‌عنوان فهرست
               </button>
             </form>
           )}
@@ -677,7 +677,7 @@ export default function LeadsPage() {
           >
             <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
               مکان‌ها را بر اساس نزدیکی جغرافیایی به روزها تقسیم می‌کند — نه فقط برش زدن یک فهرست مرتب‌شده.
-              نتیجه یک پیشنهاد است؛ هر روزی را که پسندیدید می‌توانید به مسیر یا به یک لیست تازه ببرید.
+              نتیجه یک پیشنهاد است؛ هر روزی را که پسندیدید می‌توانید به مسیر یا به یک فهرست تازه ببرید.
             </p>
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -735,7 +735,7 @@ export default function LeadsPage() {
                             disabled={busy}
                             className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
                           >
-                            ذخیره به‌عنوان لیست
+                            ذخیره به‌عنوان فهرست
                           </button>
                         </div>
                       </div>

@@ -30,7 +30,7 @@ export default function ShellError({
             تلاش دوباره
           </button>
           <Link className="btn ghost" href="/sales">
-            رفتن به داشبورد
+            رفتن به خلاصهٔ فروش
           </Link>
         </>
       }

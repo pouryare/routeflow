@@ -106,6 +106,13 @@ describe("where each destination lives", () => {
     expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/groups", "/sales/admin/users"].sort());
   });
 
+  it("names say what is on the page: my tasks, the sales summary, production batches", () => {
+    const label = (h: string) => owner.find((t) => t.href === h)?.label;
+    expect(label("/sales/pocket")).toBe("کارهای من");
+    expect(label("/sales")).toBe("خلاصهٔ فروش");
+    expect(label("/sales/batches")).toBe("سری‌های ساخت");
+  });
+
   it("the visit planner sits beside the visit schedule", () => {
     expect(groupOf("/planner")).toBe("day");
     expect(groupOf("/sales/schedule")).toBe("day");

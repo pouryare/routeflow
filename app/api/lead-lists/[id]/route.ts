@@ -31,20 +31,20 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
     | { group_id: number | null }
     | undefined;
   if (!owning || !canReachGroup(guard.session, owning.group_id)) {
-    return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "فهرست پیدا نشد" }, { status: 404 });
   }
   const exists = db.prepare("SELECT 1 FROM lead_lists WHERE id = ?").get(idNum);
   if (!exists) {
-    return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "فهرست پیدا نشد" }, { status: 404 });
   }
 
   if (body.name !== undefined) {
     const name = typeof body.name === "string" ? body.name.trim() : "";
     if (!name) {
-      return NextResponse.json({ ok: false, error: "نام لیست نمی‌تواند خالی باشد" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "نام فهرست نمی‌تواند خالی باشد" }, { status: 400 });
     }
     if (name.length > MAX_NAME) {
-      return NextResponse.json({ ok: false, error: "نام لیست بیش از حد بلند است" }, { status: 400 });
+      return NextResponse.json({ ok: false, error: "نام فهرست بیش از حد بلند است" }, { status: 400 });
     }
     db.prepare("UPDATE lead_lists SET name = ?, updated_at = ? WHERE id = ?").run(
       name,
@@ -91,13 +91,13 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/lead-list
     | { group_id: number | null }
     | undefined;
   if (!owning || !canReachGroup(guard.session, owning.group_id)) {
-    return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "فهرست پیدا نشد" }, { status: 404 });
   }
   const row = db.prepare("SELECT id, name FROM lead_lists WHERE id = ?").get(idNum) as
     | { id: number; name: string }
     | undefined;
   if (!row) {
-    return NextResponse.json({ ok: false, error: "لیست پیدا نشد" }, { status: 404 });
+    return NextResponse.json({ ok: false, error: "فهرست پیدا نشد" }, { status: 404 });
   }
 
   const items = db

@@ -16,7 +16,7 @@ export default function NotFound() {
         actions={
           <>
             <Link className="btn solid" href="/sales">
-              رفتن به داشبورد
+              رفتن به خلاصهٔ فروش
             </Link>
             <Link className="btn ghost" href="/map">
               نقشه

@@ -60,7 +60,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
   return [
     // روز من
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
-    { href: "/sales/pocket", label: "پاکت", group: "day", ready: true },
+    { href: "/sales/pocket", label: "کارهای من", group: "day", ready: true },
     { href: "/sales/schedule", label: "برنامهٔ بازدید", group: "day", ready: true },
     { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "salesperson" },
 
@@ -84,10 +84,10 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/deliveries", label: "تحویل‌ها", group: "ops", ready: isManager(r) },
     { href: "/sales/routing", label: "مسیریابی", group: "ops", ready: isManager(r) },
     { href: "/sales/stock", label: "انبار و خرید", group: "ops", ready: true },
-    { href: "/sales/batches", label: "بچ‌ها", group: "ops", ready: isManager(r) },
+    { href: "/sales/batches", label: "سری‌های ساخت", group: "ops", ready: isManager(r) },
 
     // گزارش‌ها
-    { href: "/sales", label: "داشبورد", group: "reports", ready: true },
+    { href: "/sales", label: "خلاصهٔ فروش", group: "reports", ready: true },
     { href: "/sales/dashboard", label: "تحلیل فروش", group: "reports", ready: true },
     { href: "/sales/forecast", label: "پیش‌بینی", group: "reports", ready: isManager(r) },
     /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report

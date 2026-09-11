@@ -1,3 +1,4 @@
+import { refreshRetiredWording } from "./repo/retiredWording";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
@@ -2982,6 +2983,7 @@ export function getDb(): DatabaseSync {
   seedNotificationTypes(db);
   seedObjectionCards(db);
   seedKpiDefinitions(db);
+  refreshRetiredWording(db);
   seedSeasonalFactors(db);
   seedChurnModel(db);
 
@@ -3551,11 +3553,11 @@ export const RULE_SEED: {
   },
   {
     code: "expiring_batch",
-    name: "بچ رو به انقضا",
+    name: "سری ساخت رو به انقضا",
     trigger_kind: "sweep",
     condition_json: null,
     action_kind: "alert",
-    action_json: JSON.stringify({ severity: "warning", category: "stock", title: "بچ رو به انقضا با موجودی" }),
+    action_json: JSON.stringify({ severity: "warning", category: "stock", title: "سری ساخت رو به انقضا با موجودی" }),
     cooldown_min: 1440,
     escalate_after_min: null,
     escalate_to_role: null,
@@ -3701,7 +3703,7 @@ export const OBJECTION_CARD_SEED: {
   { outcome_code: "NOT_INTERESTED", title_fa: "«علاقه‌ای ندارم»", script_fa: "روی زمان‌بندی کار کنید، نه محصول: «کاملاً درست است، الان وقت خوبی نیست. اجازه بدهید فقط یک نمونه بگذارم و هفتهٔ بعد اگر خواستید یک تماس کوتاه بگیریم.» فشار نیاورید؛ در دفترچه یادداشت کنید و در بازهٔ بعدی برگردید.", module_slug: "01-market-and-customer" },
   { outcome_code: "NO_TIME", title_fa: "«الان وقت ندارم»", script_fa: "«حتماً، ۳۰ ثانیه بیشتر نمی‌گیرم — فقط می‌خواستم بگویم این هفته نمونهٔ کره داریم؛ کی برای‌تان بیاورم، امروز یا فردا؟» یک انتخاب دوگزینه‌ای بدهید.", module_slug: "02-phone-sales" },
   { outcome_code: "ALREADY_SUPPLIED", title_fa: "«تأمین‌کننده دارم»", script_fa: "«عالی است که یک تأمین‌کنندهٔ ثابت دارید. بیشتر مشتری‌های ما هم دارند و ما را برای روزهایی نگه می‌دارند که آن‌ها جنس ندارند یا دیر می‌رسانند. یک نمونه بگذارم که مقایسه دستتان باشد؟»", module_slug: "01-market-and-customer" },
-  { outcome_code: "QUALITY_DOUBT", title_fa: "«کیفیتش را نمی‌شناسم»", script_fa: "روی قابلیت ردیابی تکیه کنید: «هر بچ ما تاریخ تولید و انقضا دارد و ما دقیقاً می‌دانیم هر جعبه به کدام مغازه رفته. یک نمونه بگذارم، خودتان روی یک غذا امتحان کنید.»", module_slug: "01-market-and-customer" },
+  { outcome_code: "QUALITY_DOUBT", title_fa: "«کیفیتش را نمی‌شناسم»", script_fa: "روی قابلیت ردیابی تکیه کنید: «هر سری ساخت ما تاریخ تولید و انقضا دارد و ما دقیقاً می‌دانیم هر جعبه به کدام مغازه رفته. یک نمونه بگذارم، خودتان روی یک غذا امتحان کنید.»", module_slug: "01-market-and-customer" },
   { outcome_code: "PAYMENT_TERMS", title_fa: "«نقدی نمی‌خرم»", script_fa: "«مشکلی نیست، برای مشتری‌های ثابت مهلت تسویه داریم. سفارش اول را نقد بگیریم که آشنا شویم، از سفارش دوم روی چک یا مهلت هفتگی می‌رویم.»", module_slug: "02-phone-sales" },
   { outcome_code: "CONTACTED", title_fa: "پیگیری تماس بی‌نتیجه", script_fa: "یک تماس بدون سفارش، شکست نیست. تاریخ تماس بعدی را همین حالا در دفترچه بگذارید (۳ تا ۷ روز)، و یک بهانهٔ تماس تازه آماده کنید: نمونهٔ جدید، تخفیف مناسبتی، یا محصول تازه.", module_slug: "02-phone-sales" },
   { outcome_code: "ORDERED", title_fa: "بعد از اولین خرید", script_fa: "روز تحویل یک تماس کوتاه بگیرید: «کره به دستتان رسید؟ راضی بودید؟» و بازهٔ سفارش بعدی را پیشنهاد بدهید. اولین خرید تازه شروع رابطه است.", module_slug: "01-market-and-customer" },
@@ -3754,8 +3756,8 @@ export const KPI_DEFINITION_SEED: {
   {
     metric: "gross_profit",
     title_fa: "سود ناخالص",
-    definition_fa: "فروش خالص منهای بهای تمام‌شدهٔ کالای همان سفارش‌ها (از قیمت خرید بچ).",
-    formula_fa: "فروش خالص − Σ (تعداد تحویل‌شده × بهای واحد بچ)",
+    definition_fa: "فروش خالص منهای بهای تمام‌شدهٔ کالای همان سفارش‌ها (از قیمت خرید سری ساخت).",
+    formula_fa: "فروش خالص − Σ (تعداد تحویل‌شده × بهای واحد سری ساخت)",
     owner_role: "owner",
     benchmark_fa: "متناسب با حاشیهٔ هدف؛ نباید کندتر از فروش رشد کند",
     frequency: "weekly",

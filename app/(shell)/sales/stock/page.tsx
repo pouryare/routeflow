@@ -112,14 +112,14 @@ export default async function StockPage() {
       {expiring.length > 0 && (
         <section className="card p-[var(--space-4)]">
           <h2 className="sechead__title" style={{ color: "var(--warn)" }}>
-            انقضا — {faNum(expiring.length)} بچ
+            انقضا — {faNum(expiring.length)} سری ساخت
           </h2>
           <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
             {expiring.slice(0, 12).map((b) => (
               <li key={b.id} className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]">
                 <span className="text-[var(--text)]">
                   {stockName.get(b.product_id) ?? "کالا"}
-                  <span className="text-[var(--text-muted)]"> · بچ {b.batch_code}</span>
+                  <span className="text-[var(--text-muted)]"> · سری ساخت {b.batch_code}</span>
                 </span>
                 <span
                   className="tabular-nums"

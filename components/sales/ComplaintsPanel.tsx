@@ -126,7 +126,7 @@ export default function ComplaintsPanel({
 
       {clusters.length > 0 && (
         <div className="rounded-lg border border-danger bg-danger/10 p-3 text-sm text-danger">
-          خوشهٔ شکایت روی این بچ‌ها:{" "}
+          خوشهٔ شکایت روی این سری‌های ساخت:{" "}
           {clusters.map((c) => `${c.batch_code} (${c.count})`).join("، ")} — بررسی شود.
         </div>
       )}

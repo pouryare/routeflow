@@ -108,14 +108,14 @@ export default function ScheduleBoard({
               {sel === today ? " · امروز" : ""}
             </h2>
             <div className="n">
-              {faNum(visitsForDay.length)} ویزیت · {faNum(runsForDay.length)} مسیر تحویل
+              {faNum(visitsForDay.length)} بازدید · {faNum(runsForDay.length)} سفر تحویل
             </div>
           </div>
         </div>
         <div className="rail">
           {visitsForDay.length === 0 && runsForDay.length === 0 ? (
             <p style={{ margin: 0, color: "var(--muted)", fontSize: 13.5 }}>
-              برای این روز نه ویزیتی برنامه‌ریزی شده و نه مسیری در دفتر است.
+              برای این روز نه بازدیدی برنامه‌ریزی شده و نه سفر تحویلی در دفتر است.
             </p>
           ) : (
             <>

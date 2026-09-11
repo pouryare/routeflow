@@ -42,7 +42,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[
 
   const customerCode = `LEAD-${location.id}`;
   const now = new Date().toISOString();
-  const notes = ["از لیست مکان‌های پیشنهادی تبدیل شد", location.address, location.notes]
+  const notes = ["از فهرست مکان‌های پیشنهادی تبدیل شد", location.address, location.notes]
     .filter(Boolean)
     .join(" — ");
 

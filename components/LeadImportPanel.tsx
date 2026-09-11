@@ -114,7 +114,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
         toast(data.error || "خطا در افزودن", "error");
         return;
       }
-      toast(`${data.added} مکان به لیست اضافه شد${data.skipped ? ` (${data.skipped} تکراری بود)` : ""}`, "success");
+      toast(`${data.added} مکان به فهرست اضافه شد${data.skipped ? ` (${data.skipped} تکراری بود)` : ""}`, "success");
       setItems(null);
       setText("");
       onAdded();
@@ -197,10 +197,10 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
                     </span>
                   </div>
                   {it.address && <p className="truncate text-[length:var(--text-xs)] text-text-faint">{it.address}</p>}
-                  {it.alreadySaved && <p className="text-[length:var(--text-xs)] text-text-faint">قبلاً در لیست ذخیره شده</p>}
+                  {it.alreadySaved && <p className="text-[length:var(--text-xs)] text-text-faint">قبلاً در فهرست ذخیره شده</p>}
                   {!it.alreadySaved && it.duplicateOf && (
                     <p className="truncate text-[length:var(--text-xs)] text-warn">
-                      <Icon name="warn" size="sm" /> شبیه «{it.duplicateOf.name}» ({it.duplicateOf.kind === "customer" ? "مشتری موجود" : "لیست مکان‌ها"})
+                      <Icon name="warn" size="sm" /> شبیه «{it.duplicateOf.name}» ({it.duplicateOf.kind === "customer" ? "مشتری موجود" : "فهرست مکان‌ها"})
                     </p>
                   )}
                 </div>
@@ -212,7 +212,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
             disabled={busy || selected.size === 0}
             className="mt-3 w-full rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
           >
-            {busy ? "در حال افزودن..." : `افزودن ${faNum(selected.size)} مورد به لیست`}
+            {busy ? "در حال افزودن..." : `افزودن ${faNum(selected.size)} مورد به فهرست`}
           </button>
         </div>
       )}

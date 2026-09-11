@@ -64,7 +64,7 @@ function assertScoped(db: DatabaseSync, organizationId: number, input: MovementI
       .prepare("SELECT organization_id FROM batches WHERE id = ?")
       .get(input.batch_id) as { organization_id: number | null } | undefined;
     if (!batch || (batch.organization_id !== null && batch.organization_id !== organizationId)) {
-      throw new StockError("بچ پیدا نشد");
+      throw new StockError("سری ساخت پیدا نشد");
     }
   }
   if (!Number.isFinite(input.base_qty) || input.base_qty === 0) {

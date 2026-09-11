@@ -30,10 +30,10 @@ export async function POST(req: NextRequest) {
 
   const name = typeof body.name === "string" ? body.name.trim() : "";
   if (!name) {
-    return NextResponse.json({ ok: false, error: "نام لیست الزامی است" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "نام فهرست الزامی است" }, { status: 400 });
   }
   if (name.length > MAX_NAME) {
-    return NextResponse.json({ ok: false, error: "نام لیست بیش از حد بلند است" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "نام فهرست بیش از حد بلند است" }, { status: 400 });
   }
 
   const ids = sanitiseIds(body.location_ids);

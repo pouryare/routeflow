@@ -115,7 +115,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
 
   return (
     <div dir="rtl" className="mx-auto flex max-w-4xl flex-col gap-6 p-4">
-      <h1 className="text-lg font-bold text-text">بچ‌ها</h1>
+      <h1 className="text-lg font-bold text-text">سری‌های ساخت</h1>
 
       <form onSubmit={create} className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3">
         <select
@@ -130,9 +130,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
             </option>
           ))}
         </select>
-        <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="کد بچ (خودکار اگر خالی)" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} />
+        <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="کد سری ساخت (خودکار اگر خالی)" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} />
         <input className="rounded border border-border bg-bg p-2 text-left font-mono text-sm" placeholder="مقدار دریافتی" inputMode="decimal" value={form.qty_received_base} onChange={(e) => setForm((f) => ({ ...f, qty_received_base: e.target.value }))} />
-        <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="مرجع بچ تأمین‌کننده" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} />
+        <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="مرجع سری ساخت تأمین‌کننده" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} />
         <label className="flex items-center gap-1 text-xs text-text-muted">
           تولید
           <JalaliDateInput value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />
@@ -142,7 +142,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
           <JalaliDateInput value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
         </label>
         <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
-          ثبت بچ
+          ثبت سری ساخت
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}
       </form>
@@ -195,7 +195,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                         {trace === null ? (
                           "…"
                         ) : trace.length === 0 ? (
-                          "این بچ هنوز به مشتری تحویل نشده است."
+                          "این سری ساخت هنوز به مشتری تحویل نشده است."
                         ) : (
                           <ul className="flex flex-col gap-1">
                             {trace.map((d, i) => (

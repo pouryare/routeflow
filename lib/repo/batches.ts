@@ -53,7 +53,7 @@ export function createBatchTxn(
   input: CreateBatchInput
 ): number {
   if (!(input.qty_received_base > 0)) {
-    throw new BatchError("مقدار دریافتی بچ باید بزرگ‌تر از صفر باشد");
+    throw new BatchError("مقدار دریافتی سری ساخت باید بزرگ‌تر از صفر باشد");
   }
   const now = new Date().toISOString();
   const producedAt = input.produced_at ?? null;
@@ -115,7 +115,7 @@ export function createBatchTxn(
     );
   } catch (e) {
     if (e instanceof Error && /UNIQUE/i.test(e.message)) {
-      throw new BatchError(`بچ «${code}» برای این کالا قبلاً ثبت شده است`);
+      throw new BatchError(`سری ساخت «${code}» برای این کالا قبلاً ثبت شده است`);
     }
     throw e;
   }
@@ -142,7 +142,7 @@ export function advanceBatchStatus(organizationId: number, id: number, to: Batch
   db.exec("BEGIN IMMEDIATE");
   try {
     const batch = batchesRepo.get(organizationId, id);
-    if (!batch) throw new BatchError("بچ پیدا نشد");
+    if (!batch) throw new BatchError("سری ساخت پیدا نشد");
     if (to === "expired" || to === "depleted") {
       throw new BatchError("این وضعیت خودکار محاسبه می‌شود");
     }
@@ -175,7 +175,7 @@ export function advanceBatchStatus(organizationId: number, id: number, to: Batch
         `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)
          VALUES ('customer', ?, ?, ?, 0, ?)`
       );
-      const msg = `بچ ${batch.batch_code} فراخوان شد — پیگیری کنید`;
+      const msg = `سری ساخت ${batch.batch_code} فراخوان شد — پیگیری کنید`;
       for (const c of customers) ins.run(c.id, now.slice(0, 10), msg, now);
     }
 

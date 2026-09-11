@@ -155,7 +155,7 @@ export default function Pocket({
   return (
     <div style={{ marginTop: 14 }}>
       <h2 style={{ fontSize: 18 }}>
-        امروز — {scopeId ? data.scopeName : viewerName}
+        کارهای {scopeId ? data.scopeName : viewerName}
       </h2>
 
       {team.length > 0 ? (

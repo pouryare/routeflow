@@ -27,7 +27,7 @@ export interface TripPurposeDef {
 export const TRIP_PURPOSES: TripPurposeDef[] = [
   {
     id: "first_visit",
-    label: "ویزیت اولیه",
+    label: "بازدید اولیه",
     icon: "flag",
     ink: "var(--sky)",
     soft: "var(--sky-soft)",
@@ -66,7 +66,7 @@ export function isTripPurpose(v: unknown): v is TripPurpose {
 /** The definition for a stored value, or null when the row predates the column.
  *
  *  Null is a real answer here — «بدون هدف» — not a reason to fall back to the first
- *  purpose in the list, which would silently relabel every historic visit as a ویزیت
+ *  purpose in the list, which would silently relabel every historic visit as a بازدید
  *  اولیه. */
 export function tripPurpose(v: string | null | undefined): TripPurposeDef | null {
   if (!isTripPurpose(v)) return null;
