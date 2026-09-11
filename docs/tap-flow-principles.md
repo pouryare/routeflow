@@ -10,6 +10,16 @@ The after-call flow in the CRM is the reference implementation. Its clickable mo
 owner; the CRM spec in `docs/superpowers/specs/` describes it in full). This document is the
 reusable rulebook for the rest of the app.
 
+### Defaults at a glance
+
+| Default | Rule | Where it's detailed |
+|---|---|---|
+| **Autosave** | The last answer saves. No save button, ever. | Rule 19 |
+| **5-second undo** | A toast shows what was saved, with «لغو» and a 5 s countdown bar. Undo reopens the last question with every answer kept. The app's one undo window is 5 s everywhere (`OUTBOX_HOLD_MS = 5000`). | Rule 20, §6.6 |
+| **3-second return** | The done screen returns to where the flow started after 3 s (or at once with «همین حالا»). The changed item is highlighted and the toast stays on screen. | Rule 21 |
+| **Verify imported data** | The first contact with a record from an outside source (Google Maps, a pasted list, a spreadsheet) confirms it still exists as recorded before anything else. Invalid records leave the queues but keep their history. | Rule 8 |
+| **Roles before names** | "Who did you talk to?" is answered with role chips (decision-makers, then staff). The name is optional; people already known appear first; picking a staff role leads to the decision-maker. | Rules 9–10 |
+
 ---
 
 ## 1. When to use a tap flow, and when not to
@@ -159,9 +169,11 @@ Every flow is **config + one generic sheet + one write path**:
 5. **Offline:** a flow's final submit is a queued "fact" operation (`lib/offline/safety.ts`)
    whenever it records something that already happened.
 6. **Undo window = outbox hold.** The 5-second undo is the offline outbox holding the
-   mutation before sending it, so undo never has to reverse a server write. Today
-   `OUTBOX_HOLD_MS` (`lib/offline/constants.ts`) is 9000 and `ToastProvider.ACTION_LIFETIME_MS`
-   shares it; tap flows need a 5000 ms hold.
+   mutation before sending it, so undo never has to reverse a server write.
+   **Decision (2026-09-11): one undo window for the whole app, 5 s.** `OUTBOX_HOLD_MS`
+   (`lib/offline/constants.ts`) goes from 9000 to 5000, and `ToastProvider.ACTION_LIFETIME_MS`
+   keeps sharing it, so every undo toast in RouteFlow, tap flow or not, lasts 5 s. The
+   change is scheduled in the CRM implementation plan and is not live yet.
 
 ## 7. Where to apply it next in RouteFlow
 
