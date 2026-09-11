@@ -339,3 +339,20 @@ rate math is pure in `lib/crm/metrics.ts`. Charts reuse `components/charts/*`.
 - **Deploy**: production is a systemd service. Each phase merges to `main` only with
   tests green; `npm run build` + `systemctl restart routeflow` after a fresh
   SQLite-backup-API copy, done with the user.
+
+## 8. Additions (2026-09-11, after the section reviews)
+
+| # | Decision |
+|---|---|
+| D15 | **Price tier.** Add Lead asks «سطح قیمت منو؟» — ارزان / متوسط / گران / نمی‌دانم (`customers.price_tier`: low · mid · high · unknown). When the source is a food app (SnappFood, Tapsi Food) the step points the rep at the app's menu. |
+| D16 | **Working hours.** Add Lead has a multi-step hours picker: which days → opens at → closes at → another range? (several ranges per day, e.g. ۱۲–۱۶ and ۱۹–۲۴; overnight allowed) → done, or «نمی‌دانم». Stored as `customers.working_hours_json` = `[{days:[0..6 Sat-first], from:"HH:MM", to:"HH:MM"}]`. Every next-action time is moved to the next open slot when hours are known, and the time answers show the moved time. |
+| D17 | **Phone-less leads.** A lead found on a food app often has no phone — only a pin (often approximate, `location_precision='approx'`), a rough address and a price tier. Phone is optional in Add Lead. A phone-less lead's first step is a **verification visit**, by default by a **driver** on their round (`tasks.kind='verify_visit'`, `role_hint='driver'`, the lead's group), or by the rep. The driver answers a short tap flow in `/driver` — found it? open? got a number? who did you talk to? interested? — and the driver's GPS fixes the exact pin. The lead then either becomes valid (phone saved, verified, next action "first call" for its owner) or invalid (closed / not found). Drivers see only these visit tasks and the minimum to find the place: name, address, pin, hours. |
+| D18 | `/leads` (map pins + lead lists) stays as it is in this phase, relabelled «پین‌های نقشه»; the pins migrate and the page retires in P4 with the daily queue. |
+| D19 | Offline capture for CRM flows is deferred: no screen uses the outbox yet (`postJSON` has no callers). The 5 s undo is a client-side hold of the POST, flushed on `visibilitychange`/`pagehide`. |
+| D20 | In P2, products named in a call (price asked, sample requested) are recorded in the activity's answers and in the next task's title; the structured `product_interests`, `samples` and `quotations` records arrive in P3. |
+| D21 | Tap budgets per flow: after-call ≤ 5 common / ≤ 9 longest; Add Lead ≤ 7 / ≤ 12 (a capture flow collects data the business needs); driver visit ≤ 5 / ≤ 5. |
+
+Activity rows carry the facts the replay folds, so replay never re-derives them from outcome
+codes: `contact_status_to`, `stage_to`, `verification_to`, `signal`, and the flags `attempt`,
+`miss`, `talked`. The verification vocabulary is: unverified · verified · renamed · moved ·
+wrong_number · invalid_closed · invalid_other_business · invalid_not_fit · invalid_not_found.

@@ -135,6 +135,11 @@ standing up?* If yes, it's a tap flow.
   (Missed call: جواب نداد → فردا ۱۰:۰۰ = 2 taps after hanging up.)
 - The **longest path should stay ≤ 9 taps**. If it's longer, fold two questions together
   or move the rare branch behind «سایر».
+- **Capture flows** (creating a record, like Add Lead) may go to **7 common / 12 longest**,
+  because every step collects data the business needs. Each flow declares its budget in its
+  config (`budget: { common, longest }`) and a test holds it to that.
+- A closed vocabulary the business defined (source, business type) may show up to 10
+  answers in a 3-column grid instead of 8.
 - Measure it: each flow's tests assert the tap count of its common path (see §6).
 
 ## 5. Look and feel
