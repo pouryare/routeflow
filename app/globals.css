@@ -520,7 +520,7 @@ body {
   from { opacity: 0; transform: translateY(8px); }
   to { opacity: 1; transform: translateY(0); }
 }
-.board-stagger > * { animation: board-item-in 260ms var(--ease-out) both; }
+.board-stagger > * { animation: board-item-in 260ms var(--ease-out) backwards; }
 .board-stagger > *:nth-child(1) { animation-delay: 0ms; }
 .board-stagger > *:nth-child(2) { animation-delay: 40ms; }
 .board-stagger > *:nth-child(3) { animation-delay: 80ms; }
@@ -1073,7 +1073,7 @@ body {
   to { opacity: 1; transform: translateX(0); }
 }
 .customer-panel-enter {
-  animation: customer-panel-in var(--dur-slow) var(--ease-out) both;
+  animation: customer-panel-in var(--dur-slow) var(--ease-out) backwards;
 }
 @keyframes customer-panel-out {
   from { opacity: 1; transform: translateX(0); }
@@ -1176,10 +1176,10 @@ body {
   to { opacity: 1; transform: scale(1); }
 }
 .modal-backdrop-enter {
-  animation: modal-backdrop-in var(--dur-base) var(--ease-out) both;
+  animation: modal-backdrop-in var(--dur-base) var(--ease-out) backwards;
 }
 .modal-card-enter {
-  animation: modal-card-in var(--dur-slow) var(--ease-out) both;
+  animation: modal-card-in var(--dur-slow) var(--ease-out) backwards;
 }
 @keyframes modal-backdrop-out {
   from { opacity: 1; }
@@ -1206,7 +1206,7 @@ body {
   to { opacity: 1; transform: translateY(0); }
 }
 .sidebar-stagger > * {
-  animation: sidebar-item-in var(--dur-slow) var(--ease-out) both;
+  animation: sidebar-item-in var(--dur-slow) var(--ease-out) backwards;
 }
 .sidebar-stagger > *:nth-child(1) { animation-delay: 0ms; }
 .sidebar-stagger > *:nth-child(2) { animation-delay: 60ms; }
@@ -1230,7 +1230,7 @@ body {
   to { opacity: 0; transform: scale(0.98); }
 }
 .toast-enter {
-  animation: toast-in var(--dur-base) var(--ease-out) both;
+  animation: toast-in var(--dur-base) var(--ease-out) backwards;
 }
 .toast-exit {
   animation: toast-out 180ms var(--ease-out) both;
@@ -1749,14 +1749,20 @@ body {
 
 /* Route transition: the whole sales view fades + rises on every path change, driven by a
    key={pathname} remount of the .route-fade wrapper (components/meridian/RouteFade.tsx) so
-   it is a pure CSS keyframe -- deterministic, replays every navigation, no rAF. `both`
-   holds the from-state on the first frame, masking the flash of cards RevealRoute has
-   not yet hidden. The per-card spring cascade layers over this. */
+   it is a pure CSS keyframe -- deterministic, replays every navigation, no rAF.
+   `backwards` holds the from-state on the first frame, masking the flash of cards
+   RevealRoute has not yet hidden. The per-card spring cascade layers over this.
+
+   `backwards`, never `both`/`forwards`: a transform animation that keeps filling after it
+   ends makes this wrapper the containing block for every position:fixed descendant, even
+   though the held value is `none`. The closed customer sheet (translateY(102%) off the
+   bottom of the viewport) then sat at the bottom of the page instead, visibly open with
+   a dead close button. tests/routeFade.test.ts guards it. */
 @keyframes meridian-route-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
 }
-.meridian .route-fade { animation: meridian-route-in 240ms var(--ease) both; }
+.meridian .route-fade { animation: meridian-route-in 240ms var(--ease) backwards; }
 @media (prefers-reduced-motion: reduce) { .meridian .route-fade { animation: none; } }
 
 /* Chart draw-in: SVG bars rise from their baseline and the gauge arc draws itself on

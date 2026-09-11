@@ -631,3 +631,32 @@ describe("panels and controls stay where they belong", () => {
     expect(found.low, `sidebar text under 3:1 contrast in the ${skin} skin`).toEqual([]);
   }, 120_000);
 });
+
+describe("the customer sheet opens and closes for real", () => {
+  /* A transform animation that kept filling after it ended (.route-fade, `both`) made the
+     page wrapper the containing block for the fixed sheet. Closed, it sat at the bottom of
+     the page instead of below the viewport -- visibly open, with a close button that did
+     nothing. Only the geometry shows it. */
+  const offscreen = (page: import("playwright").Page) =>
+    page.evaluate(() => {
+      const sheet = document.querySelector<HTMLElement>(".sheet");
+      if (!sheet) return null;
+      return { on: sheet.classList.contains("on"), top: Math.round(sheet.getBoundingClientRect().top), vh: innerHeight };
+    });
+
+  it("the close button on /sales/orders really closes the sheet", async () => {
+    const { page, close } = await open("/sales/orders", { width: 1280, height: 800 });
+    await page.locator(".pockets > *").first().click();
+    const x = page.locator('.sheet.on button[aria-label="بستن"]');
+    await x.waitFor({ state: "visible", timeout: 10_000 });
+    await page.waitForTimeout(600);
+    const opened = await offscreen(page);
+    await x.click();
+    await page.waitForTimeout(800); // the slide out
+    const closed = await offscreen(page);
+    await close();
+    expect(opened!.top, "the open sheet is not on screen").toBeLessThan(opened!.vh);
+    expect(closed!.on).toBe(false);
+    expect(closed!.top, "after ✕ the sheet is still on the page").toBeGreaterThanOrEqual(closed!.vh);
+  }, 90_000);
+});
