@@ -16,7 +16,7 @@ reusable rulebook for the rest of the app.
 |---|---|---|
 | **Autosave** | The last answer saves. No save button, ever. | Rule 19 |
 | **5-second undo** | A toast shows what was saved, with «لغو» and a 5 s countdown bar. Undo reopens the last question with every answer kept. The app's one undo window is 5 s everywhere (`OUTBOX_HOLD_MS = 5000`). | Rule 20, §6.6 |
-| **3-second return** | The done screen returns to where the flow started after 3 s (or at once with «همین حالا»). The changed item is highlighted and the toast stays on screen. | Rule 21 |
+| **5-second return** | The done screen returns to where the flow started after 5 s (or at once with «همین حالا»). It may offer the one or two likeliest next moves («تماس همین حالا», «باز کردن پرونده») meanwhile. The changed item is highlighted and the toast stays on screen. | Rule 21 |
 | **Verify imported data** | The first contact with a record from an outside source (Google Maps, a pasted list, a spreadsheet) confirms it still exists as recorded before anything else. Invalid records leave the queues but keep their history. | Rule 8 |
 | **Roles before names** | "Who did you talk to?" is answered with role chips (decision-makers, then staff). The name is optional; people already known appear first; picking a staff role leads to the decision-maker. | Rules 9–10 |
 
@@ -61,7 +61,7 @@ standing up?* If yes, it's a tap flow.
           ↓ (autosaved)
 ┌───────────────────────────────┐
 │  ✓ ثبت شد                      │  summary chips: outcome · contact · side-effects · next action
-│  برگشت به فهرست در ۳…          │  auto-returns to where the flow started after 3 s
+│  برگشت به فهرست در ۵…          │  auto-returns to where the flow started after 5 s
 │  همین حالا برگرد               │  (or now, with one tap)
 ├───────────────────────────────┤
 │ ثبت شد · تماس دوباره · فردا  [لغو (۵)] │  toast with a 5 s countdown bar, stays over the list
@@ -125,8 +125,9 @@ standing up?* If yes, it's a tap flow.
     countdown bar. Undo reopens the sheet on the last question with every answer kept.
     After 5 s the write commits and the toast says where it went («در کارهای من و امروز»).
 21. **Return on your own.** The done screen goes back to where the flow started after
-    **3 seconds** (or at once with «همین حالا»). The toast stays on screen over the list
-    until its 5 s are up, and the item that changed is highlighted.
+    **5 seconds** (or at once with «همین حالا»), and may offer the one or two likeliest next
+    moves meanwhile (Add Lead: «تماس همین حالا», «باز کردن پرونده»). The item that changed is
+    highlighted on return; the undo toast runs its own 5 s alongside.
 
 ## 4. Tap budget
 
@@ -213,7 +214,7 @@ Every flow is **config + one generic sheet + one write path**:
 - [ ] Ends with a next action (or a reason for none)
 - [ ] Last answer autosaves; done screen lists everything saved, including side-effects
 - [ ] Toast with «لغو» and a 5 s countdown; undo reopens the last question with answers kept
-- [ ] Auto-return after 3 s; the changed item is highlighted; toast says where it went
+- [ ] Auto-return after 5 s; the changed item is highlighted; toast says where it went
 - [ ] Server applies effects from the same config the UI renders
 - [ ] Works offline if it records something that already happened
 - [ ] RTL, Persian digits, Shamsi dates, `<Icon>`, focus rings, reduced motion
