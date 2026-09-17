@@ -154,8 +154,8 @@ export const afterCallFlow: FlowConfig = {
       ],
     },
     tinterest: {
-      id: "tinterest", kind: "choice", q: "کی لیست قیمت بفرستیم؟", timeStep: true,
-      options: timeOptions("ارسال لیست قیمت", "outreach", [
+      id: "tinterest", kind: "choice", q: "کی فهرست قیمت بفرستیم؟", timeStep: true,
+      options: timeOptions("ارسال فهرست قیمت", "outreach", [
         { id: "t10", label: "فردا ۱۰:۰۰", due: TOMORROW_10, rec: true },
         { id: "today", label: "همین امروز", due: { kind: "at_today", hour: 16 } },
         { id: "d2", label: "۲ روز دیگر", due: { kind: "in_days", days: 2, hour: 10 } },
