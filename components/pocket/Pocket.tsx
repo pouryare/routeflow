@@ -8,6 +8,7 @@ import type { Pocket as PocketData, PocketTeamMember } from "@/lib/repo/pocket";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
+import AfterCallFlow from "@/components/crm/AfterCallFlow";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
 const KIND_TONE = TASK_KIND_TONE as Record<string, string>;
@@ -41,6 +42,7 @@ export default function Pocket({
   const [scopeId, setScopeId] = useState<number | null>(null);
   const [custId, setCustId] = useState<number | null>(null);
   const [quick, setQuick] = useState<"reminder" | "note" | null>(null);
+  const [flow, setFlow] = useState<{ customerId: number; taskId: number; open: boolean } | null>(null);
 
   const refetch = useCallback(async (userId: number | null) => {
     const qs = userId ? `?user_id=${userId}` : "";
@@ -112,6 +114,12 @@ export default function Pocket({
             {DUE_LABEL(c)}
           </span>
           {c.recur ? <Icon name="repeat" size="sm" label="تکرارشونده" /> : null}
+          {c.customer && c.status === "open" && c.kind !== "order" && c.kind !== "delivery_retry" ? (
+            <button type="button" className="btn solid" style={{ padding: "2px 10px", fontSize: 11 }}
+              onClick={() => setFlow({ customerId: c.customer!.id, taskId: c.id, open: true })}>
+              ثبت نتیجه
+            </button>
+          ) : null}
           {c.customer ? (
             <button
               type="button"
@@ -245,6 +253,12 @@ export default function Pocket({
         </div>
       </div>
 
+      {flow ? (
+        <AfterCallFlow key={flow.taskId} customerId={flow.customerId} taskId={flow.taskId} open={flow.open}
+          onHide={() => setFlow((f) => (f ? { ...f, open: false } : f))}
+          onReopen={() => setFlow((f) => (f ? { ...f, open: true } : f))}
+          onFinished={() => { setFlow(null); void refetch(scopeId); }} />
+      ) : null}
       <CustomerSheet customerId={custId} onClose={() => setCustId(null)} />
     </div>
   );

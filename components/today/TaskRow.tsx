@@ -3,16 +3,18 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import OutcomeChips from "./OutcomeChips";
+import AfterCallFlow from "@/components/crm/AfterCallFlow";
 
 interface ObjectionCard {
   title_fa: string;
   script_fa: string;
 }
 
-export default function TaskRow({ taskId, label, sub }: { taskId: number; label: string; sub?: string }) {
+export default function TaskRow({ taskId, label, sub, customerId }: { taskId: number; label: string; sub?: string; customerId?: number }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [card, setCard] = useState<ObjectionCard | null>(null);
+  const [flow, setFlow] = useState<{ open: boolean } | null>(null);
 
   async function resolve(code: string | null) {
     setBusy(true);
@@ -42,7 +44,11 @@ export default function TaskRow({ taskId, label, sub }: { taskId: number; label:
         {sub && <span className="mr-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">· {sub}</span>}
       </span>
       <div className="flex flex-wrap gap-[var(--space-1)]">
-        <OutcomeChips disabled={busy} onPick={(code) => void resolve(code)} />
+        {customerId ? (
+          <button type="button" className="btn solid" onClick={() => setFlow({ open: true })}>ثبت نتیجه</button>
+        ) : (
+          <OutcomeChips disabled={busy} onPick={(code) => void resolve(code)} />
+        )}
         <button
           type="button"
           disabled={busy}
@@ -58,6 +64,12 @@ export default function TaskRow({ taskId, label, sub }: { taskId: number; label:
           <p className="m-0 mt-[var(--space-1)] leading-6 text-[var(--text-muted)]">{card.script_fa}</p>
         </div>
       )}
+      {customerId && flow ? (
+        <AfterCallFlow customerId={customerId} taskId={taskId} open={flow.open}
+          onHide={() => setFlow({ open: false })}
+          onReopen={() => setFlow({ open: true })}
+          onFinished={() => { setFlow(null); router.refresh(); }} />
+      ) : null}
     </li>
   );
 }

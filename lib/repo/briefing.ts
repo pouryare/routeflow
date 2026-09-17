@@ -14,7 +14,7 @@ export interface BriefingItem {
   sub?: string;
   href?: string;
   tone?: "good" | "warn" | "crit" | "info";
-  action?: { kind: "task_outcome"; task_id: number } | { kind: "link"; href: string };
+  action?: { kind: "task_outcome"; task_id: number; customer_id?: number } | { kind: "link"; href: string };
 }
 export interface BriefingPanel {
   key: string;
@@ -58,7 +58,9 @@ export function todayFor(session: Session): Briefing {
         tasks.map((t) => ({
           label: t.title,
           sub: t.priority,
-          action: { kind: "task_outcome", task_id: t.id },
+          action: t.entity_type === "customer" && t.entity_id
+            ? { kind: "task_outcome", task_id: t.id, customer_id: t.entity_id }
+            : { kind: "task_outcome", task_id: t.id },
         }))
       )
     );
