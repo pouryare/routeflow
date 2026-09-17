@@ -13,7 +13,7 @@ export interface ContactRow {
 }
 export interface Profile {
   business: BusinessRow & {
-    secondary_phone: string | null; whatsapp: string | null; website: string | null;
+    secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
     temperature_manual: number;
   };
   contacts: ContactRow[]; summary: CustomerSummary | null;
@@ -25,9 +25,9 @@ export function profileFor(session: Session, id: number): Profile | null {
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = db.prepare(`SELECT secondary_phone, whatsapp, website, COALESCE(temperature_manual, 0) AS temperature_manual
+  const extra = db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, COALESCE(temperature_manual, 0) AS temperature_manual
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
-      secondary_phone: string | null; whatsapp: string | null; website: string | null; temperature_manual: number;
+      secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null; temperature_manual: number;
     };
   const contacts = plain(db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
     FROM contacts WHERE customer_id = ? AND organization_id = ? AND active = 1 ORDER BY is_primary DESC, id`).all(id, org)) as unknown as ContactRow[];

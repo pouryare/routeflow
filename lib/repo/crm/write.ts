@@ -9,6 +9,7 @@ import { recomputeState } from "./state";
 import { resolveDue } from "@/lib/crm/due";
 import { nextOpenAt, parseHours } from "@/lib/crm/hours";
 import { normPhone } from "@/lib/crm/phone";
+import { normInstagram } from "@/lib/crm/social";
 import { customerTypeFor, isDecider, isInvalid, type Verification } from "@/lib/crm/vocab";
 import { FlowError, interpolate, replayAnswers } from "@/lib/crm/flows/machine";
 import type { FlowAnswer, FlowConfig, FlowContext, FlowSet, FlowState } from "@/lib/crm/flows/types";
@@ -247,6 +248,14 @@ export function createLead(session: Session, input: { answers: FlowAnswer[]; cli
   if (!pin) throw new CrmError(422, "مکان کسب‌وکار لازم است");
   const phone = normPhone(basics?.phone);
   if (basics?.phone?.trim() && !phone) throw new CrmError(400, "شماره تلفن معتبر نیست");
+  const instagram = normInstagram(basics?.instagram);
+  if (basics?.instagram?.trim() && !instagram) throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
+  if (instagram) {
+    // A chain's branches often share one page, so a declared branch passes here too.
+    const igMatches = findDuplicates(session, { instagram }).filter((m) => m.kind === "instagram");
+    const branchOk = basics?.branch_of != null && igMatches.some((m) => m.reachable && m.id === basics.branch_of);
+    if (igMatches.length && !branchOk) throw new CrmError(409, "این صفحهٔ اینستاگرام قبلاً ثبت شده است", { matches: igMatches });
+  }
   if (phone) {
     const matches = findDuplicates(session, { phone }).filter((m) => m.kind === "phone");
     const branchOk = basics?.branch_of != null && matches.some((m) => m.reachable && m.id === basics.branch_of);
@@ -278,12 +287,12 @@ export function createLead(session: Session, input: { answers: FlowAnswer[]; cli
   try {
     const code = `CRM-${at.slice(0, 10).replace(/-/g, "")}-${Math.random().toString(36).slice(2, 8)}`;
     id = Number(db.prepare(`INSERT INTO customers
-        (customer_code, business_name, phone, phone_norm, address, area_label, lat, lng, location_precision, district_id, maps_url,
+        (customer_code, business_name, phone, phone_norm, instagram, address, area_label, lat, lng, location_precision, district_id, maps_url,
          source_code, source_detail, source_url, referred_by_customer_id, parent_customer_id, business_type, customer_type, price_tier,
          working_hours_json, owner_user_id, group_id, lifecycle, verification, contact_status, sales_stage, temperature, client_uuid,
          synced_at, organization_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?)`)
-      .run(code, name, phone ? `0${phone}` : null, phone, pin.address ?? link?.address ?? null, area, pin.lat, pin.lng, pin.precision,
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'lead', ?, 'not_contacted', 'unknown', 'cold', ?, ?, ?)`)
+      .run(code, name, phone ? `0${phone}` : null, phone, instagram, pin.address ?? link?.address ?? null, area, pin.lat, pin.lng, pin.precision,
         districtId, link?.maps_url ?? null, acc.source ?? "OTHER", st.values.source_detail?.trim() || null, link?.maps_url ?? null,
         referred, basics?.branch_of ?? null, businessType, customerTypeFor(businessType), acc.price_tier ?? "unknown",
         hours.length ? JSON.stringify(hours) : null, owner, groupId, verification, input.clientUuid ?? null, at, org).lastInsertRowid);

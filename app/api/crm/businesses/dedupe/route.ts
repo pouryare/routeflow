@@ -8,5 +8,5 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const num = (k: string) => (sp.get(k) !== null && Number.isFinite(Number(sp.get(k))) ? Number(sp.get(k)) : null);
-  return NextResponse.json({ ok: true, matches: findDuplicates(guard.session, { phone: sp.get("phone"), name: sp.get("name"), lat: num("lat"), lng: num("lng") }) });
+  return NextResponse.json({ ok: true, matches: findDuplicates(guard.session, { phone: sp.get("phone"), instagram: sp.get("instagram"), name: sp.get("name"), lat: num("lat"), lng: num("lng") }) });
 }

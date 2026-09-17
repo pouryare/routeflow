@@ -1,9 +1,11 @@
 import { getDb } from "@/lib/db";
 import { canWriteBusiness, type Session } from "@/lib/session";
 import { normPhone } from "@/lib/crm/phone";
+import { normInstagram } from "@/lib/crm/social";
 import { BUSINESS_TYPES, PRICE_TIERS, isOneOf, customerTypeFor } from "@/lib/crm/vocab";
 import { isWorkingHours } from "@/lib/crm/hours";
 import { getBusiness } from "./businesses";
+import { findDuplicates } from "./dedupe";
 import { CrmError } from "./write";
 import { recomputeState } from "./state";
 
@@ -21,7 +23,7 @@ function correction(session: Session, id: number, org: number, note: string, ver
 export function updateBusinessFields(session: Session, id: number, raw: unknown): void {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new CrmError(400, "اطلاعات نامعتبر است");
   const input = raw as Record<string, unknown>;
-  const allowed = ["business_name", "phone", "address", "area_label", "business_type", "price_tier", "working_hours", "website"];
+  const allowed = ["business_name", "phone", "address", "area_label", "business_type", "price_tier", "working_hours", "website", "instagram"];
   if (!Object.keys(input).length || Object.keys(input).some(k => !allowed.includes(k))) throw new CrmError(400, "فیلد نامعتبر است");
   const values: Record<string, string | number | null> = {};
   for (const key of ["business_name", "address", "area_label", "website"] as const) {
@@ -41,6 +43,17 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
     const p = typeof v === "string" && v.trim() ? normPhone(v) : null;
     if (typeof v === "string" && v.trim() && !p) throw new CrmError(400, "شماره تلفن معتبر نیست");
     values.phone = p ? `0${p}` : null; values.phone_norm = p;
+  }
+  if ("instagram" in input) {
+    const v = input.instagram;
+    if (v !== null && typeof v !== "string") throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
+    const h = typeof v === "string" && v.trim() ? normInstagram(v) : null;
+    if (typeof v === "string" && v.trim() && !h) throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
+    if (h) {
+      const others = findDuplicates(session, { instagram: h }).filter((m) => m.kind === "instagram" && m.id !== id);
+      if (others.length) throw new CrmError(409, "این صفحهٔ اینستاگرام مال کسب‌وکار دیگری است", { matches: others });
+    }
+    values.instagram = h;
   }
   if ("business_type" in input) {
     if (!isOneOf(BUSINESS_TYPES, input.business_type)) throw new CrmError(400, "نوع کسب‌وکار نامعتبر است");

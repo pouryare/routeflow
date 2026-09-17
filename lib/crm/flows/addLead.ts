@@ -6,7 +6,7 @@ import {
 import { SKIP_STEP, TOMORROW_10 } from "./common";
 import type { FlowConfig, FlowContext, FlowOption, FlowSet } from "./types";
 
-export interface BasicsValue { name: string; phone: string | null; branch_of: number | null }
+export interface BasicsValue { name: string; phone: string | null; branch_of: number | null; instagram: string | null }
 export interface PinValue { lat: number; lng: number; precision: "exact" | "approx"; address?: string | null }
 export interface LinkValue { name: string | null; lat: number | null; lng: number | null; address: string | null; maps_url: string }
 
@@ -20,7 +20,7 @@ const inIran = (lat: unknown, lng: unknown): boolean =>
 
 export function basicsOf(values: Record<string, string>): BasicsValue | null {
   const b = parse<BasicsValue>(values.basics);
-  return b && typeof b.name === "string" ? { name: b.name, phone: b.phone ?? null, branch_of: b.branch_of ?? null } : null;
+  return b && typeof b.name === "string" ? { name: b.name, phone: b.phone ?? null, branch_of: b.branch_of ?? null, instagram: b.instagram ?? null } : null;
 }
 export function linkOf(values: Record<string, string>): LinkValue | null {
   const l = parse<LinkValue>(values.link);
