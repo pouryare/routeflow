@@ -24,20 +24,22 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
   const lng = pin?.lng ?? null;
   const [name, setName] = useState(prior?.name ?? link?.name ?? "");
   const [phone, setPhone] = useState(prior?.phone ?? prefillPhone ?? "");
+  const [instagram, setInstagram] = useState(prior?.instagram ?? (link && /instagram\.com\//.test(link.maps_url) ? link.maps_url : ""));
   const [branchOf, setBranchOf] = useState<number | null>(prior?.branch_of ?? null);
   const [matches, setMatches] = useState<DupMatch[]>([]);
   const [phoneTouched, setPhoneTouched] = useState(false);
   const [checkedKey, setCheckedKey] = useState("");
   const [checkFailed, setCheckFailed] = useState(false);
 
-  const emptyKey = !phone.trim() && !name.trim() && lat === null;
-  const queryKey = emptyKey ? "" : `${phone.trim()}|${name.trim()}|${lat ?? ""},${lng ?? ""}`;
+  const emptyKey = !phone.trim() && !name.trim() && !instagram.trim() && lat === null;
+  const queryKey = emptyKey ? "" : `${phone.trim()}|${instagram.trim()}|${name.trim()}|${lat ?? ""},${lng ?? ""}`;
   useEffect(() => {
     if (emptyKey) return;
     let cancelled = false;
     const t = window.setTimeout(async () => {
       const qs = new URLSearchParams();
       if (phone.trim()) qs.set("phone", phone.trim());
+      if (instagram.trim()) qs.set("instagram", instagram.trim());
       if (name.trim()) qs.set("name", name.trim());
       if (lat !== null && lng !== null) { qs.set("lat", String(lat)); qs.set("lng", String(lng)); }
       const j = (await fetch(`/api/crm/businesses/dedupe?${qs}`).then((r) => r.json()).catch(() => null)) as { ok?: boolean; matches?: DupMatch[] } | null;
@@ -46,14 +48,14 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
       else setCheckFailed(true);
     }, 400);
     return () => { cancelled = true; window.clearTimeout(t); };
-  }, [emptyKey, queryKey, phone, name, lat, lng]);
+  }, [emptyKey, queryKey, phone, name, instagram, lat, lng]);
   // Derived, not set: an empty query shows no results, and results from a previous query
   // stay hidden (and non-blocking) while the new check is in flight.
   const checkPending = !emptyKey && checkedKey !== queryKey;
   const checkFailedShown = !emptyKey && checkFailed;
 
   const shown = emptyKey || checkPending ? [] : matches;
-  const phoneHits = shown.filter((m) => m.kind === "phone");
+  const phoneHits = shown.filter((m) => m.kind === "phone" || m.kind === "instagram");
   const nameHits = shown.filter((m) => m.kind === "name");
   const branchOk = branchOf !== null && phoneHits.some((m) => m.reachable && m.id === branchOf);
   const invalid = phoneTouched && !!phone.trim() && !normPhone(phone);
@@ -74,6 +76,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
         placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel"
         aria-invalid={invalid} aria-describedby={invalid ? "lead-phone-error" : undefined} />
       {invalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
+      <input className="tf-input ltr" value={instagram} onChange={(e) => { setInstagram(e.target.value); setBranchOf(null); }} placeholder="اینستاگرام: ‎@page (اختیاری)" aria-label="صفحهٔ اینستاگرام" inputMode="url" autoCapitalize="none" />
       {checkFailedShown ? (
         <div className="tf-card block">
           <b>بررسی تکراری‌بودن انجام نشد</b>
@@ -87,12 +90,12 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
             <div key={i} className="tf-card ok">به‌عنوان شعبهٔ دیگرِ «{m.name}» ثبت می‌شود.</div>
           ) : (
             <div key={i} className="tf-card block">
-              <b>این شماره مال «{m.name}» است</b>
+              <b>{m.kind === "phone" ? "این شماره" : "این صفحهٔ اینستاگرام"} مال «{m.name}» است</b>
               <span>{[m.area, m.owner_name && `مسئول: ${m.owner_name}`].filter(Boolean).join(" · ")}</span>
               <div className="acts">
                 <button type="button" className="btn solid" onClick={() => onOpenExisting(m.id!)}>باز کردن همان</button>
                 <button type="button" className="btn ghost" onClick={() => setBranchOf(m.id)}>شعبهٔ دیگری است</button>
-                <button type="button" className="btn ghost" onClick={() => setPhone("")}>شماره را اصلاح کنم</button>
+                <button type="button" className="btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>{m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
               </div>
             </div>
           )
@@ -101,8 +104,8 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
             <b>این کسب‌وکار قبلاً ثبت شده</b>
             <span>{[m.owner_name && `مسئول: ${m.owner_name}`, m.area].filter(Boolean).join(" · ")}</span>
             <div className="acts">
-              <button type="button" className="btn solid" onClick={() => void request()}>درخواست واگذاری</button>
-              <button type="button" className="btn ghost" onClick={() => setPhone("")}>شماره را اصلاح کنم</button>
+              {m.kind === "phone" && <button type="button" className="btn solid" onClick={() => void request()}>درخواست واگذاری</button>}
+              <button type="button" className="btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>{m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
             </div>
           </div>
         )
@@ -115,7 +118,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
         </div>
       ))}
       <button type="button" className="tf-go" disabled={name.trim().length < 2 || blocked}
-        onClick={() => api.submit("ok", JSON.stringify({ name: name.trim(), phone: phone.trim() || null, branch_of: branchOk ? branchOf : null }))}>
+        onClick={() => api.submit("ok", JSON.stringify({ name: name.trim(), phone: phone.trim() || null, instagram: instagram.trim() || null, branch_of: branchOk ? branchOf : null }))}>
         ادامه
       </button>
     </>
