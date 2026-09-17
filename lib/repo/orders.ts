@@ -9,6 +9,7 @@ import {
   type OrderEffect,
 } from "@/lib/orderStateMachine";
 import { reserveForOrder, releaseForOrder, consumeForOrder } from "./stock";
+import { convertOnDelivery } from "./crm/conversion";
 import { tryEmitEvent } from "./events";
 
 /** A refusal the caller shows the user, not a bug. */
@@ -196,6 +197,10 @@ export function advanceOrder(
     conn
       .prepare("UPDATE orders SET status = ?, updated_at = ? WHERE id = ? AND organization_id = ?")
       .run(t.to, new Date().toISOString(), orderId, organizationId);
+
+    if (t.to === "DELIVERED" || t.to === "PARTIALLY_DELIVERED") {
+      convertOnDelivery(conn, organizationId, orderId, actor.id);
+    }
 
     appendOrderEvent(conn, {
       organization_id: organizationId,

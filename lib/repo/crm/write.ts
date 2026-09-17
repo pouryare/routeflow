@@ -5,8 +5,7 @@ import { createTask } from "@/lib/repo/tasks";
 import { emitEvent, type EventInput } from "@/lib/repo/events";
 import { districtIdForPoint, groupForPoint } from "@/lib/groups";
 import { OUTCOMES, type OutcomeCode } from "@/lib/crm/outcomes";
-import { replayCrmState } from "@/lib/crm/replay";
-import { lifecycleFor } from "@/lib/crm/stage";
+import { recomputeState } from "./state";
 import { resolveDue } from "@/lib/crm/due";
 import { nextOpenAt, parseHours } from "@/lib/crm/hours";
 import { normPhone } from "@/lib/crm/phone";
@@ -16,7 +15,6 @@ import type { FlowAnswer, FlowConfig, FlowContext, FlowSet, FlowState } from "@/
 import { afterCallFlow } from "@/lib/crm/flows/afterCall";
 import { addLeadFlow, basicsOf, hoursOf, linkOf, pinOf, type PinValue } from "@/lib/crm/flows/addLead";
 import type { CustomerLifecycle } from "@/lib/types";
-import { ACTIVITY_FACT_COLUMNS } from "./migrate";
 import { addLeadContext, flowContextFor, getBusiness } from "./businesses";
 import { findDuplicates } from "./dedupe";
 
@@ -66,18 +64,6 @@ function insertActivity(db: DatabaseSync, org: number, a: ActivityInsert): numbe
       a.note ?? null, a.answers === undefined ? null : JSON.stringify(a.answers), a.contact_status_to ?? null, a.stage_to ?? null,
       a.verification_to ?? null, a.signal ?? null, a.attempt ? 1 : 0, a.miss ? 1 : 0, a.talked ? 1 : 0,
       a.completedTaskId ?? null, a.nextTaskId ?? null, a.clientUuid ?? null, a.at, new Date().toISOString()).lastInsertRowid);
-}
-
-/** Rebuild the cached columns from the activities -- the replay guarantee (spec D9). */
-export function recomputeState(db: DatabaseSync, customerId: number): void {
-  const acts = db.prepare(`SELECT ${ACTIVITY_FACT_COLUMNS} FROM activities WHERE customer_id = ? ORDER BY occurred_at, id`).all(customerId) as never[];
-  const s = replayCrmState(acts);
-  const c = db.prepare("SELECT lifecycle, COALESCE(temperature_manual, 0) AS manual, temperature FROM customers WHERE id = ?").get(customerId) as
-    { lifecycle: CustomerLifecycle; manual: number; temperature: string | null };
-  db.prepare(`UPDATE customers SET contact_status = ?, sales_stage = ?, verification = ?, temperature = ?, attempt_count = ?,
-                consecutive_misses = ?, last_activity_at = ?, last_contacted_at = ?, lifecycle = ? WHERE id = ?`)
-    .run(s.contact_status, s.sales_stage, s.verification, c.manual ? c.temperature : s.temperature, s.attempt_count,
-      s.consecutive_misses, s.last_activity_at, s.last_contacted_at, lifecycleFor(s.sales_stage, c.lifecycle), customerId);
 }
 
 function setLocation(db: DatabaseSync, id: number, lat: number, lng: number, precision: "exact" | "approx"): void {
