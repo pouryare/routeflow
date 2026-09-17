@@ -1,4 +1,5 @@
 import type { DueSpec } from "../due";
+import type { SizeBand, SupplyChannel, VisitWindow } from "../intel";
 import type { OutcomeCode } from "../outcomes";
 import type {
   BusinessType, ContactRole, LeadSource, LostReason, NextKind, NotFitReason, PriceTier, SkipReason, Verification,
@@ -34,6 +35,9 @@ export interface FlowSet {
   open_order?: boolean;
   spawn_lead?: boolean;
   handoff?: "talked_now";
+  size_band?: SizeBand;
+  supply_channel?: SupplyChannel;
+  visit_window?: VisitWindow;
 }
 
 export interface FlowProgress { acc: FlowSet; values: Record<string, string> }

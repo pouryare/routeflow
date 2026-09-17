@@ -1,0 +1,9 @@
+export const SIZE_BANDS = ["small", "medium", "large", "takeaway", "unknown"] as const;
+export type SizeBand = (typeof SIZE_BANDS)[number];
+export const SIZE_BAND_LABEL: Record<SizeBand, string> = { small: "کوچک", medium: "متوسط", large: "بزرگ", takeaway: "فقط بیرون‌بر", unknown: "نمی‌دانم" };
+export const SUPPLY_CHANNELS = ["factory", "distributor", "wholesale", "retail", "unknown"] as const;
+export type SupplyChannel = (typeof SUPPLY_CHANNELS)[number];
+export const SUPPLY_CHANNEL_LABEL: Record<SupplyChannel, string> = { factory: "مستقیم از کارخانه", distributor: "پخش‌کننده", wholesale: "بنکدار", retail: "سوپرمارکت / خرده‌فروشی", unknown: "نمی‌دانم" };
+export const VISIT_WINDOWS = ["morning", "afternoon", "evening", "any", "unknown"] as const;
+export type VisitWindow = (typeof VISIT_WINDOWS)[number];
+export const VISIT_WINDOW_LABEL: Record<VisitWindow, string> = { morning: "صبح، پیش از ناهار", afternoon: "بعدازظهر · ۱۵ تا ۱۸", evening: "شب، پس از شام", any: "فرقی نمی‌کند", unknown: "نمی‌دانم" };

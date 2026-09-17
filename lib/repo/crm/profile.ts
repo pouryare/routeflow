@@ -5,7 +5,7 @@ import { ORDER_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { outcomeLabel, taskKindLabel } from "@/lib/tasks/labels";
 import { faToman } from "@/lib/format";
 import { activityLine, compareTimeline, decodeTimelineCursor, encodeTimelineCursor, type TimelineItem, type TimelineKind } from "@/lib/crm/timeline";
-import { addLeadContext, getBusiness, type BusinessRow } from "./businesses";
+import { addLeadContext, getBusiness, productsWithPrice, type BusinessRow } from "./businesses";
 
 export interface ContactRow {
   id: number; name: string | null; role: string; phone_norm: string | null; whatsapp: string | null;
@@ -15,7 +15,11 @@ export interface Profile {
   business: BusinessRow & {
     secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
     temperature_manual: number;
+    size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
+    uses_products_json: string | null;
   };
+  tags: string[];
+  products: { id: number; name: string; price_toman: number | null }[];
   contacts: ContactRow[]; summary: CustomerSummary | null;
   reps: { id: number; name: string }[]; canWrite: boolean; canManage: boolean;
 }
@@ -25,15 +29,20 @@ export function profileFor(session: Session, id: number): Profile | null {
   if (!business) return null;
   const db = getDb();
   const org = business.organization_id;
-  const extra = db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, COALESCE(temperature_manual, 0) AS temperature_manual
+  const extra = db.prepare(`SELECT secondary_phone, whatsapp, website, instagram, size_band, supply_channel, visit_window, visit_note, uses_products_json, COALESCE(temperature_manual, 0) AS temperature_manual
     FROM customers WHERE id = ? AND organization_id = ?`).get(id, org) as {
-      secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null; temperature_manual: number;
+      secondary_phone: string | null; whatsapp: string | null; website: string | null; instagram: string | null;
+      size_band: string | null; supply_channel: string | null; visit_window: string | null; visit_note: string | null;
+      uses_products_json: string | null; temperature_manual: number;
     };
+  const tags = (plain(db.prepare("SELECT tag FROM customer_tags WHERE customer_id = ? AND organization_id = ? ORDER BY tag").all(id, org)) as { tag: string }[]).map(t => t.tag);
   const contacts = plain(db.prepare(`SELECT id, name, role, phone_norm, whatsapp, is_primary, is_decider, best_time, note
     FROM contacts WHERE customer_id = ? AND organization_id = ? AND active = 1 ORDER BY is_primary DESC, id`).all(id, org)) as unknown as ContactRow[];
   const manager = isCrmManager(session.role);
   return structuredClone({
     business: { ...business, ...extra },
+    tags,
+    products: productsWithPrice(business.organization_id),
     contacts, summary: readCustomerSummary(db, orderFilter(session), id),
     reps: manager ? addLeadContext(session).reps.map(r => ({ id: r.id, name: r.name })) : [],
     canWrite: canWriteBusiness(session, business), canManage: manager,
