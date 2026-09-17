@@ -5,10 +5,14 @@ import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 import { useToast } from "@/components/ToastProvider";
 import { basicsOf, linkOf, pinOf } from "@/lib/crm/flows/addLead";
 import { FOOD_APP_SOURCES, faDigits } from "@/lib/crm/vocab";
-import { normPhone } from "@/lib/crm/phone";
+import { normPhone, sanitizePhoneInput } from "@/lib/crm/phone";
 import type { DupMatch } from "@/lib/repo/crm/dedupe";
 
-/** Name + phone, with the duplicate check running as the rep types (spec D7). */
+/** Name + phone, with the duplicate check running as the rep types (spec D7).
+ *  Phone UX: letters/other symbols are removed as they are typed or pasted, the red error
+ *  waits for blur so an unfinished number is never flagged mid-entry, and Continue stays
+ *  disabled until the duplicate check for the CURRENT input resolves — a failed lookup
+ *  shows a retry card instead of silently passing. */
 export default function BasicsStep({ api, prefillPhone, onOpenExisting, onRequested }: {
   api: CustomStepApi; prefillPhone?: string | null; onOpenExisting: (id: number) => void; onRequested: () => void;
 }) {
@@ -22,25 +26,38 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
   const [phone, setPhone] = useState(prior?.phone ?? prefillPhone ?? "");
   const [branchOf, setBranchOf] = useState<number | null>(prior?.branch_of ?? null);
   const [matches, setMatches] = useState<DupMatch[]>([]);
+  const [phoneTouched, setPhoneTouched] = useState(false);
+  const [checkedKey, setCheckedKey] = useState("");
+  const [checkFailed, setCheckFailed] = useState(false);
 
+  const emptyKey = !phone.trim() && !name.trim() && lat === null;
+  const queryKey = emptyKey ? "" : `${phone.trim()}|${name.trim()}|${lat ?? ""},${lng ?? ""}`;
   useEffect(() => {
+    if (emptyKey) return;
+    let cancelled = false;
     const t = window.setTimeout(async () => {
       const qs = new URLSearchParams();
       if (phone.trim()) qs.set("phone", phone.trim());
       if (name.trim()) qs.set("name", name.trim());
       if (lat !== null && lng !== null) { qs.set("lat", String(lat)); qs.set("lng", String(lng)); }
-      if (!qs.has("phone") && !qs.has("name")) { setMatches([]); return; }
       const j = (await fetch(`/api/crm/businesses/dedupe?${qs}`).then((r) => r.json()).catch(() => null)) as { ok?: boolean; matches?: DupMatch[] } | null;
-      if (j?.ok) setMatches(j.matches ?? []);
+      if (cancelled) return;
+      if (j?.ok) { setMatches(j.matches ?? []); setCheckedKey(queryKey); setCheckFailed(false); }
+      else setCheckFailed(true);
     }, 400);
-    return () => window.clearTimeout(t);
-  }, [name, phone, lat, lng]);
+    return () => { cancelled = true; window.clearTimeout(t); };
+  }, [emptyKey, queryKey, phone, name, lat, lng]);
+  // Derived, not set: an empty query shows no results, and results from a previous query
+  // stay hidden (and non-blocking) while the new check is in flight.
+  const checkPending = !emptyKey && checkedKey !== queryKey;
+  const checkFailedShown = !emptyKey && checkFailed;
 
-  const phoneHits = matches.filter((m) => m.kind === "phone");
-  const nameHits = matches.filter((m) => m.kind === "name");
+  const shown = emptyKey || checkPending ? [] : matches;
+  const phoneHits = shown.filter((m) => m.kind === "phone");
+  const nameHits = shown.filter((m) => m.kind === "name");
   const branchOk = branchOf !== null && phoneHits.some((m) => m.reachable && m.id === branchOf);
-  const phoneInvalid = !!phone.trim() && !normPhone(phone);
-  const blocked = (phoneHits.length > 0 && !branchOk) || phoneInvalid;
+  const invalid = phoneTouched && !!phone.trim() && !normPhone(phone);
+  const blocked = (phoneHits.length > 0 && !branchOk) || invalid || checkPending || checkFailedShown;
   const request = async () => {
     const res = await fetch("/api/crm/reassign-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) });
     toast(res.ok ? "درخواست واگذاری برای مدیرتان فرستاده شد" : "درخواست فرستاده نشد", res.ok ? "success" : "error");
@@ -51,8 +68,19 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
   return (
     <>
       <input className="tf-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="نام کسب‌وکار" aria-label="نام کسب‌وکار" autoFocus={!name} />
-      <input className="tf-input ltr" value={phone} onChange={(e) => { setPhone(e.target.value); setBranchOf(null); }} placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel" aria-invalid={phoneInvalid} aria-describedby={phoneInvalid ? "lead-phone-error" : undefined} />
-      {phoneInvalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
+      <input className="tf-input ltr" value={phone}
+        onChange={(e) => { setPhone(sanitizePhoneInput(e.target.value)); setBranchOf(null); }}
+        onBlur={() => setPhoneTouched(true)}
+        placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel"
+        aria-invalid={invalid} aria-describedby={invalid ? "lead-phone-error" : undefined} />
+      {invalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
+      {checkFailedShown ? (
+        <div className="tf-card block">
+          <b>بررسی تکراری‌بودن انجام نشد</b>
+          <span>اتصال برقرار نشد؛ پیش از ذخیره دوباره بررسی کنید.</span>
+          <div className="acts"><button type="button" className="btn ghost" onClick={() => setCheckFailed(false)}>بررسی دوباره</button></div>
+        </div>
+      ) : null}
       {phoneHits.map((m, i) =>
         m.reachable ? (
           branchOk && m.id === branchOf ? (

@@ -1,5 +1,16 @@
 import { normalisePersian } from "@/lib/persian";
 
+/** Validity mirrors normPhone's contract; incomplete input is not yet an error. */
+const PHONE_ALLOWED = /^\+?[\d\s()+-]*$/;
+
+/** Whatever a phone keyboard offers: digits (Iranian or Latin), +, space and separators.
+ *  Letters and other symbols never reach the field, so normPhone's letters-rejected
+ *  contract can't break and the rep never has to find the character to delete. */
+export function sanitizePhoneInput(raw: string): string {
+  const text = normalisePersian(raw);
+  return PHONE_ALLOWED.test(text) ? text : Array.from(text).filter((c) => PHONE_ALLOWED.test(c)).join("");
+}
+
 /** Validate Iranian phones before normalizing; never strip letters or truncate digits. */
 export function normPhone(raw: string | null | undefined): string | null {
   if (typeof raw !== "string" || !raw.trim()) return null;
