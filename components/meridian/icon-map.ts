@@ -8,7 +8,7 @@ import {
   ArrowUpRight, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, ArrowLeftRight,
   RotateCcw, Layers, Camera, FileText, Waypoints, ClipboardList,
   Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
-  List, LayoutGrid, Repeat, PanelBottom, PanelRight,
+  List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone,
   type LucideIcon,
 } from "lucide-react";
 
@@ -27,6 +27,7 @@ export const ICONS = {
   "map-pin": MapPin,
   bell: Bell,
   user: User,
+  phone: Phone,
   info: Info,
   search: Search,
   "chevron-left": ChevronLeft,

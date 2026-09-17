@@ -4,8 +4,10 @@
  *  of how long the mutation is still yours to take back with a local delete rather than a
  *  compensating write. One constant so the visible bar and the invisible hold cannot
  *  drift apart -- see docs/crm-erp-plan.md 4.6.
+ *
+ *  5 s, one undo window for the whole app (decided 2026-09-11, docs/tap-flow-principles.md §6.6).
  */
-export const OUTBOX_HOLD_MS = 9000;
+export const OUTBOX_HOLD_MS = 5000;
 
 /** Sync cadence while online. */
 export const SYNC_INTERVAL_MS = 30_000;

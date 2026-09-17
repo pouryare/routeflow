@@ -71,3 +71,16 @@ describe("CRM phone and name normalization", () => {
     expect(namesAlike("!!!", "؟")).toBe(false);
   });
 });
+
+import { TASK_KIND_LABEL, OUTCOME_LABEL } from "@/lib/tasks/labels";
+import { NEXT_KINDS } from "@/lib/crm/vocab";
+import { OUTCOME_CODES } from "@/lib/crm/outcomes";
+import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
+
+describe("labels the CRM relies on", () => {
+  it("labels every next-action kind and every outcome", () => {
+    for (const k of NEXT_KINDS) expect((TASK_KIND_LABEL as Record<string, string>)[k], k).toBeTruthy();
+    for (const c of OUTCOME_CODES) expect(OUTCOME_LABEL[c], c).toBeTruthy();
+  });
+  it("holds an undo for five seconds", () => expect(OUTBOX_HOLD_MS).toBe(5000));
+});
