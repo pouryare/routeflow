@@ -4426,3 +4426,53 @@ body {
   --map-unknown: #646974;
 }
 /* ACCENT-THEMES:END */
+/* ---- 8b · tap flows (docs/tap-flow-principles.md) — lives inside .sheet ---------- */
+.meridian .tapflow { display: grid; gap: 12px; padding: 4px 20px 24px; }
+.meridian .tapflow .tf-nav { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
+.meridian .tapflow .tf-back { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 4px 0; }
+.meridian .tapflow .tf-steps { display: flex; gap: 4px; }
+.meridian .tapflow .tf-steps i { width: 18px; height: 4px; border-radius: 999px; background: var(--line-2); }
+.meridian .tapflow .tf-steps i.on { background: var(--accent); }
+.meridian .tapflow .tf-q { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
+.meridian .tapflow .tf-sub { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
+.meridian .tapflow .tf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.meridian .tapflow .tf-grid.one { grid-template-columns: 1fr; }
+.meridian .tapflow .tf-grid.three { grid-template-columns: repeat(3, 1fr); }
+.meridian .tapflow .tf-group { margin-bottom: -4px; font-size: 12px; color: var(--muted); }
+.meridian .tapflow .tf-opt {
+  min-height: 54px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: start;
+  padding: 12px; border-radius: var(--r-md); border: 1px solid var(--line); background: var(--card); color: var(--text);
+  font: inherit; font-size: 15px; font-weight: 500; cursor: pointer;
+  transition: border-color 160ms var(--ease), background 160ms var(--ease);
+}
+.meridian .tapflow .tf-grid.three .tf-opt { align-items: center; text-align: center; font-size: 14px; padding: 10px 6px; }
+.meridian .tapflow .tf-opt small { font-size: 12px; font-weight: 400; color: var(--muted); }
+.meridian .tapflow .tf-opt.rec { border-color: color-mix(in srgb, var(--accent) 55%, var(--line)); }
+.meridian .tapflow .tf-opt.rec small { color: var(--accent); }
+.meridian .tapflow .tf-opt.on { border-color: var(--accent); background: var(--accent-soft); }
+.meridian .tapflow .tf-opt.bad { color: var(--crit); }
+.meridian .tapflow .tf-opt:disabled { opacity: .45; cursor: not-allowed; }
+.meridian .tapflow button:focus-visible, .meridian .tapflow input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .tapflow .tf-input {
+  width: 100%; padding: 13px 14px; border-radius: var(--r-md); border: 1px solid var(--line);
+  background: var(--card-2); color: var(--text); font: inherit; font-size: 16px;
+}
+.meridian .tapflow .tf-input.ltr { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; }
+.meridian .tapflow .tf-go {
+  width: 100%; padding: 14px; border: 0; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-size: 16px; font-weight: 700; cursor: pointer;
+}
+.meridian .tapflow .tf-go:disabled { opacity: .4; cursor: not-allowed; }
+.meridian .tapflow .tf-skip { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 6px; justify-self: center; }
+.meridian .tapflow .tf-card { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-md); font-size: 13.5px; }
+.meridian .tapflow .tf-card.block { background: var(--crit-soft); border: 1px solid color-mix(in srgb, var(--crit) 40%, transparent); }
+.meridian .tapflow .tf-card.warn { background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }
+.meridian .tapflow .tf-card.ok { color: var(--good); font-size: 12.5px; padding: 0; }
+.meridian .tapflow .tf-card .acts { display: flex; flex-wrap: wrap; gap: 6px; }
+.meridian .tapflow .tf-done { display: grid; justify-items: center; gap: 12px; padding: 18px 0 8px; text-align: center; }
+.meridian .tapflow .tf-tick { display: grid; place-items: center; width: 60px; height: 60px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.meridian .tapflow .tf-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; }
+.meridian .tapflow .tf-chips span { padding: 4px 10px; border-radius: 999px; background: var(--sunk); font-size: 12px; }
+.meridian .tapflow .tf-chips span.nx { background: var(--accent-soft); color: var(--accent); }
+.meridian .tapflow .tf-acts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; width: 100%; }
+@media (prefers-reduced-motion: reduce) { .meridian .tapflow .tf-opt { transition: none; } }
