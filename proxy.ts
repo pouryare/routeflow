@@ -165,7 +165,13 @@ export function proxy(req: NextRequest) {
   // must be able to push its outbox and pull its run. The routes scope by session.
   // Phase 7: the driver's briefing + their own task actions live off /driver.
   const isSync = pathname.startsWith("/api/sync");
+  const isCrm = pathname === "/crm" || pathname.startsWith("/crm/") || pathname.startsWith("/api/crm");
+  const isDriverVisits = pathname.startsWith("/api/crm/driver-visits");
+  if (isCrm && !isDriverVisits && claims.role === "driver") return deny("/driver");
+  if (isDriverVisits && claims.role !== "driver") return deny("/sales");
+
   const isDriverBriefing =
+    pathname.startsWith("/api/crm/driver-visits") ||
     pathname === "/today" ||
     pathname === "/api/today" ||
     pathname.startsWith("/api/tasks") ||

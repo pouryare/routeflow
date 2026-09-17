@@ -136,3 +136,15 @@ describe("a salesperson", () => {
     expect(proxy(req("/analytics", "group_manager")).status).toBe(200);
   });
 });
+
+describe("CRM", () => {
+  it("keeps drivers out of the CRM page and API, except their visits", () => {
+    expect(proxy(req("/crm", "driver")).status).toBe(307);
+    expect(proxy(req("/api/crm/businesses", "driver")).status).toBe(403);
+    expect(proxy(req("/api/crm/driver-visits", "driver")).status).toBe(200);
+  });
+  it("lets a salesperson in", () => {
+    expect(proxy(req("/crm", "salesperson")).status).toBe(200);
+    expect(proxy(req("/api/crm/businesses", "salesperson")).status).toBe(200);
+  });
+});
