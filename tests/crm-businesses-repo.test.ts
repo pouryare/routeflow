@@ -94,6 +94,22 @@ describe("getBusiness / contexts", () => {
 });
 
 describe("findDuplicates", () => {
+  it("normalizes Instagram queries and scopes and redacts matching businesses", () => {
+    db.prepare("UPDATE customers SET instagram = ? WHERE id = ?").run("kababi.hot", hotLead);
+    db.prepare("UPDATE customers SET instagram = ? WHERE id = ?").run("cafe.lamiz", bLead);
+    try {
+      expect(findDuplicates(A, { instagram: "https://www.instagram.com/Kababi.Hot/?hl=fa" })).toEqual([
+        expect.objectContaining({ kind: "instagram", reachable: true, id: hotLead, name: "کبابی داغ" }),
+      ]);
+      expect(findDuplicates(A, { instagram: "@Cafe.Lamiz" })).toEqual([
+        expect.objectContaining({ kind: "instagram", reachable: false, id: null, name: null }),
+      ]);
+      expect(findDuplicates({ ...A, organizationId: 999 }, { instagram: "kababi.hot" })).toEqual([]);
+      expect(findDuplicates(A, { phone: "09120001234", instagram: "kababi.hot" })).toHaveLength(1);
+    } finally {
+      db.prepare("UPDATE customers SET instagram = NULL WHERE id IN (?, ?)").run(hotLead, bLead);
+    }
+  });
   it("shows a reachable phone match in full and redacts one the caller cannot see", () => {
     expect(findDuplicates(A, { phone: "0912 000 1234" })).toEqual([
       expect.objectContaining({ kind: "phone", reachable: true, id: hotLead, name: "کبابی داغ" }),

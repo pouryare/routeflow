@@ -100,6 +100,7 @@ export function migrateCrm(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS ix_customers_phone_norm ON customers(organization_id, phone_norm);
     CREATE INDEX IF NOT EXISTS ix_customers_owner ON customers(organization_id, owner_user_id);
     CREATE INDEX IF NOT EXISTS ix_customers_next_task ON customers(next_task_id);
+    CREATE INDEX IF NOT EXISTS ix_customers_instagram ON customers(organization_id, instagram);
   `);
   backfillCrm(db);
 }
