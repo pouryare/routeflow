@@ -1,7 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
+import { useChoiceFeedback } from "@/components/tapflow/useChoiceFeedback";
 import { formatHours, WEEKDAY_LABEL, type HoursRange } from "@/lib/crm/hours";
 import { faDigits } from "@/lib/crm/vocab";
 
@@ -25,9 +27,18 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
   const [days, setDays] = useState<number[]>([]);
   const [from, setFrom] = useState<number | null>(null);
   const [ranges, setRanges] = useState<HoursRange[]>([]);
+  const feedback = useChoiceFeedback();
   const label = (t: string) => <p className="tf-group" style={{ fontSize: 14 }}>{t}</p>;
+  // stay chips keep their own on/off state (weekday multi-select); pick chips light up for
+  // the feedback beat, then run their onClick (state jump / next phase) after it.
   const chip = (key: string | number, text: string, on: boolean, onClick: () => void, cls = "") => (
-    <button key={key} type="button" className={`tf-opt ${cls}${on ? " on" : ""}`} aria-pressed={on} onClick={onClick}>{text}</button>
+    <button key={key} type="button" aria-pressed={on || feedback.selected === String(key)}
+      className={`tf-opt ${cls}${on ? " on" : ""}${!on && feedback.selected === String(key) ? " on" : ""}`}
+      disabled={feedback.selected !== null && feedback.selected !== String(key)}
+      onClick={() => (on ? onClick() : feedback.choose(String(key), onClick))}>
+      {text}
+      {feedback.selected === String(key) ? <span className="tick" aria-hidden><Icon name="check" size="sm" /></span> : null}
+    </button>
   );
 
   return (

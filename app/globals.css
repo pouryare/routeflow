@@ -4429,7 +4429,12 @@ body {
 /* ---- 8b · tap flows (docs/tap-flow-principles.md) — lives inside .sheet ---------- */
 .meridian .tapflow { display: grid; gap: 12px; padding: 4px 20px 24px; }
 .meridian .tapflow .tf-nav { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
-.meridian .tapflow .tf-back { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 4px 0; }
+.meridian .tapflow .tf-back {
+  border: 0; background: none; color: var(--muted); font: inherit; font-size: 14px; cursor: pointer;
+  padding: 10px 12px; margin: -10px -12px; min-height: 44px; min-width: 44px; display: inline-flex; align-items: center;
+  border-radius: 8px; touch-action: manipulation;
+}
+.meridian .tapflow .tf-back:active { background: var(--accent-soft); color: var(--text); }
 .meridian .tapflow .tf-steps { display: flex; gap: 4px; }
 .meridian .tapflow .tf-steps i { width: 18px; height: 4px; border-radius: 999px; background: var(--line-2); }
 .meridian .tapflow .tf-steps i.on { background: var(--accent); }
