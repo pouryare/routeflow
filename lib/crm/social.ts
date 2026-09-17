@@ -8,7 +8,7 @@ const RESERVED = new Set(["p", "reel", "reels", "stories", "explore", "tv", "acc
  *  1-30 of a-z 0-9 . _ ; URLs must be instagram.com pages (any subdomain, not a lookalike
  *  host or userinfo trick) and a post / reel / story path is not a page. */
 export function normInstagram(raw: string | null | undefined): string | null {
-  if (!raw) return null;
+  if (!raw || typeof raw !== "string") return null;
   const s0 = normalisePersian(raw).trim().toLowerCase();
   if (!s0) return null;
   let s = s0;
@@ -17,8 +17,9 @@ export function normInstagram(raw: string | null | undefined): string | null {
       const u = new URL(/^[a-z][a-z0-9+.-]*:\/\//.test(s) ? s : `https://${s}`);
       if (!/(^|\.)instagram\.com$/.test(u.hostname)) return null;
       const parts = u.pathname.split("/").filter(Boolean);
-      if (parts.some((p) => RESERVED.has(p))) return null;
-      s = parts[0] ?? "";
+      // A page URL is exactly one segment; extra segments are posts, tabs or junk.
+      if (parts.length !== 1 || parts.some((p) => RESERVED.has(p))) return null;
+      s = parts[0];
     } catch {
       return null;
     }

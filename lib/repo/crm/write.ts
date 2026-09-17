@@ -248,6 +248,7 @@ export function createLead(session: Session, input: { answers: FlowAnswer[]; cli
   if (!pin) throw new CrmError(422, "مکان کسب‌وکار لازم است");
   const phone = normPhone(basics?.phone);
   if (basics?.phone?.trim() && !phone) throw new CrmError(400, "شماره تلفن معتبر نیست");
+  if (basics?.instagram != null && typeof basics.instagram !== "string") throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
   const instagram = normInstagram(basics?.instagram);
   if (basics?.instagram?.trim() && !instagram) throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
   if (instagram) {

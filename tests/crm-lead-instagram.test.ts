@@ -19,7 +19,7 @@ const session: Session = { user: { id: uid } as Session["user"], role: "salesper
 afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(process.env.ROUTEFLOW_DB_PATH! + s, { force: true }); });
 
 const PIN = JSON.stringify({ lat: 35.7, lng: 51.4, precision: "approx" });
-const answersWith = (instagram: string) => [
+const answersWith = (instagram: unknown) => [
   { step: "src", option: "FIELD_VISIT" },
   { step: "here", option: "nothere" },
   { step: "basics", option: "ok", value: JSON.stringify({ name: "کافه اینستا", phone: "", instagram, branch_of: null }) },
@@ -40,12 +40,15 @@ describe("Instagram on the lead-save path", () => {
     const other = createLead(session, { answers: answersWith("cafe.lamiz") as never });
     expect(db.prepare("SELECT instagram FROM customers WHERE id = ?").get(other.id)).toEqual({ instagram: "cafe.lamiz" });
   });
+  it.each([42, {}, [], true].map(value => [value]))("rejects malformed Instagram input %j with 400", instagram => {
+    expect(() => createLead(session, { answers: answersWith(instagram) })).toThrow(expect.objectContaining({ status: 400 }));
+  });
   it("rejects a value that is not a page", () => {
     expect(() => createLead(session, { answers: answersWith("کافه لمیز") as never })).toThrow(expect.objectContaining({ status: 400 }));
   });
   it("edits the page on the profile and refuses one another business owns", () => {
-    const rows = db.prepare("SELECT id FROM customers ORDER BY id").all() as { id: number }[];
-    const [a, b] = rows;
+    const a = createLead(session, { answers: answersWith("edit.first") });
+    const b = createLead(session, { answers: answersWith("edit.second") });
     updateBusinessFields(session, a.id, { instagram: " https://instagram.com/lamiz.nayeb " });
     expect(profileFor(session, a.id)!.business.instagram).toBe("lamiz.nayeb");
     expect(() => updateBusinessFields(session, b.id, { instagram: "lamiz.nayeb" })).toThrow(expect.objectContaining({ status: 409 }));

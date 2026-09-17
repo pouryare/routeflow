@@ -49,10 +49,6 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
     if (v !== null && typeof v !== "string") throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
     const h = typeof v === "string" && v.trim() ? normInstagram(v) : null;
     if (typeof v === "string" && v.trim() && !h) throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
-    if (h) {
-      const others = findDuplicates(session, { instagram: h }).filter((m) => m.kind === "instagram" && m.id !== id);
-      if (others.length) throw new CrmError(409, "این صفحهٔ اینستاگرام مال کسب‌وکار دیگری است", { matches: others });
-    }
     values.instagram = h;
   }
   if ("business_type" in input) {
@@ -74,6 +70,10 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
     if (values.phone_norm && db.prepare(`SELECT id FROM customers WHERE organization_id = ? AND id <> ? AND merged_into_id IS NULL
       AND (phone_norm = ? OR id IN (SELECT customer_id FROM contacts WHERE organization_id = ? AND active = 1 AND phone_norm = ?)) LIMIT 1`)
       .get(org, id, values.phone_norm, org, values.phone_norm)) throw new CrmError(409, "این شماره مال کسب‌وکار دیگری است");
+    if (typeof values.instagram === "string" && values.instagram) {
+      const others = findDuplicates(session, { instagram: values.instagram }).filter(m => m.kind === "instagram" && m.id !== id);
+      if (others.length) throw new CrmError(409, "این صفحهٔ اینستاگرام مال کسب‌وکار دیگری است", { matches: others });
+    }
     if (session.role === "salesperson" && b.owner_user_id === null) values.owner_user_id = session.user.id;
     db.prepare(`UPDATE customers SET ${Object.keys(values).map(k => `${k} = ?`).join(",")} WHERE id = ? AND organization_id = ?`).run(...Object.values(values), id, org);
     correction(session, id, org, "اطلاعات کسب‌وکار اصلاح شد");
