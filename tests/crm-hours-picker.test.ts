@@ -8,7 +8,7 @@ import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 
 let root: Root;
 let host: HTMLDivElement;
-let submit: ReturnType<typeof vi.fn>;
+let submit: ReturnType<typeof vi.fn<CustomStepApi["submit"]>>;
 beforeEach(async () => {
   vi.useFakeTimers();
   vi.stubGlobal("IS_REACT_ACT_ENVIRONMENT", true);

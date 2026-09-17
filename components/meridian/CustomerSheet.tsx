@@ -70,6 +70,10 @@ export default function CustomerSheet({
         </div>
 
         <CustomerBento data={data} />
+        {customerId !== null && <div style={{ padding: "16px 24px", display: "flex", flexWrap: "wrap", gap: 9 }}>
+          <Link className="btn ghost" style={{ minHeight: 44 }} href={`/crm/${customerId}`}>اطلاعات و مخاطبان</Link>
+          <Link className="btn solid" style={{ minHeight: 44 }} href={`/sales/orders/new?customer=${customerId}`}>ثبت سفارش تازه</Link>
+        </div>}
 
         {data && (
           <div style={{ padding: "0 24px 26px", display: "flex", gap: 9, justifyContent: "flex-end" }}>
