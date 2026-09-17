@@ -30,7 +30,7 @@ export default function BusinessCard({ row, mode, highlight, onCall, onOpen, onN
       <div className="meta">
         <span><span className={`dot ${row.temperature ?? "cold"}`} />{mode === "next" ? row.business_name : contact}</span>
         <span className="pills">
-          {unverified ? <span className="pill warn">تأییدنشده</span> : null}
+          {unverified ? <span className="pill warn">اطلاعات تأییدنشده</span> : null}
           {!row.phone_norm ? <span className="pill warn">بدون تلفن</span> : null}
           <span className="pill">{stage}</span>
         </span>
