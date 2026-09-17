@@ -16,6 +16,7 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
+  page.on("console", m => { if (m.type() === "error") errors.push(`console: ${m.text().slice(0, 400)}`); });
   await page.goto(`${BASE}/crm/${id}`);
   await page.getByRole("button", { name: "ویرایش برچسب‌ها", exact: true }).click();
   await page.getByRole("textbox", { name: "برچسب‌ها", exact: true }).fill("ویژه، بازدید");
