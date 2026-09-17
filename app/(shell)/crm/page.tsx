@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+import { getDb, plain } from "@/lib/db";
 import PageHeader from "@/components/meridian/PageHeader";
 import CrmBoard from "@/components/crm/CrmBoard";
 import { listBusinesses, viewCounts } from "@/lib/repo/crm/businesses";
@@ -23,7 +23,8 @@ export default async function CrmPage() {
   return (
     <>
       <PageHeader route="/crm" />
-      <CrmBoard initialRows={rows} initialCounts={counts} initialView={view} />
+      {/* node:sqlite rows have a null prototype, which a client component cannot receive. */}
+      <CrmBoard initialRows={plain(rows)} initialCounts={counts} initialView={view} />
     </>
   );
 }

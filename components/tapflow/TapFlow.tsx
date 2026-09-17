@@ -8,6 +8,7 @@ import { answerStep, backStep, SKIP, viewStep } from "@/lib/crm/flows/machine";
 import type { FlowConfig, FlowContext, FlowState, ResolvedOption, ResolvedStep } from "@/lib/crm/flows/types";
 import { labelDue, resolveDue } from "@/lib/crm/due";
 import { nextOpenAt, type WorkingHours } from "@/lib/crm/hours";
+import { useChoiceFeedback } from "./useChoiceFeedback";
 
 export interface CustomStepApi { step: ResolvedStep; state: FlowState; submit: (optionId: string, value?: string) => void }
 
@@ -97,6 +98,7 @@ function StepBody({ view, submit, hours }: { view: ResolvedStep; submit: (id: st
   const [picked, setPicked] = useState<string[]>([]);
   const [pickFor, setPickFor] = useState<string | null>(null);
   const [date, setDate] = useState("");
+  const feedback = useChoiceFeedback();
   const now = new Date().toISOString();
 
   if (pickFor) {
@@ -120,14 +122,17 @@ function StepBody({ view, submit, hours }: { view: ResolvedStep; submit: (id: st
   const tap = (o: ResolvedOption) => {
     if (o.due?.kind === "pick") { setPickFor(o.id); return; }
     const value = view.kind === "multi" ? picked.join(",") : view.input ? text.trim() : "";
-    submit(o.id, value || undefined);
+    feedback.choose(o.id, (id) => submit(id, value || undefined));
   };
   const button = (o: ResolvedOption) => {
     const sub = subFor(o);
+    const isSelected = feedback.selected === o.id;
     return (
-      <button key={o.id} type="button" className={`tf-opt ${o.tone ?? ""}`} disabled={needsText} onClick={() => tap(o)}>
+      <button key={o.id} type="button" aria-pressed={isSelected}
+        className={`tf-opt ${o.tone ?? ""}${isSelected ? " on" : ""}`} disabled={needsText || feedback.selected !== null} onClick={() => tap(o)}>
         {o.label}
         {sub ? <small>{sub}</small> : null}
+        {isSelected ? <span className="tick" aria-hidden><Icon name="check" size="sm" /></span> : null}
       </button>
     );
   };

@@ -5,6 +5,7 @@ import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 import { useToast } from "@/components/ToastProvider";
 import { basicsOf, linkOf, pinOf } from "@/lib/crm/flows/addLead";
 import { FOOD_APP_SOURCES, faDigits } from "@/lib/crm/vocab";
+import { normPhone } from "@/lib/crm/phone";
 import type { DupMatch } from "@/lib/repo/crm/dedupe";
 
 /** Name + phone, with the duplicate check running as the rep types (spec D7). */
@@ -38,7 +39,8 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
   const phoneHits = matches.filter((m) => m.kind === "phone");
   const nameHits = matches.filter((m) => m.kind === "name");
   const branchOk = branchOf !== null && phoneHits.some((m) => m.reachable && m.id === branchOf);
-  const blocked = phoneHits.length > 0 && !branchOk;
+  const phoneInvalid = !!phone.trim() && !normPhone(phone);
+  const blocked = (phoneHits.length > 0 && !branchOk) || phoneInvalid;
   const request = async () => {
     const res = await fetch("/api/crm/reassign-request", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ phone }) });
     toast(res.ok ? "درخواست واگذاری برای مدیرتان فرستاده شد" : "درخواست فرستاده نشد", res.ok ? "success" : "error");
@@ -49,7 +51,8 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
   return (
     <>
       <input className="tf-input" value={name} onChange={(e) => setName(e.target.value)} placeholder="نام کسب‌وکار" aria-label="نام کسب‌وکار" autoFocus={!name} />
-      <input className="tf-input ltr" value={phone} onChange={(e) => { setPhone(e.target.value); setBranchOf(null); }} placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" inputMode="tel" />
+      <input className="tf-input ltr" value={phone} onChange={(e) => { setPhone(e.target.value); setBranchOf(null); }} placeholder={foodApp ? "تلفن (اگر دارید)" : "0912 ___ ____"} aria-label="تلفن" type="tel" inputMode="tel" aria-invalid={phoneInvalid} aria-describedby={phoneInvalid ? "lead-phone-error" : undefined} />
+      {phoneInvalid ? <p id="lead-phone-error" role="alert" className="tf-error">شماره تلفن معتبر وارد کنید؛ فقط رقم و پیش‌شمارهٔ ایران مجاز است.</p> : null}
       {phoneHits.map((m, i) =>
         m.reachable ? (
           branchOk && m.id === branchOf ? (

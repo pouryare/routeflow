@@ -41,7 +41,7 @@ export function useHeldSave() {
     window.addEventListener("pagehide", onHide);
     return () => {
       document.removeEventListener("visibilitychange", onHide);
-      document.removeEventListener("pagehide", onHide);
+      window.removeEventListener("pagehide", onHide);
     };
   }, [flush]);
 

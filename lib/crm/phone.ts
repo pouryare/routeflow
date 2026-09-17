@@ -1,10 +1,13 @@
 import { normalisePersian } from "@/lib/persian";
 
-/** Compare Iranian phones by their last ten digits, ignoring country/trunk prefixes. */
+/** Validate Iranian phones before normalizing; never strip letters or truncate digits. */
 export function normPhone(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const digits = normalisePersian(raw).replace(/\D/g, "");
-  return digits.length >= 10 ? digits.slice(-10) : null;
+  if (typeof raw !== "string" || !raw.trim()) return null;
+  const text = normalisePersian(raw).trim();
+  if (!/^\+?[\d\s()-]+$/.test(text)) return null;
+  const compact = text.replace(/[\s()-]/g, "");
+  const match = /^(?:\+98|0098|0)?([1-9]\d{9})$/.exec(compact);
+  return match?.[1] ?? null;
 }
 
 export function formatPhone(norm: string): string {
