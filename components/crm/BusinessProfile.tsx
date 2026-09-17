@@ -66,7 +66,10 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
         <span>زمان بازدید · {isOneOf(["morning", "afternoon", "evening", "any", "unknown"], profile.business.visit_window ?? undefined) ? VISIT_WINDOW_LABEL[profile.business.visit_window as "morning"] : "ثبت نشده"}</span>
         <span>یادداشت · {profile.business.visit_note || "ثبت نشده"}</span>
       </div>
-      {profile.canWrite && <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={() => setIntel({ ctx: { ...EMPTY_CONTEXT, entry: "call", vars: { name: profile.business.business_name } }, st: startFlow(intelFlow, { ...EMPTY_CONTEXT, entry: "call", vars: { name: profile.business.business_name } }) })}>ثبت شناخت</button>}
+      {profile.canWrite && <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={() => {
+        const ctx: FlowContext = { ...EMPTY_CONTEXT, products: profile.products, vars: { name: profile.business.business_name } };
+        setIntel({ ctx, st: startFlow(intelFlow, ctx) });
+      }}>ثبت شناخت</button>}
     </section>
     <section className="tile"><h2>برچسب‌ها</h2>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{profile.tags.length ? profile.tags.map(t => <span key={t} className="pill">{t}</span>) : <p>برچسبی ثبت نشده است.</p>}</div>

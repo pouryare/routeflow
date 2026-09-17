@@ -57,6 +57,24 @@ it("offers the intel flow and tag editing for writers", async () => {
   expect(Array.from(host.querySelectorAll("button")).some(b => b.textContent?.includes("برچسب‌ها"))).toBe(true);
 });
 
+it("passes the product catalog into the intel flow", async () => {
+  vi.useFakeTimers();
+  try {
+    await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
+    const click = async (label: string) => {
+      const button = Array.from(host.querySelectorAll("button")).find(b => b.textContent?.trim() === label);
+      expect(button, label).toBeDefined();
+      await act(async () => { button!.click(); vi.advanceTimersByTime(200); });
+    };
+    await click("ثبت شناخت");
+    await click("متوسط");
+    await click("پخش‌کننده");
+    const dialog = host.querySelector('[role="dialog"]')!;
+    expect(dialog.textContent).toContain("کره");
+    expect(dialog.textContent).toContain("پودر کاکائو");
+  } finally { vi.useRealTimers(); }
+});
+
 it("hides write actions from read-only viewers", async () => {
   await act(async () => root.render(createElement(BusinessProfile, {
     initial: { ...profile, canWrite: false } as unknown as typeof profile, initialTimeline: timeline,
