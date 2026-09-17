@@ -65,6 +65,16 @@ export function createCrmTables(db: DatabaseSync): void {
       BEGIN SELECT RAISE(ABORT, 'activities is append-only'); END;
     CREATE TRIGGER IF NOT EXISTS activities_no_delete BEFORE DELETE ON activities
       BEGIN SELECT RAISE(ABORT, 'activities is append-only'); END;
+
+    /* Tags a rep or manager pins to a business (فهرست‌ها، not free text in notes). */
+    CREATE TABLE IF NOT EXISTS customer_tags (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      customer_id INTEGER NOT NULL REFERENCES customers(id),
+      tag TEXT NOT NULL,
+      created_at TEXT NOT NULL,
+      UNIQUE (customer_id, tag)
+    );
   `);
 }
 
@@ -78,6 +88,8 @@ const CUSTOMER_COLUMNS: [string, string][] = [
   ["temperature", "TEXT"], ["temperature_manual", "INTEGER NOT NULL DEFAULT 0"], ["attempt_count", "INTEGER NOT NULL DEFAULT 0"],
   ["consecutive_misses", "INTEGER NOT NULL DEFAULT 0"], ["last_activity_at", "TEXT"], ["last_contacted_at", "TEXT"],
   ["next_task_id", "INTEGER"], ["lost_reason_code", "TEXT"], ["merged_into_id", "INTEGER"], ["closed_at", "TEXT"],
+  // Walk-in intel (lib/crm/flows/intel.ts); size_band above is shared with it.
+  ["supply_channel", "TEXT"], ["visit_window", "TEXT"], ["visit_note", "TEXT"], ["uses_products_json", "TEXT"],
 ];
 
 /** Called from getDb() after backfillReminderTasks, when every customers column it reads exists. */

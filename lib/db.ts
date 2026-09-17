@@ -97,6 +97,7 @@ export const TENANT_TABLES = [
   "notifications",
   "contacts",
   "activities",
+  "customer_tags",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
