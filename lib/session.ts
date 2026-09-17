@@ -254,6 +254,64 @@ export function entityGroupFilter(
  *  -- see docs/superpowers/plans/2026-09-01-phase-0a-tenancy-foundation.md Task 3's
  *  commit for the concrete case this guards against.
  */
+/** Who runs a group's CRM: sees all of it, reassigns, pins temperature, reads team numbers. */
+export function isCrmManager(role: Role): boolean {
+  return role === "owner" || role === "group_manager" || role === "rep_manager" || role === "platform_owner";
+}
+
+/** CRM visibility, as a WHERE fragment on a customers alias.
+ *
+ *    owner            the organisation
+ *    group_manager,
+ *    rep_manager      their group (no group: nothing)
+ *    salesperson      businesses they own, plus their group's unassigned pool
+ *    driver           nothing -- drivers reach only their verification visits, through
+ *                     lib/repo/crm/driverVisits.ts
+ *
+ *  Never an empty fragment for a scoped role: an empty fragment widens to everything. */
+export function crmFilter(session: Session, alias = "c"): { sql: string; params: number[] } {
+  const a = alias ? `${alias}.` : "";
+  switch (session.role) {
+    case "platform_owner":
+      return { sql: "", params: [] };
+    case "owner":
+      return { sql: ` AND ${a}organization_id = ?`, params: [session.organizationId] };
+    case "group_manager":
+    case "rep_manager":
+      if (session.groupId === null) return { sql: " AND 1 = 0", params: [] };
+      return { sql: ` AND ${a}organization_id = ? AND ${a}group_id = ?`, params: [session.organizationId, session.groupId] };
+    case "salesperson":
+      if (session.groupId === null) {
+        return { sql: ` AND ${a}organization_id = ? AND ${a}owner_user_id = ?`, params: [session.organizationId, session.user.id] };
+      }
+      return {
+        sql: ` AND ${a}organization_id = ? AND (${a}owner_user_id = ? OR (${a}owner_user_id IS NULL AND ${a}group_id = ?))`,
+        params: [session.organizationId, session.user.id, session.groupId],
+      };
+    default:
+      return { sql: " AND 1 = 0", params: [] };
+  }
+}
+
+export interface BusinessScopeRow { owner_user_id: number | null; group_id: number | null; organization_id: number }
+
+export function canSeeBusiness(session: Session, row: BusinessScopeRow): boolean {
+  if (session.role === "platform_owner") return true;
+  if (row.organization_id !== session.organizationId) return false;
+  if (session.role === "owner") return true;
+  if (session.role === "group_manager" || session.role === "rep_manager") return session.groupId !== null && row.group_id === session.groupId;
+  if (session.role === "salesperson") {
+    return row.owner_user_id === session.user.id || (row.owner_user_id === null && session.groupId !== null && row.group_id === session.groupId);
+  }
+  return false;
+}
+
+/** Same as seeing, today: a salesperson's write on the pool auto-claims it. Kept separate so
+ *  a later rule (read-only group browsing) changes one function, not every route. */
+export function canWriteBusiness(session: Session, row: BusinessScopeRow): boolean {
+  return canSeeBusiness(session, row);
+}
+
 export function orderFilter(session: Session, alias = "o"): { sql: string; params: number[] } {
   if (session.role === "platform_owner") return { sql: "", params: [] };
 
