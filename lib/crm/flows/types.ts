@@ -1,0 +1,101 @@
+import type { DueSpec } from "../due";
+import type { OutcomeCode } from "../outcomes";
+import type {
+  BusinessType, ContactRole, LeadSource, LostReason, NextKind, NotFitReason, PriceTier, SkipReason, Verification,
+} from "../vocab";
+
+export type StepKind = "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours";
+
+/** Everything an answer can contribute. Merged left to right; a later answer wins. */
+export interface FlowSet {
+  outcome?: OutcomeCode;
+  verification?: Verification;
+  contact_id?: number;
+  contact_role?: ContactRole;
+  decider_role?: ContactRole;
+  next_kind?: NextKind;
+  next_title?: string;
+  due?: DueSpec;
+  next_assignee?: "owner" | "group_manager" | "driver_pool";
+  lost_reason?: LostReason;
+  not_fit?: NotFitReason;
+  skip_reason?: SkipReason;
+  invalid?: boolean;
+  source?: LeadSource;
+  business_type?: BusinessType;
+  price_tier?: PriceTier;
+  owner?: "me" | "pool" | number;
+  referred_by?: number;
+  pin_mode?: "gps" | "map";
+  product_id?: number;
+  sample_qty?: string;
+  share?: "whatsapp" | "telegram";
+  redial?: boolean;
+  open_order?: boolean;
+  spawn_lead?: boolean;
+  handoff?: "talked_now";
+}
+
+export interface FlowProgress { acc: FlowSet; values: Record<string, string> }
+export type NextFn = (ctx: FlowContext, s: FlowProgress) => string;
+type Dyn<T> = T | ((ctx: FlowContext, s: FlowProgress) => T);
+
+export interface FlowOption {
+  id: string;
+  label: string;
+  sub?: string;
+  tone?: "rec" | "bad";
+  group?: string;
+  next?: string | NextFn;
+  save?: boolean;
+  set?: FlowSet;
+}
+
+export interface FlowInput { field: string; placeholder: string; ltr?: boolean; optional?: boolean }
+
+export interface FlowStep {
+  id: string;
+  kind: StepKind;
+  q: string;
+  sub?: Dyn<string>;
+  options: Dyn<FlowOption[]>;
+  /** multi steps: the toggles; the answer value is their ids joined by ",". */
+  choices?: Dyn<{ id: string; label: string }[]>;
+  input?: FlowInput;
+  timeStep?: boolean;
+}
+
+export interface FlowConfig {
+  id: string;
+  start: (ctx: FlowContext) => string;
+  steps: Record<string, FlowStep>;
+  skipStep?: string;
+  budget: { common: number; longest: number };
+}
+
+export interface FlowContext {
+  entry: "call" | "talked_now" | "add_lead" | "driver_visit";
+  firstContact: boolean;
+  attemptNo: number;
+  maxMisses: number;
+  isManager: boolean;
+  vars: Record<string, string>;
+  knownContacts: { id: number; name: string | null; role: ContactRole }[];
+  products: { id: number; name: string; price_toman: number | null }[];
+  reps: { id: number; name: string; open: number }[];
+  recentCustomers: { id: number; name: string }[];
+}
+
+export const EMPTY_CONTEXT: FlowContext = {
+  entry: "call", firstContact: false, attemptNo: 1, maxMisses: 5, isManager: false,
+  vars: {}, knownContacts: [], products: [], reps: [], recentCustomers: [],
+};
+
+export interface FlowAnswer { step: string; option: string; value?: string }
+export interface FlowState { stack: string[]; answers: FlowAnswer[]; acc: FlowSet; values: Record<string, string>; saved: boolean }
+
+export interface ResolvedOption { id: string; label: string; sub?: string; tone?: "rec" | "bad"; group?: string; due?: DueSpec; saves: boolean }
+export interface ResolvedStep {
+  id: string; kind: StepKind; q: string; sub?: string; options: ResolvedOption[];
+  choices: { id: string; label: string }[]; input?: FlowInput; timeStep: boolean;
+}
