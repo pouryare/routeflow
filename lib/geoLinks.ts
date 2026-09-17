@@ -27,6 +27,17 @@ const PAIR_PATTERNS: RegExp[] = [
 ];
 
 export function extractLatLng(url: string): { lat: number; lng: number } | null {
+  url = safeDecodeURIComponent(url);
+  // A Google place pin is more precise than the /@ camera centre.
+  const place = url.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (place && isValidCoord(Number(place[1]), Number(place[2]))) return { lat: Number(place[1]), lng: Number(place[2]) };
+  try {
+    const params = new URL(url).searchParams;
+    for (const key of ["destination", "daddr", "q", "query", "ll", "location"]) {
+      const pair = params.get(key)?.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+      if (pair && isValidCoord(Number(pair[1]), Number(pair[2]))) return { lat: Number(pair[1]), lng: Number(pair[2]) };
+    }
+  } catch { /* Retain legacy extraction for non-URL strings. */ }
   for (const re of PAIR_PATTERNS) {
     const m = url.match(re);
     if (!m) continue;
@@ -150,6 +161,7 @@ const ALLOWED_LINK_HOSTS = [
   "nshn.ir",
   "balad.ir",
   "balad.app",
+  "waze.com",
 ];
 
 export function isAllowedLinkHost(hostname: string): boolean {

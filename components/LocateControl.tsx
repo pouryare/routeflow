@@ -1,12 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
+import { Icon } from "@/components/meridian/Icon";
 import { useMap } from "react-leaflet";
 import L from "leaflet";
 import { useMyPosition } from "./MyPositionProvider";
-
-const LOCATE_SVG =
-  '<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><line x1="2" x2="5" y1="12" y2="12"/><line x1="19" x2="22" y1="12" y2="12"/><line x1="12" x2="12" y1="2" y2="5"/><line x1="12" x2="12" y1="19" y2="22"/><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="3"/></svg>';
 
 /** The ◎ button: recentre on me.
  *
@@ -24,6 +23,7 @@ export default function LocateControl() {
   const map = useMap();
   const { position, status, retry } = useMyPosition();
   const buttonRef = useRef<HTMLAnchorElement | null>(null);
+  const [iconHost] = useState(() => document.createElement("span"));
 
   // The Leaflet control is created once and its click handler captured then, so it needs
   // a stable way to see the current fix. Written in an effect rather than during render:
@@ -44,26 +44,26 @@ export default function LocateControl() {
   }, [map]);
 
   useEffect(() => {
+    const handleClick = (e: Event) => {
+      L.DomEvent.preventDefault(e);
+      recentre();
+    };
     const LocateButton = L.Control.extend({
       onAdd() {
         const container = L.DomUtil.create("div", "leaflet-bar leaflet-control locate-control");
         const button = L.DomUtil.create("a", "", container) as HTMLAnchorElement;
         button.href = "#";
         button.title = "رفتن به موقعیت من";
-        /* Leaflet builds this control as raw DOM, so a React <Icon> cannot render here. This
-           is lucide's locate-fixed, the same glyph as <Icon name="locate" />, inline. */
-        button.innerHTML = LOCATE_SVG;
+        button.appendChild(iconHost);
         button.setAttribute("role", "button");
         button.setAttribute("aria-label", "رفتن به موقعیت من");
         L.DomEvent.disableClickPropagation(container);
-        L.DomEvent.on(button, "click", (e) => {
-          L.DomEvent.preventDefault(e);
-          recentre();
-        });
+        L.DomEvent.on(button, "click", handleClick);
         buttonRef.current = button;
         return container;
       },
       onRemove() {
+        if (buttonRef.current) L.DomEvent.off(buttonRef.current, "click", handleClick);
         buttonRef.current = null;
       },
     });
@@ -72,7 +72,7 @@ export default function LocateControl() {
     return () => {
       control.remove();
     };
-  }, [map, recentre]);
+  }, [map, recentre, iconHost]);
 
   // Reflects whether there is anything to recentre *on*, rather than whether a request
   // is in flight -- which is what the user actually needs to know before pressing it.
@@ -89,5 +89,5 @@ export default function LocateControl() {
           : "در حال یافتن موقعیت…";
   }, [status]);
 
-  return null;
+  return createPortal(<Icon name="locate" size="md" />, iconHost);
 }

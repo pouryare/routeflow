@@ -23,9 +23,14 @@ function correction(session: Session, id: number, org: number, note: string, ver
 export function updateBusinessFields(session: Session, id: number, raw: unknown): void {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new CrmError(400, "اطلاعات نامعتبر است");
   const input = raw as Record<string, unknown>;
-  const allowed = ["business_name", "phone", "address", "area_label", "business_type", "price_tier", "working_hours", "website", "instagram"];
+  const allowed = ["business_name", "phone", "secondary_phone", "whatsapp", "address", "area_label", "business_type", "price_tier", "working_hours", "website", "instagram", "maps_url", "lat", "lng"];
   if (!Object.keys(input).length || Object.keys(input).some(k => !allowed.includes(k))) throw new CrmError(400, "فیلد نامعتبر است");
   const values: Record<string, string | number | null> = {};
+  if ("lat" in input || "lng" in input) {
+    const { lat, lng } = input;
+    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new CrmError(400, "مختصات موقعیت معتبر نیست");
+    values.lat = lat; values.lng = lng; values.location_precision = "exact";
+  }
   for (const key of ["business_name", "address", "area_label", "website"] as const) {
     if (!(key in input)) continue;
     const v = input[key];
@@ -50,6 +55,23 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
     const h = typeof v === "string" && v.trim() ? normInstagram(v) : null;
     if (typeof v === "string" && v.trim() && !h) throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
     values.instagram = h;
+  }
+  if ("maps_url" in input) {
+    const v = input.maps_url;
+    if (v !== null && typeof v !== "string") throw new CrmError(400, "پیوند نقشه معتبر نیست");
+    if (typeof v === "string" && v.trim()) {
+      try { if (!["http:", "https:"].includes(new URL(v.trim()).protocol)) throw new Error(); }
+      catch { throw new CrmError(400, "پیوند نقشه معتبر نیست"); }
+      values.maps_url = v.trim().slice(0, 500);
+    } else values.maps_url = null;
+  }
+  for (const key of ["secondary_phone", "whatsapp"] as const) {
+    if (!(key in input)) continue;
+    const v = input[key];
+    if (v !== null && typeof v !== "string") throw new CrmError(400, "شماره تلفن معتبر نیست");
+    const p = typeof v === "string" && v.trim() ? normPhone(v) : null;
+    if (typeof v === "string" && v.trim() && !p) throw new CrmError(400, "شماره تلفن معتبر نیست");
+    values[key] = p ? `0${p}` : null;
   }
   if ("business_type" in input) {
     if (!isOneOf(BUSINESS_TYPES, input.business_type)) throw new CrmError(400, "نوع کسب‌وکار نامعتبر است");

@@ -51,6 +51,26 @@ async function cacheFirst(request, cacheName) {
   }
 }
 
+// Production chunks explicitly advertise immutability. Turbopack development URLs
+// can be reused after edits, so cache-first would mix incompatible module factories.
+// Validate old entries too: shell-v3 may already contain development responses.
+async function immutableChunk(request) {
+  const cache = await caches.open(SHELL_CACHE);
+  const immutable = (response) => response && response.ok &&
+    /(?:^|,)\s*immutable\s*(?:,|$)/i.test(response.headers.get("Cache-Control") || "");
+  const cached = await cache.match(request);
+  if (immutable(cached)) return cached;
+  if (cached) await cache.delete(request);
+  try {
+    const response = await fetch(request);
+    if (immutable(response)) await cache.put(request, response.clone());
+    return response;
+  } catch {
+    // Offline development must fail rather than executing obsolete JavaScript.
+    return Response.error();
+  }
+}
+
 async function cacheFirstGeometry(request, url) {
   const cache = await caches.open(GEOMETRY_CACHE);
   const cached = await cache.match(request);
@@ -186,10 +206,9 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Next.js static chunks are content-hashed and immutable -- safe to cache aggressively
-  // so the app shell (JS/CSS) still loads and hydrates while offline.
+  // Only immutable production chunks are safe to reuse without revalidation.
   if (url.pathname.startsWith("/_next/static/")) {
-    event.respondWith(cacheFirst(request, SHELL_CACHE));
+    event.respondWith(immutableChunk(request));
     return;
   }
 

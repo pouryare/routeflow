@@ -866,32 +866,27 @@ body {
   line-height: 1;
   text-decoration: none;
 }
-/* Lit once there is a fix to recentre on, dim while there is not, and marked when the
-   permission was refused. A button that looks the same in all three states is a button
-   you press hopefully. */
+/* State is signalled on the border only: the icon keeps the shared ink and the
+   surface stays opaque, same as every other map button. */
 .locate-control a.locate-control--active {
-  color: var(--accent) !important;
   border-color: var(--accent) !important;
 }
 .locate-control a.locate-control--denied {
-  color: var(--crit) !important;
   border-color: var(--crit) !important;
 }
-.locate-control a:not(.locate-control--active):not(.locate-control--denied) {
-  opacity: 0.55;
+/* All map buttons share the same opaque surface and currentColor icons. */
+.leaflet-control-zoom-fullscreen,
+.leaflet-control-zoom-fullscreen > span {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
 }
-
-/* leaflet.fullscreen ships its icon as a hardcoded dark-grey (#333) SVG, meant for
-   Leaflet's default white control background -- invisible against this app's dark
-   surface. Same artwork, re-encoded with the app's --text color, overriding by
-   selector (not by redefining the plugin's own CSS var) so it wins regardless of
-   which stylesheet Turbopack happens to bundle last. */
-.leaflet-fullscreen-icon {
-  background-image: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M5 10.3V5.9c0-.5.4-.9.9-.9h4.4c.2 0 .4.2.4.4V7c0 .2-.2.4-.4.4h-3v3c0 .2-.2.4-.4.4H5.4a.4.4 0 0 1-.4-.4zm10.3-4.9V7c0 .2.2.4.4.4h3v3c0 .2.2.4.4.4h1.5c.2 0 .4-.2.4-.4V5.9c0-.5-.4-.9-.9-.9h-4.4c-.2 0-.4.2-.4.4zm5.3 9.9H19c-.2 0-.4.2-.4.4v3h-3c-.2 0-.4.2-.4.4v1.5c0 .2.2.4.4.4h4.4c.5 0 .9-.4.9-.9v-4.4c0-.2-.2-.4-.4-.4zm-9.9 5.3V19c0-.2-.2-.4-.4-.4h-3v-3c0-.2-.2-.4-.4-.4H5.4c-.2 0-.4.2-.4.4v4.4c0 .5.4.9.9.9h4.4c.2 0 .4-.2.4-.4z" fill="%23E7EEF5"/></svg>') !important;
-  background-size: 26px 26px;
+.leaflet-control-zoom-fullscreen .fullscreen-exit,
+.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .fullscreen-enter {
+  display: none;
 }
-.leaflet-fullscreen-icon.leaflet-fullscreen-on {
-  background-image: url('data:image/svg+xml,<svg viewBox="0 0 26 26" xmlns="http://www.w3.org/2000/svg"><path d="M20.6 10.7H16a.9.9 0 0 1-.8-.8v-4.5c0-.2.2-.4.4-.4h1.4c.3 0 .5.2.5.4v3h3c.2 0 .4.2.4.5v1.4c0 .2-.2.4-.4.4zm-9.9-.8V5.4c0-.2-.2-.4-.4-.4H8.9c-.3 0-.5.2-.5.4v3h-3c-.2 0-.4.2-.4.5v1.4c0 .2.2.4.4.4H9.9c.4 0 .8-.4.8-.8zm0 10.7V16c0-.4-.4-.8-.8-.8H5.4c-.2 0-.4.2-.4.4v1.4c0 .3.2.5.4.5h3v3c0 .2.2.4.5.4h1.4c.2 0 .4-.2.4-.4zm6.9 0v-3h3c.2 0 .4-.2.4-.5v-1.4c0-.2-.2-.4-.4-.4H16c-.4 0-.8.4-.8.8v4.5c0 .2.2.4.4.4h1.5c.3 0 .5-.2.5-.4z" fill="%23E7EEF5"/></svg>') !important;
+.leaflet-control-zoom-fullscreen.leaflet-fullscreen-on .fullscreen-exit {
+  display: block;
 }
 /* Holds a line-drawn map-pin (MAP_PIN_SVG), not an emoji: the glyph takes the accent
    from `color` and the halo keeps it findable over a busy basemap. */
@@ -1300,7 +1295,10 @@ body {
 }
 .leaflet-bar a {
   width: 36px !important; height: 36px !important; line-height: 36px !important;
-  background: var(--surface) !important;
+  /* background-color, not the background shorthand: the shorthand resets
+     background-image, wiping the fullscreen button's SVG icon (both the plugin's
+     and the recoloured override in globals.css) and leaving a blank square. */
+  background-color: var(--surface) !important;
   color: var(--text) !important;
   border-color: var(--border) !important;
 }
@@ -4509,3 +4507,49 @@ body {
 .meridian .crm-card .dot.warm { background: var(--warn); }
 .meridian .crm-card .acts { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 2px; }
 .meridian .crm-card .acts .btn { justify-content: center; min-height: 42px; }
+
+/* ---- CRM profile: nested details bento (BusinessDetails) -------------------- */
+.meridian .profile-topbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
+.meridian .profile-topbar h1 { margin: 0; }
+.meridian .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 14px; }
+.meridian .details-grid .wide { grid-column: 1 / -1; }
+.meridian .bento-section { border: 1px solid var(--line); border-radius: var(--r-lg); padding: 14px 16px; min-width: 0; background: linear-gradient(150deg, color-mix(in srgb, var(--tint, var(--accent)) 9%, var(--card)), var(--card) 70%); }
+.meridian .bento-section .section-head { display: flex; align-items: center; gap: 9px; }
+.meridian .bento-section .section-head h3 { margin: 0; font-size: 15px; }
+.meridian .bento-section .section-head .icon { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 11px; border: 1px solid var(--line); background: var(--card); color: var(--accent-text); }
+.meridian .section-hint { margin: 4px 0 10px; font-size: 12px; color: var(--muted); }
+.meridian .field-list { display: grid; gap: 7px; }
+.meridian .field-row { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 10px; text-align: start; padding: 9px 11px; border: 1px solid transparent; border-radius: var(--r-sm); background: color-mix(in srgb, var(--card) 72%, transparent); color: var(--ink); font: inherit; cursor: pointer; transition: background var(--dur-base, 160ms) var(--ease), border-color var(--dur-base, 160ms) var(--ease); }
+.meridian .field-row:hover { background: var(--sunk); border-color: var(--line-2); }
+/* These are missing field values, not the shared full-card EmptyState layout. */
+.meridian .field-row.empty { flex-direction: row; border-style: dashed; border-color: var(--line); }
+.meridian .field-row .v.empty { padding: 0; border: 0; border-radius: 0; background: transparent; text-align: start; }
+.meridian .field-row .k { display: block; font-size: 11.5px; color: var(--muted); }
+.meridian .field-row .v { display: block; font-size: 15px; font-weight: 600; letter-spacing: normal; overflow-wrap: anywhere; }
+.meridian .field-row .v.empty, .meridian .field-row .empty { color: var(--muted); font-weight: 400; }
+.meridian .field-row .cue { flex: none; font-size: 12px; color: var(--accent-text); white-space: nowrap; }
+.meridian .inline-edit { border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--sunk); padding: 12px; display: grid; gap: 10px; }
+.meridian .inline-edit label { display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
+.meridian .chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.meridian .chip { min-height: 46px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer; }
+.meridian .chip.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+.meridian .pending-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--warn-soft); color: var(--amber); padding: 8px 12px; font-size: 13px; margin-top: 10px; }
+/* Mini map + enlarged dialog (CustomerLocation) */
+.meridian .mini-map { margin: 6px 0 0; }
+/* Keep Leaflet panes and controls inside the map, below page scrims and dialogs. */
+.meridian .map-frame { position: relative; isolation: isolate; height: 180px; border-radius: var(--r-md); overflow: hidden; border: 1px solid var(--line); }
+.meridian .map-frame.tall { height: min(56dvh, 480px); }
+.meridian .customer-map { height: 100%; width: 100%; }
+.meridian .map-loading { display: grid; place-items: center; height: 100%; color: var(--muted); background: var(--sunk); }
+.meridian .map-expand { position: absolute; z-index: 1000; bottom: 8px; inset-inline-start: 8px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line-2); border-radius: 999px; background: var(--card); color: var(--ink); font: inherit; font-size: 12px; padding: 7px 12px; cursor: pointer; box-shadow: var(--sh-1); }
+.meridian .map-expand:hover { background: var(--sunk); color: var(--accent-text); }
+.meridian .map-expand:focus-visible { outline: 2px solid var(--accent-text); outline-offset: -3px; }
+.meridian .location-edit { display: grid; gap: 12px; padding: 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); color: var(--ink); min-width: 0; }
+.meridian .location-edit-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.meridian .location-edit-expanded { position: fixed; z-index: 350; inset: 16px; max-width: 1100px; margin: auto; overflow: auto; align-content: start; box-shadow: 0 0 0 100vmax #0009; }
+.meridian .no-pin { flex-wrap: wrap; }
+.meridian .map-caption { margin: 6px 2px 0; font-size: 12px; color: var(--muted); }
+.meridian .no-pin { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 1px dashed var(--line); border-radius: var(--r-md); padding: 8px 12px; color: var(--muted); font-size: 13px; }
+.meridian .map-sheet { max-width: 860px; width: min(880px, calc(100vw - 24px)); inset: 0; margin: auto; height: fit-content; max-height: 88dvh; display: grid; gap: 12px; }
+@media (max-width: 700px) { .meridian .details-grid { grid-template-columns: 1fr; } .meridian .map-frame { height: 150px; } }

@@ -9,6 +9,15 @@ import {
 } from "@/lib/geoLinks";
 
 describe("extractLatLng", () => {
+  it.each([
+    ["https://waze.com/ul?ll=35%2C51&navigate=yes", 35, 51],
+    ["https://neshan.org/maps?latitude=35.7&longitude=51.4", 35.7, 51.4],
+    ["https://balad.ir/location?location=35.7%2C51.4", 35.7, 51.4],
+    ["https://google.com/maps/place/test/@35.6,51.3,14z/data=!3d35.7!4d51.4", 35.7, 51.4],
+  ])("extracts the destination pin from %s", (url, lat, lng) => {
+    expect(extractLatLng(url)).toEqual({ lat, lng });
+  });
+  it("allows Waze share links", () => expect(isAllowedLinkHost("www.waze.com")).toBe(true));
   it("parses Google's ?q=lat,lng format -- the exact format used in this business's own workbook", () => {
     expect(extractLatLng("https://maps.google.com/maps?q=35.685409,52.017364&ll=35.685409,52.017364&z=16")).toEqual({
       lat: 35.685409,

@@ -45,6 +45,28 @@ describe("editing HTTP surface (handlers, temp DB)", () => {
     expect(noConfirm.status).toBe(400);
   });
 
+  it("edits additional contact channels and maps link with validation and clearing", async () => {
+    const body = { secondary_phone: "۰۹۱۲۲۲۲۳۳۴۴", whatsapp: "+989123334455", maps_url: "https://maps.google.com/?q=35.7,51.4" };
+    expect((await bizPATCH(req("/x", "PATCH", body, ownerToken()), ctx(id))).status).toBe(200);
+    const result = await (await bizGET(req("/x", "GET", undefined, ownerToken()), ctx(id))).json();
+    expect(result.profile.business).toMatchObject({ secondary_phone: "09122223344", whatsapp: "09123334455", maps_url: body.maps_url });
+    for (const invalid of [{ secondary_phone: "abc" }, { whatsapp: 12 }, { maps_url: "javascript:alert(1)" }]) {
+      expect((await bizPATCH(req("/x", "PATCH", invalid, ownerToken()), ctx(id))).status).toBe(400);
+    }
+    expect((await bizPATCH(req("/x", "PATCH", { secondary_phone: null, whatsapp: null, maps_url: null }, ownerToken()), ctx(id))).status).toBe(200);
+    expect(db.prepare("SELECT secondary_phone, whatsapp, maps_url FROM customers WHERE id = ?").get(id)).toEqual({ secondary_phone: null, whatsapp: null, maps_url: null });
+  });
+
+  it("saves a complete pin atomically and rejects invalid or unauthorized coordinates", async () => {
+    expect((await bizPATCH(req("/x", "PATCH", { lat: 35.7, lng: 51.4 }, ownerToken()), ctx(id))).status).toBe(200);
+    expect(db.prepare("SELECT lat,lng,location_precision FROM customers WHERE id=?").get(id)).toEqual({ lat: 35.7, lng: 51.4, location_precision: "exact" });
+    for (const body of [{ lat: 35 }, { lng: 51 }, { lat: null, lng: null }, { lat: 91, lng: 51 }, { lat: "35", lng: 51 }, { lat: 35, lng: -181 }]) {
+      expect((await bizPATCH(req("/x", "PATCH", body, ownerToken()), ctx(id))).status).toBe(400);
+    }
+    expect((await bizPATCH(req("/x", "PATCH", { lat: 36, lng: 52 }, repToken), ctx(id))).status).toBe(404);
+    expect(db.prepare("SELECT lat,lng FROM customers WHERE id=?").get(id)).toEqual({ lat: 35.7, lng: 51.4 });
+  });
+
   it("serves profile, contacts and timeline with cursor validation", async () => {
     const profile = await bizGET(req("/x", "GET", undefined, ownerToken()), ctx(id));
     expect(profile.status).toBe(200);

@@ -8,7 +8,7 @@ import {
   ArrowUpRight, ArrowLeft, ArrowRight, ArrowDown, ArrowUp, ArrowLeftRight,
   RotateCcw, Layers, Camera, FileText, Waypoints, ClipboardList,
   Radar, Sun, Contrast, Square, Banknote, Flag, Ellipsis, LocateFixed,
-  List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone,
+  List, LayoutGrid, Repeat, PanelBottom, PanelRight, Phone, Maximize, Minimize,
   type LucideIcon,
 } from "lucide-react";
 
@@ -106,6 +106,8 @@ export const ICONS = {
   /* «⋯» and «◎» were typed as text glyphs where these belonged. */
   more: Ellipsis,
   locate: LocateFixed,
+  maximize: Maximize,
+  minimize: Minimize,
   /* «▤ ▥ ▦ ↺ ⌄» were typed as text glyphs where these belonged. */
   list: List,
   grid: LayoutGrid,

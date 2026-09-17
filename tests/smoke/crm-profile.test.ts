@@ -19,20 +19,21 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await context.addCookies([{ ...sessionCookie(), url: BASE }]);
   const user = db.prepare("SELECT organization_id FROM users WHERE active=1 ORDER BY CASE role WHEN 'platform_owner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END,id LIMIT 1").get() as { organization_id: number };
-  const id = Number(db.prepare("INSERT INTO customers (organization_id,customer_code,business_name,synced_at) VALUES (?,?,'آزمایش شناخت',?)").run(user.organization_id, `smoke-intel-${Date.now()}`, new Date().toISOString()).lastInsertRowid);
+  const id = Number(db.prepare("INSERT INTO customers (organization_id,customer_code,business_name,synced_at,lat,lng) VALUES (?,?,'آزمایش شناخت',?,35.7,51.4)").run(user.organization_id, `smoke-intel-${Date.now()}`, new Date().toISOString()).lastInsertRowid);
   const page = await context.newPage();
   const errors: string[] = [];
   page.on("pageerror", e => errors.push(e.message));
   page.on("console", m => { if (m.type() === "error") errors.push(`console: ${m.text().slice(0, 400)}`); });
   await page.goto(`${BASE}/crm/${id}`);
-  await page.getByRole("button", { name: "ویرایش برچسب‌ها", exact: true }).click();
+  await page.getByRole("button", { name: "افزودن برچسب‌ها" }).or(page.getByRole("button", { name: "ویرایش برچسب‌ها" })).click();
   await page.getByRole("textbox", { name: "برچسب‌ها", exact: true }).fill("ویژه، بازدید");
   await page.getByRole("button", { name: "ذخیره", exact: true }).click();
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
-  await page.getByRole("button", { name: /^اینستاگرام ·/ }).click();
+  await page.getByRole("button", { name: /اینستاگرام/ }).click();
   await page.getByRole("textbox", { name: "اینستاگرام", exact: true }).fill("@smoke.intel");
-  await page.getByRole("button", { name: "ذخیره", exact: true }).click();
-  await page.locator('[role="dialog"]').waitFor({ state: "detached" });
+  const patched = page.waitForResponse(r => r.url().endsWith(`/businesses/${id}`) && r.request().method() === "PATCH");
+  await page.getByRole("button", { name: "ثبت تغییر", exact: true }).click();
+  expect((await patched).status()).toBe(200);
   await page.getByRole("button", { name: "ثبت شناخت", exact: true }).click();
   await page.getByRole("button", { name: "متوسط", exact: true }).click();
   await page.getByRole("button", { name: "پخش‌کننده", exact: true }).click();
@@ -47,6 +48,10 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   await page.getByRole("button", { name: "ثبت شناخت", exact: true }).waitFor();
   const text = await page.locator("main").innerText();
   for (const value of ["smoke.intel", "ویژه", "سراغ مدیر", "بعدازظهر · ۱۵ تا ۱۸"]) expect(text).toContain(value);
+  /* The saved pin renders as a real Leaflet map, expandable into the large dialog. */
+  await page.locator(".customer-map .leaflet-marker-icon").waitFor({ timeout: 20000 });
+  await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
+  await page.getByRole("button", { name: "بستن", exact: true }).click();
   await page.screenshot({ path: "/tmp/rf-crm-profile-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

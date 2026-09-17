@@ -4,6 +4,7 @@ import { act, createElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import BusinessProfile from "@/components/crm/BusinessProfile";
+import BusinessDetails from "@/components/crm/BusinessDetails";
 
 let root: Root;
 let host: HTMLDivElement;
@@ -39,6 +40,54 @@ const profile = {
   canWrite: true, canManage: false,
 } as unknown as Parameters<typeof BusinessProfile>[0]["initial"];
 const timeline = { items: [], nextBefore: null };
+
+it("shows history in Jalali and Tehran time while preserving the ISO instant", async () => {
+  const at = "2026-03-20T21:00:00.000Z";
+  const history = { items: [{ kind: "activity", id: 1, at, title: "اصلاح موقعیت", sub: "", who: "علی" }], nextBefore: null } as Parameters<typeof BusinessProfile>[0]["initialTimeline"];
+  await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: history })));
+  expect(host.querySelector("time")?.textContent).toBe("۱۴۰۵/۰۱/۰۱ ۰۰:۳۰");
+  expect(host.querySelector("time")?.getAttribute("datetime")).toBe(at);
+});
+
+it("holds a selected chip for five seconds, supports cancel and retains failed drafts", async () => {
+  vi.useFakeTimers();
+  const patch = vi.fn().mockRejectedValue(new Error("ذخیره نشد"));
+  const click = async (selector: string) => act(async () => (host.querySelector(selector) as HTMLElement).click());
+  try {
+    await act(async () => root.render(createElement(BusinessDetails, { business: profile.business, canWrite: true, disabled: false, onPatch: patch, onHours: vi.fn() })));
+    await click('[aria-label="ویرایش ردهٔ قیمت"]');
+    await click('[role="radio"]');
+    expect(host.querySelector('[role="radio"]')?.getAttribute("aria-checked")).toBe("true");
+    await click('[type="submit"]');
+    expect(patch).not.toHaveBeenCalled();
+    expect((host.querySelector('[aria-label="ویرایش نام کسب‌وکار"]') as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => vi.advanceTimersByTimeAsync(4999));
+    expect(patch).not.toHaveBeenCalled();
+    await click('.pending-note button');
+    await act(async () => vi.advanceTimersByTimeAsync(1));
+    expect(patch).not.toHaveBeenCalled();
+    await click('[type="submit"]');
+    await act(async () => vi.advanceTimersByTimeAsync(5000));
+    expect(patch).toHaveBeenCalledWith({ price_tier: "low" });
+    expect(host.querySelector('[role="alert"]')?.textContent).toContain("ذخیره نشد");
+    expect(host.querySelector('[role="radio"]')?.getAttribute("aria-checked")).toBe("true");
+  } finally { vi.useRealTimers(); }
+});
+
+it("puts nested information first and the order action beside Back", async () => {
+  await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
+  const headings = Array.from(host.querySelectorAll("h2")).map(h => h.textContent);
+  expect(headings.slice(0, 2)).toEqual(["اطلاعات کسب‌وکار", "شناخت پیش از بازدید"]);
+  for (const label of ["مشخصات پایه", "راه‌های ارتباطی", "موقعیت و ساعت کاری", "ساعت کاری", "ردهٔ قیمت", "تلفن دوم", "واتس‌اپ", "پیوند نقشه"]) expect(host.textContent).toContain(label);
+  const order = host.querySelector('a[href="/sales/orders/new?customer=7"]')!;
+  expect(order.parentElement?.querySelector('a[href="/crm"]')).not.toBeNull();
+  expect(host.textContent).toContain("موقعیت ثبت نشده است");
+  const button = Array.from(host.querySelectorAll("button")).find(b => b.getAttribute("aria-label") === "ویرایش نام کسب‌وکار");
+  expect(button).toBeDefined();
+  await act(async () => button!.click());
+  expect(host.querySelector('input[aria-label="نام کسب‌وکار"]')).not.toBeNull();
+  expect(host.querySelector('[role="dialog"]')).toBeNull();
+});
 
 it("renders intel facts, tags and the Instagram page", async () => {
   await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));

@@ -45,19 +45,23 @@ function LayersButton({ open, count, onClick }: { open: boolean; count: number; 
   }, [onClick]);
 
   useEffect(() => {
+    const handleClick = (e: Event) => {
+      L.DomEvent.preventDefault(e);
+      onClickRef.current();
+    };
     const Button = L.Control.extend({
       onAdd() {
         const container = L.DomUtil.create("div", "leaflet-bar leaflet-control layers-toggle-control");
         container.appendChild(button);
         L.DomEvent.disableClickPropagation(container);
-        L.DomEvent.on(button, "click", (e) => {
-          L.DomEvent.preventDefault(e);
-          onClickRef.current();
-        });
+        L.DomEvent.on(button, "click", handleClick);
         buttonRef.current = button;
         return container;
       },
       onRemove() {
+        // The portal button survives effect replay; don't retain its old handler
+        // and toggle the panel twice on the next click.
+        L.DomEvent.off(button, "click", handleClick);
         buttonRef.current = null;
       },
     });
