@@ -1,16 +1,23 @@
 import { afterAll, beforeAll, expect, it } from "vitest";
 import { chromium, type Browser } from "playwright";
+import { DatabaseSync } from "node:sqlite";
 import { startDevServer, BASE } from "./server";
 import { sessionCookie } from "./session";
-import { getDb } from "@/lib/db";
+
 let browser: Browser;
 let stop: () => Promise<void>;
-beforeAll(async () => { stop = await startDevServer(); browser = await chromium.launch(); });
-afterAll(async () => { await browser?.close(); await stop?.(); });
+let db: DatabaseSync;
+beforeAll(async () => {
+  /* startDevServer repoints ROUTEFLOW_DB_PATH at a fresh VACUUM copy; open the DB only
+   * after that, or the writes land in production while the server reads the snapshot. */
+  stop = await startDevServer();
+  db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!);
+  browser = await chromium.launch();
+});
+afterAll(async () => { await browser?.close(); await stop?.(); db.close(); });
 it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across reload", async () => {
   const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await context.addCookies([{ ...sessionCookie(), url: BASE }]);
-  const db = getDb();
   const user = db.prepare("SELECT organization_id FROM users WHERE active=1 ORDER BY CASE role WHEN 'platform_owner' THEN 0 WHEN 'owner' THEN 1 ELSE 2 END,id LIMIT 1").get() as { organization_id: number };
   const id = Number(db.prepare("INSERT INTO customers (organization_id,customer_code,business_name,synced_at) VALUES (?,?,'آزمایش شناخت',?)").run(user.organization_id, `smoke-intel-${Date.now()}`, new Date().toISOString()).lastInsertRowid);
   const page = await context.newPage();
