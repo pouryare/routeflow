@@ -73,8 +73,13 @@ describe("where each destination lives", () => {
   const groupOf = (href: string) => owner.find((t) => t.href === href)?.group;
   const hrefsIn = (g: AppGroupId) => owner.filter((t) => t.group === g).map((t) => t.href).sort();
 
-  it("customers: the map, leads, complaints and the photo gallery", () => {
-    expect(hrefsIn("customers")).toEqual(["/gallery", "/leads", "/map", "/sales/complaints"]);
+  it("customers: the CRM, the map, map pins, complaints and the photo gallery", () => {
+    expect(hrefsIn("customers")).toEqual(["/crm", "/gallery", "/leads", "/map", "/sales/complaints"]);
+  });
+  it("the CRM is every role's but the driver's", () => {
+    for (const role of ["owner", "group_manager", "rep_manager", "salesperson"] as const) {
+      expect(appTabs({ role }).find((t) => t.href === "/crm")?.ready, role).toBe(true);
+    }
   });
 
   it("the order pipeline board sits with orders, not with team management", () => {

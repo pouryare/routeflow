@@ -65,8 +65,9 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "salesperson" },
 
     // مشتریان
+    { href: "/crm", label: "مشتریان و سرنخ‌ها", group: "customers", ready: r !== "driver" },
     { href: "/map", label: "نقشهٔ پوشش", group: "customers", ready: true },
-    { href: "/leads", label: "سرنخ‌ها", group: "customers", ready: isRepLead(r) },
+    { href: "/leads", label: "پین‌های نقشه", group: "customers", ready: isRepLead(r) },
     { href: "/sales/complaints", label: "شکایات", group: "customers", ready: true },
     { href: "/gallery", label: "گالری تصاویر", group: "customers", ready: true },
 

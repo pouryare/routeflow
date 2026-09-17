@@ -1,0 +1,29 @@
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
+import { COOKIE_NAME } from "@/lib/auth";
+import { getSessionFromCookies } from "@/lib/session";
+import { getDb } from "@/lib/db";
+import PageHeader from "@/components/meridian/PageHeader";
+import CrmBoard from "@/components/crm/CrmBoard";
+import { listBusinesses, viewCounts } from "@/lib/repo/crm/businesses";
+
+export const dynamic = "force-dynamic";
+
+/** «مشتریان و سرنخ‌ها» -- the field CRM. Opens on today's follow-ups; falls back to "my
+ *  leads" when there are none, so the first screen is never empty for a rep with work. */
+export default async function CrmPage() {
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  if (!session) redirect("/login");
+  if (session.role === "driver") redirect("/driver");
+  getDb();
+  const counts = viewCounts(session);
+  const view = counts.today > 0 ? "today" : session.role === "salesperson" ? "my_leads" : "all";
+  const { rows } = listBusinesses(session, { view });
+  return (
+    <>
+      <PageHeader route="/crm" />
+      <CrmBoard initialRows={rows} initialCounts={counts} initialView={view} />
+    </>
+  );
+}
