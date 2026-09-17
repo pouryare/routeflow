@@ -8,6 +8,7 @@ import type { CustomerLifecycle, CustomerType } from "./types";
 import { polygonCentroid } from "./simplify";
 import type { DistrictGeometry } from "./simplify";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
+import { createCrmTables, migrateCrm } from "./repo/crm/migrate";
 
 // Re-exported so server modules that already import from db.ts keep one import site.
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
@@ -94,6 +95,8 @@ export const TENANT_TABLES = [
   "task_recurrences",
   "notification_types",
   "notifications",
+  "contacts",
+  "activities",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -2382,6 +2385,10 @@ export function getDb(): DatabaseSync {
     }
   }
 
+  // CRM (docs/superpowers/specs/2026-09-11-crm-leads-customers-design.md): created before the
+  // TENANT_TABLES loop below, which ALTERs every table it lists.
+  createCrmTables(db);
+
   // ALTER each table now, up front, and backfill immediately -- both matter here, not
   // just the column. seedFacilities runs later in this same function and relies on
   // "INSERT OR IGNORE" recognising an existing (organization_id, slug) row to skip it;
@@ -3101,6 +3108,7 @@ export function getDb(): DatabaseSync {
   }
   // Fold existing customer reminders into the tasks spine (once, guarded).
   backfillReminderTasks(db);
+  migrateCrm(db);
 
   _db = db;
   return db;
