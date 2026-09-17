@@ -70,3 +70,6 @@ next-env.d.ts
 
 # superpowers SDD scratch (ledger, briefs, review packages)
 /.superpowers/
+
+# Local task progress and handoff notes
+/.cline/
