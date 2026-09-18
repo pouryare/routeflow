@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import BusinessCard from "./BusinessCard";
 import AfterCallFlow from "./AfterCallFlow";
 import AddLeadFlow from "./AddLeadFlow";
