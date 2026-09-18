@@ -914,7 +914,7 @@ export function getDb(): DatabaseSync {
       lat REAL,
       lng REAL,
       resolution TEXT NOT NULL DEFAULT 'unresolved'
-        CHECK (resolution IN ('direct', 'pluscode', 'nominatim', 'manual', 'unresolved')),
+        CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')),
       notes TEXT,
       organization_id INTEGER REFERENCES organizations(id),
       group_id INTEGER REFERENCES groups(id),
@@ -2085,7 +2085,7 @@ export function getDb(): DatabaseSync {
           lat REAL,
           lng REAL,
           resolution TEXT NOT NULL DEFAULT 'unresolved'
-            CHECK (resolution IN ('direct', 'pluscode', 'nominatim', 'manual', 'unresolved')),
+            CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')),
           notes TEXT,
           created_at TEXT NOT NULL
         );
@@ -2573,7 +2573,7 @@ export function getDb(): DatabaseSync {
       lat REAL,
       lng REAL,
       resolution TEXT NOT NULL DEFAULT 'unresolved'
-        CHECK (resolution IN ('direct', 'pluscode', 'nominatim', 'manual', 'unresolved')),
+        CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')),
       notes TEXT,
       created_at TEXT NOT NULL,
       status TEXT,
