@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import { getDb } from "@/lib/db";
+import { getDb, type SavedLocationRow, type LocationStatus } from "@/lib/db";
 import { canReachUser, canSeeBusiness, canWriteBusiness, isCrmManager, type Session } from "@/lib/session";
 import { createTask } from "@/lib/repo/tasks";
 import { emitEvent, type EventInput } from "@/lib/repo/events";
@@ -11,10 +11,11 @@ import { nextOpenAt, parseHours } from "@/lib/crm/hours";
 import { normPhone } from "@/lib/crm/phone";
 import { normInstagram } from "@/lib/crm/social";
 import { customerTypeFor, isDecider, isInvalid, type Verification } from "@/lib/crm/vocab";
-import { FlowError, interpolate, replayAnswers } from "@/lib/crm/flows/machine";
+import { FlowError, interpolate, replayAnswers, viewStep } from "@/lib/crm/flows/machine";
 import type { FlowAnswer, FlowConfig, FlowContext, FlowSet, FlowState } from "@/lib/crm/flows/types";
 import { afterCallFlow } from "@/lib/crm/flows/afterCall";
 import { addLeadFlow, basicsOf, hoursOf, linkOf, pinOf, type PinValue } from "@/lib/crm/flows/addLead";
+import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import type { CustomerLifecycle } from "@/lib/types";
 import { addLeadContext, flowContextFor, getBusiness } from "./businesses";
 import { findDuplicates } from "./dedupe";
@@ -222,6 +223,126 @@ export function applyFlowCore(
   }
   emitAll(org, events);
   return { customerId, activityId, nextTaskId, acc };
+}
+
+/** A driver's visit to a lead location (همه مکان‌ها). Unlike applyFlow this writes to
+ *  saved_locations, not customers: a lead location is not yet a customer, and the two
+ *  tables have different shapes (no phone, no lifecycle, three rating columns).
+ *
+ *  The flow's `acc` carries everything the row needs to know:
+ *    - outcome  -> visit_outcome (the one-word record of what happened)
+ *    - stars    -> rating_potential / volume / ease
+ *    - convert_location -> the driver promoted it; the caller opens the existing convert route
+ *    - handoff_sales     -> the driver met someone interested but unreachable by phone;
+ *                          create a call task for the group's sales team
+ *    - next_kind / due   -> a reminder task (only when the driver chose to set one)
+ */
+export function applyLeadVisit(
+  session: Session,
+  input: { locationId: number; answers: FlowAnswer[]; clientUuid?: string | null; nowIso?: string },
+): { activityId: number; nextTaskId: number | null; acc: FlowSet } {
+  const db = getDb();
+  const at = input.nowIso ?? new Date().toISOString();
+  const loc = db.prepare("SELECT * FROM saved_locations WHERE id = ?").get(input.locationId) as SavedLocationRow | undefined;
+  if (!loc) throw new CrmError(404, "مکان پیدا نشد");
+
+  const ctx: FlowContext = {
+    entry: "driver_visit",
+    firstContact: true,
+    attemptNo: 1,
+    maxMisses: 5,
+    isManager: session.role !== "driver",
+    vars: { name: loc.name, address: loc.address ?? "" },
+    knownContacts: [],
+    products: [],
+    reps: [],
+    recentCustomers: [],
+  };
+  const st = replayOr400(leadVisitFlow, ctx, input.answers);
+  const acc = st.acc;
+  const org = loc.organization_id;
+
+  if (input.clientUuid) {
+    const dup = db.prepare("SELECT id FROM lead_visit_activities WHERE organization_id = ? AND location_id = ? AND client_uuid = ?")
+      .get(org, input.locationId, input.clientUuid) as { id: number } | undefined;
+    if (dup) return { activityId: dup.id, nextTaskId: null, acc };
+  }
+
+  const stars = acc.stars ?? {};
+  const outcome = acc.outcome ?? null;
+  const status = outcomeToStatus(outcome);
+
+  db.exec("BEGIN IMMEDIATE");
+  let activityId: number;
+  let nextTaskId: number | null = null;
+  try {
+    db.prepare(`UPDATE saved_locations SET status = ?, visit_outcome = ?, rating_potential = ?, rating_volume = ?, rating_ease = ?, updated_at = ?
+                 WHERE id = ? AND organization_id = ?`)
+      .run(status, outcome, stars.potential ?? null, stars.volume ?? null, stars.ease ?? null, at, input.locationId, org);
+
+    activityId = Number(db.prepare(`INSERT INTO lead_visit_activities
+      (organization_id, location_id, user_id, outcome_code, answers_json, client_uuid, created_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)`).run(org, input.locationId, session.user.id, outcome, JSON.stringify({ answers: input.answers }), input.clientUuid ?? null, at).lastInsertRowid);
+
+    // Reminder task (only when the driver said "yes + one day").
+    if (acc.next_kind && acc.due) {
+      nextTaskId = createTask(org, {
+        title: acc.next_title ?? "یادآوری بازدید",
+        kind: acc.next_kind,
+        assignee_user_id: session.role === "driver" ? null : session.user.id,
+        role_hint: session.role === "driver" ? "group_manager" : null,
+        group_id: loc.group_id,
+        entity_type: "lead_location",
+        entity_id: input.locationId,
+        due_at: resolveDueText(acc.due, at),
+        priority: "NORMAL",
+        created_by: session.user.id,
+      });
+    }
+    // Handoff to sales: the driver met someone interested but unreachable by phone.
+    else if (acc.handoff_sales) {
+      nextTaskId = createTask(org, {
+        title: `تماس با «${loc.name}» — علاقه‌مند ولی نیاز به تماس`,
+        kind: "call",
+        assignee_user_id: null,
+        role_hint: "group_manager",
+        group_id: loc.group_id,
+        entity_type: "lead_location",
+        entity_id: input.locationId,
+        due_at: tomorrow10(at),
+        priority: "HIGH",
+        created_by: session.user.id,
+      });
+    }
+
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+  return { activityId, nextTaskId, acc };
+}
+
+/** Map a visit outcome to the saved_locations.status vocabulary. */
+function outcomeToStatus(outcome: OutcomeCode | null): LocationStatus | null {
+  switch (outcome) {
+    case "VISITED": case "READY_TO_BUY": return "visited";
+    case "ACCESS_FAILED": case "VISIT_CLOSED": case "VISIT_NO_OWNER": case "VISIT_WRONG_ADDRESS": case "VISIT_NEW_BUILDING": return "no_answer";
+    case "VISIT_NOT_INTERESTED": return "declined";
+    default: return null;
+  }
+}
+
+/** Resolve a DueSpec to an ISO timestamp string, for the task's due_at. */
+function resolveDueText(due: DueSpec, now: string): string {
+  return resolveDue(due, now) ?? now;
+}
+
+function tomorrow10(now: string): string {
+  const d = new Date(now);
+  d.setDate(d.getDate() + 1);
+  d.setHours(10, 0, 0, 0);
+  return d.toISOString();
 }
 
 const CRM_ROLES = new Set(["platform_owner", "owner", "group_manager", "rep_manager", "salesperson"]);

@@ -5,7 +5,7 @@ import type {
   BusinessType, ContactRole, LeadSource, LostReason, NextKind, NotFitReason, PriceTier, SkipReason, Verification,
 } from "../vocab";
 
-export type StepKind = "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours";
+export type StepKind = "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours" | "stars";
 
 /** Everything an answer can contribute. Merged left to right; a later answer wins. */
 export interface FlowSet {
@@ -38,6 +38,12 @@ export interface FlowSet {
   size_band?: SizeBand;
   supply_channel?: SupplyChannel;
   visit_window?: VisitWindow;
+  /** Driver-visit flows only: the visit produced a partial-interest handoff to sales. */
+  handoff_sales?: boolean;
+  /** Driver-visit flows only: the driver chose to promote this lead location to a customer. */
+  convert_location?: boolean;
+  /** Driver-visit flows only: the lead location's 1-5 stars for the three criteria. */
+  stars?: { potential?: number; volume?: number; ease?: number };
 }
 
 export interface FlowProgress { acc: FlowSet; values: Record<string, string> }

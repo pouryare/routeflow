@@ -75,6 +75,20 @@ export function createCrmTables(db: DatabaseSync): void {
       created_at TEXT NOT NULL,
       UNIQUE (customer_id, tag)
     );
+
+    /* A driver's visit to a saved lead location (saved_locations). */
+    CREATE TABLE IF NOT EXISTS lead_visit_activities (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      location_id INTEGER NOT NULL REFERENCES saved_locations(id),
+      user_id INTEGER REFERENCES users(id),
+      outcome_code TEXT,
+      answers_json TEXT,
+      client_uuid TEXT,
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS ix_lva_location ON lead_visit_activities(organization_id, location_id);
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_lva_client_uuid ON lead_visit_activities(organization_id, location_id, client_uuid) WHERE client_uuid IS NOT NULL;
   `);
 }
 
@@ -102,6 +116,12 @@ export function migrateCrm(db: DatabaseSync): void {
     CREATE INDEX IF NOT EXISTS ix_customers_next_task ON customers(next_task_id);
     CREATE INDEX IF NOT EXISTS ix_customers_instagram ON customers(organization_id, instagram);
   `);
+  // saved_locations columns added after the initial CREATE TABLE.
+  const locHave = new Set((db.prepare("PRAGMA table_info(saved_locations)").all() as { name: string }[]).map((c) => c.name));
+  if (!locHave.has("rating_potential")) db.exec("ALTER TABLE saved_locations ADD COLUMN rating_potential REAL");
+  if (!locHave.has("rating_volume")) db.exec("ALTER TABLE saved_locations ADD COLUMN rating_volume REAL");
+  if (!locHave.has("rating_ease")) db.exec("ALTER TABLE saved_locations ADD COLUMN rating_ease REAL");
+  if (!locHave.has("visit_outcome")) db.exec("ALTER TABLE saved_locations ADD COLUMN visit_outcome TEXT");
   backfillCrm(db);
 }
 

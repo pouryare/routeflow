@@ -188,13 +188,15 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
                       aria-label="نام مکان"
                       className="min-w-0 flex-1 truncate rounded-[var(--radius-sm)] border border-transparent bg-transparent px-1 py-0.5 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-border focus:border-accent"
                     />
-                    <span
-                      className="shrink-0 font-mono text-[length:var(--text-xs)]"
-                      style={{ color: RESOLUTION_META[it.resolution].color }}
-                    >
-                      <Icon name={RESOLUTION_META[it.resolution].icon} size="sm" />{" "}
-                      {RESOLUTION_META[it.resolution].label}
-                    </span>
+                    {(() => { const rm = RESOLUTION_META[it.resolution]; if (!rm) return null; return (
+                      <span
+                        className="shrink-0 font-mono text-[length:var(--text-xs)]"
+                        style={{ color: rm.color }}
+                      >
+                        <Icon name={rm.icon} size="sm" />{" "}
+                        {rm.label}
+                      </span>
+                    ); })()}
                   </div>
                   {it.address && <p className="truncate text-[length:var(--text-xs)] text-text-faint">{it.address}</p>}
                   {it.alreadySaved && <p className="text-[length:var(--text-xs)] text-text-faint">قبلاً در فهرست ذخیره شده</p>}

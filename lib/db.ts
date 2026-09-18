@@ -916,6 +916,13 @@ export function getDb(): DatabaseSync {
       resolution TEXT NOT NULL DEFAULT 'unresolved'
         CHECK (resolution IN ('direct', 'pluscode', 'nominatim', 'manual', 'unresolved')),
       notes TEXT,
+      organization_id INTEGER REFERENCES organizations(id),
+      group_id INTEGER REFERENCES groups(id),
+      status TEXT CHECK (status IN ('contacted', 'visited', 'no_answer', 'declined')),
+      visit_outcome TEXT,
+      rating_potential INTEGER,
+      rating_volume INTEGER,
+      rating_ease INTEGER,
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_saved_locations_name ON saved_locations(name);

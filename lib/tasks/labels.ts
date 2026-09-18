@@ -81,6 +81,15 @@ export const OUTCOME_LABEL: Record<string, string> = {
   GATEKEEPER: "تصمیم‌گیرنده نبود",
   VISIT_CLOSED: "بسته بود",
   INVALID: "نامعتبر",
+  // Driver visit outcomes (a driver physically went to the lead location).
+  VISITED: "بازدید شد",
+  ACCESS_FAILED: "دسترسی نشد",
+  READY_TO_BUY: "آماده خرید",
+  VISIT_NOT_INTERESTED: "علاقه ندارد",
+  VISIT_CLOSED: "بسته بود",
+  VISIT_NO_OWNER: "صاحب‌ش نبود",
+  VISIT_WRONG_ADDRESS: "آدرس اشتباه",
+  VISIT_NEW_BUILDING: "ساخته جدید",
 };
 
 

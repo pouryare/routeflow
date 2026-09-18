@@ -30,7 +30,7 @@ export interface TapFlowProps {
   hours?: WorkingHours;
 }
 
-const CUSTOM = new Set(["basics", "link", "pin", "hours"]);
+const CUSTOM = new Set(["basics", "link", "pin", "hours", "stars"]);
 
 /** One question per screen, in the meridian bottom sheet (docs/tap-flow-principles.md).
  *  Controlled: the host owns FlowState, which is what lets undo reopen the last question. */

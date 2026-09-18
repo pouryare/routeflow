@@ -74,6 +74,12 @@ export function answerStep(cfg: FlowConfig, ctx: FlowContext, st: FlowState, opt
   else if (step.kind === "input" && step.input && !step.input.optional) throw new FlowError(`${key} is required`);
 
   const acc: FlowSet = { ...st.acc, ...(opt.set ?? {}) };
+  // A `stars` step submits one comma-joined string ("potential,volume,ease"); decode it into
+  // the structured `stars` set rather than leaving a raw string in `values`.
+  if (step.kind === "stars" && has) {
+    const [p, v, e] = String(value).split(",").map((n) => (n === "" ? null : Number(n)));
+    acc.stars = { potential: p ?? null, volume: v ?? null, ease: e ?? null };
+  }
   const answer: FlowAnswer = has ? { step: stepId, option: optionId, value } : { step: stepId, option: optionId };
   const answers = [...st.answers, answer];
   if (opt.save) return { stack: st.stack, answers, acc, values, saved: true };
