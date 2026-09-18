@@ -2,6 +2,7 @@ import { Suspense, type ReactNode } from "react";
 import PageHeader from "@/components/meridian/PageHeader";
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
 import { pageMetaFor } from "@/lib/pageMeta";
+import type { Metadata } from "next";
 
 /** The page-overview card lives here rather than in page.tsx because the page is a client
  *  component and PageHeader is an async server one — a client file cannot import it, which
@@ -19,6 +20,11 @@ import { pageMetaFor } from "@/lib/pageMeta";
  *  what these pages showed permanently before this file existed.
  */
 const ROUTE = "/leads";
+
+export const metadata: Metadata = {
+  title: pageMetaFor(ROUTE).title,
+  description: pageMetaFor(ROUTE).overview,
+};
 
 export default function LeadsLayout({ children }: { children: ReactNode }) {
   return (

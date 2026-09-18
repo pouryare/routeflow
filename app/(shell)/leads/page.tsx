@@ -772,12 +772,20 @@ export default function LeadsPage() {
             </div>
           </div>
 
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="جستجو در نام یا آدرس…"
-            className="mb-3 w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
-          />
+          <div className="mb-3 relative">
+            <Icon
+              name="search"
+              size="sm"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-text-faint pointer-events-none"
+              aria-hidden="true"
+            />
+            <input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="جستجو در نام یا آدرس…"
+              className="w-full rounded-[var(--radius-md)] border-2 border-border bg-surface px-10 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:ring-1 focus:ring-accent"
+            />
+          </div>
 
           {loading ? (
             <>
@@ -860,10 +868,11 @@ export default function LeadsPage() {
                             href={navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={`مسیریابی به ${l.name}`}
-                            className="rounded-[var(--radius-sm)] px-1.5 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
+                            aria-label={`مشاهده و ویرایش ${l.name}`}
+                            className="rounded-[var(--radius-sm)] px-2 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 flex items-center gap-1"
                           >
                             <Icon name="external-link" size="sm" />
+                            <span className="text-[length:var(--text-xs)]">مشاهده و ویرایش</span>
                           </a>
                         )}
                         <CopyButton
