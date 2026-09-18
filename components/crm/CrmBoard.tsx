@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { Icon } from "@/components/meridian/Icon";
 import BusinessCard from "./BusinessCard";
 import AfterCallFlow from "./AfterCallFlow";
 import AddLeadFlow from "./AddLeadFlow";
@@ -66,16 +65,10 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
     <div style={{ display: "grid", gap: 12, padding: "0 16px 96px" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
         <div style={{ position: "relative", flex: 1 }}>
-          <Icon
-            name="search"
-            size="sm"
-            style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }}
-            aria-hidden="true"
-          />
           <input
             style={{
               flex: 1,
-              paddingLeft: 40,
+              paddingLeft: 14,
               paddingRight: 14,
               paddingTop: 13,
               paddingBottom: 13,
