@@ -46,7 +46,7 @@ export default function BusinessCard({ row, mode, highlight, onCall, onOpen, onN
             <Icon name="route" size="sm" /> مسیریابی
           </button>
         )}
-        <button type="button" className="btn ghost" onClick={() => onOpen(row)}>باز کن</button>
+        <button type="button" className="btn ghost" onClick={() => onOpen(row)}>مشاهده و ویرایش</button>
       </div>
     </article>
   );

@@ -6,8 +6,15 @@ import { getDb, plain } from "@/lib/db";
 import PageHeader from "@/components/meridian/PageHeader";
 import CrmBoard from "@/components/crm/CrmBoard";
 import { listBusinesses, viewCounts } from "@/lib/repo/crm/businesses";
+import { pageMetaFor } from "@/lib/pageMeta";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
+
+export const metadata: Metadata = {
+  title: pageMetaFor("/crm").title,
+  description: pageMetaFor("/crm").overview,
+};
 
 /** «مشتریان و سرنخ‌ها» -- the field CRM. Opens on today's follow-ups; falls back to "my
  *  leads" when there are none, so the first screen is never empty for a rep with work. */

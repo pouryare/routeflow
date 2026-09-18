@@ -64,7 +64,22 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
   return (
     <div style={{ display: "grid", gap: 12, padding: "0 16px 96px" }}>
       <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-        <input className="tf-input" style={{ flex: 1 }} value={q} onChange={(e) => setQ(e.target.value)} placeholder="جستجو نام، تلفن، محله…" aria-label="جستجو" />
+        <div style={{ position: "relative", flex: 1 }}>
+          <Icon
+            name="search"
+            size="sm"
+            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }}
+            aria-hidden="true"
+          />
+          <input
+            className="tf-input"
+            style={{ flex: 1, paddingRight: 40 }}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="جستجو نام، تلفن، محله…"
+            aria-label="جستجو"
+          />
+        </div>
         <button type="button" className="btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>+ سرنخ</button>
       </div>
       <div className="crm-views" role="toolbar" aria-label="نمای فهرست">
