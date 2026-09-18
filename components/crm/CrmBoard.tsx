@@ -69,14 +69,14 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
           <Icon
             name="search"
             size="sm"
-            style={{ position: "absolute", right: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }}
+            style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--text-faint)", pointerEvents: "none" }}
             aria-hidden="true"
           />
           <input
             style={{
               flex: 1,
-              paddingRight: 40,
-              paddingLeft: 14,
+              paddingLeft: 40,
+              paddingRight: 14,
               paddingTop: 13,
               paddingBottom: 13,
               borderRadius: "var(--radius-md)",
