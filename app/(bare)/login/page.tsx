@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useEffect, useRef, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { Icon } from "@/components/meridian/Icon";
 
 function LoginForm() {
   const router = useRouter();
@@ -10,11 +11,27 @@ function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [bounced, setBounced] = useState(false);
+  const nextPathRef = useRef<string | null>(null);
+  const clearedRef = useRef(false);
+
   // proxy.ts only sets ?next= when it turned someone away from a page they asked for, so
   // its presence means "you were signed in a moment ago, and now you are not". Without
   // saying so, an expired session looks exactly like a broken app: the map they expected
   // is replaced by a form, with no clue why.
-  const bounced = !!params.get("next");
+  // Clear the param after reading so a refresh/back-navigation doesn't show the banner again.
+  useEffect(() => {
+    const next = params.get("next");
+    if (next && !clearedRef.current) {
+      setBounced(true);
+      nextPathRef.current = next;
+      clearedRef.current = true;
+      // Remove ?next= from URL without triggering navigation
+      const url = new URL(window.location.href);
+      url.searchParams.delete("next");
+      window.history.replaceState({}, "", url.toString());
+    }
+  }, [params]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -32,7 +49,7 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      router.push(params.get("next") || "/");
+      router.push(nextPathRef.current || "/");
       router.refresh();
     } catch {
       setError("خطا در ارتباط با سرور");
@@ -41,85 +58,62 @@ function LoginForm() {
   }
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-bg p-4">
-      {/* faint radar grid, ambient only -- never over content */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-40"
-        style={{
-          backgroundImage:
-            "linear-gradient(var(--border) 1px, transparent 1px), linear-gradient(90deg, var(--border) 1px, transparent 1px)",
-          backgroundSize: "32px 32px",
-          maskImage: "radial-gradient(circle at center, black, transparent 75%)",
-        }}
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute left-1/2 top-1/2 aspect-square w-[140vmax] -translate-x-1/2 -translate-y-1/2"
-        style={{
-          background:
-            "conic-gradient(from 0deg, var(--accent), transparent 22%, transparent)",
-          animation: "spin var(--sweep-duration) linear infinite",
-          // Tokenised rather than a fixed 0.12: the same alpha that is barely visible on
-          // near-black is a grey wedge across a pale canvas.
-          opacity: "var(--sweep-opacity)",
-        }}
-      />
-
-      <form
-        onSubmit={onSubmit}
-        className="relative w-full max-w-sm rounded-lg border border-border bg-surface-raised p-8 elevate-accent"
-      >
-        <div className="mb-1 font-mono text-xs tracking-[0.12em] text-accent uppercase">
-          RouteFlow
-        </div>
-        <h1 className="mb-1 text-xl font-bold text-text">نقشه پوشش مشتریان</h1>
-        <p className="mb-6 text-sm text-text-muted">
-          با نام کاربری و رمز عبور خودتان وارد شوید.
-        </p>
-
-        {bounced && (
-          <p
-            role="status"
-            className="mb-4 rounded-md border border-warn/40 bg-warn/10 px-3 py-2 text-sm text-warn"
-          >
-            نشست شما پایان یافته است. برای ادامه دوباره وارد شوید.
+    <div className="meridian min-h-screen flex items-center justify-center p-[var(--space-4)]">
+      <main className="w-full max-w-sm">
+        <div className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface-raised)] p-[var(--space-6)]">
+          <div className="mb-[var(--space-4)] flex items-center justify-center gap-[var(--space-2)]">
+            <Icon name="map" size="lg" className="text-[var(--accent)]" />
+            <div className="font-mono text-xs tracking-[0.12em] text-[var(--accent)] uppercase">
+              RouteFlow
+            </div>
+          </div>
+          <h1 className="mb-[var(--space-1)] text-center text-[length:var(--text-xl)] font-bold text-[var(--text)]">
+            نقشه پوشش مشتریان
+          </h1>
+          <p className="mb-[var(--space-5)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            با نام کاربری و رمز عبور خودتان وارد شوید.
           </p>
-        )}
 
-        <input
-          type="text"
-          autoFocus
-          autoComplete="username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="نام کاربری"
-          dir="ltr"
-          className="mb-3 w-full rounded-md border border-border bg-surface px-4 py-2 text-left font-mono text-base text-text outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:elevate-accent"
-        />
-        <input
-          type="password"
-          autoComplete="current-password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          placeholder="رمز عبور"
-          dir="ltr"
-          className="mb-4 w-full rounded-md border border-border bg-surface px-4 py-2 text-left font-mono text-base text-text outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:elevate-accent"
-        />
-        {error && <p className="mb-4 text-sm text-crit">{error}</p>}
-        <button
-          type="submit"
-          disabled={loading || !username.trim() || !password}
-          className="w-full cursor-pointer rounded-md border border-accent bg-accent py-2 font-medium text-accent-ink transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
-        >
-          {loading ? "در حال ورود..." : "ورود"}
-        </button>
-        <p className="mt-4 text-center text-xs text-text-faint">
-          حساب ندارید؟ از مدیر بخواهید برایتان بسازد.
-        </p>
-      </form>
+          {bounced && (
+            <p
+              role="status"
+              className="mb-[var(--space-4)] rounded-[var(--radius-md)] border border-[var(--warn)]/40 bg-[var(--warn)]/10 px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--warn)]"
+            >
+              نشست شما پایان یافته است. برای ادامه دوباره وارد شوید.
+            </p>
+          )}
 
-      <style>{`@keyframes spin { to { transform: translate(-50%, -50%) rotate(360deg); } }`}</style>
+          <form onSubmit={onSubmit}>
+            <input
+              type="text"
+              autoFocus
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="نام کاربری"
+              dir="rtl"
+              className="mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
+            />
+            <input
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="رمز عبور"
+              dir="rtl"
+              className="mb-[var(--space-4)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
+            />
+            {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
+            <button
+              type="submit"
+              disabled={loading || !username.trim() || !password}
+              className="w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {loading ? "در حال ورود..." : "ورود"}
+            </button>
+          </form>
+        </div>
+      </main>
     </div>
   );
 }

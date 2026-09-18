@@ -3290,7 +3290,7 @@ export interface UserRow {
   created_at: string;
 }
 
-export type LocationResolution = "direct" | "pluscode" | "nominatim" | "manual" | "unresolved";
+export type LocationResolution = "direct" | "pluscode" | "browser" | "nominatim" | "manual" | "unresolved";
 export type LocationStatus = "contacted" | "visited" | "no_answer" | "declined";
 export const LOCATION_STATUSES: LocationStatus[] = ["contacted", "visited", "no_answer", "declined"];
 

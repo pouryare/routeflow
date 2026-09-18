@@ -9,6 +9,7 @@ import {
   isAllowedLinkHost,
   isPrivateOrLocalHost,
 } from "@/lib/geoLinks";
+import { extractViaBrowser, browserLifecycle } from "@/lib/playwrightExtract";
 import type { LocationResolution } from "@/lib/db";
 
 const MAX_REDIRECTS = 6;
@@ -156,6 +157,25 @@ export async function resolveMapsLink(rawUrl: string, fallbackName = ""): Promis
     return { ...plusHit, address: extractPlaceAddress(current.href), resolvedUrl: current.href, resolution: "pluscode" };
   }
 
+  // A Google "saved place" share link often resolves to a URL with no @lat,lng and
+  // no Plus Code in its slug -- the only coordinate signal is inside the page's own
+  // JS state, which a plain fetch can't read. Playwright executes that JS and pulls
+  // the exact pin out. Tried before Nominatim because a browser-resolved pin is
+  // exact, while Nominatim can only guess at the area.
+  try {
+    const browserHit = await extractViaBrowser(current.href);
+    if (browserHit) {
+      return {
+        ...browserHit,
+        address: extractPlaceAddress(browserHit.resolvedUrl),
+        resolvedUrl: browserHit.resolvedUrl,
+        resolution: "browser",
+      };
+    }
+  } catch {
+    /* fall through to Nominatim */
+  }
+
   async function viaNominatimOrUnresolved(finalUrl: string): Promise<ResolvedLink> {
     const address = extractPlaceAddress(finalUrl);
     const nominatimHit = await resolveViaNominatim(address, fallbackName);
@@ -215,14 +235,21 @@ export async function resolveMapsLinks(
   names: string[] = [],
   concurrency = 4
 ): Promise<ResolvedLink[]> {
-  const results = new Array<ResolvedLink>(urls.length);
-  let next = 0;
-  async function worker() {
-    while (next < urls.length) {
-      const i = next++;
-      results[i] = await resolveMapsLink(urls[i], names[i] ?? "");
+  // One shared browser for the whole batch -- launching Chromium per link would
+  // add seconds of overhead to every item that reaches the browser fallback.
+  await browserLifecycle.getBrowser();
+  try {
+    const results = new Array<ResolvedLink>(urls.length);
+    let next = 0;
+    async function worker() {
+      while (next < urls.length) {
+        const i = next++;
+        results[i] = await resolveMapsLink(urls[i], names[i] ?? "");
+      }
     }
+    await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
+    return results;
+  } finally {
+    await browserLifecycle.closeBrowser();
   }
-  await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, worker));
-  return results;
 }

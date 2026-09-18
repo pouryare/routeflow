@@ -10,6 +10,7 @@ import { faToman, faNum } from "@/lib/format";
 import DriverRun from "@/components/driver/DriverRun";
 import SyncStatus from "@/components/SyncStatus";
 import VerifyVisits from "@/components/driver/VerifyVisits";
+import NotificationBell from "@/components/NotificationBell";
 import { Icon } from "@/components/meridian/Icon";
 
 export const dynamic = "force-dynamic";
@@ -114,6 +115,7 @@ export default async function DriverPage() {
           </div>
         </div>
       )}
+      <NotificationBell />
     </main>
   );
 }

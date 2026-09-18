@@ -63,6 +63,18 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
     values.push(name);
   }
 
+  if (body?.username !== undefined) {
+    const username = typeof body.username === "string" ? body.username.trim() : "";
+    if (!username) return NextResponse.json({ ok: false, error: "نام کاربری الزامی است" }, { status: 400 });
+    // Check for duplicate username within the same organization
+    const existing = db
+      .prepare("SELECT 1 FROM users WHERE username = ? AND organization_id = ? AND id != ?")
+      .get(username, guard.session.organizationId, userId);
+    if (existing) return NextResponse.json({ ok: false, error: "نام کاربری تکراری است" }, { status: 409 });
+    sets.push("username = ?");
+    values.push(username);
+  }
+
   const nextRole = body?.role as Role | undefined;
   if (nextRole !== undefined) {
     if (!ROLES.includes(nextRole)) {

@@ -868,13 +868,17 @@ export default function LeadsPage() {
                             href={navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
                             target="_blank"
                             rel="noopener noreferrer"
-                            aria-label={`مشاهده و ویرایش ${l.name}`}
-                            className="rounded-[var(--radius-sm)] px-2 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 flex items-center gap-1"
+                            aria-label={`مسیریابی ${l.name}`}
+                            className="rounded-[var(--radius-sm)] px-2 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 flex items-center gap-1.5 whitespace-nowrap"
                           >
                             <Icon name="external-link" size="sm" />
-                            <span className="text-[length:var(--text-xs)]">مشاهده و ویرایش</span>
+                            <span className="text-[length:var(--text-xs)]">مسیریابی</span>
                           </a>
                         )}
+                        <CopyButton
+                          value={() => l.maps_url}
+                          what="کپی لینک اصلی"
+                        />
                         <CopyButton
                           value={() => `${window.location.origin}/leads?l=${l.id}`}
                           what="کپی پیوند این مکان"
@@ -919,31 +923,30 @@ export default function LeadsPage() {
                         {scoring ? (
                           "بستن امتیاز"
                         ) : (
-                          <>
-                            <Icon name="star" size="sm" filled={avg !== null} />{" "}
-                            {avg !== null ? "امتیاز" : "امتیازدهی"}
-                          </>
+                          <span className="flex items-center gap-1.5 whitespace-nowrap">
+                            <Icon name="star" size="sm" filled={avg !== null} />
+                            <span className="text-[length:var(--text-xs)]">{avg !== null ? "امتیاز" : "امتیازدهی"}</span>
+                          </span>
                         )}
                       </button>
 
-                      {l.lat === null ? (
-                        <button
-                          onClick={() => setPinningId(pinningId === l.id ? null : l.id)}
-                          className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
-                        >
-                          {pinningId === l.id ? (
-                            "بستن نقشه"
-                          ) : (
-                            <>
-                              <Icon name="map-pin" size="sm" /> تعیین موقعیت روی نقشه
-                            </>
-                          )}
-                        </button>
-                      ) : (
+                      <button
+                        onClick={() => setPinningId(pinningId === l.id ? null : l.id)}
+                        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent flex items-center gap-1.5 whitespace-nowrap"
+                      >
+                        {pinningId === l.id ? (
+                          "بستن نقشه"
+                        ) : (
+                          <>
+                            <Icon name="map-pin" size="sm" /> تعیین موقعیت روی نقشه
+                          </>
+                        )}
+                      </button>
+                      {l.lat !== null && l.lng !== null && (
                         <button
                           onClick={() => convertToCustomer(l.id)}
                           disabled={converting === l.id}
-                          className="rounded-[var(--radius-sm)] border border-good px-2 py-1 text-[length:var(--text-xs)] text-good hover:bg-good/10 disabled:opacity-50"
+                          className="rounded-[var(--radius-sm)] border border-good px-2 py-1 text-[length:var(--text-xs)] text-good hover:bg-good/10 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
                         >
                           {converting === l.id ? (
                             "در حال تبدیل…"

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import AppShell from "@/components/meridian/AppShell";
+import { MyPositionProvider } from "@/components/MyPositionProvider";
 
 /** The shell group: /sales, /map, /facilities, /gallery, /planner, /report, /leads,
  *  /settings. One header, one theme, one entrance, for all of them.
@@ -23,7 +24,9 @@ import AppShell from "@/components/meridian/AppShell";
 export default function ShellLayout({ children }: { children: ReactNode }) {
   return (
     <div className="meridian min-h-screen">
-      <AppShell>{children}</AppShell>
+      <MyPositionProvider>
+        <AppShell>{children}</AppShell>
+      </MyPositionProvider>
     </div>
   );
 }

@@ -175,15 +175,11 @@ export default function AdminUsersPage() {
           <input
             value={form.staff_code}
             onChange={(e) => setForm({ ...form, staff_code: e.target.value })}
-            placeholder="شناسه همکار در اکسل"
+            placeholder="شناسه همکار"
             dir="ltr"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
           />
         </div>
-        <p className="mt-2 text-xs text-text-faint">
-          «شناسه همکار در اکسل» باید دقیقاً با ستون شناسه در شیت همکاران یکی باشد — کلید اتصال
-          پورسانت همین است.
-        </p>
         <button
           type="submit"
           disabled={busy}
@@ -206,7 +202,7 @@ export default function AdminUsersPage() {
                   <th className="p-2 font-normal">نام کاربری</th>
                   <th className="p-2 font-normal">نقش</th>
                   <th className="p-2 font-normal">گروه</th>
-                  <th className="p-2 font-normal">شناسه اکسل</th>
+                  <th className="p-2 font-normal">شناسه همکار</th>
                   <th className="p-2 font-normal">تلگرام</th>
                   <th className="p-2 font-normal">اجازه موقعیت</th>
                   <th className="p-2 font-normal">وضعیت</th>
@@ -216,8 +212,36 @@ export default function AdminUsersPage() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className={`border-b border-border last:border-b-0 ${u.active ? "" : "opacity-50"}`}>
-                    <td className="p-2 text-text">{u.display_name}</td>
-                    <td className="p-2 text-left font-mono text-xs text-text-muted" dir="ltr">{u.username}</td>
+                    <td className="p-2">
+                      <input
+                        key={u.display_name}
+                        defaultValue={u.display_name}
+                        dir="rtl"
+                        placeholder="—"
+                        aria-label={`نام نمایشی ${u.display_name}`}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === u.display_name) return;
+                          send(`/api/admin/users/${u.id}`, "PATCH", { display_name: v });
+                        }}
+                        className="w-32 rounded-md border border-border bg-surface-raised px-2 py-1 text-right text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+                      />
+                    </td>
+                    <td className="p-2">
+                      <input
+                        key={u.username}
+                        defaultValue={u.username}
+                        dir="ltr"
+                        placeholder="—"
+                        aria-label={`نام کاربری ${u.username}`}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === u.username) return;
+                          send(`/api/admin/users/${u.id}`, "PATCH", { username: v });
+                        }}
+                        className="w-28 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+                      />
+                    </td>
                     <td className="p-2">
                       <select
                         value={u.role}
@@ -247,8 +271,20 @@ export default function AdminUsersPage() {
                         ))}
                       </select>
                     </td>
-                    <td className="p-2 text-left font-mono text-xs text-text-muted" dir="ltr">
-                      {u.staff_code ?? "—"}
+                    <td className="p-2">
+                      <input
+                        key={u.staff_code ?? ""}
+                        defaultValue={u.staff_code ?? ""}
+                        dir="ltr"
+                        placeholder="—"
+                        aria-label={`شناسه همکار ${u.display_name}`}
+                        onBlur={(e) => {
+                          const v = e.target.value.trim();
+                          if (v === (u.staff_code ?? "")) return;
+                          send(`/api/admin/users/${u.id}`, "PATCH", { staff_code: v || null });
+                        }}
+                        className="w-24 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
+                      />
                     </td>
                     <td className="p-2">
                       <TelegramCell

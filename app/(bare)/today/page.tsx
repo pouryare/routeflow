@@ -7,6 +7,7 @@ import { getDb } from "@/lib/db";
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import { faJalaliLong } from "@/lib/jalali";
+import NotificationBell from "@/components/NotificationBell";
 
 export const dynamic = "force-dynamic";
 
@@ -31,6 +32,7 @@ export default async function TodayPage() {
         </p>
       </header>
       <Briefing data={data} />
+      <NotificationBell />
     </main>
   );
 }

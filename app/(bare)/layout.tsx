@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import NotificationBell from "@/components/NotificationBell";
+
 
 /** The bare group: /driver, /login, /offline, /today.
  *
@@ -18,15 +18,6 @@ export default function BareLayout({ children }: { children: ReactNode }) {
   return (
     <div className="meridian">
       {children}
-      {/* The one exception to "no chrome", and it is functional rather than decorative.
-          The bell used to be mounted in the root layout, so every route had it; moving it
-          into the shell header would have silently taken it away from the driver, who
-          receives delivery.failed and task.assigned and owns the same opt-in matrix as
-          everyone else (see proxy.ts, which lets a driver reach /settings and
-          /api/notifications). It keeps its original floating placement here, and renders
-          nothing at all when the poll says the viewer is not authenticated — so /login
-          and /offline are unaffected. */}
-      <NotificationBell />
     </div>
   );
 }
