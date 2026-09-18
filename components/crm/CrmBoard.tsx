@@ -73,8 +73,31 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
             aria-hidden="true"
           />
           <input
-            className="tf-input"
-            style={{ flex: 1, paddingRight: 40 }}
+            style={{
+              flex: 1,
+              paddingRight: 40,
+              paddingLeft: 14,
+              paddingTop: 13,
+              paddingBottom: 13,
+              borderRadius: "var(--radius-md)",
+              border: "2px solid var(--border)",
+              background: "var(--surface)",
+              color: "var(--text)",
+              font: "inherit",
+              fontSize: "var(--text-sm)",
+              width: "100%",
+              boxSizing: "border-box",
+              outline: "none",
+              transition: "border-color var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out)",
+            }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--accent)";
+              e.currentTarget.style.boxShadow = "0 0 0 1px var(--accent)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
             value={q}
             onChange={(e) => setQ(e.target.value)}
             placeholder="جستجو نام، تلفن، محله…"
