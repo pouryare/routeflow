@@ -2073,7 +2073,7 @@ export function getDb(): DatabaseSync {
   const savedLocationsSchema = db
     .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='saved_locations'")
     .get() as { sql: string } | undefined;
-  if (savedLocationsSchema && !savedLocationsSchema.sql.includes("'manual'")) {
+  if (savedLocationsSchema && !savedLocationsSchema.sql.includes("'browser'")) {
     db.exec("BEGIN");
     try {
       db.exec(`

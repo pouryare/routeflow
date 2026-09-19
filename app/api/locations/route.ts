@@ -63,7 +63,7 @@ export async function POST(req: NextRequest) {
     ON CONFLICT(organization_id, maps_url) DO NOTHING
   `);
 
-  const VALID_RESOLUTIONS = new Set<LocationResolution>(["direct", "pluscode", "browser", "nominatim", "manual"]);
+  const VALID_RESOLUTIONS = new Set<LocationResolution>(["direct", "pluscode", "browser", "nominatim", "manual", "unresolved"]);
 
   let added = 0;
   db.exec("BEGIN");
