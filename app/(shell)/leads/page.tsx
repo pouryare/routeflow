@@ -3,6 +3,7 @@
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
+import { useSession } from "@/lib/useSession";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { distanceKm, formatDistanceKm, routeLengthKm, twoOptOrder, RESORT_THRESHOLD_KM, type LatLng } from "@/lib/geo";
@@ -23,6 +24,11 @@ import { useMyPosition } from "@/components/MyPositionProvider";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import StarRating from "@/components/StarRating";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
+import LocationCard from "@/components/leads/LocationCard";
+import RouteSection from "@/components/leads/RouteSection";
+import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
+import type { LeadPoint } from "@/components/LeadsMap";
+import { Icon } from "@/components/meridian/Icon";
 import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
 import type { LeadPoint } from "@/components/LeadsMap";
 import { Icon } from "@/components/meridian/Icon";
@@ -127,6 +133,7 @@ export default function LeadsPage() {
   const [tapFlowId, setTapFlowId] = useState<number | null>(null);
   const [stopsPerDay, setStopsPerDay] = useState(8);
   const [proposedDays, setProposedDays] = useState<RoutableLocation[][] | null>(null);
+  const { isManager, loading: sessionLoading } = useSession();
   const [selectedMapId, setSelectedMapId] = useState<number | null>(null);
   const [newListName, setNewListName] = useState("");
   const toast = useToast();
@@ -656,7 +663,8 @@ export default function LeadsPage() {
 
         <LeadImportPanel onAdded={load} />
 
-        {/* ---- all leads --------------------------------------------------------- */}
+        {/* ---- all leads (manager only) ------------------------------------------ */}
+        {isManager && (
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="sechead__title">
@@ -686,6 +694,20 @@ export default function LeadsPage() {
                   <Icon name="locate" size="sm" /> تعیین موقعیت
                 </button>
               )}
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
+                aria-label="ترتیب"
+              >
+                <option value="nearest">نزدیک‌ترین</option>
+                <option value="score">امتیاز</option>
+                <option value="name">نام</option>
+                <option value="newest">تازه‌ترین</option>
+                <option value="status">وضعیت</option>
+                <option value="route">ترتیب مسیر</option>
+                <option value="priority">اولویت</option>
+              </select>
             </div>
           </div>
 
@@ -718,210 +740,74 @@ export default function LeadsPage() {
           ) : visible.length === 0 ? (
             <EmptyState icon="search" title="چیزی با این جستجو پیدا نشد" className="py-4" />
           ) : (
-            <ul className="flex flex-col gap-1.5">
+            <ul className="flex flex-col gap-1.5" role="list">
               {visible.map(({ loc: l, km }) => {
                 const runIdx = run.indexOf(l.id);
                 const inRun = runIdx !== -1;
                 const avg = averageScore(l);
                 const scoring = scoringId === l.id;
+                const priorityHigh = avg !== null && avg >= 4;
                 return (
-                  <li
+                  <LocationCard
                     key={l.id}
-                    ref={l.id === linkedId ? linkedRef : undefined}
-                    className={`flex flex-col gap-2 rounded-[var(--radius-md)] border bg-surface px-3 py-2 ${
-                      l.id === linkedId || l.id === selectedMapId
-                        ? "border-accent elevate-accent"
-                        : inRun
-                          ? "border-accent/40"
-                          : "border-border"
-                    }`}
-                  >
-                    <div className="flex items-start gap-2">
-                      {/* One tap adds it, in tap order. This is the whole difference from
-                          a checkbox: a checkbox records membership, this records
-                          sequence. */}
-                      <button
-                        onClick={() => (inRun ? removeFromRun(l.id) : addToRun(l.id))}
-                        disabled={l.lat === null || l.lng === null}
-                        aria-label={inRun ? `حذف ${l.name} از مسیر` : `افزودن ${l.name} به مسیر`}
-                        className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-30 ${
-                          inRun
-                            ? "border-accent bg-accent text-accent-ink"
-                            : "border-border text-text-muted hover:border-accent hover:text-accent"
-                        }`}
-                      >
-                        {inRun ? faNum(runIdx + 1) : "+"}
-                      </button>
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-[length:var(--text-sm)] text-text">{l.name}</span>
-                          {avg !== null && (
-                            <span
-                              className="shrink-0 font-mono text-[length:var(--text-xs)] text-warn"
-                              title="میانگین امتیاز"
-                            >
-                              <Icon name="star" size="sm" filled /> {faNum(Math.round(avg * 10) / 10)}
-                            </span>
-                          )}
-                          {km !== null ? (
-                            <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-accent">
-                              {formatDistanceKm(km)}
-                            </span>
-                          ) : (
-                            l.lat === null && (
-                              <span className="shrink-0 text-[length:var(--text-xs)] text-warn">
-                                <Icon name="warn" size="sm" /> بدون مختصات
-                              </span>
-                            )
-                          )}
-                        </div>
-                        {l.address && <p className="truncate text-[length:var(--text-xs)] text-text-faint">{l.address}</p>}
-                      </div>
-
-                      <div className="flex shrink-0 items-center gap-1">
-                        {l.lat !== null && l.lng !== null && (
-                          <a
-                            href={navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            aria-label={`مسیریابی ${l.name}`}
-                            className="rounded-[var(--radius-sm)] px-2 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 flex items-center gap-1.5 whitespace-nowrap"
-                          >
-                            <Icon name="external-link" size="sm" />
-                            <span className="text-[length:var(--text-xs)]">مسیریابی</span>
-                          </a>
-                        )}
-                        <CopyButton
-                          value={() => l.maps_url}
-                          what="کپی لینک اصلی"
-                        />
-                        <CopyButton
-                          value={() => `${window.location.origin}/leads?l=${l.id}`}
-                          what="کپی پیوند این مکان"
-                        />
-                        <button
-                          onClick={() => setTapFlowId(l.id)}
-                          aria-label={`تسجیل بازدید ${l.name}`}
-                          className="rounded-[var(--radius-sm)] px-2 py-1 text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 flex items-center gap-1.5 whitespace-nowrap text-[length:var(--text-xs)]"
-                        >
-                          <Icon name="check" size="sm" /> تسجیل بازدید
-                        </button>
-                        <button
-                          onClick={() => remove(l.id)}
-                          aria-label="حذف"
-                          className="rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
-                        >
-                          <Icon name="trash" size="sm" />
-                        </button>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-wrap items-center gap-2 ps-9">
-                      <select
-                        value={l.status ?? ""}
-                        onChange={(e) => setStatus(l.id, (e.target.value || null) as LocationStatus | null)}
-                        className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-                      >
-                        <option value="">بدون وضعیت</option>
-                        {Object.entries(STATUS_META).map(([v, label]) => (
-                          <option key={v} value={v}>
-                            {label}
-                          </option>
-                        ))}
-                      </select>
-
-                      {/* Folded away by default. Three labelled star rows under every
-                          entry would triple the height of a list whose job is to be
-                          scanned, and scoring happens once per place while the list is
-                          read many times. */}
-                      <button
-                        onClick={() => setScoringId(scoring ? null : l.id)}
-                        aria-expanded={scoring}
-                        className={`rounded-[var(--radius-sm)] border px-2 py-1 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                          avg !== null
-                            ? "border-warn/50 text-warn hover:border-warn"
-                            : "border-border text-text-muted hover:border-accent hover:text-accent"
-                        }`}
-                      >
-                        {scoring ? (
-                          "بستن امتیاز"
-                        ) : (
-                          <span className="flex items-center gap-1.5 whitespace-nowrap">
-                            <Icon name="star" size="sm" filled={avg !== null} />
-                            <span className="text-[length:var(--text-xs)]">{avg !== null ? "امتیاز" : "امتیازدهی"}</span>
-                          </span>
-                        )}
-                      </button>
-
-                      <button
-                        onClick={() => setPinningId(pinningId === l.id ? null : l.id)}
-                        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent flex items-center gap-1.5 whitespace-nowrap"
-                      >
-                        {pinningId === l.id ? (
-                          "بستن نقشه"
-                        ) : (
-                          <>
-                            <Icon name="map-pin" size="sm" /> تعیین موقعیت روی نقشه
-                          </>
-                        )}
-                      </button>
-                      {l.lat !== null && l.lng !== null && (
-                        <button
-                          onClick={() => convertToCustomer(l.id)}
-                          disabled={converting === l.id}
-                          className="rounded-[var(--radius-sm)] border border-good px-2 py-1 text-[length:var(--text-xs)] text-good hover:bg-good/10 disabled:opacity-50 flex items-center gap-1.5 whitespace-nowrap"
-                        >
-                          {converting === l.id ? (
-                            "در حال تبدیل…"
-                          ) : (
-                            <>
-                              <Icon name="check" size="sm" /> تبدیل به مشتری
-                            </>
-                          )}
-                        </button>
-                      )}
-                    </div>
-
-                    {scoring && (
-                      <div className="flex flex-col gap-2 rounded-[var(--radius-md)] border border-border bg-bg px-3 py-2.5">
-                        {LEAD_CRITERIA.map((c) => (
-                          <div key={c.key} className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="min-w-0">
-                              <span className="block text-[length:var(--text-sm)] text-text">
-                                <span aria-hidden="true" className="me-1 inline-flex align-[-0.2em]">
-                                  <Icon name={c.icon} size="sm" />
-                                </span>
-                                {c.label}
-                              </span>
-                              {/* "4 out of 5" only means something if two people would
-                                  agree what it is 4 out of. */}
-                              <span className="block text-[length:var(--text-xs)] text-text-faint">{c.hint}</span>
-                            </span>
-                            <StarRating
-                              value={scoreOf(l, c.key)}
-                              label={c.label}
-                              onChange={(v) => setScore(l.id, c.key, v)}
-                            />
-                          </div>
-                        ))}
-                        <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
-                          برای پاک کردن یک امتیاز، روی همان ستاره دوباره بزنید.
-                        </p>
-                      </div>
-                    )}
-
-                    {pinningId === l.id && (
-                      <LocationPinPicker
-                        initial={null}
-                        onConfirm={(lat, lng) => savePin(l.id, lat, lng)}
-                        onCancel={() => setPinningId(null)}
-                      />
-                    )}
-                  </li>
+                    location={l}
+                    inRun={inRun}
+                    navAppId={navAppId}
+                    onPin={() => setPinningId(l.id)}
+                    onNameChange={(name) => setLocations((prev) => prev.map((loc) => loc.id === l.id ? { ...loc, name } : loc))}
+                    runIdx={inRun ? runIdx : null}
+                    onToggleRun={() => (inRun ? removeFromRun(l.id) : addToRun(l.id))}
+                    onStatusChange={(status) => setStatus(l.id, status)}
+                    currentStatus={l.status}
+                    onTapFlow={() => setTapFlowId(l.id)}
+                    scoring={scoring}
+                    onClickScoring={() => setScoringId(scoring ? null : l.id)}
+                    priorityHigh={priorityHigh}
+                    km={km}
+                  />
                 );
               })}
             </ul>
+          )}
+
+          {/* ---- scoring panel ------------------------------------------------- */}
+          {scoringId !== null && (
+            <div className="mt-3 rounded-[var(--radius-md)] border border-border bg-bg p-4">
+              <h4 className="text-[length:var(--text-sm)] font-medium text-text mb-2">امتیازدهی به مکان</h4>
+              {LEAD_CRITERIA.map((c) => {
+                const loc = locations.find((l) => l.id === scoringId);
+                return (
+                  <div key={c.key} className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                    <span className="text-[length:var(--text-sm)] text-text">
+                      <Icon name={c.icon} size="sm" /> {c.label}
+                    </span>
+                    <StarRating
+                      value={scoreOf(loc ?? { id: 0, rating_potential: null, rating_volume: null, rating_ease: null }, c.key)}
+                      label={c.label}
+                      onChange={(v) => setScore(scoringId, c.key, v)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {/* ---- pin picker overlay -------------------------------------------- */}
+          {pinningId !== null && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setPinningId(null)}>
+              <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6 w-96 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+                <h3 className="sechead__title mb-4">تعیین موقعیت روی نقشه</h3>
+                <p className="text-[length:var(--text-sm)] text-text-muted mb-4">روی نقشه کلیک کنید تا موقعیت این مکان را تعیین کنید.</p>
+                <LocationPinPicker
+                  initial={null}
+                  onConfirm={(lat, lng) => {
+                    savePin(pinningId, lat, lng);
+                    setPinningId(null);
+                  }}
+                  onCancel={() => setPinningId(null)}
+                />
+              </div>
+            </div>
           )}
           {showManualPos && (
             <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowManualPos(false)}>
@@ -943,8 +829,10 @@ export default function LeadsPage() {
             </div>
           )}
         </section>
+        )}
 
-        {/* ---- automatic day split ---------------------------------------------- */}
+        {/* ---- automatic day split (manager only) -------------------------------- */}
+        {isManager && (
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <CollapsibleSection
             title="تقسیم خودکار بین روزها" icon="folders"
@@ -1025,95 +913,26 @@ export default function LeadsPage() {
             )}
           </CollapsibleSection>
         </section>
+        )}
 
-        {/* ---- the run ---------------------------------------------------------- */}
-        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="sechead__title">
-              {activeList ? `مسیر: ${activeList.name}` : "مسیر فعلی"} ({faNum(run.length)})
-            </h2>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <select
-                value={activeListId ?? ""}
-                onChange={(e) => openList(e.target.value === "" ? null : Number(e.target.value))}
-                aria-label="انتخاب فهرست"
-                className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
-              >
-                <option value="">مسیر موقت (ذخیره‌نشده)</option>
-                {lists.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name} ({l.location_ids.length})
-                  </option>
-                ))}
-              </select>
-              {activeList && (
-                <>
-                  <button
-                    onClick={() => {
-                      const name = window.prompt("نام تازه فهرست:", activeList.name);
-                      if (name) renameList(activeList.id, name);
-                    }}
-                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
-                  >
-                    تغییر نام
-                  </button>
-                  <button
-                    onClick={() => deleteList(activeList.id)}
-                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
-                  >
-                    حذف فهرست
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {run.length === 0 ? (
-            <EmptyState
-              icon="compass"
-              title="مسیری انتخاب نشده"
-              hint="از فهرست پایین یا از روی نقشه، هر جایی را که می‌خواهید بروید بزنید. توقف‌ها دقیقاً به همان ترتیبی که انتخاب می‌کنید می‌مانند."
-            />
-          ) : (
-            <RunPanel
-              stops={runStops}
-              totalKm={runTotalKm}
-              navAppId={navAppId}
-              routeHref={runHref}
-              navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
-              onMove={moveInRun}
-              onRemove={removeFromRun}
-              onClear={clearRun}
-              onOptimise={optimiseRun}
-              optimiseGain={optimiseGain}
-              busy={busy}
-            />
-          )}
-
-          {run.length > 0 && activeListId === null && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                createList(newListName, run);
-              }}
-              className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3"
-            >
-              <input
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder="نام این مسیر، مثلاً «شرق تهران»"
-                className="min-w-40 flex-1 rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
-              />
-              <button
-                type="submit"
-                disabled={busy}
-                className="rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50"
-              >
-                ذخیره به‌عنوان فهرست
-              </button>
-            </form>
-          )}
-        </section>
+        {/* ---- the route section ------------------------------------------------- */}
+        <RouteSection
+          run={run}
+          runStops={runStops}
+          totalKm={runTotalKm}
+          navAppId={navAppId}
+          routeHref={runHref}
+          navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
+          onMove={moveInRun}
+          onRemove={removeFromRun}
+          onClear={clearRun}
+          onOptimise={optimiseRun}
+          optimiseGain={optimiseGain}
+          busy={busy}
+          proposedDays={proposedDays}
+          onAddDayToRun={(dayIdx) => updateRun(proposedDays[dayIdx].map((d) => d.id))}
+          onCreateListFromDay={(title, ids) => createList(title, ids)}
+        />
 
         {/* ---- the map ----------------------------------------------------------- */}
         <LeadsMap
