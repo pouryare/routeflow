@@ -94,6 +94,34 @@ describe("clusterIntoDays", () => {
     expect(day.stops[0].id).toBe("s0");
     expect(day.stops[4].id).toBe("s4");
   });
+
+  it("uses seeds as initial centroids regardless of farthest-point", () => {
+    // VARAMIN is close to HOME, but we force it as a seed.
+    // Without seeds support, farthest-point seeding would pick PARDIS instead.
+    const stops = [...around(PARDIS, 3, "p"), ...around(KARAJ, 3, "k"), ...around(VARAMIN, 3, "v")];
+    const days = clusterIntoDays(stops, 3, HOME, undefined, [VARAMIN]);
+    // VARAMIN should be a centroid — its day should have VARAMIN-area stops
+    const varaminDay = days.find((d) => d.stops.some((s) => s.id.startsWith("v")));
+    expect(varaminDay).toBeDefined();
+    const vCount = varaminDay!.stops.filter((s) => s.id.startsWith("v")).length;
+    expect(vCount).toBeGreaterThanOrEqual(2);
+  });
+
+  it("supplements seeds with farthest-point when fewer seeds than dayCount", () => {
+    const stops = [...around(PARDIS, 3, "p"), ...around(KARAJ, 3, "k"), ...around(VARAMIN, 3, "v")];
+    // Only 1 seed for 3 days — should supplement with farthest-point
+    const days = clusterIntoDays(stops, 3, HOME, undefined, [VARAMIN]);
+    expect(days).toHaveLength(3);
+    const allIds = days.flatMap((d) => d.stops.map((s) => s.id)).sort();
+    expect(allIds).toHaveLength(9);
+  });
+
+  it("reorders so seed-containing days come first", () => {
+    const stops = [...around(PARDIS, 5, "p"), ...around(KARAJ, 5, "k")];
+    const days = clusterIntoDays(stops, 2, HOME, undefined, [PARDIS]);
+    // First day should contain PARDIS (the seed)
+    expect(days[0].stops.some((s) => s.id.startsWith("p"))).toBe(true);
+  });
 });
 
 describe("daysNeeded", () => {

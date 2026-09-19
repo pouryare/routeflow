@@ -81,6 +81,53 @@ function seedCentroids<T extends LatLng>(stops: T[], k: number, origin: LatLng |
   return seeds;
 }
 
+/** Use provided source locations as centroids, supplementing with farthest-point
+ *  seeding if there are fewer sources than needed. Deduplicates sources that are
+ *  very close to each other (within 0.001° ≈ 100m). */
+function seedFromSources<T extends LatLng>(
+  stops: T[],
+  sources: T[],
+  k: number,
+  origin: LatLng | null,
+  distanceFn?: (a: LatLng, b: LatLng) => number
+): Centroid[] {
+  const dist = distanceFn ?? distanceKm;
+  const centroids: Centroid[] = [];
+  for (const src of sources) {
+    const isDuplicate = centroids.some(
+      (c) => dist(src, { lat: c.lat, lng: c.lng }) < 0.001
+    );
+    if (!isDuplicate) {
+      centroids.push({ lat: src.lat, lng: src.lng });
+    }
+    if (centroids.length >= k) break;
+  }
+  // Supplement with farthest-point seeding from remaining stops
+  if (centroids.length < k) {
+    const taken = new Set(centroids.map((c) => `${c.lat},${c.lng}`));
+    const remaining = stops.filter((s) => !taken.has(`${s.lat},${s.lng}`));
+    let need = k - centroids.length;
+    while (need > 0 && remaining.length > 0) {
+      let bestIdx = 0;
+      let bestScore = -Infinity;
+      for (let i = 0; i < remaining.length; i++) {
+        const nearestToCentroids = centroids.reduce(
+          (min, c) => Math.min(min, dist(remaining[i], { lat: c.lat, lng: c.lng })),
+          Infinity
+        );
+        if (nearestToCentroids > bestScore) {
+          bestScore = nearestToCentroids;
+          bestIdx = i;
+        }
+      }
+      centroids.push({ lat: remaining[bestIdx].lat, lng: remaining[bestIdx].lng });
+      remaining.splice(bestIdx, 1);
+      need--;
+    }
+  }
+  return centroids;
+}
+
 /** One capacity-capped assignment pass.
  *
  *  Stops are placed in order of how strongly they prefer their nearest cluster -- the
@@ -123,12 +170,15 @@ export interface DayCluster<T> {
  *  Days come back nearest-first from the origin, so "day 1" is the one closest to home.
  *  Empty clusters are dropped rather than returned as empty days -- asking for five days
  *  from four stops gives four days, not five with a gap.
- */
+ *
+ *  If `seeds` is provided, those locations are used as initial cluster centroids (instead
+ *  of farthest-point seeding), ensuring priority locations drive the clustering. */
 export function clusterIntoDays<T extends LatLng>(
   stops: T[],
   dayCount: number,
   origin: LatLng | null,
-  distanceFn?: (a: LatLng, b: LatLng) => number
+  distanceFn?: (a: LatLng, b: LatLng) => number,
+  seeds?: T[]
 ): DayCluster<T>[] {
   if (stops.length === 0) return [];
 
@@ -139,12 +189,13 @@ export function clusterIntoDays<T extends LatLng>(
   }
 
   const capacity = Math.ceil(stops.length / k);
-  let centroids = seedCentroids(stops, k, origin);
+  const centroidSources = seeds && seeds.length > 0 ? seeds : undefined;
+  let centroids = centroidSources
+    ? seedFromSources(stops, centroidSources, k, origin, distanceFn)
+    : seedCentroids(stops, k, origin);
   let clusters = assign(stops, centroids, capacity);
 
   for (let i = 0; i < MAX_ITERATIONS; i++) {
-    // A cluster that lost every member keeps its old centre rather than becoming NaN.
-    // It will pick members up again on a later pass if it is genuinely nearest to any.
     const next = clusters.map((c, idx) => (c.length ? centroidOf(c) : centroids[idx]));
     const moved = next.some((c, idx) => distanceKm(c, centroids[idx]) > 1e-6);
     centroids = next;
@@ -156,8 +207,18 @@ export function clusterIntoDays<T extends LatLng>(
     .map((c, idx) => ({ stops: c, centre: c.length ? centroidOf(c) : centroids[idx] }))
     .filter((d) => d.stops.length > 0);
 
-  // Nearest day first. With no origin there is nothing to measure "near" against, so the
-  // seeding order stands -- arbitrary, but stable, which is the property that matters.
+  if (seeds && seeds.length > 0) {
+    const seedLatSet = new Set(seeds.map((s) => s.lat));
+    const seedLngSet = new Set(seeds.map((s) => s.lng));
+    const seedLatArr = [...seedLatSet];
+    const seedLngArr = [...seedLngSet];
+    days.sort((a, b) => {
+      const aSeed = a.stops.some((s) => seedLatArr.includes(s.lat) && seedLngArr.includes(s.lng)) ? 0 : 1;
+      const bSeed = b.stops.some((s) => seedLatArr.includes(s.lat) && seedLngArr.includes(s.lng)) ? 0 : 1;
+      return aSeed - bSeed;
+    });
+  }
+
   if (origin) days.sort((a, b) => distanceKm(origin, a.centre) - distanceKm(origin, b.centre));
 
   return days.map((d) => ({
