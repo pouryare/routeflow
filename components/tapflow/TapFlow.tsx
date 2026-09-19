@@ -90,7 +90,7 @@ export default function TapFlow(p: TapFlowProps) {
                   {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
                   {CUSTOM.has(view.kind)
                     ? p.renderCustom?.({ step: view, state: p.state, submit })
-                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} />}
+                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} />}
                   {view && (view.skipable || view.timeStep) ? (
                       <button type="button" className="tf-skip" onClick={() => submit(SKIP)}>
                         {view.id === "navigate" ? "رد کردن" : "بدون کار بعدی…"}
@@ -183,7 +183,8 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: Reso
       {view.kind === "choice" ? (
         <div className="tf-grid one">
           {view.choices.map((c) => (
-            <button key={c.id} type="button" className="tf-opt" onClick={() => submit(c.id)}>
+            <button key={c.id} type="button" className="tf-opt"
+              onClick={() => { if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); } else { submit(c.id); } }}>
               {c.label}
             </button>
           ))}

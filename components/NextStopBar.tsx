@@ -170,7 +170,7 @@ export default function NextStopBar({
             target="_blank"
             rel="noopener noreferrer"
             aria-label="مسیریابی به این توقف"
-            className="shrink-0 whitespace-nowrap flex items-center gap-1.5 rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
+            className="shrink-0 whitespace-nowrap flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-2 text-[length:var(--text-sm)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
           >
             مسیریابی <Icon name="external-link" size="sm" />
           </a>
