@@ -601,21 +601,6 @@ export default function LeadsPage() {
     }
   }
 
-  async function setStatus(id: number, status: LocationStatus | null) {
-    setLocations((prev) => prev.map((l) => (l.id === id ? { ...l, status } : l)));
-    try {
-      const res = await fetch(`/api/locations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      toast("خطا در ثبت وضعیت", "error");
-      load();
-    }
-  }
-
   async function convertToCustomer(id: number) {
     setConverting(id);
     try {
@@ -771,9 +756,6 @@ export default function LeadsPage() {
                     onNameChange={(name) => setLocations((prev) => prev.map((loc) => loc.id === l.id ? { ...loc, name } : loc))}
                     runIdx={inRun ? runIdx : null}
                     onToggleRun={() => (inRun ? removeFromRun(l.id) : addToRun(l.id))}
-                    onStatusChange={(status) => setStatus(l.id, status)}
-                    currentStatus={l.status}
-                    onTapFlow={() => setTapFlowId(l.id)}
                     scoring={scoring}
                     onClickScoring={() => setScoringId(scoring ? null : l.id)}
                     priorityHigh={priorityHigh}
@@ -946,6 +928,7 @@ export default function LeadsPage() {
           proposedDays={proposedDays}
           onAddDayToRun={(dayIdx) => updateRun((proposedDaysRaw ?? [])[dayIdx].map((d) => d.id))}
           onCreateListFromDay={(title, ids) => createList(title, ids)}
+          onTapFlow={(stopId) => setTapFlowId(stopId)}
         />
 
         {/* ---- the map ----------------------------------------------------------- */}

@@ -28,11 +28,6 @@ export interface LocationCardProps {
   runIdx?: number | null;
   /** Click handler for the add/remove-from-run button. */
   onToggleRun?: () => void;
-  /** Click handler for the status dropdown. */
-  onStatusChange?: (status: string | null) => void;
-  currentStatus?: string | null;
-  /** Click handler for the tap-flow (visit registration) button. */
-  onTapFlow?: () => void;
   /** Whether the scoring panel is open for this row. */
   scoring?: boolean;
   onClickScoring?: () => void;
@@ -59,9 +54,6 @@ export default function LocationCard({
   onNameChange,
   runIdx,
   onToggleRun,
-  onStatusChange,
-  currentStatus,
-  onTapFlow,
   scoring,
   onClickScoring,
   priorityHigh,
@@ -141,15 +133,6 @@ export default function LocationCard({
         )}
         <CopyButton value={location.maps_url} what="کپی لینک اصلی" />
         <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} what="کپی پیوند این مکان" />
-        {onTapFlow && (
-          <button
-            type="button"
-            onClick={onTapFlow}
-            className="rounded-[var(--radius-sm)] px-2 py-1 text-good transition-colors hover:bg-white/5 flex items-center gap-1.5 text-[length:var(--text-xs)]"
-          >
-            <Icon name="check" size="sm" /> تسجیل بازدید
-          </button>
-        )}
         <button
           type="button"
           onClick={onPin}
@@ -157,18 +140,6 @@ export default function LocationCard({
         >
           <Icon name="map-pin" size="sm" />
         </button>
-        {onStatusChange && (
-          <select
-            value={currentStatus ?? ""}
-            onChange={(e) => onStatusChange(e.target.value || null)}
-            className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-          >
-            <option value="">بدون وضعیت</option>
-            {Object.entries(STATUS_META).map(([v, label]) => (
-              <option key={v} value={v}>{label}</option>
-            ))}
-          </select>
-        )}
         {onClickScoring && (
           <button
             type="button"

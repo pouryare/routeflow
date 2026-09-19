@@ -33,6 +33,7 @@ export default function RunPanel({
   onOptimise,
   optimiseGain,
   busy,
+  onTapFlow,
 }: {
   stops: RunStop[];
   totalKm: number | null;
@@ -46,6 +47,7 @@ export default function RunPanel({
   /** Percent this run would shorten by if reordered, or null when it is already good. */
   optimiseGain: number | null;
   busy: boolean;
+  onTapFlow?: (stopId: number) => void;
 }) {
   const singleLeg = routeIsSingleLeg(navAppId, stops.length);
   const dropped = droppedWaypoints(navAppId, stops.length);
@@ -159,6 +161,15 @@ export default function RunPanel({
               >
                 <Icon name="x" size="sm" />
               </button>
+              {onTapFlow && (
+                <button
+                  type="button"
+                  onClick={() => onTapFlow(s.id)}
+                  className="shrink-0 rounded-[var(--radius-sm)] px-2 py-1 text-good transition-colors hover:bg-white/5 text-[length:var(--text-xs)] flex items-center gap-1.5"
+                >
+                  <Icon name="check" size="sm" /> تسجیل بازدید
+                </button>
+              )}
             </div>
           </li>
         ))}

@@ -1,10 +1,9 @@
 "use client";
 
-import { RunPanel, type RunStop } from "@/components/leads/RunPanel";
+import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import DayGroupCard from "@/components/leads/DayGroupCard";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
-import { useToast } from "@/components/ToastProvider";
 
 export interface DayGroup {
   title: string;
@@ -30,6 +29,7 @@ export interface RouteSectionProps {
   proposedDays: DayGroup[] | null;
   onAddDayToRun: (dayIndex: number) => void;
   onCreateListFromDay: (title: string, ids: number[]) => void;
+  onTapFlow?: (stopId: number) => void;
 }
 
 export default function RouteSection({
@@ -48,9 +48,8 @@ export default function RouteSection({
   proposedDays,
   onAddDayToRun,
   onCreateListFromDay,
+  onTapFlow,
 }: RouteSectionProps) {
-  const toast = useToast();
-
   return (
     <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
@@ -88,6 +87,7 @@ export default function RouteSection({
           onOptimise={onOptimise}
           optimiseGain={optimiseGain}
           busy={busy}
+          onTapFlow={onTapFlow}
         />
       )}
 
@@ -100,7 +100,7 @@ export default function RouteSection({
           <div className="flex flex-col gap-3">
             {proposedDays.map((day, i) => (
               <div key={i}>
-                <DayGroupCard day={day} onTapFlow={(stopId) => toast(`stop ${stopId}`, "info")} />
+                <DayGroupCard day={day} onTapFlow={(stopId) => onTapFlow?.(stopId)} />
                 <div className="flex flex-wrap gap-1.5 mt-2">
                   <button
                     onClick={() => onAddDayToRun(i)}
