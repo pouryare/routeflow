@@ -1,5 +1,6 @@
 "use client";
 
+import { useCardDrag } from "@/components/board/useCardDrag";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import DayGroupCard from "@/components/leads/DayGroupCard";
 import { Icon } from "@/components/meridian/Icon";
@@ -82,6 +83,17 @@ export default function RouteSection({
   unassignedLocations,
   repropose,
 }: RouteSectionProps) {
+  const drag = useCardDrag<RoutableLocation>({
+    resolveLane: (x, y) =>
+      (document.elementFromPoint(x, y) as HTMLElement | null)
+        ?.closest<HTMLElement>("[data-day-index]")?.dataset.dayIndex ?? null,
+    onDrop: (loc, fromLane, toLane) => {
+      if (fromLane === toLane) return;
+      removeFromDayGroup(Number(fromLane), loc.id);
+      addToDayGroup(Number(toLane), loc);
+    },
+  });
+
   return (
     <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
       {/* ---- automatic day split (manager only) -------------------------------- */}
@@ -207,7 +219,7 @@ export default function RouteSection({
         />
       )}
 
-      {/* ---- proposed day groups --------------------------------------------- */}
+      {/* ---- proposed day groups (editable) -------------------------------- */}
       {proposedDays && proposedDays.length > 0 && (
         <div className="mt-4 flex flex-col gap-3">
           <h3 className="text-[length:var(--text-xs)] font-medium text-text-faint uppercase tracking-wider">
@@ -215,23 +227,64 @@ export default function RouteSection({
           </h3>
           <div className="flex flex-col gap-3">
             {proposedDays.map((day, i) => (
-              <div key={i}>
-                <DayGroupCard day={day} onTapFlow={(stopId) => onTapFlow?.(stopId)} />
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  <button
-                    onClick={() => onAddDayToRun(i)}
-                    className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-                  >
-                    بردن به مسیر
-                  </button>
-                  <button
-                    onClick={() => onCreateListFromDay(`روز ${i + 1}`, day.stops.map((s) => s.id))}
-                    disabled={busy}
-                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
-                  >
-                    ذخیره به‌عنوان فهرست
-                  </button>
+              <div key={i} data-day-index={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
+                <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                  <span className="text-[length:var(--text-sm)] text-text">
+                    روز {faNum(i + 1)} — {faNum(day.stops.length)} توقف
+                  </span>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={repropose}
+                      className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
+                    >
+                      پیشنهاد مجدد
+                    </button>
+                    <button
+                      onClick={() => setProposedDays(null)}
+                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
+                    >
+                      بستن پیشنهاد
+                    </button>
+                  </div>
                 </div>
+                {day.stops.map((stop) => (
+                  <div
+                    key={stop.id}
+                    {...drag.bind(stop, String(i))}
+                    className="flex items-center gap-2 py-1 cursor-grab active:cursor-grabbing"
+                  >
+                    <Icon name="grip-vertical" size="sm" className="text-text-faint shrink-0" />
+                    <span className="flex-1 text-[length:var(--text-xs)] text-text">{stop.name}</span>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeFromDayGroup(i, stop.id);
+                      }}
+                      className="shrink-0 text-text-faint hover:text-crit text-[length:var(--text-xs)]"
+                      aria-label={`حذف ${stop.name} از روز ${i + 1}`}
+                    >
+                      <Icon name="x" size="sm" />
+                    </button>
+                  </div>
+                ))}
+                {unassignedLocations.length > 0 && (
+                  <select
+                    onChange={(e) => {
+                      const locId = Number(e.target.value);
+                      const loc = unassignedLocations.find((l) => l.id === locId);
+                      if (loc) addToDayGroup(i, loc);
+                      e.target.value = "";
+                    }}
+                    defaultValue=""
+                    className="mt-2 w-full rounded border border-border bg-bg px-2 py-1.5 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
+                  >
+                    <option value="" disabled>افزودن مکان به این روز…</option>
+                    {unassignedLocations.map((loc) => (
+                      <option key={loc.id} value={loc.id}>{loc.name}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             ))}
           </div>
