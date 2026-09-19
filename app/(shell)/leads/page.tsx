@@ -30,7 +30,7 @@ const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker")
 
 type LocationStatus = "contacted" | "visited" | "no_answer" | "declined";
 
-const STATUS_META: Record<LocationStatus, string> = {
+export const STATUS_META: Record<LocationStatus, string> = {
   contacted: "تماس گرفته شد",
   visited: "بازدید شد",
   no_answer: "پاسخ نداد",
@@ -114,6 +114,7 @@ export default function LeadsPage() {
   const toast = useToast();
   const [navAppId] = useNavApp();
   const { position, status: posStatus, error: posError, retry: retryPosition } = useMyPosition();
+   const [showManualPos, setShowManualPos] = useState(false);
 
   const [linkedId] = useState<number | undefined>(() =>
     typeof window === "undefined" ? undefined : parseIdParam(window.location.search, "l")
@@ -538,7 +539,7 @@ export default function LeadsPage() {
   return (
     <>
     <div dir="rtl" className="pagewrap">
-      <div className="mx-auto flex max-w-3xl flex-col gap-5">
+      <div className="mx-auto flex max-w-4xl flex-col gap-5">
         <div className="flex items-center justify-between">
           <div>
             <div className="font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-accent">
@@ -579,196 +580,36 @@ export default function LeadsPage() {
 
         <LeadImportPanel onAdded={load} />
 
-        {/* ---- the run ---------------------------------------------------------- */}
-        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="sechead__title">
-              {activeList ? `مسیر: ${activeList.name}` : "مسیر فعلی"} ({faNum(run.length)})
-            </h2>
-            <div className="flex flex-wrap items-center gap-1.5">
-              <select
-                value={activeListId ?? ""}
-                onChange={(e) => openList(e.target.value === "" ? null : Number(e.target.value))}
-                aria-label="انتخاب فهرست"
-                className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
-              >
-                <option value="">مسیر موقت (ذخیره‌نشده)</option>
-                {lists.map((l) => (
-                  <option key={l.id} value={l.id}>
-                    {l.name} ({l.location_ids.length})
-                  </option>
-                ))}
-              </select>
-              {activeList && (
-                <>
-                  <button
-                    onClick={() => {
-                      const name = window.prompt("نام تازه فهرست:", activeList.name);
-                      if (name) renameList(activeList.id, name);
-                    }}
-                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
-                  >
-                    تغییر نام
-                  </button>
-                  <button
-                    onClick={() => deleteList(activeList.id)}
-                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
-                  >
-                    حذف فهرست
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-
-          {run.length === 0 ? (
-            <EmptyState
-              icon="compass"
-              title="مسیری انتخاب نشده"
-              hint="از فهرست پایین یا از روی نقشه، هر جایی را که می‌خواهید بروید بزنید. توقف‌ها دقیقاً به همان ترتیبی که انتخاب می‌کنید می‌مانند."
-            />
-          ) : (
-            <RunPanel
-              stops={runStops}
-              totalKm={runTotalKm}
-              navAppId={navAppId}
-              routeHref={runHref}
-              navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
-              onMove={moveInRun}
-              onRemove={removeFromRun}
-              onClear={clearRun}
-              onOptimise={optimiseRun}
-              optimiseGain={optimiseGain}
-              busy={busy}
-            />
-          )}
-
-          {run.length > 0 && activeListId === null && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                createList(newListName, run);
-              }}
-              className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3"
-            >
-              <input
-                value={newListName}
-                onChange={(e) => setNewListName(e.target.value)}
-                placeholder="نام این مسیر، مثلاً «شرق تهران»"
-                className="min-w-40 flex-1 rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
-              />
-              <button
-                type="submit"
-                disabled={busy}
-                className="rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50"
-              >
-                ذخیره به‌عنوان فهرست
-              </button>
-            </form>
-          )}
-        </section>
-
-        {/* ---- automatic day split ---------------------------------------------- */}
-        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <CollapsibleSection
-            title="تقسیم خودکار بین روزها" icon="folders"
-            storageKey="leads_split"
-            keywords="خوشه‌بندی روز مسیر تقسیم"
-          >
-            <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-              مکان‌ها را بر اساس نزدیکی جغرافیایی به روزها تقسیم می‌کند — نه فقط برش زدن یک فهرست مرتب‌شده.
-              نتیجه یک پیشنهاد است؛ هر روزی را که پسندیدید می‌توانید به مسیر یا به یک فهرست تازه ببرید.
-            </p>
-
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
-                تعداد توقف در هر روز:
-                <input
-                  type="number"
-                  min={2}
-                  max={50}
-                  value={stopsPerDay}
-                  onChange={(e) => setStopsPerDay(Math.max(2, Number(e.target.value) || 2))}
-                  className="w-16 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-center text-text outline-none focus:border-accent"
-                />
-              </label>
-              <button
-                onClick={proposeDays}
-                className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-              >
-                پیشنهاد بده ({faNum(daysNeeded(routable.length, stopsPerDay))} روز)
-              </button>
-              {proposedDays && (
-                <button
-                  onClick={() => setProposedDays(null)}
-                  className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
-                >
-                  بستن پیشنهاد
-                </button>
-              )}
-            </div>
-
-            {proposedDays && (
-              <div className="flex flex-col gap-2">
-                {proposedDays.map((day, i) => {
-                  const dayKm = runOrigin ? routeLengthKm(runOrigin, day, false) : null;
-                  return (
-                    <div key={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
-                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[length:var(--text-sm)] text-text">
-                          روز {faNum(i + 1)} — {faNum(day.length)} توقف
-                          {dayKm !== null && (
-                            <span className="ms-2 font-mono text-[length:var(--text-xs)] text-text-faint">
-                              {formatDistanceKm(dayKm)} خط مستقیم
-                            </span>
-                          )}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            onClick={() => updateRun(day.map((d) => d.id))}
-                            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-                          >
-                            بردن به مسیر
-                          </button>
-                          <button
-                            onClick={() => createList(`روز ${i + 1}`, day.map((d) => d.id))}
-                            disabled={busy}
-                            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
-                          >
-                            ذخیره به‌عنوان فهرست
-                          </button>
-                        </div>
-                      </div>
-                      <p className="truncate text-[length:var(--text-xs)] text-text-faint">
-                        {day.map((d) => d.name).join(" ← ")}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CollapsibleSection>
-        </section>
-
         {/* ---- all leads --------------------------------------------------------- */}
         <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h2 className="sechead__title">
               همه مکان‌ها ({faNum(locations.length)})
             </h2>
-            <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-              {(Object.keys(SORT_LABEL) as SortMode[]).map((m) => (
+            <button
+              onClick={() => {
+                const ids = visible
+                  .filter(({ loc }) => loc.lat !== null && loc.lng !== null)
+                  .map(({ loc }) => loc.id);
+                const newIds = ids.filter((id) => !run.includes(id));
+                if (newIds.length === 0) return;
+                updateRun([...run, ...newIds]);
+              }}
+              className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors flex items-center gap-1"
+            >
+              <Icon name="check" size="sm" /> انتخاب همه
+            </button>
+            <div className="flex items-center gap-2">
+              {sortAnchor ? (
+                <span className="text-[length:var(--text-xs)] text-text-muted">نزدیک‌ترین</span>
+              ) : (
                 <button
-                  key={m}
-                  onClick={() => setSortMode(m)}
-                  disabled={m === "nearest" && !sortAnchor}
-                  className={`rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
-                    sortMode === m ? "bg-accent font-medium text-accent-ink" : "text-text-muted hover:bg-white/5 hover:text-text"
-                  }`}
+                  onClick={() => setShowManualPos(true)}
+                  className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
                 >
-                  {SORT_LABEL[m]}
+                  <Icon name="locate" size="sm" /> تعیین موقعیت
                 </button>
-              ))}
+              )}
             </div>
           </div>
 
@@ -998,6 +839,196 @@ export default function LeadsPage() {
                 );
               })}
             </ul>
+          )}
+          {showManualPos && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40" onClick={() => setShowManualPos(false)}>
+              <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-6 w-96 max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+                <h3 className="sechead__title mb-4">تعیین موقعیت</h3>
+                <p className="text-[length:var(--text-sm)] text-text-muted mb-4">روی نقشه کلیک کنید تا موقعیت خود را روی نقشه تعیین کنید و لیست بر اساس نزدیکی به شما مرتب شود.</p>
+                <LocationPinPicker
+                  initial={null}
+                  onConfirm={(lat, lng) => {
+                    setSortAnchor({ lat, lng });
+                    setShowManualPos(false);
+                    toast("موقعیت ثبت شد", "success");
+                  }}
+                  onCancel={() => {
+                    setShowManualPos(false);
+                  }}
+                />
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* ---- automatic day split ---------------------------------------------- */}
+        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
+          <CollapsibleSection
+            title="تقسیم خودکار بین روزها" icon="folders"
+            storageKey="leads_split"
+            keywords="خوشه‌بندی روز مسیر تقسیم"
+          >
+            <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
+              مکان‌ها را بر اساس نزدیکی جغرافیایی به روزها تقسیم می‌کند — نه فقط برش زدن یک فهرست مرتب‌شده.
+              نتیجه یک پیشنهاد است؛ هر روزی را که پسندیدید می‌توانید به مسیر یا به یک فهرست تازه ببرید.
+            </p>
+
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <label className="flex items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
+                تعداد توقف در هر روز:
+                <input
+                  type="number"
+                  min={2}
+                  max={50}
+                  value={stopsPerDay}
+                  onChange={(e) => setStopsPerDay(Math.max(2, Number(e.target.value) || 2))}
+                  className="w-16 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-center text-text outline-none focus:border-accent"
+                />
+              </label>
+              <button
+                onClick={proposeDays}
+                className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
+              >
+                پیشنهاد بده ({faNum(daysNeeded(routable.length, stopsPerDay))} روز)
+              </button>
+              {proposedDays && (
+                <button
+                  onClick={() => setProposedDays(null)}
+                  className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
+                >
+                  بستن پیشنهاد
+                </button>
+              )}
+            </div>
+
+            {proposedDays && (
+              <div className="flex flex-col gap-2">
+                {proposedDays.map((day, i) => {
+                  const dayKm = runOrigin ? routeLengthKm(runOrigin, day, false) : null;
+                  return (
+                    <div key={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
+                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
+                        <span className="text-[length:var(--text-sm)] text-text">
+                          روز {faNum(i + 1)} — {faNum(day.length)} توقف
+                          {dayKm !== null && (
+                            <span className="ms-2 font-mono text-[length:var(--text-xs)] text-text-faint">
+                              {formatDistanceKm(dayKm)} خط مستقیم
+                            </span>
+                          )}
+                        </span>
+                        <div className="flex flex-wrap gap-1.5">
+                          <button
+                            onClick={() => updateRun(day.map((d) => d.id))}
+                            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
+                          >
+                            بردن به مسیر
+                          </button>
+                          <button
+                            onClick={() => createList(`روز ${i + 1}`, day.map((d) => d.id))}
+                            disabled={busy}
+                            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+                          >
+                            ذخیره به‌عنوان فهرست
+                          </button>
+                        </div>
+                      </div>
+                      <p className="truncate text-[length:var(--text-xs)] text-text-faint">
+                        {day.map((d) => d.name).join(" ← ")}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </CollapsibleSection>
+        </section>
+
+        {/* ---- the run ---------------------------------------------------------- */}
+        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="sechead__title">
+              {activeList ? `مسیر: ${activeList.name}` : "مسیر فعلی"} ({faNum(run.length)})
+            </h2>
+            <div className="flex flex-wrap items-center gap-1.5">
+              <select
+                value={activeListId ?? ""}
+                onChange={(e) => openList(e.target.value === "" ? null : Number(e.target.value))}
+                aria-label="انتخاب فهرست"
+                className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)] text-text outline-none focus:border-accent"
+              >
+                <option value="">مسیر موقت (ذخیره‌نشده)</option>
+                {lists.map((l) => (
+                  <option key={l.id} value={l.id}>
+                    {l.name} ({l.location_ids.length})
+                  </option>
+                ))}
+              </select>
+              {activeList && (
+                <>
+                  <button
+                    onClick={() => {
+                      const name = window.prompt("نام تازه فهرست:", activeList.name);
+                      if (name) renameList(activeList.id, name);
+                    }}
+                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
+                  >
+                    تغییر نام
+                  </button>
+                  <button
+                    onClick={() => deleteList(activeList.id)}
+                    className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
+                  >
+                    حذف فهرست
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+
+          {run.length === 0 ? (
+            <EmptyState
+              icon="compass"
+              title="مسیری انتخاب نشده"
+              hint="از فهرست پایین یا از روی نقشه، هر جایی را که می‌خواهید بروید بزنید. توقف‌ها دقیقاً به همان ترتیبی که انتخاب می‌کنید می‌مانند."
+            />
+          ) : (
+            <RunPanel
+              stops={runStops}
+              totalKm={runTotalKm}
+              navAppId={navAppId}
+              routeHref={runHref}
+              navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
+              onMove={moveInRun}
+              onRemove={removeFromRun}
+              onClear={clearRun}
+              onOptimise={optimiseRun}
+              optimiseGain={optimiseGain}
+              busy={busy}
+            />
+          )}
+
+          {run.length > 0 && activeListId === null && (
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                createList(newListName, run);
+              }}
+              className="mt-3 flex flex-wrap items-center gap-2 border-t border-border pt-3"
+            >
+              <input
+                value={newListName}
+                onChange={(e) => setNewListName(e.target.value)}
+                placeholder="نام این مسیر، مثلاً «شرق تهران»"
+                className="min-w-40 flex-1 rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
+              />
+              <button
+                type="submit"
+                disabled={busy}
+                className="rounded-[var(--radius-sm)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink disabled:opacity-50"
+              >
+                ذخیره به‌عنوان فهرست
+              </button>
+            </form>
           )}
         </section>
 
