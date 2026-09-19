@@ -129,6 +129,7 @@ function rebuildForTenantUnique(
   db.exec("PRAGMA foreign_keys = OFF;");
   try {
     db.exec(`
+      DROP TABLE IF EXISTS ${table}_tn_new;
       ${createSql}
       INSERT INTO ${table}_tn_new (${tableCols}) SELECT ${tableCols} FROM ${table};
       DROP TABLE ${table};
@@ -2087,7 +2088,15 @@ export function getDb(): DatabaseSync {
           resolution TEXT NOT NULL DEFAULT 'unresolved'
             CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')),
           notes TEXT,
-          created_at TEXT NOT NULL
+          organization_id INTEGER REFERENCES organizations(id),
+          group_id INTEGER REFERENCES groups(id),
+          status TEXT CHECK (status IN ('contacted', 'visited', 'no_answer', 'declined')),
+          visit_outcome TEXT,
+          rating_potential INTEGER,
+          rating_volume INTEGER,
+          rating_ease INTEGER,
+          created_at TEXT NOT NULL,
+          updated_at TEXT
         );
         INSERT INTO saved_locations_new SELECT * FROM saved_locations;
         DROP TABLE saved_locations;
@@ -2583,6 +2592,7 @@ export function getDb(): DatabaseSync {
       rating_ease INTEGER,
       group_id INTEGER REFERENCES groups(id),
       organization_id INTEGER REFERENCES organizations(id),
+      visit_outcome TEXT,
       UNIQUE (organization_id, maps_url)
     );`
   );

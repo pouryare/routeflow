@@ -65,6 +65,6 @@ describe("LocationCard logic", () => {
   it("formats average score as Persian numeral", () => {
     const loc = makeLocation({ rating_potential: 4, rating_volume: 4, rating_ease: 4 });
     const avg = averageScore(loc);
-    expect(faNum(Math.round(avg * 10) / 10)).toBe("۴");
+    expect(faNum(Math.round((avg ?? 0) * 10) / 10)).toBe("۴");
   });
 });

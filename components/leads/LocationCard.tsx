@@ -7,6 +7,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { averageScore } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
 import { navigateUrl } from "@/lib/navApps";
+import type { NavAppId } from "@/lib/navApps";
 
 const STATUS_META: Record<string, string> = {
   contacted: "تماس گرفته شد",
@@ -18,7 +19,7 @@ const STATUS_META: Record<string, string> = {
 export interface LocationCardProps {
   location: SavedLocation;
   inRun: boolean;
-  navAppId: string;
+  navAppId: NavAppId;
   onCopyOriginal: () => void;
   onCopyPage: () => void;
   onPin: () => void;
@@ -72,7 +73,7 @@ export default function LocationCard({
             <p className="truncate text-[length:var(--text-xs)] text-text-faint mt-0.5">{location.address}</p>
           )}
           <div className="mt-1 flex items-center gap-3">
-            <StarRating value={avg} onChange={() => {}} disabled />
+            <StarRating value={avg} onChange={(v: number | null) => {}} label="امتیاز" disabled />
             <span className="text-[length:var(--text-xs)] text-text-faint">{statusLabel}</span>
             {avg !== null && (
               <span className="font-mono text-[length:var(--text-xs)] text-warn">
@@ -86,7 +87,7 @@ export default function LocationCard({
         {location.lat !== null && location.lng !== null && (
           <button
             type="button"
-            onClick={() => window.open(navigateUrl(navAppId, { lat: location.lat, lng: location.lng }, location.name), "_blank")}
+            onClick={() => window.open(navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name), "_blank")}
             className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors"
           >
             <Icon name="external-link" size="sm" /> مسیریابی
@@ -99,7 +100,7 @@ export default function LocationCard({
           onClick={onPin}
           className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors"
         >
-          <Icon name="pin" size="sm" />
+          <Icon name="map-pin" size="sm" />
         </button>
       </div>
     </div>
