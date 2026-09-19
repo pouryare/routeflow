@@ -36,7 +36,6 @@ export default function LocationCard({
   location,
   inRun,
   navAppId,
-  onNavigate,
   onCopyOriginal,
   onCopyPage,
   onPin,

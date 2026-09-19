@@ -37,7 +37,7 @@ export const STATUS_META: Record<LocationStatus, string> = {
   declined: "رد کرد",
 };
 
-interface SavedLocation {
+export interface SavedLocation {
   id: number;
   name: string;
   maps_url: string;
