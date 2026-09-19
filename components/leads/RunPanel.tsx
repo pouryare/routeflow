@@ -64,8 +64,7 @@ export default function RunPanel({
           >
             {singleLeg
               ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label}`
-              : `شروع مسیر با ${faNum(stops.length)} توقف`}{" "}
-            <Icon name="external-link" size="sm" />
+              : `شروع مسیر با ${faNum(stops.length)} توقف`}
           </a>
         )}
 

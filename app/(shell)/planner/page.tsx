@@ -738,7 +738,7 @@ export default function PlannerPage() {
                   rel="noreferrer"
                   className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:scale-[1.03] hover:brightness-110 active:scale-[0.98]"
                 >
-                  {googleRoute.singleLeg ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label}` : "شروع مسیر بهینه"} <Icon name="external-link" size="sm" />
+                  {googleRoute.singleLeg ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label}` : "شروع مسیر بهینه"}
                 </a>
               )}
             </div>
