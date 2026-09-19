@@ -429,6 +429,14 @@ export default function LeadsPage() {
     return () => controller.abort();
   }, [routable]);
 
+  function togglePriority(locationId: number) {
+    setLocations((prev) =>
+      prev.map((loc) =>
+        loc.id === locationId ? { ...loc, priority: !loc.priority } : loc
+      )
+    );
+  }
+
   function proposeDays() {
     const k = daysNeeded(routable.length, stopsPerDay);
     if (k === 0) {
@@ -448,7 +456,15 @@ export default function LeadsPage() {
           };
         })()
       : undefined;
-    setProposedDays(clusterIntoDays(routable, k, runOrigin, distanceFn).map((d) => d.stops).sort((a, b) => b.length - a.length));
+    const prioritySeeds = routable.filter((l) => l.priority);
+    setProposedDays(
+      clusterIntoDays(
+        routable, k, runOrigin, distanceFn,
+        prioritySeeds.length > 0 ? prioritySeeds : undefined
+      )
+      .map((d) => d.stops)
+      .sort((a, b) => b.length - a.length)
+    );
   }
 
   // ---- the visible list ------------------------------------------------------------
@@ -741,6 +757,7 @@ export default function LeadsPage() {
                     onToggleRun={() => (inRun ? removeFromRun(l.id) : addToRun(l.id))}
                     priorityHigh={priorityHigh}
                     km={km}
+                    onTogglePriority={() => togglePriority(l.id)}
                   />
                 );
               })}
