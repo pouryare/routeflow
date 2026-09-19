@@ -28,6 +28,10 @@ export interface TapFlowProps {
   done?: ReactNode;
   /** Known working hours: time answers show the moved time when it changes. */
   hours?: WorkingHours;
+  /** Called when an option has a navigation URL — opens it instead of advancing. */
+  onNavigate?: (url: string) => void;
+  /** URL passed to onNavigate when the navigate step option is tapped. */
+  navigateUrl?: string;
 }
 
 const CUSTOM = new Set(["basics", "link", "pin", "hours", "stars"]);
@@ -50,6 +54,9 @@ export default function TapFlow(p: TapFlowProps) {
     const next = answerStep(p.config, p.ctx, p.state, optionId, value);
     p.onState(next);
     if (next.saved) p.onSaved(next);
+  };
+  const navigate = (url: string) => {
+    p.onNavigate?.(url);
   };
 
   return (
@@ -83,8 +90,12 @@ export default function TapFlow(p: TapFlowProps) {
                   {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
                   {CUSTOM.has(view.kind)
                     ? p.renderCustom?.({ step: view, state: p.state, submit })
-                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} />}
-                  {view.timeStep ? <button type="button" className="tf-skip" onClick={() => submit(SKIP)}>بدون کار بعدی…</button> : null}
+                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} />}
+                  {view && (view.skipable || view.timeStep) ? (
+                      <button type="button" className="tf-skip" onClick={() => submit(SKIP)}>
+                        {view.id === "navigate" ? "رد کردن" : "بدون کار بعدی…"}
+                      </button>
+                    ) : null}
                 </>
               )}
         </div>
@@ -93,7 +104,7 @@ export default function TapFlow(p: TapFlowProps) {
   );
 }
 
-function StepBody({ view, submit, hours }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours }) {
+function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string }) {
   const [text, setText] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [pickFor, setPickFor] = useState<string | null>(null);
@@ -120,6 +131,7 @@ function StepBody({ view, submit, hours }: { view: ResolvedStep; submit: (id: st
     return moved === raw ? o.sub : `ساعت باز شدن: ${labelDue(moved, now)}`;
   };
   const tap = (o: ResolvedOption) => {
+    if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); return; }
     if (o.due?.kind === "pick") { setPickFor(o.id); return; }
     const value = view.kind === "multi" ? picked.join(",") : view.input ? text.trim() : "";
     feedback.choose(o.id, (id) => submit(id, value || undefined));

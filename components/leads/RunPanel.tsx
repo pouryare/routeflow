@@ -167,7 +167,7 @@ export default function RunPanel({
                   onClick={() => onTapFlow(s.id)}
                   className="shrink-0 rounded-[var(--radius-sm)] px-2 py-1 text-good transition-colors hover:bg-white/5 text-[length:var(--text-xs)] flex items-center gap-1.5"
                 >
-                  <Icon name="check" size="sm" /> تسجیل بازدید
+                  <Icon name="check" size="sm" /> ثبت بازدید
                 </button>
               )}
             </div>

@@ -59,6 +59,7 @@ export interface FlowOption {
   next?: string | NextFn;
   save?: boolean;
   set?: FlowSet;
+  url?: string;
 }
 
 export interface FlowInput { field: string; placeholder: string; ltr?: boolean; optional?: boolean }
@@ -73,6 +74,7 @@ export interface FlowStep {
   choices?: Dyn<{ id: string; label: string }[]>;
   input?: FlowInput;
   timeStep?: boolean;
+  skipable?: boolean;
 }
 
 export interface FlowConfig {
@@ -104,8 +106,8 @@ export const EMPTY_CONTEXT: FlowContext = {
 export interface FlowAnswer { step: string; option: string; value?: string }
 export interface FlowState { stack: string[]; answers: FlowAnswer[]; acc: FlowSet; values: Record<string, string>; saved: boolean }
 
-export interface ResolvedOption { id: string; label: string; sub?: string; tone?: "rec" | "bad"; group?: string; due?: DueSpec; saves: boolean }
+export interface ResolvedOption { id: string; label: string; sub?: string; tone?: "rec" | "bad"; group?: string; due?: DueSpec; saves: boolean; url?: string }
 export interface ResolvedStep {
   id: string; kind: StepKind; q: string; sub?: string; options: ResolvedOption[];
-  choices: { id: string; label: string }[]; input?: FlowInput; timeStep: boolean;
+  choices: { id: string; label: string }[]; input?: FlowInput; timeStep: boolean; skipable: boolean;
 }

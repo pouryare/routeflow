@@ -47,10 +47,12 @@ export function viewStep(cfg: FlowConfig, ctx: FlowContext, st: FlowState): Reso
       group: o.group,
       due: o.set?.due,
       saves: o.save === true,
+      url: o.url,
     })),
     choices: step.choices ? dyn(step.choices, ctx, st) : [],
     input: step.input,
     timeStep: !!step.timeStep && !!cfg.skipStep,
+    skipable: !!step.skipable,
   };
 }
 
@@ -60,7 +62,8 @@ export function answerStep(cfg: FlowConfig, ctx: FlowContext, st: FlowState, opt
   const step = stepOf(cfg, stepId);
 
   if (optionId === SKIP) {
-    if (!step.timeStep || !cfg.skipStep) throw new FlowError(`no skip at ${stepId}`);
+    if (!cfg.skipStep) throw new FlowError(`no skip at ${stepId}`);
+    if (!step.timeStep && !step.skipable) throw new FlowError(`no skip at ${stepId}`);
     return { ...st, stack: [...st.stack, cfg.skipStep], answers: [...st.answers, { step: stepId, option: SKIP }] };
   }
 

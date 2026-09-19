@@ -8,15 +8,21 @@ import type { FlowContext, FlowState } from "@/lib/crm/flows/types";
 import { useToast } from "@/components/ToastProvider";
 import StarRating from "@/components/StarRating";
 import { MAX_STARS } from "@/lib/leadScore";
+import { navigateUrl } from "@/lib/navApps";
+import type { NavAppId } from "@/lib/navApps";
 
 export interface LocationTapFlowProps {
   open: boolean;
   locationId: number;
   locationName: string;
+  locationLat: number | null;
+  locationLng: number | null;
+  navAppId: NavAppId;
+  onNavigate?: (url: string) => void;
   onClose: () => void;
 }
 
-export default function LocationTapFlow({ open, locationId, locationName, onClose }: LocationTapFlowProps) {
+export default function LocationTapFlow({ open, locationId, locationName, locationLat, locationLng, navAppId, onNavigate, onClose }: LocationTapFlowProps) {
   const toast = useToast();
   const [ctx, setCtx] = useState<FlowContext | null>(null);
   const [state, setState] = useState<FlowState>({ stack: [], answers: [], acc: {}, values: {}, saved: false });
@@ -94,6 +100,10 @@ export default function LocationTapFlow({ open, locationId, locationName, onClos
     );
   }, [locationName]);
 
+  const navUrl = (locationLat != null && locationLng != null)
+      ? navigateUrl(navAppId, { lat: locationLat, lng: locationLng }, locationName)
+      : null;
+
   if (!open || !ctx) return null;
 
   return (
@@ -109,6 +119,8 @@ export default function LocationTapFlow({ open, locationId, locationName, onClos
       onClose={onClose}
       renderCustom={renderCustom}
       done={done}
+      onNavigate={onNavigate}
+      navigateUrl={navUrl ?? undefined}
     />
   );
 }

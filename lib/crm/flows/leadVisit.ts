@@ -23,6 +23,7 @@ export const leadVisitFlow: FlowConfig = {
       id: "navigate", kind: "choice", q: "برو و ببین",
       sub: "برای رفتن به این آدرس مسیریابی را باز کن",
       options: [{ id: "go", label: "شروع مسیریابی", tone: "rec", next: "what_happened" }],
+      skipable: true,
     },
 
     /** Step 1 -- the binary that decides the rest of the flow. */

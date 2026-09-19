@@ -955,6 +955,10 @@ export default function LeadsPage() {
         open={tapFlowId !== null}
         locationId={tapFlowId!}
         locationName={tapFlowId !== null ? (byId.get(tapFlowId)?.name ?? "") : ""}
+        locationLat={tapFlowId !== null ? byId.get(tapFlowId)?.lat ?? null : null}
+        locationLng={tapFlowId !== null ? byId.get(tapFlowId)?.lng ?? null : null}
+        navAppId={navAppId}
+        onNavigate={(url) => window.open(url, "_blank")}
         onClose={() => setTapFlowId(null)}
       />
     </>

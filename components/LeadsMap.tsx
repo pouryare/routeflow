@@ -204,7 +204,7 @@ export default function LeadsMap({
                       href={navigateHref(l)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent"
+                      className="shrink-0 flex items-center gap-1 rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent"
                     >
                       مسیریابی <Icon name="external-link" size="sm" />
                     </a>

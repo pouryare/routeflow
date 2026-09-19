@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState } from "react";
+import { createContext, useContext, useState, useEffect } from "react";
 import { faNum } from "@/lib/format";
 import { matchesQuery } from "@/lib/persian";
 import { Icon, type IconName } from "@/components/meridian/Icon";
@@ -56,16 +56,21 @@ export default function CollapsibleSection({
   // inside CoverageMap, which is imported with `ssr: false`, so there is no server pass
   // to mismatch. Deferring would render every section closed for one frame and then pop
   // the remembered ones open, which is a visible flicker on every load.
-  const [open, setOpen] = useState(() => {
-    if (!storageKey || typeof window === "undefined") return defaultOpen;
+  //
+  // Hydration fix: initialise from defaultOpen (server-safe), then sync from localStorage
+  // in useEffect on the client. This avoids a server/client mismatch while preserving
+  // the persisted open state.
+  const [open, setOpen] = useState(defaultOpen);
+  useEffect(() => {
+    if (!storageKey) return;
     try {
       const stored = localStorage.getItem(`coverage_panel_${storageKey}`);
-      return stored === "1" ? true : stored === "0" ? false : defaultOpen;
+      if (stored === "1") setOpen(true);
+      else if (stored === "0") setOpen(false);
     } catch {
       // Private mode and blocked site data both throw on access.
-      return defaultOpen;
     }
-  });
+  }, [storageKey]);
 
   const filter = useContext(SectionFilterContext).trim();
   if (filter && !matchesQuery(`${title} ${keywords ?? ""}`, filter)) return null;
