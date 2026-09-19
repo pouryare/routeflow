@@ -1,7 +1,7 @@
 import {
   Truck, MapPin, Bell, User, Info, Search, ChevronLeft, ChevronRight, ChevronDown,
   Plus, X, Check, TriangleAlert, Package, Calendar, CloudSun, Pencil, Trash2,
-  Settings, LogOut, ExternalLink, Filter, Download, Printer, Star, Clock,
+  Settings, LogOut, ExternalLink, Filter, Download, Printer, Star, StarOff, Clock,
   Compass, Satellite, Route, Map, Image, Building2, Receipt, FolderTree, Flame,
   ChartColumn, TrendingUp, Mountain, Handshake, Type, Link2, Wallet, Moon, Users,
   Target, Palette, Trees, CloudFog, CircleHelp, Ban, Circle, Menu, Sparkles,
@@ -49,6 +49,7 @@ export const ICONS = {
   download: Download,
   print: Printer,
   star: Star,
+  "star-off": StarOff,
   clock: Clock,
 
   /* Spatial — the map surfaces and their layer switcher. */

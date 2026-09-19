@@ -20,8 +20,8 @@ export interface LocationCardProps {
   location: SavedLocation;
   inRun: boolean;
   navAppId: NavAppId;
-  onCopyOriginal: () => void;
-  onCopyPage: () => void;
+  onCopyOriginal?: () => void;
+  onCopyPage?: () => void;
   onPin: () => void;
   onNameChange: (name: string) => void;
   /** Position in the run (1-based). Shown as badge on the "+" button. */
@@ -32,6 +32,7 @@ export interface LocationCardProps {
   priorityHigh?: boolean;
   /** Distance in km (for display). */
   km?: number | null;
+  onTogglePriority?: () => void;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -45,14 +46,13 @@ export default function LocationCard({
   location,
   inRun,
   navAppId,
-  onCopyOriginal,
-  onCopyPage,
   onPin,
   onNameChange,
   runIdx,
   onToggleRun,
   priorityHigh,
   km,
+  onTogglePriority,
 }: LocationCardProps) {
   const avg = averageScore(location);
   const statusColor = location.status ? STATUS_COLOR[location.status] ?? "bg-gray-400" : "bg-gray-400";
@@ -99,7 +99,7 @@ export default function LocationCard({
         </div>
       </div>
 
-      {/* action bar — add/remove, status, tap-flow, copy, pin */}
+      {/* action bar — route, copy, pin, add/remove */}
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
         {onToggleRun && (
           <button
@@ -107,7 +107,7 @@ export default function LocationCard({
             onClick={onToggleRun}
             disabled={location.lat === null || location.lng === null}
             aria-label={inRun ? `حذف ${location.name} از مسیر` : `افزودن ${location.name} به مسیر`}
-            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full border font-mono text-[length:var(--text-xs)] transition-colors disabled:opacity-30
+            className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-[var(--radius-sm)] border font-mono text-[length:var(--text-xs)] transition-colors disabled:opacity-30
               ${inRun
                 ? "border-accent bg-accent text-accent-ink"
                 : "border-border text-text-muted hover:border-accent hover:text-accent"
@@ -118,24 +118,41 @@ export default function LocationCard({
         )}
 
         {location.lat !== null && location.lng !== null && (
-          <button
-            type="button"
-            onClick={() => window.open(navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name), "_blank")}
-            className="whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-1.5 text-[length:var(--text-sm)] text-accent transition-colors hover:bg-white/5 inline-flex items-center justify-center gap-2"
+          <a
+            href={navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:border-accent hover:text-accent inline-flex items-center gap-1.5"
           >
-            نقشه
-          </button>
+            <Icon name="route" size="sm" /> مسیریابی
+          </a>
         )}
-        <CopyButton value={location.maps_url} what="کپی لینک اصلی" />
-        <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} what="کپی پیوند این مکان" />
+
+        <CopyButton value={location.maps_url} label="لینک اصلی" what="کپی لینک اصلی" className="px-2.5 py-1.5" />
+        <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} label="پیوند" what="کپی پیوند این مکان" className="px-2.5 py-1.5" />
+
         <button
           type="button"
           onClick={onPin}
-          className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors"
+          className="rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors inline-flex items-center gap-1.5"
         >
-          <Icon name="map-pin" size="sm" />
+          <Icon name="map-pin" size="sm" /> ویرایش مکان
         </button>
 
+        {onTogglePriority && (
+          <button
+            type="button"
+            onClick={onTogglePriority}
+            className={`rounded-[var(--radius-sm)] border px-2 py-1.5 text-[length:var(--text-xs)] transition-colors inline-flex items-center gap-1.5
+              ${location.priority
+                ? "border-accent bg-accent text-accent-ink"
+                : "border-border text-text-faint hover:border-accent hover:text-accent"
+              }`}
+          >
+            <Icon name={location.priority ? "star" : "star-off"} size="sm" />
+            {location.priority ? "اولیوت بالا" : "اولیوت بالا نیست"}
+          </button>
+        )}
       </div>
     </div>
   );

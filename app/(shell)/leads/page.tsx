@@ -6,7 +6,7 @@ import { useHydrated } from "@/lib/useHydrated";
 import { useSession } from "@/lib/useSession";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { distanceKm, formatDistanceKm, routeLengthKm, twoOptOrder, RESORT_THRESHOLD_KM, type LatLng } from "@/lib/geo";
+import { distanceKm, routeLengthKm, twoOptOrder, RESORT_THRESHOLD_KM, type LatLng } from "@/lib/geo";
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 import { fetchOsrmTable } from "@/lib/routing/osrmMatrix";
 import LeadImportPanel from "@/components/LeadImportPanel";
@@ -53,6 +53,7 @@ export interface SavedLocation {
   rating_volume: number | null;
   rating_ease: number | null;
   created_at: string;
+  priority: boolean;
 }
 
 /** A location that has coordinates -- the only kind that can be routed to, clustered, or
@@ -447,7 +448,7 @@ export default function LeadsPage() {
           };
         })()
       : undefined;
-    setProposedDays(clusterIntoDays(routable, k, runOrigin, distanceFn).map((d) => d.stops));
+    setProposedDays(clusterIntoDays(routable, k, runOrigin, distanceFn).map((d) => d.stops).sort((a, b) => b.length - a.length));
   }
 
   // ---- the visible list ------------------------------------------------------------
@@ -785,90 +786,6 @@ export default function LeadsPage() {
         </section>
         )}
 
-        {/* ---- automatic day split (manager only) -------------------------------- */}
-        {isManager && (
-        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-          <CollapsibleSection
-            title="تقسیم خودکار بین روزها" icon="folders"
-            storageKey="leads_split"
-            keywords="خوشه‌بندی روز مسیر تقسیم"
-          >
-            <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-              مکان‌ها را بر اساس نزدیکی جغرافیایی به روزها تقسیم می‌کند — نه فقط برش زدن یک فهرست مرتب‌شده.
-              نتیجه یک پیشنهاد است؛ هر روزی را که پسندیدید می‌توانید به مسیر یا به یک فهرست تازه ببرید.
-            </p>
-
-            <div className="mb-3 flex flex-wrap items-center gap-2">
-              <label className="flex items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
-                تعداد توقف در هر روز:
-                <input
-                  type="number"
-                  min={2}
-                  max={50}
-                  value={stopsPerDay}
-                  onChange={(e) => setStopsPerDay(Math.max(2, Number(e.target.value) || 2))}
-                  className="w-16 rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-center text-text outline-none focus:border-accent"
-                />
-              </label>
-              <button
-                onClick={proposeDays}
-                className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-              >
-                پیشنهاد بده ({faNum(daysNeeded(routable.length, stopsPerDay))} روز)
-              </button>
-              {proposedDays && (
-                <button
-                  onClick={() => setProposedDays(null)}
-                  className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
-                >
-                  بستن پیشنهاد
-                </button>
-              )}
-            </div>
-
-            {proposedDays && (
-              <div className="flex flex-col gap-2">
-                {proposedDays.map((day, i) => {
-                  const dayKm = runOrigin ? routeLengthKm(runOrigin, day, false) : null;
-                  return (
-                    <div key={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
-                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[length:var(--text-sm)] text-text">
-                          روز {faNum(i + 1)} — {faNum(day.length)} توقف
-                          {dayKm !== null && (
-                            <span className="ms-2 font-mono text-[length:var(--text-xs)] text-text-faint">
-                              {formatDistanceKm(dayKm)} خط مستقیم
-                            </span>
-                          )}
-                        </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            onClick={() => updateRun(day.map((d) => d.id))}
-                            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-                          >
-                            بردن به مسیر
-                          </button>
-                          <button
-                            onClick={() => createList(`روز ${i + 1}`, day.map((d) => d.id))}
-                            disabled={busy}
-                            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
-                          >
-                            ذخیره به‌عنوان فهرست
-                          </button>
-                        </div>
-                      </div>
-                      <p className="truncate text-[length:var(--text-xs)] text-text-faint">
-                        {day.map((d) => d.name).join(" ← ")}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CollapsibleSection>
-        </section>
-        )}
-
         {/* ---- the route section ------------------------------------------------- */}
         <RouteSection
           run={run}
@@ -887,6 +804,15 @@ export default function LeadsPage() {
           onAddDayToRun={(dayIdx) => updateRun((proposedDaysRaw ?? [])[dayIdx].map((d) => d.id))}
           onCreateListFromDay={(title, ids) => createList(title, ids)}
           onTapFlow={(stopId) => setTapFlowId(stopId)}
+          isManager={isManager}
+          stopsPerDay={stopsPerDay}
+          setStopsPerDay={setStopsPerDay}
+          proposeDays={proposeDays}
+          routableLength={routable.length}
+          runOrigin={runOrigin}
+          setProposedDays={setProposedDays}
+          updateRun={updateRun}
+          createList={createList}
         />
 
         {/* ---- the map ----------------------------------------------------------- */}
