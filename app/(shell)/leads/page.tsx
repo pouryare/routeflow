@@ -22,6 +22,7 @@ import { navigateUrl, routeUrl } from "@/lib/navApps";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import StarRating from "@/components/StarRating";
+import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
 import type { LeadPoint } from "@/components/LeadsMap";
 import { Icon } from "@/components/meridian/Icon";
@@ -123,6 +124,7 @@ export default function LeadsPage() {
   const [pinningId, setPinningId] = useState<number | null>(null);
   const [scoringId, setScoringId] = useState<number | null>(null);
   const [converting, setConverting] = useState<number | null>(null);
+  const [tapFlowId, setTapFlowId] = useState<number | null>(null);
   const [stopsPerDay, setStopsPerDay] = useState(8);
   const [proposedDays, setProposedDays] = useState<RoutableLocation[][] | null>(null);
   const [selectedMapId, setSelectedMapId] = useState<number | null>(null);
@@ -799,6 +801,13 @@ export default function LeadsPage() {
                           what="کپی پیوند این مکان"
                         />
                         <button
+                          onClick={() => setTapFlowId(l.id)}
+                          aria-label={`تسجیل بازدید ${l.name}`}
+                          className="rounded-[var(--radius-sm)] px-2 py-1 text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 flex items-center gap-1.5 whitespace-nowrap text-[length:var(--text-xs)]"
+                        >
+                          <Icon name="check" size="sm" /> تسجیل بازدید
+                        </button>
+                        <button
                           onClick={() => remove(l.id)}
                           aria-label="حذف"
                           className="rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
@@ -1123,6 +1132,15 @@ export default function LeadsPage() {
           </CollapsibleSection>
         </section>
       </div>
-    </div>    </>
+    </div>
+
+      {/* ---- the tap-flow overlay ------------------------------------------------ */}
+      <LocationTapFlow
+        open={tapFlowId !== null}
+        locationId={tapFlowId!}
+        locationName={tapFlowId !== null ? (byId.get(tapFlowId)?.name ?? "") : ""}
+        onClose={() => setTapFlowId(null)}
+      />
+    </>
   );
 }
