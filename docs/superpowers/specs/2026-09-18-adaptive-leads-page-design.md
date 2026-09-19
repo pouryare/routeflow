@@ -13,7 +13,7 @@
 |---|----------|--------|-----------|
 | D1 | **Page architecture** | One adaptive `/leads` page, role-based rendering | No tab switching or context switching on mobile |
 | D2 | **Role split** | Manager/Owner sees pool + day-splitting + route + map; Driver sees route + map only | Driver only needs the plan; planning is a manager activity |
-| D3 | **Pool** | Read-only catalog — shows rating, status badges, 3 action buttons (nav, copy-original-link, copy-page-link) | Pool is a dashboard, not a control panel; editing moves to tap-flow |
+| D3 | **Pool** | Read-only catalog except inline name editing and pin-on-map — shows rating, status badges, 3 action buttons (nav, copy-original-link, copy-page-link), "تعیین موقعیت روی نقشه" button | Pool is a dashboard for viewing; rating/status editing moves to tap-flow; name and coordinates are metadata managed in-place |
 | D4 | **Tap-flow** | Full `leadVisitFlow` (navigate → what_happened → detail_status → convert → rate) on each route stop | Complete driver visit experience; existing flow config |
 | D5 | **Day-splitting** | Auto-organizes route into day groups; applied within route section | Manager/Owner only; day groups are cards with stops |
 | D6 | **Pool buttons** | Three always-visible buttons per row: مسیریابی, کپی لینک اصلی, کپی پیوند | Mobile-first; one-tap access |
@@ -64,11 +64,17 @@ Each pool row shows:
 - **Average rating**: read-only star row (reuse `StarRating` with `disabled=true`)
 - **"در مسیر" badge**: shown if location is already in the current run
 - **"بدون مخصرات" badge**: shown if lat/lng is null
+- **"تعیین موقعیت روی نقشه" button**: opens map pin picker to set coordinates
+- **"تعیین موقعیت روی نقشه" button**: opens map pin picker to set coordinates
 - **3 action buttons**: مسیریابی, کپی لینک اصلی, کپی پیوند
 
-### 2.2 NOT Shown in Pool
+### 2.2 Inline Name Editing
 
-Removed from pool rows: editable rating stars, status dropdown, "امتیازدهی" button, "تبدیل به مشتری" button, "تعیین موقعیت روی نقشه" button. Delete button kept.
+Location names are editable inline in the pool. Clicking the name enters an edit mode with a text input. On blur or Enter, the name is saved via `PATCH /api/locations/[id]`. This is basic metadata management — not a rating or status change.
+
+### 2.3 NOT Shown in Pool
+
+Removed from pool rows: editable rating stars, status dropdown, "امتیازدهی" button, "تبدیل به مشتری" button. **Kept**: "تعیین موقعیت روی نقشه" button, delete button. **Added**: inline name editing.
 
 ### 2.3 Search & Sort
 
