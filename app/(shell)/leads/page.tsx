@@ -437,6 +437,33 @@ export default function LeadsPage() {
     );
   }
 
+  function addToDayGroup(dayIdx: number, location: RoutableLocation) {
+    setProposedDaysRaw((prev) => {
+      if (!prev) return [[location]];
+      if (prev[dayIdx]?.some((l) => l.id === location.id)) return prev;
+      return prev.map((d, i) => (i === dayIdx ? [...d, location] : d));
+    });
+  }
+
+  function removeFromDayGroup(dayIdx: number, locationId: number) {
+    setProposedDaysRaw((prev) => {
+      if (!prev) return null;
+      const next = prev
+        .map((d, i) => (i === dayIdx ? d.filter((l) => l.id !== locationId) : d))
+        .filter((d) => d.length > 0);
+      return next.length > 0 ? next : null;
+    });
+  }
+
+  const assignedIds = useMemo(
+    () => new Set(proposedDaysRaw?.flat() ?? []),
+    [proposedDaysRaw]
+  );
+  const unassignedLocations = useMemo(
+    () => routable.filter((l) => !assignedIds.has(l.id)),
+    [routable, assignedIds]
+  );
+
   function proposeDays() {
     const k = daysNeeded(routable.length, stopsPerDay);
     if (k === 0) {
@@ -830,6 +857,10 @@ export default function LeadsPage() {
           setProposedDays={setProposedDays}
           updateRun={updateRun}
           createList={createList}
+          addToDayGroup={addToDayGroup}
+          removeFromDayGroup={removeFromDayGroup}
+          unassignedLocations={unassignedLocations}
+          repropose={proposeDays}
         />
 
         {/* ---- the map ----------------------------------------------------------- */}
