@@ -26,7 +26,7 @@ import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import StarRating from "@/components/StarRating";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import LocationCard from "@/components/leads/LocationCard";
-import RouteSection from "@/components/leads/RouteSection";
+import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
@@ -128,7 +128,25 @@ export default function LeadsPage() {
   const [converting, setConverting] = useState<number | null>(null);
   const [tapFlowId, setTapFlowId] = useState<number | null>(null);
   const [stopsPerDay, setStopsPerDay] = useState(8);
-  const [proposedDays, setProposedDays] = useState<RoutableLocation[][] | null>(null);
+  const [proposedDaysRaw, setProposedDays] = useState<RoutableLocation[][] | null>(null);
+  const proposedDays: DayGroup[] | null = useMemo(() =>
+    proposedDaysRaw
+      ? proposedDaysRaw.map((day, i) => ({
+          title: `روز ${i + 1}`,
+          stops: day.map((d) => ({
+            id: d.id,
+            name: d.name,
+            lat: d.lat ?? 0,
+            lng: d.lng ?? 0,
+            legKm: null,
+          })),
+          totalKm: null,
+          completed: 0,
+          total: day.length,
+        }))
+      : null,
+    [proposedDaysRaw]
+  );
   const { isManager, loading: sessionLoading } = useSession();
   const [selectedMapId, setSelectedMapId] = useState<number | null>(null);
   const [newListName, setNewListName] = useState("");
@@ -926,7 +944,7 @@ export default function LeadsPage() {
           optimiseGain={optimiseGain}
           busy={busy}
           proposedDays={proposedDays}
-          onAddDayToRun={(dayIdx) => updateRun(proposedDays[dayIdx].map((d) => d.id))}
+          onAddDayToRun={(dayIdx) => updateRun((proposedDaysRaw ?? [])[dayIdx].map((d) => d.id))}
           onCreateListFromDay={(title, ids) => createList(title, ids)}
         />
 
