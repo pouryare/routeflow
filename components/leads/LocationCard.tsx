@@ -126,7 +126,7 @@ export default function LocationCard({
           <button
             type="button"
             onClick={() => window.open(navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name), "_blank")}
-            className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-white/5 flex items-center gap-1.5"
+            className="whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-white/5 flex items-center gap-1.5"
           >
             <Icon name="external-link" size="sm" /> مسیریابی
           </button>

@@ -180,6 +180,15 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: Reso
           ))}
         </div>
       ) : null}
+      {view.kind === "choice" ? (
+        <div className="tf-grid one">
+          {view.choices.map((c) => (
+            <button key={c.id} type="button" className="tf-opt" onClick={() => submit(c.id)}>
+              {c.label}
+            </button>
+          ))}
+        </div>
+      ) : null}
       {groups.map((g) => (
         <div key={g.label ?? "_"} style={{ display: "grid", gap: 8 }}>
           {g.label ? <div className="tf-group">{g.label}</div> : null}
