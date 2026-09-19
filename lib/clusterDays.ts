@@ -127,13 +127,14 @@ export interface DayCluster<T> {
 export function clusterIntoDays<T extends LatLng>(
   stops: T[],
   dayCount: number,
-  origin: LatLng | null
+  origin: LatLng | null,
+  distanceFn?: (a: LatLng, b: LatLng) => number
 ): DayCluster<T>[] {
   if (stops.length === 0) return [];
 
   const k = Math.max(1, Math.min(Math.floor(dayCount), stops.length));
   if (k === 1) {
-    const ordered = origin ? twoOptOrder(stops, origin, false) : stops.slice();
+    const ordered = origin ? twoOptOrder(stops, origin, false, distanceFn) : stops.slice();
     return [{ stops: ordered, centre: centroidOf(stops) }];
   }
 
@@ -161,7 +162,7 @@ export function clusterIntoDays<T extends LatLng>(
 
   return days.map((d) => ({
     ...d,
-    stops: origin ? twoOptOrder(d.stops, origin, false) : d.stops,
+    stops: origin ? twoOptOrder(d.stops, origin, false, distanceFn) : d.stops,
   }));
 }
 

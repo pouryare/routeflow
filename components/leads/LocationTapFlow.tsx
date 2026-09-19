@@ -66,15 +66,15 @@ export default function LocationTapFlow({ open, locationId, locationName, onClos
       <div className="tap-grid one">
         <div>
           <p className="text-[length:var(--text-xs)] text-text-faint mb-1">پتانسیل فروش</p>
-          <StarRating value={stars.potential} onChange={(v: number | null | undefined) => handleStarChange("potential", v)} label="پتانسیل فروش" />
+          <StarRating value={stars.potential ?? null} onChange={(v: number | null) => handleStarChange("potential", v)} label="پتانسیل فروش" />
         </div>
         <div>
           <p className="text-[length:var(--text-xs)] text-text-faint mb-1">حجم سفارش</p>
-          <StarRating value={stars.volume} onChange={(v: number | null | undefined) => handleStarChange("volume", v)} label="حجم سفارش" />
+          <StarRating value={stars.volume ?? null} onChange={(v: number | null) => handleStarChange("volume", v)} label="حجم سفارش" />
         </div>
         <div>
           <p className="text-[length:var(--text-xs)] text-text-faint mb-1">سهولت همکاری</p>
-          <StarRating value={stars.ease} onChange={(v: number | null | undefined) => handleStarChange("ease", v)} label="سهولت همکاری" />
+          <StarRating value={stars.ease ?? null} onChange={(v: number | null) => handleStarChange("ease", v)} label="سهولت همکاری" />
         </div>
       </div>
     );

@@ -5,8 +5,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { distanceKm, formatDistanceKm, routeLengthKm, twoOptOrder } from "@/lib/geo";
+import { distanceKm, formatDistanceKm, routeLengthKm, twoOptOrder, RESORT_THRESHOLD_KM, type LatLng } from "@/lib/geo";
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
+import { fetchOsrmTable } from "@/lib/routing/osrmMatrix";
 import LeadImportPanel from "@/components/LeadImportPanel";
 import { useToast } from "@/components/ToastProvider";
 import { faNum } from "@/lib/format";
@@ -62,7 +63,7 @@ interface LeadList {
   location_ids: number[];
 }
 
-type SortMode = "nearest" | "score" | "name" | "newest" | "status";
+type SortMode = "nearest" | "score" | "name" | "newest" | "status" | "route" | "priority";
 
 const SORT_LABEL: Record<SortMode, string> = {
   nearest: "نزدیک‌ترین",
@@ -70,7 +71,23 @@ const SORT_LABEL: Record<SortMode, string> = {
   name: "نام",
   newest: "تازه‌ترین",
   status: "وضعیت",
+  route: "ترتیب مسیر",
+  priority: "اولویت",
 };
+
+const SORT_KEY = "coverage_lead_sort";
+
+function readSortMode(): SortMode {
+  try {
+    const raw = localStorage.getItem(SORT_KEY);
+    if (raw && Object.keys(SORT_LABEL).includes(raw)) return raw as SortMode;
+  } catch {}
+  return "nearest";
+}
+
+function saveSortMode(mode: SortMode) {
+  try { localStorage.setItem(SORT_KEY, mode); } catch {}
+}
 
 /** The scratch run, for when no named list is selected. In localStorage so a route being
  *  driven survives the phone locking, the browser evicting the tab, or a restart at the
@@ -93,7 +110,6 @@ function readScratchRun(): number[] | null {
  *  A GPS fix jitters by tens of metres while stationary. Re-sorting on every one of those
  *  would reshuffle the list under a thumb that is reaching for a row -- which is its own
  *  way of tapping the wrong restaurant. The list follows real movement, not noise. */
-const RESORT_THRESHOLD_KM = 0.05;
 
 export default function LeadsPage() {
   const [locations, setLocations] = useState<SavedLocation[]>([]);
@@ -103,7 +119,7 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [query, setQuery] = useState("");
-  const [sortMode, setSortMode] = useState<SortMode>("nearest");
+  const [sortMode, setSortMode] = useState<SortMode>(readSortMode);
   const [pinningId, setPinningId] = useState<number | null>(null);
   const [scoringId, setScoringId] = useState<number | null>(null);
   const [converting, setConverting] = useState<number | null>(null);
@@ -162,6 +178,9 @@ export default function LeadsPage() {
     if (linkedId === undefined) return;
     linkedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
   }, [linkedId, loading]);
+
+  // Persist sort mode choice to localStorage.
+  useEffect(() => { saveSortMode(sortMode); }, [sortMode]);
 
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
 
@@ -370,13 +389,44 @@ export default function LeadsPage() {
     [locations]
   );
 
+  // ---- OSRM distance matrix for route-aware ordering -------------------------
+  const [routeMatrix, setRouteMatrix] = useState<number[][] | null>(null);
+  const osrmFetched = useRef(false);
+
+  useEffect(() => {
+    if (osrmFetched.current) return;
+    const points = routable;
+    if (points.length < 2 || points.length > 100) return;
+    const controller = new AbortController();
+    fetchOsrmTable(points, controller.signal).then((table) => {
+      if (table) {
+        setRouteMatrix(table.distances_km);
+        osrmFetched.current = true;
+      }
+    });
+    return () => controller.abort();
+  }, [routable]);
+
   function proposeDays() {
     const k = daysNeeded(routable.length, stopsPerDay);
     if (k === 0) {
       toast("مکانی با مختصات برای تقسیم وجود ندارد.", "error");
       return;
     }
-    setProposedDays(clusterIntoDays(routable, k, runOrigin).map((d) => d.stops));
+    // If we have an OSRM road-distance matrix, use it for 2-opt ordering;
+    // otherwise fall back to haversine straight-line.
+    const distanceFn = routeMatrix
+      ? (() => {
+          const idx = new Map(routable.map((l, i) => [`${l.lat},${l.lng}`, i]));
+          return (a: LatLng, b: LatLng) => {
+            const ai = idx.get(`${a.lat},${a.lng}`);
+            const bi = idx.get(`${b.lat},${b.lng}`);
+            if (ai === undefined || bi === undefined) return distanceKm(a, b);
+            return routeMatrix[ai][bi] ?? distanceKm(a, b);
+          };
+        })()
+      : undefined;
+    setProposedDays(clusterIntoDays(routable, k, runOrigin, distanceFn).map((d) => d.stops));
   }
 
   // ---- the visible list ------------------------------------------------------------
@@ -410,6 +460,30 @@ export default function LeadsPage() {
           (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) ||
           (a.km ?? Infinity) - (b.km ?? Infinity)
       );
+    } else if (sortMode === "route" && routeMatrix && sortAnchor) {
+      // Order by road distance from the nearest routable point to the sort anchor,
+      // using the OSRM matrix if available.
+      // Find nearest routable point to sortAnchor by straight-line distance
+      let nearestIdx = 0;
+      let nearestDist = Infinity;
+      routable.forEach((l, i) => {
+        const d = Math.sqrt((l.lat - sortAnchor.lat) ** 2 + (l.lng - sortAnchor.lng) ** 2);
+        if (d < nearestDist) { nearestDist = d; nearestIdx = i; }
+      });
+      sorted.sort((a, b) => {
+        const ai = routable.findIndex((l) => l.id === a.loc.id);
+        const bi = routable.findIndex((l) => l.id === b.loc.id);
+        const distA = (ai >= 0 && routeMatrix[nearestIdx]) ? routeMatrix[nearestIdx][ai] ?? Infinity : Infinity;
+        const distB = (bi >= 0 && routeMatrix[nearestIdx]) ? routeMatrix[nearestIdx][bi] ?? Infinity : Infinity;
+        return distA - distB;
+      });
+    } else if (sortMode === "priority") {
+      // Priority: rated higher first, then unvisited first.
+      sorted.sort(
+        (a, b) =>
+          (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) ||
+          (a.loc.status === "no_answer" ? 1 : 0) - (b.loc.status === "no_answer" ? 1 : 0)
+      );
     } else if (sortMode === "name") {
       sorted.sort((a, b) => a.loc.name.localeCompare(b.loc.name, "fa"));
     } else if (sortMode === "newest") {
@@ -420,7 +494,7 @@ export default function LeadsPage() {
       sorted.sort((a, b) => rank(a.loc.status) - rank(b.loc.status) || (a.km ?? Infinity) - (b.km ?? Infinity));
     }
     return sorted;
-  }, [withDistance, query, sortMode]);
+  }, [withDistance, query, sortMode, routeMatrix, sortAnchor, routable]);
 
   // ---- map ------------------------------------------------------------------------
   const mapLeads = useMemo<LeadPoint[]>(
