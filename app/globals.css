@@ -3156,28 +3156,28 @@ body {
   transition: opacity 300ms var(--ease); z-index: 70;
 }
 .meridian-scrim.on { opacity: 1; pointer-events: auto; }
-.meridian .sheet {
+.sheet {
   position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 71;
   background: var(--bg); border-radius: var(--r-2xl) var(--r-2xl) 0 0;
   box-shadow: 0 -12px 40px -12px rgba(30,41,59,.35);
   transform: translateY(102%); transition: transform 480ms var(--spring);
   max-height: 88vh; overflow-y: auto; direction: rtl;
 }
-.meridian .sheet.on { transform: none; }
-.meridian .grab { width: 44px; height: 5px; border-radius: 999px; background: var(--line-2); margin: 10px auto 0; }
-.meridian .sheethead {
+.sheet.on { transform: none; }
+.grab { width: 44px; height: 5px; border-radius: 999px; background: var(--line-2); margin: 10px auto 0; }
+.sheethead {
   display: flex; align-items: flex-start; justify-content: space-between;
   gap: 14px; padding: 14px 24px 8px;
 }
-.meridian .sheethead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.015em; }
-.meridian .sheethead .s { font-size: 13px; color: var(--muted); margin-top: -4px; }
-.meridian .x {
+.sheethead h2 { margin: 0; font-size: 20px; font-weight: 600; letter-spacing: -.015em; }
+.sheethead .s { font-size: 13px; color: var(--muted); margin-top: -4px; }
+.x {
   display: grid; place-items: center; padding: 0;
   width: 38px; height: 38px; border-radius: 999px; border: 1px solid var(--line);
   background: var(--card); color: var(--ink-2); font-size: 17px; cursor: pointer;
   flex: none; transition: background 160ms var(--ease);
 }
-.meridian .x:hover { background: var(--sunk); }
+.x:hover { background: var(--sunk); }
 .meridian .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; max-width: 1150px; }
 /* The map's customer panel is 320px wide: three tiles across would be 90px each, which
    is narrower than the figures they carry. */

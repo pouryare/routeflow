@@ -131,7 +131,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: Reso
     return moved === raw ? o.sub : `ساعت باز شدن: ${labelDue(moved, now)}`;
   };
   const tap = (o: ResolvedOption) => {
-    if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); return; }
+    if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); submit(o.id); return; }
     if (o.due?.kind === "pick") { setPickFor(o.id); return; }
     const value = view.kind === "multi" ? picked.join(",") : view.input ? text.trim() : "";
     feedback.choose(o.id, (id) => submit(id, value || undefined));

@@ -23,11 +23,10 @@ import NavAppSetting, { useNavApp } from "@/components/NavAppSetting";
 import { navigateUrl, routeUrl } from "@/lib/navApps";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
-import StarRating from "@/components/StarRating";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import LocationCard from "@/components/leads/LocationCard";
 import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
-import { LEAD_CRITERIA, LeadCriterion, averageScore, scoreOf } from "@/lib/leadScore";
+import { averageScore } from "@/lib/leadScore";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
@@ -124,7 +123,6 @@ export default function LeadsPage() {
   const [query, setQuery] = useState("");
   const [sortMode, setSortMode] = useState<SortMode>(readSortMode);
   const [pinningId, setPinningId] = useState<number | null>(null);
-  const [scoringId, setScoringId] = useState<number | null>(null);
   const [converting, setConverting] = useState<number | null>(null);
   const [tapFlowId, setTapFlowId] = useState<number | null>(null);
   const [stopsPerDay, setStopsPerDay] = useState(8);
@@ -585,21 +583,6 @@ export default function LeadsPage() {
   /** One tap on one star. Applied locally first: the row must respond at the moment it
    *  is touched, at the kerb, on a connection that may be doing nothing at all. A failed
    *  write says so and reloads, rather than leaving a score on screen that is not saved. */
-  async function setScore(id: number, key: LeadCriterion, value: number | null) {
-    const column = key === "potential" ? "rating_potential" : key === "volume" ? "rating_volume" : "rating_ease";
-    setLocations((prev) => prev.map((l) => (l.id === id ? { ...l, [column]: value } : l)));
-    try {
-      const res = await fetch(`/api/locations/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ [key]: value }),
-      });
-      if (!res.ok) throw new Error();
-    } catch {
-      toast("امتیاز ذخیره نشد", "error");
-      load();
-    }
-  }
 
   async function convertToCustomer(id: number) {
     setConverting(id);
@@ -744,7 +727,6 @@ export default function LeadsPage() {
                 const runIdx = run.indexOf(l.id);
                 const inRun = runIdx !== -1;
                 const avg = averageScore(l);
-                const scoring = scoringId === l.id;
                 const priorityHigh = avg !== null && avg >= 4;
                 return (
                   <LocationCard
@@ -756,36 +738,12 @@ export default function LeadsPage() {
                     onNameChange={(name) => setLocations((prev) => prev.map((loc) => loc.id === l.id ? { ...loc, name } : loc))}
                     runIdx={inRun ? runIdx : null}
                     onToggleRun={() => (inRun ? removeFromRun(l.id) : addToRun(l.id))}
-                    scoring={scoring}
-                    onClickScoring={() => setScoringId(scoring ? null : l.id)}
                     priorityHigh={priorityHigh}
                     km={km}
                   />
                 );
               })}
             </ul>
-          )}
-
-          {/* ---- scoring panel ------------------------------------------------- */}
-          {scoringId !== null && (
-            <div className="mt-3 rounded-[var(--radius-md)] border border-border bg-bg p-4">
-              <h4 className="text-[length:var(--text-sm)] font-medium text-text mb-2">امتیازدهی به مکان</h4>
-              {LEAD_CRITERIA.map((c) => {
-                const loc = locations.find((l) => l.id === scoringId);
-                return (
-                  <div key={c.key} className="flex flex-wrap items-center justify-between gap-2 mb-2">
-                    <span className="text-[length:var(--text-sm)] text-text">
-                      <Icon name={c.icon} size="sm" /> {c.label}
-                    </span>
-                    <StarRating
-                      value={scoreOf(loc ?? { id: 0, rating_potential: null, rating_volume: null, rating_ease: null }, c.key)}
-                      label={c.label}
-                      onChange={(v) => setScore(scoringId, c.key, v)}
-                    />
-                  </div>
-                );
-              })}
-            </div>
           )}
 
           {/* ---- pin picker overlay -------------------------------------------- */}

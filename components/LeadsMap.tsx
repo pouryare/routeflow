@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@/components/meridian/Icon";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "@/lib/useLatest";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
@@ -204,9 +203,9 @@ export default function LeadsMap({
                       href={navigateHref(l)}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-3 rounded-[var(--radius-sm)] border border-accent px-5 py-1.5 text-[length:var(--text-sm)] font-medium text-accent"
+                      className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-1.5 text-[length:var(--text-sm)] font-medium text-accent"
                     >
-                      مسیریابی <Icon name="external-link" size="sm" />
+                      نقشه
                     </a>
                     {l.runIndex === null ? (
                       <button

@@ -28,9 +28,6 @@ export interface LocationCardProps {
   runIdx?: number | null;
   /** Click handler for the add/remove-from-run button. */
   onToggleRun?: () => void;
-  /** Whether the scoring panel is open for this row. */
-  scoring?: boolean;
-  onClickScoring?: () => void;
   /** Whether this row has priority-high glow. */
   priorityHigh?: boolean;
   /** Distance in km (for display). */
@@ -54,8 +51,6 @@ export default function LocationCard({
   onNameChange,
   runIdx,
   onToggleRun,
-  scoring,
-  onClickScoring,
   priorityHigh,
   km,
 }: LocationCardProps) {
@@ -126,9 +121,9 @@ export default function LocationCard({
           <button
             type="button"
             onClick={() => window.open(navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name), "_blank")}
-            className="whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-1.5 text-[length:var(--text-sm)] text-accent transition-colors hover:bg-white/5 inline-flex items-center gap-3"
+            className="whitespace-nowrap rounded-[var(--radius-sm)] px-4 py-1.5 text-[length:var(--text-sm)] text-accent transition-colors hover:bg-white/5 inline-flex items-center justify-center gap-2"
           >
-            <Icon name="external-link" size="sm" /> مسیریابی
+            نقشه
           </button>
         )}
         <CopyButton value={location.maps_url} what="کپی لینک اصلی" />
@@ -140,16 +135,7 @@ export default function LocationCard({
         >
           <Icon name="map-pin" size="sm" />
         </button>
-        {onClickScoring && (
-          <button
-            type="button"
-            onClick={onClickScoring}
-            className="rounded-[var(--radius-sm)] px-1.5 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors"
-            aria-label="امتیازدهی"
-          >
-            <Icon name="star" size="sm" />
-          </button>
-        )}
+
       </div>
     </div>
   );
