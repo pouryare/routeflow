@@ -353,8 +353,7 @@ export default function SearchBox({
 
       {open && (
         <div className="mapsearch__panel">
-          {!hideResults && (
-            <div className="mapsearch__filter-strip border-b border-border p-2 flex flex-wrap gap-1.5 items-center">
+          <div className="mapsearch__filter-strip border-b border-border p-2 flex flex-wrap gap-1.5 items-center">
               <select value={sortMode ?? "nearest"} onChange={(e) => onSortModeChange?.(e.target.value)} disabled={sortDisabled} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border bg-surface text-text-muted disabled:opacity-40">
                 {visibleSortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
@@ -378,7 +377,6 @@ export default function SearchBox({
                 </button>
               )}
             </div>
-          )}
           {trimmed && !hideResults && (
           isUrl ? (
             <div className="p-2">
