@@ -25,7 +25,7 @@ type Result =
 const URL_RE = /^https?:\/\//i;
 const COORD_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
 
-const SORT_OPTIONS = [
+export const SORT_OPTIONS = [
   { value: "nearest", label: "نزدیک‌ترین" },
   { value: "score", label: "بهترین امتیاز" },
   { value: "name", label: "نام" },
@@ -35,10 +35,10 @@ const SORT_OPTIONS = [
   { value: "priority", label: "اولویت" },
 ] as const;
 
-function detectInputType(q: string): "coord" | "address" | "name" {
+export function detectInputType(q: string): "coord" | "address" | "name" {
   const t = q.trim();
   if (COORD_RE.test(t)) return "coord";
-  if (t.length >= 2 && /^[آا-یآ\s\-,./]+$/i.test(t)) return "address";
+  if (t.length >= 2 && /^[آا-یآ\s\-,./]+$/i.test(t) && /\s/.test(t)) return "address";
   return "name";
 }
 
@@ -177,9 +177,11 @@ export default function SearchBox({
   const trimmed = query.trim();
   const isUrl = URL_RE.test(trimmed);
   const coordMatch = trimmed.match(COORD_RE);
+  const inputType = detectInputType(trimmed);
 
   const results = useMemo<Result[]>(() => {
-    if (!trimmed || isUrl || coordMatch) return [];
+    if (!trimmed || isUrl || inputType === "coord") return [];
+    if (inputType === "address") return [];
     // Matched under normalisation rather than by raw substring. Imported names very
     // often carry the Arabic ي and ك where a phone keyboard produces the Persian ی and
     // ک -- different codepoints, near-identical glyphs -- so a raw match made those
@@ -198,7 +200,21 @@ export default function SearchBox({
       .slice(0, 6)
       .map((district) => ({ kind: "district", district }));
     return [...customerResults, ...districtResults].slice(0, 8);
-  }, [trimmed, customers, districts, isUrl, coordMatch]);
+  }, [trimmed, customers, districts, isUrl, inputType]);
+
+  // For address input, skip local search and go straight to geo on every keystroke.
+  useEffect(() => {
+    if (inputType !== "address" || trimmed.length < 2) return;
+    runGeosearch();
+  }, [trimmed, inputType]);
+
+  const visibleSortOptions = useMemo(() => {
+    if (activeView === "kanban") return SORT_OPTIONS.filter((o) => o.value !== "status");
+    if (activeView === "score") return SORT_OPTIONS.filter((o) => o.value === "score");
+    return SORT_OPTIONS;
+  }, [activeView]);
+
+  const sortDisabled = visibleSortOptions.length <= 1;
 
 
 
@@ -267,7 +283,7 @@ export default function SearchBox({
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
     if (isUrl) decodeLink();
-    else if (coordMatch) goToCoords();
+    else if (inputType === "coord" && coordMatch) goToCoords();
     else if (results.length === 0 && trimmed) runGeosearch();
   }
 
@@ -339,8 +355,8 @@ export default function SearchBox({
         <div className="mapsearch__panel">
           {!hideResults && (
             <div className="mapsearch__filter-strip border-b border-border p-2 flex flex-wrap gap-1.5 items-center">
-              <select value={sortMode ?? "nearest"} onChange={(e) => onSortModeChange?.(e.target.value)} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border bg-surface text-text-muted">
-                {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              <select value={sortMode ?? "nearest"} onChange={(e) => onSortModeChange?.(e.target.value)} disabled={sortDisabled} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border bg-surface text-text-muted disabled:opacity-40">
+                {visibleSortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
               <select value={activeListId ?? ""} onChange={(e) => onListChange?.(e.target.value ? Number(e.target.value) : null)} className="flex-1 min-w-0 rounded border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)]">
                 <option value="">مسیر آزاد</option>
@@ -378,16 +394,17 @@ export default function SearchBox({
                 لینک گوگل‌مپس به‌صورت کامل پشتیبانی می‌شود؛ نشان و بلد به‌صورت حدسی بررسی می‌شوند.
               </p>
             </div>
-          ) : coordMatch ? (
+          ) : inputType === "coord" && coordMatch ? (
             <div className="p-2">
               <button
                 onClick={goToCoords}
                 className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
               >
-                <Icon name="map-pin" size="sm" /> نمایش این مختصات روی نقشه ({coordMatch[1]}, {coordMatch[2]})
+                <Icon name="map-pin" size="sm" /> نمایش مختصات روی نقشه
+                <span className="block text-[length:var(--text-xs)] text-accent/60 font-mono">{coordMatch[1]}, {coordMatch[2]}</span>
               </button>
             </div>
-          ) : geoResults !== null ? (
+          ) : inputType === "address" && trimmed.length >= 2 ? null : geoResults !== null ? (
             geoResults.length > 0 ? (
               geoResults.map((r, i) => (
                 <button

@@ -23,11 +23,11 @@
 **Files:**
 - Modify: `app/(shell)/leads/page.tsx:119-138`
 
-- [ ] **Step 1: Remove the entire filter bar section** (lines 119-138: position button, both sort dropdowns, ✓ انتخاب همه, list dropdown, search input)
+- [x] **Step 1: Remove the entire filter bar section** (lines 119-138: position button, both sort dropdowns, ✓ انتخاب همه, list dropdown, search input)
 
 Replace the block from `{/* Search and filters */}` through the search input with a single `<SearchBox ... />` that receives all filter props.
 
-- [ ] **Step 2: Add filter props to SearchBox call**
+- [x] **Step 2: Add filter props to SearchBox call**
 
 ```tsx
 <SearchBox
@@ -51,7 +51,7 @@ Replace the block from `{/* Search and filters */}` through the search input wit
 />
 ```
 
-- [ ] **Step 3: Define handleSelectAll**
+- [x] **Step 3: Define handleSelectAll**
 
 ```tsx
 function handleSelectAll() {
@@ -62,12 +62,9 @@ function handleSelectAll() {
 }
 ```
 
-- [ ] **Step 4: Verify compilation**
+- [x] **Step 4: Verify compilation**
 
-Run: `npx tsc --noEmit 2>&1 | head -30`
-Expected: No type errors related to SearchBox props
-
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add app/\(shell\)/leads/page.tsx
@@ -109,7 +106,7 @@ const SORT_OPTIONS = [
 **Files:**
 - Modify: `components/SearchBox.tsx`
 
-- [ ] **Step 1: Compute visible sort options based on activeView**
+- [x] **Step 1: Compute visible sort options based on activeView**
 
 ```tsx
 const visibleSortOptions = useMemo(() => {
@@ -119,7 +116,7 @@ const visibleSortOptions = useMemo(() => {
 }, [activeView]);
 ```
 
-- [ ] **Step 2: Disable sort dropdown when only one option**
+- [x] **Step 2: Disable sort dropdown when only one option**
 
 ```tsx
 <select
@@ -139,7 +136,7 @@ const visibleSortOptions = useMemo(() => {
 **Files:**
 - Modify: `components/SearchBox.tsx`
 
-- [ ] **Step 1: The position chip is already added in Task 2** — verify the `onPositionClear` and `onSetPosition` props are wired correctly in page.tsx:
+- [x] **Step 1: The position chip is already added in Task 2** — verify the `onPositionClear` and `onSetPosition` props are wired correctly in page.tsx:
 
 ```tsx
 <SearchBox
@@ -150,7 +147,7 @@ const visibleSortOptions = useMemo(() => {
 />
 ```
 
-- [ ] **Step 2: Verify compilation**
+- [x] **Step 2: Verify compilation**
 
 
 
@@ -159,7 +156,7 @@ const visibleSortOptions = useMemo(() => {
 **Files:**
 - Create: `tests/SearchBoxFilters.test.ts`
 
-- [ ] **Step 1: Write test for sort option visibility by view**
+- [x] **Step 1: Write test for sort option visibility by view**
 
 ```tsx
 import { describe, expect, it } from "vitest";
@@ -182,7 +179,7 @@ describe("sort options by view", () => {
 });
 ```
 
-- [ ] **Step 2: Write test for input type detection**
+- [x] **Step 2: Write test for input type detection**
 
 ```tsx
 import { describe, expect, it } from "vitest";
@@ -202,7 +199,7 @@ describe("detectInputType", () => {
 });
 ```
 
-- [ ] **Step 3: Run tests**
+- [x] **Step 3: Run tests**
 
 Run: `npx vitest run tests/SearchBoxFilters.test.ts`
 Expected: All tests pass
@@ -218,7 +215,7 @@ git commit -m "test(search): add filter and input-type tests"
 
 ### Task 8: Self-review and final verification
 
-- [ ] **Step 1: Verify all spec requirements are covered**
+- [x] **Step 1: Verify all spec requirements are covered**
 
 | Spec Requirement | Task |
 |------------------|------|
@@ -231,12 +228,12 @@ git commit -m "test(search): add filter and input-type tests"
 | Mobile bottom sheet | Task 6 |
 | Filter section in dropdown | Task 2 |
 
-- [ ] **Step 2: Run full test suite**
+- [x] **Step 2: Run full test suite**
 
 Run: `npx vitest run 2>&1 | tail -20`
 Expected: All tests pass (no regressions)
 
-- [ ] **Step 3: Final commit**
+- [x] **Step 3: Final commit**
 
 ```bash
 git add -A
@@ -245,7 +242,7 @@ git commit -m "chore: final verification"
 Run: `npx tsc --noEmit 2>&1 | head -30`
 Expected: No type errors
 
-- [ ] **Step 3: Commit**
+- [x] **Step 3: Commit**
 
 ```bash
 git add components/SearchBox.tsx app/\(shell\)/leads/page.tsx

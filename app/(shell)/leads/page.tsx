@@ -121,7 +121,7 @@ export default function LeadsPage() {
             onPositionClear={() => { setSortAnchor(null); setShowManualPos(false); }}
             onSetPosition={() => setShowManualPos(true)}
             onSelectAll={handleSelectAll}
-            inBatchView={false}
+            inBatchView={activeView === "batch"}
             activeView={activeView}
             hideResults
           />
