@@ -196,11 +196,13 @@ export function entityGroupFilter(
   const joins = `
      LEFT JOIN customers _ec ON ${alias}.entity_type = 'customer' AND _ec.id = ${alias}.entity_id
      LEFT JOIN districts _ed ON ${alias}.entity_type = 'district' AND _ed.id = ${alias}.entity_id
-     LEFT JOIN facilities _ef ON ${alias}.entity_type = 'facility' AND _ef.id = ${alias}.entity_id`;
+     LEFT JOIN facilities _ef ON ${alias}.entity_type = 'facility' AND _ef.id = ${alias}.entity_id
+      LEFT JOIN saved_locations _el ON ${alias}.entity_type = 'lead_location' AND _el.id = ${alias}.entity_id`;
+
 
   if (session.role === "platform_owner") return { joins, sql: "", params: [] };
 
-  const orgGuard = `COALESCE(_ec.organization_id, _ed.organization_id, _ef.organization_id) = ?`;
+  const orgGuard = `COALESCE(_ec.organization_id, _ed.organization_id, _ef.organization_id, _el.organization_id) = ?`;
 
   if (session.role === "owner") {
     // Same reasoning as groupFilter's owner branch: before tenancy, owner saw every
@@ -209,7 +211,7 @@ export function entityGroupFilter(
     return { joins, sql: ` AND ${orgGuard}`, params: [session.organizationId] };
   }
 
-  const shared = `(${alias}.entity_type = 'facility' AND _ef.group_id IS NULL)`;
+  const shared = `(${alias}.entity_type = 'facility' AND _ef.group_id IS NULL) OR (${alias}.entity_type = 'lead_location' AND _el.group_id IS NULL)`;
   const scope = scopeGroupIds(session) as number[]; // platform_owner and owner both returned above
   if (scope.length === 0) {
     return { joins, sql: ` AND ${orgGuard} AND ${shared}`, params: [session.organizationId] };
@@ -217,13 +219,13 @@ export function entityGroupFilter(
   if (scope.length === 1) {
     return {
       joins,
-      sql: ` AND ${orgGuard} AND (COALESCE(_ec.group_id, _ed.group_id, _ef.group_id) = ? OR ${shared})`,
+      sql: ` AND ${orgGuard} AND (COALESCE(_ec.group_id, _ed.group_id, _ef.group_id, _el.group_id) = ? OR ${shared})`,
       params: [session.organizationId, scope[0]],
     };
   }
   return {
     joins,
-    sql: ` AND ${orgGuard} AND (COALESCE(_ec.group_id, _ed.group_id, _ef.group_id) IN (${scope
+    sql: ` AND ${orgGuard} AND (COALESCE(_ec.group_id, _ed.group_id, _ef.group_id, _el.group_id) IN (${scope
       .map(() => "?")
       .join(", ")}) OR ${shared})`,
     params: [session.organizationId, ...scope],
@@ -359,7 +361,7 @@ export function canReachEntity(
 ): boolean {
   if (session.role === "platform_owner") return true;
 
-  const table = entityType === "customer" ? "customers" : entityType === "district" ? "districts" : entityType === "facility" ? "facilities" : null;
+  const table = entityType === "customer" ? "customers" : entityType === "district" ? "districts" : entityType === "facility" ? "facilities" : entityType === "lead" || entityType === "lead_location" ? "saved_locations" : null;
   if (!table) return false;
 
   const row = db.prepare(`SELECT group_id, organization_id FROM ${table} WHERE id = ?`).get(entityId) as

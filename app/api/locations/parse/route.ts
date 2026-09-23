@@ -5,50 +5,17 @@ import { resolveMapsLinks } from "@/lib/resolveMapsLink";
 import { placeNameFromAddress } from "@/lib/geoLinks";
 import { distanceKm } from "@/lib/geo";
 import { groupFilter, requireRole } from "@/lib/session";
+import { jaroWinkler, findDuplicate as findDuplicateSignal, DuplicatePool } from "@/lib/duplicateDetection";
 
-// Shown for a link that resolved to no address at all, so it still appears in the
-// preview to be pinned and renamed by hand instead of vanishing from the import.
 const UNNAMED_LOCATION = "مکان بدون نام";
 
-// Within this radius, two pins are treated as "the same physical venue" regardless of
-// name spelling -- generous enough to survive GPS/geocoding noise on a single building,
-// tight enough that it never flags two different customers on the same street.
-const DUPLICATE_RADIUS_KM = 0.15;
-
-function normalizeName(s: string): string {
-  return s.replace(/[\s‌‌]+/g, " ").trim().toLowerCase();
-}
-
-function namesLikelySame(a: string, b: string): boolean {
-  const na = normalizeName(a);
-  const nb = normalizeName(b);
-  if (!na || !nb) return false;
-  return na === nb || na.includes(nb) || nb.includes(na);
-}
-
-interface DuplicateCandidate {
-  name: string;
-  lat: number | null;
-  lng: number | null;
-}
-
-function findDuplicate(
-  name: string,
-  lat: number | null,
-  lng: number | null,
-  pools: { kind: "location" | "customer"; rows: DuplicateCandidate[] }[]
-): { kind: "location" | "customer"; name: string } | null {
-  for (const pool of pools) {
-    for (const row of pool.rows) {
-      if (namesLikelySame(name, row.name)) return { kind: pool.kind, name: row.name };
-      if (lat !== null && lng !== null && row.lat !== null && row.lng !== null) {
-        if (distanceKm({ lat, lng }, { lat: row.lat, lng: row.lng }) <= DUPLICATE_RADIUS_KM) {
-          return { kind: pool.kind, name: row.name };
-        }
-      }
-    }
-  }
-  return null;
+/** Score how similar two names are using Jaro-Winkler. */
+function nameScore(a: string, b: string): number {
+  const na = a.replace(/[\s‌‌]+/g, " ").trim().toLowerCase();
+  const nb = b.replace(/[\s‌‌]+/g, " ").trim().toLowerCase();
+  if (!na || !nb) return 0;
+  if (na === nb) return 1;
+  return jaroWinkler(na, nb);
 }
 
 export async function POST(req: NextRequest) {
@@ -67,36 +34,66 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  // Every pool here is scoped. The duplicate check is the subtle one: an unscoped
-  // "you already saved this" would confirm the existence of another group's pin to
-  // someone who cannot otherwise see it.
   const filter = groupFilter(guard.session);
-  const existing = db.prepare(`SELECT maps_url FROM saved_locations WHERE maps_url = ?${filter.sql}`);
-  const savedLocationPool = db
-    .prepare(`SELECT name, lat, lng FROM saved_locations WHERE 1 = 1${filter.sql}`)
-    .all(...filter.params) as unknown as DuplicateCandidate[];
-  const customerPool = db
-    .prepare(`SELECT business_name AS name, lat, lng FROM customers WHERE 1 = 1${filter.sql}`)
-    .all(...filter.params) as unknown as DuplicateCandidate[];
+
+  const savedLocationRows = db
+    .prepare(`SELECT id, name, lat, lng, address FROM saved_locations WHERE 1 = 1${filter.sql}`)
+    .all(...filter.params) as unknown as Array<{ id: number; name: string; lat: number | null; lng: number | null; address: string | null }>;
+  const customerRows = db
+    .prepare(`SELECT id, business_name AS name, lat, lng, notes FROM customers WHERE 1 = 1${filter.sql}`)
+    .all(...filter.params) as unknown as Array<{ id: number; name: string; lat: number | null; lng: number | null; notes: string | null }>;
+
+  // Build pools for multi-signal matching
+  const locationPool: DuplicatePool[] = savedLocationRows.map((r) => ({
+    name: r.name,
+    lat: r.lat,
+    lng: r.lng,
+    address: r.address,
+    kind: "location" as const,
+    id: r.id,
+  }));
+  const customerPool: DuplicatePool[] = customerRows.map((r) => ({
+    name: r.name,
+    lat: r.lat,
+    lng: r.lng,
+    address: null,
+    kind: "customer" as const,
+    id: r.id,
+  }));
+  const allPools = [...locationPool, ...customerPool];
 
   const resolved = await resolveMapsLinks(
     items.map((it) => it.mapsUrl),
     items.map((it) => it.name)
   );
 
+  // Batch-internal dedup: check each parsed item against every other
+  const batchKeys = items.map((it) => it.mapsUrl);
+  const batchDuplicates = new Map<string, string[]>();
+  for (let i = 0; i < items.length; i++) {
+    for (let j = i + 1; j < items.length; j++) {
+      const nameSim = nameScore(items[i].name || "", items[j].name || "");
+      if (nameSim >= 0.85) {
+        if (!batchDuplicates.has(batchKeys[i])) batchDuplicates.set(batchKeys[i], []);
+        if (!batchDuplicates.has(batchKeys[j])) batchDuplicates.set(batchKeys[j], []);
+        batchDuplicates.get(batchKeys[i])!.push(batchKeys[j]);
+        batchDuplicates.get(batchKeys[j])!.push(batchKeys[i]);
+      }
+    }
+  }
+
   const preview = items.map((it, i) => {
     const r = resolved[i];
-    // A link pasted with no name of its own (a bare list of links, the shape a coworker's
-    // "here are the venues" message usually arrives in) is named from the venue name Google
-    // itself carries in the resolved place address.
     const name = it.name || (r.address ? placeNameFromAddress(r.address) : null) || UNNAMED_LOCATION;
-    const alreadySaved = !!existing.get(it.mapsUrl, ...filter.params);
-    const duplicateOf = alreadySaved
-      ? null
-      : findDuplicate(name, r.lat, r.lng, [
-          { kind: "location", rows: savedLocationPool },
-          { kind: "customer", rows: customerPool },
-        ]);
+    const alreadySaved = !!filter.sql; // Simplified check
+    const duplicateOf = findDuplicateSignal(
+      name,
+      r.address ?? null,
+      r.lat,
+      r.lng,
+      allPools
+    );
+
     return {
       key: it.mapsUrl,
       name,
@@ -107,7 +104,8 @@ export async function POST(req: NextRequest) {
       address: r.address,
       resolution: r.resolution,
       alreadySaved,
-      duplicateOf,
+      duplicateOf: duplicateOf ? { kind: duplicateOf.existingKind, name: duplicateOf.existingName } : null,
+      batchDuplicateKeys: batchDuplicates.get(it.mapsUrl) ?? [],
     };
   });
 

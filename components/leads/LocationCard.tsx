@@ -1,6 +1,6 @@
 "use client";
 
-import { SavedLocation } from "@/app/(shell)/leads/page";
+import { SavedLocation } from "@/app/(shell)/leads/hooks/useLeads";
 import StarRating from "@/components/StarRating";
 import CopyButton from "@/components/CopyButton";
 import { Icon } from "@/components/meridian/Icon";
@@ -8,6 +8,7 @@ import { averageScore } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
 import { navigateUrl } from "@/lib/navApps";
 import type { NavAppId } from "@/lib/navApps";
+import { useState } from "react";
 
 const STATUS_META: Record<string, string> = {
   contacted: "تماس گرفته شد",
@@ -33,6 +34,17 @@ export interface LocationCardProps {
   /** Distance in km (for display). */
   km?: number | null;
   onTogglePriority?: () => void;
+  /** Open the planner with this lead added to today's plan. */
+  onAddToPlan?: () => void;
+  /** Notes for this location. */
+  notes?: string | null;
+  onNotesChange?: (notes: string) => void;
+  /** Tighter padding for grid/kanban views. */
+  compactMode?: boolean;
+  /** Show checkbox for batch selection. */
+  showCheckboxes?: boolean;
+  /** Whether this item is checked in batch mode. */
+  checked?: boolean;
 }
 
 const STATUS_COLOR: Record<string, string> = {
@@ -53,6 +65,12 @@ export default function LocationCard({
   priorityHigh,
   km,
   onTogglePriority,
+  onAddToPlan,
+  notes,
+  onNotesChange,
+  compactMode = false,
+  showCheckboxes = false,
+  checked = false,
 }: LocationCardProps) {
   const avg = averageScore(location);
   const statusColor = location.status ? STATUS_COLOR[location.status] ?? "bg-gray-400" : "bg-gray-400";
@@ -60,10 +78,18 @@ export default function LocationCard({
 
   return (
     <div
-      className={`rounded-[var(--radius-md)] border bg-surface p-3 hover:border-border-strong transition-colors
+      className={`rounded-[var(--radius-md)] border border-[var(--line)] bg-surface p-3 hover:border-[var(--line-2)] transition-colors ${compactMode ? "p-2" : ""}
         ${priorityHigh ? "border-accent shadow-sm" : ""}`}
     >
       <div className="flex items-start gap-3">
+        {showCheckboxes && (
+          <input
+            type="checkbox"
+            checked={checked}
+            onChange={() => {}}
+            className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-accent cursor-pointer"
+          />
+        )}
         <span className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${statusColor}`} title={statusLabel} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
@@ -113,11 +139,11 @@ export default function LocationCard({
                 : "border-border text-text-muted hover:border-accent hover:text-accent"
               }`}
           >
-            {inRun && runIdx !== null ? faNum(runIdx + 1) : "+"}
+            {runIdx != null ? faNum(runIdx) : "+"}
           </button>
         )}
 
-        {location.lat !== null && location.lng !== null && (
+        {location.lat != null && location.lng != null && (
           <a
             href={navigateUrl(navAppId, { lat: location.lat!, lng: location.lng! }, location.name)}
             target="_blank"
@@ -153,7 +179,30 @@ export default function LocationCard({
             {location.priority ? "اولیوت بالا" : "اولیوت بالا نیست"}
           </button>
         )}
+
+        {onAddToPlan && (
+          <button
+            type="button"
+            onClick={onAddToPlan}
+            className="rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink inline-flex items-center gap-1.5"
+          >
+            <Icon name="calendar" size="sm" /> افزودن به برنامه
+          </button>
+        )}
       </div>
+
+      {onNotesChange && (
+        <div className="mt-2 pt-2 border-t border-border">
+          <textarea
+            value={notes ?? ""}
+            onChange={(e) => onNotesChange(e.target.value)}
+            placeholder="یادداشت…"
+            rows={2}
+            className="w-full rounded-[var(--radius-sm)] border border-border bg-transparent px-2 py-1 text-[length:var(--text-sm)] text-text outline-none focus:border-accent resize-none placeholder:text-text-faint"
+          />
+        </div>
+      )}
+
     </div>
   );
 }

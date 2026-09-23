@@ -1,5 +1,6 @@
 import { CONTACT_ROLE_LABEL, faDigits } from "../vocab";
 import type { FlowAnswer, FlowConfig, FlowContext, FlowOption, FlowSet, FlowState, FlowStep, ResolvedStep } from "./types";
+export { type FlowState };
 
 export class FlowError extends Error {}
 /** The option id a time step's «بدون کار بعدی…» sends. */
@@ -81,7 +82,7 @@ export function answerStep(cfg: FlowConfig, ctx: FlowContext, st: FlowState, opt
   // the structured `stars` set rather than leaving a raw string in `values`.
   if (step.kind === "stars" && has) {
     const [p, v, e] = String(value).split(",").map((n) => (n === "" ? null : Number(n)));
-    acc.stars = { potential: p ?? null, volume: v ?? null, ease: e ?? null };
+    acc.stars = { potential: p ?? undefined, volume: v ?? undefined, ease: e ?? undefined };
   }
   const answer: FlowAnswer = has ? { step: stepId, option: optionId, value } : { step: stepId, option: optionId };
   const answers = [...st.answers, answer];

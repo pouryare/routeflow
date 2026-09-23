@@ -717,7 +717,7 @@ export function getDb(): DatabaseSync {
 
     CREATE TABLE IF NOT EXISTS activity_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer')),
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')),
       entity_id INTEGER NOT NULL,
       event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned')),
       old_value TEXT,
@@ -752,7 +752,7 @@ export function getDb(): DatabaseSync {
 
     CREATE TABLE IF NOT EXISTS visit_plans (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer')),
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')),
       entity_id INTEGER NOT NULL,
       planned_date TEXT NOT NULL,
       status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')),
@@ -2111,6 +2111,9 @@ export function getDb(): DatabaseSync {
   }
 
   const savedLocationCols = db.prepare("PRAGMA table_info(saved_locations)").all() as { name: string }[];
+  if (!savedLocationCols.some((c) => c.name === "notes")) {
+    db.exec("ALTER TABLE saved_locations ADD COLUMN notes TEXT");
+  }
   if (!savedLocationCols.some((c) => c.name === "status")) {
     db.exec("ALTER TABLE saved_locations ADD COLUMN status TEXT");
   }
@@ -2151,16 +2154,18 @@ export function getDb(): DatabaseSync {
   // rebuild, for the same reason: a restock stop added to a day, and (feature 11) an
   // arrival logged at a depot, are both events about a facility. Widening it here rather
   // than skipping the log for facilities keeps one history for everything on the map.
+  // activity_log shipped with entity_type restricted to district/customer/facility.
+  // SQLite cannot ALTER a CHECK, so widening it to accept lead_location means the standard rebuild.
   const activitySchema = db
     .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='activity_log'")
     .get() as { sql: string } | undefined;
-  if (activitySchema && !activitySchema.sql.includes("'facility'")) {
+  if (activitySchema && !activitySchema.sql.includes("'lead_location'")) {
     db.exec("BEGIN");
     try {
       db.exec(`
         CREATE TABLE activity_log_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility')),
+          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')),
           entity_id INTEGER NOT NULL,
           event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned')),
           old_value TEXT,
@@ -2663,19 +2668,19 @@ export function getDb(): DatabaseSync {
   }
 
   // visit_plans shipped with entity_type restricted to district/customer. SQLite cannot
-  // ALTER a CHECK, so widening it to accept a facility means the standard rebuild:
+  // ALTER a CHECK, so widening it to accept a facility and lead_location means the standard rebuild:
   // new table, copy every row, drop, rename. Guarded on the constraint text so it runs
   // exactly once. Same dance saved_locations went through above.
   const visitPlansSchema = db
     .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='visit_plans'")
     .get() as { sql: string } | undefined;
-  if (visitPlansSchema && !visitPlansSchema.sql.includes("'facility'")) {
+  if (visitPlansSchema && !visitPlansSchema.sql.includes("'lead_location'")) {
     db.exec("BEGIN");
     try {
       db.exec(`
         CREATE TABLE visit_plans_new (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
-          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility')),
+          entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')),
           entity_id INTEGER NOT NULL,
           planned_date TEXT NOT NULL,
           status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')),
@@ -3186,10 +3191,10 @@ export type EntityType = "district" | "customer";
  *  leg of the day's route, unlike a reminder or a photo, which are always attached to a
  *  district or a customer. Kept as its own union so widening the route model does not
  *  quietly loosen every other entity reference in the schema. */
-export type PlanEntityType = EntityType | "facility";
+export type PlanEntityType = EntityType | "facility" | "lead" | "lead_location";
 /** What activity_log accepts. Same widening as PlanEntityType, for the same reason. */
 export type LoggableEntityType = PlanEntityType;
-export const PLAN_ENTITY_TYPES: PlanEntityType[] = ["district", "customer", "facility"];
+export const PLAN_ENTITY_TYPES: PlanEntityType[] = ["district", "customer", "facility", "lead", "lead_location"];
 
 export interface ActivityEntry {
   id: number;
@@ -3324,6 +3329,8 @@ export interface SavedLocationRow {
   rating_potential: number | null;
   rating_volume: number | null;
   rating_ease: number | null;
+  group_id: number | null;
+  organization_id: number | null;
   created_at: string;
   updated_at: string;
 }

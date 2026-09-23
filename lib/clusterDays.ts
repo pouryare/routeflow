@@ -178,7 +178,8 @@ export function clusterIntoDays<T extends LatLng>(
   dayCount: number,
   origin: LatLng | null,
   distanceFn?: (a: LatLng, b: LatLng) => number,
-  seeds?: T[]
+  seeds?: T[],
+  maxPerDay?: number
 ): DayCluster<T>[] {
   if (stops.length === 0) return [];
 
@@ -188,7 +189,7 @@ export function clusterIntoDays<T extends LatLng>(
     return [{ stops: ordered, centre: centroidOf(stops) }];
   }
 
-  const capacity = Math.ceil(stops.length / k);
+  const capacity = maxPerDay ?? Math.ceil(stops.length / k);
   const centroidSources = seeds && seeds.length > 0 ? seeds : undefined;
   let centroids = centroidSources
     ? seedFromSources(stops, centroidSources, k, origin, distanceFn)

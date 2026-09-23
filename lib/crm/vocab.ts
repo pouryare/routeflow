@@ -122,5 +122,5 @@ export const NOT_FIT_LABEL: Record<NotFitReason, string> = {
 };
 
 /** Task kinds a flow may create; task label integration follows in Task 13. */
-export const NEXT_KINDS = ["call", "visit", "verify_visit", "sample_delivery", "quote_followup", "outreach", "order"] as const;
+export const NEXT_KINDS = ["call", "visit", "verify_visit", "sample_delivery", "quote_followup", "outreach", "order", "reminder"] as const;
 export type NextKind = (typeof NEXT_KINDS)[number];

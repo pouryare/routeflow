@@ -1,8 +1,9 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
+import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
@@ -33,7 +34,7 @@ const WEEKDAYS = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارش
 
 interface PlanRow {
   id: number;
-  entity_type: "district" | "customer" | "facility";
+  entity_type: "district" | "customer" | "facility" | "lead_location";
   entity_id: number;
   planned_date: string;
   status: "planned" | "done" | "skipped";
@@ -152,6 +153,7 @@ export default function PlannerPage() {
   const [plansByDate, setPlansByDate] = useState<Record<string, PlanRow[]>>({});
   const [loading, setLoading] = useState(true);
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
+  const [leads, setLeads] = useState<LeadLocation[]>([]);
   const [addQuery, setAddQuery] = useState("");
   const [myPos, setMyPos] = useState<{ lat: number; lng: number } | null>(null);
   const [facilities, setFacilities] = useState<FacilityRow[]>([]);
@@ -163,6 +165,33 @@ export default function PlannerPage() {
   const toast = useToast();
   const [navAppId] = useNavApp();
   const [locating, setLocating] = useState(false);
+  const searchParams = useSearchParams();
+  const hasAutoAddedLead = useRef(false);
+
+  // Auto-add lead from URL param ?lead=123
+  useEffect(() => {
+    const leadId = searchParams.get("lead");
+    if (leadId && !hasAutoAddedLead.current) {
+      hasAutoAddedLead.current = true;
+      const id = Number(leadId);
+      if (!Number.isNaN(id)) {
+        (async () => {
+          try {
+            const res = await fetch("/api/visit-plans", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ entity_type: "lead_location", entity_id: id, planned_date: selectedDate }),
+            });
+            if (res.ok) {
+              toast("مکان به برنامه اضافه شد.", "success");
+              loadWeek();
+            }
+          } catch { /* ignore */ }
+        })();
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const loadWeek = useCallback(async () => {
     setLoading(true);
@@ -184,6 +213,20 @@ export default function PlannerPage() {
     fetch("/api/customers")
       .then((r) => r.json())
       .then((d) => setCustomers(d.customers ?? []));
+  }, []);
+
+  // Lead locations for the "add lead to plan" feature
+  useEffect(() => {
+    fetch("/api/locations")
+      .then((r) => r.json())
+      .then((d) => setLeads((d.locations ?? []).map((l: any) => ({
+        id: l.id,
+        name: l.name,
+        lat: l.lat,
+        lng: l.lng,
+        address: l.address,
+      }))))
+      .catch(() => {});
   }, []);
 
   // What the browser alone knows -- the link's ?date= and the saved return-to-origin
@@ -214,14 +257,27 @@ export default function PlannerPage() {
 
   const dayPlans = (plansByDate[selectedDate] ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
 
-  const addCandidates = useMemo(() => {
+  interface LeadLocation {
+  id: number;
+  name: string;
+  lat: number;
+  lng: number;
+  address: string | null;
+}
+type AddCandidate = CustomerRow | LeadLocation;
+
+  const addCandidates: AddCandidate[] = useMemo(() => {
     const q = addQuery.trim();
     if (!q) return [];
-    const already = new Set(dayPlans.filter((p) => p.entity_type === "customer").map((p) => p.entity_id));
-    return customers
+    const already = new Set(dayPlans.map((p) => p.entity_id));
+    const customerMatches = customers
       .filter((c) => !already.has(c.id) && (c.business_name.includes(q) || c.customer_code.includes(q)))
       .slice(0, 6);
-  }, [addQuery, customers, dayPlans]);
+    const leadMatches = leads
+      .filter((l) => !already.has(l.id) && l.name.includes(q))
+      .slice(0, 6);
+    return [...customerMatches, ...leadMatches];
+  }, [addQuery, customers, leads, dayPlans]);
 
   async function addToPlan(customerId: number) {
     try {
@@ -234,6 +290,23 @@ export default function PlannerPage() {
       toast("به برنامه اضافه شد.", "success");
     } catch {
       toast("خطا در افزودن به برنامه", "error");
+    } finally {
+      setAddQuery("");
+      loadWeek();
+    }
+  }
+
+  async function addLeadToPlan(leadId: number) {
+    try {
+      const res = await fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_type: "lead_location", entity_id: leadId, planned_date: selectedDate }),
+      });
+      if (!res.ok) throw new Error();
+      toast("مکان پیشنهادی به برنامه اضافه شد.", "success");
+    } catch {
+      toast("خطا در افزودن مکان به برنامه", "error");
     } finally {
       setAddQuery("");
       loadWeek();
@@ -679,13 +752,13 @@ export default function PlannerPage() {
 
         <section className="no-print rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <h2 className="sechead__title mb-2">
-            افزودن مشتری به برنامه
+            افزودن به برنامه
           </h2>
           <div className="relative">
             <input
               value={addQuery}
               onChange={(e) => setAddQuery(e.target.value)}
-              placeholder="نام یا کد مشتری…"
+              placeholder="نام مشتری یا لید…"
               className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
             />
             {addCandidates.length > 0 && (
@@ -693,11 +766,25 @@ export default function PlannerPage() {
                 {addCandidates.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => addToPlan(c.id)}
+                    onClick={() => {
+                      const isLead = (c as any).address !== undefined;
+                      if (isLead) {
+                        addLeadToPlan((c as any).id);
+                      } else {
+                        addToPlan((c as CustomerRow).id);
+                      }
+                    }}
                     className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-right text-[length:var(--text-sm)] text-text last:border-b-0 hover:bg-white/5"
                   >
-                    <span className="truncate">{c.business_name}</span>
-                    <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">{c.customer_code}</span>
+                    <span className="truncate flex items-center gap-2">
+                      {(c as any).address !== undefined ? (
+                        <Icon name="map-pin" size="sm" className="text-accent" />
+                      ) : null}
+                      {(c as any).address !== undefined ? (c as any).name : (c as CustomerRow).business_name}
+                    </span>
+                    <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">
+                      {(c as any).address !== undefined ? "لید" : (c as CustomerRow).customer_code}
+                    </span>
                   </button>
                 ))}
               </div>
@@ -888,7 +975,7 @@ export default function PlannerPage() {
             <EmptyState
               icon="calendar"
               title="برای این روز هنوز چیزی برنامه‌ریزی نشده"
-              hint="از کادر «افزودن مشتری به برنامه» بالای همین صفحه، یا از دکمه «+ برنامه امروز» در پنل هر مشتری روی نقشه، توقف اضافه کنید."
+              hint="از کادر «افزودن به برنامه» بالای همین صفحه، یک مشتری یا لید پیشنهادی اضافه کنید."
             />
           ) : (
             <>
@@ -937,7 +1024,8 @@ export default function PlannerPage() {
                     </button>
                   </div>
                   <div className="flex-1 truncate text-[length:var(--text-sm)] text-text">
-                    {p.entity_type === "district" ? <Icon name="map" size="sm" /> : null}{" "}
+                    {p.entity_type === "district" ? <Icon name="map" size="sm" /> : null}
+                     {p.entity_type === "lead_location" ? <Icon name="map-pin" size="sm" className="text-accent" /> : null}{" "}
                     {p.label}
                   </div>
                   <span

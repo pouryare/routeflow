@@ -8,20 +8,16 @@ import { useToast } from "./ToastProvider";
 import { useMyPosition } from "./MyPositionProvider";
 
 const TRIGGER_RADIUS_KM = 0.15; // 150m
-// A warehouse yard is a bigger target than a shopfront, and the useful moment is
-// "pulling in", not "standing at the door".
 const FACILITY_RADIUS_KM = 0.25;
-const SNOOZE_MS = 30 * 60 * 1000; // don't re-prompt the same customer for 30 minutes
-// Leaving the origin is a once-a-day event, so a much longer snooze: a lunchtime return
-// home must not offer to start the day over.
+const LEAD_RADIUS_KM = 0.15;
+const SNOOZE_MS = 30 * 60 * 1000;
 const FACILITY_SNOOZE_MS = 6 * 60 * 60 * 1000;
+const LEAD_SNOOZE_MS = 30 * 60 * 1000;
 
-/** What the prompt is about. Arriving at a depot and arriving at a customer are the
- *  same geofence question with different answers, so they share one watcher -- one
- *  permission, one position stream, one battery cost. */
 type Prompt =
   | { kind: "customer"; customer: CustomerRow }
-  | { kind: "facility_arrive"; facility: FacilityRow };
+  | { kind: "facility_arrive"; facility: FacilityRow }
+  | { kind: "lead"; lead: { id: number; name: string; lat: number; lng: number } };
 
 function todayStr(): string {
   const d = new Date();
@@ -33,11 +29,13 @@ export default function GeofenceWatcher({
   facilitiesEnabled = false,
   customers,
   facilities = [],
+  leads = [],
 }: {
   enabled: boolean;
   facilitiesEnabled?: boolean;
   customers: CustomerRow[];
   facilities?: FacilityRow[];
+  leads?: Array<{ id: number; name: string; lat: number; lng: number }>;
 }) {
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [saving, setSaving] = useState(false);
@@ -49,6 +47,7 @@ export default function GeofenceWatcher({
   const customersRef = useRef(customers);
   const facilitiesRef = useRef(facilities);
   const facilitiesEnabledRef = useRef(facilitiesEnabled);
+  const leadsRef = useRef(leads);
 
   /* Written in an effect rather than during render. A ref mutated in the render body is
      not a pure render -- under StrictMode's double render and under a render React throws
@@ -60,6 +59,7 @@ export default function GeofenceWatcher({
     customersRef.current = customers;
     facilitiesRef.current = facilities;
     facilitiesEnabledRef.current = facilitiesEnabled;
+    leadsRef.current = leads;
   });
   // Reads the app-wide watch rather than opening a second one. Two watches meant two
   // wake-ups of the same GPS chip for the same answer, and left this component as the
@@ -96,12 +96,24 @@ export default function GeofenceWatcher({
       .filter(({ c, km }) => km <= TRIGGER_RADIUS_KM && notSnoozed(`customer:${c.id}`, SNOOZE_MS))
       .sort((a, b) => a.km - b.km)[0];
     if (match) setPrompt((prev) => prev ?? { kind: "customer", customer: match.c });
+
+    // Lead proximity check: notify when near a lead location.
+    if (!prompt || prompt.kind !== "lead") {
+      const leadMatch = leadsRef.current
+        .filter((l) => l.lat !== null && l.lng !== null)
+        .map((l) => ({ l, km: distanceKm(here, { lat: l.lat, lng: l.lng }) }))
+        .filter(({ l, km }) => km <= LEAD_RADIUS_KM && notSnoozed(`lead:${l.id}`, LEAD_SNOOZE_MS))
+        .sort((a, b) => a.km - b.km)[0];
+      if (leadMatch) {
+        setPrompt((prev) => prev ?? { kind: "lead", lead: leadMatch.l });
+      }
+    }
     // Runs per fix. The lists are read through refs so a customer refresh does not
     // re-evaluate the geofence against a position that has not changed.
   }, [enabled, position]);
 
   function promptKey(p: Prompt): string {
-    return p.kind === "customer" ? `customer:${p.customer.id}` : `facility:${p.facility.id}`;
+    return p.kind === "customer" ? `customer:${p.customer.id}` : p.kind === "facility_arrive" ? `facility:${p.facility.id}` : `lead:${p.lead.id}`;
   }
 
   function dismiss() {
@@ -168,6 +180,29 @@ export default function GeofenceWatcher({
     }
   }
 
+  async function confirmLeadVisit() {
+    if (!prompt || prompt.kind !== "lead") return;
+    const lead = prompt.lead;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_type: "lead", entity_id: lead.id, planned_date: todayStr() }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        toast(`بازدید از «${lead.name}» ثبت شد.`, "success");
+      } else {
+        toast("خطا در ثبت بازدید", "error");
+      }
+      snoozedRef.current.set(`lead:${lead.id}`, Date.now());
+    } finally {
+      setSaving(false);
+      setPrompt(null);
+    }
+  }
+
   if (!prompt) return null;
 
   return (
@@ -178,13 +213,23 @@ export default function GeofenceWatcher({
       <p className="text-[length:var(--text-sm)] text-text">
         شما نزدیک{" "}
         <span className="font-medium text-accent">
-          {prompt.kind === "customer" ? prompt.customer.business_name : prompt.facility.name}
+          {prompt.kind === "customer"
+            ? prompt.customer.business_name
+            : prompt.kind === "facility_arrive"
+            ? prompt.facility.name
+            : prompt.lead.name}
         </span>{" "}
-        هستید — {prompt.kind === "customer" ? "بازدید ثبت شود؟" : "حضور ثبت شود؟"}
+        هستید — {prompt.kind === "customer" ? "بازدید ثبت شود؟" : prompt.kind === "lead" ? "بازدید ثبت شود؟" : "حضور ثبت شود؟"}
       </p>
       <div className="mt-2 flex gap-2">
         <button
-          onClick={prompt.kind === "customer" ? confirmVisit : confirmFacilityStop}
+          onClick={
+            prompt.kind === "customer"
+              ? confirmVisit
+              : prompt.kind === "lead"
+              ? confirmLeadVisit
+              : confirmFacilityStop
+          }
           disabled={saving}
           className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
         >

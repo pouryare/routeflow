@@ -9,7 +9,7 @@ export const OUTCOME_CODES = [
   "ALREADY_SUPPLIED", "NOT_INTERESTED", "GATEKEEPER", "VISIT_CLOSED", "INVALID",
   // Driver visit outcomes (a driver physically went to the lead location). These live on
   // saved_locations.visit_outcome and drive the /leads row status; they are NOT call facts.
-  "VISITED", "ACCESS_FAILED", "READY_TO_BUY", "VISIT_NOT_INTERESTED", "VISIT_CLOSED", "VISIT_NO_OWNER",
+  "VISITED", "ACCESS_FAILED", "READY_TO_BUY", "VISIT_NOT_INTERESTED", "VISIT_NO_OWNER",
   "VISIT_WRONG_ADDRESS", "VISIT_NEW_BUILDING",
 ] as const;
 export type OutcomeCode = (typeof OUTCOME_CODES)[number];
@@ -45,7 +45,7 @@ export const OUTCOMES: Record<OutcomeCode, OutcomeFacts> = {
   ALREADY_SUPPLIED: talk(null, "warm"),
   NOT_INTERESTED: talk("not_interested", "cold"),
   GATEKEEPER: talk(null, null),
-  VISIT_CLOSED: none,
+  VISIT_CLOSED: { contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false },
   INVALID: none,
   // Driver visit outcomes. A visit that talked is a visit that succeeded; the rest are
   // misses (the driver was there but came away with nothing). `talked` is what the CRM's
@@ -54,7 +54,6 @@ export const OUTCOMES: Record<OutcomeCode, OutcomeFacts> = {
   ACCESS_FAILED: { contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false },
   READY_TO_BUY: talk("negotiation", "hot"),
   VISIT_NOT_INTERESTED: talk("not_interested", "cold"),
-  VISIT_CLOSED: { contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false },
   VISIT_NO_OWNER: { contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false },
   VISIT_WRONG_ADDRESS: { contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false },
   VISIT_NEW_BUILDING: { contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false },

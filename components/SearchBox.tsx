@@ -80,12 +80,13 @@ export default function SearchBox({
   onSelectAll,
   inBatchView,
   activeView,
+  hideResults,
 }: {
-  customers: CustomerRow[];
-  districts: DistrictFeature[];
-  onSelectCustomer: (c: CustomerRow) => void;
-  onSelectDistrict: (d: DistrictFeature) => void;
-  onLocationFound: (lat: number, lng: number, label: string) => void;
+  customers?: CustomerRow[];
+  districts?: DistrictFeature[];
+  onSelectCustomer?: (c: CustomerRow) => void;
+  onSelectDistrict?: (d: DistrictFeature) => void;
+  onLocationFound?: (lat: number, lng: number, label: string) => void;
   /** Handed in so the map's "/" shortcut can put the cursor here. Owned by the caller
    *  because the caller is what knows about keyboard shortcuts; this component only has
    *  to agree to be focused. */
@@ -110,6 +111,8 @@ export default function SearchBox({
   onSelectAll?: () => void;
   inBatchView?: boolean;
   activeView?: string;
+  /** Hide the search-results section — for pages where results render elsewhere (e.g. leads). */
+  hideResults?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -181,7 +184,7 @@ export default function SearchBox({
     // often carry the Arabic ي and ك where a phone keyboard produces the Persian ی and
     // ک -- different codepoints, near-identical glyphs -- so a raw match made those
     // customers unfindable by typing their own name.
-    const customerResults: Result[] = customers
+    const customerResults: Result[] = (customers ?? [])
       .filter(
         (c) =>
           matchesQuery(c.business_name, trimmed) ||
@@ -190,7 +193,7 @@ export default function SearchBox({
       )
       .slice(0, 6)
       .map((customer) => ({ kind: "customer", customer }));
-    const districtResults: Result[] = districts
+    const districtResults: Result[] = (districts ?? [])
       .filter((d) => matchesQuery(d.properties.name, trimmed))
       .slice(0, 6)
       .map((district) => ({ kind: "district", district }));
@@ -208,8 +211,8 @@ export default function SearchBox({
   }, []);
 
   function select(r: Result) {
-    if (r.kind === "customer") onSelectCustomer(r.customer);
-    else onSelectDistrict(r.district);
+    if (r.kind === "customer") onSelectCustomer?.(r.customer);
+    else onSelectDistrict?.(r.district);
     reset();
   }
 
@@ -220,7 +223,7 @@ export default function SearchBox({
 
   function goToCoords() {
     if (!coordMatch) return;
-    onLocationFound(Number(coordMatch[1]), Number(coordMatch[2]), "مختصات وارد شده");
+    onLocationFound?.(Number(coordMatch[1]), Number(coordMatch[2]), "مختصات وارد شده");
     reset();
   }
 
@@ -234,7 +237,7 @@ export default function SearchBox({
         setLinkError(data.error || "لینک قابل تشخیص نبود");
         return;
       }
-      onLocationFound(data.lat, data.lng, "لینک نقشه");
+      onLocationFound?.(data.lat, data.lng, "لینک نقشه");
       reset();
     } catch {
       setLinkError("خطا در ارتباط با سرور");
@@ -257,7 +260,7 @@ export default function SearchBox({
   }
 
   function selectGeoResult(r: GeoResult) {
-    onLocationFound(r.y, r.x, r.label);
+    onLocationFound?.(r.y, r.x, r.label);
     reset();
   }
 
@@ -332,9 +335,36 @@ export default function SearchBox({
       )}
       </div>
 
-      {open && trimmed && (
+      {open && (
         <div className="mapsearch__panel">
-          {isUrl ? (
+          {!hideResults && (
+            <div className="mapsearch__filter-strip border-b border-border p-2 flex flex-wrap gap-1.5 items-center">
+              <select value={sortMode ?? "nearest"} onChange={(e) => onSortModeChange?.(e.target.value)} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border bg-surface text-text-muted">
+                {SORT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+              </select>
+              <select value={activeListId ?? ""} onChange={(e) => onListChange?.(e.target.value ? Number(e.target.value) : null)} className="flex-1 min-w-0 rounded border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)]">
+                <option value="">مسیر آزاد</option>
+                {(lists ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+              {sortAnchor ? (
+                <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1 text-[length:var(--text-xs)] text-accent">
+                  📍 شما
+                  <button type="button" onClick={onPositionClear} className="text-accent/60 hover:text-accent">↵</button>
+                </span>
+              ) : (
+                <button type="button" onClick={() => onSetPosition?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent">
+                  📍 تعیین موقعیت
+                </button>
+              )}
+              {!inBatchView && (
+                <button type="button" onClick={() => onSelectAll?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink">
+                  ✓ همه
+                </button>
+              )}
+            </div>
+          )}
+          {trimmed && !hideResults && (
+          isUrl ? (
             <div className="p-2">
               <button
                 onClick={decodeLink}
@@ -415,6 +445,7 @@ export default function SearchBox({
                 )}
               </button>
             </div>
+          )
           )}
         </div>
       )}

@@ -53,7 +53,7 @@ beforeAll(() => {
     ${LEGACY_USERS}
     CREATE TABLE activity_log (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility')),
+      entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')),
       entity_id INTEGER NOT NULL,
       event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned')),
       old_value TEXT,

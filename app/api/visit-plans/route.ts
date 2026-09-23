@@ -33,6 +33,16 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
     rows.forEach((r) => facilityMap.set(r.id, r));
   }
 
+  const leadIds = plans.filter((p) => p.entity_type === "lead" || p.entity_type === "lead_location").map((p) => p.entity_id);
+  const leadMap = new Map<number, { name: string; lat: number | null; lng: number | null }>();
+  if (leadIds.length) {
+    const placeholders = leadIds.map(() => "?").join(",");
+    const rows = db
+      .prepare(`SELECT id, name, lat, lng FROM saved_locations WHERE id IN (${placeholders})`)
+      .all(...leadIds) as { id: number; name: string; lat: number | null; lng: number | null }[];
+    rows.forEach((r) => leadMap.set(r.id, r));
+  }
+
   const districtMap = new Map<number, { name: string }>();
   if (districtIds.length) {
     const placeholders = districtIds.map(() => "?").join(",");
@@ -50,6 +60,10 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
     if (p.entity_type === "facility") {
       const f = facilityMap.get(p.entity_id);
       return { ...p, label: f?.name ?? "مکان حذف‌شده", lat: f?.lat ?? null, lng: f?.lng ?? null };
+    }
+    if (p.entity_type === "lead" || p.entity_type === "lead_location") {
+      const loc = leadMap.get(p.entity_id);
+      return { ...p, label: loc?.name ?? "مکان حذف‌شده", lat: loc?.lat ?? null, lng: loc?.lng ?? null };
     }
     const d = districtMap.get(p.entity_id);
     return { ...p, label: d?.name ?? "منطقه حذف‌شده", lat: null, lng: null };

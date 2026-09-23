@@ -5,6 +5,7 @@ import { LEAD_CRITERIA, LeadCriterion, columnFor, isValidStars } from "@/lib/lea
 import { canReachGroup, requireRole } from "@/lib/session";
 
 interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
+  name?: string;
   lat?: number;
   lng?: number;
   status?: LocationStatus | null;
@@ -59,6 +60,14 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
   if (body.notes !== undefined) {
     sets.push("notes = ?");
     values.push(body.notes);
+  }
+
+  if (body.name !== undefined) {
+    if (typeof body.name !== "string" || body.name.trim() === "") {
+      return NextResponse.json({ ok: false, error: "نام نامعتبر است" }, { status: 400 });
+    }
+    sets.push("name = ?");
+    values.push(body.name.trim());
   }
 
   // Scores arrive one criterion at a time -- a star is tapped, not a form submitted --

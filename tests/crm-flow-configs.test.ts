@@ -5,6 +5,7 @@ import { startFlow, answerStep, viewStep } from "@/lib/crm/flows/machine";
 import { afterCallFlow } from "@/lib/crm/flows/afterCall";
 import { addLeadFlow, pinOf, basicsOf, hasPhone } from "@/lib/crm/flows/addLead";
 import { driverVisitFlow } from "@/lib/crm/flows/driverVisit";
+import type { ResolvedOption } from "@/lib/crm/flows/types";
 
 const PIN = JSON.stringify({ lat: 35.76, lng: 51.41, precision: "exact" });
 const base: FlowContext = {
@@ -44,7 +45,7 @@ describe("after-call flow", () => {
     const ctx = { ...base, entry: "talked_now" as const };
     const v = viewStep(afterCallFlow, ctx, startFlow(afterCallFlow, ctx));
     expect(v.options[0]).toMatchObject({ id: "c7", label: "علی" });
-    expect(new Set(v.options.slice(1).map((o) => o.group))).toEqual(new Set(["تصمیم‌گیرنده", "کارکنان"]));
+    expect(new Set(v.options.slice(1).map((o: ResolvedOption) => o.group ?? ""))).toEqual(new Set(["تصمیم‌گیرنده", "کارکنان"]));
   });
   it("a missed call can be saved in two taps", () => {
     let st = startFlow(afterCallFlow, base);
@@ -80,7 +81,7 @@ describe("add-lead flow", () => {
     st = answerStep(addLeadFlow, ctx, st, "mid");
     st = answerStep(addLeadFlow, ctx, st, "skip");
     const first = viewStep(addLeadFlow, ctx, st);
-    expect(first.options.map((o) => o.id)).toEqual(["driver", "self", "talked"]);
+    expect(first.options.map((o: ResolvedOption) => o.id)).toEqual(["driver", "self", "talked"]);
   });
   it("reads values: the explicit pin beats the link's", () => {
     expect(pinOf({ link: withPhone.link, pin: JSON.stringify({ lat: 35.8, lng: 51.5, precision: "approx" }) })).toMatchObject({ lat: 35.8, precision: "approx" });

@@ -1,5 +1,11 @@
 @import "tailwindcss";
 
+/* Disable text selection site-wide */
+*, *::before, *::after {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+}
+
 /*
   MASTER.md is the source of truth for every value below.
   Single-world dark commitment -- no light theme, no prefers-color-scheme branch.
@@ -599,6 +605,7 @@ body {
   font-size: var(--text-sm);
   line-height: 1.5;
   color: var(--text);
+  text-align: center;
 }
 
 /* A 1px inner hairline in the tone, so the island reads as belonging to the status it
@@ -4553,3 +4560,30 @@ body {
 .meridian .no-pin { display: flex; align-items: center; gap: 8px; min-height: 44px; border: 1px dashed var(--line); border-radius: var(--r-md); padding: 8px 12px; color: var(--muted); font-size: 13px; }
 .meridian .map-sheet { max-width: 860px; width: min(880px, calc(100vw - 24px)); inset: 0; margin: auto; height: fit-content; max-height: 88dvh; display: grid; gap: 12px; }
 @media (max-width: 700px) { .meridian .details-grid { grid-template-columns: 1fr; } .meridian .map-frame { height: 150px; } }
+
+/* ---- Pool view toggle bar ---- */
+.pool-toggle-bar {
+  display: flex;
+  gap: 0.5rem;
+}
+.pool-toggle-item {
+  border-radius: var(--radius-md);
+}
+.pool-toggle-item:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.pool-toggle-item.active {
+  border-color: var(--accent);
+  background: var(--accent)/10;
+  color: var(--accent);
+}
+
+/* ---- Pool pocket card ---- */
+.pool-pocket {
+  /* Scoped to avoid conflicts with .kargah pocket styles */
+}
+.pool-pocket::before,
+.pool-pocket::after {
+  content: "";
+}

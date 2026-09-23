@@ -29,6 +29,7 @@ export default function MapLoader(props: {
   initialDistricts: DistrictProperties[];
   initialCustomers: CustomerRow[];
   initialFacilities: FacilityRow[];
+  initialLeads: Array<{ id: number; name: string; lat: number; lng: number }>;
   groups: MapGroup[];
   role: Role;
   geometryVersion: string;

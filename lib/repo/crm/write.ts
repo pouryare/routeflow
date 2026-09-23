@@ -6,7 +6,7 @@ import { emitEvent, type EventInput } from "@/lib/repo/events";
 import { districtIdForPoint, groupForPoint } from "@/lib/groups";
 import { OUTCOMES, type OutcomeCode } from "@/lib/crm/outcomes";
 import { recomputeState } from "./state";
-import { resolveDue } from "@/lib/crm/due";
+import { resolveDue, type DueSpec } from "@/lib/crm/due";
 import { nextOpenAt, parseHours } from "@/lib/crm/hours";
 import { normPhone } from "@/lib/crm/phone";
 import { normInstagram } from "@/lib/crm/social";
@@ -291,7 +291,7 @@ export function applyLeadVisit(
         kind: acc.next_kind,
         assignee_user_id: session.role === "driver" ? null : session.user.id,
         role_hint: session.role === "driver" ? "group_manager" : null,
-        group_id: loc.group_id,
+        group_id: loc.group_id as unknown as number | undefined,
         entity_type: "lead_location",
         entity_id: input.locationId,
         due_at: resolveDueText(acc.due, at),
@@ -306,7 +306,7 @@ export function applyLeadVisit(
         kind: "call",
         assignee_user_id: null,
         role_hint: "group_manager",
-        group_id: loc.group_id,
+        group_id: loc.group_id as unknown as number | undefined,
         entity_type: "lead_location",
         entity_id: input.locationId,
         due_at: tomorrow10(at),

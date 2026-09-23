@@ -11,7 +11,7 @@ import { Icon } from "@/components/meridian/Icon";
 
 interface PlanRow {
   id: number;
-  entity_type: "district" | "customer" | "facility";
+  entity_type: "district" | "customer" | "facility" | "lead_location";
   entity_id: number;
   planned_date: string;
   status: "planned" | "done" | "skipped";

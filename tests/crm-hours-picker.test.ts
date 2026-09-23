@@ -17,7 +17,7 @@ beforeEach(async () => {
   root = createRoot(host);
   submit = vi.fn();
   const api: CustomStepApi = {
-    step: { id: "hours", kind: "hours", q: "ساعت کاری", options: [], choices: [], timeStep: false },
+    step: { id: "hours", kind: "hours", q: "ساعت کاری", options: [], choices: [], timeStep: false, skipable: true },
     state: { stack: ["hours"], answers: [], acc: {}, values: {}, saved: false },
     submit,
   };

@@ -34,6 +34,11 @@ export default async function Home() {
   const districts = readDistrictProperties(db, scope);
   const customers = readCustomers(db, scope, { organizationId: session.organizationId });
   const facilities = readFacilities(db, groupFilterWithShared(session));
+  const initialLeads = db
+    .prepare(
+      `SELECT id, name, lat, lng FROM saved_locations WHERE lat IS NOT NULL AND lng IS NOT NULL ORDER BY created_at DESC`
+    )
+    .all() as { id: number; name: string; lat: number; lng: number }[];
   // Only the groups this caller can actually see: an owner gets all of them, a manager
   // gets their own, which is the only one any district they can see belongs to.
   const visibleGroups = readGroups(db, session.organizationId)
@@ -44,7 +49,6 @@ export default async function Home() {
   return (
     <>
     <PageHeader route="/map" />
-    <>
       {/* React hoists this into <head>, so the browser starts pulling the polygons
           while the JS bundle is still downloading instead of after it runs.
           crossOrigin="use-credentials" is load-bearing: a preload only satisfies a
@@ -57,10 +61,11 @@ export default async function Home() {
         initialDistricts={districts}
         initialCustomers={customers}
         initialFacilities={facilities}
+        initialLeads={initialLeads}
         groups={visibleGroups}
         role={session.role}
         geometryVersion={version}
       />
-    </>    </>
+    </>
   );
 }

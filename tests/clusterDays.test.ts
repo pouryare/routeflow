@@ -3,11 +3,11 @@ import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 
 /** Three well-separated towns around Tehran, five stops each. Any honest clustering has
  *  to recover these groups; the old chunk-a-greedy-chain approach did not. */
-const PARDIS = { lat: 35.74, lng: 51.82 };
-const KARAJ = { lat: 35.84, lng: 50.94 };
-const VARAMIN = { lat: 35.32, lng: 51.65 };
+const PARDIS = { id: "p", lat: 35.74, lng: 51.82 };
+const KARAJ = { id: "k", lat: 35.84, lng: 50.94 };
+const VARAMIN = { id: "v", lat: 35.32, lng: 51.65 };
 
-function around(centre: { lat: number; lng: number }, n: number, tag: string) {
+function around(centre: { lat: number; lng: number }, n: number, tag: string): { id: string; lat: number; lng: number }[] {
   return Array.from({ length: n }, (_, i) => ({
     id: `${tag}${i}`,
     lat: centre.lat + (i - n / 2) * 0.004,

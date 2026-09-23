@@ -17,6 +17,7 @@ import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popu
 import type { GeoJSONProps } from "react-leaflet";
 import { LatLngBounds, divIcon, geoJSON } from "leaflet";
 import type { DivIcon, Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
+import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import MarkerClusterGroup from "react-leaflet-cluster";
@@ -387,6 +388,7 @@ export default function CoverageMap({
   initialDistricts,
   initialCustomers,
   initialFacilities,
+  initialLeads = [],
   groups,
   role,
   geometryVersion,
@@ -394,6 +396,7 @@ export default function CoverageMap({
   initialDistricts: DistrictProperties[];
   initialCustomers: CustomerRow[];
   initialFacilities: FacilityRow[];
+  initialLeads: Array<{ id: number; name: string; lat: number; lng: number }>;
   groups: MapGroup[];
   role: Role;
   geometryVersion: string;
@@ -1367,6 +1370,7 @@ export default function CoverageMap({
         facilitiesEnabled={facilityGeofenceOn}
         customers={filteredCustomers}
         facilities={initialFacilities}
+        leads={initialLeads}
       />
 
       <aside
@@ -2325,6 +2329,36 @@ export default function CoverageMap({
               </Marker>
             );
           })}
+
+          {/* Lead markers — prospect locations on the map */}
+          {initialLeads.map((l) => (
+            <Marker
+              key={l.id}
+              position={[l.lat, l.lng]}
+              icon={L.divIcon({
+                className: "",
+                html: `<div style="background:#2DE0E6;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(45,224,230,0.5)"></div>`,
+                iconSize: [12, 12],
+                iconAnchor: [6, 6],
+              })}
+              zIndexOffset={900}
+            >
+              <Popup>
+                <div dir="rtl" className="text-[length:var(--text-sm)]">
+                  <p className="font-medium text-text">{l.name}</p>
+                  <p className="mt-1 text-[length:var(--text-xs)] text-text-muted">مکان پیشنهادی</p>
+                  <a
+                    href={navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-[length:var(--text-xs)] text-accent hover:underline"
+                  >
+                    مسیریابی <Icon name="external-link" size="sm" />
+                  </a>
+                </div>
+              </Popup>
+            </Marker>
+          ))}
 
           {foundLocation && (
             <Marker

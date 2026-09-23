@@ -105,7 +105,9 @@ export function navApp(id: NavAppId): NavApp {
 /** Coordinates for a URL. Six decimals is ~11cm -- more than the source data justifies,
  *  but it is the precision every one of these services round-trips without complaint. */
 function pair(p: LatLngPoint): string {
-  return `${p.lat.toFixed(6)},${p.lng.toFixed(6)}`;
+  const lat = typeof p.lat === "number" ? p.lat.toFixed(6) : "0.000000";
+  const lng = typeof p.lng === "number" ? p.lng.toFixed(6) : "0.000000";
+  return `${lat},${lng}`;
 }
 
 /** A link that navigates to one destination in the chosen app. */

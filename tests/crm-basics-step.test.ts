@@ -36,7 +36,7 @@ beforeEach(async () => {
   fetchMock = vi.fn(async () => ({ ok: true, json: async () => ({ ok: true, matches: [] }) }));
   vi.stubGlobal("fetch", fetchMock);
   const api: CustomStepApi = {
-    step: { id: "basics", kind: "basics", q: "نام و تلفن", options: [], choices: [], timeStep: false },
+    step: { id: "basics", kind: "basics", q: "نام و تلفن", options: [], choices: [], timeStep: false, skipable: true },
     state: { stack: ["basics"], answers: [], acc: { source: "SNAPPFOOD" }, values: { link: LINK }, saved: false },
     submit,
   };
@@ -53,7 +53,7 @@ it("prefills the page from an Instagram link on mount", async () => {
   await act(async () => root.render(createElement(BasicsStep, {
     key: "instagram-prefill",
     api: {
-      step: { id: "basics", kind: "basics", q: "نام و تلفن", options: [], choices: [], timeStep: false },
+      step: { id: "basics", kind: "basics", q: "نام و تلفن", options: [], choices: [], timeStep: false, skipable: true },
       state: { stack: ["basics"], answers: [], acc: {}, values: { link: IG_LINK }, saved: false },
       submit,
     },

@@ -19,7 +19,7 @@ beforeEach(async () => {
   document.body.append(host);
   root = createRoot(host);
   const api: CustomStepApi = {
-    step: { id: "basics", kind: "basics", q: "", options: [], choices: [], timeStep: false },
+    step: { id: "basics", kind: "basics", q: "", options: [], choices: [], timeStep: false, skipable: true },
     state: { stack: ["basics"], answers: [], acc: {}, values: {}, saved: false }, submit: vi.fn(),
   };
   await act(async () => root.render(createElement(BasicsStep, { api, onOpenExisting: vi.fn(), onRequested: vi.fn() })));
