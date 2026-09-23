@@ -25,6 +25,23 @@ type Result =
 const URL_RE = /^https?:\/\//i;
 const COORD_RE = /^\s*(-?\d{1,3}(?:\.\d+)?)\s*,\s*(-?\d{1,3}(?:\.\d+)?)\s*$/;
 
+const SORT_OPTIONS = [
+  { value: "nearest", label: "نزدیک‌ترین" },
+  { value: "score", label: "بهترین امتیاز" },
+  { value: "name", label: "نام" },
+  { value: "newest", label: "تازه‌ترین" },
+  { value: "status", label: "وضعیت" },
+  { value: "route", label: "ترتیب مسیر" },
+  { value: "priority", label: "اولویت" },
+] as const;
+
+function detectInputType(q: string): "coord" | "address" | "name" {
+  const t = q.trim();
+  if (COORD_RE.test(t)) return "coord";
+  if (t.length >= 2 && /^[آا-یآ\s\-,./]+$/i.test(t)) return "address";
+  return "name";
+}
+
 // leaflet-geosearch is only needed once a user actually falls through to an address
 // search (no local match found) -- deferred to a dynamic import so its chunk never
 // loads for the common case of finding a customer/district locally, and instantiated
@@ -50,6 +67,19 @@ export default function SearchBox({
   onLocationFound,
   inputRef,
   onExpandedChange,
+  value: externalValue,
+  onChange: onExternalChange,
+  sortMode,
+  onSortModeChange,
+  activeListId,
+  onListChange,
+  lists,
+  sortAnchor,
+  onPositionClear,
+  onSetPosition,
+  onSelectAll,
+  inBatchView,
+  activeView,
 }: {
   customers: CustomerRow[];
   districts: DistrictFeature[];
@@ -67,6 +97,19 @@ export default function SearchBox({
    *  one strip can avoid landing on top of each other. Padding the text away from it
    *  would leave the button covering an input the user is typing into. */
   onExpandedChange?: (expanded: boolean) => void;
+  value?: string;
+  onChange?: (query: string) => void;
+  sortMode?: string;
+  onSortModeChange?: (mode: string) => void;
+  activeListId?: number | null;
+  onListChange?: (id: number | null) => void;
+  lists?: Array<{ id: number; name: string }>;
+  sortAnchor?: { lat: number; lng: number } | null;
+  onPositionClear?: () => void;
+  onSetPosition?: () => void;
+  onSelectAll?: () => void;
+  inBatchView?: boolean;
+  activeView?: string;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -262,9 +305,11 @@ export default function SearchBox({
       <div className="relative">
       <input
         ref={inputRef ?? localInputRef}
-        value={query}
+        value={externalValue ?? query}
         onChange={(e) => {
-          changeQuery(e.target.value);
+          const val = e.target.value;
+          onExternalChange?.(val);
+          changeQuery(val);
           setOpen(true);
         }}
         onFocus={() => setOpen(true)}
