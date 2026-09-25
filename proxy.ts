@@ -158,9 +158,11 @@ export function proxy(req: NextRequest) {
     return deny("/sales");
   }
 
-  // A driver has one screen. Sending them anywhere else back to it keeps the whole
-  // customer/coverage surface off a device that spends the day in a vehicle, and means a
-  // mistyped URL is not the thing standing between a driver and the debt ledger.
+  // A driver has a short list, not a menu. Sending them anywhere outside it back to their
+  // own screen keeps the whole customer/coverage surface off a device that spends the day
+  // in a vehicle, and means a mistyped URL is not the thing standing between a driver and
+  // the debt ledger. The lead run joins that list because it is the same work seen from
+  // the other end: the stops they drive, and what happened at each one.
   // The sync endpoints are the exception: the driver app IS an offline client, so it
   // must be able to push its outbox and pull its run. The routes scope by session.
   // Phase 7: the driver's briefing + their own task actions live off /driver.
@@ -183,7 +185,14 @@ export function proxy(req: NextRequest) {
     // one of these routes already scopes to the caller's own session.
     pathname.startsWith("/settings") ||
     pathname.startsWith("/api/notifications") ||
-    pathname.startsWith("/api/push/subscribe");
+    pathname.startsWith("/api/push/subscribe") ||
+    // The lead run a driver works. /api/leads/locations/[id]/visit has admitted a driver
+    // in requireRole since it was written, but it lives under /api/leads rather than
+    // /api/crm/driver-visits -- so the gate below answered every visit a driver tried to
+    // record, and the route never ran. The allowlist is what lets the request arrive.
+    pathname === "/leads" ||
+    pathname.startsWith("/api/leads/locations") ||
+    pathname.startsWith("/api/lead-runs");
   if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
 
   return NextResponse.next();

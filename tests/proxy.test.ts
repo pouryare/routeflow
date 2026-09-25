@@ -4,6 +4,7 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { proxy } = await import("@/proxy");
 const { createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
+const { appTabs } = await import("@/lib/appNav");
 const { NextRequest } = await import("next/server");
 
 function req(pathname: string, role?: "owner" | "group_manager" | "salesperson" | "driver") {
@@ -92,6 +93,32 @@ describe("role prefixes", () => {
     const res = proxy(req("/planner", "driver"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/driver");
+  });
+  it("lets a driver into their lead run", () => {
+    expect(proxy(req("/leads", "driver")).status).toBe(200);
+  });
+  it("lets a driver record the visit at the door", () => {
+    // The route has admitted a driver in requireRole since it was written, but it sits
+    // under /api/leads, which this gate did not allowlist -- so the request was refused
+    // here and the route never ran. A driver could not record a visit at all.
+    expect(proxy(req("/api/leads/locations/7/visit", "driver")).status).toBe(200);
+  });
+  it("still sends a driver back from the rest of the shell", () => {
+    const res = proxy(req("/sales/orders", "driver"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/driver");
+  });
+});
+
+/** The nav and the gate are written down in two files, so they drift. This is the test
+ *  that makes the driver menu an assertion rather than a claim: every tab the menu marks
+ *  ready is put in front of the middleware, and a redirect fails. Next prefetches every
+ *  <Link>, so a tab the gate refuses is a console 404 before anyone clicks it. */
+describe("a driver's menu and this gate agree", () => {
+  it("never offers a tab the gate would send the driver back from", () => {
+    for (const t of appTabs({ role: "driver" }).filter((x) => x.ready)) {
+      expect(proxy(req(t.href, "driver")).status, t.href).toBe(200);
+    }
   });
 });
 

@@ -48,6 +48,29 @@ export type AppTab = {
 const isManager = (r: Role) => r === "owner" || r === "group_manager";
 const isRepLead = (r: Role) => r === "owner" || r === "group_manager" || r === "rep_manager";
 
+/** A driver's whole menu, and the whole truth.
+ *
+ *  This is not the full list filtered down. It is written out, because a filter would
+ *  leave behind every tab whose `ready` happens to be unconditional -- nineteen of them,
+ *  of which a driver can open exactly one. A driver is in the shell for the lead run and
+ *  the academy, so the alternative is a header offering eighteen destinations that
+ *  proxy.ts answers with a redirect, and Next prefetching each <Link> before anyone
+ *  clicks.
+ *
+ *  So this list is a mirror of the driver allowlist in proxy.ts, and the two are asserted
+ *  against each other in tests/proxy.test.ts -- a tab marked ready here that the gate would
+ *  redirect is a lie the driver can click, and that test is what stops it coming back.
+ *
+ *  /leads is the lead run: the stops they drive, in order, with what happened at each one.
+ *  The objection library is here because it is useful standing at the door, which is the
+ *  same reason proxy.ts allowlists it.
+ */
+const DRIVER_TABS: AppTab[] = [
+  { href: "/driver", label: "روز من", group: "day", ready: true },
+  { href: "/leads", label: "توقف‌های من", group: "day", ready: true },
+  { href: "/sales/academy", label: "آموزش", group: "day", ready: true },
+];
+
 /** The full tab list for a role, in display order, each tab tagged with its group.
  *
  *  Labels are chosen so no two sit next to each other reading alike. Four used to open
@@ -57,6 +80,9 @@ const isRepLead = (r: Role) => r === "owner" || r === "group_manager" || r === "
  */
 export function appTabs(session: { role: Role }): AppTab[] {
   const r = session.role;
+  // Copied, not returned by reference: a caller that sorts or edits the result must not
+  // be rearranging the shared constant for the next caller.
+  if (r === "driver") return DRIVER_TABS.map((t) => ({ ...t }));
   return [
     // روز من
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
@@ -65,7 +91,10 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "salesperson" },
 
     // مشتریان
-    { href: "/crm", label: "مشتریان و سرنخ‌ها", group: "customers", ready: r !== "driver" },
+    // The CRM is ready for every role that reaches this list. It used to read
+    // `r !== "driver"`, which the branch above made dead -- a driver never gets here, so
+    // the guard could only ever be true, and tsc said so.
+    { href: "/crm", label: "مشتریان و سرنخ‌ها", group: "customers", ready: true },
     { href: "/map", label: "نقشهٔ پوشش", group: "customers", ready: true },
     { href: "/leads", label: "پین‌های نقشه", group: "customers", ready: isRepLead(r) },
     { href: "/sales/complaints", label: "شکایات", group: "customers", ready: true },

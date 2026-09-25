@@ -9,6 +9,9 @@ const ROLES: Role[] = [
   "group_manager",
   "rep_manager",
   "salesperson",
+  // A driver used to be missing from this list, so the menu they are handed had no
+  // coverage at all -- and it is the one menu written out by hand rather than derived.
+  "driver",
 ];
 const GROUP_IDS = new Set(APP_GROUPS.map((g) => g.id));
 
@@ -38,8 +41,12 @@ describe("the app nav, for every role", () => {
       for (const t of tabs.filter((x) => x.ready)) {
         expect(activeGroup(t.href, tabs)).toBe(t.group);
       }
-      // A deep route still lights its group.
-      expect(activeGroup("/sales/orders/42", tabs)).toBe("sales");
+      // A deep route still lights its group -- for a role that has that group at all.
+      // A driver is offered no sales group, so there is nothing there to light, and
+      // asking for one would assert a menu they are deliberately not given.
+      if (tabs.some((t) => t.href === "/sales/orders")) {
+        expect(activeGroup("/sales/orders/42", tabs)).toBe("sales");
+      }
       // An unknown route falls back to a group that exists.
       expect(GROUP_IDS.has(activeGroup("/sales/nowhere", tabs))).toBe(true);
     });
@@ -80,6 +87,10 @@ describe("where each destination lives", () => {
     for (const role of ["owner", "group_manager", "rep_manager", "salesperson"] as const) {
       expect(appTabs({ role }).find((t) => t.href === "/crm")?.ready, role).toBe(true);
     }
+    // A driver is no longer a filtered case in the list above -- they get their own, and
+    // it holds no CRM at all. Asserting the absence is what keeps this test's name true;
+    // for a while it asserted only the half that was already passing.
+    expect(appTabs({ role: "driver" }).some((t) => t.href === "/crm")).toBe(false);
   });
 
   it("the order pipeline board sits with orders, not with team management", () => {
@@ -159,6 +170,32 @@ describe("each role's menu", () => {
   it("only the owner sees organisation settings", () => {
     expect(menu("owner").groups.map((g) => g.id)).toContain("org");
     expect(menu("group_manager").groups.map((g) => g.id)).not.toContain("org");
+  });
+});
+
+/** A driver's menu is written out by hand rather than derived, so it is pinned here. The
+ *  other half of the guarantee -- that the gate agrees with it -- is in tests/proxy.test.ts,
+ *  because only that file can run the middleware. */
+describe("a driver's menu", () => {
+  const driver = appTabs({ role: "driver" });
+
+  it("is their round, their stops and the door library, and nothing else", () => {
+    expect(driver.map((t) => t.href)).toEqual(["/driver", "/leads", "/sales/academy"]);
+  });
+
+  it("keeps the customer and coverage surface off the vehicle", () => {
+    const off = ["/crm", "/map", "/gallery", "/sales/orders", "/sales/commission", "/report"];
+    for (const href of off) expect(driver.some((t) => t.href === href), href).toBe(false);
+  });
+
+  it("is one group, so the header offers a menu rather than a row of lone pills", () => {
+    const m = pillModel(driver, APP_GROUPS, "/leads");
+    expect(m.groups.map((g) => g.id)).toEqual(["day"]);
+    expect(m.tabsByGroup.day.map((t) => t.href)).toEqual([
+      "/driver",
+      "/leads",
+      "/sales/academy",
+    ]);
   });
 });
 
