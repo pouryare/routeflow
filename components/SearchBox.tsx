@@ -366,6 +366,18 @@ export default function SearchBox({
     setFavorites(loadFavorites());
   }
 
+  function useMyLocation() {
+    if (!navigator.geolocation) return;
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        if (trimmed) pushRecent(trimmed);
+        onLocationFound?.(pos.coords.latitude, pos.coords.longitude, "موقعیت من");
+        reset();
+      },
+      () => { /* silent fallback — drivers shouldn't be blocked */ }
+    );
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key !== "Enter") return;
     if (isUrl) decodeLink();
@@ -457,6 +469,11 @@ export default function SearchBox({
               ) : (
                 <button type="button" onClick={() => onSetPosition?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent">
                   📍 تعیین موقعیت
+                </button>
+              )}
+              {!sortAnchor && (
+                <button onClick={useMyLocation} className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent transition-colors" title="Show my location">
+                  📍 خودم
                 </button>
               )}
               {!inBatchView && (
