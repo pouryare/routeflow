@@ -168,7 +168,33 @@ export default function PlannerPage() {
   const searchParams = useSearchParams();
   const hasAutoAddedLead = useRef(false);
 
+
+  const loadWeek = useCallback(async () => {
+    setLoading(true);
+    const from = toDateStr(days[0]);
+    const to = toDateStr(days[days.length - 1]);
+    const res = await fetch(`/api/visit-plans?from=${from}&to=${to}`);
+    const data = await res.json();
+    const grouped: Record<string, PlanRow[]> = {};
+    for (const p of (data.plans ?? []) as PlanRow[]) {
+      (grouped[p.planned_date] ??= []).push(p);
+    }
+    setPlansByDate(grouped);
+    setLoading(false);
+  }, [days]);
+
+  useRunAfterMount(loadWeek);
+
+  // Declared after loadWeek, deliberately: the effect calls it, so listing it as a
+  // dependency -- rather than suppressing the rule -- means this block has to sit below it.
+
   // Auto-add lead from URL param ?lead=123
+  //
+  // The dependencies are listed rather than suppressed. `hasAutoAddedLead` is what makes
+  // this once-only, not the empty array: a re-run with a changed `searchParams` or
+  // `selectedDate` is short-circuited by the ref on the first line. An empty dep list with
+  // an eslint-disable said "run once" while capturing whatever the values happened to be on
+  // the first render, which is a different claim and a worse one.
   useEffect(() => {
     const leadId = searchParams.get("lead");
     if (leadId && !hasAutoAddedLead.current) {
@@ -190,24 +216,7 @@ export default function PlannerPage() {
         })();
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const loadWeek = useCallback(async () => {
-    setLoading(true);
-    const from = toDateStr(days[0]);
-    const to = toDateStr(days[days.length - 1]);
-    const res = await fetch(`/api/visit-plans?from=${from}&to=${to}`);
-    const data = await res.json();
-    const grouped: Record<string, PlanRow[]> = {};
-    for (const p of (data.plans ?? []) as PlanRow[]) {
-      (grouped[p.planned_date] ??= []).push(p);
-    }
-    setPlansByDate(grouped);
-    setLoading(false);
-  }, [days]);
-
-  useRunAfterMount(loadWeek);
+  }, [searchParams, selectedDate, toast, loadWeek]);
 
   useEffect(() => {
     fetch("/api/customers")

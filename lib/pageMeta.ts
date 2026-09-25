@@ -137,6 +137,14 @@ export const PAGE_META: Record<string, PageMeta> = {
       "گزارش کامل پوشش و مالی گروه، قابل چاپ و خروجی‌گیری. برای مرور دوره‌ای و بایگانی، نه برای کار روزانه.",
   },
 
+  // تحلیل سرنخ‌ها -- a client page over the whole lead pool: where they are, how they score,
+  // how they are distributed by status, and how many convert.
+  "/analytics": {
+    title: "تحلیل سرنخ‌ها",
+    overview:
+      "پراکندگی جغرافیایی سرنخ‌ها، توزیع امتیاز، وضعیت هرکدام و قیف تبدیل. برای اینکه بدانید کجا سرنخ بیشتری لازم دارید و کدام مسیر جواب می‌دهد.",
+  },
+
   // انبار
   "/sales/stock": {
     title: "انبار و خرید",

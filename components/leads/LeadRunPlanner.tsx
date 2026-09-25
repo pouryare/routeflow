@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Icon } from "@/components/meridian/Icon";
+import SectionHead from "@/components/meridian/SectionHead";
 import { faNum } from "@/lib/format";
 import { todayJalali, jalaliToIsoDate } from "@/lib/jalali";
 import type { LeadRun } from "@/lib/repo/leadRuns";
@@ -87,10 +88,11 @@ export default function LeadRunPlanner({
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-      <div className="mb-3 flex items-center gap-2">
-        <Icon name="route" size="md" className="text-accent" />
-        <h2 className="text-[length:var(--text-md)] font-semibold text-text">سپردن مسیر به راننده</h2>
-      </div>
+      <SectionHead
+        title="سپردن مسیر به راننده"
+        className="mb-3"
+        actions={<Icon name="route" size="md" className="text-accent" />}
+      />
 
       <div className="flex flex-col gap-3">
         <label className="flex flex-col gap-1">

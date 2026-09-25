@@ -165,6 +165,7 @@ describe("organization_id backfill", () => {
       "weather_snapshots",  // a forecast for a lat/lng is not tenant data
       "delivery_lines",     // through deliveries
       "lead_list_items",    // through lead_lists
+      "lead_run_stops",     // through lead_runs
       "packagings",         // through products
       "product_prices",     // through products
       "photos",             // through (entity_type, entity_id)

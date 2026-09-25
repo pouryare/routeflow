@@ -55,6 +55,8 @@ export const TENANT_TABLES = [
   "orders",
   "purchases",
   "delivery_runs",
+  "lead_runs",
+  "lead_visit_activities",
   "commission_rates",
   "commission_payments",
   "driver_commission_rates",

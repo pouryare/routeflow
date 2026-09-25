@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, type SavedLocationRow } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { canReachGroup, requireRole, type Session } from "@/lib/session";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import { applyLeadVisit } from "@/lib/repo/crm/write";
+import { isOnDriversRun } from "@/lib/repo/leadRuns";
+import { readLeadLocation } from "@/lib/repo/leads";
 import { CrmError } from "@/lib/repo/crm/write";
 import { startFlow, viewStep, type FlowState } from "@/lib/crm/flows/machine";
 import type { FlowContext } from "@/lib/crm/flows/types";
@@ -15,7 +17,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const db = getDb();
-  const loc = db.prepare("SELECT * FROM saved_locations WHERE id = ?").get(id) as SavedLocationRow | undefined;
+  const loc = readLeadLocation(db, id);
   if (!loc || !canReachGroup(guard.session, loc.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
@@ -43,7 +45,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
   const db = getDb();
-  const loc = db.prepare("SELECT * FROM saved_locations WHERE id = ?").get(id) as SavedLocationRow | undefined;
+  const loc = readLeadLocation(db, id);
   if (!loc || !canReachGroup(guard.session, loc.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
@@ -51,18 +53,10 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
   const b = (await req.json().catch(() => null)) as { answers?: unknown; client_uuid?: string } | null;
   if (!b?.answers) return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
 
-  // A driver may only record against a stop on their own run. Without this, opening the
-  // route in proxy.ts is enough to let any driver write a visit against any pin in their
-  // group -- including one a colleague is standing in front of right now, overwriting the
-  // outcome they recorded. A manager is not bound by a run.
-  if (guard.session.role === "driver") {
-    const onRun = db
-      .prepare(`SELECT 1 FROM lead_run_stops s JOIN lead_runs r ON r.id = s.run_id
-                 WHERE s.location_id = ? AND r.driver_user_id = ? AND r.organization_id = ? LIMIT 1`)
-      .get(id, guard.session.user.id, guard.session.organizationId);
-    if (!onRun) {
-      return NextResponse.json({ ok: false, error: "این توقف در مسیر شما نیست" }, { status: 403 });
-    }
+  // A driver may only record against a stop on their own run. A manager is not bound by one.
+  // The query is in lib/repo/leadRuns.ts: raw SQL does not live in a route.
+  if (guard.session.role === "driver" && !isOnDriversRun(db, guard.session.user.id, guard.session.organizationId, id)) {
+    return NextResponse.json({ ok: false, error: "این توقف در مسیر شما نیست" }, { status: 403 });
   }
 
   try {

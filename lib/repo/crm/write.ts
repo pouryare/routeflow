@@ -251,7 +251,10 @@ export function applyLeadVisit(
   const db = getDb();
   const at = input.nowIso ?? new Date().toISOString();
   const loc = db.prepare("SELECT * FROM saved_locations WHERE id = ?").get(input.locationId) as SavedLocationRow | undefined;
-  if (!loc) throw new CrmError(404, "مکان پیدا نشد");
+  // organization_id is nullable on the row type and every write below needs it as a number.
+  // A pin with no organisation cannot be written to in a multi-tenant table at all, so it is
+  // refused here rather than papered over with a cast further down.
+  if (!loc || loc.organization_id === null) throw new CrmError(404, "مکان پیدا نشد");
 
   const ctx: FlowContext = {
     entry: "driver_visit",

@@ -162,6 +162,22 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
   return { id: u.id, group_id: u.group_id, display_name: u.display_name };
 }
 
+/** Whether this stop is on one of the caller's own routes.
+ *
+ *  A driver may only record a visit against a stop they were given. Without this, opening
+ *  /api/leads for a driver is enough to write a visit against any pin in their group --
+ *  including one a colleague is standing in front of, overwriting the outcome they recorded.
+ *
+ *  The SQL lives here rather than in the route because that is the house rule: routes decide
+ *  who and what, lib/repo/ decides how. */
+export function isOnDriversRun(conn: DatabaseSync, driverUserId: number, orgId: number, locationId: number): boolean {
+  const row = conn
+    .prepare(`SELECT 1 FROM lead_run_stops s JOIN lead_runs r ON r.id = s.run_id
+               WHERE s.location_id = ? AND r.driver_user_id = ? AND r.organization_id = ? LIMIT 1`)
+    .get(locationId, driverUserId, orgId);
+  return row !== undefined;
+}
+
 /** Drivers this manager may assign a route to. Feeds the dropdown. */
 export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null }> {
   const all = session.role === "owner";

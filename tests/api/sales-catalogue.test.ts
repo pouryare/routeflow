@@ -69,9 +69,16 @@ describe("GET /api/sales/products", () => {
     expect((await GET(req("/api/sales/products", null))).status).toBe(401);
   });
 
-  it("refuses a driver", async () => {
-    // A driver sees the run they are on, not the price list.
-    expect((await GET(req("/api/sales/products", "driver"))).status).toBe(403);
+  it("lets a driver read prices, because a driver is also the field rep", async () => {
+    // This used to read "refuses a driver -- a driver sees the run they are on, not the
+    // price list". In this app the driver role is also the field sales rep, and a rep who
+    // cannot read a price cannot quote one at the door, which is the whole point of letting
+    // them close a sale on a visit. The catalogue is company-wide, so there is no group
+    // filter here; writing a price is still owner-only.
+    const res = await GET(req("/api/sales/products", "driver"));
+    expect(res.status).toBe(200);
+    const body = await res.json();
+    expect(Array.isArray(body.products)).toBe(true);
   });
 
   it("lets an owner read the catalogue", async () => {

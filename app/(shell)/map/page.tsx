@@ -10,6 +10,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
 import { readGroups } from "@/lib/groups";
+import { readLeadPins } from "@/lib/repo/leads";
 import PageHeader from "@/components/meridian/PageHeader";
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
@@ -34,11 +35,7 @@ export default async function Home() {
   const districts = readDistrictProperties(db, scope);
   const customers = readCustomers(db, scope, { organizationId: session.organizationId });
   const facilities = readFacilities(db, groupFilterWithShared(session));
-  const initialLeads = db
-    .prepare(
-      `SELECT id, name, lat, lng FROM saved_locations WHERE lat IS NOT NULL AND lng IS NOT NULL ORDER BY created_at DESC`
-    )
-    .all() as { id: number; name: string; lat: number; lng: number }[];
+  const initialLeads = readLeadPins(db);
   // Only the groups this caller can actually see: an owner gets all of them, a manager
   // gets their own, which is the only one any district they can see belongs to.
   const visibleGroups = readGroups(db, session.organizationId)

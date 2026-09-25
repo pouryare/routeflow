@@ -137,7 +137,7 @@ export default function DriverRunView({
                           onClick={() => void move(s.location_id, -1)}
                           aria-label="بالا"
                         >
-                          ↑
+                          <Icon name="arrow-up" size="sm" />
                         </button>
                         <button
                           type="button"
@@ -145,7 +145,7 @@ export default function DriverRunView({
                           onClick={() => void move(s.location_id, 1)}
                           aria-label="پایین"
                         >
-                          ↓
+                          <Icon name="arrow-down" size="sm" />
                         </button>
                       </>
                     ) : null}
