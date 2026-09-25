@@ -1162,6 +1162,48 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_delivery_runs_driver ON delivery_runs(driver_user_id, run_date);
 
+    /* A lead run is the same idea as a delivery run with a pin at each stop instead of an
+       order, and it is modelled on the table above deliberately -- including the
+       UNIQUE(driver_user_id, run_date). Without it a manager can create two lead runs for
+       one driver on one day, and the driver then sees an arbitrary one of the two. That is
+       the same class of bug as a duplicate delivery run, so it gets the same constraint
+       rather than a bespoke rule.
+
+       The stops are pins, not orders: a stop is a place to drive to, and what happened there
+       is already recorded against the pin itself (saved_locations.visit_outcome) by the
+       visit. Re-deriving it here would be a second copy of the truth to keep in step. */
+    CREATE TABLE IF NOT EXISTS lead_runs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      driver_user_id INTEGER NOT NULL REFERENCES users(id),
+      group_id INTEGER REFERENCES groups(id),
+      run_date TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'planned'
+        CHECK (status IN ('planned', 'in_progress', 'done')),
+      started_at TEXT,
+      finished_at TEXT,
+      notes TEXT,
+      planned_by INTEGER NOT NULL REFERENCES users(id),
+      /* In the CREATE TABLE rather than added by the TENANT_TABLES loop the way
+         delivery_runs gets it: this table is new, so there is no existing database to
+         backfill, and every read of a run filters on it. A run that cannot say which
+         company it belongs to is a cross-tenant leak waiting for the first query. */
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      UNIQUE (driver_user_id, run_date)
+    );
+    CREATE INDEX IF NOT EXISTS idx_lead_runs_driver ON lead_runs(driver_user_id, run_date);
+
+    CREATE TABLE IF NOT EXISTS lead_run_stops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL REFERENCES lead_runs(id) ON DELETE CASCADE,
+      location_id INTEGER NOT NULL REFERENCES saved_locations(id) ON DELETE CASCADE,
+      sort_order INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      UNIQUE (run_id, location_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_lead_run_stops_run ON lead_run_stops(run_id, sort_order);
+
     /* One stop is one order at one door. The stop carries what happened there; the
        order's own lines carry what was actually handed over. */
     CREATE TABLE IF NOT EXISTS delivery_stops (

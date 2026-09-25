@@ -51,6 +51,20 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
   const b = (await req.json().catch(() => null)) as { answers?: unknown; client_uuid?: string } | null;
   if (!b?.answers) return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
 
+  // A driver may only record against a stop on their own run. Without this, opening the
+  // route in proxy.ts is enough to let any driver write a visit against any pin in their
+  // group -- including one a colleague is standing in front of right now, overwriting the
+  // outcome they recorded. A manager is not bound by a run.
+  if (guard.session.role === "driver") {
+    const onRun = db
+      .prepare(`SELECT 1 FROM lead_run_stops s JOIN lead_runs r ON r.id = s.run_id
+                 WHERE s.location_id = ? AND r.driver_user_id = ? AND r.organization_id = ? LIMIT 1`)
+      .get(id, guard.session.user.id, guard.session.organizationId);
+    if (!onRun) {
+      return NextResponse.json({ ok: false, error: "این توقف در مسیر شما نیست" }, { status: 403 });
+    }
+  }
+
   try {
     const r = applyLeadVisit(guard.session, {
       locationId: id,

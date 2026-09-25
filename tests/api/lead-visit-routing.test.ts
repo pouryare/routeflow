@@ -31,6 +31,7 @@ let salespersonId = 0;
 let groupId = 0;
 let locInGroup = 0;
 let locOtherGroup = 0;
+let locOnRun = 0;
 
 beforeAll(() => {
   const db = getDb();
@@ -57,6 +58,16 @@ beforeAll(() => {
   );
   locInGroup = Number(insertLoc.run("هتل آریا", "https://maps.example/x", groupId, now).lastInsertRowid);
   locOtherGroup = Number(insertLoc.run("هتل دیگر", "https://maps.example/y", otherGroupId, now).lastInsertRowid);
+  // locInGroup is not on a route on purpose: it is the "not your stop" case. locOnRun is.
+  // insertLoc hardcodes the coordinates, so it takes only (name, url, group, created_at).
+  locOnRun = Number(insertLoc.run("هتل روی مسیر", "https://maps.example/z", groupId, now).lastInsertRowid);
+  const runId = Number(
+    db.prepare(`INSERT INTO lead_runs (driver_user_id, group_id, run_date, status, planned_by, organization_id, created_at, updated_at)
+                VALUES (?, ?, ?, 'planned', ?, ?, ?, ?)`)
+      .run(driverId, groupId, "2026-09-25", ownerId, 1, now, now).lastInsertRowid
+  );
+  db.prepare("INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)")
+    .run(runId, locOnRun, now);
 });
 
 function as(uid: number, role: string, gid: number | null) {
@@ -99,7 +110,7 @@ function location(id: number) {
 
 describe("a driver records a visit that closed a sale", () => {
   it("leaves an order task for the office, not a decision for the driver", async () => {
-    const res = await POST(post(locInGroup, boughtNow, DRIVER()), ctx(locInGroup));
+    const res = await POST(post(locOnRun, boughtNow, DRIVER()), ctx(locOnRun));
     expect(res.status).toBe(200);
     const body = (await res.json()) as { next_task_id: number | null };
     expect(body.next_task_id).not.toBeNull();
@@ -111,11 +122,11 @@ describe("a driver records a visit that closed a sale", () => {
     // the handoff-call task, which also leaves the assignee empty for a manager to pick up.
     expect(t?.assignee_user_id).toBeNull();
     expect(t?.role_hint).toBe("group_manager");
-    expect(t?.entity_id).toBe(locInGroup);
+    expect(t?.entity_id).toBe(locOnRun);
   });
 
   it("records the outcome and the stars against the location", () => {
-    const loc = location(locInGroup);
+    const loc = location(locOnRun);
     expect(loc?.visit_outcome).toBe("READY_TO_BUY");
     expect(loc?.status).toBe("visited");
     expect(loc?.rating_potential).toBe(5);
@@ -130,13 +141,13 @@ describe("a driver records a visit that closed a sale", () => {
     // ...and it must not delete the row either. saved_locations is referenced by
     // lead_list_items with ON DELETE CASCADE, so deleting it here would quietly rip the
     // stop out of the route the driver is standing on.
-    expect(location(locInGroup)).toBeDefined();
+    expect(location(locOnRun)).toBeDefined();
   });
 
   it("still files the order for a buyer who says not yet, just not urgently", async () => {
-    const immediate = await POST(post(locInGroup, boughtNow, DRIVER()), ctx(locInGroup));
+    const immediate = await POST(post(locOnRun, boughtNow, DRIVER()), ctx(locOnRun));
     const immediateBody = (await immediate.json()) as { next_task_id: number | null };
-    const deferred = await POST(post(locInGroup, boughtLater, DRIVER()), ctx(locInGroup));
+    const deferred = await POST(post(locOnRun, boughtLater, DRIVER()), ctx(locOnRun));
     const deferredBody = (await deferred.json()) as { next_task_id: number | null };
 
     const now = task(immediateBody.next_task_id!)!;
@@ -152,23 +163,23 @@ describe("a driver records a visit that closed a sale", () => {
 describe("the follow-ups that already worked still work", () => {
   it("a partial interest still hands off to a phone call", async () => {
     const res = await POST(
-      post(locInGroup, [
+      post(locOnRun, [
         { step: "navigate", option: "go" },
         { step: "what_happened", option: "ok" },
         { step: "detail_status", option: "partial" },
         { step: "rate", option: "stars", value: "3,3,3" },
         { step: "skip", option: "WAITING_ON_THEM" },
       ], DRIVER()),
-      ctx(locInGroup)
+      ctx(locOnRun)
     );
     const body = (await res.json()) as { next_task_id: number | null };
     expect(task(body.next_task_id!)?.kind).toBe("call");
-    expect(location(locInGroup)?.visit_outcome).toBe("INTERESTED");
+    expect(location(locOnRun)?.visit_outcome).toBe("INTERESTED");
   });
 
   it("a miss the driver wants to retry still leaves a reminder", async () => {
     const res = await POST(
-      post(locInGroup, [
+      post(locOnRun, [
         { step: "navigate", option: "go" },
         { step: "what_happened", option: "no" },
         { step: "why_failed", option: "noowner" },
@@ -176,11 +187,11 @@ describe("the follow-ups that already worked still work", () => {
         { step: "rate", option: "stars", value: "2,2,4" },
         { step: "skip", option: "WAITING_ON_THEM" },
       ], DRIVER()),
-      ctx(locInGroup)
+      ctx(locOnRun)
     );
     const body = (await res.json()) as { next_task_id: number | null };
     expect(task(body.next_task_id!)?.kind).toBe("reminder");
-    expect(location(locInGroup)?.visit_outcome).toBe("VISIT_NO_OWNER");
+    expect(location(locOnRun)?.visit_outcome).toBe("VISIT_NO_OWNER");
   });
 
   it("and the derived action agrees with the task that was actually filed", async () => {
@@ -188,7 +199,7 @@ describe("the follow-ups that already worked still work", () => {
     // applyLeadVisit have to tell the same story, or the card on the driver's phone will
     // promise a call nobody was asked to make.
     const res = await POST(
-      post(locInGroup, [
+      post(locOnRun, [
         { step: "navigate", option: "go" },
         { step: "what_happened", option: "ok" },
         { step: "detail_status", option: "buy" },
@@ -196,10 +207,10 @@ describe("the follow-ups that already worked still work", () => {
         { step: "rate", option: "stars", value: "4,4,4" },
         { step: "skip", option: "WAITING_ON_THEM" },
       ], DRIVER()),
-      ctx(locInGroup)
+      ctx(locOnRun)
     );
     const body = (await res.json()) as { next_task_id: number | null };
-    expect(nextActionFor(location(locInGroup)?.visit_outcome)).toBe(task(body.next_task_id!)?.kind);
+    expect(nextActionFor(location(locOnRun)?.visit_outcome)).toBe(task(body.next_task_id!)?.kind);
   });
 });
 
@@ -210,7 +221,7 @@ describe("who may record a visit", () => {
     // to the real one and this test would silently be testing the owner.
     const res = await POST(
       post(locInGroup, boughtNow, { uid: salespersonId, role: "salesperson", gid: groupId }),
-      ctx(locInGroup)
+      ctx(locOnRun)
     );
     expect(res.status).toBe(403);
   });
