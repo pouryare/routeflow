@@ -2852,6 +2852,9 @@ body {
 }
 .meridian .mapsearch__opt:hover, .meridian .mapsearch__opt:focus-visible { background: var(--surface-2); outline: none; }
 .meridian .mapsearch__label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 767px) {
+  .meridian .mapsearch__opt { min-height: 44px; }
+}
 
 /* ---- the academy as a learning path (AcademyPath.tsx, item 23) ------------------- */
 .meridian .acad { display: flex; flex-direction: column; gap: 18px; }
