@@ -454,6 +454,22 @@ export default function SearchBox({
                 </button>
               )}
             </div>
+          {/* Recent searches — shown when input is empty */}
+          {!trimmed && recentSearches.length > 0 && (
+            <div className="border-b border-border px-3 py-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[length:var(--text-xs)] text-text-faint font-medium">🕐 Recent</span>
+                <button onClick={() => { clearAllRecent(); setRecentSearches([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">Clear all</button>
+              </div>
+              {recentSearches.map((r, i) => (
+                <button key={i} onClick={() => { changeQuery(r); setOpen(true); }} className="mapsearch__opt">
+                  <Icon name="clock" size="sm" />
+                  <span className="mapsearch__label">{r}</span>
+                  <button onClick={(e) => { e.stopPropagation(); removeRecent(r); setRecentSearches(loadRecent()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove recent">✕</button>
+                </button>
+              ))}
+            </div>
+          )}
           {trimmed && !hideResults && (
           isUrl ? (
             <div className="p-2">
