@@ -311,62 +311,47 @@ None. No classes in the touched surface.
     policy, keeping the boundary that still matters: a driver gets 201 for their own group and
     404 for another group's.
 
-### Phase 4 — Runs and driver data access
+### Phase 4 — Runs and driver data access  ✅ DONE (`a1e84b7`)
 
-15. `lib/repo/leadRuns.ts`; the two API routes; scope the visit route to the caller's own run.
-16. Verify: `tests/api/lead-runs.test.ts` + `lead-lists-driver`.
+15. ~~`lib/repo/leadRuns.ts`; the two API routes; scope the visit route.~~ Done. `lead_runs`
+    and `lead_run_stops`, modelled on `delivery_runs` including `UNIQUE(driver_user_id,
+    run_date)` and the select-then-reuse upsert. The visit route now refuses a driver
+    recording against a stop that is not on their own run — without that, opening the route
+    in proxy is enough to overwrite a colleague's outcome. A driver may reorder and nothing
+    else.
+16. ~~Verify.~~ `tests/api/lead-runs.test.ts` (15). Retargeting the Phase 2 visit suite at a
+    real run is what proved the guard.
 
-### Phase 5 — Driver view
+    Two bugs the tests caught: stop order was silently re-sorted by id (`IN (...)` returns
+    rowid order, so the manager's planned order was discarded), and a Jalali date passes an
+    ISO shape check — `1405-07-01` parses as the year 1405, so a year bound was needed.
 
-17. `useLeads` loader branch; `NextStopBanner`; `page.tsx` driver branch; `RunPanel` props.
-18. Verify: manual manager and driver passes, then `npx vitest run`.
+### Phase 5 — Driver view  ✅ DONE (`4839c07`)
 
-### Phase 6 — Manager assignment
+17. ~~`useLeads` loader branch; `NextStopBanner`; `page.tsx` driver branch.~~ Done, with
+    `useDriverRun` and `DriverRunView` as separate modules rather than a branch inside
+    `useLeads`, which is the manager's pool and fetches two owner-only routes. `load()` now
+    skips them, so a driver gets no 403s on mount.
+    Also fixed two type errors already on the page (`SavedLocation` never bound;
+    `number | undefined` into a `number | null` prop). The tree is two errors better.
 
-19. `POST`/`PATCH` accept assignment; validate the assignee is an in-scope, active driver.
-20. `run_date` validated as ISO at the Jalali picker boundary (`jalaliToIsoDate`,
-    `lib/jalali.ts:204`).
-21. Assignment dropdown fed by `assignableDrivers`.
-22. Verify: full suite.
+### Phase 6 — Manager assignment  ✅ DONE (`2e2879e`)
 
-## [Risks]
+19. ~~`POST`/`PATCH` accept assignment; validate the assignee.~~ Done in Phase 4
+    (`assertAssignableDriver`, `assignableDrivers`).
+20. ~~`run_date` validated at the Jalali picker boundary.~~ `JalaliDateInput` already
+    converts; the repo layer refuses anything outside a working lifetime.
+21. ~~Assignment dropdown fed by `assignableDrivers`.~~ `LeadRunPlanner`, manager-only,
+    above the route it hands over. It says so when a run was *re-used* rather than created,
+    because the two look identical from the office otherwise.
+22. ~~Full suite.~~ 201 green; `tsc` clean in every file touched, total unchanged at the 14
+    pre-existing errors in the pool-view work.
 
-| Risk | Severity | Mitigation |
-|---|---|---|
-| `proxy.ts` untouched → feature invisible | Critical | Phase 0 first, test-gated |
-| Driver asked a convert question that is discarded | Critical | Phase 2 deletes it; test asserts rejection |
-| A lead cannot receive an order at all | Critical | Phase 3 is a new capability, not a fix |
-| Convert deletes the pin → cascades out of every route | Critical | Phase 3 step 13; retention test |
-| Two runs for one driver on one day | High | `UNIQUE (driver_user_id, run_date)`, Phase 3 step 10 |
-| Order path links a lead to an unreachable business | High | `promoteLeadToCustomer` refuses on a redacted match |
-| Duplicate customers on offline retry | High | Deterministic `LEAD-<id>` + `UNIQUE (organization_id, customer_code)` |
-| Lifecycle written directly, bypassing `recomputeState` | High | Phase 3 note: insert the row, let the log move it |
-| Handoff not reflected in the driver's next stop | High | `handedOff` derived from the open task |
-| Driver nav advertises tabs proxy denies | High | Phase 0 step 2 |
-| `run_date` Jalali/Gregorian mismatch → invisible run | Medium | Validate ISO on write; convert at the picker |
-| `plain()` omitted → null-prototype crash in a client component | Medium | `lib/db.ts:33`; every new response |
-| Editing `CREATE TABLE` instead of the migration | Medium | Phase 3 step 10 |
+## [Deliberately not done]
 
-## [Out of scope]
-
-`/sales/routing` and delivery runs; the customers/tasks `verify_visit` flow; offline sync for the
-driver app beyond the existing `clientUuid` retry guard; VROOM/weather for lead routes;
-commission attribution for a driver-closed sale.
-
-## [Resolved decisions]
-
-Agreed 2026-09-25:
-
-1. **A handed-off lead leaves the driver's run immediately.** `handedOff` is derived from the
-   open `tasks` row, so a lead that generated a call task stops being that driver's next stop
-   even though the driver never touched it again.
-2. **`wants_call` does not advance `lifecycle`.** Only a real order moves
-   `lead -> qualified -> active`; `lifecycleFor` derives it from the activity log, so an
-   interested-but-not-bought lead stays `lead`.
-
-## [Superseded prior decisions]
-
-`docs/superpowers/specs/2026-09-18-adaptive-leads-page-design.md` locked **D4 = "Full
-`leadVisitFlow` (navigate -> what_happened -> detail_status -> convert -> rate)"**. The `convert`
-step asks the driver a commercial question whose answer is discarded (`convert_location` is
-written and never read). This plan removes it; D4 needs amending when that spec is revisited.
+| Item | Why |
+|---|---|
+| The pool query excluding promoted pins | `customers.lead_location_id` exists and the pool has one honest test available (`EXISTS(...)`), but the query lives in the pool-view code that is mid-refactor. Worth doing there, not around it. |
+| `orderFilter` for van orders | A driver-placed order is invisible in their own list until it is on a delivery run. Real, and deliberately not changed here: widening a scope rule needs its own decision. |
+| `LocationTapFlow` order button | `acc.open_order` is set but the host's done screen has no action slot. The button belongs with the order-capture UI, which is Phase 5's successor, not bolted on here. |
+| `lead_lists` → `lead_runs` migration | Existing named lists are a manager's scratch pad; a run is an assignment. Migrating one into the other would manufacture routes nobody assigned. |
