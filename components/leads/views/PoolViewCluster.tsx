@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import SectionHead from "@/components/meridian/SectionHead";
 import LocationCard from "@/components/leads/LocationCard";
 import type { PoolViewItem } from "./PoolViewWrapper";
 import { type NavAppId } from "@/lib/navApps";
@@ -79,9 +80,11 @@ export default function PoolViewCluster({
         const isDefault = cluster.locations.some((item) => item.location.lat === null);
         return (
           <section key={idx} className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
-            <h3 className="mb-2 text-[length:var(--text-sm)] font-semibold text-text">
-              {isDefault ? "بدون مختصات" : `منطقه ${idx + 1} (${cluster.locations.length})`}
-            </h3>
+            <SectionHead
+              as="h3"
+              className="mb-2 text-[length:var(--text-sm)] font-semibold text-text"
+              title={isDefault ? "بدون مختصات" : `منطقه ${idx + 1} (${cluster.locations.length})`}
+            />
             <div className="flex flex-col gap-2">
               {cluster.locations.map(({ location: loc, inRun, runIdx, km }) => (
                 <div key={loc.id} onClick={() => onSelect(loc.id)} className="cursor-pointer">

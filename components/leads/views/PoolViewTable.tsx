@@ -103,7 +103,7 @@ function DropdownMenu({ loc, inRun, runIdx, onToggleRun, onPin, onTogglePriority
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         className="h-6 w-6 rounded border border-border text-text-faint hover:border-accent hover:text-accent flex items-center justify-center text-[length:var(--text-xs)] transition-colors"
       >
-        ⋯
+        <Icon name="more" size="sm" />
       </button>
       {open && (
         <>

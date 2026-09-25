@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-function makePoolViewItem(overrides = {}) {
-  const { location: locOverride, ...rest } = overrides;
+// Typed as a record rather than left to default to `{}`, which made `overrides.location`
+// an error: an untyped default infers the empty object, so every property read off it fails.
+function makePoolViewItem(overrides: Record<string, unknown> = {}) {
+  const { location: locOverride, ...rest } = overrides as { location?: Record<string, unknown> };
   return {
     location: {
       id: 1, name: "Test Location", maps_url: "https://maps.example.com",
@@ -15,7 +17,10 @@ function makePoolViewItem(overrides = {}) {
 }
 
 function clusterLocations(items: ReturnType<typeof makePoolViewItem>[], maxDistanceKm: number = 2.0) {
-  const clusters: { center: { lat: number; lng: number }; locations: typeof items[] }[] = [];
+  // `(typeof items)[number]`, not `typeof items`: `items` is already an array, so `typeof
+  // items` is T[] and wrapping it again made `locations` a T[][] -- not what a cluster holds.
+  // (Element<T> would say the same thing but collides with the DOM's non-generic Element.)
+  const clusters: { center: { lat: number; lng: number }; locations: Array<(typeof items)[number]> }[] = [];
   const assigned = new Set<number>();
   for (const item of items) {
     if (assigned.has(item.location.id)) continue;

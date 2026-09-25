@@ -63,8 +63,8 @@ export default function RunPanel({
             className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
           >
             {singleLeg
-              ? `مسیریابی به توقف ۱ در ${navApp(navAppId).label}`
-              : `شروع مسیر با ${faNum(stops.length)} توقف`}
+              ? `مسیریابی به مقصد ۱ در ${navApp(navAppId).label}`
+              : `شروع مسیر با ${faNum(stops.length)} مقصد`}
           </a>
         )}
 
@@ -98,13 +98,13 @@ export default function RunPanel({
           and you come back here for the next one. */}
       {singleLeg && (
         <p className="text-[length:var(--text-xs)] leading-5 text-warn">
-          {navApp(navAppId).label} فقط یک مقصد را می‌پذیرد؛ مسیر توقف‌به‌توقف باز می‌شود. برای باز کردن کل
+          {navApp(navAppId).label} فقط یک مقصد را می‌پذیرد؛ مسیر مقصد‌به‌مقصد باز می‌شود. برای باز کردن کل
           مسیر در یک لینک، از «گوگل مپ» استفاده کنید.
         </p>
       )}
       {dropped > 0 && (
         <p className="text-[length:var(--text-xs)] leading-5 text-warn">
-          گوگل مپ حداکثر ۱۰ ایستگاه میانی می‌پذیرد؛ {faNum(dropped)} توقف آخر در این لینک نمی‌آید.
+          گوگل مپ حداکثر ۱۰ ایستگاه میانی می‌پذیرد؛ {faNum(dropped)} مقصد آخر در این لینک نمی‌آید.
         </p>
       )}
 

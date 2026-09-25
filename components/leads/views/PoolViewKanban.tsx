@@ -1,6 +1,7 @@
 "use client";
 
 import { STATUS_META } from "@/app/(shell)/leads/hooks/useLeads";
+import SectionHead from "@/components/meridian/SectionHead";
 import LocationCard from "@/components/leads/LocationCard";
 import type { PoolViewItem } from "./PoolViewWrapper";
 import { type NavAppId } from "@/lib/navApps";
@@ -83,9 +84,11 @@ export default function PoolViewKanban({
         return (
           <div key={col} className={`min-w-[260px] rounded-[var(--radius-lg)] border p-2 ${isDefault ? "border-border bg-surface" : isNew ? "border-accent bg-accent/5" : STATUS_COLORS[col] ?? "border-border bg-surface"}`}>
             <div className="mb-2 flex items-center justify-between">
-              <h3 className="text-[length:var(--text-sm)] font-semibold text-text">
-                {isDefault ? "بدون وضعیت" : isNew ? "جدید" : STATUS_LABELS[col] ?? col}
-              </h3>
+              <SectionHead
+                as="h3"
+                className="text-[length:var(--text-sm)] font-semibold text-text"
+                title={isDefault ? "بدون وضعیت" : isNew ? "جدید" : STATUS_LABELS[col] ?? col}
+              />
               <span className="rounded-full bg-border px-2 py-0.5 text-[length:var(--text-xs)] text-text-muted font-mono">
                 {colItems.length}
               </span>

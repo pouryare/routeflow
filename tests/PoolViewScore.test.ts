@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { averageScore, LEAD_CRITERIA, scoreOf } from "@/lib/leadScore";
 
-function makePoolViewItem(overrides = {}) {
-  const { location: locOverride, ...rest } = overrides;
+function makePoolViewItem(overrides: Record<string, unknown> = {}) {
+  const { location: locOverride, ...rest } = overrides as { location?: Record<string, unknown> };
   return {
     location: {
       id: 1, name: "Test Location", maps_url: "https://maps.example.com",
@@ -26,7 +26,8 @@ describe("PoolViewScore rendering logic", () => {
       const sb = averageScore(b.location) ?? -1;
       return sb - sa;
     });
-    expect(averageScore(sorted[0].location)).toBeGreaterThanOrEqual(averageScore(sorted[1].location));
+    // An unrated lead scores null, so both sides are defaulted the same way as the sort above.
+    expect(averageScore(sorted[0].location) ?? -1).toBeGreaterThanOrEqual(averageScore(sorted[1].location) ?? -1);
   });
 
   it("shows 3 criterion bars per location", () => {

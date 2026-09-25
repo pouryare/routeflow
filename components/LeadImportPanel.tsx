@@ -137,7 +137,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
           {!it.alreadySaved && it.duplicateOf && (
             <div className="flex items-center gap-2 mt-1">
               <p className="truncate text-[length:var(--text-xs)] text-warn"><Icon name="warn" size="sm" /> شبیه «{it.duplicateOf.name}» ({it.duplicateOf.kind === "customer" ? "مشتری موجود" : "فهرست مکان‌ها"})</p>
-              <button type="button" onClick={() => toggleMerge(it.key)} className={`shrink-0 rounded px-1.5 py-0.5 text-[length:var(--text-xs)] border transition-colors ${isMerged ? "border-accent bg-accent text-accent-ink" : "border-border text-text-faint hover:border-accent hover:text-accent"}`}>{isMerged ? "لینک شد ✓" : "لینک با موجودی"}</button>
+              <button type="button" onClick={() => toggleMerge(it.key)} className={`shrink-0 rounded px-1.5 py-0.5 text-[length:var(--text-xs)] border transition-colors ${isMerged ? "border-accent bg-accent text-accent-ink" : "border-border text-text-faint hover:border-accent hover:text-accent"}`}>{isMerged ? <>لینک شد <Icon name="check" size="sm" /></> : "لینک با موجودی"}</button>
             </div>
           )}
           {batchDupCount > 0 && !it.duplicateOf && (

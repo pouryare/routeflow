@@ -1,6 +1,7 @@
 "use client";
 
 import { RunStop } from "@/components/leads/RunPanel";
+import SectionHead from "@/components/meridian/SectionHead";
 import { Icon } from "@/components/meridian/Icon";
 import { formatDistanceKm } from "@/lib/geo";
 import { faNum } from "@/lib/format";
@@ -24,9 +25,9 @@ export default function DayGroupCard({ day, onTapFlow }: DayGroupCardProps) {
   return (
     <div className="rounded-[var(--radius-md)] border border-border bg-surface overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2.5 bg-surface-raised border-b border-border">
-        <h3 className="font-medium text-text text-[length:var(--text-sm)]">{day.title}</h3>
+        <SectionHead as="h3" title={day.title} className="text-[length:var(--text-sm)] font-medium text-text" />
         <span className="font-mono text-[length:var(--text-xs)] text-text-faint">
-          {day.totalKm !== null ? `${formatDistanceKm(day.totalKm)} خط مستقیم` : `${day.stops.length} توقف`}
+          {day.totalKm !== null ? `${formatDistanceKm(day.totalKm)} خط مستقیم` : `${day.stops.length} مقصد`}
         </span>
       </div>
       <div className="px-4 py-2">
@@ -34,7 +35,7 @@ export default function DayGroupCard({ day, onTapFlow }: DayGroupCardProps) {
           <div className="h-full rounded-full bg-accent transition-all duration-[var(--dur-base)]" style={{ width: `${progress * 100}%` }} />
         </div>
         <p className="text-[length:var(--text-xs)] text-text-faint mt-1">
-          {day.completed}/{day.total} توقف تمام شد
+          {day.completed}/{day.total} مقصد تمام شد
         </p>
       </div>
       <ol className="divide-y divide-border">

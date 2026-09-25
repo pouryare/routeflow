@@ -53,7 +53,7 @@ export default function PoolViewWrapper(props: PoolViewWrapperProps) {
 
   if (locations.length === 0) {
     return (
-      <EmptyState icon="search" title="لیدی یافت نشد" hint="لیدی با این فیلتری یافت نشد" />
+      <EmptyState icon="search" title="سرنخی یافت نشد" hint="سرنخی با این فیلتری یافت نشد" />
     );
   }
 

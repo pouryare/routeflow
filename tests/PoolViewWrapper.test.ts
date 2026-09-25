@@ -12,6 +12,21 @@ function makePoolViewItem(overrides = {}) {
   };
 }
 
+/** The wrapper's distance expression, in one place.
+ *
+ *  Inlined in both tests it was written twice, and the copy that passed `null` narrowed
+ *  `sortAnchor` to `null` at that line -- so its true arm became `never` and reading .lat off
+ *  it was a type error. A parameter is not narrowed by its argument, so the branch stays
+ *  reachable here and both cases are genuinely exercised. */
+function kmFrom(
+  sortAnchor: { lat: number; lng: number } | null,
+  location: { lat: number; lng: number },
+): number | null {
+  return sortAnchor && location.lat !== null && location.lng !== null
+    ? parseFloat(Math.sqrt((sortAnchor.lat - location.lat) ** 2 + (sortAnchor.lng - location.lng) ** 2).toFixed(2))
+    : null;
+}
+
 describe("PoolViewWrapper logic", () => {
   it("builds PoolViewItem array from locations", () => {
     const locations = [makePoolViewItem().location];
@@ -32,22 +47,13 @@ describe("PoolViewWrapper logic", () => {
   });
 
   it("computes km when sortAnchor provided", () => {
-    const location = makePoolViewItem().location;
-    const sortAnchor = { lat: 35.7, lng: 51.4 };
-    const km = sortAnchor && location.lat !== null && location.lng !== null
-      ? parseFloat(Math.sqrt((sortAnchor.lat - location.lat) ** 2 + (sortAnchor.lng - location.lng) ** 2).toFixed(2))
-      : null;
+    const km = kmFrom({ lat: 35.7, lng: 51.4 }, makePoolViewItem().location);
     expect(km).not.toBeNull();
     expect(typeof km).toBe("number");
   });
 
   it("returns null km when sortAnchor is null", () => {
-    const location = makePoolViewItem().location;
-    const sortAnchor = null;
-    const km = sortAnchor && location.lat !== null && location.lng !== null
-      ? parseFloat(Math.sqrt((sortAnchor.lat - location.lat) ** 2 + (sortAnchor.lng - location.lng) ** 2).toFixed(2))
-      : null;
-    expect(km).toBeNull();
+    expect(kmFrom(null, makePoolViewItem().location)).toBeNull();
   });
 
   it("all 8 view modes are handled", () => {

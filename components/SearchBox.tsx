@@ -357,11 +357,15 @@ export default function SearchBox({
   }
 
   function toggleFavorite(r: Result) {
-    const id = r.kind === "customer" ? `cust_${r.customer.customer_code}` : r.kind === "district" ? `dist_${r.district.properties.name}` : `geo_${r.label}`;
+    // Only customer and district reach here. This used to carry a `geo_${r.label}` fallback,
+    // but geosearch results render in their own list further down and have no favourite
+    // button, so that arm was unreachable -- and unreachable code that looks reachable is how
+    // a union quietly grows a member nobody renders.
+    const id = r.kind === "customer" ? `cust_${r.customer.customer_code}` : `dist_${r.district.properties.name}`;
     if (isFavorite(id)) {
       removeFavorite(id);
     } else {
-      addFavorite({ id, label: r.kind === "customer" ? r.customer.business_name : r.kind === "district" ? r.district.properties.name : r.label, lat: 0, lng: 0, kind: r.kind });
+      addFavorite({ id, label: r.kind === "customer" ? r.customer.business_name : r.district.properties.name, lat: 0, lng: 0, kind: r.kind });
     }
     setFavorites(loadFavorites());
   }
@@ -444,9 +448,9 @@ export default function SearchBox({
         <button
           onClick={collapse}
           aria-label="بستن جستجو"
-          className="absolute inset-y-0 left-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+          className="absolute inset-y-0 right-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
-          <Icon name="x" size="sm" />
+          <Icon name="search" size="sm" />
         </button>
       )}
       </div>
@@ -463,22 +467,22 @@ export default function SearchBox({
               </select>
               {sortAnchor ? (
                 <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1 text-[length:var(--text-xs)] text-accent">
-                  📍 شما
+                  <Icon name="map-pin" size="sm" /> شما
                   <button type="button" onClick={onPositionClear} className="text-accent/60 hover:text-accent">↵</button>
                 </span>
               ) : (
                 <button type="button" onClick={() => onSetPosition?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent">
-                  📍 تعیین موقعیت
+                  <Icon name="map-pin" size="sm" /> تعیین موقعیت
                 </button>
               )}
               {!sortAnchor && (
                 <button onClick={useMyLocation} className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent transition-colors" title="Show my location">
-                  📍 خودم
+                  <Icon name="map-pin" size="sm" /> خودم
                 </button>
               )}
               {!inBatchView && (
                 <button type="button" onClick={() => onSelectAll?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink">
-                  ✓ همه
+                  <Icon name="check" size="sm" /> همه
                 </button>
               )}
             </div>
@@ -486,14 +490,14 @@ export default function SearchBox({
           {!trimmed && recentSearches.length > 0 && (
             <div className="border-b border-border px-3 py-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[length:var(--text-xs)] text-text-faint font-medium">🕐 Recent</span>
+                <span className="flex items-center gap-1 text-[length:var(--text-xs)] text-text-faint font-medium"><Icon name="clock" size="sm" /> Recent</span>
                 <button onClick={() => { clearAllRecent(); setRecentSearches([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">Clear all</button>
               </div>
               {recentSearches.map((r, i) => (
                 <button key={i} onClick={() => { changeQuery(r); setOpen(true); }} className="mapsearch__opt">
                   <Icon name="clock" size="sm" />
                   <span className="mapsearch__label">{r}</span>
-                  <button onClick={(e) => { e.stopPropagation(); removeRecent(r); setRecentSearches(loadRecent()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove recent">✕</button>
+                  <button onClick={(e) => { e.stopPropagation(); removeRecent(r); setRecentSearches(loadRecent()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove recent"><Icon name="x" size="sm" /></button>
                 </button>
               ))}
             </div>
@@ -502,14 +506,14 @@ export default function SearchBox({
           {!trimmed && favorites.length > 0 && (
             <div className="border-b border-border px-3 py-2">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[length:var(--text-xs)] text-text-faint font-medium">★ Favorites</span>
+                <span className="flex items-center gap-1 text-[length:var(--text-xs)] text-text-faint font-medium"><Icon name="star" size="sm" /> Favorites</span>
                 <button onClick={() => { localStorage.removeItem(FAV_KEY); setFavorites([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">Clear all</button>
               </div>
               {favorites.map((f) => (
                 <button key={f.id} onClick={() => { changeQuery(f.label); setOpen(true); }} className="mapsearch__opt">
                   <Icon name="star" size="sm" />
                   <span className="mapsearch__label">{f.label}</span>
-                  <button onClick={(e) => { e.stopPropagation(); removeFavorite(f.id); setFavorites(loadFavorites()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove favorite">✕</button>
+                  <button onClick={(e) => { e.stopPropagation(); removeFavorite(f.id); setFavorites(loadFavorites()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove favorite"><Icon name="x" size="sm" /></button>
                 </button>
               ))}
             </div>
@@ -579,7 +583,7 @@ export default function SearchBox({
                   </>
                 )}
                 <button onClick={(e) => { e.stopPropagation(); toggleFavorite(r); }} className="shrink-0 text-[length:var(--text-xs)] text-text-faint hover:text-accent" aria-label="save favorite">
-                  {isFavorite(r.kind === "customer" ? `cust_${r.customer.customer_code}` : r.kind === "district" ? `dist_${r.district.properties.name}` : `geo_${r.label}`) ? "★" : "☆"}
+                  <Icon name="star" size="sm" filled={isFavorite(r.kind === "customer" ? `cust_${r.customer.customer_code}` : `dist_${r.district.properties.name}`)} />
                 </button>
               </button>
             ))

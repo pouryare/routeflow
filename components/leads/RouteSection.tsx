@@ -1,6 +1,7 @@
 "use client";
 
 import { useCardDrag } from "@/components/board/useCardDrag";
+import SectionHead from "@/components/meridian/SectionHead";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import DayGroupCard from "@/components/leads/DayGroupCard";
 import { Icon } from "@/components/meridian/Icon";
@@ -111,7 +112,7 @@ export default function RouteSection({
 
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <label className="flex items-center gap-1.5 text-[length:var(--text-xs)] text-text-muted">
-                تعداد توقف در هر روز:
+                تعداد مقصد در هر روز:
                 <input
                   type="number"
                   min={2}
@@ -145,7 +146,7 @@ export default function RouteSection({
                     <div key={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
                       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                         <span className="text-[length:var(--text-sm)] text-text">
-                          روز {faNum(i + 1)} — {faNum(day.stops.length)} توقف
+                          روز {faNum(i + 1)} — {faNum(day.stops.length)} مقصد
                           {dayKm !== null && (
                             <span className="ms-2 font-mono text-[length:var(--text-xs)] text-text-faint">
                               {formatDistanceKm(dayKm)} خط مستقیم
@@ -183,15 +184,17 @@ export default function RouteSection({
       {/* ---- proposed day groups (editable) -------------------------------- */}
       {proposedDays && proposedDays.length > 0 && (
         <div className="mt-4 flex flex-col gap-3">
-          <h3 className="text-[length:var(--text-xs)] font-medium text-text-faint uppercase tracking-wider">
-            پیشنهادات روز
-          </h3>
+          <SectionHead
+            as="h3"
+            title="پیشنهادات روز"
+            className="text-[length:var(--text-xs)] font-medium text-text-faint uppercase tracking-wider"
+          />
           <div className="flex flex-col gap-3">
             {proposedDays.map((day, i) => (
               <div key={i} data-day-index={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
                 <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[length:var(--text-sm)] text-text">
-                    روز {faNum(i + 1)} — {faNum(day.stops.length)} توقف
+                    روز {faNum(i + 1)} — {faNum(day.stops.length)} مقصد
                   </span>
                   <div className="flex gap-1.5">
                     <button

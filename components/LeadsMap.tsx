@@ -151,8 +151,19 @@ export default function LeadsMap({
 }) {
   const [summary, setSummary] = useState<RouteSummary | null>(null);
   const { position, status } = useMyPosition();
+  const [mounted, setMounted] = useState(false);
+  const [mapKey] = useState(() => Date.now());
 
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  // Must be called unconditionally — hooks cannot be conditional.
   const allPoints = useMemo<[number, number][]>(() => leads.map((l) => [l.lat, l.lng]), [leads]);
+
+  if (!mounted) {
+    return <div className="h-80 w-full rounded-[var(--radius-lg)] border border-border" />;
+  }
 
   // Somewhere to start when there are no leads at all and no fix yet. Tehran, which is
   // where this business operates -- an empty map centred on the null island is a bug
@@ -163,6 +174,7 @@ export default function LeadsMap({
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
       <div className="h-80 w-full">
         <MapContainer
+          key={mapKey}
           center={position ? [position.lat, position.lng] : fallbackCentre}
           zoom={12}
           className="h-full w-full"
@@ -219,7 +231,7 @@ export default function LeadsMap({
                         onClick={() => onRemoveFromRun(l.id)}
                         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-crit"
                       >
-                        حذف از مسیر (توقف {faNum(l.runIndex)})
+                        حذف از مسیر (مقصد {faNum(l.runIndex)})
                       </button>
                     )}
                   </div>

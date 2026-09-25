@@ -10,7 +10,7 @@ interface PoolViewToggleProps {
 
 export default function PoolViewToggle({ activeView, onChange }: PoolViewToggleProps) {
   return (
-    <div className="pool-toggle-bar flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none" role="tablist" aria-label="نمای لیست لیدها">
+    <div className="pool-toggle-bar flex items-center gap-1 overflow-x-auto pb-1 scrollbar-none" role="tablist" aria-label="نمای فهرست لیدها">
       {LEAD_VIEWS.map((view) => {
         const isActive = view.mode === activeView;
         return (
