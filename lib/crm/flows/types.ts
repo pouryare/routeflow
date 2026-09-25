@@ -40,8 +40,6 @@ export interface FlowSet {
   visit_window?: VisitWindow;
   /** Driver-visit flows only: the visit produced a partial-interest handoff to sales. */
   handoff_sales?: boolean;
-  /** Driver-visit flows only: the driver chose to promote this lead location to a customer. */
-  convert_location?: boolean;
   /** Driver-visit flows only: the lead location's 1-5 stars for the three criteria. */
   stars?: { potential?: number; volume?: number; ease?: number };
 }

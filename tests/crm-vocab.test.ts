@@ -35,7 +35,10 @@ describe("CRM vocabulary", () => {
       "link", "link", "link", "link", "link", "ref", "ref", "here", "other",
     ]);
     expect([...v.FOOD_APP_SOURCES]).toEqual(["SNAPPFOOD", "TAPSI_FOOD"]);
-    expect(v.NEXT_KINDS).toEqual(["call", "visit", "verify_visit", "sample_delivery", "quote_followup", "outreach", "order"]);
+    // "reminder" is the eighth kind, and it is not optional: the lead-visit flow sets
+    // next_kind: "reminder" when a driver chooses to come back, and applyLeadVisit writes
+    // that straight into a task. Without it in the list a real reminder task is invalid.
+    expect(v.NEXT_KINDS).toEqual(["call", "visit", "verify_visit", "sample_delivery", "quote_followup", "outreach", "order", "reminder"]);
   });
   it("validates unknown inputs and formats Persian digits", () => {
     expect(v.isOneOf(v.PRICE_TIERS, "mid")).toBe(true);

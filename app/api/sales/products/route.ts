@@ -6,9 +6,14 @@ import { readCatalogue, createProduct } from "@/lib/catalogue";
 /** The catalogue is company-wide, so there is no group filter here -- but the role
  *  split is real and worth stating: everyone who sells needs to read a price, and only
  *  the owner sets one. A فروشنده quoting a price is doing their job; a فروشنده changing
- *  one is a different act entirely. */
+ *  one is a different act entirely.
+ *
+ *  A راننده is on the read side for the same reason they already appear in
+ *  `/sales/deliveries` and the academy: in this app the driver is also the field sales
+ *  rep, and a rep who cannot read a price cannot quote one at the door. Writing a price
+ *  stays owner-only either way. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver"]);
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);

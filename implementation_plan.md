@@ -232,27 +232,50 @@ None. No classes in the touched surface.
 
 ## [Implementation Order]
 
-### Phase 0 — Make the page reachable
+### Phase 0 — Make the page reachable  ✅ DONE (`f662046`)
 
-1. `proxy.ts`: allowlist `/leads`, `/api/lead-runs`.
-2. `lib/appNav.ts:70`: `driver` gets `/leads`; driver branch in `appTabs` (line 58). Both
-   renderers — `AppHeader.tsx:40`, `PageHeader.tsx:38` — call it unfiltered.
-3. Verify: `npx vitest run tests/proxy.test.ts tests/appNav.test.ts`.
+1. ~~`proxy.ts`: allowlist `/leads`, `/api/lead-runs`.~~ Done, plus `/api/leads/locations`.
+   **Found while doing it:** the visit route had admitted a driver in `requireRole` since it
+   was written, but sits under `/api/leads`, not `/api/crm/driver-visits` — so the gate
+   answered every driver visit and the route never ran. A driver could not record a visit.
+2. ~~`lib/appNav.ts`: `driver` branch.~~ Done as a written-out `DRIVER_TABS` list, not a
+   filter. Measured: 19 tabs were offered to a driver and exactly 1 was openable.
+3. ~~Verify.~~ Done. Also added `"driver"` to `tests/appNav.test.ts` ROLES, which had none.
 
-### Phase 1 — Name the outcomes (pure, no I/O)
+### Phase 1 — Name the outcomes  ✅ DONE
 
-4. `lib/leadDesire.ts`: `desireLabel` + `nextActionFor`.
-5. Verify: `tests/lead-desire.test.ts` — rule 2's whole vocabulary, proven without a database.
+4. ~~`lib/leadDesire.ts`: `desireLabel` + `nextActionFor`.~~ Done as **`lib/crm/leadDesire.ts`**
+   exporting **`visitOutcomeLabel`** + **`nextActionFor`**. The rename: it labels what happened
+   at the door, and leaving it called "desire" invites a hunt for a desire *state* we
+   deliberately do not have. Placed beside `outcomes.ts`/`vocab.ts`, whose two vocabularies
+   it bridges.
+   **Reuse found, not invented:** the follow-up kinds are `NEXT_KINDS`, and the plan's
+   invented word "revisit" is the existing `reminder`. `open_order` + `next_kind: "order"`
+   already exists in `afterCall.ts:188` as the "bought on the spot" pattern.
+5. ~~Verify.~~ `tests/lead-desire.test.ts`, 14 tests. Includes a walk of the flow's own options
+   proving the module covers every outcome the flow can set, and a guard that
+   `INTERESTED` always travels with `handoff_sales` — the only reason reading that outcome
+   alone is sufficient.
 
-### Phase 2 — Close the `READY_TO_BUY` dead end
+### Phase 2 — Close the `READY_TO_BUY` dead end  ✅ DONE
 
-6. Delete the `convert` step; add a `sold` step capturing what was ordered.
-7. `applyLeadVisit`: add the `order` task branch; drop the dead `convert_location`.
-8. Open the two order gates to `driver`: `GET /api/sales/products` and `POST /api/sales/orders`.
-   Neither admits a driver today, so an on-the-spot sale is not recordable by anyone.
-   **No commission change accompanies this** — commission is for orders only, and because one
-   person both sells and delivers, the existing per-kg accrual already pays them (spec §15).
-9. Verify: `tests/api/lead-visit-routing.test.ts`.
+6. ~~Delete the `convert` step; add a `sold` step.~~ Done. `sold` asks the one question a
+   driver can answer — did they buy *now* — and **both** answers file an order task, differing
+   only in urgency and in the `open_order` shortcut. No new branch in `applyLeadVisit` was
+   needed: the existing generic `next_kind && due` branch already files it.
+   `convert_location` removed from `FlowSet`; the comment in `write.ts` that claimed "the
+   caller opens the existing convert route" was false and is corrected.
+7. ~~Open the two order gates to `driver`.~~ Done. Reading is safe because `orderFilter`
+   already scopes a driver to orders on their own runs.
+   **Found, not fixed (Phase 3 needs a decision):** that scope is *runs*, not authorship, so
+   a van order will not appear in the driver's own order list until it is on a delivery run.
+8. ~~Verify.~~ `tests/api/lead-visit-routing.test.ts`, 9 tests. Reverting `leadVisit.ts` fails
+   13 tests across three files, so these are not vacuous.
+9. **Two pre-existing failures fixed** because they sat in this area and blocked verification:
+   `crm-vocab.test.ts` listed 7 `NEXT_KINDS` when there have been 8 (`reminder` is required by
+   the flow), and `crm-replay.test.ts` still expected `VISIT_CLOSED` to be a no-op, which
+   contradicted `outcomes.ts`, `outcomeToStatus`, and the reminder the flow offers it. Both
+   were stale expectations, not source bugs.
 
 ### Phase 3 — Rule 1: conversion by first purchase
 

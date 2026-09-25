@@ -3,7 +3,19 @@ import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
 import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
 
-const CAN_SELL = ["owner", "group_manager", "salesperson"] as const;
+/** Who may read and place an order.
+ *
+ *  A راننده is here because in this app the driver is also the field sales rep, and the
+ *  whole point of the lead work is that a sale can be written down at the door rather than
+ *  reconstructed from memory later. Reading is safe to open up: `orderFilter` already
+ *  scopes a driver to the orders on runs assigned to them, so listing costs them nothing
+ *  they should not see.
+ *
+ *  Worth knowing for the next phase: that scope is runs, not authorship, so an order a
+ *  driver places from a lead will not appear in this list until it is on a delivery run.
+ *  A van order needs either its own scope rule or a "my orders" read that follows
+ *  salesperson_user_id -- deliberately not changed here. */
+const CAN_SELL = ["owner", "group_manager", "salesperson", "driver"] as const;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...CAN_SELL]);

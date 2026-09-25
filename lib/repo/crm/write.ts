@@ -232,10 +232,17 @@ export function applyFlowCore(
  *  The flow's `acc` carries everything the row needs to know:
  *    - outcome  -> visit_outcome (the one-word record of what happened)
  *    - stars    -> rating_potential / volume / ease
- *    - convert_location -> the driver promoted it; the caller opens the existing convert route
- *    - handoff_sales     -> the driver met someone interested but unreachable by phone;
+ *    - handoff_sales -> the driver met someone interested but unreachable by phone;
  *                          create a call task for the group's sales team
- *    - next_kind / due   -> a reminder task (only when the driver chose to set one)
+ *    - next_kind / due / open_order -> a task for whoever acts next. A ready buyer sets
+ *                          next_kind "order", so the office gets the paperwork even if the
+ *                          driver never opens the order page; open_order additionally offers
+ *                          that page to the driver, which is the same pair afterCall.ts uses.
+ *
+ *  There is deliberately no conversion here. A lead becomes a customer when it buys, and
+ *  that happens in the order transaction, not in a visit record: the flow used to ask the
+ *  driver "تبدیل به مشتری؟" and stash the answer in `convert_location`, which nothing ever
+ *  read. The manual convert route still exists for the office.
  */
 export function applyLeadVisit(
   session: Session,

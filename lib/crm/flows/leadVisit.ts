@@ -42,19 +42,37 @@ export const leadVisitFlow: FlowConfig = {
       id: "detail_status", kind: "choice", q: "وضعیت دقیق",
       sub: "موفق بودید، حالا چی؟",
       options: [
-        { id: "buy", label: "آماده خرید", next: "convert", set: { outcome: "READY_TO_BUY" } },
-        { id: "partial", label: PARTIAL, next: "convert", set: { outcome: "INTERESTED", handoff_sales: true } },
-        { id: "closed", label: "بسته بود", next: "convert", set: { outcome: "VISIT_CLOSED" } },
-        { id: "noowner", label: "صاحب‌ش نبود", next: "convert", set: { outcome: "VISIT_NO_OWNER" } },
+        { id: "buy", label: "آماده خرید", next: "sold", set: { outcome: "READY_TO_BUY" } },
+        { id: "partial", label: PARTIAL, next: "rate", set: { outcome: "INTERESTED", handoff_sales: true } },
+        { id: "closed", label: "بسته بود", next: "rate", set: { outcome: "VISIT_CLOSED" } },
+        { id: "noowner", label: "صاحب‌ش نبود", next: "rate", set: { outcome: "VISIT_NO_OWNER" } },
       ],
     },
 
-    convert: {
-      id: "convert", kind: "choice", q: "تبدیل به مشتری؟",
-      sub: "آیا این سرنخ به مشتری تبدیل شد؟",
+    /** They are ready to buy, so somebody has to write the order down.
+     *
+     *  This step used to be `convert`: "تبدیل به مشتری؟", asked of the driver, answering
+     *  yes or no. It was wrong twice over. A driver cannot make a commercial decision --
+     *  the lead becomes a customer when it buys, and buying is the office's paperwork, not
+     *  a tap at the door. And the answer went nowhere: `convert_location` was written to
+     *  the visit's accumulator and read by nothing at all, so the question was a lie that
+     *  cost a tap and stored a discarded opinion. The comment in write.ts claimed "the
+     *  caller opens the existing convert route"; no caller ever did.
+     *
+     *  Both answers here create the order task, because a ready buyer who walks away
+     *  unrecorded is the exact failure this work exists to stop. They differ in urgency and
+     *  in the shortcut: "now" also sets open_order, which is the flag AfterCallFlow already
+     *  reads to offer the order page, so the sale can be written down before the van
+     *  leaves the kerb. That flag and the next_kind/due pair are the existing mechanism,
+     *  copied from afterCall.ts rather than invented for the visit. */
+    sold: {
+      id: "sold", kind: "choice", q: "همین حالا سفارش می‌دهند؟",
+      sub: "اگر همین حالا خرید کردند، ثبتش کن",
       options: [
-        { id: "yes", label: "بله", tone: "rec", next: "rate", set: { convert_location: true } },
-        { id: "no", label: "نه", next: "rate" },
+        { id: "now", label: "بله، همین حالا", tone: "rec", next: "rate",
+          set: { next_title: "ثبت سفارش", next_kind: "order", due: { kind: "in_hours", hours: 0 }, open_order: true } },
+        { id: "office", label: "فعلاً نه، دفتر پیگیری کند", next: "rate",
+          set: { next_title: "ثبت سفارش", next_kind: "order", due: TOMORROW_10 } },
       ],
     },
 

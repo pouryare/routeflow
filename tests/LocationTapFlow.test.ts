@@ -46,7 +46,7 @@ describe("LocationTapFlow logic", () => {
     const s2 = answerStep(leadVisitFlow, ctx, s1, "go");
     const s3 = answerStep(leadVisitFlow, ctx, s2, "ok");
     const s4 = answerStep(leadVisitFlow, ctx, s3, "buy");
-    const s5 = answerStep(leadVisitFlow, ctx, s4, "yes");
+    const s5 = answerStep(leadVisitFlow, ctx, s4, "now");
     expect(s5.stack).toContain("rate");
   });
 
@@ -56,7 +56,7 @@ describe("LocationTapFlow logic", () => {
     const s2 = answerStep(leadVisitFlow, ctx, s1, "go");
     const s3 = answerStep(leadVisitFlow, ctx, s2, "ok");
     const s4 = answerStep(leadVisitFlow, ctx, s3, "buy");
-    const s5 = answerStep(leadVisitFlow, ctx, s4, "yes");
+    const s5 = answerStep(leadVisitFlow, ctx, s4, "now");
     const s6 = answerStep(leadVisitFlow, ctx, s5, "stars", "4,3,5");
     expect(s6.saved).toBe(false);
     expect(s6.acc.stars).toEqual({ potential: 4, volume: 3, ease: 5 });
@@ -69,7 +69,7 @@ describe("LocationTapFlow logic", () => {
     const s2 = answerStep(leadVisitFlow, ctx, s1, "go");
     const s3 = answerStep(leadVisitFlow, ctx, s2, "ok");
     const s4 = answerStep(leadVisitFlow, ctx, s3, "buy");
-    const s5 = answerStep(leadVisitFlow, ctx, s4, "yes");
+    const s5 = answerStep(leadVisitFlow, ctx, s4, "now");
     const s6 = answerStep(leadVisitFlow, ctx, s5, "stars", "5,4,5");
     const s7 = answerStep(leadVisitFlow, ctx, s6, "WAITING_ON_THEM"); // skip has save: true
     expect(s7.saved).toBe(true);
@@ -81,12 +81,16 @@ describe("LocationTapFlow logic", () => {
     const s2 = answerStep(leadVisitFlow, ctx, s1, "go");
     const s3 = answerStep(leadVisitFlow, ctx, s2, "ok");
     const s4 = answerStep(leadVisitFlow, ctx, s3, "buy");
-    const s5 = answerStep(leadVisitFlow, ctx, s4, "yes");
+    const s5 = answerStep(leadVisitFlow, ctx, s4, "now");
     const s6 = answerStep(leadVisitFlow, ctx, s5, "stars", "5,4,5");
     const s7 = answerStep(leadVisitFlow, ctx, s6, "WAITING_ON_THEM");
     expect(s7.saved).toBe(true);
     expect(s7.acc.outcome).toBe("READY_TO_BUY");
-    expect(s7.acc.convert_location).toBe(true);
+    // A driver who closed the sale at the door leaves an order behind, and the host is
+    // told to offer the order page. This assertion used to be `convert_location` -- the
+    // flag the removed convert step set, which nothing ever read.
+    expect(s7.acc.next_kind).toBe("order");
+    expect(s7.acc.open_order).toBe(true);
   });
 
   it("handles failure flow with reminder to rate", () => {

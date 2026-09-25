@@ -30,10 +30,16 @@ describe("OUTCOMES", () => {
     }
   });
   it("maps misses, cold returns, and no-op outcomes distinctly", () => {
+    // A closed shop is a MISS, not a no-op and not a talk: the driver was there and came
+    // away with nothing, which is an attempt worth counting and a visit worth retrying.
+    // This assertion used to expect the no-op shape and grouped VISIT_CLOSED with INVALID,
+    // which contradicted outcomes.ts ("a closed shop is a miss, not a talk"), the
+    // no_answer status write.ts derives from it, and the reminder the visit flow offers.
+    // Only INVALID is a genuine no-op.
     expect(OUTCOMES.NO_ANSWER).toMatchObject({ contact_status: "no_answer", miss: true, talked: false, signal: null });
     expect(OUTCOMES.NOT_INTERESTED).toMatchObject({ stage: "not_interested", talked: true, signal: "cold" });
-    expect(OUTCOMES.VISIT_CLOSED).toEqual({ contact_status: null, stage: null, signal: null, attempt: false, miss: false, talked: false });
-    expect(OUTCOMES.INVALID).toEqual(OUTCOMES.VISIT_CLOSED);
+    expect(OUTCOMES.VISIT_CLOSED).toEqual({ contact_status: null, stage: null, signal: null, attempt: true, miss: true, talked: false });
+    expect(OUTCOMES.INVALID).toEqual({ contact_status: null, stage: null, signal: null, attempt: false, miss: false, talked: false });
   });
 });
 
