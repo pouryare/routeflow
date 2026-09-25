@@ -153,8 +153,9 @@ a call task has left the driver's list even though the driver never touched it a
 | `lib/crm/flows/leadVisit.ts` | Delete the `convert` step (52-58). Route `READY_TO_BUY` to a new `sold` step capturing *what was ordered*. |
 | `lib/repo/crm/write.ts` | Remove the dead `convert_location` branch (line 235). Add the `order` task beside the existing `reminder` (288) and `handoff_sales` (303) branches. |
 | `app/api/leads/locations/[id]/visit/route.ts` | Already accepts `driver` (line 12). Restrict to locations on the caller's own run; return `label` + `nextAction`. |
-| `app/api/sales/orders/route.ts` | Accept `lead_location_id`; call `promoteLeadToCustomer` in-transaction, then use the returned id. |
 | `app/api/sales/products/route.ts` | GET is `owner`/`group_manager`/`salesperson` (line 11) — a driver cannot record what was sold. Add `driver`. |
+| `app/api/sales/orders/route.ts` | **Two changes.** (1) `CAN_SELL` is the same three roles (line 6) — a driver cannot place an order at all, so add `driver`. (2) Accept `lead_location_id`, calling `promoteLeadToCustomer` inside the order transaction and using the returned id. Approved: the `driver` role is both field rep and delivery driver. |
+| `lib/driverCommissionLedger.ts` | Line 161 resolves unset and deliberately-zero rates to the same `0`. Carry the distinction into the statement row (spec §15.2). |
 | `app/api/locations/[id]/convert/route.ts` | **Kept, per your decision.** Stop deleting the `saved_locations` row: `lead_list_items.location_id` is `ON DELETE CASCADE` (`lib/db.ts:952`), so the delete rips the lead out of every route — including the one the driver is standing on. |
 | `app/(shell)/leads/hooks/useLeads.ts` | Branch `load()` — it `Promise.all`s two `owner`/`group_manager`-only endpoints, so a driver gets two 403s. |
 | `app/(shell)/leads/page.tsx` | Driver branch; hide pool, import, search, day-split. Show outcome label + derived next action, no convert button. |
@@ -247,7 +248,10 @@ None. No classes in the touched surface.
 
 6. Delete the `convert` step; add a `sold` step capturing what was ordered.
 7. `applyLeadVisit`: add the `order` task branch; drop the dead `convert_location`.
-8. `GET /api/sales/products`: allow `driver`, so "what did they buy" is recordable.
+8. Open the two order gates to `driver`: `GET /api/sales/products` and `POST /api/sales/orders`.
+   Neither admits a driver today, so an on-the-spot sale is not recordable by anyone.
+   **No commission change accompanies this** — commission is for orders only, and because one
+   person both sells and delivers, the existing per-kg accrual already pays them (spec §15).
 9. Verify: `tests/api/lead-visit-routing.test.ts`.
 
 ### Phase 3 — Rule 1: conversion by first purchase

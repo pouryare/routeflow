@@ -2,9 +2,30 @@
 
 **Date:** 2026-09-25 · **Status:** Approved (brainstorming)
 **Scope:** Manager-facing lead health — one derived function feeding a decay clock and a funnel view.
-**Companion:** `implementation_plan.md` (the adaptive `/leads` driver work). This spec adds the
-manager's *visibility*; it depends on `leadVisitFlow` writing `visit_outcome` correctly, which
-that plan fixes.
+**Companion plan:** `implementation_plan.md` (repo root) — the adaptive `/leads` driver work.
+
+**These two documents are one feature split across a boundary, and the order matters.** The
+dependency is hard, not stylistic:
+
+```
+implementation_plan.md                  2026-09-25-lead-decay-and-funnel-design.md
+──────────────────────                  ────────────────────────────────────────────
+Phase 2  fix leadVisitFlow          ──▶  reads visit_outcome
+         (remove the dead convert step)     to compute stage + band
+Phase 3  conversion by first purchase
+Phase 4  lead_runs + driver access  ──▶  sweeps the same runs
+Phase 5  driver view                    (rotting ⇒ the driver needs a route)
+```
+
+* **Plan first.** The funnel has nothing to show until `visit_outcome` is written correctly, and
+  the decay clock has nothing to sweep until `lead_runs` exists.
+* **Spec second.** It adds the manager's *visibility* onto data the plan makes trustworthy.
+
+Building the funnel first would render a funnel of zeroes — or worse, of wrong numbers, because
+`leadVisitFlow` currently discards the driver's answer to the convert step. That is the specific
+failure this ordering prevents.
+
+Both are committed together in `43deda0` and should be implemented as one sequence.
 
 ---
 
@@ -386,9 +407,163 @@ delivery routing; offline support beyond the existing `clientUuid` guard; per-dr
 
 ---
 
-## 13. Open questions for implementation
+## 13. Resolved
 
-1. Should the funnel start org-wide, or be group-scoped from day one? (Group scoping is safer and
-   matches `canReachGroup`; org-wide is more useful to an owner.)
-2. Does a resurrected lead return to `warm`, or to the driver's run? (Companion plan's
-   `handedOff` logic must not resurrect a lead that was explicitly handed to phone sales.)
+1. **Group-scoped from day one.** Matches `canReachGroup`, and an owner can widen later — the
+   reverse (org-wide first) cannot safely be narrowed without a data leak. The seed-vs-tenant
+   merge in §5 is the same widening pattern.
+2. **A resurrected lead returns to the driver's run**, with one guard that must be explicit:
+
+   > A resurrected lead is re-assigned to a run **unless it has an open handoff task**. Phone
+   > sales keeps it, because the handoff was a deliberate routing decision by a human and is more
+   > recent than the decay that made it look dead.
+
+   Without the guard, resurrection silently pulls a lead back from the person who was already
+   asked to call it — reintroducing exactly the driver↔phone-sales ping-pong this feature exists
+   to end. Implementation reads `handedOff` from the companion plan; the two are one mechanism.
+
+---
+
+## 14. UI — approved layouts
+
+Three screens were mocked and approved in review. All three are manager-or-driver scoped, and
+all reuse the existing `meridian` tokens, the RTL shell, and `<SyncStatus />` (already rendered
+by `/driver`) for the offline state.
+
+### 14.1 Manager — the funnel is a filter, not a mode
+
+Approved: **the combined layout.** A literal AIDA funnel shape is pinned at the top of the page
+as a permanent gauge; the band columns sit below it. **Clicking a stage filters the columns**
+rather than switching modes.
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  funnel, always visible, clickable                             │
+│   توجه ۱٬۵۵۰ → علاقه ۲۸۰ (۱۸٪) → تمایل ۳۱ (۱۱٪) → اقدام ۱۲    │
+├────────────────────────────────────────────────────────────────┤
+│  band chips:  داغ ۹ · گرم ۱۴۲ · سرد ۸۲ · پوسیده ۴۷             │
+├────────────────────────────────────────────────────────────────┤
+│  columns, scoped to the selected stage: hot │ warm │ cold │ …   │
+└────────────────────────────────────────────────────────────────┘
+```
+
+**Why not a mode toggle.** The two candidate layouts answer different questions — the funnel
+shape answers "is the pipeline healthy?", the columns answer "which lead do I act on?". A toggle
+makes each mode show half the picture and requires a switch to answer the other half. Filtering
+answers both on one screen with no state change.
+
+**Why the funnel must be pinned.** The 47 rotting leads are currently invisible, which is the
+mechanism of failure #1. In this layout that number is on screen at all times, whatever stage is
+selected.
+
+### 14.2 Manager — placement
+
+The funnel is a **section of the manager's `/leads` page, below the pool** — not a separate route.
+Drivers start using `/leads` in the companion plan, so a second route is a second place to look,
+and the pool is what a manager opens `/leads` *to* do. It must not be pushed down the page.
+
+### 14.3 Driver — rich next-stop card + collapsible day
+
+Approved: **the third layout.** The top of the screen carries everything needed *while standing
+at the door*:
+
+```
+┌────────────────────────────────────────┐
+│ ۱۲ آبان · ۸:۴۲            ● آفلاین    │
+│ توقف ۳ از ۸ · ۴٫۲ کیلومتر             │
+│ هتل آریا                                │
+│ تهران، خیابان ولیعصر، پلاک ۱۲۰          │
+│ ┌─ دفعهٔ قبل — ۶ روز پیش ─────────┐   │
+│ │ صاحبش نبود · امتیاز ۳/۲/۲      │   │
+│ └────────────────────────────────┘   │
+│ ┌─ ⚠ تماس فروش انجام نشده — ۴ روز ─┐   │
+│ └────────────────────────────────┘   │
+│ [ شروع مسیریابی ]                     │
+│ [ رسیدم — ثبت نتیجه ]                 │
+│ ▾ بقیهٔ امروز — ۵ توقف                 │
+└────────────────────────────────────────┘
+```
+
+Two of these blocks are new information that exists nowhere today:
+
+- **Last visit's outcome and star ratings** — so the driver does not walk in blind.
+- **The undelivered-call warning** — the driver is standing at the business that call was about.
+  This is failure #1 surfaced at the only moment someone can act on it. No manager screen fixes
+  it; this does.
+
+**Handed-off leads stay visible, struck through, labelled `→ فروش تلفنی`.** They leave the
+driver's *ownership* (D-resolved §13) but not their *sight*. Silent removal is precisely the
+"the app is broken" feeling, and the driver would see stops vanishing with no explanation.
+
+### 14.4 Driver — tap budget
+
+The ≤5-tap rule was **dropped as a design constraint** for this screen. `leadVisit` already
+declares `budget: { common: 6, longest: 11 }` — above 5, because it is a capture flow and
+`docs/tap-flow-principles.md` §4 allows 7/12 for those. `tests/crm-flow-configs.test.ts:24`
+walks every branch and holds each flow to its *declared* budget. So the budget is a contract on
+the flow config, not a constraint on the page, and the page is free to carry more context.
+
+### 14.5 Driver — on-the-spot sale: full order capture
+
+Approved: **option A.** The driver picks products and packs and registers the sale. Two backend
+gates must open:
+
+- `GET /api/sales/products` — currently `["owner","group_manager","salesperson"]`
+- `POST /api/sales/orders` — `CAN_SELL` is the same three
+
+Neither admits a `driver` today, so an on-the-spot sale is not recordable by anyone. See §15.
+
+---
+
+## 15. Commission — resolved, and smaller than expected
+
+**Domain fact (from review):** the `driver` role is *both* the field sales rep and the delivery
+driver — one person. This is why the field rep closes the order *and* why the commission work was
+requested.
+
+**Consequence — the apparent gap closes itself.** Accrual keys on **delivered weight**
+(`lib/commissionLedger.ts:129`, *"Every delivered order credited to a person inside a period"*).
+Because the same person sells and delivers, the existing per-kg accrual already pays them for
+the whole order. **No accrual rule change is needed.** Splitting the two roles later is the event
+that would force one, and it is deliberately not pre-built.
+
+### 15.1 Confirmed
+
+| Rule | Implementation | New schema |
+|---|---|---|
+| Commission is for **orders only** | existing per-kg accrual on delivered weight | none |
+| **Converting** a lead earns nothing | conversion writes `customers` + an `activities` row only | none |
+| **Adding** a lead earns nothing | same | none |
+| A person may earn **zero** | `rate_per_kg_toman = 0` is valid — `isToman` is `Number.isInteger` (`lib/money.ts:55`) | none |
+
+**No new commission table. No new accrual type. No general rate engine.**
+
+### 15.2 One real defect found
+
+`lib/driverCommissionLedger.ts:161`:
+
+```ts
+const perKg = rate?.rate_per_kg_toman ?? 0;
+```
+
+An **unset** rate and a **deliberately zero** rate both resolve to `0` and are indistinguishable
+in the statement. A manager looking at a driver earning nothing cannot tell "we set this to
+zero" from "we never set a rate". Fix: keep `?? 0` for the arithmetic, but carry the distinction
+into the statement row so the UI can show *صفرِ عمدی* against *نرخ ثبت نشده*.
+
+### 15.3 Explicitly deferred
+
+The generalized rate engine (percentage / flat / per-size / per-action / per-product, per person)
+is **not built**. Three of the four cases already exist:
+
+| Case | Exists as |
+|---|---|
+| percentage | `manager_commission_overrides.override_pct` |
+| per-product | per-kg resolved through `products.kg_per_base_unit` |
+| per-action | `urgent_rate_per_kg_toman` — same action, different rate |
+| per-person | `salesperson_user_id` / `driver_user_id` keyed, effective-dated |
+
+Only *flat* is absent, and no current rule needs it. Building a rate engine to express cases that
+are already covered is speculative work on **payroll** code, where the file's own comment warns
+that accrual is derived and restatable while payment is a fact (`lib/db.ts:1252`). Revisit when a
+second role exists, or when a real rule needs flat.
