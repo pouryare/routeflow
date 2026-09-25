@@ -18,7 +18,7 @@ export const STATUS_META: Record<LocationStatus, string> = { contacted: "تما�
 export interface SavedLocation { id: number; name: string; maps_url: string; address: string | null; lat: number | null; lng: number | null; notes: string | null; resolution: "direct" | "pluscode" | "nominatim" | "manual" | "unresolved"; status: LocationStatus | null; rating_potential: number | null; rating_volume: number | null; rating_ease: number | null; created_at: string; priority: boolean; organization_id: number | null; group_id: number | null; }
 export type RoutableLocation = SavedLocation & { lat: number; lng: number };
 interface LeadList { id: number; name: string; location_ids: number[]; }
-type SortMode = "nearest" | "score" | "name" | "newest" | "status" | "route" | "priority";
+export type SortMode = "nearest" | "score" | "name" | "newest" | "status" | "route" | "priority";
 const SORT_LABEL: Record<SortMode, string> = { nearest: "نزدیک‌ترین", score: "بهترین امتیاز", name: "نام", newest: "تازه‌ترین", status: "وضعیت", route: "ترتیب مسیر", priority: "اولویت" };
 const SORT_KEY = "coverage_lead_sort"; const SCRATCH_KEY = "coverage_lead_run"; const RESORT_THRESHOLD_KM = 0.1;
 function readSortMode(): SortMode { try { const raw = localStorage.getItem(SORT_KEY); if (raw && Object.keys(SORT_LABEL).includes(raw)) return raw as SortMode; } catch {} return "nearest"; }
@@ -56,7 +56,15 @@ export function useLeads() {
   useEffect(() => { if (linkedId === undefined) return; linkedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [linkedId, loading]);
   useEffect(() => { saveSortMode(sortMode); }, [sortMode]);
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
-  const load = useCallback(async () => { setLoading(true); try { const [locRes, listRes] = await Promise.all([fetch("/api/locations"), fetch("/api/lead-lists")]); const locData = await locRes.json(); const listData = await listRes.json(); setLocations(locData.locations ?? []); setLists(listData.lists ?? []); } catch { toast("خطا در بارگذاری", "error"); } finally { setLoading(false); } }, [toast]);
+  /* A driver has no pool. /api/locations and /api/lead-lists are owner/group_manager
+     routes, so asking for them as a driver is two guaranteed 403s -- and the page used to
+     fire them on mount before rendering anything. Skipping them keeps a driver's network
+     clean and their console free of errors they can do nothing about. Their data comes
+     from /api/lead-runs, in useDriverRun. */
+  const load = useCallback(async () => {
+    if (isManager === false) { setLoading(false); return; }
+    setLoading(true);
+    try { const [locRes, listRes] = await Promise.all([fetch("/api/locations"), fetch("/api/lead-lists")]); const locData = await locRes.json(); const listData = await listRes.json(); setLocations(locData.locations ?? []); setLists(listData.lists ?? []); } catch { toast("خطا در بارگذاری", "error"); } finally { setLoading(false); } }, [toast, isManager]);
   useRunAfterMount(load);
   const persistRun = useCallback(async (next: number[], listId: number | null) => { if (listId === null) { try { localStorage.setItem(SCRATCH_KEY, JSON.stringify(next)); } catch {} return; } try { const res = await fetch(`/api/lead-lists/${listId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location_ids: next }) }); if (!res.ok) throw new Error(); setLists((prev) => prev.map((l) => (l.id === listId ? { ...l, location_ids: next } : l))); } catch { toast("تغییر مسیر ذخیره نشد", "error"); } }, [toast]);
   const updateRun = useCallback((next: number[]) => { setRun(next); persistRun(next, activeListId); }, [activeListId, persistRun]);

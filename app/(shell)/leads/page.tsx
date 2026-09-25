@@ -16,10 +16,12 @@ import RunPanel from "@/components/leads/RunPanel";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import PoolViewToggle from "@/components/leads/PoolViewToggle";
+import DriverRunView from "@/components/leads/DriverRunView";
 import PoolViewWrapper from "@/components/leads/views/PoolViewWrapper";
-import SearchBox from "@/components/SearchBox";
 import { readViewMode } from "@/lib/leadViews";
 import type { LeadViewMode } from "@/lib/leadViews";
+import { Icon } from "@/components/meridian/Icon";
+import type { SortMode } from "./hooks/useLeads";
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
 import CollapsibleSection from "@/components/CollapsibleSection";
@@ -29,7 +31,10 @@ import { averageScore } from "@/lib/leadScore";
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 
 export { STATUS_META };
-export type { SavedLocation };
+// Re-exported from the hook rather than declared here: `SavedLocation` is defined in
+// useLeads, and a bare `export type { SavedLocation }` with no source is a name this file
+// never bound -- which is exactly what tsc said.
+export type { SavedLocation } from "./hooks/useLeads";
 
 export default function LeadsPage() {
   const {
@@ -107,49 +112,120 @@ export default function LeadsPage() {
             ) : <span className="text-text-muted">در حال یافتن موقعیت شما…</span>}
           </div>
 
-          <LeadImportPanel onAdded={() => load()} />
-
-          <SearchBox
-            value={query}
-            onChange={setQuery}
-            sortMode={sortMode}
-            onSortModeChange={(mode) => setSortMode(mode as any)}
-            activeListId={activeListId}
-            onListChange={openList}
-            lists={lists}
-            sortAnchor={sortAnchor}
-            onPositionClear={() => { setSortAnchor(null); setShowManualPos(false); }}
-            onSetPosition={() => setShowManualPos(true)}
-            onSelectAll={handleSelectAll}
-            inBatchView={activeView === "batch"}
-            activeView={activeView}
-            hideResults
-          />
-
-          {loading ? <SkeletonRows /> : visible.length === 0 ? <EmptyState icon="search" title="لیدی یافت نشد" hint="لیدی با این فیلتری یافت نشد" /> : (
+          {/* The pool, the import panel and the planner are the manager's. A driver opening
+              /leads gets their route and nothing else -- no search, no sorting, no way to
+              add a pin. Gating each block on isManager rather than branching the whole page
+              keeps the manager path byte-identical. */}
+          {isManager && (
             <>
-              <PoolViewToggle activeView={activeView} onChange={setActiveView} />
-              <PoolViewWrapper
-                viewMode={activeView}
-                locations={visible.map((v) => v.loc)}
-                loading={loading}
-                navAppId={navAppId}
-                run={run}
-                selectedMapId={selectedMapId}
-                linkedId={linkedId}
-                linkedRef={linkedRef}
-                onSelect={setSelectedMapId}
-                onToggleRun={(id) => { if (run.includes(id)) removeFromRun(id); else addToRun(id); }}
-                onPin={setPinningId}
-                onTogglePriority={togglePriority}
-                onAddToPlan={() => {}}
-                onNotesChange={() => {}}
-                onNameChange={(id, name) => updateLocationName(id, name)}
-                sortAnchor={sortAnchor}
-                sortMode={sortMode}
-                priorityHigh={false}
-              />
+              <LeadImportPanel onAdded={load} />
+
+              <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 flex flex-col gap-4">
+
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                <h2 className="sechead__title truncate">
+                  همه مکان‌ها ({faNum(locations.length)})
+                </h2>
+                <div className="relative shrink-0">
+                  <input
+                    type="text"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    placeholder="جستجوی نام مکان..."
+                    className="w-48 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-1.5 pl-7 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none transition-colors focus:border-accent"
+                    aria-label="جستجوی مکان"
+                  />
+                  {/* One icon, one side, swapped by emptiness: a magnifier while the field is
+                      empty, a clear button the moment there is something to clear. Both sit
+                      on the left, the end side in RTL, because that is the side the input
+                      already reserves (pl-7) -- so Persian text, which grows from the right
+                      towards the left, can never slide underneath whichever icon is showing. */}
+                  {query ? (
+                    <button
+                      type="button"
+                      onClick={() => setQuery("")}
+                      className="absolute left-2 top-1/2 -translate-y-1/2 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+                      aria-label="پاک کردن جستجو"
+                    >
+                      <Icon name="x" size="sm" />
+                    </button>
+                  ) : (
+                    <Icon name="search" size="sm" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-faint" />
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
+                    const newIds = ids.filter((id) => !run.includes(id));
+                    if (newIds.length === 0) return;
+                    updateRun([...run, ...newIds]);
+                  }}
+                  className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors flex items-center gap-1"
+                >
+                  <Icon name="check" size="sm" /> انتخاب همه
+                </button>
+                {sortAnchor ? (
+                  <span className="text-[length:var(--text-xs)] text-text-muted">نزدیک‌ترین</span>
+                ) : (
+                  <button
+                    onClick={() => setShowManualPos(true)}
+                    className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
+                  >
+                    <Icon name="locate" size="sm" /> تعیین موقعیت
+                  </button>
+                )}
+                <select
+                  value={sortMode}
+                  onChange={(e) => setSortMode(e.target.value as SortMode)}
+                  className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
+                  aria-label="ترتیب"
+                >
+                  <option value="nearest">نزدیک‌ترین</option>
+                  <option value="score">امتیاز</option>
+                  <option value="name">نام</option>
+                  <option value="newest">تازه‌ترین</option>
+                  <option value="status">وضعیت</option>
+                  <option value="route">ترتیب مسیر</option>
+                  <option value="priority">اولویت</option>
+                </select>
+              </div>
+            </div>
+
+            {loading ? <SkeletonRows /> : visible.length === 0 ? <EmptyState icon="search" title="سرنخی یافت نشد" hint="سرنخی با این فیلتری یافت نشد" /> : (
+              <>
+                <PoolViewToggle activeView={activeView} onChange={setActiveView} />
+                <PoolViewWrapper
+                  viewMode={activeView}
+                  locations={visible.map((v) => v.loc)}
+                  loading={loading}
+                  navAppId={navAppId}
+                  run={run}
+                  selectedMapId={selectedMapId}
+                  linkedId={linkedId ?? null}
+                  linkedRef={linkedRef}
+                  onSelect={setSelectedMapId}
+                  onToggleRun={(id) => { if (run.includes(id)) removeFromRun(id); else addToRun(id); }}
+                  onPin={setPinningId}
+                  onTogglePriority={togglePriority}
+                  onAddToPlan={() => {}}
+                  onNotesChange={() => {}}
+                  onNameChange={(id, name) => updateLocationName(id, name)}
+                  sortAnchor={sortAnchor}
+                  sortMode={sortMode}
+                  priorityHigh={false}
+                />
+              </>
+            )}
+              </section>
             </>
+          )}
+
+          {/* A driver sees their day, and the manager's tools are simply not rendered. */}
+          {!isManager && (
+            <DriverRunView onRecord={setTapFlowId} navAppId={navAppId} />
           )}
 
           {isManager && (
