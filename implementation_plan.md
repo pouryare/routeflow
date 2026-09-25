@@ -1,466 +1,319 @@
-# Implementation Plan: Multiple List Views for همه مکان‌ها
+# Implementation Plan — Adaptive `/leads` (Manager + Driver)
 
-## Overview
+## [Overview]
 
-Add 8 layout view variants (Compact List, Pocket Cards, Card Grid, Kanban, Score View, Table View, Batch Selection, Cluster View) to the همه مکان‌ها pool section on the `/leads` page. Users switch between views via a toggle bar styled to match the app's existing navigation chrome. The `useLeads()` hook provides canonical data; each view is a pure rendering layer over the same `visible` array. View preference persists to localStorage.
+One page, two views. A manager keeps the prospect pool, import, day-split and route building; a
+driver sees only their assigned route, a next-stop banner, and what happened at each stop.
+`lead_runs` becomes the route-runs backbone.
 
-**Current state**: The pool section renders a single `<ul>` of `<LocationCard>` rows (lines 133-141 of `page.tsx`), plus a standalone `<LeadsMap>` below the route section. Sort dropdown and search bar already exist above the list.
+Two business rules drive it:
 
-**Target state**: A view toggle bar sits above the pool list area. The active view component renders the same `visible` data in the chosen layout. All 8 views coexist in the same page section.
+1. **A lead becomes a customer when it buys.** A manager may still convert by hand.
+2. **A driver reports; the office decides.** A driver records what happened at the door. The
+   follow-up is derived, not chosen.
 
----
+Your three real-world outcomes map onto a vocabulary the codebase already has, and each needs
+one decision recorded and one task created:
 
-## Types
+| What happened | Recorded as | Derived follow-up | Who acts |
+|---|---|---|---|
+| Owner not there | `VISIT_NO_OWNER` | revisit, +1 day | driver, next round |
+| Bought on the spot | `READY_TO_BUY` | **order** → customer | driver records, office fulfils |
+| Doubts / timing / other supplier | `INTERESTED` | call, HIGH | phone sales |
 
-### New type definitions
+`applyLeadVisit` (`lib/repo/crm/write.ts:240`) **already** writes `visit_outcome` and **already
+creates two of these three tasks**: `reminder` for retries (line 288) and `call` for
+`handoff_sales` (line 303). So most of this plan is connecting what exists.
 
-```typescript
-// File: lib/leadViews.ts
-export type LeadViewMode = 
-  | "compact"    // Dense rows (current default)
-  | "pocket"     // Cards with paper slips peeking behind
-  | "grid"       // 2-3 column card grid
-  | "kanban"     // Columns grouped by status
-  | "score"      // Visual rating bars (potential/volume/ease)
-  | "table"      // Spreadsheet-style sortable columns
-  | "batch"      // Checkboxes + bulk actions for day-grouping
-  | "cluster";   // Grouped by district
+### The design principle: reuse, don't reinvent
 
-export interface LeadViewConfig {
-  mode: LeadViewMode;
-  label: string;
-  icon: string;       // Icon name for the toggle bar
-  description: string;
-}
+An earlier draft of this plan invented a `LeadDesire` state enum, a run table shape, and a
+dedup step. Every one of those already exists in this codebase under a different name. This
+version reuses them, which is smaller, and — more importantly — keeps the leads surface from
+drifting away from the CRM that already owns the truth.
 
-export const LEAD_VIEWS: LeadViewConfig[] = [
-  { mode: "compact", label: "مختصر", icon: "list", description: "دوره‌های فشرده برای مرور سریع" },
-  { mode: "pocket", label: "جیبی", icon: "wallet", description: "کارت‌های با کاغذ پشت آنها" },
-  { mode: "grid", label: "شبکه‌ای", icon: "grid", description: "شبکه ۲-۳ ستونی" },
-  { mode: "kanban", label: "کانبان", icon: "columns", description: "ستون‌ها بر اساس وضعیت" },
-  { mode: "score", label: "امتیاز", icon: "star", description: "نمایش امتیازات بالقوه/حجم/راحتی" },
-  { mode: "table", label: "جدول", icon: "table", description: "ستون‌های مرتب‌سازی‌پذیر" },
-  { mode: "batch", label: "گروهی", icon: "checkboxes", description: "با تیک‌برگری برای تقسیم روز" },
-  { mode: "cluster", label: "منطقه‌ای", icon: "map-pin", description: "گروه‌بندی بر اساس منطقه" },
-];
+| Need | Reuse | Not |
+|---|---|---|
+| Lead state | `customers.lifecycle` + `recomputeState` | a new `LeadDesire` state |
+| Run table shape | `delivery_runs` (`lib/db.ts:1148`) | a bespoke `lead_lists` extension |
+| Offline retry safety | `ux_lva_client_uuid` (`lib/repo/crm/migrate.ts:91`) | a new idempotency scheme |
+| Duplicate prevention | `findDuplicates` (`lib/repo/crm/dedupe.ts:26`) | a second dedup path |
+| Outcome vocabulary | `OUTCOMES` (`lib/crm/outcomes.ts:30`) | new codes |
+
+### The two real gaps
+
+**The `READY_TO_BUY` path is a dead end.** `leadVisitFlow` sets `outcome: "READY_TO_BUY"` and
+jumps to a `convert` step asking the driver «تبدیل به مشتری؟» — wrong under both rules (the
+driver cannot decide commercially; conversion should follow the order). Worse, the answer is
+**discarded**: `convert_location` is set but read nowhere (`write.ts:235` defers to "the
+caller", and the only caller ignores it). A driver is asked a question whose answer vanishes.
+
+**A lead cannot buy.** `POST /api/sales/orders` requires an existing `customers.id`
+(`app/api/sales/orders/route.ts:59`); a lead lives in `saved_locations`. There is no lead→order
+path at all. Conversion-by-purchase is missing, not broken.
+
+## [Types]
+
+### Single source of truth for lead state
+
+`saved_locations.visit_outcome` is **one fact about one visit**. `customers.lifecycle` is
+**where the lead stands**. They are different things and this plan keeps them separate:
+
+```ts
+// Fact about the most recent visit. Already exists: saved_locations.visit_outcome.
+// Only ever written by applyLeadVisit. Never treated as state.
+export type VisitOutcome = typeof OUTCOMES[number];
+
+// Where the lead stands. Already exists: customers.lifecycle, CHECK IN
+// ('lead','qualified','sampled','active','dormant','lost','blocked').
+// NEVER written directly -- recomputeState derives it from the activity log
+// (lib/repo/crm/state.ts:8 -> lifecycleFor(sales_stage, lifecycle)).
 ```
 
-### Existing types (unchanged)
+**Consequence:** there is no `LeadDesire` state enum. The driver UI needs friendly labels, so it
+gets a *display* mapping only — pure, derived, no persistence:
 
-- `SavedLocation` (`app/(shell)/leads/hooks/useLeads.ts:18`) — the canonical location shape
-- `LocationStatus` (`app/(shell)/leads/hooks/useLeads.ts:16`) — `"contacted" | "visited" | "no_answer" | "declined"`
-- `averageScore(row)` (`lib/leadScore.ts:77`) — returns `number | null`
-- `LEAD_CRITERIA` (`lib/leadScore.ts:33`) — `[{key: "potential", ...}, {key: "volume", ...}, {key: "ease", ...}]`
+```ts
+// lib/leadDesire.ts -- presentation only. The driver sees a word; the office sees the code.
+export function desireLabel(outcome: VisitOutcome | null): string;
+export function nextActionFor(outcome: VisitOutcome | null):
+  | { kind: "revisit"; dueInDays: number }
+  | { kind: "call"; priority: "HIGH" }
+  | { kind: "order" }
+  | null;
+```
 
----
+`nextActionFor` is where rule 2 is enforced: the driver cannot promote a lead to "needs a sales
+call" because no such option exists. They report; the mapping decides.
 
-## Files
+### New — run assignment
 
-### New Files
+Modelled directly on `delivery_runs` (`lib/db.ts:1148`), including the constraint that makes it
+work:
+
+```sql
+CREATE TABLE IF NOT EXISTS lead_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  driver_user_id INTEGER NOT NULL REFERENCES users(id),
+  group_id INTEGER REFERENCES groups(id),
+  run_date TEXT NOT NULL,                    -- ISO 'YYYY-MM-DD', validated on write
+  status TEXT NOT NULL DEFAULT 'planned'
+    CHECK (status IN ('planned','in_progress','done')),
+  planned_by INTEGER NOT NULL REFERENCES users(id),
+  organization_id INTEGER NOT NULL REFERENCES organizations(id),
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  UNIQUE (driver_user_id, run_date)          -- one run per driver per day
+);
+CREATE INDEX IF NOT EXISTS idx_lead_runs_driver ON lead_runs(driver_user_id, run_date);
+```
+
+`UNIQUE (driver_user_id, run_date)` is the constraint the earlier draft was missing. Without it
+a manager can create two lead runs for one driver on one day and the driver sees an arbitrary
+one. `routing.ts:327` is the select-then-reuse upsert to copy.
+
+Stops keep using the existing `lead_list_items` ordered membership — it already is an ordered
+list with `sort_order` and a cascade that keeps it clean.
+
+```ts
+export interface DriverStop {
+  locationId: number; name: string; address: string | null;
+  lat: number; lng: number; sortOrder: number;
+  visitOutcome: VisitOutcome | null;   // fact
+  label: string;                       // display mapping
+  nextAction: LeadNextAction;          // derived
+  visitedAt: string | null;
+  handedOff: boolean;                  // task created -> no longer this driver's next stop
+}
+```
+
+`handedOff` is derived from the open `tasks` row, not stored on the lead: a lead that generated
+a call task has left the driver's list even though the driver never touched it again.
+
+## [Files]
+
+### New
 
 | Path | Purpose |
 |---|---|
-| `lib/leadViews.ts` | `LeadViewMode` type, `LEAD_VIEWS` config array, localStorage key constant |
-| `components/leads/PoolViewToggle.tsx` | The view toggle bar matching nav chrome style |
-| `components/leads/views/PoolViewCompact.tsx` | Current list rendering (extracted from page.tsx) |
-| `components/leads/views/PoolViewPocket.tsx` | Pocket cards with paper slips peeking behind |
-| `components/leads/views/PoolViewGrid.tsx` | 2-3 column CSS grid of cards |
-| `components/leads/views/PoolViewKanban.tsx` | Status-column kanban board |
-| `components/leads/views/PoolViewScore.tsx` | Visual rating bars per location |
-| `components/leads/views/PoolViewTable.tsx` | Sortable column table |
-| `components/leads/views/PoolViewBatch.tsx` | Checkbox rows with bulk action bar |
-| `components/leads/views/PoolViewCluster.tsx` | Locations grouped by district |
-| `components/leads/views/PoolViewWrapper.tsx` | Orchestrator: renders the active view, passes `visible` data |
+| `lib/leadDesire.ts` | `desireLabel` + `nextActionFor`. Pure, no I/O. Where rule 2 is enforced and unit-tested. |
+| `lib/repo/leadRuns.ts` | `upsertLeadRun` (select-then-reuse, per `routing.ts:327`), `readDriverRuns`, `assignableDrivers`, `setRunStatus`. |
+| `lib/db.ts` → `promoteLeadToCustomer` | **Rule 1.** `saved_locations` → `customers`, dedup-guarded, idempotent, **no DELETE**. |
+| `app/api/lead-runs/route.ts` | `GET` (driver: own run / manager: group's), `POST` (manager: assign). |
+| `app/api/lead-runs/[id]/route.ts` | `PATCH` status / reassign; `GET` one run. |
+| `components/leads/NextStopBanner.tsx` | Driver-only: next unvisited, un-handed-off stop. |
 
-### Files to Modify
+### Modified
 
 | Path | Change |
 |---|---|
-| `app/(shell)/leads/page.tsx` | Add `PoolViewToggle` and `PoolViewWrapper`; replace the `<ul>` block |
-| `components/leads/LocationCard.tsx` | Add optional props for reuse across views (`compactMode`, `showDistance`, `showCheckboxes`) |
-| `components/leads/LocationCard.tsx` | Export `LocationCard` for use in grid/kanban views |
+| `proxy.ts` | Allowlist `/leads`, `/api/lead-runs` for `driver` (`isDriverBriefing`, line 173). Nothing is reachable without this. |
+| `lib/appNav.ts` | `/leads` `ready` is `isRepLead(r)` (line 70) — a driver gets a disabled span. Include `driver`; add a driver branch in `appTabs` (line 58) so the shell stops advertising tabs proxy refuses. |
+| `lib/db.ts` | `CREATE TABLE lead_runs`; add `customers.lead_location_id`. Both via the guarded migration pattern (`lib/db.ts:2654`), not the `CREATE TABLE` at line 938. |
+| `lib/crm/flows/leadVisit.ts` | Delete the `convert` step (52-58). Route `READY_TO_BUY` to a new `sold` step capturing *what was ordered*. |
+| `lib/repo/crm/write.ts` | Remove the dead `convert_location` branch (line 235). Add the `order` task beside the existing `reminder` (288) and `handoff_sales` (303) branches. |
+| `app/api/leads/locations/[id]/visit/route.ts` | Already accepts `driver` (line 12). Restrict to locations on the caller's own run; return `label` + `nextAction`. |
+| `app/api/sales/orders/route.ts` | Accept `lead_location_id`; call `promoteLeadToCustomer` in-transaction, then use the returned id. |
+| `app/api/sales/products/route.ts` | GET is `owner`/`group_manager`/`salesperson` (line 11) — a driver cannot record what was sold. Add `driver`. |
+| `app/api/locations/[id]/convert/route.ts` | **Kept, per your decision.** Stop deleting the `saved_locations` row: `lead_list_items.location_id` is `ON DELETE CASCADE` (`lib/db.ts:952`), so the delete rips the lead out of every route — including the one the driver is standing on. |
+| `app/(shell)/leads/hooks/useLeads.ts` | Branch `load()` — it `Promise.all`s two `owner`/`group_manager`-only endpoints, so a driver gets two 403s. |
+| `app/(shell)/leads/page.tsx` | Driver branch; hide pool, import, search, day-split. Show outcome label + derived next action, no convert button. |
+| `components/leads/RunPanel.tsx` | `onMove` / `onOptimise` / `onClear` manager-only. |
 
-### Files NOT Modified
+### Untouched, deliberately
 
-| Path | Reason |
-|---|---|
-| `app/(shell)/leads/hooks/useLeads.ts` | View mode is UI state; `useLeads` provides `visible` array unchanged |
-| `app/(shell)/leads/hooks/useLeads.ts` | `sortMode`/`query`/`setSortMode`/`setQuery` already exist and all views share them |
-| `components/LeadsMap.tsx` | Map is separate; unaffected by pool view changes |
-| `components/leads/RouteSection.tsx` | Route section is separate; unaffected |
-| `components/leads/RunPanel.tsx` | Unaffected |
-| `components/leads/LocationTapFlow.tsx` | Unaffected |
-| `lib/leadScore.ts` | Already provides `averageScore`, `LEAD_CRITERIA`, `scoreOf` |
-| `app/globals.css` | Use existing CSS variables and Tailwind classes |
-| `app/layout.tsx` | Unaffected |
+- `lib/repo/crm/state.ts` — lifecycle is derived; `promoteLeadToCustomer` inserts the row and
+  lets the activity log move it. It must not `UPDATE customers SET lifecycle`.
+- `lib/repo/crm/conversion.ts` — `convertOnDelivery` is the post-order customer lifecycle.
+- `lib/repo/crm/driverVisits.ts` — the `tasks` / `verify_visit` flow for existing customers.
+- `app/(shell)/crm/page.tsx` — its `driver → /driver` redirect stays.
+- `tests/tenancy-schema.test.ts` — `lead_list_items` is already exempt "through lead_lists".
 
----
+## [Functions]
 
-## Functions
+### New
 
-### New Functions
+- `desireLabel(outcome)` / `nextActionFor(outcome)` — pure.
+- `upsertLeadRun(orgId, driverId, runDate, plannedBy, groupId)` — select-then-reuse, mirroring
+  `routing.ts:327`.
+- `readDriverRuns(session)` — `lead_runs` → `lead_list_items` → `saved_locations`, plus a LEFT
+  JOIN on open `tasks` to derive `handedOff`.
+- `promoteLeadToCustomer(db, locationId, session, nowIso): number` —
+  1. `findDuplicates` on `{ name, lat, lng }`; on a **reachable** match, return that customer's
+     id instead of inserting.
+  2. On an **unreachable** match (redacted, `id: null`), **refuse** — a driver must not be
+     linked to, or told about, a business outside their reach. Surface "call the office".
+  3. Otherwise insert with the deterministic `LEAD-<id>` code, set `lead_location_id`, and
+     **keep the pin**.
+  4. Idempotent: a repeat call returns the existing id (`UNIQUE (organization_id,
+     customer_code)` at `lib/db.ts:2819` plus the deterministic code).
+- `assignableDrivers(session)` — mirrors the query at `app/(shell)/sales/commission/page.tsx:71`.
 
-**`PoolViewToggle`** (`components/leads/PoolViewToggle.tsx`)
-- Props: `activeView: LeadViewMode`, `onChange: (mode: LeadViewMode) => void`
-- Renders a horizontal scrollable bar of view options matching nav chrome style
-- Uses same styling as `NavAppSetting`: `rounded-[var(--radius-md)] border px-2.5 py-2 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)]`
-- Active item: `border-accent bg-accent/10`, text `text-accent`
-- Inactive item: `border-border`, text `text-text-muted`
-- Hover: `hover:border-accent hover:text-accent`
-- Persists selection to `localStorage("coverage_lead_view")` on change
-- Reads stored selection on mount via `readViewMode()`
+### Modified
 
-**`readViewMode(): LeadViewMode`** (`lib/leadViews.ts`)
-- Reads `localStorage.getItem("coverage_lead_view")`
-- Returns `"compact"` if invalid/missing
-- Type-guards the value against `LEAD_VIEWS.map(v => v.mode)`
+- `applyLeadVisit` — add the `order` task branch for `READY_TO_BUY`; delete the dead
+  `convert_location`.
+- The manual convert route — same customer row, but **keeps the pin**.
+- `load()` — branch on role.
 
-**`PoolViewWrapper`** (`components/leads/views/PoolViewWrapper.tsx`)
-- Props: `viewMode: LeadViewMode`, `locations: SavedLocation[]`, `sharedProps` (inRun, navAppId, onSelect, onToggleRun, etc.)
-- Switch statement on `viewMode` renders the matching sub-component
-- Handles empty state: if `locations.length === 0`, renders `<EmptyState>`
-- Handles loading state: if `loading`, renders `<SkeletonRows>`
+### Removed
 
-**`PoolViewCompact`** (`components/leads/views/PoolViewCompact.tsx`)
-- Current `<ul>` + `<LocationCard>` rendering extracted from `page.tsx` lines 133-141
-- Identical to current behavior
+The `convert` step in `leadVisitFlow`; the `convert_location` `FlowSet` key
+(`lib/crm/flows/types.ts`); its dead branch at `write.ts:235`.
 
-**`PoolViewPocket`** (`components/leads/views/PoolViewPocket.tsx`)
-- Cards with 2 decorative paper slips peeking behind, fanning on hover
-- Uses CSS `::before`/`::after` pseudo-elements or positioned divs
-- Color-coded slip colors matching status (green/blue/red/gray)
-- On hover: translate/rotate the slips to fan out
+## [Classes]
 
-**`PoolViewGrid`** (`components/leads/views/PoolViewGrid.tsx`)
-- CSS Grid `grid-template-columns: repeat(auto-fill, minmax(280px, 1fr))`
-- Each cell contains a `LocationCard` variant
-- `LocationCard` needs `compactMode` prop for tighter padding in grid
+None. No classes in the touched surface.
 
-**`PoolViewKanban`** (`components/leads/views/PoolViewKanban.tsx`)
-- 4 columns: تماس گرفته / بازدید شد / پاسخ نداد / رد شد
-- Locations drop into columns based on `loc.status`
-- Drag-and-drop optional (use existing `useCardDrag` pattern if available)
-- Each column has a header with count
+## [Dependencies]
 
-**`PoolViewScore`** (`components/leads/views/PoolViewScore.tsx`)
-- Each location shows 3 horizontal bars (potential, volume, ease)
-- Bar widths: 0-100% based on `rating_potential/volume/ease` (null = no bar)
-- Average score badge on the side
-- Sorted by `averageScore` descending (like `sortMode === "score"`)
-- Color-coded: green (>3), blue (2-3), amber (1-2), red (<1)
+**No new packages.** `node:sqlite`, `react-leaflet`, `leaflet-routing-machine`, and the in-repo
+`@/lib/geo`, `@/lib/navApps`, `@/lib/session`, `@/lib/crm/*`, `@/lib/jalali` helpers all exist.
 
-**`PoolViewTable`** (`components/leads/views/PoolViewTable.tsx`)
-- Columns: Name, Status, Score, Distance, Priority
-- Sortable by clicking column headers (integrates with existing `setSortMode`)
-- Clicking a row selects the location (same `onSelect` callback)
-- Uses existing Tailwind classes for table styling
+## [Testing]
 
-**`PoolViewBatch`** (`components/leads/views/PoolViewBatch.tsx`)
-- Each row has a checkbox
-- Top bar shows: selected count, "انتخاب همه" toggle, bulk actions (Add to Route, Add to Day)
-- Integrates with existing `run` state (`addToRun`/`removeFromRun`)
-- "انتخاب همه" button at top (mirrors existing `page.tsx` line 104)
-- Batch actions button at top-right
+- `tests/lead-desire.test.ts` — **rule 2, pure:** every `VisitOutcome` maps to a label and to
+  the intended next action. No database. This is where "the driver cannot choose the follow-up"
+  is proven.
+- `tests/api/lead-first-purchase.test.ts` — **rule 1:** an order with `lead_location_id` creates
+  exactly one `customers` row; the `saved_locations` row **survives**; ordering twice does not
+  duplicate; a cross-tenant lead is 404; a **redacted duplicate refuses** rather than linking.
+- `tests/api/locations-convert-retains.test.ts` — the manual convert no longer deletes, and the
+  pin stays in its `lead_list_items` membership.
+- `tests/api/lead-visit-routing.test.ts` — `READY_TO_BUY` → `order` task; `INTERESTED` → `call`;
+  `VISIT_NO_OWNER` → `reminder`; a request carrying `convert` is **rejected**, not ignored.
+- `tests/api/lead-runs.test.ts` — **one run per driver per day** (the `UNIQUE` constraint);
+  cross-driver 404; manager 403; `run_date` format rejected on write.
+- `tests/api/lead-lists-driver.test.ts` — own runs only; cross-tenant id 404; unassigned driver
+  gets `[]`; a handed-off lead is not offered as next stop.
+- `tests/proxy.test.ts` / `tests/appNav.test.ts` (extend) — driver reaches `/leads`; owner nav
+  unchanged.
 
-**`PoolViewCluster`** (`components/leads/views/PoolViewCluster.tsx`)
-- Groups `visible` locations by geographic proximity or manual district assignment
-- Each cluster header shows: district name, count
-- Locations listed under their cluster
-- Uses `lat`/`lng` for clustering when no district field exists
-- Falls back to showing all locations in one cluster if no coords
+## [Implementation Order]
 
-### Modified Functions
+### Phase 0 — Make the page reachable
 
-**`page.tsx` main render**
-- Add `activeView` state (initialized from `readViewMode()`)
-- Add `PoolViewToggle` above the pool list area
-- Replace the `<ul>` block (lines 133-141) with `PoolViewWrapper`
-- Pass `visible` array from `useLeads()` to `PoolViewWrapper`
-- All existing props (`inRun`, `navAppId`, `setSelectedMapId`, `run`, `setPinningId`, `togglePriority`, `addToRun`, `removeFromRun`, etc.) passed through to wrapper
+1. `proxy.ts`: allowlist `/leads`, `/api/lead-runs`.
+2. `lib/appNav.ts:70`: `driver` gets `/leads`; driver branch in `appTabs` (line 58). Both
+   renderers — `AppHeader.tsx:40`, `PageHeader.tsx:38` — call it unfiltered.
+3. Verify: `npx vitest run tests/proxy.test.ts tests/appNav.test.ts`.
 
-**`LocationCard`** (`components/leads/LocationCard.tsx`)
-- Add optional `compactMode?: boolean` prop for tighter padding in grid/kanban views
-- Add optional `showCheckboxes?: boolean` prop for batch view
-- Add optional `checked?: boolean` prop for batch selection
-- These are additive; existing behavior unchanged when props are omitted
+### Phase 1 — Name the outcomes (pure, no I/O)
 
----
+4. `lib/leadDesire.ts`: `desireLabel` + `nextActionFor`.
+5. Verify: `tests/lead-desire.test.ts` — rule 2's whole vocabulary, proven without a database.
 
-## Classes / CSS
+### Phase 2 — Close the `READY_TO_BUY` dead end
 
-### New CSS (add to `app/globals.css` or inline)
+6. Delete the `convert` step; add a `sold` step capturing what was ordered.
+7. `applyLeadVisit`: add the `order` task branch; drop the dead `convert_location`.
+8. `GET /api/sales/products`: allow `driver`, so "what did they buy" is recordable.
+9. Verify: `tests/api/lead-visit-routing.test.ts`.
 
-**Pool toggle bar styles** — match existing `NavAppSetting` chrome:
-```css
-.pool-toggle-item {
-  /* Same as NavAppSetting item */
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  padding: 0.5rem 1rem;
-  transition: all var(--dur-base) ease var(--ease-out);
-  font-size: var(--text-sm);
-  color: var(--text-muted);
-}
-.pool-toggle-item:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-.pool-toggle-item.active {
-  border-color: var(--accent);
-  background: var(--accent)/10;
-  color: var(--accent);
-}
-.pool-toggle-bar {
-  display: flex;
-  gap: 0.5rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
-  scrollbar-width: thin;
-}
-```
+### Phase 3 — Rule 1: conversion by first purchase
 
-**Pocket card paper slips** — reuse the `.kargah` pattern from `globals.css`:
-```css
-.pocket-slip {
-  position: absolute;
-  border-radius: 6px;
-  opacity: 0.7;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-}
-.pocket-card:hover .pocket-slip:nth-child(1) {
-  transform: rotate(-3deg) translateY(4px);
-  opacity: 1;
-}
-.pocket-card:hover .pocket-slip:nth-child(2) {
-  transform: rotate(2deg) translateY(8px);
-  opacity: 1;
-}
-```
+10. Schema: `lead_runs` (with the `UNIQUE`), `customers.lead_location_id`.
+11. `promoteLeadToCustomer` — dedup-guarded, idempotent, no DELETE, `LEAD-<id>` preserved.
+12. `POST /api/sales/orders` accepts `lead_location_id` and promotes in-transaction.
+13. Manual convert route: stop deleting the pin.
+14. Verify: `lead-first-purchase` + `locations-convert-retains`.
 
-**Kanban columns** — reuse existing layout patterns:
-```css
-.kanban-column {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  min-height: 200px;
-}
-.kanban-column-header {
-  position: sticky;
-  top: 0;
-  background: var(--surface-raised);
-  padding: 0.5rem;
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  font-weight: 600;
-}
-```
+### Phase 4 — Runs and driver data access
 
-**Table styles** — reuse existing table patterns from the orders page:
-```css
-.lead-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-.lead-table th {
-  text-align: right;
-  padding: 0.5rem;
-  border-bottom: 2px solid var(--border);
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  cursor: pointer;
-  user-select: none;
-}
-.lead-table td {
-  padding: 0.5rem;
-  border-bottom: 1px solid var(--border);
-  font-size: var(--text-sm);
-}
-```
+15. `lib/repo/leadRuns.ts`; the two API routes; scope the visit route to the caller's own run.
+16. Verify: `tests/api/lead-runs.test.ts` + `lead-lists-driver`.
 
-**Grid layout** — responsive CSS grid:
-```css
-.lead-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: 0.75rem;
-}
-```
+### Phase 5 — Driver view
 
----
+17. `useLeads` loader branch; `NextStopBanner`; `page.tsx` driver branch; `RunPanel` props.
+18. Verify: manual manager and driver passes, then `npx vitest run`.
 
-## Dependencies
+### Phase 6 — Manager assignment
 
-**No new dependencies required.** All views use:
-- React (already installed)
-- Tailwind CSS (already installed, configured in `globals.css`)
-- `@/lib/leadScore` (`averageScore`, `LEAD_CRITERIA`) — already exists
-- `@/lib/format` (`faNum`) — already exists
-- `@/lib/geo` (`distanceKm`) — already exists
-- `@/components/meridian/Icon` — already exists
-- `@/components/StarRating` — already exists (for score view)
-- `@/components/CopyButton` — already exists (for table view)
-- `react-leaflet` / `Leaflet` — already installed (for map, not directly affected)
+19. `POST`/`PATCH` accept assignment; validate the assignee is an in-scope, active driver.
+20. `run_date` validated as ISO at the Jalali picker boundary (`jalaliToIsoDate`,
+    `lib/jalali.ts:204`).
+21. Assignment dropdown fed by `assignableDrivers`.
+22. Verify: full suite.
 
-**Optional future**: `@dnd-kit` was explicitly rejected per `2026-09-10-remediation-and-design-language-design.md`. Kanban drag-and-drop can use the existing `useCardDrag` hook pattern if needed.
+## [Risks]
 
----
-
-## Testing Strategy
-
-### Unit Tests
-
-| Test File | What to Test |
-|---|---|
-| `tests/leadViews.test.ts` | `readViewMode()` returns correct default and stored value; `LEAD_VIEWS` has 8 entries; `LeadViewMode` type is exhaustive |
-| `tests/PoolViewCompact.test.ts` | Renders correct number of cards; matches current behavior |
-| `tests/PoolViewGrid.test.ts` | Renders grid layout; correct column count |
-| `tests/PoolViewKanban.test.ts` | Correct distribution across 4 columns |
-| `tests/PoolViewScore.test.ts` | Correct bar widths; null scores handled |
-| `tests/PoolViewTable.test.ts` | Correct columns; sort functionality |
-| `tests/PoolViewBatch.test.ts` | Checkbox state; bulk actions; "انتخاب همه" |
-| `tests/PoolViewCluster.test.ts` | Correct grouping; fallback behavior |
-| `tests/PoolViewPocket.test.ts` | Paper slips render; hover animation classes applied |
-| `tests/PoolViewToggle.test.ts` | Renders 8 options; active state persists to localStorage |
-
-### Integration Tests
-
-| Test File | What to Test |
-|---|---|
-| `tests/leads-page-views.test.ts` | Full page renders with each view mode; toggle bar switches views; `visible` data flows correctly |
-| `tests/leads-page-views.test.ts` | Switching views preserves sort/query state |
-| `tests/leads-page-views.test.ts` | `LocationCard` works in all view contexts |
-
-### Manual/Visual Tests
-
-- Toggle bar matches nav chrome styling (`NavAppSetting`)
-- Pocket cards have the signature "two cards behind" effect
-- Score bars are color-coded per `LEAD_CRITERIA`
-- Table columns are sortable
-- Batch mode checkboxes work with existing `addToRun`/`removeFromRun`
-- Cluster view handles locations without coordinates gracefully
-
----
-
-## Implementation Order
-
-### Phase 1: Foundation (Types & Config)
-
-1. **Create `lib/leadViews.ts`**
-   - Define `LeadViewMode` type
-   - Define `LEAD_VIEWS` config array (8 entries)
-   - Define `readViewMode()` / `saveViewMode()` functions
-   - Define localStorage key constant `"coverage_lead_view"`
-
-### Phase 2: Core Infrastructure
-
-2. **Create `components/leads/PoolViewToggle.tsx`**
-   - Toggle bar component matching `NavAppSetting` chrome style
-   - 8 view options with icon + label
-   - Persist to localStorage on change
-   - Scrollable horizontal bar for mobile
-
-3. **Create `components/leads/views/PoolViewWrapper.tsx`**
-   - Switch statement rendering the active view
-   - Passes `visible` data and shared callbacks
-   - Handles loading/empty states
-
-4. **Modify `app/(shell)/leads/page.tsx`**
-   - Import `PoolViewToggle` and `PoolViewWrapper`
-   - Add `activeView` state (initialize from `readViewMode()`)
-   - Add `PoolViewToggle` above the list area
-   - Replace `<ul>` block with `PoolViewWrapper`
-   - Pass all relevant props through
-
-### Phase 3: View Components (8 views)
-
-5. **Create `components/leads/views/PoolViewCompact.tsx`**
-   - Extract current `<ul>` + `<LocationCard>` from page.tsx
-   - Identical to current behavior
-
-6. **Create `components/leads/views/PoolViewPocket.tsx`**
-   - Card layout with 2 paper slips peeking behind
-   - CSS `::before`/`::after` or positioned divs for slips
-   - Hover fan animation
-
-7. **Create `components/leads/views/PoolViewGrid.tsx`**
-   - CSS Grid `auto-fill, minmax(280px, 1fr)`
-   - Each cell is a compact `LocationCard`
-
-8. **Create `components/leads/views/PoolViewKanban.tsx`**
-   - 4 status columns
-   - Locations grouped by `loc.status`
-   - Column headers with counts
-
-9. **Create `components/leads/views/PoolViewScore.tsx`**
-   - 3 horizontal bars per location (potential/volume/ease)
-   - Average score badge
-   - Color-coded bars
-
-10. **Create `components/leads/views/PoolViewTable.tsx`**
-    - 5 columns: Name, Status, Score, Distance, Priority
-    - Sortable headers
-    - Click-to-select
-
-11. **Create `components/leads/views/PoolViewBatch.tsx`**
-    - Checkbox rows
-    - Bulk action bar
-    - "انتخاب همه" toggle
-    - Integrates with `run` state
-
-12. **Create `components/leads/views/PoolViewCluster.tsx`**
-    - Group locations by district/proximity
-    - Cluster headers with counts
-    - Fallback for no coordinates
-
-### Phase 4: Component Refinements
-
-13. **Modify `components/leads/LocationCard.tsx`**
-    - Add `compactMode?: boolean` prop
-    - Add `showCheckboxes?: boolean` prop
-    - Add `checked?: boolean` prop
-    - Keep existing behavior default
-
-### Phase 5: Testing
-
-14. **Create test files** for all 8 views + toggle + wrapper
-15. **Run test suite**: `npx vitest run`
-16. **Verify**: `npm run check:contrast` if contrast checks apply
-17. **Manual verification**: Open `/leads`, switch all 8 views
-
----
-
-## Risk Assessment
-
-| Risk | Likelihood | Mitigation |
+| Risk | Severity | Mitigation |
 |---|---|---|
-| `PoolViewWrapper` switch statement becomes large | Medium | Each view is a separate component file; wrapper is just a switch |
-| `LocationCard` props bloat | Medium | Add props as optional; use `Partial<LocationCardProps>` pattern; views that don't need extra props just omit them |
-| Pocket card CSS conflicts with `.kargah` styles | Low | Use scoped class names like `.pool-pocket` to avoid global `.kargah` conflicts |
-| Grid view `LocationCard` layout differs from list | Low | `compactMode` prop adjusts padding; test visually |
-| Kanban drag-and-drop complexity | Medium | Start with static columns; add drag-and-drop as follow-up using `useCardDrag` pattern |
-| Batch view state management | Medium | Reuse existing `run` state; `addToRun`/`removeFromRun` already handle batch operations |
-| Cluster grouping quality | Medium | Use k-means or simple distance threshold; fallback to single cluster |
+| `proxy.ts` untouched → feature invisible | Critical | Phase 0 first, test-gated |
+| Driver asked a convert question that is discarded | Critical | Phase 2 deletes it; test asserts rejection |
+| A lead cannot receive an order at all | Critical | Phase 3 is a new capability, not a fix |
+| Convert deletes the pin → cascades out of every route | Critical | Phase 3 step 13; retention test |
+| Two runs for one driver on one day | High | `UNIQUE (driver_user_id, run_date)`, Phase 3 step 10 |
+| Order path links a lead to an unreachable business | High | `promoteLeadToCustomer` refuses on a redacted match |
+| Duplicate customers on offline retry | High | Deterministic `LEAD-<id>` + `UNIQUE (organization_id, customer_code)` |
+| Lifecycle written directly, bypassing `recomputeState` | High | Phase 3 note: insert the row, let the log move it |
+| Handoff not reflected in the driver's next stop | High | `handedOff` derived from the open task |
+| Driver nav advertises tabs proxy denies | High | Phase 0 step 2 |
+| `run_date` Jalali/Gregorian mismatch → invisible run | Medium | Validate ISO on write; convert at the picker |
+| `plain()` omitted → null-prototype crash in a client component | Medium | `lib/db.ts:33`; every new response |
+| Editing `CREATE TABLE` instead of the migration | Medium | Phase 3 step 10 |
 
-## Assumptions
+## [Out of scope]
 
-1. `useLeads()` provides the canonical `visible` array; views are pure renderers
-2. `sortMode` and `query` from `useLeads` apply to all views (each view may interpret sort differently)
-3. `LocationCard` is reused across multiple views with optional props
-4. CSS uses existing design tokens from `globals.css`
-5. No server-side preference storage — localStorage only for now
-6. Default view mode is `"compact"` (current behavior)
-7. All 8 views render the same `visible` data from `useLeads()`
-8. The toggle bar is visible to both managers and drivers
+`/sales/routing` and delivery runs; the customers/tasks `verify_visit` flow; offline sync for the
+driver app beyond the existing `clientUuid` retry guard; VROOM/weather for lead routes;
+commission attribution for a driver-closed sale.
 
-## Out of Scope
+## [Resolved decisions]
 
-- Role-based view filtering (drivers see all views; managers see all views)
-- Server-side view preference sync
-- Kanban drag-and-drop implementation
-- Virtualized scrolling for large datasets (>100 locations)
-- Custom user-defined view configurations
-- Export to different formats per view
-- Analytics/dashboard integration per view
-- Accessibility improvements beyond existing WCAG compliance
-- Tablet-specific responsive breakpoints (beyond existing Tailwind responsive)
+Agreed 2026-09-25:
+
+1. **A handed-off lead leaves the driver's run immediately.** `handedOff` is derived from the
+   open `tasks` row, so a lead that generated a call task stops being that driver's next stop
+   even though the driver never touched it again.
+2. **`wants_call` does not advance `lifecycle`.** Only a real order moves
+   `lead -> qualified -> active`; `lifecycleFor` derives it from the activity log, so an
+   interested-but-not-bought lead stays `lead`.
+
+## [Superseded prior decisions]
+
+`docs/superpowers/specs/2026-09-18-adaptive-leads-page-design.md` locked **D4 = "Full
+`leadVisitFlow` (navigate -> what_happened -> detail_status -> convert -> rate)"**. The `convert`
+step asks the driver a commercial question whose answer is discarded (`convert_location` is
+written and never read). This plan removes it; D4 needs amending when that spec is revisited.
