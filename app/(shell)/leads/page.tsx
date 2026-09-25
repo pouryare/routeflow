@@ -17,6 +17,7 @@ import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import PoolViewToggle from "@/components/leads/PoolViewToggle";
 import DriverRunView from "@/components/leads/DriverRunView";
+import LeadRunPlanner from "@/components/leads/LeadRunPlanner";
 import PoolViewWrapper from "@/components/leads/views/PoolViewWrapper";
 import { readViewMode } from "@/lib/leadViews";
 import type { LeadViewMode } from "@/lib/leadViews";
@@ -227,6 +228,10 @@ export default function LeadsPage() {
           {!isManager && (
             <DriverRunView onRecord={setTapFlowId} navAppId={navAppId} />
           )}
+
+          {/* The pool is a manager's scratch run until it is assigned here: a driver sees
+              none of it. So the panel sits directly above the route it hands over. */}
+          {isManager && <LeadRunPlanner locationIds={run} busy={busy} />}
 
           {isManager && (
             <RouteSection
