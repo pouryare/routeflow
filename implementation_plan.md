@@ -277,13 +277,39 @@ None. No classes in the touched surface.
    contradicted `outcomes.ts`, `outcomeToStatus`, and the reminder the flow offers it. Both
    were stale expectations, not source bugs.
 
-### Phase 3 — Rule 1: conversion by first purchase
+### Phase 3 — Rule 1: conversion by first purchase  ✅ DONE
 
-10. Schema: `lead_runs` (with the `UNIQUE`), `customers.lead_location_id`.
-11. `promoteLeadToCustomer` — dedup-guarded, idempotent, no DELETE, `LEAD-<id>` preserved.
-12. `POST /api/sales/orders` accepts `lead_location_id` and promotes in-transaction.
-13. Manual convert route: stop deleting the pin.
-14. Verify: `lead-first-purchase` + `locations-convert-retains`.
+10. ~~Schema: `lead_runs`, `customers.lead_location_id`.~~ **Only the column, and it moved.**
+    `lead_runs` is deferred to Phase 4, which is where it is read — adding a table in Phase 3
+    would ship a migration nothing queries.
+    **The column had to move to the very end of the boot.** The two `customers` rebuilds
+    further up (`lib/db.ts`, status→lifecycle and debt_*) copy an explicit column list, and a
+    fresh database runs both. Added beside the other `group_id` columns, `lead_location_id`
+    was silently dropped again — the migration ran, did not throw, and the column was gone.
+    It now sits after both rebuilds, which is the last statement in the boot that touches the
+    shape of `customers`. The guard makes it a no-op on later boots.
+11. ~~`promoteLeadToCustomer`.~~ Done in `lib/repo/crm/conversion.ts`, shared by the manual
+    route and the order path so "what a promotion means" is written once. Dedup-guarded,
+    idempotent, never deletes the pin.
+    **One bug found by the tests:** the promoted customer inherited `group_id = NULL`, and
+    `canReachGroup` admits a null-group row to an owner and nobody else — so the driver who
+    made the sale got a 404 on the order they had just closed. It now copies the pin's group.
+12. ~~`POST /api/sales/orders` accepts `lead_location_id`.~~ Done, promoting **before**
+    `createOrder` and compensating with `unpromoteLead` if the order then fails. Not inside the
+    transaction: `createOrder` reads the customer for its credit check and then opens its own
+    `BEGIN IMMEDIATE`, so the customer must already exist. Moving that read inside would mean
+    restructuring the order core, which also carries commission.
+13. ~~Manual convert: stop deleting the pin.~~ Done; it now calls `promoteLeadToCustomer`.
+    The cascade that made the delete dangerous is verified independently, not assumed:
+    with `foreign_keys` on, deleting a pin drops its `lead_list_items` rows (1 → 0).
+14. ~~Verify.~~ `tests/api/locations-convert-retains.test.ts` (6) and
+    `tests/api/lead-first-purchase.test.ts` (9). Re-injecting the `DELETE` fails 3 of them.
+
+15. **Two tests that encoded the old policy, found late.** `sales-orders.test.ts` asserted a
+    driver is refused, both on POST and on GET — that is the behaviour Phase 2 deliberately
+    changed, and I committed that change without running this file. Rewritten to the new
+    policy, keeping the boundary that still matters: a driver gets 201 for their own group and
+    404 for another group's.
 
 ### Phase 4 — Runs and driver data access
 

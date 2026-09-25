@@ -2921,6 +2921,34 @@ export function getDb(): DatabaseSync {
     console.info("[migrate] customers.debt_* dropped; opening_balance_toman added (0)");
   }
 
+  // customers.lead_location_id is the seam between a pin and the customer it became, and
+  // it lives HERE rather than beside the other group_id columns further up, because this is
+  // the last statement in the boot that touches the shape of `customers`.
+  //
+  // The two rebuilds above copy an explicit column list, so a column added before them is
+  // silently dropped again: a fresh database runs both, and lead_location_id vanished the
+  // first time this was written higher up in the file. Adding it after them means no rebuild
+  // can undo it, and the guard makes it a no-op on every later boot.
+  //
+  // Why the column at all, and not the other direction. The convert route used to DELETE the
+  // saved_locations row, which is defensible on its own terms -- a promoted venue is not a
+  // prospect any more -- but lead_list_items.location_id is ON DELETE CASCADE, so the delete
+  // quietly ripped the stop out of every route that referenced it, including the run the
+  // driver was standing on. Keeping the pin and pointing the customer at it makes the
+  // promotion reversible, keeps the visit history attached to the place it happened, and
+  // gives the pool one honest test for "is this still a lead?" instead of a second flag on
+  // saved_locations that could disagree with this one.
+  const custLeadCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
+  if (!custLeadCols.some((c) => c.name === "lead_location_id")) {
+    db.exec("ALTER TABLE customers ADD COLUMN lead_location_id INTEGER REFERENCES saved_locations(id)");
+  }
+  // Promotions are rare and the lookup is by lead rather than by customer, so this index is
+  // not on a hot path -- but it has to be unique per organisation, or two promotions of one
+  // pin would both appear to succeed and the second customer would be unreachable.
+  db.exec(`CREATE UNIQUE INDEX IF NOT EXISTS ux_customers_lead_location
+           ON customers(organization_id, lead_location_id)
+           WHERE lead_location_id IS NOT NULL`);
+
   // Phase 0b: pins that reached a lead list become customers. Once, guarded on a marker,
   // but foldLeadPinsIntoCustomers is idempotent so a stray re-run is harmless.
   const foldDone = db

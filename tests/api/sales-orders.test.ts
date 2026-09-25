@@ -115,8 +115,15 @@ describe("POST /api/sales/orders", () => {
     expect(res.status).toBe(401);
   });
 
-  it("refuses a driver", async () => {
-    expect((await POST(post(AS.driver(), orderBody()))).status).toBe(403);
+  it("lets a driver record an order in their own group, and not in another group's", async () => {
+    // This used to read "refuses a driver". The driver role is also the field sales rep in
+    // this app, and a rep who cannot write down a sale at the door is the gap the lead work
+    // exists to close. The rule that survives is the group boundary, not the role.
+    const res = await POST(post(AS.driver(), orderBody()));
+    expect(res.status).toBe(201);
+    // And the boundary is unchanged: another group's customer is a 404, not a 403.
+    const other = await POST(post(AS.driver(), orderBody({ customer_id: ctx.westCustomer })));
+    expect(other.status).toBe(404);
   });
 
   it("lets a manager record an order for their own group", async () => {
@@ -212,9 +219,14 @@ describe("GET /api/sales/orders", () => {
     expect(theirs.length).toBeGreaterThan(0);
   });
 
-  it("shows a driver nothing, and does not error", async () => {
+  it("shows a driver only what is on their own runs, and does not error", async () => {
+    // Also formerly a 403. Reading is scoped by orderFilter, which limits a driver to the
+    // orders on runs assigned to them -- so with no runs in this fixture the honest answer
+    // is an empty list, not a refusal. The scoping itself is asserted in the tests below.
     const res = await GET(get(AS.driver()));
-    expect(res.status).toBe(403);
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.orders).toEqual([]);
   });
 });
 

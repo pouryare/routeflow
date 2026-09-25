@@ -1,14 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, SavedLocationRow } from "@/lib/db";
+import { getDb } from "@/lib/db";
 import { canReachGroup, requireRole } from "@/lib/session";
+import { LeadPromotionError, promoteLeadToCustomer } from "@/lib/repo/crm/conversion";
 
-// Promotes a prospect into the real customers table -- a manual insert, distinct from
-// the bulk customer-creation paths, so it gets its own
-// customer_code namespace ("LEAD-<id>") that can never collide with a spreadsheet code
-// and is easy to recognize later. The saved_locations row is deleted on success: once
-// promoted it's a customer, not a prospect, so it shouldn't linger in both lists (the
-// duplicate check in /api/locations/parse also covers the customers table, so re-pasting
-// the same venue's link later is still caught).
+// Promotes a prospect into the real customers table.
+//
+// This used to insert the row here and then DELETE the saved_locations row, on the
+// reasonable-sounding ground that a promoted venue is not a prospect any more. But
+// lead_list_items.location_id is ON DELETE CASCADE, so the delete quietly removed the stop
+// from every route that referenced it -- including the run the driver was standing on when
+// the office pressed the button. The pin now stays and the customer points back at it via
+// customers.lead_location_id, which is also what lets the leads pool ask "is this still a
+// lead?" without a second flag that could disagree.
+//
+// The promotion itself moved into lib/repo/crm/conversion.ts so that this route and a
+// lead's first purchase are the same operation, dedup guard and all, rather than two
+// implementations that drift.
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[id]/convert">) {
   const guard = requireRole(req, ["owner", "group_manager"]);
   if (!guard.ok) return guard.response;
@@ -27,51 +34,20 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
-  const location = db.prepare("SELECT * FROM saved_locations WHERE id = ?").get(idNum) as
-    | SavedLocationRow
-    | undefined;
-  if (!location) {
-    return NextResponse.json({ ok: false, error: "مورد پیدا نشد" }, { status: 404 });
-  }
-  if (location.lat === null || location.lng === null) {
-    return NextResponse.json(
-      { ok: false, error: "این مکان مختصات ندارد؛ ابتدا موقعیت آن را روی نقشه تعیین کنید" },
-      { status: 422 }
-    );
-  }
-
-  const customerCode = `LEAD-${location.id}`;
-  const now = new Date().toISOString();
-  const notes = ["از فهرست مکان‌های پیشنهادی تبدیل شد", location.address, location.notes]
-    .filter(Boolean)
-    .join(" — ");
-
-  db.exec("BEGIN");
   try {
-    const insert = db.prepare(`
-      INSERT INTO customers (customer_code, business_name, address, city, province, lat, lng, notes, synced_at, organization_id)
-      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?)
-      ON CONFLICT(organization_id, customer_code) DO NOTHING
-    `);
-    const result = insert.run(
-      customerCode,
-      location.name,
-      location.address,
-      location.lat,
-      location.lng,
-      notes,
-      now,
-      guard.session.organizationId
-    );
-    if (result.changes === 0) {
-      db.exec("ROLLBACK");
-      return NextResponse.json({ ok: false, error: "این مکان قبلاً به مشتری تبدیل شده است" }, { status: 409 });
-    }
-    db.prepare("DELETE FROM saved_locations WHERE id = ?").run(idNum);
-    db.exec("COMMIT");
-    return NextResponse.json({ ok: true, customerId: Number(result.lastInsertRowid) });
+    const promotion = promoteLeadToCustomer(guard.session.organizationId, idNum, guard.session);
+    return NextResponse.json({
+      ok: true,
+      customerId: promotion.customerId,
+      // False means this pin was already promoted, or matched a customer that already
+      // existed. Either way there is now exactly one customer for this business.
+      created: promotion.created,
+      linked: promotion.linked,
+    });
   } catch (e) {
-    db.exec("ROLLBACK");
+    if (e instanceof LeadPromotionError) {
+      return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
+    }
     const msg = e instanceof Error ? e.message : "خطا";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }

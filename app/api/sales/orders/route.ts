@@ -2,6 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
 import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
+import {
+  LeadPromotionError,
+  promoteLeadToCustomer,
+  unpromoteLead,
+  type Promotion,
+} from "@/lib/repo/crm/conversion";
 
 /** Who may read and place an order.
  *
@@ -48,6 +54,7 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => null)) as {
     customer_id?: unknown;
+    lead_location_id?: unknown;
     order_date?: unknown;
     salesperson_user_id?: unknown;
     notes?: unknown;
@@ -66,13 +73,41 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
+
+  // Rule 1: a lead becomes a customer when it buys. Until this existed, a pin could not
+  // receive an order at all -- the route required a customers.id and a lead lives in
+  // saved_locations -- so a driver who closed a sale at the door had nowhere to put it.
+  //
+  // The promotion runs before createOrder, not inside it. createOrder reads the customer for
+  // its credit check and then opens its own BEGIN IMMEDIATE, so a customer has to exist
+  // first; moving that read inside the transaction would mean restructuring the order core,
+  // which also carries commission. So the promotion is its own small step and, if the order
+  // then fails, unpromoteLead puts the customer back. That keeps "no customer without a
+  // purchase behind it" true without touching how orders are written.
+  const leadLocationId = body?.lead_location_id == null ? null : Number(body.lead_location_id);
+  let promotion: Promotion | null = null;
+  if (leadLocationId !== null) {
+    if (!Number.isInteger(leadLocationId)) {
+      return NextResponse.json({ ok: false, error: "شناسه مکان نامعتبر است" }, { status: 400 });
+    }
+    try {
+      promotion = promoteLeadToCustomer(session.organizationId, leadLocationId, session);
+    } catch (e) {
+      if (e instanceof LeadPromotionError) {
+        return NextResponse.json({ ok: false, error: e.message }, { status: e.status });
+      }
+      throw e;
+    }
+  }
+
   const customer = db
     .prepare("SELECT id, group_id FROM customers WHERE id = ?")
-    .get(Number(body?.customer_id)) as { id: number; group_id: number | null } | undefined;
+    .get(promotion ? promotion.customerId : Number(body?.customer_id)) as { id: number; group_id: number | null } | undefined;
 
   // 404 rather than 403 for a customer in another group -- a 403 would confirm the row
   // exists, which is the thing being withheld. Same rule as everywhere else here.
   if (!customer || !canReachGroup(session, customer.group_id)) {
+    if (promotion) unpromoteLead(session.organizationId, promotion);
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }
 
@@ -100,8 +135,17 @@ export async function POST(req: NextRequest) {
         packs: Number(line.packs),
       })),
     });
-    return NextResponse.json({ ok: true, ...order }, { status: 201 });
+    return NextResponse.json({
+      ok: true,
+      ...order,
+      // Echoed back so the caller can tell a fresh promotion from one that already existed,
+      // and can refresh the pin instead of adding a second copy of it to the pool.
+      ...(promotion ? { customerId: promotion.customerId, promotedFromLead: true, leadCreated: promotion.created } : {}),
+    }, { status: 201 });
   } catch (e) {
+    // The promotion outlived the order, which would leave a customer who never bought --
+    // exactly what rule 1 forbids. Put it back before reporting the failure.
+    if (promotion) unpromoteLead(session.organizationId, promotion);
     if (e instanceof OrderError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
     }
