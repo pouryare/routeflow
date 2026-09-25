@@ -191,6 +191,7 @@ export default function SearchBox({
   const [geoResults, setGeoResults] = useState<GeoResult[] | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
   const [recentSearches, setRecentSearches] = useState<string[]>(loadRecent);
+  const [favorites, setFavorites] = useState<Favorite[]>(loadFavorites);
   const boxRef = useRef<HTMLDivElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
 
@@ -353,6 +354,16 @@ export default function SearchBox({
     onLocationFound?.(r.y, r.x, r.label);
     if (trimmed) pushRecent(trimmed);
     reset();
+  }
+
+  function toggleFavorite(r: Result) {
+    const id = r.kind === "customer" ? `cust_${r.customer.customer_code}` : r.kind === "district" ? `dist_${r.district.properties.name}` : `geo_${r.label}`;
+    if (isFavorite(id)) {
+      removeFavorite(id);
+    } else {
+      addFavorite({ id, label: r.kind === "customer" ? r.customer.business_name : r.kind === "district" ? r.district.properties.name : r.label, lat: 0, lng: 0, kind: r.kind });
+    }
+    setFavorites(loadFavorites());
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
@@ -534,6 +545,9 @@ export default function SearchBox({
                     </span>
                   </>
                 )}
+                <button onClick={(e) => { e.stopPropagation(); toggleFavorite(r); }} className="shrink-0 text-[length:var(--text-xs)] text-text-faint hover:text-accent" aria-label="save favorite">
+                  {isFavorite(r.kind === "customer" ? `cust_${r.customer.customer_code}` : r.kind === "district" ? `dist_${r.district.properties.name}` : `geo_${r.label}`) ? "★" : "☆"}
+                </button>
               </button>
             ))
           ) : (
