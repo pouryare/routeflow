@@ -481,6 +481,22 @@ export default function SearchBox({
               ))}
             </div>
           )}
+          {/* Favorites — shown when input is empty */}
+          {!trimmed && favorites.length > 0 && (
+            <div className="border-b border-border px-3 py-2">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[length:var(--text-xs)] text-text-faint font-medium">★ Favorites</span>
+                <button onClick={() => { localStorage.removeItem(FAV_KEY); setFavorites([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">Clear all</button>
+              </div>
+              {favorites.map((f) => (
+                <button key={f.id} onClick={() => { changeQuery(f.label); setOpen(true); }} className="mapsearch__opt">
+                  <Icon name="star" size="sm" />
+                  <span className="mapsearch__label">{f.label}</span>
+                  <button onClick={(e) => { e.stopPropagation(); removeFavorite(f.id); setFavorites(loadFavorites()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove favorite">✕</button>
+                </button>
+              ))}
+            </div>
+          )}
           {trimmed && !hideResults && (
           isUrl ? (
             <div className="p-2">
