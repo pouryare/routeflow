@@ -59,6 +59,69 @@ function getGeoProvider(): Promise<GeoProvider> {
   return geoProviderPromise;
 }
 
+// ---- recent searches (localStorage) ----
+const RECENT_KEY = "searchbox_recent";
+const MAX_RECENT = 10;
+
+function loadRecent(): string[] {
+  try { return JSON.parse(localStorage.getItem(RECENT_KEY) || "[]"); } catch { return []; }
+}
+
+function saveRecent(queries: string[]) {
+  try { localStorage.setItem(RECENT_KEY, JSON.stringify(queries)); } catch { /* storage full */ }
+}
+
+function pushRecent(query: string) {
+  const q = query.trim();
+  if (!q) return;
+  const existing = loadRecent().filter((r) => r !== q);
+  existing.unshift(q);
+  saveRecent(existing.slice(0, MAX_RECENT));
+}
+
+function removeRecent(query: string) {
+  saveRecent(loadRecent().filter((r) => r !== query));
+}
+
+function clearAllRecent() {
+  localStorage.removeItem(RECENT_KEY);
+}
+
+// ---- favorites (localStorage) ----
+interface Favorite {
+  id: string;
+  label: string;
+  lat: number;
+  lng: number;
+  kind: "customer" | "district" | "geo";
+}
+
+const FAV_KEY = "searchbox_favorites";
+
+function loadFavorites(): Favorite[] {
+  try { return JSON.parse(localStorage.getItem(FAV_KEY) || "[]"); } catch { return []; }
+}
+
+function saveFavorites(favs: Favorite[]) {
+  try { localStorage.setItem(FAV_KEY, JSON.stringify(favs)); } catch { /* storage full */ }
+}
+
+function addFavorite(fav: Favorite) {
+  const favs = loadFavorites().filter((f) => f.id !== fav.id);
+  favs.unshift(fav);
+  saveFavorites(favs);
+}
+
+function removeFavorite(id: string) {
+  saveFavorites(loadFavorites().filter((f) => f.id !== id));
+}
+
+function isFavorite(id: string): boolean {
+  return loadFavorites().some((f) => f.id === id);
+}
+
+export { loadRecent, pushRecent, removeRecent, clearAllRecent, loadFavorites, addFavorite, removeFavorite, isFavorite };
+
 export default function SearchBox({
   customers,
   districts,
@@ -81,6 +144,8 @@ export default function SearchBox({
   inBatchView,
   activeView,
   hideResults,
+  defaultExpanded,
+  inline,
 }: {
   customers?: CustomerRow[];
   districts?: DistrictFeature[];
@@ -94,12 +159,13 @@ export default function SearchBox({
   /** Fires when the phone-sized box opens or closes.
    *
    *  Expanded, it takes the whole top row -- the row the sidebar button also sits in. The
-   *  parent hides that button for the duration, which is the only way two things sharing
-   *  one strip can avoid landing on top of each other. Padding the text away from it
-   *  would leave the button covering an input the user is typing into. */
-  onExpandedChange?: (expanded: boolean) => void;
+   *  parent hides the sidebar button for the duration so the box gets the full width.
+   *  Collapsed, the sidebar button is visible again. */
+  onExpandedChange?: (open: boolean) => void;
+  /** Controlled value — when supplied the input reflects this instead of internal state. */
   value?: string;
-  onChange?: (query: string) => void;
+  /** Called with the new value on every keystroke. */
+  onChange?: (val: string) => void;
   sortMode?: string;
   onSortModeChange?: (mode: string) => void;
   activeListId?: number | null;
@@ -113,6 +179,10 @@ export default function SearchBox({
   activeView?: string;
   /** Hide the search-results section — for pages where results render elsewhere (e.g. leads). */
   hideResults?: boolean;
+  /** Force the box open on mount — for pages where the search box must always be visible. */
+  defaultExpanded?: boolean;
+  /** Render in document flow instead of absolute overlay — for non-map pages like /leads. */
+  inline?: boolean;
 }) {
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
@@ -120,6 +190,7 @@ export default function SearchBox({
   const [linkError, setLinkError] = useState<string | null>(null);
   const [geoResults, setGeoResults] = useState<GeoResult[] | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
+  const [recentSearches, setRecentSearches] = useState<string[]>(loadRecent);
   const boxRef = useRef<HTMLDivElement>(null);
   const localInputRef = useRef<HTMLInputElement>(null);
 
@@ -134,7 +205,7 @@ export default function SearchBox({
    *  Desktop has the width to spare and keeps the box open, so this only ever engages
    *  below the sheet breakpoint. */
   const [isNarrow, setIsNarrow] = useState(false);
-  const [expanded, setExpanded] = useState(false);
+  const [expanded, setExpanded] = useState(defaultExpanded ?? false);
 
   useEffect(() => {
     const mq = window.matchMedia("(max-width: 639px)");
@@ -229,6 +300,7 @@ export default function SearchBox({
   function select(r: Result) {
     if (r.kind === "customer") onSelectCustomer?.(r.customer);
     else onSelectDistrict?.(r.district);
+    if (trimmed) pushRecent(trimmed);
     reset();
   }
 
@@ -240,6 +312,7 @@ export default function SearchBox({
   function goToCoords() {
     if (!coordMatch) return;
     onLocationFound?.(Number(coordMatch[1]), Number(coordMatch[2]), "مختصات وارد شده");
+    if (trimmed) pushRecent(trimmed);
     reset();
   }
 
@@ -254,6 +327,7 @@ export default function SearchBox({
         return;
       }
       onLocationFound?.(data.lat, data.lng, "لینک نقشه");
+      if (trimmed) pushRecent(trimmed);
       reset();
     } catch {
       setLinkError("خطا در ارتباط با سرور");
@@ -277,6 +351,7 @@ export default function SearchBox({
 
   function selectGeoResult(r: GeoResult) {
     onLocationFound?.(r.y, r.x, r.label);
+    if (trimmed) pushRecent(trimmed);
     reset();
   }
 
@@ -300,13 +375,15 @@ export default function SearchBox({
       // so opening the search never buries the locate button. The sidebar toggle is
       // hidden by the parent for the duration, which is what frees the right end.
       //
-      // Desktop: centred in the space left of the sidebar toggle, where it has always been.
+      // Inline: document flow, centered in the page container — for non-map pages like /leads.
       className={
-        collapsed
-          ? "absolute right-[4.5rem] top-4 z-[var(--z-map-chrome)]"
-          : isNarrow
-            ? "absolute left-14 right-4 top-4 z-[var(--z-map-chrome)]"
-            : "absolute left-4 right-[4.5rem] top-4 z-[var(--z-map-chrome)] mx-auto w-72 max-w-[calc(100vw-5.5rem)]"
+        inline
+          ? "relative mx-auto w-72 max-w-full"
+          : collapsed
+            ? "absolute right-[4.5rem] top-4 z-[var(--z-map-chrome)]"
+            : isNarrow
+              ? "absolute left-14 right-4 top-4 z-[var(--z-map-chrome)]"
+              : "absolute left-4 right-[4.5rem] top-4 z-[var(--z-map-chrome)] mx-auto w-72 max-w-[calc(100vw-5.5rem)]"
       }
       dir="rtl"
     >
