@@ -46,10 +46,30 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
         toast(data.error || "خطا در تجزیه متن", "error");
         return;
       }
-      // The job exists now; everything else arrives by polling.
+      // The job exists now. Adopt it immediately rather than waiting for the next poll:
+      // setting the snapshot to null here (the earlier version) left the panel sitting on
+      // the paste box after a *successful* start, so a user who pasted a hundred links
+      // saw no progress at all until they refreshed the page by hand.
       notified.current = false;
-      setSnapshot(null);
       setText("");
+      setSnapshot({
+        job: {
+          id: data.jobId,
+          status: "running",
+          total: data.total ?? 0,
+          done_count: 0,
+          unresolved_count: 0,
+          duplicate_count: 0,
+          added_count: 0,
+        },
+        // The pasted items are known before anything is decoded -- that is the whole
+        // reason the parse step is instant -- so the list can appear as placeholders
+        // straight away rather than materialising a second later.
+        items: data.items ?? [],
+        currentMethod: null,
+        remaining: {},
+        etaSeconds: 0,
+      });
     } catch {
       toast("خطا در ارتباط با سرور", "error");
     } finally {

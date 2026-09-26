@@ -40,5 +40,23 @@ export async function POST(req: NextRequest) {
   // rows in behind it. A second paste while one runs is left queued, not dropped.
   startJob(guard.session.organizationId, jobId);
 
-  return NextResponse.json({ ok: true, jobId, total: items.length });
+  return NextResponse.json({
+    ok: true,
+    jobId,
+    total: items.length,
+    // The parsed items travel with the response so the panel can draw its rows as
+    // placeholders immediately. Nothing here is decoded yet -- these are the names and
+    // links the paste contained, in paste order, which is all the first paint needs.
+    items: importRepo.listItems(guard.session.organizationId, jobId).map((i) => ({
+      id: i.id,
+      ordinal: i.ordinal,
+      name: i.name,
+      address: i.address,
+      lat: i.lat,
+      lng: i.lng,
+      resolution: i.resolution,
+      status: i.status,
+      duplicate_name: i.duplicate_name,
+    })),
+  });
 }

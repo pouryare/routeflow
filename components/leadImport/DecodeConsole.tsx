@@ -1,8 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import dynamic from "next/dynamic";
 import { motion, AnimatePresence } from "framer-motion";
 import { Icon } from "@/components/meridian/Icon";
+import { SkeletonBlock } from "@/components/Skeleton";
 import ProgressBar from "./ProgressBar";
 import LiveItemList, { type LiveItem } from "./LiveItemList";
 import ProblemList from "./ProblemList";
@@ -14,6 +16,15 @@ import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 /** How long the undo stays offered. Long enough to notice and reach for, short enough
  *  that it is not a permanent fixture on a panel nobody is reading. */
 const UNDO_WINDOW_MS = 10_000;
+
+/* The map is the third layer: pins land on Tehran as each link decodes, so the shape of
+   the remaining work is visible -- a rush while the cheap tier clears, then a trickle, then
+   a few stragglers. Lazy with ssr:false because leaflet reads `window` on import; the same
+   reason the analytics map is loaded, and the shape components/MapLoader.tsx established. */
+const ImportMap = dynamic(() => import("./ImportMap"), {
+  ssr: false,
+  loading: () => <SkeletonBlock className="h-56 w-full rounded-[var(--radius-md)]" />,
+});
 
 /** The words under the bar, naming the method and how many links still need it.
  *
@@ -124,6 +135,12 @@ export default function DecodeConsole({
             className="overflow-hidden"
           >
             <div className="pt-2">
+              <div className="mb-2">
+                <ImportMap items={items} />
+                <p className="mt-1 text-[length:var(--text-xs)] text-text-faint">
+                  {faNum(settled)} مکان روی نقشه — {faNum(snapshot.total - settled)} مورد در انتظار
+                </p>
+              </div>
               <LiveItemList items={items} />
             </div>
           </motion.div>

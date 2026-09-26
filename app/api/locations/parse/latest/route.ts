@@ -24,7 +24,7 @@ export async function GET(req: NextRequest) {
   const items = plain(importRepo.listItems(org, job.id));
   const pool = items
     .filter((i) => i.status === "pending" || i.status === "resolving")
-    .map((i) => ({ id: i.id, ordinal: i.ordinal, resolution: i.resolution }));
+    .map((i) => ({ id: i.id, ordinal: i.ordinal, resolution: i.resolution, maps_url: i.maps_url }));
   const remaining = remainingByTier(pool);
   const finished = items.filter((i) => i.status !== "pending" && i.status !== "resolving");
 
