@@ -257,8 +257,14 @@
   --font-sans: var(--font-ui);
   --font-mono: var(--font-num);
   --font-display: var(--font-display);
-  --radius-xl: var(--radius-xl);
-  --radius-2xl: var(--radius-2xl);
+  /* These two were self-referential -- `var(--radius-xl)` resolving to itself
+     makes the declaration invalid at computed-value time, so Tailwind's
+     `rounded-xl` / `rounded-2xl` utilities silently fell back to their own
+     defaults instead of this system's scale. Every other entry in this block
+     forwards a DIFFERENT name (--elev-* → --shadow-elev-*, --spring-* →
+     --ease-spring-*); these were the only two that pointed at themselves.
+     They are redundant anyway: --radius-* is already the canonical name, so
+     @theme reads it directly and needs no alias here. */
   --shadow-elev-1: var(--elev-1);
   --shadow-elev-2: var(--elev-2);
   --shadow-elev-3: var(--elev-3);
@@ -1641,12 +1647,19 @@ body {
   /* drop-shadow form: a clip-path'd element loses box-shadow entirely */
   --card-drop: drop-shadow(0 1px 2px rgba(30,41,59,.07)) drop-shadow(0 12px 26px rgba(30,41,59,.13));
 
-  /* ---- Radii. Scaled up; this system is not a console. -------------------- */
-  --radius-sm: 9px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
-  --radius-xl: 20px;
-  --radius-2xl: 26px;
+  /* ---- Radii. Scaled up; this system is not a console. --------------------
+     ONE scale, two names. --r-* above is canonical; these alias it rather than
+     restating numbers, so the two spellings cannot drift apart again. The map's
+     chrome was written against a second, tighter scale (4/6/10px at :132) and
+     having both live at once is why every surface read as "a slightly different
+     rounded rectangle" -- the eye could not name the sameness. See MASTER.md
+     "Radii". --radius-xl was previously left at 14px while its siblings moved,
+     which is what made the collision visible rather than merely theoretical. */
+  --radius-sm: var(--r-sm);
+  --radius-md: var(--r-md);
+  --radius-lg: var(--r-lg);
+  --radius-xl: var(--r-xl);
+  --radius-2xl: var(--r-2xl);
   --radius-pill: 999px;
 
   /* ---- Type -------------------------------------------------------------- */
@@ -2751,6 +2764,10 @@ body {
 }
 .meridian .spine__step--todo .spine__body { opacity: .62; }
 .meridian .spine__body { min-width: 0; }
+/* min-height 36px is NOT a tap-target miss: spine__head holds only spans, an
+   aria-hidden icon and a <time> (OrderSpine.tsx) — nothing here is clickable, so
+   raising it to 44px would add dead space around a label rather than a bigger
+   target. The 44px audit applies to interactive elements only. */
 .meridian .spine__head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; min-height: 36px; }
 .meridian .spine__icon { display: inline-flex; color: var(--muted); }
 .meridian .spine__label { font-size: 14.5px; font-weight: 600; color: var(--ink); }
@@ -4561,7 +4578,7 @@ body {
 .meridian .crm-card .dot.hot { background: var(--crit); }
 .meridian .crm-card .dot.warm { background: var(--warn); }
 .meridian .crm-card .acts { display: grid; grid-template-columns: 2fr 1fr; gap: 8px; margin-top: 2px; }
-.meridian .crm-card .acts .btn { justify-content: center; min-height: 42px; }
+.meridian .crm-card .acts .btn { justify-content: center; min-height: 44px; }
 
 /* ---- CRM profile: nested details bento (BusinessDetails) -------------------- */
 .meridian .profile-topbar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; justify-content: space-between; }
@@ -4634,4 +4651,127 @@ body {
 .pool-pocket::before,
 .pool-pocket::after {
   content: "";
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Surface craft + scroll-driven entrances.
+   MASTER.md "Radii" (superellipse) and "Motion" Tier 2b.
+
+   Everything here is progressive enhancement behind @supports, and that is the
+   point rather than a hedge: corner-shape is experimental, animation-timeline
+   has no Firefox, and sibling-index() only reached Baseline in August 2026. A
+   browser that supports none of it still gets the shipped design exactly as it
+   was — rounded corners, time-based entrances — so the fallback is the status
+   quo, not a degraded state.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Superellipse corners. A circular arc meets its neighbour at a visible corner
+   discontinuity; the superellipse carries curvature through that join, which is
+   the difference between a rectangle that was rounded and one that was drawn.
+
+   Only surfaces above --radius-sm qualify. Chips and pills keep true circles:
+   at 999px the corner is a full semicircle and a squircle is invisible there,
+   so applying it would be noise. */
+@supports (corner-shape: superellipse(0.6)) {
+  .meridian .kblock,
+  .meridian .card,
+  .meridian .gcard,
+  .meridian .face,
+  .meridian .pocketed__face,
+  .meridian .modal,
+  .meridian .sheet,
+  .meridian .island,
+  .meridian .mwork,
+  .meridian .mapside,
+  .meridian .prow,
+  .meridian .ptile,
+  .meridian .pagehead,
+  .meridian .seg-item > a {
+    /* 0.6 is the mild end of the range. Anything past ~1.0 reads as a lozenge
+       and starts to look like a mistake on a rectangular card. */
+    corner-shape: superellipse(0.6);
+  }
+}
+
+/* Tier 2b — scroll-driven entrances.
+
+   The reader scrolls, and the content assembles itself as it arrives. Each card
+   plays off its own position in the viewport rather than off a clock, so a card
+   never finishes animating before anyone is there to see it.
+
+   Two decisions carry the whole effect, and both are about restraint:
+
+   1. The range stops at `cover 30%`. The reveal completes while the element is
+      still entering and then HOLDS its finished state for the remainder of the
+      scroll. A timeline bound to the full pass gets scrubbed backwards the
+      moment the reader scrolls up, which is scroll-jacking with a progress bar
+      glued on. This cannot be reversed into ugliness.
+   2. The stagger is positional, not timed. sibling-index() derives each card's
+      delay from its place among its siblings, so the cascade is right at any
+      list length with no per-item delay in the markup — and the clamp means a
+      40-row table cannot make its last row wait. */
+@supports (animation-timeline: view()) and (prefers-reduced-motion: no-preference) {
+  @keyframes meridian-reveal {
+    from {
+      opacity: 0;
+      transform: translateY(14px) scale(0.985);
+    }
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  .meridian .reveal,
+  .meridian .kblock,
+  .meridian .gcard,
+  .meridian .prow,
+  .meridian .ptile,
+  .meridian .mwork,
+  .meridian .bento-tile {
+    animation: meridian-reveal linear both;
+    animation-timeline: view();
+    /* Bounded to the entry. `both` fill is what holds the finished state after
+       the range ends — without it the card would snap back to invisible the
+       moment it cleared the entry zone. */
+    animation-range: entry 0% cover 30%;
+    animation-fill-mode: both;
+  }
+
+  /* The cascade. Clamped, so the longest wait in the system is 240ms no matter
+     how many siblings there are. This replaces the old "~8 items then all at
+     once" cap: the cap existed because a wall-clock stagger compounds against
+     the reader, and a clamped positional one cannot. See MASTER.md Tier 2. */
+  .meridian .kblock,
+  .meridian .gcard,
+  .meridian .prow,
+  .meridian .ptile,
+  .meridian .bento-tile {
+    animation-delay: min(calc(sibling-index() * var(--stagger-base)), 240ms);
+  }
+}
+
+/* Reduced motion, for the scroll timelines specifically.
+
+   The global sweep sets `animation-duration: 0.01ms !important`, which works by
+   shortening a TIME-based animation to nothing. A view() timeline has no
+   duration to shorten — its progress comes from scroll offset — so that sweep
+   leaves it running, and the reveal plays for exactly the readers it must not
+   play for while the global check still reports green. Hence the explicit
+   teardown. MASTER.md "Reduced motion" requires this line for any future
+   scroll-driven work too. */
+@media (prefers-reduced-motion: reduce) {
+  .meridian .reveal,
+  .meridian .kblock,
+  .meridian .gcard,
+  .meridian .prow,
+  .meridian .ptile,
+  .meridian .mwork,
+  .meridian .bento-tile {
+    animation: none !important;
+    animation-timeline: auto !important;
+    animation-delay: 0ms !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
 }

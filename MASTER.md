@@ -341,6 +341,21 @@ cannot share a value.
 Buttons and tabs are **fully rounded** — the single loudest signal that this is not the
 old console. Inner elements always take a smaller radius than the container holding them.
 
+**One scale, two names.** The map's chrome was written against a second, tighter scale
+(`--radius-sm/md/lg` at 4/6/10px) that predates this table. Two live scales is the reason
+every surface reads as "a slightly different rounded rectangle" — the eye cannot name it,
+which is exactly what sameness feels like. `--r-*` is the canonical scale and `--radius-*`
+now **aliases** it inside `.meridian`, so a rule may use whichever name reads better at the
+call site without the two drifting apart again. Both spellings resolve to the same numbers.
+
+**Corners are superellipses.** `corner-shape: superellipse()` is applied to every surface
+above `--radius-sm` (chips and pills keep true circles — a squircle on a 999px radius is
+invisible). A circular arc meets its neighbour at a visible corner discontinuity; the
+superellipse has continuous curvature there, which is the difference between a rectangle
+that was *rounded* and one that was *drawn*. It is progressive enhancement only:
+`border-radius` remains the base and the property is gated behind `@supports`, so a
+browser without it degrades to plain rounded corners and nothing else changes.
+
 ## Motion `CHANGED`
 
 Motion is a headline feature of this app, not a garnish. The MVP banned spring easing
@@ -430,9 +445,43 @@ order -- in an RTL layout that is right to left, top to bottom.
 | Modal card | `--ease-out`, scale 0.97 - 1 |
 | Record - detail navigation | Shared-element: the card's title and status pill persist and travel into the detail header rather than the page cross-fading |
 
-A stagger that runs past ~8 items stops reading as choreography and starts reading as
-lag. Every stagger in this system is capped, and past the cap the remainder appears
-together.
+**Scroll-driven entrances (Tier 2b) `NEW`.** Content that arrives by scrolling gets its
+entrance from the scroll position itself, via `animation-timeline: view()`. The element
+plays as it crosses the viewport rather than on a clock, so a card never finishes
+animating before the reader has arrived to see it do so.
+
+Two properties are deliberate, and both are the difference between this reading as
+considered and reading as a toy:
+
+- **The range is bounded to the entry, not the whole pass.** `animation-range: entry 0%
+  cover 30%` means the reveal completes while the element is still entering, and holds
+  its finished state for the rest of the scroll. A timeline bound to the full pass is
+  scrubbed backwards when the reader scrolls up, which is scroll-jacking wearing a
+  progress bar; this cannot be reversed into ugliness.
+- **The stagger is positional, not timed.** `sibling-index()` derives each card's delay
+  from where it sits among its siblings, so the cascade is correct at any list length and
+  needs no per-item delay in the markup. Delays are additionally clamped
+  (`min(sibling-index() * var(--stagger-base), 240ms)`) so a 30-row table cannot make its
+  last row wait two seconds — see the cap note below.
+
+**A note on the old cap, since it is now relaxed.** This section previously read: *"A
+stagger that runs past ~8 items stops reading as choreography and starts reading as lag.
+Every stagger in this system is capped, and past the cap the remainder appears together."*
+That cap is **raised, not removed**, and the reason is specific rather than sentimental: a
+stagger measured in *wall-clock time* compounds against the reader's patience, because the
+last item's arrival is a fixed number of seconds after the first whether or not anyone is
+still watching. A stagger derived from `sibling-index()` and clamped to 240ms cannot exceed
+that ceiling at any list length, so the pathology the cap was invented to prevent is
+prevented by construction. Long cascades are now allowed to *look* long without becoming
+*slow*.
+
+**Support, and what happens without it.** `sibling-index()` (Baseline August 2026),
+`animation-timeline: view()` (not Baseline — no Firefox yet) and `corner-shape` are all
+progressively enhanced inside `@supports`, with the existing time-based entrance as the
+fallback. Firefox keeps the shipped Tier 0/2 behaviour and loses only the scroll-driven
+refinement. **This is the first `@supports` in the codebase and the pattern is now
+expected: any modern visual property added here is gated, because a design that only
+exists in one engine is a design that does not exist for a third of the people using it.**
 
 ### Tier 3 -- Data. Never spring.
 
@@ -486,9 +535,22 @@ staggers become simultaneous, ambient loops stop, morphs become cross-fades, cou
 and chart draws render at their final value immediately. The app must remain fully usable
 and must not lose any information that motion was carrying.
 
+**Scroll timelines need their own rule, and the global block cannot do it.** The existing
+`animation-duration: 0.01ms !important` sweep works by shortening a *time*-based animation
+to nothing. A `view()`-timeline animation has no duration to shorten — its progress comes
+from scroll offset, so zeroing the duration changes nothing and the reveal keeps running for
+exactly the readers it must not run for. Tier 2b is therefore disabled explicitly:
+`animation-timeline: auto` plus `animation: none`, landing every element on its final state.
+Any future scroll-driven work must add its own line here, or it will ship a
+reduced-motion regression that the global sweep reports as green.
+
 Still forbidden regardless of tier: animating `width`/`height`/`top`/`left` (transform and
 opacity only -- the island morphs via `transform: scale` and a clip, never box
-dimensions), and scroll-driven parallax.
+dimensions), and scroll-driven parallax. **Parallax stays banned; scroll-linked *entrances*
+do not.** The distinction is whether the reader's scroll position is being *used* to move
+something relative to the page (parallax — the page's motion is hijacked) or merely to
+decide *when* an entrance plays (Tier 2b — the page still scrolls at the speed and distance
+the reader asked for). One is a motion-sickness trigger; the other is an animation.
 
 ---
 

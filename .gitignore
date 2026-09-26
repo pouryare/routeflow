@@ -81,3 +81,7 @@ testExtract.js
 test_resolve_maps_link.js
 verify_fix.js
 tmp/
+
+# Python bytecode caches
+__pycache__/
+*.pyc
