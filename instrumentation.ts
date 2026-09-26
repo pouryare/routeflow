@@ -21,4 +21,15 @@ export async function register() {
     // the app from booting (an unseeded or locked DB on a fresh machine, say).
     console.warn("[instrumentation] district geometry warm-up skipped:", err);
   }
+
+  // A bulk lead import that was mid-run when the process went away is still `running`
+  // in the database with no worker behind it. Pick those back up: every link already
+  // decoded is stored, so a restart resumes from the pending rows instead of either
+  // stranding the job or redoing work the user already waited for.
+  try {
+    const { resumeOrphanedJobs } = await import("./lib/leadImport/runner");
+    resumeOrphanedJobs();
+  } catch (err) {
+    console.warn("[instrumentation] lead import recovery skipped:", err);
+  }
 }

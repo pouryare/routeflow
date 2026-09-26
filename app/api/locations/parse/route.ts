@@ -1,23 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { parsePastedChat } from "@/lib/pasteImport";
-import { resolveMapsLinks } from "@/lib/resolveMapsLink";
-import { placeNameFromAddress } from "@/lib/geoLinks";
-import { distanceKm } from "@/lib/geo";
-import { groupFilter, requireRole } from "@/lib/session";
-import { jaroWinkler, findDuplicate as findDuplicateSignal, DuplicatePool } from "@/lib/duplicateDetection";
+import { requireRole } from "@/lib/session";
+import * as importRepo from "@/lib/repo/leadImport";
+import { startJob } from "@/lib/leadImport/runner";
 
-const UNNAMED_LOCATION = "مکان بدون نام";
-
-/** Score how similar two names are using Jaro-Winkler. */
-function nameScore(a: string, b: string): number {
-  const na = a.replace(/[\s‌‌]+/g, " ").trim().toLowerCase();
-  const nb = b.replace(/[\s‌‌]+/g, " ").trim().toLowerCase();
-  if (!na || !nb) return 0;
-  if (na === nb) return 1;
-  return jaroWinkler(na, nb);
-}
-
+/** POST: turn a pasted chat export or list of maps links into a decode job.
+ *
+ *  Returns as soon as the links are parsed -- no network calls happen in here. The
+ *  decode runs detached (lib/leadImport/runner.ts) and the panel polls
+ *  /api/locations/parse/[jobId] for progress, because a thousand links cannot be
+ *  resolved inside one request's lifetime. This route used to do the whole decode
+ *  inline and hand back one array at the end, which is what timed out on a large paste.
+ */
 export async function POST(req: NextRequest) {
   const guard = requireRole(req, ["owner", "group_manager"]);
   if (!guard.ok) return guard.response;
@@ -28,93 +22,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "متنی برای تجزیه وارد نشده است" }, { status: 400 });
   }
 
+  // Parsing is pure string work: pairing names with links, dropping repeats. No
+  // coordinates are fetched yet, which is what keeps this fast enough to answer at once.
   const items = parsePastedChat(text);
   if (items.length === 0) {
     return NextResponse.json({ ok: false, error: "هیچ لینک نقشه‌ای در متن پیدا نشد" }, { status: 422 });
   }
 
-  const db = getDb();
-  const filter = groupFilter(guard.session);
-
-  const savedLocationRows = db
-    .prepare(`SELECT id, name, maps_url, lat, lng, address FROM saved_locations WHERE 1 = 1${filter.sql}`)
-    .all(...filter.params) as unknown as Array<{ id: number; name: string; maps_url: string; lat: number | null; lng: number | null; address: string | null }>;
-  // The set of links already stored for this tenant, so a re-pasted link is reported
-  // as already saved instead of being offered again as new. Keyed by the exact
-  // `maps_url` string, which `saved_locations` already carries a UNIQUE index on.
-  const savedUrls = new Set(savedLocationRows.map((r) => r.maps_url));
-  const customerRows = db
-    .prepare(`SELECT id, business_name AS name, lat, lng, notes FROM customers WHERE 1 = 1${filter.sql}`)
-    .all(...filter.params) as unknown as Array<{ id: number; name: string; lat: number | null; lng: number | null; notes: string | null }>;
-
-  // Build pools for multi-signal matching
-  const locationPool: DuplicatePool[] = savedLocationRows.map((r) => ({
-    name: r.name,
-    lat: r.lat,
-    lng: r.lng,
-    address: r.address,
-    kind: "location" as const,
-    id: r.id,
-  }));
-  const customerPool: DuplicatePool[] = customerRows.map((r) => ({
-    name: r.name,
-    lat: r.lat,
-    lng: r.lng,
-    address: null,
-    kind: "customer" as const,
-    id: r.id,
-  }));
-  const allPools = [...locationPool, ...customerPool];
-
-  const resolved = await resolveMapsLinks(
-    items.map((it) => it.mapsUrl),
-    items.map((it) => it.name)
+  const jobId = importRepo.createJob(
+    guard.session.organizationId,
+    guard.session.groupId,
+    items.length
   );
+  importRepo.addItems(guard.session.organizationId, jobId, items);
 
-  // Batch-internal dedup: check each parsed item against every other
-  const batchKeys = items.map((it) => it.mapsUrl);
-  const batchDuplicates = new Map<string, string[]>();
-  for (let i = 0; i < items.length; i++) {
-    for (let j = i + 1; j < items.length; j++) {
-      const nameSim = nameScore(items[i].name || "", items[j].name || "");
-      if (nameSim >= 0.85) {
-        if (!batchDuplicates.has(batchKeys[i])) batchDuplicates.set(batchKeys[i], []);
-        if (!batchDuplicates.has(batchKeys[j])) batchDuplicates.set(batchKeys[j], []);
-        batchDuplicates.get(batchKeys[i])!.push(batchKeys[j]);
-        batchDuplicates.get(batchKeys[j])!.push(batchKeys[i]);
-      }
-    }
-  }
+  // Deliberately not awaited: the response goes out now while the runner fills the
+  // rows in behind it. A second paste while one runs is left queued, not dropped.
+  startJob(guard.session.organizationId, jobId);
 
-  const preview = items.map((it, i) => {
-    const r = resolved[i];
-    const name = it.name || (r.address ? placeNameFromAddress(r.address) : null) || UNNAMED_LOCATION;
-    // Whether this exact link is already stored for this tenant. This was
-    // `!!filter.sql` -- the truthiness of the tenant filter *string*, which said
-    // nothing about the link and happened to be true for every scoped request.
-    const alreadySaved = savedUrls.has(it.mapsUrl);
-    const duplicateOf = findDuplicateSignal(
-      name,
-      r.address ?? null,
-      r.lat,
-      r.lng,
-      allPools
-    );
-
-    return {
-      key: it.mapsUrl,
-      name,
-      mapsUrl: it.mapsUrl,
-      resolvedUrl: r.resolvedUrl,
-      lat: r.lat,
-      lng: r.lng,
-      address: r.address,
-      resolution: r.resolution,
-      alreadySaved,
-      duplicateOf: duplicateOf ? { kind: duplicateOf.existingKind, name: duplicateOf.existingName } : null,
-      batchDuplicateKeys: batchDuplicates.get(it.mapsUrl) ?? [],
-    };
-  });
-
-  return NextResponse.json({ ok: true, items: preview });
+  return NextResponse.json({ ok: true, jobId, total: items.length });
 }

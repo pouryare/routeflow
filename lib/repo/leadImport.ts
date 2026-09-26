@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb, type LocationResolution } from "@/lib/db";
+import type { DuplicatePool } from "@/lib/duplicateDetection";
 
 /** Bulk maps-link import: one job per paste, one row per link.
  *
@@ -278,6 +279,66 @@ export function linkSavedLocation(
         WHERE id = ? AND organization_id = ?`
     )
     .run(savedLocationId, itemId, organizationId);
+}
+
+/** Everything already stored for this tenant, loaded once per job rather than per item.
+ *  The dedupe pass compares every incoming link against this, so it is a per-job read,
+ *  not a per-item one. */
+export function loadDuplicatePool(organizationId: number): DuplicatePool[] {
+  return db()
+    .prepare(
+      `SELECT id, name, lat, lng, address FROM saved_locations WHERE organization_id = ?
+       UNION ALL
+       SELECT id, business_name AS name, lat, lng, NULL AS address FROM customers WHERE organization_id = ?`
+    )
+    .all(organizationId, organizationId) as unknown as DuplicatePool[];
+}
+
+/** Saves the links one job auto-added, recording the row each became so the 10-second
+ *  undo can find them again.
+ *
+ *  A link somebody else saved between the dedupe pass and this moment hits the unique
+ *  index and is reported back as a duplicate rather than silently counted as added. */
+export function autoAddItems(
+  organizationId: number,
+  items: ImportItemRow[],
+  groupId: number | null
+): void {
+  if (items.length === 0) return;
+  const conn = db();
+  const insert = conn.prepare(
+    `INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, group_id, created_at, updated_at, organization_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(organization_id, maps_url) DO NOTHING`
+  );
+  const now = new Date().toISOString();
+  for (const item of items) {
+    const result = insert.run(
+      item.name || "مکان بدون نام",
+      item.maps_url,
+      item.address,
+      item.lat,
+      item.lng,
+      item.resolution,
+      groupId,
+      now,
+      now,
+      organizationId
+    );
+    if (result.changes > 0) {
+      linkSavedLocation(organizationId, item.id, Number(result.lastInsertRowid));
+    } else {
+      markResolved(organizationId, item.id, {
+        lat: item.lat,
+        lng: item.lng,
+        address: item.address,
+        resolvedUrl: item.maps_url,
+        resolution: item.resolution,
+        status: "duplicate",
+        duplicateOf: "location",
+      });
+    }
+  }
 }
 
 /** Undo: deletes only the saved_locations rows this job recorded, and only those still
