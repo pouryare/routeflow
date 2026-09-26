@@ -4,15 +4,30 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useHydrated } from "@/lib/useHydrated";
 import { useSession } from "@/lib/useSession";
 import { useEffect, useState, useMemo } from "react";
+import dynamic from "next/dynamic";
 import { averageScore } from "@/lib/leadScore";
 import { distanceKm } from "@/lib/geo";
-import LeadGeographicDensity from "@/components/analytics/LeadGeographicDensity";
 import LeadConversionFunnel from "@/components/analytics/LeadConversionFunnel";
 import LeadScoreDistribution from "@/components/analytics/LeadScoreDistribution";
 import LeadStatusBreakdown from "@/components/analytics/LeadStatusBreakdown";
 import { SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { useToast } from "@/components/ToastProvider";
+import { SkeletonBlock } from "@/components/Skeleton";
+
+/* LeadGeographicDensity imports leaflet, which reads `window` the moment it is
+   evaluated -- `node -e "require('leaflet')"` throws "window is not defined". Importing
+   it normally made this page impossible to prerender, and `next build` failed on
+   /analytics. Loading it through next/dynamic with ssr:false keeps that import out of
+   the server render, the same shape components/MapLoader.tsx already uses for the
+   coverage map. The page stays prerenderable; the map simply arrives after hydration. */
+const LeadGeographicDensity = dynamic(
+  () => import("@/components/analytics/LeadGeographicDensity"),
+  {
+    ssr: false,
+    loading: () => <SkeletonBlock className="h-[420px] w-full rounded-[var(--r-2xl)]" />,
+  }
+);
 
 export default function AnalyticsPage() {
   const [locations, setLocations] = useState<any[]>([]);

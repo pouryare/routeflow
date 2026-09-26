@@ -285,11 +285,17 @@ export function linkSavedLocation(
  *  The dedupe pass compares every incoming link against this, so it is a per-job read,
  *  not a per-item one. */
 export function loadDuplicatePool(organizationId: number): DuplicatePool[] {
+  // `kind` is selected as a literal per branch, not inferred: it does not exist as a
+  // column on either table, and leaving it out made every match come back with
+  // existingKind undefined -- so the problem list could say "duplicate" but never
+  // whether the thing they already have is a saved pin or a customer.
   return db()
     .prepare(
-      `SELECT id, name, lat, lng, address FROM saved_locations WHERE organization_id = ?
+      `SELECT id, name, lat, lng, address, 'location' AS kind
+         FROM saved_locations WHERE organization_id = ?
        UNION ALL
-       SELECT id, business_name AS name, lat, lng, NULL AS address FROM customers WHERE organization_id = ?`
+       SELECT id, business_name AS name, lat, lng, NULL AS address, 'customer' AS kind
+         FROM customers WHERE organization_id = ?`
     )
     .all(organizationId, organizationId) as unknown as DuplicatePool[];
 }

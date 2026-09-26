@@ -24,6 +24,7 @@ import type { DuplicatePool } from "@/lib/duplicateDetection";
 import { nextItem } from "@/lib/leadImport/scheduler";
 import { decideItem } from "@/lib/leadImport/dedupe";
 import * as repo from "@/lib/repo/leadImport";
+import type { LocationResolution } from "@/lib/db";
 
 /** How many links are settled at once. Matches resolveMapsLinks' own default. */
 export const CONCURRENCY = 4;
@@ -53,20 +54,43 @@ async function runJob(organizationId: number, jobId: number): Promise<void> {
   if (activeJobId !== null) return; // something else owns the worker; it will pick this up
   activeJobId = jobId;
   try {
+    // One browser for the whole job, the same way resolveMapsLinks shares one across a
+    // batch. Launching Chromium per link would add seconds to every item that needs it.
+    // Owned here rather than inside drainJob so a test can drain with a stub resolver
+    // and never launch a browser at all.
+    await browserLifecycle.getBrowser();
     await drainJob(organizationId, jobId);
   } finally {
     activeJobId = null;
+    await browserLifecycle.closeBrowser().catch(() => {});
     // A paste that arrived while this job ran is still marked running. Take it now.
     const next = repo.nextQueuedJob(organizationId);
     if (next && next.id !== jobId) startJob(organizationId, next.id);
   }
 }
 
-async function drainJob(organizationId: number, jobId: number): Promise<void> {
+/** Turns one pasted URL into coordinates. The real implementation does the four-step
+ *  network cascade; a test supplies a stub, which is why the drain loop below can be
+ *  exercised without a network, a browser, or a clock. */
+export type LinkResolver = (url: string, name: string) => Promise<ResolvedLink>;
+
+/** What a resolver hands back. Structurally the shape resolveMapsLink already returns. */
+export interface ResolvedLink {
+  lat: number | null;
+  lng: number | null;
+  address: string | null;
+  resolvedUrl: string;
+  resolution: LocationResolution;
+}
+
+/** Drains one job to completion. Exported for tests, which pass a stub resolver; the
+ *  production path reaches it through startJob with the real cascade. */
+export async function drainJob(
+  organizationId: number,
+  jobId: number,
+  resolve: LinkResolver = resolveMapsLink
+): Promise<void> {
   const pool = repo.loadDuplicatePool(organizationId);
-  // One browser for the whole job, the same way resolveMapsLinks shares one across a
-  // batch. Launching Chromium per link would add seconds to every item that needs it.
-  await browserLifecycle.getBrowser();
 
   try {
     for (;;) {
@@ -87,7 +111,7 @@ async function drainJob(organizationId: number, jobId: number): Promise<void> {
       }
       if (batch.length === 0) break;
 
-      await Promise.all(batch.map((item) => resolveOne(organizationId, item, pool)));
+      await Promise.all(batch.map((item) => resolveOne(organizationId, item, pool, resolve)));
 
       repo.refreshCounters(organizationId, jobId);
     }
@@ -98,18 +122,17 @@ async function drainJob(organizationId: number, jobId: number): Promise<void> {
   } catch (err) {
     console.error("[lead-import] drain failed", { organizationId, jobId, err });
     if (!repo.isCancelled(organizationId, jobId)) repo.finishJob(organizationId, jobId, "cancelled");
-  } finally {
-    await browserLifecycle.closeBrowser().catch(() => {});
   }
 }
 
 async function resolveOne(
   organizationId: number,
   item: repo.ImportItemRow,
-  pool: DuplicatePool[]
+  pool: DuplicatePool[],
+  resolve: LinkResolver
 ): Promise<void> {
   try {
-    const r = await resolveMapsLink(item.maps_url, item.name);
+    const r = await resolve(item.maps_url, item.name);
     const name =
       item.name || (r.address ? placeNameFromAddress(r.address) : null) || UNNAMED_LOCATION;
 

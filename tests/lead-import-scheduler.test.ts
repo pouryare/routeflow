@@ -8,8 +8,14 @@ import {
 } from "@/lib/leadImport/scheduler";
 import type { LocationResolution } from "@/lib/db";
 
-function item(ordinal: number, resolution: LocationResolution): SchedulableItem {
-  return { id: ordinal + 1, ordinal, resolution };
+/** A URL that already carries coordinates, so predictTier calls it cheap.
+ *  Without this the fixture would be unrealistic: a real pending item has whatever
+ *  the paste contained, and the runner orders on that, not on a stored resolution. */
+const EASY = "https://maps.google.com/maps/place/x/@35.7,51.4,14z";
+const HARD = "https://maps.app.goo.gl/abc123";
+
+function item(ordinal: number, resolution: LocationResolution, url = HARD): SchedulableItem {
+  return { id: ordinal + 1, ordinal, resolution, maps_url: url };
 }
 
 describe("nextItem -- cheapest tier first", () => {
