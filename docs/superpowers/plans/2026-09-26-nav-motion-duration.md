@@ -169,7 +169,7 @@ export const DUR = {
 - [ ] **Step 4: Run it to verify it passes.**
 
 Run: `npx vitest run tests/motion.test.ts`
-Expected: all 8 tests PASS.
+Expected: all 7 tests PASS (6 after Task 1, plus the `DUR.panel` test this task adds).
 
 - [ ] **Step 5: Commit.**
 
@@ -255,7 +255,7 @@ with:
 - [ ] **Step 6: Run it to verify it passes.**
 
 Run: `npx vitest run tests/motion.test.ts`
-Expected: all 9 tests PASS.
+Expected: all 8 tests PASS — the 7 already green, plus the one CSS-mirror test this task adds.
 
 - [ ] **Step 7: Commit.**
 
@@ -437,5 +437,5 @@ git commit -m "chore(motion): nav motion gate green"
 
 - **Spec coverage:** every spec section has a task — the shared duration (Tasks 2–3), the curves (1, 3), the exit (1, 2), the driver-mode exception (4), the files table (all), verification (5), and the "not in scope" list (Task 5 Step 4 proves the consumers are untouched).
 - **Task 1 intentionally leaves `DUR.panel` undeclared** so that each task has exactly one reason to fail. `npx tsc --noEmit` is deferred to Task 5 Step 2 for that reason; the vitest run in Step 4 passes because the test asserts values, not types.
-- **Test counts are cumulative:** 6 existing → 7 after Task 1 → 8 after Task 2 → 9 after Task 3.
+- **Test counts are cumulative:** 6 existing → 6 after Task 1 → 7 after Task 2 → 8 after Task 3. Task 1 *replaces* the old popover test rather than adding one, which is why the count does not move until Task 2.
 

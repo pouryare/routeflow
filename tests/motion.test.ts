@@ -22,6 +22,20 @@ describe("lib/motion", () => {
     expect(DUR.slow).toBeLessThan(1);
   });
 
+  it("DUR.panel is the shared panel duration, and the popover exit is not DUR.fast", () => {
+    /* 400ms, in seconds. Shared by the framer panels here and --dur-panel in the CSS
+       copy, which the chrome also reads -- that mirror is the whole reason the value
+       lives in a token rather than inline. */
+    expect(DUR.panel).toBe(0.4);
+    /* The exit used to be DUR.fast (0.12), a 120ms dismissal against a 300ms enter.
+       An asymmetric dismissal reads as the panel being flung away. */
+    expect(popover.exit.transition.duration).not.toBe(DUR.fast);
+    expect(popover.exit.transition.duration).toBe(0.2);
+    /* And it must not overshoot: a dismissal that bounces reads as a panel that has
+       not left yet. EASE.out peaks at exactly 100%. */
+    expect(popover.exit.transition.ease).toEqual(EASE.out);
+  });
+
   it("staggers match MASTER.md and the cap is ten", () => {
     expect(STAGGER.tight).toBe(0.02);
     expect(STAGGER.base).toBe(0.04);

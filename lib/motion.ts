@@ -30,6 +30,11 @@ export const DUR = {
   morph: 0.42, // --dur-morph: island collapse↔expand
   settle: 0.32, // --dur-settle: drag release, card landing
   draw: 0.7, // --dur-draw: chart line draw, number count-up
+  /* --dur-panel: the nav popover, the card help panel, AND the auto-hiding chrome.
+     One duration across both motion systems, so the two feel related. The curve is
+     per-element (EASE.pop for a 10px rise, --ease-glide for a 64px slide); only the
+     duration is shared, because overshoot scales with travel, not with the curve. */
+  panel: 0.4,
 } as const;
 
 /** Stagger gaps in SECONDS, from MASTER.md "Durations". */
