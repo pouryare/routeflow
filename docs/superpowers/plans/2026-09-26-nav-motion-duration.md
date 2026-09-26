@@ -19,7 +19,7 @@
 - Reduced motion must keep working: the `@media (prefers-reduced-motion: reduce)` block at `app/globals.css:2129` and `withReducedMotion` in `lib/motion.ts` are the two gates, and neither is touched.
 - No Playwright assertion on the animation. Asserting on a 400ms transform is a timing-dependent flake; the repo's precedent is geometry in the browser, values in unit tests.
 - Branch: `nav-motion-duration`, cut from `main`. Commit after every task.
-- Lint baseline is **2 errors, 3 warnings** (pre-existing, `components/board/Board.tsx:79`, `components/board/BoardMobile.tsx:40`). Do not add to it. `npx eslint` takes >30s — run it backgrounded and read the file.
+- Lint baseline is **46 errors, 126 warnings** (172 problems), measured on this branch at Task 0. All of it is pre-existing debt in files this plan does not touch — stray root-level scripts (`verify_fix.js`, `testExtract.js`, …) and legacy components. **Verified: zero problems in `lib/motion.ts`, `tests/motion.test.ts`, `app/globals.css`, or `MASTER.md`.** Do not fix any of it and do not add to it; compare against the count instead. `npx eslint` takes well over 30s, so run it detached (`setsid nohup … &`) and read the output file — a plain `&` dies with its shell and leaves a 0-byte file.
 
 ## File map
 
@@ -363,6 +363,8 @@ npx vitest run 2>&1 | tail -20
 
 Expected: all suites pass. Any failure here is a regression from Tasks 1–4 and must be fixed before continuing.
 
+**Known pre-existing flake:** `tests/jalali.test.ts > agrees with Intl for every day across 20 Jalali years` times out at 5000ms when the machine is loaded (it takes ~3.5s standalone, so it has ~1.5s of headroom). It fails on `main` too, under CPU contention, and `lib/jalali.ts` never imports `lib/motion.ts` — this plan cannot affect it. Do not "fix" it here; if it fails, re-run that file alone to confirm, and note it in the commit.
+
 - [ ] **Step 2: Typecheck.** `DUR.panel` is consumed through `as const`, so a typo would not surface in vitest.
 
 ```bash
@@ -376,10 +378,17 @@ Expected: no errors. If `next-env.d.ts` churn appears, that is the framework reg
 
 ```bash
 cd /home/pourya/Desktop/routeflow
-nohup npx eslint > /tmp/lint-after.txt 2>&1 &
+setsid nohup npx eslint > /tmp/lint-after.txt 2>&1 < /dev/null & disown
 ```
 
-Then compare `/tmp/lint-after.txt` against `/tmp/lint-baseline.txt` (captured before Task 1). Expected: the same **2 errors, 3 warnings**, all in `components/board/Board.tsx:79` and `components/board/BoardMobile.tsx:40`. A new error or warning is ours.
+Then compare `/tmp/lint-after.txt` against the Task 0 baseline. Expected: the same **46 errors, 126 warnings** (172 problems), and specifically still **zero** in `lib/motion.ts`, `tests/motion.test.ts`, `app/globals.css` or `MASTER.md`:
+
+```bash
+grep -E '✖' /tmp/lint-after.txt
+grep -nE '^/home/pourya/Desktop/routeflow/(lib/motion\.ts|tests/motion\.test\.ts)$' /tmp/lint-after.txt || echo "clean: none of our files"
+```
+
+A new error or warning in our four files is ours and must be fixed.
 
 - [ ] **Step 4: Confirm the consumers really are untouched.** The design's central claim is that no call site moves.
 
