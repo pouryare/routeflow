@@ -50,6 +50,8 @@ export const TENANT_TABLES = [
   "districts",
   "facilities",
   "saved_locations",
+  "lead_import_jobs",
+  "lead_import_items",
   "lead_lists",
   "products",
   "orders",
@@ -929,6 +931,67 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS idx_saved_locations_name ON saved_locations(name);
+
+    /* A bulk maps-link import, as a job rather than one long request.
+       lead_import_jobs is one row per paste; lead_import_items is one row per link.
+       Both carry organization_id and are listed in TENANT_TABLES, so a forgotten scope
+       is a compile error rather than a cross-tenant read.
+
+       Why the items table rather than a JSON blob on the job: a 1000-link paste is
+       written incrementally as each link resolves, so a refresh mid-run reads back
+       exactly what finished, and a server restart resumes from the pending rows
+       without re-resolving anything. A single JSON column would have to be rewritten
+       whole on every one of a thousand updates. */
+    CREATE TABLE IF NOT EXISTS lead_import_jobs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      group_id INTEGER REFERENCES groups(id),
+      status TEXT NOT NULL DEFAULT 'running'
+        CHECK (status IN ('running', 'done', 'cancelled')),
+      stage TEXT NOT NULL DEFAULT 'parse'
+        CHECK (stage IN ('parse', 'fast', 'browser', 'nominatim', 'finish')),
+      total INTEGER NOT NULL DEFAULT 0,
+      done_count INTEGER NOT NULL DEFAULT 0,
+      unresolved_count INTEGER NOT NULL DEFAULT 0,
+      duplicate_count INTEGER NOT NULL DEFAULT 0,
+      added_count INTEGER NOT NULL DEFAULT 0,
+      /* Set once, the first time a poll notices the job has outlived the 60s
+         threshold, so three open tabs produce one notification rather than three. */
+      notified_at TEXT,
+      created_at TEXT NOT NULL,
+      finished_at TEXT
+    );
+    CREATE INDEX IF NOT EXISTS ix_lead_import_jobs_active
+      ON lead_import_jobs(organization_id, status);
+
+    CREATE TABLE IF NOT EXISTS lead_import_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      job_id INTEGER NOT NULL REFERENCES lead_import_jobs(id) ON DELETE CASCADE,
+      /* Position in the paste. The panel renders rows in this order and never
+         re-sorts, so the list does not reflow while the user is watching it. */
+      ordinal INTEGER NOT NULL,
+      name TEXT NOT NULL DEFAULT '',
+      maps_url TEXT NOT NULL,
+      lat REAL,
+      lng REAL,
+      address TEXT,
+      resolved_url TEXT,
+      resolution TEXT NOT NULL DEFAULT 'unresolved'
+        CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')),
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'resolving', 'done', 'unresolved', 'duplicate', 'skipped')),
+      duplicate_of TEXT CHECK (duplicate_of IN ('location', 'customer', 'batch')),
+      duplicate_name TEXT,
+      /* The saved_locations row this item became, so undo is a scoped delete that
+         cannot reach anything the job did not create. */
+      saved_location_id INTEGER REFERENCES saved_locations(id),
+      UNIQUE (job_id, ordinal)
+    );
+    CREATE INDEX IF NOT EXISTS ix_lead_import_items_job
+      ON lead_import_items(job_id, ordinal);
+    CREATE INDEX IF NOT EXISTS ix_lead_import_items_saved
+      ON lead_import_items(saved_location_id);
 
     /* Named, hand-ordered lists of prospect locations -- "امشب", "غرب تهران", whatever
        the user calls them. The automatic day-split proposes groupings; these are the
