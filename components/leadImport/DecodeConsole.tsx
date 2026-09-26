@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { Icon } from "@/components/meridian/Icon";
 import ProgressBar from "./ProgressBar";
 import LiveItemList, { type LiveItem } from "./LiveItemList";
 import ProblemList from "./ProblemList";
@@ -131,8 +132,8 @@ export default function DecodeConsole({
 
       {finished && (
         <div className="mt-2 flex flex-wrap items-center gap-2 text-[length:var(--text-sm)]">
-          <span className="text-[color:var(--good)]">
-            <IconCheck /> {faNum(snapshot.added_count)} مکان اضافه شد
+          <span className="flex items-center gap-1 text-[color:var(--good)]">
+            <Icon name="check" size="sm" /> {faNum(snapshot.added_count)} مکان اضافه شد
           </span>
           {snapshot.unresolved_count > 0 && (
             <span className="text-[color:var(--warn)]">
@@ -165,8 +166,4 @@ export default function DecodeConsole({
       )}
     </div>
   );
-}
-
-function IconCheck() {
-  return <span aria-hidden="true">✓</span>;
 }
