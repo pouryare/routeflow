@@ -35,9 +35,14 @@ describe("lib/motion", () => {
     expect(withReducedMotion(t, false)).toBe(t);
   });
 
-  it("popover and riseIn hide then show", () => {
+  it("the popover preset travels far enough to read as a move, not a fade", () => {
+    /* 4px was indistinguishable from a cross-fade. The travel is the whole point of
+       the preset: on a 10px rise, spring-pop's ~13% peak is a 1px whisper, which is
+       the "arrives, kisses past, settles" read. See MASTER.md "Motion". */
     expect(popover.initial.opacity).toBe(0);
+    expect(popover.initial.y).toBe(-10);
     expect(popover.animate.opacity).toBe(1);
+    expect(popover.animate.y).toBe(0);
     expect(riseIn.hidden.opacity).toBe(0);
     expect(riseIn.hidden.y).toBe(16);
     expect(riseIn.show.opacity).toBe(1);

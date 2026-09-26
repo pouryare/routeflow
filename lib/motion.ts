@@ -52,11 +52,23 @@ export function withReducedMotion<T extends object>(
   return reduced ? { duration: 0 } : transition;
 }
 
-/** The standard panel/popover enter-exit, for AnimatePresence children. */
+/** The standard panel/popover enter-exit, for AnimatePresence children.
+ *
+ *  The travel is 10px, not the 4px this started at: 4px of movement is
+ *  indistinguishable from a cross-fade, so the panel appeared rather than arrived.
+ *  At 10px, EASE.pop's ~13% peak is a ~1px overshoot -- a whisper of settle rather
+ *  than a bounce. The same curve on the chrome's 64px travel would be a 6px slam,
+ *  which is why that element uses --ease-glide instead. One duration, curve by
+ *  distance.
+ *
+ *  The exit does NOT use EASE.pop. A dismissal that overshoots reads as a panel that
+ *  has not left yet -- it visibly bounces back off its resting place. Exit is
+ *  --ease-out, which peaks at exactly 100%.
+ */
 export const popover = {
-  initial: { opacity: 0, y: -4 },
-  animate: { opacity: 1, y: 0, transition: { duration: DUR.slow, ease: EASE.out } },
-  exit: { opacity: 0, y: -4, transition: { duration: DUR.fast, ease: EASE.out } },
+  initial: { opacity: 0, y: -10 },
+  animate: { opacity: 1, y: 0, transition: { duration: DUR.panel, ease: EASE.pop } },
+  exit: { opacity: 0, y: -10, transition: { duration: 0.2, ease: EASE.out } },
 } as const;
 
 /** The Tier-0 "rise 16px and fade" entrance, as a variants pair. */
