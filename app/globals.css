@@ -542,6 +542,26 @@ body {
   .drag-ghost, .order-card, .run-column { transition: none; }
 }
 
+/* ---- Bulk lead import: the decode shimmer -------------------------------------------
+   The sweep a link shows while it is being read. Its duration is set inline per row and
+   grows with how long that link has been waiting, so the animation is a countdown
+   towards the 12s a browser attempt is allowed before it gives up -- a row two seconds
+   in races, a row at eleven seconds barely stirs. That is the information a spinner
+   throws away.
+
+   Written as a plain sweep rather than a framer-motion variant because the duration
+   changes on every tick; a CSS animation restarts cleanly when the duration changes,
+   whereas driving it from JS would need the transition re-created each time. */
+@keyframes leadimport-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(200%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* No sweep at all: the row still shows its status text, which carries the meaning. */
+  .leadimport-shimmer { animation: none; opacity: 0.4; }
+}
+
 /* ---- Island: a pill that widens into a panel ----------------------------------------
    One DOM node throughout -- the icon column is the fixed point the morph happens around.
 
