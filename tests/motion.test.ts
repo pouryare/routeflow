@@ -66,4 +66,18 @@ describe("lib/motion", () => {
     const css = readFileSync("app/globals.css", "utf8");
     expect(css).toContain("cubic-bezier(0.16, 1, 0.3, 1)");
   });
+
+  it("the panel duration and the glide curve are in the CSS copy, and the chrome reads them", () => {
+    const css = readFileSync("app/globals.css", "utf8");
+    /* The mirror this file exists to protect: lib/motion.ts speaks seconds and a
+       4-tuple, globals.css speaks ms and cubic-bezier(). One motion system, two
+       notations -- a change to one is a change to the other. */
+    expect(css).toContain("--dur-panel: 400ms;");
+    expect(css).toContain("--ease-glide: cubic-bezier(0.25, 0.8, 0.3, 1);");
+    /* And the chrome actually uses them. Without this the tokens could sit in the file
+       unused while the bar kept its 320ms --ease and nothing would fail. */
+    expect(css).toMatch(
+      /\.meridian \.chrome \{[^}]*transition: transform var\(--dur-panel\) var\(--ease-glide\)/,
+    );
+  });
 });
