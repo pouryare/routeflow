@@ -4710,7 +4710,19 @@ body {
       delay from its place among its siblings, so the cascade is right at any
       list length with no per-item delay in the markup — and the clamp means a
       40-row table cannot make its last row wait. */
-@supports (animation-timeline: view()) and (prefers-reduced-motion: no-preference) {
+/* NOTE the split condition. This was
+     `@supports (animation-timeline: view()) and (prefers-reduced-motion: no-preference)`
+   and it silently did NOTHING: Chromium evaluates CSS.supports() with a bare
+   media feature (no `()` and no media type) as false, so the whole block was
+   dropped at parse time and `meridian-reveal` never even existed in the
+   document. The build was green, the contrast gate was green, and the unit
+   suite was green — because every one of them checks a FILE, and this failure
+   only exists in a browser. Caught by tests/smoke/glass-visual.test.ts.
+
+   The motion preference is a `@media` condition, not a support question, so it
+   is asked in the layer that can actually ask it. The `@supports` below is now
+   only about the feature. */
+@supports (animation-timeline: view()) {
   @keyframes meridian-reveal {
     from {
       opacity: 0;
@@ -4731,10 +4743,14 @@ body {
   .meridian .bento-tile {
     animation: meridian-reveal linear both;
     animation-timeline: view();
-    /* Bounded to the entry. `both` fill is what holds the finished state after
-       the range ends — without it the card would snap back to invisible the
-       moment it cleared the entry zone. */
-    animation-range: entry 0% cover 30%;
+    /* `entry` only, and NOT `cover`. `cover` spans the element's whole time in
+       the viewport, so scrolling back up walks the timeline in reverse and the
+       card un-reveals — measured at opacity 0.46 and 0 on the way back to the
+       top, which is the scroll-jacking this was written to avoid. `entry` ends
+       the moment the element is fully in view, and paired with `both` fill the
+       finished state is then held for the rest of the scroll, in BOTH
+       directions. Caught by tests/smoke/glass-visual.test.ts. */
+    animation-range: entry;
     animation-fill-mode: both;
   }
 

@@ -453,11 +453,14 @@ animating before the reader has arrived to see it do so.
 Two properties are deliberate, and both are the difference between this reading as
 considered and reading as a toy:
 
-- **The range is bounded to the entry, not the whole pass.** `animation-range: entry 0%
-  cover 30%` means the reveal completes while the element is still entering, and holds
-  its finished state for the rest of the scroll. A timeline bound to the full pass is
-  scrubbed backwards when the reader scrolls up, which is scroll-jacking wearing a
-  progress bar; this cannot be reversed into ugliness.
+- **The range is `entry`, and only `entry`.** The reveal completes as the element comes
+  in and then holds its finished state for the rest of the scroll, in **both**
+  directions. An earlier draft used `animation-range: entry 0% cover 30%`, on the
+  reasoning that a bounded range would not reverse. It does: `cover` still spans the
+  element's whole time in the viewport, so scrolling back up walked the timeline in
+  reverse and the card un-revealed — measured at opacity 0.46 and 0 on the return to
+  the top. `entry` with `animation-fill-mode: both` is what actually makes the
+  finished state sticky, and that is the whole reason this effect can be trusted.
 - **The stagger is positional, not timed.** `sibling-index()` derives each card's delay
   from where it sits among its siblings, so the cascade is correct at any list length and
   needs no per-item delay in the markup. Delays are additionally clamped

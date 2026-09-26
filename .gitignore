@@ -85,3 +85,4 @@ tmp/
 # Python bytecode caches
 __pycache__/
 *.pyc
+tmp/visual/
