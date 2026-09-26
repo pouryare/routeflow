@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { estimateEtaSeconds, formatEta, TIER_COST_MS, type EtaInput } from "@/lib/leadImport/eta";
+import { estimateEtaSeconds, formatEta, TIER_COST_MS } from "@/lib/leadImport/eta";
 import type { LocationResolution } from "@/lib/db";
 
 function remaining(overrides: Partial<Record<LocationResolution, number>> = {}) {
