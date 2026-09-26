@@ -37,8 +37,12 @@ export async function POST(req: NextRequest) {
   const filter = groupFilter(guard.session);
 
   const savedLocationRows = db
-    .prepare(`SELECT id, name, lat, lng, address FROM saved_locations WHERE 1 = 1${filter.sql}`)
-    .all(...filter.params) as unknown as Array<{ id: number; name: string; lat: number | null; lng: number | null; address: string | null }>;
+    .prepare(`SELECT id, name, maps_url, lat, lng, address FROM saved_locations WHERE 1 = 1${filter.sql}`)
+    .all(...filter.params) as unknown as Array<{ id: number; name: string; maps_url: string; lat: number | null; lng: number | null; address: string | null }>;
+  // The set of links already stored for this tenant, so a re-pasted link is reported
+  // as already saved instead of being offered again as new. Keyed by the exact
+  // `maps_url` string, which `saved_locations` already carries a UNIQUE index on.
+  const savedUrls = new Set(savedLocationRows.map((r) => r.maps_url));
   const customerRows = db
     .prepare(`SELECT id, business_name AS name, lat, lng, notes FROM customers WHERE 1 = 1${filter.sql}`)
     .all(...filter.params) as unknown as Array<{ id: number; name: string; lat: number | null; lng: number | null; notes: string | null }>;
@@ -85,7 +89,10 @@ export async function POST(req: NextRequest) {
   const preview = items.map((it, i) => {
     const r = resolved[i];
     const name = it.name || (r.address ? placeNameFromAddress(r.address) : null) || UNNAMED_LOCATION;
-    const alreadySaved = !!filter.sql; // Simplified check
+    // Whether this exact link is already stored for this tenant. This was
+    // `!!filter.sql` -- the truthiness of the tenant filter *string*, which said
+    // nothing about the link and happened to be true for every scoped request.
+    const alreadySaved = savedUrls.has(it.mapsUrl);
     const duplicateOf = findDuplicateSignal(
       name,
       r.address ?? null,

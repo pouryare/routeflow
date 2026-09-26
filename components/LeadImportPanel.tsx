@@ -3,7 +3,9 @@
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
-import { Icon, type IconName } from "@/components/meridian/Icon";
+import { Icon } from "@/components/meridian/Icon";
+import { RESOLUTION_META } from "@/lib/leadImportMeta";
+import type { LocationResolution } from "@/lib/db";
 
 interface ParsedItem {
   key: string;
@@ -13,22 +15,11 @@ interface ParsedItem {
   lat: number | null;
   lng: number | null;
   address: string | null;
-  resolution: "direct" | "pluscode" | "nominatim" | "manual" | "unresolved";
+  resolution: LocationResolution;
   alreadySaved: boolean;
   duplicateOf: { kind: "location" | "customer"; name: string } | null;
   batchDuplicateKeys: string[];
 }
-
-const RESOLUTION_META: Record<
-  ParsedItem["resolution"],
-  { icon: IconName; label: string; color: string }
-> = {
-  direct: { icon: "check", label: "دقیق", color: "var(--good)" },
-  pluscode: { icon: "check", label: "دقیق", color: "var(--good)" },
-  nominatim: { icon: "target", label: "تقریبی", color: "var(--accent)" },
-  manual: { icon: "map-pin", label: "دستی", color: "var(--good)" },
-  unresolved: { icon: "warn", label: "نیاز به مکان‌یابی دستی", color: "var(--warn)" },
-};
 
 export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
   const [text, setText] = useState("");
