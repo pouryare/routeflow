@@ -97,7 +97,10 @@ RouteFade) is pure CSS and stays that way — it is deterministic, fires on ever
 navigation, and needs no JavaScript to be correct. Interactive motion added since
 (the nav popover, the help panel) uses `framer-motion`, with `lib/motion.ts` restating
 the curves and durations above in its units so nothing hand-rolls a value. A change to
-the tables above is a change in both places.
+the tables above is a change in both places. The two layers now also share a duration:
+`--dur-panel` (400ms) is read by the framer panels as `DUR.panel` and by the CSS chrome
+as a custom property, which is what makes the nav's popover and its sliding bar feel
+like one motion system rather than two that happen to share a header.
 
 ---
 
@@ -354,6 +357,7 @@ which curve is correct and, more usefully, which is wrong.
 | `--spring-snap` | `cubic-bezier(0.34, 1.26, 0.64, 1)` | Slight overshoot. Small controls, toggles, chips. |
 | `--spring-pop` | `cubic-bezier(0.34, 1.56, 0.64, 1)` | Clear overshoot. Shape morphs, sheets, entrances. |
 | `--spring-drop` | `cubic-bezier(0.22, 1.61, 0.36, 1)` | Heavy settle. A dragged object landing. |
+| `--ease-glide` | `cubic-bezier(0.25, 0.8, 0.3, 1)` | Long travel, no overshoot. The auto-hiding chrome, which crosses 64px. |
 
 A cubic-bezier can only overshoot once. For a true multi-oscillation settle, use CSS
 `linear()` -- supported in every browser this app targets -- and keep it to the two or
@@ -369,6 +373,7 @@ three places where the extra weight is actually felt.
 | `--dur-morph` | 420ms | Island collapse - expand |
 | `--dur-settle` | 320ms | Drag release, card landing |
 | `--dur-draw` | 700ms | Chart line draw, number count-up |
+| `--dur-panel` | 400ms | Nav popover, card help panel, auto-hiding chrome |
 | `--stagger-tight` | 20ms | Table rows |
 | `--stagger-base` | 40ms | Board cards, list items |
 | `--stagger-loose` | 60ms | Bento tiles, sidebar sections |
@@ -376,6 +381,18 @@ three places where the extra weight is actually felt.
 | `--pulse-stagger` | 800ms | Delay between ping rings |
 | `--sweep-duration` | 4000ms | Ambient radar sweep |
 | `--drift-duration` | 12000ms | Gradient wash drift |
+
+**One duration, curve by distance.** The nav popover, the card help panel and the
+auto-hiding chrome all travel for `--dur-panel`. They do *not* share a curve, because
+overshoot is a function of travel rather than of the curve: `--spring-pop`'s ~13% peak
+is a 1px overshoot on the panels' 10px rise and a 6px rebound on the chrome's 64px
+slide. So the panels use `--spring-pop` and the chrome uses `--ease-glide`, and the
+shared value is the duration only. A dismissal is the exception in the other
+direction — the panel's *exit* is `--ease-out` at 200ms, because a dismissal that
+overshoots reads as a panel that has not left yet. The chrome is the element that
+makes the rule necessary: at `--ease-out` it covered 89% of its travel in the first
+100ms, so a 320ms transition felt like a snap followed by dead time. Lengthening a
+front-loaded curve fixes nothing; the curve was the problem.
 
 ### Tier 0 -- Entrance. The section arrives; it does not appear.
 
@@ -453,7 +470,12 @@ Not style preferences -- each has a specific cost.
 - **Driver mode, entirely.** `.driver-mode` is, in this codebase's own words, "the same
   app, sized for one thumb in a moving vehicle." Overshoot animation read inside a moving
   vehicle is a motion-sickness trigger, and the person is driving. Driver mode gets
-  `--ease-out`, short durations, and no ambient loops.
+  `--ease-out`, short durations, and no ambient loops. **One named exception:** the
+  shell header's nav popover, which is reachable while driver mode is active (the class
+  is set on `<html>` by `CoverageMap`, and `/map` is a shell page) but is chrome the
+  driver reaches only by scrolling up off the map. The map itself — markers, controls,
+  the bottom bar — keeps every rule on this list. The exception is the header popover by
+  name, not "the shell", and it is not a precedent for overshooting anywhere else.
 - **Anything the user is waiting on.** A spinner, a saving state, a pending request. Added
   duration on a blocking transition is added latency, whatever the curve.
 
