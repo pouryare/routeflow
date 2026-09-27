@@ -127,7 +127,7 @@ export default function AccentPicker({
           <p className="mb-2 px-1 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
             رنگ ظاهر
           </p>
-          <div className="grid grid-cols-5 gap-1.5">
+          <div className="opt-row gap-1.5">
             {ACCENT_THEMES.map((t) => {
               const on = t.id === accent;
               return (

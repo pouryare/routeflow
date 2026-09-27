@@ -165,17 +165,17 @@ export default function LeadRunPlannerTabFlow({
   const renderCustom = useCallback((api: CustomStepApi) => {
     if (api.step.id === "driver") {
       return (
-        <div className="flex flex-col gap-2">
-          <DriverPicker drivers={drivers} busy={busy} selectedId={driverId} onSelect={setDriverId} />
-          <button
-            type="button"
-            className="btn solid w-full px-4 py-2"
-            disabled={driverId === "" || drivers.length === 0}
-            onClick={() => api.submit("next")}
-          >
-            ادامه
-          </button>
-        </div>
+        /* No continue button: a driver is a choice, not a question with an answer to
+         * confirm. Tapping a face is the answer, and it moves on. */
+        <DriverPicker
+          drivers={drivers}
+          busy={busy}
+          selectedId={driverId}
+          onSelect={(id) => {
+            setDriverId(id);
+            api.submit("next");
+          }}
+        />
       );
     }
 

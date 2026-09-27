@@ -118,7 +118,7 @@ export default function FontPicker({
           <p className="mb-2 px-1 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
             قلم
           </p>
-          <div className="grid grid-cols-2 gap-1.5">
+          <div className="opt-row half gap-1.5">
             {FONT_CHOICES.map((f) => {
               const on = f.id === font;
               return (

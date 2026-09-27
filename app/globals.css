@@ -4514,9 +4514,13 @@ body {
 .meridian .tapflow .tf-steps i.on { background: var(--accent); }
 .meridian .tapflow .tf-q { margin: 0; font-size: 19px; font-weight: 700; line-height: 1.4; text-wrap: balance; }
 .meridian .tapflow .tf-sub { margin: -6px 0 0; font-size: 13px; color: var(--muted); }
-.meridian .tapflow .tf-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-.meridian .tapflow .tf-grid.one { grid-template-columns: 1fr; }
-.meridian .tapflow .tf-grid.three { grid-template-columns: repeat(3, 1fr); }
+.meridian .tapflow .tf-grid { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+/* Every multi-column choice row is a centred flex line, not a grid: a grid leaves a partial
+   last row stranded in column one, which reads as a straight column under the row above.
+   `flex: 1 1` keeps the full rows evenly divided while a lone leftover centres on its own. */
+.meridian .tapflow .tf-grid > * { flex: 1 1 calc(50% - 4px); }
+.meridian .tapflow .tf-grid.one { display: grid; grid-template-columns: 1fr; }
+.meridian .tapflow .tf-grid.three > * { flex-basis: calc(33.333% - 6px); }
 .meridian .tapflow .tf-group { margin-bottom: -4px; font-size: 12px; color: var(--muted); }
 .meridian .tapflow .tf-opt {
   min-height: 54px; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: start;
@@ -4539,7 +4543,8 @@ body {
 /* A picker of people rather than answers: two-up on a phone, three-up where there is room.
    The cap is load-bearing -- .sheet has no max-width, so without it a desktop would fit
    nine columns. 158px is where a Persian name still fits beside the avatar. */
-.meridian .tapflow .tf-grid.people { grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); max-width: 512px; }
+.meridian .tapflow .tf-grid.people { max-width: 512px; }
+.meridian .tapflow .tf-grid.people > * { flex: 1 1 158px; max-width: 220px; }
 .meridian .tapflow .tf-person .tf-person__text { min-width: 0; display: grid; gap: 1px; }
 .meridian .tapflow .tf-person .tf-person__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meridian .tapflow .tf-person .tf-person__meta { font-size: 12px; font-weight: 400; color: var(--muted); }
@@ -4547,6 +4552,19 @@ body {
 /* The caption under a field: a count of what is unavailable, and why. */
 .meridian .tapflow .tf-note { font-size: 12px; line-height: 1.6; color: var(--muted); }
 .meridian .tapflow .tf-note.warn { color: var(--warn); }
+/* ---- Dialog options ------------------------------------------------------------- */
+/* Every button in a dialog centres its own content. `align-items` covers the column-flex
+   option buttons and `justify-content` the row-flex ones; `text-align` covers the plain
+   inline-block case, so all three are needed rather than one clever rule. */
+.meridian [role="dialog"] button { text-align: center; justify-content: center; align-items: center; }
+/* The same centred flex line the tap flows use, for the pickers and boards that were built
+   on their own grid classes. One opt-in class rather than a dozen bespoke fixes -- and a grid
+   cannot do this: it strands a partial last row in column one, which reads as a straight
+   column under the row above it. */
+.meridian .opt-row { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; }
+.meridian .opt-row > * { flex: 0 0 auto; }
+.meridian .opt-row.half > * { flex: 1 1 calc(50% - 4px); }
+.meridian .opt-row.third > * { flex: 1 1 calc(33.333% - 6px); }
 .meridian .tapflow .tf-error { margin: 2px 0 0; font-size: 12px; color: var(--crit); }
 .meridian .tapflow .tf-input[aria-invalid="true"] { border-color: var(--crit); }
 .meridian .tapflow .tf-opt.bad { color: var(--crit); }

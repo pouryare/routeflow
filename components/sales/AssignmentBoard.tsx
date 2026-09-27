@@ -237,7 +237,7 @@ export default function AssignmentBoard({
               مسیر بازی وجود ندارد. اول یک مسیر بسازید.
             </p>
           ) : (
-            <div className="board-stagger grid gap-[var(--space-3)] sm:grid-cols-2 xl:grid-cols-3">
+            <div className="board-stagger opt-row half gap-[var(--space-3)]">
               {openRuns.map((r) => (
                 <article
                   key={r.id}

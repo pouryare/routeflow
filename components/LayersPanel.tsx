@@ -211,7 +211,7 @@ export default function LayersPanel({
           <h3 className="mb-1.5 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
             نقشه پایه
           </h3>
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className="opt-row third gap-1.5">
             {BASEMAPS.map((b) => {
               const on = basemap === b.id;
               return (
