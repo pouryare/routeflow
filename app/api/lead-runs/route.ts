@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
     run_date?: unknown;
     location_ids?: unknown;
     notes?: unknown;
+    override?: unknown;
   } | null;
   if (body?.driver_user_id == null) {
     return NextResponse.json({ ok: false, error: "راننده مشخص نشده است" }, { status: 400 });
@@ -63,6 +64,8 @@ export async function POST(req: NextRequest) {
       run_date: body.run_date,
       location_ids: (body.location_ids as unknown[]).map(Number),
       notes: typeof body.notes === "string" ? body.notes : null,
+      // Only ever true from a UI that showed the manager this day is already finished.
+      override: body.override === true,
     });
     return NextResponse.json({ ok: true, run: result.run, reused: result.reused }, { status: result.reused ? 200 : 201 });
   } catch (e) {

@@ -82,6 +82,9 @@ const readRun = (uid: number, role: string, gid: number | null, id: number) =>
   }), routeCtx(id));
 
 const TOMORROW = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+/* The override cases get their own day. They rewrite a run's stops, and the cases below read
+ * the TOMORROW run -- sharing the date would make those assertions depend on this ordering. */
+const LATER = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
 /* Functions, not tuples. A `const MANAGER = [managerId, ...]` is evaluated when the module
    loads, which is before beforeAll has assigned any id -- so it captures 0, and uid 0 is
    exactly the retired shared-password session, which every route treats as signed out. The
@@ -100,24 +103,62 @@ describe("a manager plans a route", () => {
     expect(body.run.stops.map((s) => s.location_id)).toEqual([pinB, pinA]);
   });
 
-  it("refuses a second run for the same driver and day, rather than making two", async () => {
-    // The UNIQUE(driver_user_id, run_date) is the rule. Re-planning a day must reuse the
-    // run, because a driver shown two of them is shown an arbitrary one.
+  it("refuses a second run for a day the driver already has planned", async () => {
+    /* UNIQUE(driver_user_id, run_date) is the rule, but on its own it was not enough: the
+       old code answered a collision by handing back the old run, which reported success
+       while throwing away the stops the manager had just picked. Refusing says what
+       actually happened. */
     const res = await createRun(...MANAGER(), { driver_user_id: driverId, run_date: TOMORROW, location_ids: [pinC] });
-    expect(res.status).toBe(200);
-    const body = (await res.json()) as { reused: boolean };
-    expect(body.reused).toBe(true);
+    expect(res.status).toBe(409);
     const rows = getDb()
       .prepare("SELECT COUNT(*) AS n FROM lead_runs WHERE driver_user_id = ? AND run_date = ?")
       .get(driverId, TOMORROW) as { n: number };
     expect(rows.n).toBe(1);
   });
 
-  it("reuses rather than emptying: the original stops survive a re-plan", async () => {
+  it("leaves a planned day's stops untouched after a refused re-plan", async () => {
     const stops = getDb()
       .prepare("SELECT location_id FROM lead_run_stops s JOIN lead_runs r ON r.id = s.run_id WHERE r.driver_user_id = ? ORDER BY s.sort_order")
       .all(driverId) as Array<{ location_id: number }>;
     expect(stops.map((s) => s.location_id)).toEqual([pinB, pinA]);
+  });
+
+  it("replaces a finished day, but only once the manager has confirmed it", async () => {
+    const first = await createRun(...MANAGER(), { driver_user_id: driverId, run_date: LATER, location_ids: [pinA] });
+    expect(first.status).toBe(201);
+    const runId = ((await first.json()) as { run: { id: number } }).run.id;
+    await patchRun(...MANAGER(), runId, { status: "done" });
+
+    // Still refused without the override: the UI shows the warning before offering it.
+    const refused = await createRun(...MANAGER(), { driver_user_id: driverId, run_date: LATER, location_ids: [pinB] });
+    expect(refused.status).toBe(409);
+
+    const res = await createRun(...MANAGER(), {
+      driver_user_id: driverId, run_date: LATER, location_ids: [pinC], override: true,
+    });
+    expect(res.status).toBe(200);
+    const body = (await res.json()) as {
+      reused: boolean;
+      run: { status: string; stops: Array<{ location_id: number }> };
+    };
+    expect(body.reused).toBe(true);
+    // The override actually writes. This is the step the old reuse path silently skipped,
+    // and it is the one that matters: the manager's chosen stops are on the route.
+    expect(body.run.stops.map((s) => s.location_id)).toEqual([pinC]);
+    expect(body.run.status).toBe("planned");
+  });
+
+  it("never overwrites an active day, even with the override set", async () => {
+    // That run is 'planned' again after the override above. Re-planning it must still fail:
+    // a driver cannot be in two places at once, and that is not the manager's to decide.
+    const res = await createRun(...MANAGER(), {
+      driver_user_id: driverId, run_date: LATER, location_ids: [pinA], override: true,
+    });
+    expect(res.status).toBe(409);
+    // Remove it for the tests that follow. Two of them count every run in the fixture, and
+    // a third resolves the driver's "current" run by recency, so a leftover here would
+    // silently become their answer. Stops go with it (ON DELETE CASCADE).
+    getDb().prepare("DELETE FROM lead_runs WHERE driver_user_id = ? AND run_date = ?").run(driverId, LATER);
   });
 
   it("refuses a driver who is not a driver, or is deactivated", async () => {

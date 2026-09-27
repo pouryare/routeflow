@@ -179,16 +179,16 @@ export function isOnDriversRun(conn: DatabaseSync, driverUserId: number, orgId: 
 }
 
 /** Drivers this manager may assign a route to. Feeds the dropdown. */
-export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null }> {
+export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null; avatar_url: string | null }> {
   const all = session.role === "owner";
   const rows = conn
-    .prepare(`SELECT id, display_name, group_id FROM users
+    .prepare(`SELECT id, display_name, group_id, avatar_url FROM users
                WHERE organization_id = ? AND role = 'driver' AND active = 1
                  ${all ? "" : "AND group_id = ?"}
                ORDER BY display_name`)
     .all(...(all ? [session.organizationId] : [session.organizationId, session.groupId ?? -1])) as
-    | Array<{ id: number; display_name: string; group_id: number | null }>;
-  return rows.map((r) => ({ id: r.id, name: r.display_name, group_id: r.group_id }));
+    | Array<{ id: number; display_name: string; group_id: number | null; avatar_url: string | null }>;
+  return rows.map((r) => ({ id: r.id, name: r.display_name, group_id: r.group_id, avatar_url: r.avatar_url }));
 }
 
 /** Replace a run's stops. Called from the transaction in createOrReuse, and on its own for
@@ -222,24 +222,61 @@ export function setRunStops(conn: DatabaseSync, orgId: number, runId: number, lo
   });
 }
 
-/** Create the run for a driver and day, or hand back the one that already exists.
+/** Create the run for a driver and day, or replace the one that already exists.
  *
- *  Select-then-reuse rather than INSERT OR REPLACE, copied from lib/repo/routing.ts: a
+ *  Select-then-write rather than INSERT OR REPLACE, copied from lib/repo/routing.ts: a
  *  REPLACE would delete the existing row and cascade its stops away, so re-planning a
- *  driver's day would quietly empty the route they may already be driving. */
+ *  driver's day would quietly empty the route they may already be driving.
+ *
+ *  A collision used to return the existing run untouched -- reporting "this route was
+ *  updated" while discarding the stops the caller had just chosen. It now either refuses,
+ *  or, for a day the driver has already finished and only when the caller has explicitly
+ *  overridden, rewrites that run's stops in place. An *active* day is never overwritten:
+ *  a driver cannot be in two places at once, and that is not the manager's call to make. */
 export function createOrReuseLeadRun(
   conn: DatabaseSync,
   session: Session,
-  input: { driver_user_id: number; run_date: unknown; location_ids: number[]; notes?: string | null },
+  input: {
+    driver_user_id: number;
+    run_date: unknown;
+    location_ids: number[];
+    notes?: string | null;
+    /** The manager was shown that this day is already finished and chose to replace it. */
+    override?: boolean;
+  },
 ): { run: LeadRun; reused: boolean } {
   const runDate = assertIsoDate(input.run_date);
   const driver = assertAssignableDriver(conn, session, input.driver_user_id);
   const now = new Date().toISOString();
 
   const existing = conn
-    .prepare("SELECT id FROM lead_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?")
-    .get(driver.id, runDate, session.organizationId) as { id: number } | undefined;
+    .prepare("SELECT id, status FROM lead_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?")
+    .get(driver.id, runDate, session.organizationId) as
+    | { id: number; status: LeadRunStatus }
+    | undefined;
   if (existing) {
+    if (existing.status !== "done") {
+      throw new LeadRunError(409, "این راننده در این تاریخ مسیر فعالی دارد");
+    }
+    if (!input.override) {
+      throw new LeadRunError(409, "این روز قبلاً برای این راننده تکمیل شده است");
+    }
+    /* A finished day, explicitly overridden. The row is kept -- its id and created_at
+     * still describe the same driver's day -- while its stops are swapped wholesale and it
+     * reopens as planned. setRunStops deletes and re-inserts, which is the same write the
+     * fresh-insert path uses, so both routes write identically. */
+    conn.exec("BEGIN IMMEDIATE");
+    try {
+      conn
+        .prepare(`UPDATE lead_runs SET status = 'planned', started_at = NULL, finished_at = NULL,
+                                    notes = ?, updated_at = ? WHERE id = ?`)
+        .run(input.notes ?? null, now, existing.id);
+      setRunStops(conn, session.organizationId, existing.id, input.location_ids, now);
+      conn.exec("COMMIT");
+    } catch (e) {
+      conn.exec("ROLLBACK");
+      throw e;
+    }
     return { run: readLeadRun(conn, existing.id, session.organizationId)!, reused: true };
   }
 
