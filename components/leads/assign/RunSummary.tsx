@@ -27,16 +27,16 @@ export default function RunSummary({
 
   return (
     <div className="tf-card">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center justify-center gap-2">
         <Avatar userId={driverId} name={driverName ?? ""} src={driverAvatar} size={34} />
-        <div className="min-w-0">
+        <div className="min-w-0 text-center">
           <p className="truncate text-[length:var(--text-sm)] font-medium text-text">
             {driverName ?? "راننده انتخاب نشده"}
           </p>
           <p className="text-[length:var(--text-xs)] text-text-faint">{stopLine}</p>
         </div>
       </div>
-      <p className="text-[length:var(--text-xs)] text-text-muted">{dateLine}</p>
+      <p className="text-center text-[length:var(--text-xs)] text-text-muted">{dateLine}</p>
     </div>
   );
 }

@@ -4544,7 +4544,9 @@ body {
    The cap is load-bearing -- .sheet has no max-width, so without it a desktop would fit
    nine columns. 158px is where a Persian name still fits beside the avatar. */
 .meridian .tapflow .tf-grid.people { max-width: 512px; }
-.meridian .tapflow .tf-grid.people > * { flex: 1 1 158px; max-width: 220px; }
+/* min-width is what keeps this two-up on a phone. `flex-shrink: 1` alone lets the cards
+   squeeze under their basis, which packs three onto a phone-width row and defeats the cap. */
+.meridian .tapflow .tf-grid.people > * { flex: 1 1 158px; min-width: 152px; max-width: 220px; }
 .meridian .tapflow .tf-person .tf-person__text { min-width: 0; display: grid; gap: 1px; }
 .meridian .tapflow .tf-person .tf-person__name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .meridian .tapflow .tf-person .tf-person__meta { font-size: 12px; font-weight: 400; color: var(--muted); }
@@ -4565,6 +4567,25 @@ body {
 .meridian .opt-row > * { flex: 0 0 auto; }
 .meridian .opt-row.half > * { flex: 1 1 calc(50% - 4px); }
 .meridian .opt-row.third > * { flex: 1 1 calc(33.333% - 6px); }
+/* ---- Centring a dialog ----------------------------------------------------------- */
+/* A dialog asks one question at a time, so it reads down a centre line: the title, the
+   question, the sub-line and the options all sit on it. The head's text block needs `flex: 1`
+   or it would only centre inside its own shrink-to-fit width, next to the close button. */
+.meridian .sheet .sheethead > div { flex: 1; text-align: center; }
+.meridian .tapflow .tf-q,
+.meridian .tapflow .tf-sub,
+.meridian .tapflow .tf-group,
+.meridian .tapflow .tf-note,
+.meridian .tapflow .tf-card.ok,
+.meridian .tapflow .tf-card.warn { text-align: center; }
+/* The progress dots belong on the centre line, so the back button leaves the flow and is
+   pinned to the inline-start edge rather than sharing a row with them. */
+.meridian .tapflow .tf-nav { justify-content: center; position: relative; }
+.meridian .tapflow .tf-back { position: absolute; inset-inline-start: 0; }
+/* A capped block hugs the inline start by default, and `justify-content` only centres the
+   items *inside* it -- margin-inline is what actually centres the block in the sheet. */
+.meridian .tapflow .tf-grid,
+.meridian .opt-row { margin-inline: auto; }
 .meridian .tapflow .tf-error { margin: 2px 0 0; font-size: 12px; color: var(--crit); }
 .meridian .tapflow .tf-input[aria-invalid="true"] { border-color: var(--crit); }
 .meridian .tapflow .tf-opt.bad { color: var(--crit); }
