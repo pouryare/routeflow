@@ -1865,7 +1865,7 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی نشان بلد ویز گوگل">
+        <CollapsibleSection title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی گوگل نشان بلد ویز">
           <div className="flex flex-col gap-4">
 
             <div className="flex items-center justify-between gap-2">

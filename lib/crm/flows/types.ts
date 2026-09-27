@@ -5,7 +5,7 @@ import type {
   BusinessType, ContactRole, LeadSource, LostReason, NextKind, NotFitReason, PriceTier, SkipReason, Verification,
 } from "../vocab";
 
-export type StepKind = "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours" | "stars";
+export type StepKind = "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours" | "stars" | "driver" | "date";
 
 /** Everything an answer can contribute. Merged left to right; a later answer wins. */
 export interface FlowSet {

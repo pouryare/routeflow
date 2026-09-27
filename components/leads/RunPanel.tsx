@@ -3,6 +3,7 @@
 import { faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
 import { NavAppId, navApp, routeIsSingleLeg, droppedWaypoints } from "@/lib/navApps";
+import LeadRunPlanner from "@/components/leads/LeadRunPlanner";
 import { Icon } from "@/components/meridian/Icon";
 
 export interface RunStop {
@@ -34,6 +35,7 @@ export default function RunPanel({
   optimiseGain,
   busy,
   onTapFlow,
+  onAssignRoute,
 }: {
   stops: RunStop[];
   totalKm: number | null;
@@ -48,6 +50,8 @@ export default function RunPanel({
   optimiseGain: number | null;
   busy: boolean;
   onTapFlow?: (stopId: number) => void;
+  /** Opens the "سپردن مسیر" assignment flow. Omitted for a driver, who cannot assign. */
+  onAssignRoute?: () => void;
 }) {
   const singleLeg = routeIsSingleLeg(navAppId, stops.length);
   const dropped = droppedWaypoints(navAppId, stops.length);
@@ -78,6 +82,14 @@ export default function RunPanel({
           </button>
         )}
 
+        {onAssignRoute && (
+          <LeadRunPlanner
+            locationIds={stops.map((s) => s.id)}
+            busy={busy}
+            onOpen={onAssignRoute}
+          />
+        )}
+
         <button
           onClick={onClear}
           disabled={busy}
@@ -104,7 +116,7 @@ export default function RunPanel({
       )}
       {dropped > 0 && (
         <p className="text-[length:var(--text-xs)] leading-5 text-warn">
-          گوگل مپ حداکثر ۱۰ ایستگاه میانی می‌پذیرد؛ {faNum(dropped)} مقصد آخر در این لینک نمی‌آید.
+          گوگل‌مپ حداکثر ۱۰ ایستگاه میانی می‌پذیرد؛ {faNum(dropped)} مقصد آخر در این لینک نمی‌آید.
         </p>
       )}
 

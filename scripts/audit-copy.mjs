@@ -74,17 +74,24 @@ function detectUnlabelledEnum(str) {
   if (/\b[A-Z]{2,}\b/.test(str) && !str.includes("##") && !str.includes("|")) return { status: "UNLABELLED-ENUM", note: "English identifier in Persian context" };
   return null;
 }
+// Compare full words, not stems: "مکان" (singular) and "مکان‌ها" (plural) are
+// different words and should NOT be flagged as inconsistent.
+// Compare FULL strings, not stems. "مکان" and "مکان‌ها" are different words
+// and must not be flagged as inconsistent.
 function buildZWNJMismatches(allStrings) {
-  const withZ = new Set(), withoutZ = new Set();
+  const byNorm = new Map();
   for (const s of allStrings) {
-    const parts = s.split("\u200c");
-    for (const p of parts) { const t = p.trim(); if (t.length < 3) continue; if (s.includes("\u200c")) withZ.add(t); else withoutZ.add(t); }
+    const norm = s.replace(/\u200c/g, "");
+    if (!byNorm.has(norm)) byNorm.set(norm, new Set());
+    byNorm.get(norm).add(s);
   }
-  return new Set([...withZ].filter(w => withoutZ.has(w)));
+  return byNorm;
 }
 function detectZWNJInconsistent(str, mismatches) {
-  for (const stem of mismatches) {
-    if (str.includes(stem)) return { status: "ZWNJ-INCONSISTENT", note: `ZWNJ mismatch on stem «${stem}»` };
+  const norm = str.replace(/\u200c/g, "");
+  const variants = mismatches.get(norm);
+  if (variants && variants.size > 1) {
+    return { status: "ZWNJ-INCONSISTENT", note: `ZWNJ variant of «${norm}»` };
   }
   return null;
 }

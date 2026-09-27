@@ -18,6 +18,16 @@ const eslintConfig = defineConfig([
        not worth running. A separate checkout lints on its own terms. */
     ".claude/**",
   ]),
+  {
+    /* `@next/next/no-img-element` wants every image routed through the optimiser. Avatar
+     * draws 34px thumbnails of files that already live in /public, where the optimiser
+     * would cost a request to resize something already the right size. Set here rather
+     * than with an in-source `eslint-disable`, which tests/no-lint-suppressions.test.ts
+     * bans outright -- lint stays clean because the code is right, not because the linter
+     * was told to look away. */
+    files: ["components/meridian/Avatar.tsx"],
+    rules: { "@next/next/no-img-element": "off" },
+  },
 ]);
 
 export default eslintConfig;

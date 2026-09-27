@@ -17,7 +17,7 @@ import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import PoolViewToggle from "@/components/leads/PoolViewToggle";
 import DriverRunView from "@/components/leads/DriverRunView";
-import LeadRunPlanner from "@/components/leads/LeadRunPlanner";
+import LeadRunPlannerTabFlow from "@/components/leads/LeadRunPlannerTabFlow";
 import PoolViewWrapper from "@/components/leads/views/PoolViewWrapper";
 import { readViewMode } from "@/lib/leadViews";
 import type { LeadViewMode } from "@/lib/leadViews";
@@ -56,6 +56,7 @@ export default function LeadsPage() {
   const { matrix } = useRouteMatrix(routable as { lat: number; lng: number }[]);
   const [navAppId] = useNavApp();
   const [activeView, setActiveView] = useState<LeadViewMode>(readViewMode());
+  const [leadRunPlannerOpen, setLeadRunPlannerOpen] = useState(false);
 
   const handleSelectAll = () => {
     const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
@@ -230,9 +231,8 @@ export default function LeadsPage() {
           )}
 
           {/* The pool is a manager's scratch run until it is assigned here: a driver sees
-              none of it. So the panel sits directly above the route it hands over. */}
-          {isManager && <LeadRunPlanner locationIds={run} busy={busy} />}
-
+              none of it. So the "سپردن مسیر" button lives inside RouteSection, on the
+              current-route action row, rather than floating over the page. */}
           {isManager && (
             <RouteSection
               run={run} runStops={runStops} totalKm={runTotalKm} navAppId={navAppId} routeHref={runHref}
@@ -242,6 +242,7 @@ export default function LeadsPage() {
               onAddDayToRun={(dayIdx) => updateRun((proposedDaysRaw ?? [])[dayIdx].map((d) => d.id))}
               onCreateListFromDay={(title, ids) => createList(title, ids)}
               onTapFlow={(stopId) => {}}
+              onAssignRoute={() => setLeadRunPlannerOpen(true)}
               isManager={isManager} stopsPerDay={stopsPerDay} setStopsPerDay={setStopsPerDay}
               proposeDays={enhancedProposeDays} routableLength={routable.length} runOrigin={sortAnchor}
               setProposedDays={setProposedDays} updateRun={updateRun} createList={createList}
@@ -254,12 +255,22 @@ export default function LeadsPage() {
           <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} />
 
           <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-            <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه نشان بلد ویز گوگل"><NavAppSetting /></CollapsibleSection>
+            <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
           </section>
         </div>
       </div>
 
       <LocationTapFlow open={tapFlowId !== null} locationId={tapFlowId!} locationName={tapFlowId !== null ? (byId.get(tapFlowId)?.name ?? "") : ""} locationLat={tapFlowId !== null ? byId.get(tapFlowId)?.lat ?? null : null} locationLng={tapFlowId !== null ? byId.get(tapFlowId)?.lng ?? null : null} navAppId={navAppId} onNavigate={(url) => window.open(url, "_blank")} onClose={() => setTapFlowId(null)} />
+
+      {/* Remounted per open, so the hand-over flow starts from its first step every time
+          and the last one's picks are not still sitting there. */}
+      <LeadRunPlannerTabFlow
+        key={leadRunPlannerOpen ? "assign-open" : "assign-closed"}
+        open={leadRunPlannerOpen}
+        locationIds={run}
+        onAssigned={(assigned) => setRun(assigned.stops.map((s) => s.location_id))}
+        onClose={() => setLeadRunPlannerOpen(false)}
+      />
     </>
   );
 }

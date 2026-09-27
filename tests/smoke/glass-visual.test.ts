@@ -149,7 +149,10 @@ describe("Tier 2b scroll-driven entrances", () => {
         .slice(0, 12)
         .filter((el) => {
           const s = getComputedStyle(el);
-          return s.animationName !== "none" && s.animationTimeline !== "auto";
+          // `animationTimeline` postdates the DOM lib in this TypeScript, so the computed
+          // style is read through a narrow local type. Runtime behaviour is unchanged.
+          const timeline = (s as CSSStyleDeclaration & { animationTimeline?: string }).animationTimeline;
+          return s.animationName !== "none" && timeline !== "auto";
         }).length,
     );
     expect(running, "scroll timelines still running under reduced motion").toBe(0);

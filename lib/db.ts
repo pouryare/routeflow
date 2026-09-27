@@ -3136,6 +3136,9 @@ export function getDb(): DatabaseSync {
   const uCols = (db.prepare("PRAGMA table_info(users)").all() as { name: string }[]).map((c) => c.name);
   if (!uCols.includes("telegram_chat_id")) db.exec("ALTER TABLE users ADD COLUMN telegram_chat_id TEXT");
   if (!uCols.includes("telegram_link_nonce")) db.exec("ALTER TABLE users ADD COLUMN telegram_link_nonce TEXT");
+  // A real face, when there is one. Nullable on purpose: most accounts have no photo, and
+  // Avatar falls back to initials rather than inventing a face the system does not have.
+  if (!uCols.includes("avatar_url")) db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT");
 
   const nCols = (db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]).map((c) => c.name);
   if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");

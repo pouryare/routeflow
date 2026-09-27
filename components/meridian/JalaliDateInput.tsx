@@ -31,6 +31,7 @@ export default function JalaliDateInput({
   required = false,
   placeholder = "انتخاب تاریخ",
   className = "",
+  isDisabled,
   "aria-label": ariaLabel,
 }: {
   value: string;
@@ -40,6 +41,9 @@ export default function JalaliDateInput({
   required?: boolean;
   placeholder?: string;
   className?: string;
+  /** Days that cannot be picked, e.g. a day the person is already booked for. Optional, and
+   *  absent by default so every other caller keeps its whole month. */
+  isDisabled?: (iso: string) => boolean;
   "aria-label"?: string;
 }) {
   const auto = useId();
@@ -68,6 +72,9 @@ export default function JalaliDateInput({
   };
 
   const pick = (iso: string) => {
+    // Guarded here, not only on the day button, so Enter on a cursor that happens to sit
+    // on a blocked day cannot slip one through either.
+    if (isDisabled?.(iso)) return;
     onChange(iso);
     setOpen(false);
   };
@@ -140,19 +147,23 @@ export default function JalaliDateInput({
             {Array.from({ length: grid.leadingBlanks }, (_, i) => (
               <span key={`b${i}`} aria-hidden="true" />
             ))}
-            {grid.days.map((d) => (
-              <button
-                key={d.iso}
-                type="button"
-                role="gridcell"
-                tabIndex={d.iso === cursor ? 0 : -1}
-                aria-selected={d.iso === value}
-                className={`jdate__day${d.iso === value ? " is-picked" : ""}${d.iso === today ? " is-today" : ""}${d.iso === cursor ? " is-cursor" : ""}`}
-                onClick={() => pick(d.iso)}
-              >
-                {faNum(d.jd)}
-              </button>
-            ))}
+            {grid.days.map((d) => {
+              const off = isDisabled?.(d.iso) ?? false;
+              return (
+                <button
+                  key={d.iso}
+                  type="button"
+                  role="gridcell"
+                  tabIndex={d.iso === cursor ? 0 : -1}
+                  aria-selected={off ? undefined : d.iso === value}
+                  aria-disabled={off || undefined}
+                  className={`jdate__day${d.iso === value ? " is-picked" : ""}${d.iso === today ? " is-today" : ""}${d.iso === cursor ? " is-cursor" : ""}${off ? " is-off" : ""}`}
+                  onClick={() => !off && pick(d.iso)}
+                >
+                  {faNum(d.jd)}
+                </button>
+              );
+            })}
           </div>
           <div className="jdate__foot">
             <button type="button" className="btn ghost" onClick={() => pick(today)}>

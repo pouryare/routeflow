@@ -37,6 +37,8 @@ export interface RouteSectionProps {
   onAddDayToRun: (dayIndex: number) => void;
   onCreateListFromDay: (title: string, ids: number[]) => void;
   onTapFlow?: (stopId: number) => void;
+  /** Manager-only: opens the "سپردن مسیر" flow from inside the current-route actions. */
+  onAssignRoute?: () => void;
   /* ---- automatic day split (manager only) ------------------------------- */
   isManager: boolean;
   stopsPerDay: number;
@@ -70,6 +72,7 @@ export default function RouteSection({
   onAddDayToRun,
   onCreateListFromDay,
   onTapFlow,
+  onAssignRoute,
   isManager,
   stopsPerDay,
   setStopsPerDay,
@@ -283,6 +286,7 @@ export default function RouteSection({
           optimiseGain={optimiseGain}
           busy={busy}
           onTapFlow={onTapFlow}
+          onAssignRoute={onAssignRoute}
         />
       )}
     </section>

@@ -69,7 +69,7 @@ export default function LocationTapFlow({ open, locationId, locationName, locati
     };
 
     return (
-      <div className="tap-grid one">
+      <div className="tf-grid one">
         <div>
           <p className="text-[length:var(--text-xs)] text-text-faint mb-1">پتانسیل فروش</p>
           <StarRating value={stars.potential ?? null} onChange={(v: number | null) => handleStarChange("potential", v)} label="پتانسیل فروش" />
@@ -93,7 +93,7 @@ export default function LocationTapFlow({ open, locationId, locationName, locati
 
   const done = useMemo(() => {
     return (
-      <div className="tap-done">
+      <div className="tf-done">
         <p className="text-text font-medium">بازدید ثبت شد</p>
         <p className="text-[length:var(--text-xs)] text-text-faint">{locationName}</p>
       </div>
