@@ -52,6 +52,8 @@ export default function TapFlow(p: TapFlowProps) {
   }, [open, onClose]);
 
   const view = p.state.saved ? null : viewStep(p.config, p.ctx, p.state);
+  // A flow with a mis-set budget should still render one mark rather than none.
+  const totalSteps = Math.max(1, p.config.budget?.longest ?? 1);
   const submit = (optionId: string, value?: string) => {
     const next = answerStep(p.config, p.ctx, p.state, optionId, value);
     p.onState(next);
@@ -82,10 +84,18 @@ export default function TapFlow(p: TapFlowProps) {
                 <>
                   <div className="tf-nav">
                     {p.state.answers.length > 0 ? (
-                      <button type="button" className="tf-back" onClick={() => p.onState(backStep(p.config, p.ctx, p.state))}>‹ قبلی</button>
+                      <button type="button" className="tf-back" onClick={() => p.onState(backStep(p.config, p.ctx, p.state))}>
+                        <Icon name="chevron-right" size="sm" /> قبلی
+                      </button>
                     ) : <span />}
                     <div className="tf-steps" aria-hidden>
-                      {Array.from({ length: 6 }, (_, i) => <i key={i} className={i < Math.min(p.state.stack.length, 6) ? "on" : ""} />)}
+                      {/* One mark per step this flow can actually reach, not a fixed six.
+                          `budget.longest` is the declared maximum path length, and
+                          crm-flow-configs.test.ts asserts it bounds the real one -- so the
+                          count is honest for every flow instead of only the long ones. */}
+                      {Array.from({ length: totalSteps }, (_, i) => (
+                        <i key={i} className={i < p.state.stack.length ? "on" : ""} />
+                      ))}
                     </div>
                   </div>
                   <p className="tf-q">{view.q}</p>

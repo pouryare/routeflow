@@ -17,8 +17,9 @@ const DONE_AUTO_CLOSE_MS = 5000;
  *  still in the air. Claiming success there and taking it back a second later is worse
  *  than saying nothing, so "saving" is a real phase rather than a flicker.
  *
- *  The auto-return is for success only. Yanking a failure away before it has been read is
- *  the one thing a done screen must not do. */
+ *  The auto-return is for success only, and it returns to a fresh hand-over rather than
+ *  closing the sheet. Yanking a failure away before it has been read is the one thing a done
+ *  screen must not do. */
 export default function AssignDone({
   message,
   saving,
@@ -48,9 +49,12 @@ export default function AssignDone({
 
   useEffect(() => {
     if (phase !== "ok") return;
-    const t = setTimeout(onClose, DONE_AUTO_CLOSE_MS);
+    // Back to a blank hand-over, not out of the sheet. A manager handing over routes is
+    // doing a batch of them, so the default that fires on its own is the next one -- closing
+    // would be a decision the timer makes for them, and the sheet is where they came from.
+    const t = setTimeout(onRestart, DONE_AUTO_CLOSE_MS);
     return () => clearTimeout(t);
-  }, [phase, onClose]);
+  }, [phase, onRestart]);
 
   if (phase === "saving") {
     return (
@@ -98,7 +102,7 @@ export default function AssignDone({
         />
       </div>
       <p className="text-[length:var(--text-xs)] text-text-muted">{message?.text}</p>
-      <p className="text-[length:var(--text-xs)] text-text-faint">۵ ثانیه دیگر بسته می‌شود</p>
+      <p className="text-[length:var(--text-xs)] text-text-faint">۵ ثانیه دیگر، راننده بعدی</p>
       <div className="flex w-full flex-col gap-2">
         <button type="button" className="btn solid w-full px-4 py-2" onClick={onRestart}>
           سپردن مسیر دیگر

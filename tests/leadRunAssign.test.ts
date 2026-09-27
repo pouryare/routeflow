@@ -6,6 +6,7 @@ import {
   busyLabel,
   donePhase,
   summaryOf,
+  assignableIds,
 } from "@/lib/leadRunAssign";
 
 const RUNS = [
@@ -89,5 +90,42 @@ describe("summaryOf", () => {
     const lines = summaryOf({ driverName: null, runDate: "", stopCount: 0 });
     expect(lines[0]).toBe("راننده انتخاب نشده");
     expect(lines[1]).toBe("تاریخ انتخاب نشده");
+  });
+});
+
+describe("assignableIds", () => {
+  // A pool is stored as bare ids, so a pin deleted while it sits in a saved list -- or in
+  // the persisted scratch pool -- leaves a number behind that names nothing. `setRunStops`
+  // throws `مکان پیدا نشد` for those, so the hand-over used to die on the last step of a
+  // route that could never have worked.
+  const live = new Set([1, 2, 4]);
+
+  it("drops ids whose location is gone", () => {
+    expect(assignableIds([1, 3, 4], (id) => live.has(id))).toEqual([1, 4]);
+  });
+
+  it("drops a location that was never placeable", () => {
+    // `null` coords mean the pin never resolved, so it can never be a stop. The caller's
+    // predicate decides this; here it is the same lat/lng rule the pool uses everywhere.
+    const rows = new Map([[1, { lat: 35.7, lng: 51.4 }], [2, { lat: null, lng: null }]]);
+    const out = assignableIds([1, 2], (id) => {
+      const r = rows.get(id);
+      return !!r && r.lat !== null && r.lng !== null;
+    });
+    expect(out).toEqual([1]);
+  });
+
+  it("keeps order, because the order of a route is the whole point of it", () => {
+    expect(assignableIds([4, 1, 2], (id) => live.has(id))).toEqual([4, 1, 2]);
+  });
+
+  it("keeps duplicates, so the caller's own dedupe is not silently imposed", () => {
+    // Deduping here would quietly drop a stop the manager may have added twice on purpose.
+    expect(assignableIds([1, 1, 2], (id) => live.has(id))).toEqual([1, 1, 2]);
+  });
+
+  it("returns empty rather than throwing when everything is stale", () => {
+    expect(assignableIds([8, 9], (id) => live.has(id))).toEqual([]);
+    expect(assignableIds([], (id) => live.has(id))).toEqual([]);
   });
 });

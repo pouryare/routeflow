@@ -12,7 +12,6 @@ import { navigateUrl } from "@/lib/navApps";
 import LeadImportPanel from "@/components/LeadImportPanel";
 import { SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
-import RunPanel from "@/components/leads/RunPanel";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import PoolViewToggle from "@/components/leads/PoolViewToggle";
@@ -50,7 +49,8 @@ export default function LeadsPage() {
     removeFromRun, moveInRun, optimiseRun, clearRun, proposeDays, togglePriority,
     addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer,
     runLocations, runStops, runTotalKm, optimiseGain,
-    routable, visible, mapLeads, runPoints, runHref, activeList, byId,
+    routable, unassignedLocations, visible, mapLeads, runPoints, runHref, activeList, byId,
+    lastAssigned, recordAssigned,
   } = useLeads();
 
   const { matrix } = useRouteMatrix(routable as { lat: number; lng: number }[]);
@@ -239,15 +239,14 @@ export default function LeadsPage() {
               navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
               onMove={moveInRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
               proposedDays={dayGroups}
-              onAddDayToRun={(dayIdx) => updateRun((proposedDaysRaw ?? [])[dayIdx].map((d) => d.id))}
-              onCreateListFromDay={(title, ids) => createList(title, ids)}
-              onTapFlow={(stopId) => {}}
+              onTapFlow={undefined}
               onAssignRoute={() => setLeadRunPlannerOpen(true)}
               isManager={isManager} stopsPerDay={stopsPerDay} setStopsPerDay={setStopsPerDay}
               proposeDays={enhancedProposeDays} routableLength={routable.length} runOrigin={sortAnchor}
               setProposedDays={setProposedDays} updateRun={updateRun} createList={createList}
               addToDayGroup={addToDayGroup} removeFromDayGroup={removeFromDayGroup}
-              unassignedLocations={routable.filter((l) => !new Set(proposedDaysRaw?.flat()?.map((d: any) => d.id) ?? []).has(l.id))}
+              unassignedLocations={unassignedLocations}
+              lastAssigned={lastAssigned}
               repropose={enhancedProposeDays}
             />
           )}
@@ -267,8 +266,18 @@ export default function LeadsPage() {
       <LeadRunPlannerTabFlow
         key={leadRunPlannerOpen ? "assign-open" : "assign-closed"}
         open={leadRunPlannerOpen}
-        locationIds={run}
-        onAssigned={(assigned) => setRun(assigned.stops.map((s) => s.location_id))}
+        locationIds={runLocations.map((l) => l.id)}
+        onAssigned={(_assigned, meta) => {
+          // `updateRun([])` and not `setRun([])`: the scratch pool is persisted, and a raw
+          // set left `localStorage` holding the route that had just been given away, so a
+          // reload put it straight back -- assignable a second time to somebody else. The
+          // receipt is recorded first, so a manager who reloads mid-`clearRun` still sees
+          // where the route went. The count is the pool's own, not the POST's, so a stale id
+          // filtered out on the way in does not make the receipt disagree with the route
+          // the manager was actually looking at.
+          recordAssigned({ ...meta, stopCount: run.length });
+          updateRun([]);
+        }}
         onClose={() => setLeadRunPlannerOpen(false)}
       />
     </>

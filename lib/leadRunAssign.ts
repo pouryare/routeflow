@@ -21,6 +21,23 @@ export interface RunRef {
 
 export type DonePhase = "saving" | "ok" | "bad";
 
+/** Drops ids that can no longer be turned into stops.
+ *
+ *  A pool is a list of ids, and an id can outlive the location it names: delete a pin while
+ *  it sits in a saved list or in the persisted scratch pool, and the id is still there.
+ *  `setRunStops` throws `مکان پیدا نشد` for anything missing, so an unfiltered id makes the
+ *  hand-over fail at the last possible moment, on a route that was never assignable in the
+ *  first place. Filtering on the way in turns that into a stop that quietly is not there.
+ *
+ *  `lat`/`lng` are the same test the rest of the pool uses to decide routability, so a
+ *  location that was never placeable is dropped here too rather than at save time. */
+export function assignableIds(
+  ids: number[],
+  has: (id: number) => boolean,
+): number[] {
+  return ids.filter(has);
+}
+
 /** Dates this driver already has something on, and what state it is in.
  *
  *  The status is kept rather than collapsed to a boolean because the two cases are treated

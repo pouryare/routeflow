@@ -9,8 +9,9 @@ import { faNum } from "@/lib/format";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { routeLengthKm, formatDistanceKm } from "@/lib/geo";
 import { daysNeeded } from "@/lib/clusterDays";
-
-type RoutableLocation = any;
+import { toJalali } from "@/lib/jalali";
+import type { NavAppId } from "@/lib/navApps";
+import type { RoutableLocation, DayStop, LastAssigned } from "@/app/(shell)/leads/hooks/useLeads";
 
 export interface DayGroup {
   title: string;
@@ -24,7 +25,7 @@ export interface RouteSectionProps {
   run: number[];
   runStops: RunStop[];
   totalKm: number | null;
-  navAppId: any;
+  navAppId: NavAppId;
   routeHref: string | null;
   navigateHref: (stop: RunStop) => string;
   onMove: (id: number, dir: -1 | 1) => void;
@@ -34,8 +35,6 @@ export interface RouteSectionProps {
   optimiseGain: number | null;
   busy: boolean;
   proposedDays: DayGroup[] | null;
-  onAddDayToRun: (dayIndex: number) => void;
-  onCreateListFromDay: (title: string, ids: number[]) => void;
   onTapFlow?: (stopId: number) => void;
   /** Manager-only: opens the "سپردن مسیر" flow from inside the current-route actions. */
   onAssignRoute?: () => void;
@@ -46,12 +45,14 @@ export interface RouteSectionProps {
   proposeDays: () => void;
   routableLength: number;
   runOrigin: { lat: number; lng: number } | null;
-  setProposedDays: (v: RoutableLocation[][] | null) => void;
+  setProposedDays: (v: DayStop[][] | null) => void;
   updateRun: (ids: number[]) => void;
   createList: (name: string, ids: number[]) => void;
-  addToDayGroup: (dayIdx: number, location: RoutableLocation) => void;
+  addToDayGroup: (dayIdx: number, location: DayStop) => void;
   removeFromDayGroup: (dayIdx: number, locationId: number) => void;
   unassignedLocations: RoutableLocation[];
+  /** The most recent successful hand-over, so an emptied pool is not an empty silence. */
+  lastAssigned?: LastAssigned | null;
   repropose: () => void;
 }
 
@@ -69,8 +70,6 @@ export default function RouteSection({
   optimiseGain,
   busy,
   proposedDays,
-  onAddDayToRun,
-  onCreateListFromDay,
   onTapFlow,
   onAssignRoute,
   isManager,
@@ -85,9 +84,10 @@ export default function RouteSection({
   addToDayGroup,
   removeFromDayGroup,
   unassignedLocations,
+  lastAssigned,
   repropose,
 }: RouteSectionProps) {
-  const drag = useCardDrag<RoutableLocation>({
+  const drag = useCardDrag<DayStop>({
     resolveLane: (x, y) =>
       (document.elementFromPoint(x, y) as HTMLElement | null)
         ?.closest<HTMLElement>("[data-day-index]")?.dataset.dayIndex ?? null,
@@ -97,6 +97,49 @@ export default function RouteSection({
       addToDayGroup(Number(toLane), loc);
     },
   });
+
+  /* The automatic split's own cards already offered both of these. The editable day groups
+   * below are the same proposal after a manager has dragged stops between them, and they had
+   * no way to act on the result at all -- so a hand-tuned split was something you could look
+   * at and nothing else. `updateRun` and `createList` are the same two handlers, not copies;
+   * the `onAddDayToRun` / `onCreateListFromDay` props that duplicated them were never
+   * rendered and are gone. */
+  const dayActions = (i: number, day: DayGroup) => (
+    <div className="flex flex-wrap gap-1.5">
+      <button
+        onClick={() => updateRun(day.stops.map((d) => d.id))}
+        className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
+      >
+        بردن به مسیر
+      </button>
+      <button
+        onClick={() => createList(`روز ${i + 1}`, day.stops.map((d) => d.id))}
+        disabled={busy}
+        className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
+      >
+        ذخیره به‌عنوان فهرست
+      </button>
+    </div>
+  );
+
+  /* Shown only while the pool is empty, so it never competes with the route the manager is
+   * currently building. `toJalali` returns null for a value it cannot parse; the ISO date is
+   * then shown rather than a blank or a wrong one. */
+  const receiptLine = (() => {
+    if (run.length > 0 || !lastAssigned) return null;
+    const j = toJalali(lastAssigned.runDate);
+    const day = j
+      ? `${faNum(j.jy)}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`
+      : lastAssigned.runDate;
+    return (
+      <p className="mt-2 flex items-center gap-1.5 text-[length:var(--text-xs)] text-good">
+        <Icon name="check" size="sm" className="shrink-0" />
+        <span>
+          آخرین سپرده‌شده: {lastAssigned.driverName} · {day} · {faNum(lastAssigned.stopCount)} توقف
+        </span>
+      </p>
+    );
+  })();
 
   return (
     <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
@@ -156,21 +199,7 @@ export default function RouteSection({
                             </span>
                           )}
                         </span>
-                        <div className="flex flex-wrap gap-1.5">
-                          <button
-                            onClick={() => updateRun(day.stops.map((d) => d.id))}
-                            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-                          >
-                            بردن به مسیر
-                          </button>
-                          <button
-                            onClick={() => createList(`روز ${i + 1}`, day.stops.map((d) => d.id))}
-                            disabled={busy}
-                            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
-                          >
-                            ذخیره به‌عنوان فهرست
-                          </button>
-                        </div>
+                        {dayActions(i, day)}
                       </div>
                       <p className="truncate text-[length:var(--text-xs)] text-text-faint">
                         {day.stops.map((d) => d.name).join(" ← ")}
@@ -200,6 +229,7 @@ export default function RouteSection({
                     روز {faNum(i + 1)} — {faNum(day.stops.length)} مقصد
                   </span>
                   <div className="flex gap-1.5">
+                    {dayActions(i, day)}
                     <button
                       onClick={repropose}
                       className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
@@ -271,6 +301,7 @@ export default function RouteSection({
           <p className="text-[length:var(--text-xs)] text-text-faint mt-1">
             از فهرست بالا هر مکانی را بزنید تا به مسیر اضافه شود
           </p>
+          {receiptLine}
         </div>
       ) : (
         <RunPanel

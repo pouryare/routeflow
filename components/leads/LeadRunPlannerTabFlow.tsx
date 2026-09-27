@@ -1,14 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import DriverPicker from "@/components/leads/assign/DriverPicker";
 import RunSummary from "@/components/leads/assign/RunSummary";
 import AssignDone from "@/components/leads/assign/AssignDone";
+import { useToast } from "@/components/ToastProvider";
 import { faNum } from "@/lib/format";
-import { startFlow } from "@/lib/crm/flows/machine";
+import { answerStep, startFlow } from "@/lib/crm/flows/machine";
 import { leadRunFlow } from "@/lib/crm/flows/leadRun";
+import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
 import {
   blockedDates,
   busyDatesByDriver,
@@ -29,7 +31,10 @@ export interface AssignedRun {
 export interface LeadRunPlannerTabFlowProps {
   open: boolean;
   locationIds: number[];
-  onAssigned: (run: AssignedRun) => void;
+  /** The created run, plus who it went to and for when. The receipt the page keeps cannot
+   *  be built from the run alone: `lead_runs` has no driver name on it, and the date chosen
+   *  here is the one that was actually committed. */
+  onAssigned: (run: AssignedRun, meta: { driverName: string; runDate: string }) => void;
   onClose: () => void;
 }
 
@@ -53,6 +58,7 @@ export default function LeadRunPlannerTabFlow({
    * re-seeds it -- and clearing the date afterwards is not undone underneath the user. */
   const [runDate, setRunDate] = useState(todayIso);
   const [saving, setSaving] = useState(false);
+  const toast = useToast();
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);
   /* The live flow.
    *
@@ -135,7 +141,7 @@ export default function LeadRunPlannerTabFlow({
           ? "مسیر پیشین این روز جایگزین شد و راننده آن را می‌بیند."
           : "مسیر ثبت شد و به راننده سپرده شد.",
       });
-      onAssigned(data.run);
+      onAssigned(data.run, { driverName: chosen?.name ?? "راننده", runDate });
       // Re-read the calendar: the day just taken is now the driver's, and
       // "سپردن مسیر دیگر" is a first-class action here. A failure to re-read is harmless --
       // the server refuses a double booking regardless of what the picker still offers.
@@ -149,18 +155,81 @@ export default function LeadRunPlannerTabFlow({
     } finally {
       setSaving(false);
     }
-  }, [driverId, loadAssignData, locationIds, onAssigned, override, runDate]);
+  }, [chosen, driverId, loadAssignData, locationIds, onAssigned, override, runDate]);
+
+  /** The undo window. Tapping "ثبت و سپردن" starts a timer and a toast together; the route
+   *  is written when the timer ends, not when the button is tapped.
+   *
+   *  This is the same 5 s the rest of the app uses for an undoable mutation, and the same
+   *  constant: a toast carrying an action lives `ACTION_LIFETIME_MS`, which *is*
+   *  `OUTBOX_HOLD_MS`. So the bar draining above is an honest display of how long the
+   *  hand-over is still yours to take back -- importing the number rather than repeating it
+   *  is what keeps the visible countdown and the invisible hold from drifting apart.
+   *
+   *  A hand-over deliberately does not go through the outbox. `mayQueueOffline` is false
+   *  for claims and this is one: a route nobody has driven yet is an intention, not a
+   *  record of something that already happened. */
+  const [holding, setHolding] = useState(false);
+  const holdRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const clearHold = useCallback(() => {
+    if (holdRef.current !== null) clearTimeout(holdRef.current);
+    holdRef.current = null;
+    setHolding(false);
+  }, []);
+
+  /** Nobody is going to act on a hand-over the sheet was closed mid-way through. */
+  useEffect(() => clearHold, [clearHold]);
 
   /** Back to a blank hand-over, keeping the date: it is a visible default, and a manager
    *  handing over a second route usually means the same day. */
   const restart = useCallback(() => {
+    clearHold();
     setFlow({ ctx: CTX, state: startFlow(leadRunFlow, CTX) });
     setDriverId("");
     setMessage(null);
     setSaving(false);
-  }, []);
+  }, [clearHold]);
 
-  /* Replaces TapFlow's own step body, so each screen has to offer its own way forward:
+  /** Start the undo window. The flow is deliberately NOT advanced here: submitting the
+   *  machine's option is what flips `saved` and puts the done screen up, and doing that
+   *  before the write would mean a cancel had to un-save the state machine. Holding on the
+   *  confirm screen means the manager watches the summary they are about to commit, with a
+   *  draining bar over it and a way out.
+   *
+   *  `onSaved` is the only caller of `assign` that is left. The old auto-submit could also
+   *  reach it, which is how one confirm could fire two POSTs. */
+  const beginHandover = useCallback(() => {
+    if (holding) return;
+    setHolding(true);
+    holdRef.current = setTimeout(() => {
+      holdRef.current = null;
+      setHolding(false);
+      setFlow((f) => {
+        if (!f) return f;
+        // The window is 5 s of real time and the flow can move underneath it: a back tap
+        // from the confirm screen leaves `date` on top, and submitting "confirm" against
+        // that step would answer a question nobody asked. Only ever fire on the step the
+        // window was opened from.
+        const top = f.state.stack[f.state.stack.length - 1];
+        if (f.state.saved || top !== "submit") return f;
+        return { ...f, state: answerStep(leadRunFlow, f.ctx, f.state, "confirm") };
+      });
+    }, OUTBOX_HOLD_MS);
+    toast(
+      `تا ${faNum(OUTBOX_HOLD_MS / 1000)} ثانیه دیگر مسیر به راننده سپرده می‌شود.`,
+      "info",
+      {
+        label: "لغو",
+        // No second toast: `ToastProvider` dismisses the one that owned this action, and
+        // the confirm button reverting from "در انتظار تأیید…" is itself the confirmation
+        // that the cancel landed. A second toast would only be noise.
+        onClick: clearHold,
+      },
+    );
+  }, [clearHold, holding, toast]);
+
+  /** Replaces TapFlow's own step body, so each screen has to offer its own way forward:
    * the machine advances only when one of its options is submitted. */
   const renderCustom = useCallback((api: CustomStepApi) => {
     if (api.step.id === "driver") {
@@ -220,8 +289,6 @@ export default function LeadRunPlannerTabFlow({
             stopCount={locationIds.length}
           />
           {override ? (
-            /* The confirm is this screen, so a completed day does not need a fourth
-             * question -- it needs to say plainly what the tap is about to undo. */
             <p className="tf-note warn">
               این روز قبلاً برای این راننده تکمیل شده است. با ثبت، مسیر پیشین جایگزین می‌شود.
             </p>
@@ -229,17 +296,24 @@ export default function LeadRunPlannerTabFlow({
           <button
             type="button"
             className="btn solid w-full px-4 py-2"
-            disabled={driverId === "" || runDate === ""}
-            onClick={() => api.submit("confirm")}
+            disabled={driverId === "" || runDate === "" || holding}
+            onClick={beginHandover}
           >
-            {override ? "جایگزینی و سپردن" : "ثبت و سپردن"}
+            {override ? "جایگزینی و سپردن" : holding ? "در انتظار تأیید…" : "ثبت و سپردن"}
           </button>
+          {/* The bar that used to drain across this button now belongs to the toast `لغو`
+              opens. Its lifetime is `OUTBOX_HOLD_MS` too, so the countdown a manager reads
+              and the countdown the write obeys are the same five seconds. Nothing here
+              writes until that one ends. */}
+          {holding ? (
+            <p className="tf-note">می‌توانید تا پایان شمارش، سپردن را لغو کنید.</p>
+          ) : null}
         </div>
       );
     }
 
     return null;
-  }, [blocked, busy, chosen, driverId, drivers, locationIds.length, override, runDate]);
+  }, [beginHandover, blocked, busy, chosen, driverId, drivers, holding, locationIds.length, override, runDate]);
 
   /* Nothing renders while the sheet is closed. */
   if (!open) return null;

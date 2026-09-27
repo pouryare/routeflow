@@ -1,6 +1,9 @@
 import type { FlowConfig } from "./types";
 
-/** Handing a manager's pool run to a driver: pick the driver, pick the day, confirm.
+/** Handing a manager's pool run to a driver: pick the driver, pick the day, hand it over.
+ *
+ *  Three questions and a done screen. The third is where the route is actually written, and
+ *  its button drains as it waits rather than sitting there looking like another thing to tap.
  *
  *  The two picker steps are host-rendered kinds, so TapFlow hands them to the host's
  *  `renderCustom` (see `LeadRunPlannerTabFlow`) instead of drawing its own option buttons;

@@ -49,6 +49,11 @@ export default function JalaliDateInput({
   const auto = useId();
   const gridId = `${id ?? auto}-grid`;
   const wrap = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLButtonElement>(null);
+  const pop = useRef<HTMLDivElement>(null);
+  /* Where the popover goes, in viewport pixels, measured once the open popover has a height.
+   * Null until then, and hidden while it is: an unplaced fixed box would paint at 0,0. */
+  const [at, setAt] = useState<{ top: number; insetStart: number } | null>(null);
   const [open, setOpen] = useState(false);
   const start = toJalali(value) ?? todayJalali();
   const [view, setView] = useState({ jy: start.jy, jm: start.jm });
@@ -63,6 +68,34 @@ export default function JalaliDateInput({
     document.addEventListener("pointerdown", onDown);
     return () => document.removeEventListener("pointerdown", onDown);
   }, [open]);
+
+  /* Place the popover against the field, flipping above it when the viewport has no room
+   * below. Re-measured on scroll and resize, because the field moves when its sheet does. */
+  useEffect(() => {
+    if (!open) return;
+    const place = () => {
+      const f = field.current, p = pop.current;
+      if (!f || !p) return;
+      const r = f.getBoundingClientRect();
+      const h = p.offsetHeight, w = p.offsetWidth, gap = 6, margin = 8;
+      const room = window.innerHeight - r.bottom;
+      const top = room >= h + gap + margin
+        ? r.bottom + gap
+        : Math.max(margin, r.top - h - gap);
+      const rtl = getComputedStyle(f).direction === "rtl";
+      // Inline-start means the right edge in RTL, matching how the field reads.
+      const insetStart = rtl ? window.innerWidth - r.right : r.left;
+      const max = window.innerWidth - w - margin;
+      setAt({ top, insetStart: Math.min(Math.max(margin, insetStart), max) });
+    };
+    place();
+    window.addEventListener("resize", place);
+    window.addEventListener("scroll", place, true);
+    return () => {
+      window.removeEventListener("resize", place);
+      window.removeEventListener("scroll", place, true);
+    };
+  }, [open, view]);
 
   const openAt = () => {
     const s = toJalali(value) ?? todayJalali();
@@ -114,6 +147,7 @@ export default function JalaliDateInput({
       <button
         type="button"
         id={id}
+        ref={field}
         className="jdate__field"
         aria-haspopup="dialog"
         aria-expanded={open}
@@ -126,7 +160,14 @@ export default function JalaliDateInput({
       </button>
 
       {open ? (
-        <div className="jdate__pop" role="dialog" aria-label="انتخاب تاریخ" id={gridId}>
+        <div
+          className={`jdate__pop${open && at ? " placed" : ""}`}
+          ref={pop}
+          role="dialog"
+          aria-label="انتخاب تاریخ"
+          id={gridId}
+          style={open && at ? { top: at.top, insetInlineStart: at.insetStart, width: "17rem" } : undefined}
+        >
           <div className="jdate__head">
             <button type="button" className="jdate__nav" aria-label="ماه قبل" onClick={() => setView(shiftMonth(view.jy, view.jm, -1))}>
               <Icon name="chevron-right" size="sm" />
