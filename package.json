@@ -10,7 +10,8 @@
     "test": "vitest run && vitest run -c vitest.smoke.mts",
     "test:unit": "vitest run",
     "test:smoke": "vitest run -c vitest.smoke.mts",
-    "check:contrast": "node scripts/check-contrast.mjs"
+    "check:contrast": "node scripts/check-contrast.mjs",
+    "audit-copy": "node scripts/audit-copy.mjs"
   },
   "dependencies": {
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",
