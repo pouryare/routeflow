@@ -530,7 +530,7 @@ export default function SearchBox({
               </button>
               {linkError && <p className="mt-2 px-1 text-[length:var(--text-xs)] text-crit">{linkError}</p>}
               <p className="mt-2 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                لینک گوگل‌مپس به‌صورت کامل پشتیبانی می‌شود؛ نشان و بلد به‌صورت حدسی بررسی می‌شوند.
+                گوگل‌مپس، نشان، بلد و ویز تمامیSupported هستند
               </p>
             </div>
           ) : inputType === "coord" && coordMatch ? (

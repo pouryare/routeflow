@@ -99,7 +99,7 @@ export default function RunPanel({
       {singleLeg && (
         <p className="text-[length:var(--text-xs)] leading-5 text-warn">
           {navApp(navAppId).label} فقط یک مقصد را می‌پذیرد؛ مسیر مقصد‌به‌مقصد باز می‌شود. برای باز کردن کل
-          مسیر در یک لینک، از «گوگل مپ» استفاده کنید.
+          مسیر در یک لینک، از گوگل‌مپس، نشان، بلد یا ویز استفاده کنید.
         </p>
       )}
       {dropped > 0 && (

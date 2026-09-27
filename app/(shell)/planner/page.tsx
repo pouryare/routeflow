@@ -948,7 +948,7 @@ type AddCandidate = CustomerRow | LeadLocation;
               {googleRoute?.singleLeg && (
                 <p className="text-[length:var(--text-xs)] leading-5 text-warn">
                   {navApp(navAppId).label} فقط یک مقصد را می‌پذیرد؛ توقف‌های بعدی را از همین فهرست باز کنید.
-                  برای باز کردن کل مسیر در یک لینک، از «گوگل مپ» استفاده کنید.
+                  برای باز کردن کل مسیر در یک لینک، از گوگل‌مپس، نشان، بلد یا ویز استفاده کنید.
                 </p>
               )}
 
