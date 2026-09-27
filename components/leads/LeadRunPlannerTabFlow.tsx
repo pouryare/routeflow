@@ -66,27 +66,35 @@ export default function LeadRunPlannerTabFlow({
     () => ({ ctx: CTX, state: startFlow(leadRunFlow, CTX) }),
   );
 
+  /* Drivers to assign to, and the runs already on the calendar -- one round trip each, both
+   * already-existing endpoints. This only fetches; applying the result is left to the
+   * caller, so the effect below can own its own cancellation without the state write
+   * leaking into a callback the linter sees being called synchronously. */
+  const loadAssignData = useCallback(async () => {
+    const [driversRes, runsRes] = await Promise.all([
+      fetch("/api/lead-runs?drivers=1"),
+      fetch("/api/lead-runs"),
+    ]);
+    const [driversData, runsData] = await Promise.all([driversRes.json(), runsRes.json()]);
+    return {
+      drivers: (driversData?.ok ? (driversData.drivers ?? []) : []) as DriverRef[],
+      runs: (runsData?.ok ? (runsData.runs ?? []) : []) as RunRef[],
+    };
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
     void (async () => {
       try {
-        const [driversRes, runsRes] = await Promise.all([
-          fetch("/api/lead-runs?drivers=1"),
-          fetch("/api/lead-runs"),
-        ]);
-        const [driversData, runsData] = await Promise.all([driversRes.json(), runsRes.json()]);
+        const fresh = await loadAssignData();
         if (cancelled) return;
-        if (driversData?.ok) {
-          setDrivers((driversData.drivers ?? []) as DriverRef[]);
-        }
-        if (runsData?.ok) {
-          setRuns((runsData.runs ?? []) as RunRef[]);
-        }
+        setDrivers(fresh.drivers);
+        setRuns(fresh.runs);
       } catch { /* the picker simply stays empty */ }
     })();
     return () => { cancelled = true; };
-  }, [open]);
+  }, [open, loadAssignData]);
 
   const busy = useMemo(() => busyDatesByDriver(runs), [runs]);
   const chosen = drivers.find((d) => d.id === driverId) ?? null;
@@ -128,12 +136,20 @@ export default function LeadRunPlannerTabFlow({
           : "مسیر ثبت شد و به راننده سپرده شد.",
       });
       onAssigned(data.run);
+      // Re-read the calendar: the day just taken is now the driver's, and
+      // "سپردن مسیر دیگر" is a first-class action here. A failure to re-read is harmless --
+      // the server refuses a double booking regardless of what the picker still offers.
+      try {
+        const fresh = await loadAssignData();
+        setDrivers(fresh.drivers);
+        setRuns(fresh.runs);
+      } catch { /* keep what we have */ }
     } catch (e) {
       setMessage({ tone: "bad", text: e instanceof Error ? e.message : "خطا" });
     } finally {
       setSaving(false);
     }
-  }, [driverId, locationIds, onAssigned, override, runDate]);
+  }, [driverId, loadAssignData, locationIds, onAssigned, override, runDate]);
 
   /** Back to a blank hand-over, keeping the date: it is a visible default, and a manager
    *  handing over a second route usually means the same day. */
