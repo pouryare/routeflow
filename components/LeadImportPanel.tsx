@@ -163,12 +163,12 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="لینک یا نتیجه جستجوی گوگل‌مپس را اینجا پیست کنید…"
+            placeholder="لینک یا نتیجه جستجوی گوگل‌مپس، نشان، بلد یا ویز را اینجا پیست کنید…"
             className="w-full h-24 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:ring-1 focus:ring-accent resize-none"
           />
           <div className="mt-2 flex items-center justify-between">
             <p className="text-[length:var(--text-xs)] text-text-faint">
-              لینک‌های گوگل‌مپس، نشان و بلد پشتیبانی می‌شوند.
+              گوگل‌مپس، نشان، بلد و ویز پشتیبانی می‌شوند.
             </p>
             <button
               onClick={parse}
