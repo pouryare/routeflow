@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db";
 import { requireRole, orderFilter } from "@/lib/session";
 import { readOrders } from "@/lib/orders";
 import { faJalaliDate } from "@/lib/jalali";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /* ORDER_STATUS_LABEL, not a local map: a local one keyed `draft`/`delivered` never
    matched the real, uppercase statuses and printed «DELIVERED» to Persian readers. */
@@ -26,7 +27,7 @@ const PAYMENT_LABEL = PAYMENT_STATUS_LABEL as Record<string, string>;
  *  contradict every screen it was exported from.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const orders = readOrders(getDb(), orderFilter(guard.session), { limit: 5000 });

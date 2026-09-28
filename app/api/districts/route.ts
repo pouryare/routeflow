@@ -4,12 +4,13 @@ import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { geometryVersion } from "@/lib/districtGeometry";
 import { readDistrictProperties } from "@/lib/districts";
 import { requireRole, scopeGroupIds } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // Properties only -- no `boundary_geojson`. Geometry moved to the version-stamped,
 // indefinitely-cached /api/districts/geometry, so this response stays around 50KB and
 // a status edit no longer re-sends every polygon in the province.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const scope = scopeGroupIds(guard.session);
 
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);

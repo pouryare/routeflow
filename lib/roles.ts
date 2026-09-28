@@ -41,6 +41,33 @@ export function isVanRole(role: Role): boolean {
   return VAN_ROLES.includes(role);
 }
 
+/** Roles that manage: full authority inside their own scope.
+ *
+ *  `platform_owner` is a strict SUPERSET of `owner` — the god key, used only when the
+ *  founder acts as himself. The scoping layer in lib/session.ts has treated it as
+ *  all-powerful since Phase 0a (`scopeGroupIds` → "all", `orgFilter` → empty); what was
+ *  missing was its name in the 185 gates that spelled their own role list.
+ *
+ *  This constant is that name, stated once, so `tsc` propagates it and
+ *  tests/platform-owner-reach.test.ts can assert it against the real source tree.
+ *
+ *  NOT every role list is a management list. The order state machine's `OrderRole`, the
+ *  per-role data-scoping queries, `SELF_ROLES` and the van-only lists are deliberately
+ *  excluded — those ask "who does this job", not "who is in charge". */
+export const MANAGE_ROLES: Role[] = ["platform_owner", "owner", "group_manager"];
+
+/** Owner-only gates, plus the god key.
+ *
+ *  A DISTINCT constant from `MANAGE_ROLES`, and the distinction is load-bearing: a bare
+ *  `["owner"]` in the original code meant "the owner of this organisation", NOT "any
+ *  manager". Swapping those two for MANAGE_ROLES quietly granted group_manager the
+ *  organisation's own user list, group CRUD, commission rates, payments and catalogue
+ *  writes — and six test files said so immediately.
+ *
+ *  Kept separate rather than folded in so a future sweep cannot make the same swap: the
+ *  name says which is which, and `OWNER_ROLES` reads as owner-only at the call site. */
+export const OWNER_ROLES: Role[] = ["platform_owner", "owner"];
+
 export const ROLE_LABEL: Record<Role, string> = {
   platform_owner: "مدیر سامانه",
   owner: "مالک",

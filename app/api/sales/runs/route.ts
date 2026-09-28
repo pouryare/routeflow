@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { requireRole, groupFilter, canReachGroup } from "@/lib/session";
 import { createRun, DeliveryError } from "@/lib/delivery";
 
-const PLANNERS = ["owner", "group_manager"] as const;
+const PLANNERS = ["platform_owner", "owner", "group_manager"] as const;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...PLANNERS]);

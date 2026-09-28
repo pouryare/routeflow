@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { listReasonCodes, createReasonCode, ReasonCodeError, type ReasonDomain } from "@/lib/repo/reasonCodes";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const DOMAINS: ReasonDomain[] = ["delivery_fail", "delivery_delay", "order_cancel", "order_return"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const d = req.nextUrl.searchParams.get("domain");
   const domain = DOMAINS.includes(d as ReasonDomain) ? (d as ReasonDomain) : undefined;
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const body = (await req.json().catch(() => null)) as {
     domain?: string;

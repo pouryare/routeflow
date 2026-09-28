@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { academyManifest, lessonProgress, markLessonDone } from "@/lib/repo/academy";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   return NextResponse.json({
     ok: true,
@@ -13,7 +14,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as { lesson_slug?: string } | null;
   if (!b?.lesson_slug) return NextResponse.json({ ok: false, error: "درس مشخص نشده" }, { status: 400 });

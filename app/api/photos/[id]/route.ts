@@ -3,9 +3,10 @@ import fs from "node:fs/promises";
 import { getDb, Photo } from "@/lib/db";
 import { photoFilePath } from "@/lib/photos";
 import { canReachEntity, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/photos/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

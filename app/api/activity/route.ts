@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, ActivityEntry, LoggableEntityType, PLAN_ENTITY_TYPES, logActivity } from "@/lib/db";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // activity_log is option 2 as well: an entry belongs to whatever it is an entry about.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "a");
 
@@ -65,7 +66,7 @@ interface NewActivityInput {
  *  "status_change" could write a history entry claiming a status change that never
  *  happened. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as NewActivityInput | null;

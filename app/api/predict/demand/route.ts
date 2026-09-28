@@ -6,6 +6,7 @@ import {
   type ForecastEntityType,
   type ForecastMetric,
 } from "@/lib/repo/forecast";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ const METRICS: ForecastMetric[] = ["demand_base_units", "demand_toman"];
 /** No args → the whole materialised board. With `entity`/`id`/`metric` → a fresh
  *  forecast for that one series. Manager tool. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;

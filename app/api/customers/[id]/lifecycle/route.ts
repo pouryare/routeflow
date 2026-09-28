@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { setLifecycle, LifecycleError } from "@/lib/repo/customers";
 import type { CustomerLifecycle } from "@/lib/types";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const VALID: CustomerLifecycle[] = [
   "lead",
@@ -14,7 +15,7 @@ const VALID: CustomerLifecycle[] = [
 ];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/customers/[id]/lifecycle">) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

@@ -3,7 +3,10 @@ import { getDb } from "@/lib/db";
 import { requireRole, orderFilter } from "@/lib/session";
 import { readOrder, confirmOrder, addLine, OrderError } from "@/lib/orders";
 
-const CAN_SELL = ["owner", "group_manager", "phone_sales"] as const;
+/* Was ["owner","group_manager","phone_sales"] — NARROWER than its twin in orders/route.ts,
+ * which admits both van roles. So a van role could create an order and then be refused
+ * reading it back. Pre-existing bug, found by the sweep; both now carry the same roles. */
+const CAN_SELL = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 /** Whether this session may see this order at all.
  *

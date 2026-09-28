@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, canReachGroup } from "@/lib/session";
 import { addStop, DeliveryError } from "@/lib/delivery";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const NOT_FOUND = NextResponse.json({ ok: false, error: "پیدا نشد" }, { status: 404 });
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const runId = Number((await ctx.params).id);

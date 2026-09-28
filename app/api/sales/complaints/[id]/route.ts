@@ -8,12 +8,13 @@ import {
   type ComplaintSeverity,
   type ComplaintStatus,
 } from "@/lib/repo/complaints";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const SEVERITIES: ComplaintSeverity[] = ["low", "medium", "high", "critical"];
 const STATUSES: ComplaintStatus[] = ["open", "investigating", "resolved", "dismissed"];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/complaints/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/compla
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/complaints/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

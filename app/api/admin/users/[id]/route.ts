@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, ROLES, type Role, type UserRow } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { requireRole } from "@/lib/session";
+import { OWNER_ROLES } from "@/lib/roles";
 
 const MIN_PASSWORD = 8;
 
@@ -18,7 +19,7 @@ function wouldStrandTheApp(db: ReturnType<typeof getDb>, target: UserRow, becomi
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -166,7 +167,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

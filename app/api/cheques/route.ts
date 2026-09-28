@@ -4,11 +4,12 @@ import { recordChequePayment, listCheques, ChequeError } from "@/lib/repo/cheque
 import { PaymentError } from "@/lib/repo/payments";
 import type { ChequeStatus } from "@/lib/chequeStates";
 import { CHEQUE_TRANSITIONS } from "@/lib/chequeStates";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const STATUSES = Object.keys(CHEQUE_TRANSITIONS) as ChequeStatus[];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const s = req.nextUrl.searchParams.get("status");
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

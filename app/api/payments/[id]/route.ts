@@ -6,9 +6,10 @@ import {
   voidPayment,
   PaymentError,
 } from "@/lib/repo/payments";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
 }
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

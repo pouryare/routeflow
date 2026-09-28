@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { churnBoard, scoreChurn } from "@/lib/repo/churn";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ const BANDS = ["low", "watch", "high"] as const;
 /** `?id=` → one customer's live score; `?band=` → that slice of the board; else the
  *  whole board, highest probability first. Manager tool. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;

@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { canReachEntity, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const VALID_STATUSES = ["planned", "done", "skipped"];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -51,7 +52,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/visit-plan
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/visit-plans/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { listAlerts, resolveAlert, AlertError } from "@/lib/repo/alerts";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "rep_manager"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   return NextResponse.json({
@@ -16,7 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as { id?: number; resolve?: boolean } | null;
   if (!b?.id || !b.resolve) return NextResponse.json({ ok: false, error: "id لازم است" }, { status: 400 });

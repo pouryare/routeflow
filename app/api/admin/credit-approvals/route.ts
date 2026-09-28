@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { listApprovals, requestApproval, CreditApprovalError } from "@/lib/repo/creditApprovals";
 import type { CreditApprovalRow } from "@/lib/repo/creditApprovals";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const STATUSES: CreditApprovalRow["status"][] = ["pending", "approved", "rejected", "expired"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const s = req.nextUrl.searchParams.get("status");
@@ -20,7 +21,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

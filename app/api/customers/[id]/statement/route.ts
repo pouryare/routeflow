@@ -4,12 +4,13 @@ import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
 import { readOrders } from "@/lib/orders";
 import { listPayments, customerDebt } from "@/lib/repo/payments";
 import { getScopedCustomer } from "@/lib/repo/customers";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** One customer's money in one read: their orders, their payments and the aged
  *  balance behind the debt pill. Scoped -- a salesperson sees only a customer in
  *  their own territory; anyone else's customer reads as not found. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/customers/[id]/statement">) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

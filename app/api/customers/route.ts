@@ -3,9 +3,10 @@ import { getDb } from "@/lib/db";
 import { readCustomers } from "@/lib/customers";
 import { requireRole, scopeGroupIds } from "@/lib/session";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const scope = scopeGroupIds(guard.session);
 

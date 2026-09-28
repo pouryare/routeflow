@@ -8,6 +8,7 @@ import {
   managerStatementFor,
   readManagerOverrides,
 } from "@/lib/managerCommissionLedger";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** Who may see whose commission.
  *
@@ -17,7 +18,7 @@ import {
  *  override statement. The owner sees everyone, in every ledger.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
   const session = guard.session;
 

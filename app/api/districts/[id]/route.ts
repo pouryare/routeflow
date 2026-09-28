@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, District, logActivity } from "@/lib/db";
 import { canReachGroup, requireRole } from "@/lib/session";
 import { STATUS_LABEL } from "@/lib/types";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/districts/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

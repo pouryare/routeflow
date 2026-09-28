@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { extractLatLng, extractPlusCodeCoords, isAllowedLinkHost, isPrivateOrLocalHost } from "@/lib/geoLinks";
 import { requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const MAX_REDIRECTS = 6;
 const FETCH_TIMEOUT_MS = 8000;
@@ -29,7 +30,7 @@ async function fetchNoRedirect(url: string) {
 // Guard only, no scope: this resolves a map link the caller already holds and reads
 // nothing out of the database.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const urlParam = req.nextUrl.searchParams.get("url")?.trim();

@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { setRate } from "@/lib/commissionLedger";
 import { setDriverRate } from "@/lib/driverCommissionLedger";
 import { isToman } from "@/lib/money";
+import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only, including against a manager.
  *
@@ -18,7 +19,7 @@ import { isToman } from "@/lib/money";
  *  kind here rather than a third branch that would always 400.
  */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

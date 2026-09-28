@@ -3,6 +3,7 @@ import { getDb, District, logActivity } from "@/lib/db";
 import { canReachGroup, requireRole } from "@/lib/session";
 import { recomputeCustomerGroups } from "@/lib/groups";
 import { STATUS_LABEL } from "@/lib/types";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
@@ -11,7 +12,7 @@ const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 // desktop "select several, set them all at once" flow) is one atomic write instead
 // of N separate requests.
 export async function PATCH(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const { session } = guard;
 

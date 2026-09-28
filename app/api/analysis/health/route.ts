@@ -7,6 +7,7 @@ import {
   driverScoreFor,
 } from "@/lib/repo/health";
 import { currentPeriod } from "@/lib/analysis/period";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -15,7 +16,7 @@ type Scope = "customer" | "phone_sales" | "driver";
 /** Health scores. `?scope=customer` (default) returns the group-scoped overview;
  *  `?scope=customer&id=88` returns one; salesperson / driver scope need an id. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "rep_manager"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;

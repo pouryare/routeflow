@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { whyChain, WhyError, type WhyMetric } from "@/lib/repo/why";
 import { shiftPeriod, currentPeriod } from "@/lib/analysis/period";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -10,7 +11,7 @@ const WHY_METRICS: WhyMetric[] = ["net_sales", "gross_profit", "orders"];
 /** The "Why?" ladder for a metric between two Jalali months. Manager+ only — a
  *  decomposition exposes every group's and salesperson's numbers. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;

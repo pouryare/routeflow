@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { readCatalogue, createProduct } from "@/lib/catalogue";
+import { MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 
 /** The catalogue is company-wide, so there is no group filter here -- but the role
  *  split is real and worth stating: everyone who sells needs to read a price, and only
@@ -13,7 +14,7 @@ import { readCatalogue, createProduct } from "@/lib/catalogue";
  *  rep, and a rep who cannot read a price cannot quote one at the door. Writing a price
  *  stays owner-only either way. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

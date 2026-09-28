@@ -4,12 +4,13 @@ import { readFacilities } from "@/lib/facilities";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { isValidCoord } from "@/lib/geoLinks";
 import { groupFilterWithShared, requireRole, scopeGroupIds } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // facilities is option 1 (spec §2.3 / Task 8): a site a group adds belongs to that group.
 // A site with no group is company-wide -- the seeded warehouse and home origin -- and stays
 // readable by everyone, because every group plans its routes out of the same depot.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const scope = groupFilterWithShared(guard.session);
   const scopeIds = scopeGroupIds(guard.session);
@@ -48,7 +49,7 @@ interface NewFacilityInput {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as NewFacilityInput | null;

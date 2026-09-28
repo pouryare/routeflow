@@ -10,7 +10,7 @@ import {
  *  group managers run territory, not the channel. `?candidates=1` returns the WHOLESALE
  *  customers eligible to become a representative. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "rep_manager"]);
+  const guard = requireRole(req, ["platform_owner", "owner", "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const org = guard.session.organizationId;
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "rep_manager"]);
+  const guard = requireRole(req, ["platform_owner", "owner", "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

@@ -3,6 +3,7 @@ import { FACILITY_KINDS, FacilityKind, getDb } from "@/lib/db";
 import { readFacility } from "@/lib/facilities";
 import { isValidCoord } from "@/lib/geoLinks";
 import { canReachGroup, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 interface PatchInput {
   name?: string;
@@ -18,7 +19,7 @@ interface PatchInput {
 // company warehouse (group_id NULL) but must not be able to rename, move or delete it.
 // Only an owner reaches an ungrouped row.
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -121,7 +122,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilities/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

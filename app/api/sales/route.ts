@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { groupFilter, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // A manager may read the purchase history of their own customers -- it is what the
 // customer detail panel shows, and a manager who cannot see it cannot do their job.
@@ -10,7 +11,7 @@ import { groupFilter, requireRole } from "@/lib/session";
 // already see. Widening the role without that check would have been the leak, since any
 // business name is guessable and the ledger is the whole debt picture.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { searchParams } = new URL(req.url);

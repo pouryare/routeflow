@@ -10,7 +10,7 @@ import {
 import type { RepStage } from "@/lib/repStages";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/representatives/[id]">) {
-  const guard = requireRole(req, ["owner", "rep_manager"]);
+  const guard = requireRole(req, ["platform_owner", "owner", "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -24,7 +24,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/admin/repres
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/representatives/[id]">) {
-  const guard = requireRole(req, ["owner", "rep_manager"]);
+  const guard = requireRole(req, ["platform_owner", "owner", "rep_manager"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

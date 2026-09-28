@@ -5,11 +5,12 @@ import sharp from "sharp";
 import { getDb, Photo, EntityType, logActivity } from "@/lib/db";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // photos is option 2: a photo is *of* a customer, district or facility, so it inherits
 // that row's group rather than carrying one of its own.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "p");
 
@@ -60,7 +61,7 @@ export async function GET(req: NextRequest) {
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024; // 20MB -- generous for a phone camera photo
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const formData = await req.formData().catch(() => null);

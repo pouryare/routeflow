@@ -3,11 +3,12 @@ import { requireRole } from "@/lib/session";
 import { createBatch, listBatches, expiringBatches, BatchError } from "@/lib/repo/batches";
 import type { BatchStatus } from "@/lib/batchStates";
 import { BATCH_TRANSITIONS } from "@/lib/batchStates";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const STATUSES = Object.keys(BATCH_TRANSITIONS) as BatchStatus[];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -26,7 +27,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

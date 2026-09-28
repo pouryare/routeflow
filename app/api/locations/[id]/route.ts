@@ -3,6 +3,7 @@ import { getDb, LOCATION_STATUSES, LocationStatus } from "@/lib/db";
 import { isValidCoord } from "@/lib/geoLinks";
 import { LEAD_CRITERIA, LeadCriterion, columnFor, isValidStars } from "@/lib/leadScore";
 import { canReachGroup, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
   name?: string;
@@ -13,7 +14,7 @@ interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -99,7 +100,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/locations/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

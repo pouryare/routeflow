@@ -5,6 +5,7 @@ import { plain } from "@/lib/db";
 import { remainingByTier, currentMethod } from "@/lib/leadImport/scheduler";
 import { estimateEtaSeconds } from "@/lib/leadImport/eta";
 import { maybeNotifySlowJob } from "@/lib/repo/leadImportNotify";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** How long a job may run before it is worth telling the user about. Below this the
  *  job is simply finished before anyone would have looked away from the panel, and a
@@ -17,7 +18,7 @@ const SLOW_JOB_MS = 60_000;
  *  re-derive either, and so the sentence naming the current method is computed from the
  *  same numbers the runner ordered by. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/locations/parse/[jobId]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).jobId);

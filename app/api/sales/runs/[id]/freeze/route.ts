@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { freezeRun, RoutingError } from "@/lib/repo/routing";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/runs/[id]/freeze">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   try {

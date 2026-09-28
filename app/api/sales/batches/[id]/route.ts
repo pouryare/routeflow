@@ -3,11 +3,12 @@ import { requireRole } from "@/lib/session";
 import { batchesRepo, advanceBatchStatus, BatchError } from "@/lib/repo/batches";
 import type { BatchStatus } from "@/lib/batchStates";
 import { BATCH_TRANSITIONS } from "@/lib/batchStates";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const STATUSES = Object.keys(BATCH_TRANSITIONS) as BatchStatus[];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/batches/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/batche
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/sales/batches/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

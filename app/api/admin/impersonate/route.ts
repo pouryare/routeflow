@@ -5,6 +5,7 @@ import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseSessionToken } f
 import { getSessionFromCookies, requireRole } from "@/lib/session";
 import { emitEvent } from "@/lib/repo/events";
 import { ACTOR_COOKIE, IMPERSONATION_MAX_AGE_SECONDS, impersonationRefusal } from "@/lib/impersonation";
+import { OWNER_ROLES } from "@/lib/roles";
 
 const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" };
 
@@ -17,7 +18,7 @@ const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure
  *  The owner's own session waits in ACTOR_COOKIE (httpOnly, two hours). Both the start
  *  and the end are written to the events log with the owner as the actor. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
   const own = req.cookies.get(COOKIE_NAME)?.value;
   const body = (await req.json().catch(() => null)) as { user_id?: unknown } | null;

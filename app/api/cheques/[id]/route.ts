@@ -9,11 +9,12 @@ import {
 import { PaymentError } from "@/lib/repo/payments";
 import type { ChequeStatus } from "@/lib/chequeStates";
 import { CHEQUE_TRANSITIONS } from "@/lib/chequeStates";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 const STATUSES = Object.keys(CHEQUE_TRANSITIONS) as ChequeStatus[];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/cheques/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -23,7 +24,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/cheques/[id]
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/cheques/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { completeTask, dismissTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
 import { objectionCardFor } from "@/lib/repo/academy";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   const org = guard.session.organizationId;

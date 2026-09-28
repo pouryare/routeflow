@@ -3,6 +3,7 @@ import { getDb, VisitPlan, PLAN_ENTITY_TYPES, PlanEntityType, logActivity } from
 
 const PLAN_STATUSES: VisitPlan["status"][] = ["planned", "done", "skipped"];
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 interface PlanWithLabel extends VisitPlan {
   label: string;
@@ -72,7 +73,7 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
 
 // visit_plans is option 2: a stop is *at* a customer, district or facility.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "v");
 
@@ -107,7 +108,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);

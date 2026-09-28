@@ -3,9 +3,10 @@ import { getDb } from "@/lib/db";
 import { recomputeCustomerGroups } from "@/lib/groups";
 import { requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
+import { OWNER_ROLES } from "@/lib/roles";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -62,7 +63,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

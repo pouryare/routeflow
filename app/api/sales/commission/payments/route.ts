@@ -5,6 +5,7 @@ import { recordPayment } from "@/lib/commissionLedger";
 import { recordDriverPayment } from "@/lib/driverCommissionLedger";
 import { recordManagerPayment } from "@/lib/managerCommissionLedger";
 import { isToman } from "@/lib/money";
+import { OWNER_ROLES } from "@/lib/roles";
 
 const ROLE_FOR_KIND = { sales: "phone_sales", driver: "delivery_driver", manager: "group_manager" } as const;
 const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager: "مدیر گروه" } as const;
@@ -18,7 +19,7 @@ const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager
  *  which table they insert into.
  */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

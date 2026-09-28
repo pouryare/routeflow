@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { geometryVersion, getGeometryPayload } from "@/lib/districtGeometry";
 import { isPrecisionTier } from "@/lib/precision";
 import { requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // Version-stamped, immutable district geometry. The `v` param is produced by
 // geometryVersion() and handed to the client in the page's initial props, so a client
@@ -13,7 +14,7 @@ import { requireRole } from "@/lib/session";
 // in it, and the client needs the whole set to draw a map. What reveals who holds
 // what is /api/districts, which is scoped.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const requested = req.nextUrl.searchParams.get("v");

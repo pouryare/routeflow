@@ -9,10 +9,11 @@ import { CrmError } from "@/lib/repo/crm/write";
 import { startFlow, viewStep, type FlowState } from "@/lib/crm/flows/machine";
 import type { FlowContext } from "@/lib/crm/flows/types";
 import { isVanRole } from "@/lib/roles";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** GET: the location + a flow context for a driver standing in front of it. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
-  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
 
 /** POST: save the driver's visit answers. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
-  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });

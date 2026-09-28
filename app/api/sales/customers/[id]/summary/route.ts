@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, groupFilter } from "@/lib/session";
 import { readCustomerSummary } from "@/lib/customerSummary";
 
-const CAN_SEE = ["owner", "group_manager", "phone_sales"] as const;
+const CAN_SEE = ["platform_owner", "owner", "group_manager", "phone_sales"] as const;
 
 /** What the customer sheet reads.
  *

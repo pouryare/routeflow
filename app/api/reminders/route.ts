@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, Reminder, EntityType } from "@/lib/db";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 function todayStr(): string {
   const d = new Date();
@@ -35,7 +36,7 @@ function enrich(db: ReturnType<typeof getDb>, rows: Reminder[]) {
 // reminders is option 2: a reminder is *about* a customer or district, so it belongs to
 // whichever group owns that row. Joined, not denormalised -- see entityGroupFilter.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "r");
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);

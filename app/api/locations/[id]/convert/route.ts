@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { canReachGroup, requireRole } from "@/lib/session";
 import { LeadPromotionError, promoteLeadToCustomer } from "@/lib/repo/crm/conversion";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // Promotes a prospect into the real customers table.
 //
@@ -17,7 +18,7 @@ import { LeadPromotionError, promoteLeadToCustomer } from "@/lib/repo/crm/conver
 // lead's first purchase are the same operation, dedup guard and all, rather than two
 // implementations that drift.
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[id]/convert">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

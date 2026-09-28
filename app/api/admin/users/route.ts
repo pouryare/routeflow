@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, ROLES, type Role } from "@/lib/db";
 import { hashPassword } from "@/lib/auth";
 import { requireRole } from "@/lib/session";
+import { OWNER_ROLES } from "@/lib/roles";
 
 const MIN_PASSWORD = 8;
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   // Never password_hash. It is a scrypt digest rather than a password, but there is no
@@ -29,7 +30,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;

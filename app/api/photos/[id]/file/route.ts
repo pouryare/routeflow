@@ -3,11 +3,12 @@ import fs from "node:fs/promises";
 import { getDb, Photo } from "@/lib/db";
 import { photoFilePath } from "@/lib/photos";
 import { canReachEntity, requireRole } from "@/lib/session";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 // The image bytes themselves, so this needs the same check as the metadata route --
 // otherwise another group's photo is one guessed id away.
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/file">) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

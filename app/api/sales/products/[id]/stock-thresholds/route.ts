@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { setStockThresholds } from "@/lib/catalogue";
+import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only, same split as every other write in the catalogue: everyone who sells
  *  reads a reorder gauge, only the owner decides where its lines sit. */
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

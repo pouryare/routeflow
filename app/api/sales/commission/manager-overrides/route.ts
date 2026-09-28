@@ -2,12 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { setManagerOverride } from "@/lib/managerCommissionLedger";
+import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only. A مدیر گروه's incentive is set by the owner, the same "payroll is not
  *  territory" rule /api/sales/commission/rates already enforces -- running a group is
  *  not the authority to decide what running it pays. */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner"]);
+  const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

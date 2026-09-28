@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import * as importRepo from "@/lib/repo/leadImport";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** POST: stop a running decode.
  *
@@ -11,7 +12,7 @@ export async function POST(
   req: NextRequest,
   ctx: RouteContext<"/api/locations/parse/[jobId]/cancel">
 ) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).jobId);

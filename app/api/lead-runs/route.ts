@@ -10,6 +10,7 @@ import {
   readTodaysLeadRun,
 } from "@/lib/repo/leadRuns";
 import { isVanRole } from "@/lib/roles";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** A driver's day, or a manager's roster of them.
  *
@@ -24,7 +25,7 @@ import { isVanRole } from "@/lib/roles";
 const todayIso = () => new Date().toISOString().slice(0, 10);
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const db = getDb();
   const session = guard.session;
@@ -48,7 +49,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

@@ -2,11 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { completeDelivery, DeliveryError } from "@/lib/delivery";
 import { readDelivery } from "@/lib/repo/deliveries";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /** The door event. The server owns actual_arrival / completed_at -- a `device_time` in
  *  the body is stored beside them, never used as the time. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/deliveries/[id]/complete">) {
-  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
