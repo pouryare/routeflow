@@ -348,13 +348,31 @@ which is exactly what sameness feels like. `--r-*` is the canonical scale and `-
 now **aliases** it inside `.meridian`, so a rule may use whichever name reads better at the
 call site without the two drifting apart again. Both spellings resolve to the same numbers.
 
-**Corners are superellipses.** `corner-shape: superellipse()` is applied to every surface
-above `--radius-sm` (chips and pills keep true circles — a squircle on a 999px radius is
+**Corners are superellipses, at 1.5.** `corner-shape: superellipse(1.5)` is applied to every
+surface above `--radius-sm` (chips and pills keep true circles — a squircle on a 999px radius is
 invisible). A circular arc meets its neighbour at a visible corner discontinuity; the
 superellipse has continuous curvature there, which is the difference between a rectangle
-that was *rounded* and one that was *drawn*. It is progressive enhancement only:
-`border-radius` remains the base and the property is gated behind `@supports`, so a
-browser without it degrades to plain rounded corners and nothing else changes.
+that was *rounded* and one that was *drawn*.
+
+**The exponent is not a "how gentle" dial — it runs the other way.** Measured by rendering
+corners in Chromium 151 and integrating the corner's area against a true circle:
+
+| exponent | corner area | what it looks like |
+|---|---|---|
+| `0.6` | 0.878× | **concave — scoops the corner inward** |
+| `1.0` | 1.000× | circular |
+| **`1.5`** | **1.110×** | **a squircle; what we ship** |
+| `2.0` | 1.181× | square-leaning |
+
+This block previously shipped `0.6` believing it was the mild end of the range. It was denting
+every corner inward, and because browsers without `corner-shape` were drawing a plain arc anyway,
+nobody could name the difference. If you tune this number, measure it — do not reason about the
+sign.
+
+`border-radius` remains the base and the property is gated behind `@supports`. Browsers without
+`corner-shape` are not left on plain arcs: `components/meridian/SquircleFallback.tsx` draws the
+same corner with a `clip-path` fitted to this exponent (`lib/squircle.ts`), so every user gets the
+same shape. `?force=1` on any URL forces that fallback on, so it is inspectable in Chromium too.
 
 ## Motion `CHANGED`
 

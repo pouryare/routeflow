@@ -4780,6 +4780,22 @@ body {
   }
 }
 
+/* The fallback. `--sq-clip` is set per element by components/meridian/SquircleFallback.tsx,
+   which runs only where `corner-shape` is missing -- so on Chromium this property is never
+   written and this rule never does anything. It is NOT inside an @supports guard, because
+   clip-path is universally supported and the whole point is to run without the native one.
+
+   A clip cuts box-shadow off along with everything outside the shape (see the note at
+   line 821), so any squircle surface that relies on a shadow must carry it as
+   `filter: var(--card-drop)` instead. `.cradlecard` and `.phc` already do.
+
+   `clip-path` also clips descendants, so a popover rendered inside one of these would be
+   cut off at the card's edge. Anything interactive inside a squircle surface is portalled
+   to document.body instead. */
+.meridian [style*="--sq-clip"] {
+  clip-path: var(--sq-clip);
+}
+
 /* Tier 2b — scroll-driven entrances.
 
    The reader scrolls, and the content assembles itself as it arrives. Each card

@@ -116,14 +116,14 @@ describe("cornerAreaRatio", () => {
   });
 
   it("holds the fitted squircle at 1.18x a circle, matching superellipse(1.5)", () => {
-    // Measured in Chromium 151: superellipse(1.5) => 1.1809x. The calibration test
+    // Measured in Chromium 151: superellipse(1.5) => 1.1094x. The calibration test
     // asserts against a real browser that this stays true.
-    expect(cornerAreaRatio(0.927613, 100)).toBeCloseTo(1.1809, 2);
+    expect(cornerAreaRatio(0.765437, 100)).toBeCloseTo(1.1094, 2);
   });
 
   it("is scale-invariant, so one constant serves the whole radius scale", () => {
     for (const r of [6, 10, 16, 26, 40]) {
-      expect(cornerAreaRatio(0.927613, r)).toBeCloseTo(1.1809, 2);
+      expect(cornerAreaRatio(0.765437, r)).toBeCloseTo(1.1094, 2);
     }
   });
 });

@@ -3,6 +3,7 @@ import AppHeader from "@/components/meridian/AppHeader";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
 import RevealRoute from "@/components/meridian/RevealRoute";
 import RouteFade from "@/components/meridian/RouteFade";
+import SquircleFallback from "@/components/meridian/SquircleFallback";
 import SyncStatus from "@/components/SyncStatus";
 
 /** Everything every themed route wears: the header, the entrance choreography, and the
@@ -30,6 +31,9 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <RouteFade>{children}</RouteFade>
 
       <SyncStatus />
+
+      {/* Renders null and costs nothing wherever the browser draws the corner itself. */}
+      <SquircleFallback />
     </div>
   );
 }

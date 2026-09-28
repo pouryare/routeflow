@@ -101,7 +101,7 @@ export function parseCornerRadius(raw: string): number | null {
   return Number.isFinite(px) ? px : null;
 }
 
-const K = 0.927613;
+const K = 0.765437;
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
 type Pt = [number, number];
@@ -116,7 +116,7 @@ type Pt = [number, number];
  *  of stopping and restarting.
  *
  *  K is not a guess. It was fitted so this corner's AREA equals Chromium's measured
- *  superellipse(1.5) -- 1.1809x a quarter circle -- which is what makes the JS fallback
+ *  superellipse(1.5) -- 1.1094x a quarter circle -- which is what makes the JS fallback
  *  and the native CSS agree on area rather than merely on looking similar. The area ratio
  *  is scale-invariant, so one constant serves every radius in the scale. Verified: the
  *  same construction at K=0.5522847498 measures 1.0002x, i.e. a true circle. */
@@ -164,7 +164,7 @@ export function superellipsePath(w: number, h: number, r: number): string {
 /** The area of one corner of this construction, as a fraction of a quarter circle of the
  *  same radius. This is the objective K was fitted to; it lives beside the path it must
  *  describe so the two cannot drift. Exported for the tests, which assert both that a true
- *  circle scores 1.0 here and that K scores the 1.1809 the native path produces. */
+ *  circle scores 1.0 here and that K scores the 1.1094 the native path produces. */
 export function cornerAreaRatio(k: number, r: number, samples = 20_000): number {
   const P: Pt[] = [
     [0, r],
