@@ -1,0 +1,446 @@
+# Multi-role people and the role switcher
+
+**Date:** 2026-09-28
+**Status:** approved design, ready for an implementation plan
+**Touches:** `lib/roles.ts`, `lib/session.ts`, `lib/auth.ts`, `lib/appNav.ts`,
+`lib/repo/briefing.ts`, `lib/db.ts`, `proxy.ts`, `app/(bare)/today`,
+`app/(bare)/driver`, `components/meridian/ProfileMenu.tsx`,
+`scripts/create-user.mjs`
+
+---
+
+## 1. The problem
+
+`users.role` is a single TEXT column, and the whole app asks one question of it:
+*"which single role are you?"* Six roles answer it — `platform_owner`, `owner`,
+`group_manager`, `rep_manager`, `salesperson`, `driver`.
+
+That single question is currently doing two different jobs, and the business has
+outgrown it.
+
+**`driver` is one role doing two jobs.** A driver today receives delivery runs
+(`delivery_runs`, `/driver`, `/api/driver/stops/[id]`) *and* field lead runs
+(`lead_runs`, `/leads`, `/api/crm/driver-visits`, and `verify_visit` tasks with
+`role_hint = 'driver'`). Nothing separates the two. `lib/delivery.ts:79` refuses
+anyone whose role is not `driver`; `lib/repo/leadRuns.ts:256` selects
+`WHERE role = 'driver'` to populate the "assign this route to" dropdown. So a
+delivery driver can be handed a field-sales route, and a field rep cannot be
+given deliveries.
+
+**`salesperson` is misnamed.** It is a phone sales role and the Persian label
+says only «فروشنده», which reads as "any seller".
+
+**People hold more than one hat.** Someone who both drives a delivery round and
+sells by phone has no role value that grants both, because the code asks "which
+single role?" and then applies a **whitelist**:
+
+```ts
+// proxy.ts:196 — a whitelist, not a blacklist
+if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
+```
+
+Give that person `driver` and they lose the entire sales shell. Give them
+`salesperson` and they lose every delivery. `lib/appNav.ts:85` has the matching
+constraint — `if (r === "driver") return DRIVER_TABS` — a hand-written 3-tab list
+rather than a filtered one, because a filter would leave 19 tabs the proxy would
+redirect.
+
+**A gap, deferred but designed for.** Cheques, credit approvals, commission
+payouts and purchasing are gated to `owner` / `group_manager` because there is
+no smaller role to hand them. Those jobs will be `accountant` and `warehouse`
+roles when those people are hired. This design must make adding a role a data
+change, not a code change.
+
+---
+
+## 2. Decisions
+
+| # | Decision | Why |
+|---|---|---|
+| D1 | A person's role becomes a **set** (`user_roles`), not a column | A person genuinely holds 2+ jobs. One column cannot say so. |
+| D2 | Two tiers: `session.role` = **active role** (which world), `session.roles` = **full set** (what they may be assigned) | These are different questions and must be allowed to come apart |
+| D3 | `driver` splits into `field_rep` + `delivery_driver`; existing drivers get **both** | Today's driver does both jobs; the migration must preserve their access exactly |
+| D4 | `salesperson` → `phone_sales` | The name should say what the job is |
+| D5 | A **role switcher** at `/today`, shown **only** to people with 2+ roles | Single-role staff must never see a new decision they didn't ask for |
+| D6 | The two in-the-van roles share **one card**, but stay two roles underneath | They are one working day; they are separately assignable |
+| D7 | `activeRole` lives in the **signed token** | `proxy.ts` has no DB access, so the claim is the only thing it can read |
+| D8 | `users.role` is kept as the **primary role** | The fallback, and the escape hatch: set the primary and the picker never appears |
+| D9 | A non-dismissible banner names the active role | Reuses `ImpersonationBanner`'s existing answer to "who am I acting as" |
+| D10 | `accountant` / `warehouse` are **out of scope**, but the model must make them ~1 day | They are real future hires, and adding them must not need a redesign |
+
+### 2.1 The role vocabulary
+
+```
+platform_owner      مدیر سامانه        support, across tenants
+owner               مالک               this organisation
+group_manager       مدیر گروه          one group's customers + orders
+rep_manager         مدیر نمایندگان     the representative network
+phone_sales         فروش تلفنی         was: salesperson
+field_rep           ویزیتور میدانی     new, split from driver
+delivery_driver     راننده تحویل       new, split from driver
+```
+
+`driver` is retired. Eight roles ship; `accountant` (حسابدار) and `warehouse`
+(انباردار) are added later under the same shape.
+
+### 2.2 The two tiers
+
+```ts
+interface Session {
+  user: UserRow;
+  role: Role;          // TIER 1 — the ACTIVE role: which world am I in?
+  roles: Role[];       // TIER 2 — my FULL set: what may I be assigned?
+  groupId: number | null;
+  organizationId: number;
+  actorId?: number;
+}
+```
+
+| Question | Tier | Call sites |
+|---|---|---|
+| Which shell / nav / home page? | `session.role` | `appNav.ts`, `proxy.ts`, `homePathFor`, `app/(bare)` pages |
+| May this person be handed a run? | `session.roles` | `leadRuns.assignableDrivers`, `delivery.createRun` |
+| May they record the outcome? | `session.roles` | `crm/driverVisits`, `orderStateMachine` |
+
+**The load-bearing consequence:** a person who is both field rep and delivery
+driver taps **one** card. `activeRole = field_rep` puts them in the bare van
+shell, while `hasRole("delivery_driver")` remains true, so deliveries still work
+and they are still assignable for delivery runs. One screen, two separately
+assignable capabilities — D6 satisfied without a merged-permission model.
+
+### 2.3 Why the comparison sites do not change
+
+`Session.role` keeps its name and its meaning-as-active-role. Every
+`session.role === "..."` site keeps reading it and keeps working. The diff at
+those sites is **zero**; only `lib/session.ts` changes what fills the field.
+
+```ts
+// lib/session.ts — before
+return { user, role: user.role, groupId: user.group_id, organizationId, actorId };
+// after
+return { user, role: activeRole, roles, groupId: user.group_id, organizationId, actorId };
+```
+
+The cookie claim is already named `role` and `proxy.ts` already reads
+`claims.role`, so the proxy's gate logic needs no change either.
+
+
+---
+
+## 3. Data model
+
+### 3.1 `user_roles` — additive, no table rebuild
+
+```sql
+CREATE TABLE IF NOT EXISTS user_roles (
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role    TEXT NOT NULL,
+  PRIMARY KEY (user_id, role)
+);
+INSERT OR IGNORE INTO user_roles (user_id, role) SELECT id, role FROM users;
+INSERT OR IGNORE INTO user_roles SELECT id, 'field_rep'       FROM users WHERE role = 'driver';
+INSERT OR IGNORE INTO user_roles SELECT id, 'delivery_driver' FROM users WHERE role = 'driver';
+```
+
+`users.role` stays, as the **primary role** (D8). No `CHECK` widening is needed
+to store the new roles, because they live in `user_roles`. The `users` rebuild
+in Step 4 exists only to keep the `CHECK` honest for the primary column.
+
+**The backfill order matters, and the primary column follows it.** The three
+statements above copy `users.role` verbatim first, *then* add the two split
+roles for drivers. Rewriting `users.role` afterwards is what makes the column
+agree with the set:
+
+| `users.role` was | `users.role` becomes | Why |
+|---|---|---|
+| `salesperson` | `phone_sales` | a pure rename; the set has exactly one role, matching the column |
+| `driver` | `delivery_driver` | a driver keeps both roles in `user_roles`; the column names one of them, and `delivery_driver` is the one whose app they land in by default |
+| anything else | unchanged | |
+
+A driver whose primary is `delivery_driver` and who also holds `field_rep` will,
+on next login, land in the bare van shell (D5 routes a 2-role person to the
+picker; §4.3 makes the van card their first option). A manager can promote
+`field_rep` to primary for someone whose real job is field work.
+
+⚠️ Because Step 1 backfills `users.role` into `user_roles` **before** the
+rename, a driver backfilled as `driver` must also have the stale `'driver'` row
+removed from `user_roles`, or a retired role name lives on in the set:
+
+```sql
+DELETE FROM user_roles WHERE role = 'driver';
+```
+
+Run that only after the two INSERTs above have run, and only once — it is the
+point at which `driver` stops existing.
+
+### 3.2 The trap: two role strings live in plain TEXT
+
+`tasks.role_hint` and `task_rules.escalate_to_role` store a role name as an
+unconstrained string. **Nothing in the type system knows this.** A rename that
+passes `tsc clean` can silently stop routing tasks to people.
+
+`lib/repo/rules.ts:501` resolves a rule's recipient with
+`WHERE organization_id = ? AND role = ?`, so a stale value here means **a task
+that nobody ever receives** — a missing notification, the hardest kind of failure
+to notice.
+
+**The `salesperson` values are mechanical** — one role maps to one role:
+
+```sql
+UPDATE tasks      SET role_hint         = 'phone_sales' WHERE role_hint = 'salesperson';
+UPDATE task_rules SET escalate_to_role = 'phone_sales' WHERE escalate_to_role = 'salesperson';
+```
+
+**The `driver` values are NOT mechanical, and must not be blanket-replaced.**
+`driver` covered two jobs, so each row has to be classified by what the task
+actually is:
+
+| The task is… | Becomes |
+|---|---|
+| a delivery / stop on a route | `delivery_driver` |
+| a shop visit, a lead, a `verify_visit` | `field_rep` |
+
+A `role_hint = 'driver'` row does not say which. So the migration is:
+
+1. **List them first, before writing any UPDATE:**
+   ```sql
+   SELECT id, kind, title, entity_type, entity_id FROM tasks WHERE role_hint = 'driver';
+   ```
+2. **Decide each row by its `kind` and `entity_type`** — not by a blanket rule.
+3. **Then apply**, per chosen value.
+
+Expect a handful of rows. If a row cannot be classified, it should be assigned to
+`field_rep` and flagged for review, because `role_hint` drives *offering* work
+(`lib/repo/pocket.ts:55`) rather than granting access — a wrongly-offered task is
+a manager's problem for one day, whereas a wrongly-*removed* task is work that
+silently never happens.
+
+`task_rules.escalate_to_role = 'driver'` is a different case: escalation names a
+**role to hand the task to**, and an escalation is a judgement call about a stuck
+task, not a delivery. Default those to `group_manager` (a manager always exists
+to unstick it) and confirm each one:
+
+```sql
+UPDATE task_rules SET escalate_to_role = 'group_manager' WHERE escalate_to_role = 'driver';
+```
+
+Seeded defaults at `lib/db.ts:3720` and `:3742` also need updating.
+
+
+---
+
+## 4. The screens
+
+### 4.1 The rule: single-role staff see nothing
+
+```
+roles.length === 1  →  skip the picker entirely, straight to homePathFor(role)
+roles.length > 1   →  show the picker
+```
+
+This is the feature's main UX guarantee: it is invisible to single-role staff,
+who are the majority.
+
+### 4.2 The picker
+
+Lives in `app/(bare)/today` — the bare layout is already the one-thumb,
+no-chrome, non-blocking context built for a phone in a vehicle.
+
+```
+┌─────────────────────────────────┐
+│                                 │
+│   امروز چه کاری داری؟           │
+│   انتخاب کنید                   │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 🛵  ویزیتور و راننده      │  │
+│  │    ۴ تحویل  ·  ۶ بازدید      │  │
+│  └───────────────────────────┘  │
+│                                 │
+│  ┌───────────────────────────┐  │
+│  │ 📞  فروش تلفنی            │  │
+│  │    ۱۲ تماس باز               │  │
+│  └───────────────────────────┘  │
+│                                 │
+└─────────────────────────────────┘
+```
+
+- **Counts on the card.** A card reading only «ویزیتور و راننده» makes the person
+  think; «۴ تحویل · ۶ بازدید» tells them whether today is worth it before they
+  tap. Two `COUNT` queries, and the difference between a menu and a decision aid.
+- **One thumb.** Full-width cards, generous min-height and padding, per the
+  constraint that produced the current `/driver` screen.
+- **The choice sticks.** Once picked, they stay in that world until they pick
+  the other. A picker on every page load is a punishment.
+
+### 4.3 What each card opens
+
+**«ویزیتور و راننده»** — `activeRole = field_rep`, bare van shell. The home
+screen shows **both** panels: «تحویل‌های امروز» and «بازدیدهای امروز». Because
+`hasRole("delivery_driver")` is true, `createRun` and the state machine still
+work.
+
+**«فروش تلفنی»** — `activeRole = phone_sales`, full sales shell, today's
+`/sales/today` unchanged.
+
+**Why one card for the van pair** (D6): they are one working day, and two cards
+would mean choosing between "deliveries" and "visits" six times a shift — a
+distinction with no operational meaning. The separation lives where it does
+matter, in the assignment dropdowns: a manager assigning a **delivery run** sees
+only people with `delivery_driver`; assigning a **lead run**, only `field_rep`.
+
+### 4.4 The banner
+
+Reuses the existing answer to the same hazard, with the same styling and the
+same non-dismissible behaviour as `ImpersonationBanner`:
+
+```tsx
+<div className="actas" role="status">
+  شما اکنون با نقش «ویزیتور و راننده» کار می‌کنید.
+  [ تغییر نقش ]
+</div>
+```
+
+No new visual language. Rendered for multi-role people only — a single-role
+`accountant` or `warehouse` later needs no banner, because their nav already
+says which app they are in.
+
+### 4.5 Profile menu
+
+`ProfileMenu.tsx:101` renders `roleLabel` as one line. It becomes a list, with a
+«تغییر نقش» row above the existing links, shown only when `roles.length > 1`.
+
+### 4.6 What does not change
+
+| Role | Nav | Home | API |
+|---|---|---|---|
+| `phone_sales` | identical | identical | identical |
+| `delivery_driver` | identical to today's driver | identical `/driver` | identical |
+| `field_rep` | identical to today's driver | new panel mix | new branch, same driver-visit queries |
+| `owner`, `group_manager`, `rep_manager` | **unchanged** | **unchanged** | **unchanged** |
+
+Management does not move at all: they are single-role, so they never see a
+picker. The blast radius is confined to the field team that was already confused
+by the current muddle.
+
+
+---
+
+## 5. Data flow
+
+```
+POST /api/me/role  { role: "phone_sales" }
+   │
+   ├─ getSession(req)               authoritative: re-reads the user row
+   ├─ loadRoles(userId)             SELECT role FROM user_roles
+   ├─ if (!roles.includes(role)) → 403
+   ├─ re-issue cookie with role: "phone_sales"
+   └─ { ok: true }
+
+next request → proxy.ts reads claims.role → correct world (D7)
+             → getSession() loads roles[] from the DB → correct capabilities
+```
+
+`activeRole` lives in the signed token, not a side cookie, because `proxy.ts`
+cannot read the database. Switching roles does **not** touch `token_version`, so
+nobody is logged out, and an owner's Login-As impersonation survives a switch
+(the `act` claim rides along).
+
+### 5.1 Failure modes
+
+| Failure | Behaviour | Why |
+|---|---|---|
+| Stale cookie — admin removed a role, the 30-day cookie still names it | `getSession` sees the claim is not in the DB's role set, **falls back to the primary role**; the picker then shows the truth | The user row is re-read on every request, which `lib/session.ts:24` already states is why a demotion takes effect immediately rather than at expiry |
+| Two people, one phone | The banner names the active role in words, non-dismissably | D9; same hazard as impersonation, same answer |
+| Role removed mid-task | The in-flight task completes; the next write 403s | Writes re-check server-side, so nothing unauthorised lands. The failure is loud, not silent |
+
+A role removed from someone's set takes effect **immediately** — the same
+`token_version` principle, extended from the user row to the role set.
+
+---
+
+## 6. Migration
+
+Five steps, each independently reversible, each with a test. `getDb()` runs
+migrations on boot, so they are idempotent by construction.
+
+**Step 1 — `user_roles` + backfill.** Invisible. Nobody loses access.
+
+**Step 2 — the two TEXT columns.** §3.2. Invisible, and it repairs latent
+mis-routing. Requires per-row judgement on the `driver` values.
+
+**Step 3 — rename `salesperson` → `phone_sales` in code.** ~125 sites, guided by
+`tsc`. Mechanical.
+
+**Step 4 — the `users.role` `CHECK` widening.** The 5th table rebuild, after
+backfill so nothing is lost if it fails. Follows the existing
+`rebuildForTenantUnique` pattern.
+
+**Step 5 — `activeRole`, the picker, the banner.** Purely additive.
+
+Steps 1–4 can ship without Step 5: the data model can be corrected in production
+before any UI is exposed to a user.
+
+### 6.1 Ship order
+
+```
+1. user_roles + backfill        invisible
+2. TEXT column migration        invisible; fixes latent mis-routing
+3. rename salesperson           invisible; no behaviour change
+4. new role screens             field_rep / delivery_driver
+5. activeRole + picker + banner the only user-visible step
+6. accountant / warehouse       later, when hired
+```
+
+---
+
+## 7. Testing
+
+Each new role follows `tests/salesperson-role.test.ts`: the `CHECK` constraint
+test, the "still rejects a role that is not real" test, and the `sqlite_master`
+assertion that the rebuild actually happened.
+
+| Test | Asserts |
+|---|---|
+| `tests/roles.test.ts` *(extend)* | the 8 roles; every label present; no orphan labels |
+| `tests/user-roles-schema.test.ts` *(new)* | table exists; backfill idempotent; a driver got **both** roles |
+| `tests/role-migration.test.ts` *(new)* | no `role_hint` / `escalate_to_role` row still says `salesperson` or `driver` — **the guard against the §3.2 trap** |
+| `tests/proxy.test.ts` *(extend)* | the existing driver-menu-matches-the-gate assertion, now for both new roles |
+| `tests/appNav.test.ts` *(extend)* | both new roles get the driver menu; `phone_sales` keeps the sales menu |
+| `tests/switch-role.test.ts` *(new)* | a role you do not hold → 403; a stale claim → fallback to primary; `token_version` untouched |
+
+`tests/roles.test.ts:46` already parses `scripts/create-user.mjs` and asserts its
+hardcoded list equals `ROLES`, so a forgotten copy in the bootstrap script fails
+loudly rather than drifting.
+
+---
+
+## 8. Cost
+
+| | Estimate | Difficulty |
+|---|---|---|
+| Steps 1–3 (data + rename) | 2–3 days | low — mechanical, `tsc`-guided, plus the TEXT migration |
+| Step 4 (new role screens) | 1–2 days | low — the driver app exists; this is a filter |
+| Step 5 (switcher + banner) | 2–3 days | medium — one screen, one banner, a cookie round-trip |
+| **Total** | **5–8 days** | |
+| Step 6 (accountant, warehouse) | ~1 day each, later | low — *because* of D1/D2 |
+
+The final row is the point of the two-tier model: a future role is a `ROLES`
+entry, a label, a nav branch and a briefing branch. No migration, no rebuild, no
+new concept.
+
+---
+
+## 9. Out of scope
+
+- **A merged single app.** Rejected: `proxy.ts`'s allowlist is a whitelist and
+  cannot be unioned without dismantling it, and the driver app is deliberately
+  chrome-free and offline-first — a van driver who also sells would load the
+  full sales shell on mobile data.
+- **A third management tier.** `group_manager` and `rep_manager` already exist; a
+  fourth would turn the model to mush at this company size.
+- **Splitting `owner`.** This is not a 600-person org.
+- **An installer / technician role.** There is a hook in the cold-chain and
+  batch code, but nothing in the codebase justifies it. Revisit if such people
+  are hired.
+
