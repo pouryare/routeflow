@@ -21,9 +21,9 @@ currently concave, which is a bug, not a style.
 3. **Scope = the `.meridian` skin only.** `.tapflow`, `.pocket`, `.kargah` and the bare map
    chrome keep plain radii. One skin landed correctly beats three landed badly; the others are
    a separate, later pass reusing this machinery.
-4. **Popovers are portalled.** `.modal`, `.sheet` and form cards hosting a picker/menu become
-   `createPortal(..., document.body)` so the dropdown escapes the clip. Uniform corners wins
-   over "no popovers in dialogs".
+4. **Popovers do NOT need portalling — measured, not assumed.** See "What the measurement
+   changed" below. `clip-path` does not trap a `position: fixed` descendant; only `filter`
+   does, and only three surfaces carry a filter, none of which host a popover.
 5. **The surface list becomes the attribute `data-squircle`** — not a class list. One
    declaration, read by both the CSS engine and the JS.
 6. **A `?force=1` / `localStorage` switch forces the fallback on Chromium.** Without it the
@@ -161,7 +161,39 @@ and Playwright is already a devDependency.
 4. **Manual pass** over the 12 surfaces, concentrating on the popovers, the 11 box-shadow
    surfaces, and picker-inside-modal — which no unit test will catch.
 
-## Risks
+## What the measurement changed
+
+**The portal work turned out to be unnecessary, and the plan dropped it.** The spec originally
+assumed a `clip-path` would clip every popover inside a squircle surface and that all of them
+would need `createPortal`. Two measurements contradicted that:
+
+1. **The meridian popovers are `position: fixed`, not `absolute`** — JalaliDateInput,
+   ProfileMenu, SearchOverlay, HoverPill, CarvedCard, PageHeaderCard.
+2. **`clip-path` does not trap a `position: fixed` descendant.** Measured in Chromium with a
+   fixed popover inside a clipped card: the popover still paints at its intended viewport
+   coordinates. Isolated across four cases:
+
+| ancestor | popover result |
+|---|---|
+| nothing | escapes (100,250) |
+| `clip-path` only | **escapes (100,250)** |
+| `filter: drop-shadow` only | **trapped (200,310)** |
+| `clip-path` + `filter` | trapped (200,310) |
+
+So the trap comes from `filter` (it creates a containing block that re-anchors fixed
+descendants), **not** from the clip. And only three squircle surfaces carry a filter — `.gcard`,
+`.face`, `.mapside` — none of which contain a popover, picker, or menu.
+
+**Consequence:** the largest single change in the original spec does not need to happen. The
+portal risk is real only for a squircle surface that both carries `filter: var(--card-drop)` and
+hosts a `position: fixed` popover; there is currently no such surface, and `SQUIRCLE_SELECTORS`
+plus the manual pass in Verification are what keep that true.
+
+**A note on the original reasoning:** "clip-path clips descendants" is true, and the warning at
+`app/globals.css:2398` is correct — but it was being read as "a popover inside a clipped card
+is impossible", when the operative question is whether that popover is `fixed` or `absolute`.
+`fixed` was never going to be affected.
+
 
 | Risk | Mitigation |
 |---|---|

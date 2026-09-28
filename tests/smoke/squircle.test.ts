@@ -99,3 +99,56 @@ describe("the squircle corner is the same shape on both engines", () => {
     expect(shipped, "the shipped exponent bulges past a circle").toBeGreaterThan(1.05);
   }, 90_000);
 });
+
+describe("the fallback clip does not trap popovers", () => {
+  it("a fixed popover inside a clipped card keeps its viewport position", async () => {
+    /* This is the assumption the original design got wrong. It cost a planned portalling
+       pass across every popover in the skin, and the portalling was never needed:
+       clip-path does not re-anchor a `position: fixed` descendant. Only `filter` does.
+       Locked in so nobody "fixes" this by adding portals to a clip that was never the
+       problem. */
+    const page = await browser.newPage({ viewport: { width: 900, height: 400 } });
+    await page.setContent(`<style>
+      body { margin: 0; }
+      .card { position: absolute; top: 60px; left: 100px; width: 200px; height: 100px; }
+      .pop { position: fixed; top: 250px; left: 100px; width: 150px; height: 70px; }
+    </style>
+    <div class="card" style='clip-path: path("M 0 0 L 200 0 L 200 100 L 0 100 Z")'>
+      <div class="pop"></div>
+    </div>`);
+
+    const box = await page.evaluate(() => {
+      const r = document.querySelector(".pop")!.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y) };
+    });
+    await page.close();
+
+    expect(box, "the clip re-anchored the popover").toEqual({ x: 100, y: 250 });
+  }, 60_000);
+
+  it("but a filter on the same card does trap it -- so filters are the real constraint", async () => {
+    /* The companion fact, and the reason the check above is not a general licence. A
+       `filter: var(--card-drop)` creates a containing block, which re-anchors fixed
+       descendants. Only three squircle surfaces carry one (.gcard, .face, .mapside) and
+       none hosts a popover -- that is the invariant to preserve, not a portal. */
+    const page = await browser.newPage({ viewport: { width: 900, height: 400 } });
+    await page.setContent(`<style>
+      body { margin: 0; }
+      .card { position: absolute; top: 60px; left: 100px; width: 200px; height: 100px;
+              filter: drop-shadow(0 0 2px rgba(0,0,0,.3)); }
+      .pop { position: fixed; top: 250px; left: 100px; width: 150px; height: 70px; }
+    </style>
+    <div class="card"><div class="pop"></div></div>`);
+
+    const box = await page.evaluate(() => {
+      const r = document.querySelector(".pop")!.getBoundingClientRect();
+      return { x: Math.round(r.x), y: Math.round(r.y) };
+    });
+    await page.close();
+
+    expect(box, "filter stopped containing the popover -- this is why it matters").not.toEqual({
+      x: 100,
+      y: 250,
+    });
+  }, 60_000);
+});
