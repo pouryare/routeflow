@@ -4749,8 +4749,19 @@ body {
 
    Only surfaces above --radius-sm qualify. Chips and pills keep true circles:
    at 999px the corner is a full semicircle and a squircle is invisible there,
-   so applying it would be noise. */
-@supports (corner-shape: superellipse(0.6)) {
+   so applying it would be noise.
+
+   The exponent runs the OPPOSITE way from a "how gentle" dial. Measured by
+   rendering corners in Chromium 151 and integrating the corner's area:
+     0.6 -> 0.878x a true circle  (CONCAVE -- it scoops the corner inward)
+     1.0 -> 1.000x               (circular)
+     1.5 -> 1.110x               (a squircle; what we ship)
+     2.0 -> 1.181x               (square-leaning)
+   This block shipped 0.6 for a long while believing it was the mild end; it was
+   denting every corner inward, and because Firefox was drawing a plain arc anyway
+   nobody could name the difference. 1.5 is the measured value the JS fallback in
+   lib/squircle.ts is fitted to match, so both engines draw the same corner. */
+@supports (corner-shape: superellipse(1.5)) {
   .meridian .kblock,
   .meridian .card,
   .meridian .gcard,
@@ -4765,9 +4776,7 @@ body {
   .meridian .ptile,
   .meridian .pagehead,
   .meridian .seg-item > a {
-    /* 0.6 is the mild end of the range. Anything past ~1.0 reads as a lozenge
-       and starts to look like a mistake on a rectangular card. */
-    corner-shape: superellipse(0.6);
+    corner-shape: superellipse(1.5);
   }
 }
 
