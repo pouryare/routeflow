@@ -8,6 +8,7 @@ import {
   summaryOf,
   assignableIds,
   removeHandedOver,
+  resolveScope,
 } from "@/lib/leadRunAssign";
 
 const RUNS = [
@@ -207,5 +208,82 @@ describe("mergeRouteIds", () => {
   it("leaves the route alone when nothing survives", () => {
     const run = [1, 2];
     expect(merge(run, [8, 9], () => false)).toBe(run);
+  });
+});
+
+describe("resolveScope", () => {
+  const loc = (...ids: number[]) => ids.map((id) => ({ id }));
+  const available = loc(1, 2, 3, 4);
+
+  it("ignores a non-array scope and returns the whole working set", () => {
+    /* The regression this exists for. `proposeDays` is wired as `onClick={proposeDays}`, so
+       React hands it a SyntheticEvent. While the function took no arguments that was
+       harmless; once it grew an optional scope, the event went into it and
+       `ids.filter is not a function` took the page down. Truthiness cannot catch it -- an
+       event is truthy -- so this asserts the type. */
+    for (const notAScope of [undefined, null, {}, "", 42, true, { length: 2 }]) {
+      expect(resolveScope(notAScope, available)).toBe(available);
+    }
+  });
+
+  it("takes only the named locations", () => {
+    expect(resolveScope([2, 4], available)).toEqual([{ id: 2 }, { id: 4 }]);
+  });
+
+  it("drops anything not in the working set, so naming a list cannot pull a lead in", () => {
+    expect(resolveScope([1, 99], available)).toEqual([{ id: 1 }]);
+  });
+
+  it("keeps the scope's order rather than the working set's", () => {
+    expect(resolveScope([4, 1], available)).toEqual([{ id: 4 }, { id: 1 }]);
+  });
+
+  it("ignores a repeated id rather than duplicating the location", () => {
+    expect(resolveScope([2, 2, 2], available)).toEqual([{ id: 2 }]);
+  });
+
+  it("ignores non-integer junk in the scope", () => {
+    expect(resolveScope([1, "2", null, {}, 3], available)).toEqual([{ id: 1 }, { id: 3 }]);
+  });
+
+  it("returns empty for an empty scope, which is a real signal not to propose anything", () => {
+    expect(resolveScope([], available)).toEqual([]);
+  });
+});
+
+describe("forceOpen", () => {
+  /* The decision CollapsibleSection makes, kept here because it is the one thing in the day
+     split merge that is not layout -- and the one line where a plausible-looking operator
+     would quietly reintroduce the bug.
+     `CollapsibleSection` reads: const expanded = filter ? true : (forceOpen ?? open);
+   */
+  const expanded = (filter: boolean, forceOpen: boolean | undefined, remembered: boolean) =>
+    filter ? true : (forceOpen ?? remembered);
+
+  it("beats a remembered collapsed, so a live proposal is never hidden", () => {
+    expect(expanded(false, true, false)).toBe(true);
+  });
+
+  it("beats a remembered open too, so a cleared proposal can fold away", () => {
+    expect(expanded(false, false, true)).toBe(false);
+  });
+
+  it("leaves the remembered state alone when not given", () => {
+    expect(expanded(false, undefined, true)).toBe(true);
+    expect(expanded(false, undefined, false)).toBe(false);
+  });
+
+  it("treats undefined as 'no opinion' and NOT as false", () => {
+    // The distinction that makes `??` the right operator. With `||`, an explicit `false`
+    // would fall through to the remembered state and a section the reader had opened would
+    // snap shut the moment a proposal was dismissed.
+    const withOr = (f: boolean | undefined, remembered: boolean) => f || remembered;
+    expect(expanded(false, false, true)).toBe(false);
+    expect(withOr(false, true)).toBe(true);
+  });
+
+  it("a search filter still wins over both", () => {
+    expect(expanded(true, false, false)).toBe(true);
+    expect(expanded(true, undefined, false)).toBe(true);
   });
 });

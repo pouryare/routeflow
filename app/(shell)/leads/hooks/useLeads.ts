@@ -12,7 +12,7 @@ import { averageScore } from "@/lib/leadScore";
 import { matchesQuery } from "@/lib/persian";
 import { parseIdParam } from "@/lib/deepLink";
 import { routeUrl } from "@/lib/navApps";
-import { assignableIds } from "@/lib/leadRunAssign";
+import { assignableIds, resolveScope } from "@/lib/leadRunAssign";
 import type { LeadRunAssignment } from "@/lib/repo/leadRuns";
 
 type LocationStatus = "contacted" | "visited" | "no_answer" | "declined";
@@ -245,11 +245,7 @@ export function useLeads() {
    *  The scope is intersected with `available` rather than trusted: an id that is not in the
    *  working set, or that another driver holds, cannot be smuggled in by naming a list. */
   function proposeDays(scope?: number[]) {
-    const pool = scope
-      ? stillAssignable(scope)
-          .map((id) => available.find((l) => l.id === id))
-          .filter((l): l is RoutableLocation => !!l)
-      : available;
+    const pool = resolveScope(scope, available);
     const k = daysNeeded(pool.length, stopsPerDay);
     /* The old message -- "no location with coordinates" -- was true and useless here: the
        leads exist, they are just all spoken for. Say so, and point at the toggle. */

@@ -127,3 +127,30 @@ export function removeHandedOver<T extends { id: number }>(
     .map((day) => day.filter((stop) => !gone.has(stop.id)))
     .filter((day) => day.length > 0);
 }
+
+/** Resolves a scope argument to the locations it names, or the whole working set.
+ *
+ *  The `Array.isArray` check is the whole point of this function, and it exists because of a
+ *  crash rather than a theory. `proposeDays` is wired as `onClick={proposeDays}`, so React
+ *  passes the click event as the first argument. While that function took no parameters the
+ *  event was discarded harmlessly; the moment it grew an optional `scope`, the event landed
+ *  in it, and a SyntheticEvent is truthy -- so it went into `assignableIds` and died on
+ *  `ids.filter is not a function`.
+ *
+ *  A truthiness check cannot catch that. An event is truthy, an array is truthy, and only
+ *  the type tells them apart, so the type is what gets asked. Scope order is preserved, and
+ *  anything not in `available` is dropped: naming a list must not be a way to pull a lead
+ *  in from outside the working set. */
+export function resolveScope<T extends { id: number }>(
+  scope: unknown,
+  available: T[],
+): T[] {
+  if (!Array.isArray(scope)) return available;
+  const wanted = new Set((scope as unknown[]).filter((x): x is number => Number.isInteger(x)));
+  const out: T[] = [];
+  for (const id of wanted) {
+    const found = available.find((l) => l.id === id);
+    if (found) out.push(found);
+  }
+  return out;
+}
