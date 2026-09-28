@@ -25,6 +25,7 @@ export default function CollapsibleSection({
   count,
   storageKey,
   defaultOpen = false,
+  forceOpen,
   keywords,
   right,
   children,
@@ -43,6 +44,13 @@ export default function CollapsibleSection({
    *  correct for sections that only appear under some condition. */
   storageKey?: string;
   defaultOpen?: boolean;
+  /** Forces the fold open, beating the remembered state in both directions.
+   *
+   *  For a section holding something the reader must not miss -- a day split waiting to be
+   *  looked at. `defaultOpen` cannot do this: it only seeds `useState`, and the localStorage
+   *  effect below then overwrites it, so a section the reader collapsed once would keep a
+   *  live proposal hidden inside it. Omitted everywhere else, so nothing else changes. */
+  forceOpen?: boolean;
   /** Extra words the filter should match. A section called «تنظیمات» is where you go
    *  looking for "GPS" or "اعلان", and its title says neither. */
   keywords?: string;
@@ -79,7 +87,10 @@ export default function CollapsibleSection({
   // the user has just asked for it by name, and handing back a closed heading answers
   // the search with another click. The stored value is left alone, so the arrangement
   // they set up is still there when the box is cleared.
-  const expanded = filter ? true : open;
+  // `??` and not `||`, so an explicit `false` means "no" rather than falling through to the
+  // remembered state. A truthiness check here would be the same mistake as testing a click
+  // event for truth to decide it was a list of ids.
+  const expanded = filter ? true : (forceOpen ?? open);
 
   function toggle() {
     setOpen((v) => {

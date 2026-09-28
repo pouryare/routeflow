@@ -298,7 +298,6 @@ export default function LeadsPage() {
               addToDayGroup={addToDayGroup} removeFromDayGroup={removeFromDayGroup}
               unassignedLocations={unassignedLocations}
               lastAssigned={lastAssigned}
-              repropose={enhancedProposeDays}
             />
           )}
 

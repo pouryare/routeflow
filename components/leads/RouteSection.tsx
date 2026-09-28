@@ -1,7 +1,6 @@
 "use client";
 
 import { useCardDrag } from "@/components/board/useCardDrag";
-import SectionHead from "@/components/meridian/SectionHead";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import DayGroupCard from "@/components/leads/DayGroupCard";
 import { Icon } from "@/components/meridian/Icon";
@@ -56,7 +55,6 @@ export interface RouteSectionProps {
   unassignedLocations: RoutableLocation[];
   /** The most recent successful hand-over, so an emptied pool is not an empty silence. */
   lastAssigned?: LastAssigned | null;
-  repropose: () => void;
 }
 
 export default function RouteSection({
@@ -89,7 +87,6 @@ export default function RouteSection({
   removeFromDayGroup,
   unassignedLocations,
   lastAssigned,
-  repropose,
 }: RouteSectionProps) {
   const drag = useCardDrag<DayStop>({
     resolveLane: (x, y) =>
@@ -158,6 +155,8 @@ export default function RouteSection({
             title="تقسیم خودکار بین روزها" icon="folders"
             storageKey="leads_split"
             keywords="خوشه‌بندی روز مسیر تقسیم"
+            count={proposedDays?.length}
+            forceOpen={proposedDays !== null}
           >
             <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
               مکان‌ها را بر اساس نزدیکی جغرافیایی به روزها تقسیم می‌کند — نه فقط برش زدن یک فهرست مرتب‌شده.
@@ -177,7 +176,7 @@ export default function RouteSection({
                 />
               </label>
               <button
-                onClick={proposeDays}
+                onClick={() => proposeDays()}
                 className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
               >
                 پیشنهاد بده ({faNum(daysNeeded(routableLength, stopsPerDay))} روز)
@@ -192,66 +191,26 @@ export default function RouteSection({
               )}
             </div>
 
-            {proposedDays && (
-              <div className="flex flex-col gap-2">
-                {proposedDays.map((day, i) => {
-                  const dayKm = runOrigin ? routeLengthKm(runOrigin, day.stops, false) : null;
-                  return (
-                    <div key={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
-                      <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[length:var(--text-sm)] text-text">
-                          روز {faNum(i + 1)} — {faNum(day.stops.length)} مقصد
-                          {dayKm !== null && (
-                            <span className="ms-2 font-mono text-[length:var(--text-xs)] text-text-faint">
-                              {formatDistanceKm(dayKm)} خط مستقیم
-                            </span>
-                          )}
-                        </span>
-                        {dayActions(i, day)}
-                      </div>
-                      <p className="truncate text-[length:var(--text-xs)] text-text-faint">
-                        {day.stops.map((d) => d.name).join(" ← ")}
-                      </p>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CollapsibleSection>
-      )}
-
-      {/* The route is its own card, a sibling of the split rather than its parent. */}
-      <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-      {/* ---- proposed day groups (editable) -------------------------------- */}
+            {/* One place for a day split, not two. The lanes below and the cards that used
+                to sit beside them drew the same `proposedDays`, and the read-only cards
+                were the only thing the lanes lacked -- the straight-line distance, now on
+                each lane header. */}
       {proposedDays && proposedDays.length > 0 && (
-        <div className="mt-4 flex flex-col gap-3">
-          <SectionHead
-            as="h3"
-            title="پیشنهادات روز"
-            className="text-[length:var(--text-xs)] font-medium text-text-faint uppercase tracking-wider"
-          />
-          <div className="flex flex-col gap-3">
-            {proposedDays.map((day, i) => (
+        <div className="flex flex-col gap-3">
+          {proposedDays.map((day, i) => {
+            const dayKm = runOrigin ? routeLengthKm(runOrigin, day.stops, false) : null;
+            return (
               <div key={i} data-day-index={i} className="rounded-[var(--radius-md)] border border-border bg-surface p-2.5">
                 <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
                   <span className="text-[length:var(--text-sm)] text-text">
                     روز {faNum(i + 1)} — {faNum(day.stops.length)} مقصد
+                    {dayKm !== null && (
+                      <span className="ms-2 font-mono text-[length:var(--text-xs)] text-text-faint">
+                        {formatDistanceKm(dayKm)} خط مستقیم
+                      </span>
+                    )}
                   </span>
-                  <div className="flex gap-1.5">
-                    {dayActions(i, day)}
-                    <button
-                      onClick={repropose}
-                      className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
-                    >
-                      پیشنهاد مجدد
-                    </button>
-                    <button
-                      onClick={() => setProposedDays(null)}
-                      className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
-                    >
-                      بستن پیشنهاد
-                    </button>
-                  </div>
+                  {dayActions(i, day)}
                 </div>
                 {day.stops.map((stop) => (
                   <div
@@ -292,10 +251,15 @@ export default function RouteSection({
                   </select>
                 )}
               </div>
-            ))}
+            );
+          })}
           </div>
-        </div>
       )}
+          </CollapsibleSection>
+      )}
+
+      {/* The route is its own card, a sibling of the split rather than its parent. */}
+      <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
 
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <h2 className="sechead__title">
