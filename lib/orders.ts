@@ -296,7 +296,7 @@ function orderComplete(db: DatabaseSync, orderId: number): boolean {
 export function submitOrder(
   organizationId: number,
   orderId: number,
-  actor: { id: number | null; role: OrderRole }
+  actor: { id: number | null; role: OrderRole; roles?: readonly OrderRole[] }
 ): OrderStatus {
   const db = getDb();
   const order = db

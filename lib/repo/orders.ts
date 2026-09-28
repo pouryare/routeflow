@@ -167,7 +167,7 @@ export function advanceOrder(
   organizationId: number,
   orderId: number,
   action: OrderAction,
-  actor: { id: number | null; role: OrderRole },
+  actor: { id: number | null; role: OrderRole; roles?: readonly OrderRole[] },
   opts: AdvanceOpts = {}
 ): OrderStatus {
   const conn = opts.db ?? ordersRepo.db();
@@ -186,7 +186,18 @@ export function advanceOrder(
         legalOrderActions(from, actor.role)
       );
     }
-    if (!t.roles.includes(actor.role)) {
+    /* The guard is a SET intersection. A delivery driver whose ACTIVE role is field_rep taps
+       the van card, then tries to mark a stop delivered: `actor.role` is field_rep, it is not
+       in the delivery edge, and the transition is refused — by the guard meant to protect
+       them, in a van, at the last step of the promise this design makes.
+
+       `actor.roles` is the person's full set, when the caller has it. `actor.role` is
+       appended so a caller that passes only the single role behaves exactly as before:
+       the union never removes an authority the old code granted. */
+    const heldRoles: readonly string[] = actor.roles
+      ? Array.from(new Set([...actor.roles, actor.role]))
+      : [actor.role];
+    if (!t.roles.some((r) => heldRoles.includes(r))) {
       throw new OrderRoleError("نقش شما اجازهٔ این تغییر وضعیت را ندارد");
     }
 
@@ -264,11 +275,15 @@ export function orderEvents(
 }
 
 /** What `role` could do to this order right now -- for rendering buttons. Empty if the
- *  order is missing or cross-tenant. */
+ *  order is missing or cross-tenant.
+ *
+ *  Accepts a set for the same reason the guard does, and for a sharper reason: a button the
+ *  guard would refuse is worse than a missing one, because it is a lie the driver taps in a
+ *  van. Whatever renders buttons and whatever enforces must read the same set. */
 export function legalActionsForOrder(
   organizationId: number,
   orderId: number,
-  role: OrderRole
+  role: OrderRole | readonly OrderRole[]
 ): OrderAction[] {
   const order = ordersRepo.get(organizationId, orderId);
   if (!order) return [];

@@ -18,6 +18,7 @@ const { createRun, addStop } = await import("@/lib/delivery");
 const { deliveryForStop } = await import("@/lib/repo/deliveries");
 const { advanceOrder } = await import("@/lib/repo/orders");
 const { applyMutations } = await import("@/lib/repo/syncMutations");
+const { setRoles } = await import("@/lib/repo/userRoles");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -156,5 +157,76 @@ describe("applyMutations", () => {
     expect(
       (getDb().prepare("SELECT status FROM sync_mutations WHERE client_uuid='bad1'").get() as { status: string }).status
     ).toBe("failed");
+  });
+
+  it("lets a DUAL-HAT driver deliver offline, with field_rep as their primary", () => {
+    // The sharpest edge in the whole design, and the one the spec says the two-tier model
+    // breaks: this person's primary is field_rep, so the old single-role lookup authorised
+    // them as field_rep, the delivery edge refused, no error reached the van, and the stop
+    // was simply never marked. Here they HOLD delivery_driver too, so it must apply.
+    const db = getDb();
+    setRoles(driver, ["field_rep", "delivery_driver"]);
+    db.prepare("UPDATE users SET role = 'field_rep' WHERE id = ?").run(driver);
+
+    const o = createOrder(db, {
+      customer_id: custId,
+      order_date: "2026-01-01",
+      created_by: owner,
+      organization_id: 1,
+      lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
+    });
+    confirmOrder(db, o.id);
+    const run = createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
+    const stopId = addStop(db, run, o.id);
+    const deliveryId = deliveryForStop(1, stopId)!.id;
+
+    const res = applyMutations(1, driver, [
+      mut({
+        client_uuid: "dual1",
+        op: "delivery.complete",
+        payload: { delivery_id: deliveryId, outcome: "delivered", collected_toman: 1000 },
+      }),
+    ]);
+
+    // The point of the test: the mutation APPLIED. The resulting status is CLOSED, not
+    // DELIVERED — a fully-collected order settles. I first asserted DELIVERED and the
+    // failure was the assertion, not the code: the guard had already stopped refusing.
+    expect(res.dual1.status).toBe("applied");
+    const st = db.prepare("SELECT status FROM orders WHERE id = ?").get(o.id) as { status: string };
+    expect(st.status).toBe("CLOSED");
+  });
+
+  it("records a delivery.complete from a NON-driver without complaint (pre-existing gap)", () => {
+    // NOT a regression, and deliberately NOT asserted as a fix. `completeDelivery` takes
+    // only { id } and never checks a role, so any account with a session can complete a
+    // delivery through the sync endpoint. That is pre-existing behaviour in both the online
+    // and offline paths, it is the same in the committed code before this task, and
+    // tightening it is a separate change with its own blast radius.
+    //
+    // Recorded here so the gap is visible and this test does not quietly become the thing
+    // that "proves" the offline path is role-safe. The role-5 test that DOES prove it is
+    // the dual-hat case above, which failed before the set was threaded through.
+    const db = getDb();
+    const o = createOrder(db, {
+      customer_id: custId,
+      order_date: "2026-01-01",
+      created_by: owner,
+      organization_id: 1,
+      lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
+    });
+    confirmOrder(db, o.id);
+    const run = createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: owner, organization_id: 1 });
+    const stopId = addStop(db, run, o.id);
+    const deliveryId = deliveryForStop(1, stopId)!.id;
+
+    const res = applyMutations(1, owner, [
+      mut({
+        client_uuid: "notadriver",
+        op: "delivery.complete",
+        payload: { delivery_id: deliveryId, outcome: "delivered", collected_toman: 1000 },
+      }),
+    ]);
+    // Documenting today's behaviour, not endorsing it. See the comment above.
+    expect(res.notadriver.status).toBe("applied");
   });
 });

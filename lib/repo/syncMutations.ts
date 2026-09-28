@@ -51,22 +51,49 @@ const ORDER_ROLES = [
   "delivery_driver",
 ] satisfies OrderRole[];
 
-/** The role an offline mutation is authorised as.
+/** The roles an offline mutation is authorised as — the person's FULL set, plus their real
+ *  primary from users.role.
  *
- *  This is the worst place in the app to fall back to a default, because the driver app IS
- *  an offline client: whatever this returns is what a driver can do in a van with no
- *  network and no feedback. A role added later used to be downgraded to "phone_sales"
- *  silently -- a button that quietly does nothing. An UNRECOGNISED role is therefore
- *  refused, not defaulted. */
-function roleFor(db: DatabaseSync, userId: number): OrderRole | null {
+ *  The two are different questions and the answer needs both: the SET decides what they may
+ *  fire, and users.role is the actual primary (the SET is stored alphabetically, so
+ *  `roles[0]` is not it — "delivery_driver" sorts before "field_rep", which is precisely the
+ *  wrong answer for a driver who visits shops).
+ *
+ *  This is the worst place in the app to get wrong, because the driver app IS an offline
+ *  client: whatever this returns is what a driver can do in a van with no network and no
+ *  feedback. A role added later used to be downgraded to "phone_sales" silently -- a button
+ *  that quietly does nothing. An UNRECOGNISED role is therefore refused, not defaulted.
+ *
+ *  It is a SET, not a single role, for the sharpest reason in Phase A: a driver who also
+ *  visits shops queues `deliver` in a van, the server authorises them as `field_rep` because
+ *  that is their active role, and the transition is refused. No error reaches the van, the
+ *  queue drains, and the stop is simply never marked. Reading the set is what makes the
+ *  offline path agree with the guard the online path uses.
+ *
+ *  Empty (not [primary]) when the account has no rows, because an empty set must mean
+ *  "reaches nothing" — never "reaches everything". */
+function rolesForOffline(
+  db: DatabaseSync,
+  userId: number
+): { roles: OrderRole[]; primary: OrderRole } | null {
   const u = db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as
     | { role: string }
     | undefined;
   if (!u) return null;
-  // No cast: `includes` narrows the string to the element type, which is what makes
-  // the return an OrderRole without a lie. "system" is deliberately absent from
-  // ORDER_ROLES — it is a transition actor, never a person holding an account.
-  return ORDER_ROLES.find((r) => r === u.role) ?? null;
+  const primary = ORDER_ROLES.find((r) => r === u.role);
+  if (!primary) return null;
+
+  const rows = db
+    .prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role")
+    .all(userId) as Array<{ role: string }>;
+  const known = ORDER_ROLES as readonly string[];
+  const held = rows.map((r) => r.role).filter((r): r is OrderRole => known.includes(r));
+
+  /* An account with no set rows falls back to its primary, mirroring getSessionFromCookies,
+     so the offline path and the online path can never disagree about the same person. The
+     primary is always included even if the set somehow omits it. */
+  const roles = held.includes(primary) ? held : [primary, ...held];
+  return { roles, primary };
 }
 
 /** Topological order on `depends_on`. A cycle or a missing local dep just falls through
@@ -141,10 +168,10 @@ export function applyMutations(
   muts: IncomingMutation[]
 ): Record<string, MutationResult> {
   const db = getDb();
-  const role = roleFor(db, userId);
+  const auth = rolesForOffline(db, userId);
   /* No recognisable role is "reaches nothing", never "reaches everything" -- the same rule
      groupFilter follows. Defaulting here would be the exact bug this function used to have. */
-  if (role === null) {
+  if (auth === null) {
     return Object.fromEntries(
       muts.map((m) => [m.client_uuid, { status: "failed", error: "نقش کاربر مشخص نیست" } as MutationResult]),
     );
@@ -196,7 +223,7 @@ export function applyMutations(
 
     let result: MutationResult;
     try {
-      result = applyOne(db, organizationId, userId, role, mut, resolved);
+      result = applyOne(db, organizationId, userId, auth.roles, auth.primary, mut, resolved);
     } catch (e) {
       result =
         e instanceof OrderError || e instanceof PaymentError || e instanceof DeliveryError
@@ -232,7 +259,8 @@ function applyOne(
   db: DatabaseSync,
   organizationId: number,
   userId: number,
-  role: OrderRole,
+  roles: readonly OrderRole[],
+  primary: OrderRole,
   mut: IncomingMutation,
   resolved: Resolved
 ): MutationResult {
@@ -272,7 +300,7 @@ function applyOne(
         .get(orderId, organizationId) as { status: string } | undefined;
       if (!before) return { status: "failed", error: "سفارش پیدا نشد" };
       if (isTerminal(before.status)) return { status: "conflict", reason: "سفارش پیش‌تر بسته شده بود" };
-      submitOrder(organizationId, orderId, { id: userId, role });
+      submitOrder(organizationId, orderId, { id: userId, role: primary, roles });
       return { status: "applied", server_id: orderId };
     }
 
@@ -281,7 +309,7 @@ function applyOne(
         resolveRef(db, organizationId, p.order_ref as string, resolved) ??
         (p.order_id as number | undefined);
       if (orderId === undefined) return { status: "failed", error: "سفارش پیدا نشد" };
-      advanceOrder(organizationId, orderId, "startRoute", { id: userId, role });
+      advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles });
       return { status: "applied", server_id: orderId };
     }
 

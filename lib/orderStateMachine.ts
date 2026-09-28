@@ -119,23 +119,41 @@ export function orderTransition(
   return ORDER_TRANSITIONS.find((t) => t.from === from && t.action === action);
 }
 
-/** Every action legal from `from` for `role`. `role` "system" sees every internal edge. */
-export function legalOrderActions(from: OrderStatus, role: OrderRole): OrderAction[] {
+/** Every action legal from `from` for `role`. `role` "system" sees every internal edge.
+ *
+ *  `role` is a single role OR the full set a person holds, because a delivery driver whose
+ *  ACTIVE role is field_rep must still be able to deliver: reading only the active role
+ *  refuses them at the last step, in a van, by the guard meant to protect them. A set is
+ *  read as a UNION — "holds any of these" — because the intersection would refuse
+ *  everything the person can legitimately do.
+ *
+ *  The union type is what keeps the ~139 existing `canAdvanceOrder(from, action, actor.role)`
+ *  call sites compiling and correct without edit. */
+export function legalOrderActions(
+  from: OrderStatus,
+  role: OrderRole | readonly OrderRole[]
+): OrderAction[] {
+  const held = Array.isArray(role) ? role : [role];
   return ORDER_TRANSITIONS.filter(
-    (t) => t.from === from && t.roles.includes(role)
+    (t) => t.from === from && t.roles.some((r) => (held as readonly string[]).includes(r))
   ).map((t) => t.action);
 }
 
 /** Whether `role` may fire `action` from `from`. Distinguishes "no such edge" (handled by
  *  the caller as 409) from "edge exists, wrong role" -- this returns false for both, so
- *  callers that need the distinction check `orderTransition` first. */
+ *  callers that need the distinction check `orderTransition` first.
+ *
+ *  An EMPTY set is refused everything. It is not a wildcard, and a session with no roles
+ *  must not be handed the whole state machine. */
 export function canAdvanceOrder(
   from: OrderStatus,
   action: OrderAction,
-  role: OrderRole
+  role: OrderRole | readonly OrderRole[]
 ): boolean {
   const t = orderTransition(from, action);
-  return !!t && t.roles.includes(role);
+  if (!t) return false;
+  const held = Array.isArray(role) ? (role as readonly string[]) : [role];
+  return t.roles.some((r) => held.includes(r));
 }
 
 export const ORDER_STATUS_LABEL: Record<OrderStatus, string> = {
