@@ -108,7 +108,14 @@ describe("upgrading a production-shaped database", () => {
     expect(row.username).toBe("pourya");
     expect(row.password_hash).toBe("hash-that-must-survive");
     expect(row.display_name).toBe("پوریا");
-    expect(row.role).toBe("owner");
+    /* The founder's PRIMARY is platform_owner, because a later migration promotes
+       `username = 'pourya'` — which is this very account. The set keeps `owner`, so he is
+       still the owner of طعمینو; the column is only which hat he lands in by default. */
+    expect(row.role).toBe("platform_owner");
+    const held = getDb()
+      .prepare("SELECT role FROM user_roles WHERE user_id = 7 ORDER BY role")
+      .all() as Array<{ role: string }>;
+    expect(held.map((r) => r.role)).toEqual(["owner", "platform_owner"]);
     expect(row.staff_code).toBe("SP0");
     // token_version is the revocation lever. Losing it would silently sign everyone out.
     expect(row.token_version).toBe(3);

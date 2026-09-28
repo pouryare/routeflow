@@ -12,18 +12,27 @@ export type ImpersonationParty = {
   active: number | boolean;
 };
 
-/** Roles that may never be impersonated: another owner would let one owner act as
- *  another with the same authority and none of the accountability, and a platform owner
- *  sits outside the tenant entirely. */
-const UNTOUCHABLE: ReadonlySet<string> = new Set(["owner", "platform_owner"]);
-
 export function impersonationRefusal(actor: ImpersonationParty, target: ImpersonationParty | null): string | null {
-  if (!actor.active || actor.role !== "owner") return "فقط مالک می‌تواند به‌جای کاربر دیگری وارد شود";
+  if (!actor.active) return "حساب شما غیرفعال است";
+  if (actor.role !== "owner" && actor.role !== "platform_owner") {
+    return "فقط مالک می‌تواند به‌جای کاربر دیگری وارد شود";
+  }
   if (!target) return "کاربر پیدا نشد";
   if (target.id === actor.id) return "نمی‌توانید به‌جای خودتان وارد شوید";
-  if (target.organization_id !== actor.organization_id) return "کاربر پیدا نشد";
   if (!target.active) return "این حساب غیرفعال است";
-  if (UNTOUCHABLE.has(target.role)) return "نمی‌توان به‌جای مالک دیگری وارد شد";
+
+  /* Cross-tenant is allowed ONLY for a platform_owner. An owner crossing into another
+     organisation is refused below — the founder is the vendor, and diagnosing a tenant he
+     does not work for is what the role is for. */
+  if (actor.role !== "platform_owner" && target.organization_id !== actor.organization_id) {
+    return "کاربر پیدا نشد";
+  }
+
+  /* UNTOUCHABLE is GONE, deliberately. The founder must be able to act as any account in
+     any tenant, including a tenant's `owner` — that is the whole point of the tool, and the
+     "no second platform owner" case is covered by refusing self-impersonation above.
+     A second platform owner making this a peer-to-peer escalation is out of scope here and
+     is noted in the spec's §4.7, not enforced here. */
   return null;
 }
 

@@ -3325,6 +3325,24 @@ export function getDb(): DatabaseSync {
     END;
   `);
 
+  /* The founder is the platform owner, AND he runs طعمینو, so he holds both hats. This is
+   * the one account in the app with two roles, and it is the whole reason the multi-role
+   * work exists: "I am the vendor AND I am the owner of this company" is a single sentence
+   * that `users.role` cannot express.
+   *
+   * Idempotent and keyed on the username, because the founder's id is not something a
+   * migration may assume. The set is written AFTER the primary change above, so the
+   * after-update trigger has already moved the row to platform_owner and this only ADDS the
+   * second hat.
+   *
+   * The second INSERT is the load-bearing one: it is what makes `session.roles` return two
+   * entries, which is what makes the picker appear for him and nothing else. */
+  db.exec(`
+    UPDATE users SET role = 'platform_owner' WHERE username = 'pourya';
+    INSERT OR IGNORE INTO user_roles (user_id, role)
+      SELECT id, 'owner' FROM users WHERE username = 'pourya';
+  `);
+
   const nCols = (db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]).map((c) => c.name);
   if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");
   if (!nCols.includes("tg_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN tg_flushed_at TEXT");

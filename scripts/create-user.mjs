@@ -31,6 +31,22 @@ if (!ROLES.includes(role)) {
   process.exit(1);
 }
 
+// There is exactly ONE platform_owner: the founder, the account this script bootstraps in
+// the first place. A second one is refused because lib/impersonation.ts has no UNTOUCHABLE
+// check left — two platform owners would each be able to act as anyone in any tenant.
+// The admin user API refuses it too; this is the one path that legitimately CREATES one.
+if (role === "platform_owner") {
+  const db0 = new DatabaseSync(DB_PATH, { readOnly: true });
+  const existing = db0
+    .prepare("SELECT COUNT(*) n FROM users WHERE role = 'platform_owner'")
+    .get().n;
+  db0.close();
+  if (existing > 0) {
+    console.error("[create-user] a platform_owner already exists — there can be only one.");
+    process.exit(1);
+  }
+}
+
 // An owner is unscoped by design. A non-owner with no group can reach nothing at all --
 // groupFilter() becomes " AND 1 = 0" -- so the account would log in and then show an
 // empty app, which looks like a broken deployment rather than a misconfigured account.

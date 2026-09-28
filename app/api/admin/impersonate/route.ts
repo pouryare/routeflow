@@ -5,7 +5,8 @@ import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseSessionToken } f
 import { getSessionFromCookies, requireRole } from "@/lib/session";
 import { emitEvent } from "@/lib/repo/events";
 import { ACTOR_COOKIE, IMPERSONATION_MAX_AGE_SECONDS, impersonationRefusal } from "@/lib/impersonation";
-import { OWNER_ROLES } from "@/lib/roles";
+import { OWNER_ROLES, type Role } from "@/lib/roles";
+import { rolesFor } from "@/lib/repo/userRoles";
 
 const cookieBase = { httpOnly: true, sameSite: "lax" as const, path: "/", secure: process.env.NODE_ENV === "production" };
 
@@ -33,15 +34,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: refusal ?? "نشست شما معتبر نیست" }, { status: 403 });
   }
 
+  /* The impersonated session starts at the target's PRIMARY role, so the founder lands where
+     that person lands by default — not at a random pick from their set. */
+  const held = rolesFor(target.id);
+  const primary = held.includes(target.role as never) ? (target.role as Role) : (held[0] ?? (target.role as Role));
+
   const token = createSessionToken({
     uid: target.id,
-    role: target.role as never,
+    role: primary,
     gid: target.group_id,
     oid: target.organization_id,
     tv: target.token_version,
     name: target.display_name,
     act: guard.session.user.id,
   });
+  /* The full set travels with the session, so the founder can switch the target's active
+     role from the picker without ending the impersonation. Without it, a dual-hat driver
+     could only ever be seen as one of their two hats. */
   emitEvent(guard.session.organizationId, {
     kind: "auth.impersonation_started",
     entity_type: "user",
@@ -67,7 +76,9 @@ export async function DELETE(req: NextRequest) {
   const owner = getSessionFromCookies(savedToken);
 
   const res = NextResponse.json({ ok: true });
-  if (!current?.act || !owner || !savedToken || owner.role !== "owner" || owner.user.id !== current.act) {
+  // The saved session may belong to a platform_owner as well as an owner — the founder
+  // switching into another tenant must still be able to come back out of it.
+  if (!current?.act || !owner || !savedToken || !OWNER_ROLES.includes(owner.role) || owner.user.id !== current.act) {
     res.cookies.set(COOKIE_NAME, "", { ...cookieBase, maxAge: 0 });
     res.cookies.set(ACTOR_COOKIE, "", { ...cookieBase, maxAge: 0 });
     return res;

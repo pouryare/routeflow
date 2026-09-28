@@ -81,6 +81,15 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
     if (!ROLES.includes(nextRole)) {
       return NextResponse.json({ ok: false, error: "نقش نامعتبر است" }, { status: 400 });
     }
+    /* Same rule as the create route, and for the same reason: there is exactly one
+       platform_owner and UNTOUCHABLE is gone from lib/impersonation.ts. Promoting a
+       colleague here would hand them the ability to act as anyone in any tenant. */
+    if (nextRole === "platform_owner") {
+      return NextResponse.json(
+        { ok: false, error: "این نقش فقط برای بنیان‌گذار سامانه است" },
+        { status: 400 }
+      );
+    }
     if (wouldStrandTheApp(db, target, nextRole !== "owner")) {
       return NextResponse.json(
         { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },

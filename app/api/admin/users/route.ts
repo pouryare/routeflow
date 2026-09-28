@@ -47,6 +47,16 @@ export async function POST(req: NextRequest) {
   if (!ROLES.includes(role)) {
     return NextResponse.json({ ok: false, error: "نقش نامعتبر است" }, { status: 400 });
   }
+  /* There is exactly ONE platform_owner, the founder, and his account is created by
+   * scripts/create-user.mjs — never through this screen. The admin users table lists
+   * platform_owner among its choices, so without this a second one is one click away, and
+   * lib/impersonation.ts has no UNTOUCHABLE check left to stop it acting as anyone. */
+  if (role === "platform_owner") {
+    return NextResponse.json(
+      { ok: false, error: "این نقش فقط برای بنیان‌گذار سامانه است" },
+      { status: 400 }
+    );
+  }
 
   const groupId = Number.isInteger(body?.group_id) ? (body!.group_id as number) : null;
   // An owner is unscoped by design. A non-owner with no group reaches nothing at all --

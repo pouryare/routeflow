@@ -57,14 +57,19 @@ export function getSessionFromCookies(token: string | undefined | null): Session
   if (!user.active) return null;
   if (user.token_version !== claims.tv) return null;
 
-  /* An impersonation is only as valid as the owner behind it. A deactivated, demoted or
-     cross-tenant actor ends it on the very next request, not when the cookie expires. */
+  /* An impersonation is only as valid as the actor behind it. A deactivated or demoted
+     actor ends it on the very next request, not when the cookie expires.
+     A platform_owner may act ACROSS tenants -- that is the vendor diagnosing a customer --
+     so the organisation comparison applies to an `owner` only. Left unconditional it would
+     kill every cross-tenant switch on the request after it started, with no error. */
   let actorId: number | undefined;
   if (claims.act !== undefined) {
     const actor = getDb()
       .prepare("SELECT id, role, organization_id, active FROM users WHERE id = ?")
       .get(claims.act) as { id: number; role: string; organization_id: number; active: number } | undefined;
-    if (!actor || !actor.active || actor.role !== "owner" || actor.organization_id !== user.organization_id) return null;
+    if (!actor || !actor.active) return null;
+    if (actor.role !== "owner" && actor.role !== "platform_owner") return null;
+    if (actor.role !== "platform_owner" && actor.organization_id !== user.organization_id) return null;
     actorId = actor.id;
   }
 
