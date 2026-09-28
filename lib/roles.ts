@@ -15,8 +15,9 @@ export type Role =
   | "owner"
   | "group_manager"
   | "rep_manager"
-  | "salesperson"
-  | "driver";
+  | "phone_sales"
+  | "field_rep"
+  | "delivery_driver";
 
 /** Ordered widest access first, which is also the order they read best in a dropdown. */
 export const ROLES: Role[] = [
@@ -24,17 +25,30 @@ export const ROLES: Role[] = [
   "owner",
   "group_manager",
   "rep_manager",
-  "salesperson",
-  "driver",
+  "phone_sales",
+  "field_rep",
+  "delivery_driver",
 ];
+
+/** The two roles that work a route in a vehicle.
+ *
+ *  A gate written as `role === "driver"` fails OPEN the moment a second van role exists:
+ *  the comparison is simply false, so the gate admits everything instead of refusing. That
+ *  is how a field rep ends up holding the whole sales shell. Gate on membership here. */
+export const VAN_ROLES: Role[] = ["field_rep", "delivery_driver"];
+
+export function isVanRole(role: Role): boolean {
+  return VAN_ROLES.includes(role);
+}
 
 export const ROLE_LABEL: Record<Role, string> = {
   platform_owner: "مدیر سامانه",
   owner: "مالک",
   group_manager: "مدیر گروه",
   rep_manager: "مدیر نمایندگان",
-  salesperson: "فروشنده",
-  driver: "راننده",
+  phone_sales: "فروش تلفنی",
+  field_rep: "بازدیدکننده میدانی",
+  delivery_driver: "راننده تحویل",
 };
 
 /** What each role is for, shown beside the picker when creating an account -- the labels
@@ -44,13 +58,14 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   owner: "دسترسی کامل به همه گروه‌ها، حساب‌ها و گزارش‌های سازمان خودش",
   group_manager: "همه مشتریان، مناطق و سفارش‌های گروه خودش",
   rep_manager: "نمایندگان سازمان خودش — پروفایل، مراحل پذیرش و اهداف؛ بدون دسترسی به مناطق گروه‌ها",
-  salesperson: "فقط سفارش‌هایی که خودش ثبت کرده و پورسانت خودش",
-  driver: "فقط مسیر و تحویل‌های امروز خودش",
+  phone_sales: "فقط سفارش‌هایی که خودش ثبت کرده، تماس‌هایش و پورسانت خودش",
+  field_rep: "بازدیدها و مسیرهای میدانی خودش — مشتری‌های گروه خودش",
+  delivery_driver: "فقط مسیر و تحویل‌های امروز خودش",
 };
 
-/** Where a signed-in person lands. A driver never enters the sales shell; everyone else,
+/** Where a signed-in person lands. A van role never enters the sales shell; everyone else,
  *  the vendor's platform_owner included, starts on the day's briefing, which already
  *  scopes itself to "all" for them. */
 export function homePathFor(role: Role): string {
-  return role === "driver" ? "/driver" : "/sales/today";
+  return isVanRole(role) ? "/driver" : "/sales/today";
 }

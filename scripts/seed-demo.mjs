@@ -258,9 +258,9 @@ if (!owner) throw new Error("no user in the database to attribute demo rows to")
 const LOCKED = `demo!${crypto.randomBytes(24).toString("hex")}`;
 
 const PEOPLE = [
-  { username: "demo.mehdi", name: "مهدی کریمی", role: "salesperson" },
-  { username: "demo.reza", name: "رضا مرادی", role: "salesperson" },
-  { username: "demo.sara", name: "سارا نجفی", role: "salesperson" },
+  { username: "demo.mehdi", name: "مهدی کریمی", role: "phone_sales" },
+  { username: "demo.reza", name: "رضا مرادی", role: "phone_sales" },
+  { username: "demo.sara", name: "سارا نجفی", role: "phone_sales" },
   { username: "demo.hossein", name: "حسین فلاح", role: "driver" },
   // A مدیر گروه to demonstrate the third پورسانت ledger. Needs a real group with real
   // فروشنده‌ها in it -- a manager's override is a percentage of their group's total, so
@@ -682,10 +682,10 @@ try {
     const recSeen = (title) =>
       plain(db.prepare("SELECT 1 x FROM task_recurrences WHERE organization_id=1 AND title=?").all(title))[0];
     const RECS = [
-      ["پیدا کردن مشتری جدید در منطقهٔ ۴ تهران", "outreach", null, "salesperson", "weekly:sat", "NORMAL"],
+      ["پیدا کردن مشتری جدید در منطقهٔ ۴ تهران", "outreach", null, "phone_sales", "weekly:sat", "NORMAL"],
       ["بازبینی موجودی انبار و ثبت سفارش تأمین", "admin", manager, null, "weekly:sun", "HIGH"],
       ["پیگیری چک‌های سررسید این هفته", "admin", manager, null, "weekly:wed", "HIGH"],
-      ["تماس با مشتری‌های راکد (بدون خرید ۱۴ روز)", "outreach", null, "salesperson", "weekly:mon", "NORMAL"],
+      ["تماس با مشتری‌های راکد (بدون خرید ۱۴ روز)", "outreach", null, "phone_sales", "weekly:mon", "NORMAL"],
     ];
     for (const [title, kind, assignee, role, rrule, prio] of RECS) {
       if (!recSeen(title)) insRec.run(title, kind, assignee, role, demoGroupId, prio, rrule, owner.id, now, now);

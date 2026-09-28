@@ -31,13 +31,42 @@ export type MutationResult =
 /** client_uuid -> the server id its mutation produced (an order id, a delivery id, …). */
 type Resolved = Map<string, number>;
 
-const ORDER_ROLES: OrderRole[] = ["salesperson", "group_manager", "owner", "driver"];
+/** Every role an offline mutation may be authorised as.
+ *
+ *  This must stay exactly the `OrderRole` union. The array is the app's only
+ *  bridge from a TEXT column back into the typed order machine, so an extra
+ *  entry is a cast that silences tsc while admitting a role the machine cannot
+ *  reason about. The retired names "salesperson" and "driver" sat here while
+ *  the vocabulary migration ran; the column no longer holds either, and
+ *  `OrderRole` no longer names them.
+ *
+ *  `satisfies` is deliberate: it fails the build if the two ever drift, which is
+ *  how "salesperson" survived here in the first place — a plain annotation would
+ *  have accepted the extra names without complaint. */
+const ORDER_ROLES = [
+  "phone_sales",
+  "group_manager",
+  "owner",
+  "field_rep",
+  "delivery_driver",
+] satisfies OrderRole[];
 
-function roleFor(db: DatabaseSync, userId: number): OrderRole {
+/** The role an offline mutation is authorised as.
+ *
+ *  This is the worst place in the app to fall back to a default, because the driver app IS
+ *  an offline client: whatever this returns is what a driver can do in a van with no
+ *  network and no feedback. A role added later used to be downgraded to "phone_sales"
+ *  silently -- a button that quietly does nothing. An UNRECOGNISED role is therefore
+ *  refused, not defaulted. */
+function roleFor(db: DatabaseSync, userId: number): OrderRole | null {
   const u = db.prepare("SELECT role FROM users WHERE id = ?").get(userId) as
     | { role: string }
     | undefined;
-  return ORDER_ROLES.includes(u?.role as OrderRole) ? (u!.role as OrderRole) : "salesperson";
+  if (!u) return null;
+  // No cast: `includes` narrows the string to the element type, which is what makes
+  // the return an OrderRole without a lie. "system" is deliberately absent from
+  // ORDER_ROLES — it is a transition actor, never a person holding an account.
+  return ORDER_ROLES.find((r) => r === u.role) ?? null;
 }
 
 /** Topological order on `depends_on`. A cycle or a missing local dep just falls through
@@ -113,6 +142,13 @@ export function applyMutations(
 ): Record<string, MutationResult> {
   const db = getDb();
   const role = roleFor(db, userId);
+  /* No recognisable role is "reaches nothing", never "reaches everything" -- the same rule
+     groupFilter follows. Defaulting here would be the exact bug this function used to have. */
+  if (role === null) {
+    return Object.fromEntries(
+      muts.map((m) => [m.client_uuid, { status: "failed", error: "نقش کاربر مشخص نیست" } as MutationResult]),
+    );
+  }
   const resolved: Resolved = new Map();
   const out: Record<string, MutationResult> = {};
   const now = () => new Date().toISOString();

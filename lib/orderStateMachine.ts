@@ -50,7 +50,8 @@ export type OrderAction =
   | "cancel"
   | "returnOrder";
 
-export type OrderRole = "salesperson" | "group_manager" | "owner" | "driver" | "system";
+export type OrderRole = "phone_sales" | "group_manager" | "owner"
+                     | "field_rep" | "delivery_driver" | "system";
 
 /** Side-effects a transition may carry. Each is a named handler in lib/repo/orders.ts,
  *  run in listed order inside the caller's transaction. */
@@ -73,8 +74,8 @@ export interface OrderTransition {
 
 /** One row per legal edge. Anything not here is illegal. */
 export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
-  { from: "DRAFT", action: "submit", to: "PENDING_REVIEW", roles: ["salesperson", "group_manager", "owner", "system"] },
-  { from: "DRAFT", action: "cancel", to: "CANCELLED", roles: ["salesperson", "group_manager", "owner"], effects: ["releaseReservations"] },
+  { from: "DRAFT", action: "submit", to: "PENDING_REVIEW", roles: ["phone_sales", "group_manager", "owner", "system"] },
+  { from: "DRAFT", action: "cancel", to: "CANCELLED", roles: ["phone_sales", "group_manager", "owner"], effects: ["releaseReservations"] },
 
   { from: "PENDING_REVIEW", action: "passReview", to: "CONFIRMED", roles: ["group_manager", "owner", "system"], effects: ["reserveStock"] },
   { from: "PENDING_REVIEW", action: "flagCredit", to: "PENDING_CREDIT", roles: ["system"], effects: ["createCreditApprovalTask"] },
@@ -93,12 +94,12 @@ export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
   { from: "PLANNED", action: "unplan", to: "CONFIRMED", roles: ["group_manager", "owner", "system"] },
   { from: "PLANNED", action: "freeze", to: "READY", roles: ["group_manager", "owner", "system"] },
 
-  { from: "READY", action: "startRoute", to: "OUT_FOR_DELIVERY", roles: ["driver", "group_manager", "owner", "system"] },
+  { from: "READY", action: "startRoute", to: "OUT_FOR_DELIVERY", roles: ["delivery_driver", "group_manager", "owner", "system"] },
   { from: "READY", action: "unplan", to: "CONFIRMED", roles: ["group_manager", "owner"] },
 
-  { from: "OUT_FOR_DELIVERY", action: "deliver", to: "DELIVERED", roles: ["driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
-  { from: "OUT_FOR_DELIVERY", action: "deliverPartial", to: "PARTIALLY_DELIVERED", roles: ["driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
-  { from: "OUT_FOR_DELIVERY", action: "failDelivery", to: "DELIVERY_FAILED", roles: ["driver", "system"], effects: ["releaseReservations"] },
+  { from: "OUT_FOR_DELIVERY", action: "deliver", to: "DELIVERED", roles: ["delivery_driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
+  { from: "OUT_FOR_DELIVERY", action: "deliverPartial", to: "PARTIALLY_DELIVERED", roles: ["delivery_driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
+  { from: "OUT_FOR_DELIVERY", action: "failDelivery", to: "DELIVERY_FAILED", roles: ["delivery_driver", "system"], effects: ["releaseReservations"] },
 
   { from: "DELIVERY_FAILED", action: "retryDelivery", to: "PLANNED", roles: ["group_manager", "owner", "system"] },
   { from: "DELIVERY_FAILED", action: "cancel", to: "CANCELLED", roles: ["group_manager", "owner"], effects: ["releaseReservations"] },

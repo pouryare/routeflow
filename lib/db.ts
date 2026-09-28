@@ -900,7 +900,7 @@ export function getDb(): DatabaseSync {
       password_hash TEXT NOT NULL,
       display_name TEXT NOT NULL,
       role TEXT NOT NULL DEFAULT 'group_manager'
-        CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'salesperson', 'driver')),
+        CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'phone_sales', 'field_rep', 'delivery_driver', 'salesperson', 'driver')),
       group_id INTEGER REFERENCES groups(id),
       organization_id INTEGER REFERENCES organizations(id),
       staff_code TEXT,
@@ -2351,7 +2351,7 @@ export function getDb(): DatabaseSync {
   const usersRoleSchema = db
     .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
     .get() as { sql: string } | undefined;
-  if (usersRoleSchema && !usersRoleSchema.sql.includes("salesperson")) {
+  if (usersRoleSchema && !usersRoleSchema.sql.includes("phone_sales")) {
     db.exec("PRAGMA foreign_keys = OFF");
     db.exec("BEGIN");
     try {
@@ -3140,6 +3140,98 @@ export function getDb(): DatabaseSync {
   // Avatar falls back to initials rather than inventing a face the system does not have.
   if (!uCols.includes("avatar_url")) db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT");
 
+  // Widen users.role to the new vocabulary. SQLite cannot ALTER a CHECK, so this is the
+  // table-rebuild pattern already used four times in this file -- build the replacement,
+  // copy every row, drop, rename.
+  //
+  // The constraint admits BOTH vocabularies on purpose. A row saying 'driver' is not a bug
+  // to be corrected here: it is a person whose primary role is rewritten one step below, and
+  // the rewrite needs the constraint to already permit the new name. Narrowing the CHECK to
+  // exclude the old names is a separate, later migration -- one that can only run once no
+  // row carries them.
+  //
+  // The copy is driven by PRAGMA table_info rather than a written column list, because
+  // telegram_chat_id, telegram_link_nonce, prefs_json and avatar_url were all added by ALTER
+  // after the previous rebuild. A hand-written list drops them, and every user's Telegram
+  // link dies with no error anywhere.
+  const usersSplitSchema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
+    .get() as { sql: string } | undefined;
+  if (usersSplitSchema && !usersSplitSchema.sql.includes("phone_sales")) {
+    const usersCols = (db.prepare("PRAGMA table_info(users)").all() as { name: string }[])
+      .map((c) => `"${c.name}"`)
+      .join(", ");
+
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN");
+    try {
+      db.exec(`
+        CREATE TABLE users_rolesplit_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          username TEXT UNIQUE NOT NULL,
+          password_hash TEXT NOT NULL,
+          display_name TEXT NOT NULL,
+          role TEXT NOT NULL DEFAULT 'group_manager'
+            CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'phone_sales', 'field_rep', 'delivery_driver', 'salesperson', 'driver')),
+          group_id INTEGER REFERENCES groups(id),
+          organization_id INTEGER REFERENCES organizations(id),
+          staff_code TEXT,
+          phone TEXT,
+          active INTEGER NOT NULL DEFAULT 1,
+          token_version INTEGER NOT NULL DEFAULT 0,
+          location_consent_at TEXT,
+          created_at TEXT NOT NULL,
+          telegram_chat_id TEXT,
+          telegram_link_nonce TEXT,
+          prefs_json TEXT,
+          avatar_url TEXT
+        );
+        INSERT INTO users_rolesplit_new (${usersCols})
+          SELECT ${usersCols} FROM users;
+        DROP TABLE users;
+        ALTER TABLE users_rolesplit_new RENAME TO users;
+      `);
+      db.exec("COMMIT");
+    } catch (e) {
+      db.exec("ROLLBACK");
+      throw e;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+
+  // Now that the CHECK admits them, rewrite the primary role. 'driver' split in two and the
+  // column can only name one: it becomes 'delivery_driver', the world these accounts land in
+  // today. Their full set (Task 2) carries BOTH, so promoting someone to field_rep later is a
+  // one-column update with no backfill.
+  db.exec("UPDATE users SET role = 'phone_sales'    WHERE role = 'salesperson'");
+  db.exec("UPDATE users SET role = 'delivery_driver' WHERE role = 'driver'");
+
+  // The two TEXT columns that hold a role NAME, which the type system cannot check. A stale
+  // value here is a task nobody is ever offered: rules.ts resolves an escalation with
+  // `WHERE role = ?`, so a retired name matches no one and the escalation never fires.
+  // 'driver' rows are classified by what the task is; role_hint OFFERS work rather than
+  // granting access, so the default is field_rep -- a wrongly-offered task is a manager's
+  // problem for a day, a wrongly-REMOVED one is work that silently never happens.
+  if (db.prepare("SELECT 1 FROM tasks WHERE role_hint = 'salesperson' LIMIT 1").get()) {
+    db.exec("UPDATE tasks SET role_hint = 'phone_sales' WHERE role_hint = 'salesperson'");
+  }
+  if (db.prepare("SELECT 1 FROM tasks WHERE role_hint = 'driver' LIMIT 1").get()) {
+    db.exec(`
+      UPDATE tasks SET role_hint = 'delivery_driver'
+       WHERE role_hint = 'driver' AND kind IN ('delivery', 'deliver', 'stop');
+      UPDATE tasks SET role_hint = 'field_rep' WHERE role_hint = 'driver';
+    `);
+  }
+  if (db.prepare("SELECT 1 FROM rules WHERE escalate_to_role = 'salesperson' LIMIT 1").get()) {
+    db.exec("UPDATE rules SET escalate_to_role = 'phone_sales' WHERE escalate_to_role = 'salesperson'");
+  }
+  if (db.prepare("SELECT 1 FROM rules WHERE escalate_to_role = 'driver' LIMIT 1").get()) {
+    // An escalation names who to hand a STUCK task to, which is a judgement call rather
+    // than a delivery. A manager always exists to unstick it, so this one IS mechanical.
+    db.exec("UPDATE rules SET escalate_to_role = 'group_manager' WHERE escalate_to_role = 'driver'");
+  }
+
   const nCols = (db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]).map((c) => c.name);
   if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");
   if (!nCols.includes("tg_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN tg_flushed_at TEXT");
@@ -3717,7 +3809,7 @@ export const RULE_SEED: {
     trigger_kind: "sweep",
     condition_json: null,
     action_kind: "task",
-    action_json: JSON.stringify({ role_hint: "salesperson", priority: "NORMAL", title: "تماس با مشتری معوق", kind: "call" }),
+    action_json: JSON.stringify({ role_hint: "phone_sales", priority: "NORMAL", title: "تماس با مشتری معوق", kind: "call" }),
     cooldown_min: 2880,
     escalate_after_min: null,
     escalate_to_role: null,
@@ -3739,7 +3831,7 @@ export const RULE_SEED: {
     trigger_kind: "sweep",
     condition_json: null,
     action_kind: "task",
-    action_json: JSON.stringify({ role_hint: "salesperson", priority: "NORMAL", title: "پیگیری نمونه", kind: "sample_followup" }),
+    action_json: JSON.stringify({ role_hint: "phone_sales", priority: "NORMAL", title: "پیگیری نمونه", kind: "sample_followup" }),
     cooldown_min: 4320,
     escalate_after_min: null,
     escalate_to_role: null,
@@ -3989,7 +4081,7 @@ export const KPI_DEFINITION_SEED: {
     title_fa: "مشتری جدید",
     definition_fa: "مشتری‌ای که اولین سفارش تاریخ‌اش (نه اولین سفارش در بازهٔ گزارش) در این دوره است.",
     formula_fa: "COUNT(مشتری با MIN(تاریخ سفارش) داخل دوره)",
-    owner_role: "salesperson",
+    owner_role: "phone_sales",
     benchmark_fa: "متناسب با تعداد نمونهٔ گذاشته‌شده و نرخ تبدیل نمونه",
     frequency: "monthly",
     action_fa: "اگر کم است، تعداد نمونهٔ فعال و پیگیری نمونه را بررسی کنید؛ ورودی قیف مشکل دارد.",
@@ -4013,7 +4105,7 @@ export const KPI_DEFINITION_SEED: {
     title_fa: "نرخ خرید تکرارشونده",
     definition_fa: "سهم مشتری‌هایی که در دوره دست‌کم دو سفارش داشته‌اند از مشتری‌هایی که دست‌کم یک سفارش داشته‌اند.",
     formula_fa: "COUNT(مشتری با ≥۲ سفارش در دوره) ÷ COUNT(مشتری با ≥۱ سفارش در دوره)",
-    owner_role: "salesperson",
+    owner_role: "phone_sales",
     benchmark_fa: "بیش از ۶۰٪ برای کالای مصرفی پرگردش",
     frequency: "monthly",
     action_fa: "نرخ پایین یعنی مشکل کیفیت یا پیگیری؛ تماس روز تحویل و بازهٔ سفارش بعدی را جدی بگیرید.",
@@ -4073,7 +4165,7 @@ export const KPI_DEFINITION_SEED: {
     title_fa: "نرخ تبدیل نمونه",
     definition_fa: "سهم سفارش‌های نمونه که ظرف ۳۰ روز یک سفارش عادی از همان مشتری به دنبال داشته‌اند.",
     formula_fa: "COUNT(نمونه با سفارش عادی بعدی ظرف ۳۰ روز) ÷ COUNT(سفارش نمونه)",
-    owner_role: "salesperson",
+    owner_role: "phone_sales",
     benchmark_fa: "بالای ۳۰٪",
     frequency: "monthly",
     action_fa: "نرخ پایین یعنی پیگیری نمونه ضعیف است؛ کار «پیگیری نمونه» را سر وقت ببندید و کارت اعتراض را بخوانید.",
