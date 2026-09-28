@@ -2,7 +2,6 @@
 
 import { useCardDrag } from "@/components/board/useCardDrag";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
-import DayGroupCard from "@/components/leads/DayGroupCard";
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 import CollapsibleSection from "@/components/CollapsibleSection";
@@ -156,7 +155,14 @@ export default function RouteSection({
             storageKey="leads_split"
             keywords="خوشه‌بندی روز مسیر تقسیم"
             count={proposedDays?.length}
-            forceOpen={proposedDays !== null}
+            /* `true` or `undefined`, never `false`. The prop is a three-state insist: true
+               means open, false means shut, and undefined means "no opinion, use the
+               remembered state". Passing `proposedDays !== null` made it false whenever
+               there was no proposal yet -- and `false ?? open` is false, not open, so the
+               section was pinned shut and could never be opened to press پیشنهاد بده. */
+            /* Length, not plain truthiness: `[]` is truthy, so a proposal that had every
+               day removed would have pinned the section open around nothing. */
+            forceOpen={proposedDays && proposedDays.length > 0 ? true : undefined}
           >
             <p className="mb-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
               مکان‌ها را بر اساس نزدیکی جغرافیایی به روزها تقسیم می‌کند — نه فقط برش زدن یک فهرست مرتب‌شده.

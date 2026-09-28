@@ -152,10 +152,31 @@ export default function LeadsMap({
   const [summary, setSummary] = useState<RouteSummary | null>(null);
   const { position, status } = useMyPosition();
   const [mounted, setMounted] = useState(false);
-  const [mapKey] = useState(() => Date.now());
+  /* Bumped on every mount, and used to key the map container so it always gets a DOM node
+   * Leaflet has never seen.
+   *
+   * react-leaflet v5 cleans up with `useEffect(() => () => context?.map.remove(), [context])`,
+   * and `context` is set by a `setState` inside the map's own ref callback. If the effect's
+   * cleanup runs before that state has flushed -- which is what a Fast Refresh remount does --
+   * `context` is null, `context?.map` short-circuits, and the map is never removed. The
+   * container div keeps the `_leaflet_id` Leaflet stamps on it, so the next mount trips
+   * Leaflet's own guard -- "Map container is being reused by another instance" -- and the
+   * layers then fail on the corpse with `appendChild` and `_removePath` errors.
+   *
+   * A key cannot fix that on its own: `useState(() => Date.now())` is *preserved* across a
+   * Fast Refresh, so the key never changed and the same poisoned div came back. Effects are
+   * re-run by Fast Refresh even when state is kept, so an epoch they advance does change --
+   * and changing it makes React discard the old div, which is what finally takes
+   * `_leaflet_id` with it.
+   *
+   * It rides along with `mounted` rather than being its own effect, so a real first load
+   * still builds exactly one map: the placeholder means the map is not created until this
+   * state has settled, and the key it is created with is already the final one. */
+  const [mapEpoch, setMapEpoch] = useState(0);
 
   useEffect(() => {
     setMounted(true);
+    setMapEpoch((n) => n + 1);
   }, []);
 
   // Must be called unconditionally — hooks cannot be conditional.
@@ -174,7 +195,7 @@ export default function LeadsMap({
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
       <div className="h-80 w-full">
         <MapContainer
-          key={mapKey}
+          key={mapEpoch}
           center={position ? [position.lat, position.lng] : fallbackCentre}
           zoom={12}
           className="h-full w-full"

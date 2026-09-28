@@ -287,3 +287,35 @@ describe("forceOpen", () => {
     expect(expanded(true, undefined, false)).toBe(true);
   });
 });
+
+describe("forceOpen as the day split passes it", () => {
+  /* The regression that pinned the section shut. `CollapsibleSection` reads
+     `filter ? true : (forceOpen ?? open)`, and the day split used to pass
+     `proposedDays !== null` -- so with no proposal it passed `false`, and `false ?? open` is
+     false. The section could not be opened, which meant the button that creates a proposal
+     was inside a section nobody could reach.
+     The operator test above was right and the call site was wrong, which is why nothing
+     caught it: the test said what the prop means, never what this particular caller passes. */
+  const forceOpenFor = (proposedDays: unknown) =>
+    Array.isArray(proposedDays) && proposedDays.length > 0 ? true : undefined;
+
+  it("insists on open only while a proposal exists", () => {
+    expect(forceOpenFor([{ stops: [] }])).toBe(true);
+  });
+
+  it("abstains rather than insisting shut, so the section can be opened", () => {
+    // Not `false`. This is the line that matters.
+    expect(forceOpenFor(null)).toBeUndefined();
+    expect(forceOpenFor(undefined)).toBeUndefined();
+    expect(forceOpenFor([])).toBeUndefined();
+    // `[]` is truthy in JavaScript, so a plain `proposedDays ? true : undefined` would have
+    // pinned the section open around a proposal that had lost every day.
+  });
+
+  it("leaves the remembered state in charge when abstaining", () => {
+    const expanded = (forceOpen: boolean | undefined, remembered: boolean) => forceOpen ?? remembered;
+    expect(expanded(forceOpenFor(null), true)).toBe(true);    // opened before: still open
+    expect(expanded(forceOpenFor(null), false)).toBe(false);  // closed before: stays closed
+    expect(expanded(forceOpenFor([{ stops: [] }]), false)).toBe(true);
+  });
+});
