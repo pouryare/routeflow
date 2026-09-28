@@ -6,6 +6,7 @@ import {
   assignableDrivers,
   createOrReuseLeadRun,
   readScopedLeadRuns,
+  readLeadRunAssignments,
   readTodaysLeadRun,
 } from "@/lib/repo/leadRuns";
 
@@ -36,6 +37,11 @@ export async function GET(req: NextRequest) {
   // The dropdown's options, so the manager does not have to know who the drivers are.
   if (url.searchParams.get("drivers") === "1") {
     return NextResponse.json({ ok: true, drivers: assignableDrivers(db, session) });
+  }
+  // The leads page's phone book: who currently holds which lead. A query branch rather than
+  // its own route so the role check and the scoping live in one place, matching `drivers`.
+  if (url.searchParams.get("assignments") === "1") {
+    return NextResponse.json({ ok: true, assignments: readLeadRunAssignments(db, session) });
   }
   return NextResponse.json({ ok: true, runs: plain(readScopedLeadRuns(db, session)) });
 }

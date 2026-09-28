@@ -29,7 +29,7 @@ export default function PoolViewCompact({
 }: PoolViewCompactProps) {
   return (
     <ul className="flex flex-col gap-1">
-      {items.map(({ location: loc, inRun, runIdx, km }, idx) => {
+      {items.map(({ location: loc, inRun, runIdx, km, assignedTo }, idx) => {
         const isLinked = loc.id === linkedId;
         return (
           <li
@@ -40,6 +40,7 @@ export default function PoolViewCompact({
           >
             <LocationCard
               location={loc}
+              assignedTo={assignedTo}
               inRun={inRun}
               navAppId={navAppId}
               onPin={() => onPin(loc.id)}

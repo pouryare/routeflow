@@ -1,6 +1,7 @@
 "use client";
 
 import { SavedLocation } from "@/app/(shell)/leads/hooks/useLeads";
+import { faJalaliDate } from "@/lib/jalali";
 import { type NavAppId } from "@/lib/navApps";
 import { distanceKm } from "@/lib/geo";
 import PoolViewCompact from "./PoolViewCompact";
@@ -34,6 +35,9 @@ interface PoolViewWrapperProps {
   sortAnchor: { lat: number; lng: number } | null;
   sortMode: string;
   priorityHigh: boolean;
+  /** The pool's phone book, so a card can say whose lead this is. Absent on the driver's
+   *  side and in any test that does not care; the chip simply does not render. */
+  assignedBy?: Map<number, { driverName: string | null; runDate: string }>;
 }
 
 // Enriched item passed to each view component
@@ -42,6 +46,8 @@ export interface PoolViewItem {
   inRun: boolean;
   runIdx: number | null;
   km: number | null;
+  /** Set when this lead is on a driver's unfinished route. */
+  assignedTo: { driverName: string | null; runDate: string } | null;
 }
 
 export default function PoolViewWrapper(props: PoolViewWrapperProps) {
@@ -63,7 +69,14 @@ export default function PoolViewWrapper(props: PoolViewWrapperProps) {
     const km = sortAnchor && loc.lat !== null && loc.lng !== null
       ? parseFloat(distanceKm(sortAnchor, { lat: loc.lat, lng: loc.lng }).toFixed(2))
       : null;
-    return { location: loc, inRun, runIdx, km };
+    const held = props.assignedBy?.get(loc.id);
+    return {
+      location: loc,
+      inRun,
+      runIdx,
+      km,
+      assignedTo: held ? { driverName: held.driverName, runDate: faJalaliDate(held.runDate) } : null,
+    };
   });
 
   const shared = {

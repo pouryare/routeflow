@@ -134,3 +134,53 @@ describe("daysNeeded", () => {
     expect(daysNeeded(0, 8)).toBe(0);
   });
 });
+
+describe("stopsPerDay is a size, not just a day count", () => {
+  /* The field the manager types is a promise about how much driving a day holds. It used
+     to be used only to work out how many days to make, and the days came back whatever size
+     the clustering felt like: 8 a day from 10 stops gave 5 and 5. These pin the shape down
+     across scattered layouts, because the bug that survived review was one of the rare
+     layouts rather than all of them. */
+  const SHAPES = [[10, 8], [20, 8], [17, 5], [7, 3], [9, 4], [33, 8], [3, 8], [1, 8], [16, 8]] as const;
+
+  /** Deterministic scatter, so a failure is reproducible from the seed alone. */
+  function scatter(n: number, seed: number) {
+    let s = (seed * 2654435761) >>> 0;
+    const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296);
+    return Array.from({ length: n }, (_, i) => ({ id: `s${seed}-${i}`, lat: 35.6 + rnd() * 0.25, lng: 51.3 + rnd() * 0.25 }));
+  }
+
+  it("gives full days of exactly stopsPerDay, with the remainder last", () => {
+    const wrong: string[] = [];
+    for (let seed = 1; seed <= 120; seed++) {
+      for (const [n, spd] of SHAPES) {
+        const stops = scatter(n, seed);
+        const days = clusterIntoDays(stops, daysNeeded(n, spd), HOME, undefined, undefined, spd);
+        const sizes = days.map((d) => d.stops.length);
+        const full = Math.floor(n / spd);
+        const want = [...Array(full).fill(spd), ...(n % spd ? [n % spd] : [])];
+        if (JSON.stringify(sizes) !== JSON.stringify(want)) {
+          wrong.push(`n=${n} spd=${spd} seed=${seed} got [${sizes}] want [${want}]`);
+        }
+      }
+    }
+    expect(wrong).toEqual([]);
+  }, 30_000);
+
+  it("never loses or duplicates a stop", () => {
+    for (let seed = 1; seed <= 60; seed++) {
+      for (const [n, spd] of SHAPES) {
+        const stops = scatter(n, seed);
+        const days = clusterIntoDays(stops, daysNeeded(n, spd), HOME, undefined, undefined, spd);
+        const seen = days.flatMap((d) => d.stops.map((s) => s.id));
+        expect(new Set(seen).size).toBe(n);
+      }
+    }
+  }, 30_000);
+
+  it("still splits evenly when no stopsPerDay is given", () => {
+    // The internal callers that do not care about a round number keep the old behaviour.
+    const days = clusterIntoDays(scatter(20, 3), 4, HOME);
+    expect(days.map((d) => d.stops.length)).toEqual([5, 5, 5, 5]);
+  }, 30_000);
+});

@@ -86,10 +86,11 @@ export default function PoolViewCluster({
               title={isDefault ? "بدون مختصات" : `منطقه ${idx + 1} (${cluster.locations.length})`}
             />
             <div className="flex flex-col gap-2">
-              {cluster.locations.map(({ location: loc, inRun, runIdx, km }) => (
+              {cluster.locations.map(({ location: loc, inRun, runIdx, km, assignedTo }) => (
                 <div key={loc.id} onClick={() => onSelect(loc.id)} className="cursor-pointer">
                   <LocationCard
                     location={loc}
+                    assignedTo={assignedTo}
                     inRun={inRun}
                     navAppId={navAppId}
                     onPin={() => onPin(loc.id)}

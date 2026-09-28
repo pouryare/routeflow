@@ -165,6 +165,78 @@ export interface DayCluster<T> {
   centre: Centroid;
 }
 
+/** How many days a list of this length needs at a given stops-per-day target. */
+export function daysNeeded(stopCount: number, stopsPerDay: number): number {
+  if (stopCount === 0 || stopsPerDay <= 0) return 0;
+  return Math.ceil(stopCount / stopsPerDay);
+}
+
+/** Forces day sizes to be exactly what the manager typed.
+ *
+ *  `assign`'s capacity cap only stops a day being *too* big; nothing in it pushes a stop
+ *  into a day that is under target. The regret heuristic is quite happy to leave one short
+ *  while another sits at capacity, which is how asking for 8 stops a day from 10 stops
+ *  produced 5 and 5. A day split is a promise about how much driving a day holds, so the
+ *  sizes are made exact here rather than hoped for.
+ *
+ *  Targets are full days first and the remainder last, matching what the manager typed: a
+ *  field of 8 with 20 stops is 8 / 8 / 4, not 7 / 7 / 6. If the clustering produced fewer
+ *  non-empty days than the remainder needs, the shortfall lands on the last day -- never on
+ *  a full one, because a full day is the thing being promised.
+ *
+ *  Each move takes whichever stop in the donating day has its nearest neighbour in the
+ *  receiving day, so the arithmetic costs as little geography as it can. */
+function rebalanceToSizes<T extends LatLng>(days: T[][], maxPerDay: number): T[][] {
+  const n = days.reduce((sum, d) => sum + d.length, 0);
+  const out = days.map((d) => d.slice());
+  const full = Math.floor(n / maxPerDay);
+  const remainder = n - full * maxPerDay;
+
+  const targets = out.map((_, i) => (i < full ? maxPerDay : 0));
+  let placed = full * maxPerDay;
+  if (remainder > 0) {
+    if (full < targets.length) {
+      targets[full] = remainder;
+      placed += remainder;
+    } else if (targets.length > 0) {
+      targets[targets.length - 1] += remainder;
+      placed += remainder;
+    }
+  }
+  if (placed < n && targets.length > 0) targets[targets.length - 1] += n - placed;
+
+  /* One stop per pass, and the number of passes is the total shortfall rather than a guess.
+     A per-day bound is not enough and quietly under-delivers: from a 2/8 split to a 8/2
+     target takes six moves, and four of them left the promise broken on the one layout
+     where the clustering happened to start lopsided. The shortfall is at most `n`, so this
+     terminates, and it stops early if some target cannot be reached at all. */
+  const shortfall = targets.reduce((sum, t, i) => sum + Math.max(0, t - out[i].length), 0);
+  for (let pass = 0; pass < shortfall; pass++) {
+    const short = targets.findIndex((t, i) => out[i].length < t);
+    if (short === -1) break;
+    let donor = -1;
+    let most = 0;
+    for (let i = 0; i < out.length; i++) {
+      const surplus = out[i].length - targets[i];
+      if (surplus > most) { most = surplus; donor = i; }
+    }
+    if (donor === -1) break;
+
+    // Pick the stop that best fits the receiving day. An empty receiver has no members to
+    // measure against, so it takes the donor's first rather than giving up the move.
+    let pick = 0;
+    if (out[short].length > 0) {
+      let best = Infinity;
+      out[donor].forEach((s, i) => {
+        const fit = out[short].reduce((m, t) => Math.min(m, distanceKm(s, t)), Infinity);
+        if (fit < best) { best = fit; pick = i; }
+      });
+    }
+    out[short].push(...out[donor].splice(pick, 1));
+  }
+  return out;
+}
+
 /** Splits `stops` into `dayCount` geographically coherent days, each ordered for driving.
  *
  *  Days come back nearest-first from the origin, so "day 1" is the one closest to home.
@@ -172,7 +244,13 @@ export interface DayCluster<T> {
  *  from four stops gives four days, not five with a gap.
  *
  *  If `seeds` is provided, those locations are used as initial cluster centroids (instead
- *  of farthest-point seeding), ensuring priority locations drive the clustering. */
+ *  of farthest-point seeding), ensuring priority locations drive the clustering.
+ *
+ *  `maxPerDay` is the number the manager typed, and it is honoured exactly: days come back
+ *  as full days of that size with the remainder on the last one. Left unset, it falls back
+ *  to an even split, which is what the internal callers that do not care about a round
+ *  number want.
+ */
 export function clusterIntoDays<T extends LatLng>(
   stops: T[],
   dayCount: number,
@@ -222,14 +300,15 @@ export function clusterIntoDays<T extends LatLng>(
 
   if (origin) days.sort((a, b) => distanceKm(origin, a.centre) - distanceKm(origin, b.centre));
 
-  return days.map((d) => ({
-    ...d,
-    stops: origin ? twoOptOrder(d.stops, origin, false, distanceFn) : d.stops,
-  }));
-}
+  /* Sized only now that the days are in their displayed order, so the exact sizes land on
+     the days the manager is about to read, nearest-first, rather than on whichever ones
+     happened to come out of the clustering. Deliberately not re-sorted by centre
+     afterwards: a move of one or two stops shifts a centre by metres, and re-sorting could
+     hand a short day to a different index than the one the sizes were just fixed against. */
+  const sized = maxPerDay ? rebalanceToSizes(days.map((d) => d.stops), maxPerDay) : days.map((d) => d.stops);
 
-/** How many days a list of this length needs at a given stops-per-day target. */
-export function daysNeeded(stopCount: number, stopsPerDay: number): number {
-  if (stopCount === 0 || stopsPerDay <= 0) return 0;
-  return Math.ceil(stopCount / stopsPerDay);
+  return sized.map((stops) => ({
+    stops: origin ? twoOptOrder(stops, origin, false, distanceFn) : stops,
+    centre: stops.length ? centroidOf(stops) : { lat: 0, lng: 0 },
+  }));
 }

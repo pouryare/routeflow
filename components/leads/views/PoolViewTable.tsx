@@ -34,13 +34,14 @@ export default function PoolViewTable({
             <th className="sticky top-0 rounded-tl-[var(--radius-md)] bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">#</th>
             <th className="sticky top-0 bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">نام</th>
             <th className="sticky top-0 bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">وضعیت</th>
+            <th className="sticky top-0 bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">در مسیرِ</th>
             <th className="sticky top-0 bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">امتیاز</th>
             <th className="sticky top-0 bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">فاصله (کیلومتر)</th>
             <th className="sticky top-0 bg-surface-raised px-3 py-2 text-[length:var(--text-xs)] text-text-muted text-right font-medium">عملیات</th>
           </tr>
         </thead>
         <tbody>
-          {items.map(({ location: loc, inRun, runIdx, km }, idx) => {
+          {items.map(({ location: loc, inRun, runIdx, km, assignedTo }, idx) => {
             const avg = averageScore(loc);
             const isSelected = loc.id === selectedMapId;
             return (
@@ -57,6 +58,9 @@ export default function PoolViewTable({
                 <td className="px-3 py-2 text-[length:var(--text-sm)] text-text font-medium max-w-[200px] truncate">{loc.name}</td>
                 <td className="px-3 py-2 text-[length:var(--text-xs)] text-text-muted">
                   {loc.status ? STATUS_LABELS[loc.status] : "بدون وضعیت"}
+                </td>
+                <td className="max-w-[140px] truncate px-3 py-2 text-[length:var(--text-xs)] text-text-muted">
+                  {assignedTo ? assignedTo.driverName ?? "راننده دیگر" : "—"}
                 </td>
                 <td className="px-3 py-2 text-[length:var(--text-sm)] text-text-muted font-mono">
                   {avg !== null ? faNum(avg) : "—"}

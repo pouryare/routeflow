@@ -13,6 +13,7 @@ import { matchesQuery } from "@/lib/persian";
 import { parseIdParam } from "@/lib/deepLink";
 import { routeUrl } from "@/lib/navApps";
 import { assignableIds } from "@/lib/leadRunAssign";
+import type { LeadRunAssignment } from "@/lib/repo/leadRuns";
 
 type LocationStatus = "contacted" | "visited" | "no_answer" | "declined";
 export const STATUS_META: Record<LocationStatus, string> = { contacted: "تماس گرفته شد", visited: "بازدید شد", no_answer: "پاسخ نداد", declined: "رد کرد" };
@@ -62,6 +63,18 @@ export function useLeads() {
   const [stopsPerDay, setStopsPerDay] = useState(8);
   const [proposedDaysRaw, setProposedDays] = useState<DayStop[][] | null>(null);
   const [lastAssigned, setLastAssigned] = useState<LastAssigned | null>(readLastAssigned);
+  /* Who holds what, and whether the manager wants to see it.
+   *
+   * `assignments` is the phone book from /api/lead-runs?assignments=1 -- one row per lead on
+   * an unfinished route. Off by default, so the pool is the honest working set: a lead Reza
+   * already has is not something to plan around.
+   *
+   * The filter this drives is deliberately in one place. The pool, the map, a fresh split
+   * and the header count all read `available` below, and cannot drift apart -- a pool that
+   * hid a lead while the split still offered it is the exact bug this fixes. */
+  const [assignments, setAssignments] = useState<LeadRunAssignment[]>([]);
+  const [showAssigned, setShowAssigned] = useState(false);
+  const [assignmentsError, setAssignmentsError] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [selectedMapId, setSelectedMapId] = useState<number | null>(null);
   const [navAppId] = useNavApp();
@@ -77,6 +90,15 @@ export function useLeads() {
   const [scratchRestored, setScratchRestored] = useState(false);
 
   const byId = useMemo(() => new Map(locations.map((l) => [l.id, l])), [locations]);
+
+  /* Newest wins, which is what "first row seen" already gives us: the endpoint orders by
+     run_date DESC, id DESC. A lead on two unfinished routes is a data anomaly rather than a
+     case to model, and picking the newest is at least deterministic. */
+  const assignedBy = useMemo(() => {
+    const m = new Map<number, { driverName: string | null; runDate: string }>();
+    for (const a of assignments) if (!m.has(a.location_id)) m.set(a.location_id, { driverName: a.driver_name, runDate: a.run_date });
+    return m;
+  }, [assignments]);
 
   /* A saved list is just a row of ids, and an id can outlive the location it names. Loading
      one straight into the pool put a stop in front of a driver that the server would then
@@ -116,11 +138,35 @@ export function useLeads() {
   const load = useCallback(async () => {
     if (isManager === false) { setLoading(false); return; }
     setLoading(true);
-    try { const [locRes, listRes] = await Promise.all([fetch("/api/locations"), fetch("/api/lead-lists")]); const locData = await locRes.json(); const listData = await listRes.json(); setLocations(locData.locations ?? []); setLists(listData.lists ?? []); } catch { toast("خطا در بارگذاری", "error"); } finally { setLoading(false); } }, [toast, isManager]);
+    try {
+      const [locRes, listRes, assignRes] = await Promise.all([
+        fetch("/api/locations"), fetch("/api/lead-lists"), fetch("/api/lead-runs?assignments=1"),
+      ]);
+      const locData = await locRes.json();
+      const listData = await listRes.json();
+      const assignData = await assignRes.json();
+      setLocations(locData.locations ?? []);
+      setLists(listData.lists ?? []);
+      /* A failed phone book is NOT the same as an empty one, and must not be allowed to
+         look like it: the server's 409 is what makes a mistaken hand-over safe, but the
+         manager deserves to know the screen is showing them more than it really knows. */
+      if (assignRes.ok && assignData.ok) { setAssignments(assignData.assignments ?? []); setAssignmentsError(false); }
+      else { setAssignments([]); setAssignmentsError(true); }
+    } catch { toast("خطا در بارگذاری", "error"); setAssignmentsError(true); } finally { setLoading(false); } }, [toast, isManager]);
   useRunAfterMount(load);
   const persistRun = useCallback(async (next: number[], listId: number | null) => { if (listId === null) { try { localStorage.setItem(SCRATCH_KEY, JSON.stringify(next)); } catch {} return; } try { const res = await fetch(`/api/lead-lists/${listId}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ location_ids: next }) }); if (!res.ok) throw new Error(); setLists((prev) => prev.map((l) => (l.id === listId ? { ...l, location_ids: next } : l))); } catch { toast("تغییر مسیر ذخیره نشد", "error"); } }, [toast]);
   const updateRun = useCallback((next: number[]) => { setRun(next); persistRun(next, activeListId); }, [activeListId, persistRun]);
-  const addToRun = useCallback((id: number) => { const loc = byId.get(id); if (!loc || loc.lat === null || loc.lng === null) { toast("این مکان مختصات ندارد و نمی‌تواند در مسیر باشد.", "error"); return; } if (run.includes(id)) return; updateRun([...run, id]); }, [byId, run, updateRun, toast]);
+  /* Naming the driver is the whole point of the refusal. "This lead is taken" leaves the
+     manager to work out by whom; "this is Reza's" ends the question. It is a courtesy
+     rather than the rule -- the server's 409 is what actually prevents the double-booking,
+     and this only saves the round trip. */
+  const refuseAssigned = useCallback((id: number): boolean => {
+    const a = assignedBy.get(id);
+    if (!a) return false;
+    toast(a.driverName ? `این مکان در مسیر ${a.driverName} است.` : "این مکان در مسیر راننده دیگری است.", "error");
+    return true;
+  }, [assignedBy, toast]);
+  const addToRun = useCallback((id: number) => { const loc = byId.get(id); if (!loc || loc.lat === null || loc.lng === null) { toast("این مکان مختصات ندارد و نمی‌تواند در مسیر باشد.", "error"); return; } if (run.includes(id)) return; if (refuseAssigned(id)) return; updateRun([...run, id]); }, [byId, run, updateRun, toast, refuseAssigned]);
   const removeFromRun = useCallback((id: number) => updateRun(run.filter((x) => x !== id)), [run, updateRun]);
   /** Records the hand-over that just landed. Called from the assign flow's success path, so
    *  it only ever runs against a run the server actually accepted. */
@@ -136,25 +182,54 @@ export function useLeads() {
   const optimiseGain = useMemo(() => { if (!runOrigin || runLocations.length < 3) return null; const current = routeLengthKm(runOrigin, runLocations, false); const best = routeLengthKm(runOrigin, twoOptOrder(runLocations, runOrigin, false), false); if (current <= 0) return null; const pct = Math.round(((current - best) / current) * 100); return pct >= 5 ? pct : null; }, [runOrigin, runLocations]);
   function optimiseRun() { if (!runOrigin) return; updateRun(twoOptOrder(runLocations, runOrigin, false).map((l) => l.id)); toast("ترتیب مسیر بهینه شد.", "success"); }
   function clearRun() { const previous = run; updateRun([]); toast("مسیر خالی شد.", "info", { label: "بازگردان", onClick: () => updateRun(previous) }); }
-  async function createList(name: string, ids: number[]) { const trimmed = name.trim(); if (!trimmed) { toast("برای فهرست یک نام بنویسید", "error"); return; } setBusy(true); try { const res = await fetch("/api/lead-lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed, location_ids: ids }) }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error); setLists((prev) => [...prev, { id: data.id, name: trimmed, location_ids: ids }]); setActiveListId(data.id); setRun(ids); setNewListName(""); toast(`فهرست «${trimmed}» ساخته شد.`, "success"); } catch (e) { toast(e instanceof Error && e.message ? e.message : "خطا در ساخت فهرست", "error"); } finally { setBusy(false); } }
+  async function createList(name: string, ids: number[]) { const trimmed = name.trim(); if (!trimmed) { toast("برای فهرست یک نام بنویسید", "error"); return; } setBusy(true); try { const res = await fetch("/api/lead-lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed, location_ids: ids }) }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error); setLists((prev) => [...prev, { id: data.id, name: trimmed, location_ids: ids }]); setNewListName("");
+    /* Deliberately NOT `setActiveListId`/`setRun` any more. The button reads "ذخیره به‌عنوان
+       فهرست" -- save a copy -- and it was overwriting the route being built, which is how
+       list #8 exists with zero stops. Loading is now the list bar's job, by an explicit tap. */ toast(`فهرست «${trimmed}» ساخته شد.`, "success"); } catch (e) { toast(e instanceof Error && e.message ? e.message : "خطا در ساخت فهرست", "error"); } finally { setBusy(false); } }
   async function renameList(id: number, name: string) { const trimmed = name.trim(); if (!trimmed) return; setLists((prev) => prev.map((l) => (l.id === id ? { ...l, name: trimmed } : l))); try { const res = await fetch(`/api/lead-lists/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) }); if (!res.ok) throw new Error(); } catch { toast("تغییر نام ذخیره نشد", "error"); load(); } }
-  async function deleteList(id: number) { const doomed = lists.find((l) => l.id === id); try { const res = await fetch(`/api/lead-lists/${id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(); setLists((prev) => prev.filter((l) => l.id !== id)); if (activeListId === id) { setActiveListId(null); setRun([]); } toast(`فهرست «${data.deleted.name}» حذف شد.`, "success", { label: "بازگردان", onClick: () => createList(data.deleted.name, data.deleted.location_ids) }); } catch { toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف فهرست", "error"); } }
+  async function deleteList(id: number) { const doomed = lists.find((l) => l.id === id); try { const res = await fetch(`/api/lead-lists/${id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(); setLists((prev) => prev.filter((l) => l.id !== id)); if (activeListId === id) { /* `updateRun`, not `setRun`: clearing the active list hands the pool back to scratch, and
+   scratch is persisted. A raw set left `localStorage` holding the deleted list's ids, so a
+   reload put the whole list straight back into the pool. */
+    setActiveListId(null); updateRun([]); } toast(`فهرست «${data.deleted.name}» حذف شد.`, "success", { label: "بازگردان", onClick: () => createList(data.deleted.name, data.deleted.location_ids) }); } catch { toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف فهرست", "error"); } }
   function openList(id: number | null) {
     setActiveListId(id);
     if (id === null) { try { const raw = localStorage.getItem(SCRATCH_KEY); const parsed = raw ? JSON.parse(raw) : []; setRun(stillAssignable(Array.isArray(parsed) ? parsed.filter((x): x is number => Number.isInteger(x)) : [])); } catch { setRun([]); } return; }
     setRun(stillAssignable(lists.find((l) => l.id === id)?.location_ids ?? []));
   }
   const routable = useMemo(() => locations.filter((l): l is RoutableLocation => l.lat !== null && l.lng !== null), [locations]);
+
+  /* The pool's working set. Everything downstream -- the list, the map, a fresh split, the
+     counts -- reads this rather than `routable`, so hiding a lead is a single decision made
+     once. `proposedDaysRaw` is deliberately NOT filtered: a proposal is a draft being
+     shaped, and stripping it would destroy a split the manager is still working on. */
+  const available = useMemo(
+    () => (showAssigned ? routable : routable.filter((l) => !assignedBy.has(l.id))),
+    [routable, assignedBy, showAssigned],
+  );
+  /* The count of leads actually withheld, which is the difference in the working set rather
+   * than `assignedBy.size`: a lead on a driver's route that never resolved to coordinates was
+   * never in the pool to begin with, and promising to hide it would be a small lie. */
+  const hiddenCount = showAssigned ? 0 : routable.length - available.length;
   const togglePriority = useCallback((locationId: number) => { setLocations((prev) => prev.map((loc) => loc.id === locationId ? { ...loc, priority: !loc.priority } : loc)); }, []);
   function addToDayGroup(dayIdx: number, location: DayStop) { setProposedDays((prev) => { if (!prev) return [[location]]; if (prev[dayIdx]?.some((l) => l.id === location.id)) return prev; return prev.map((d, i) => (i === dayIdx ? [...d, location] : d)); }); }
   function removeFromDayGroup(dayIdx: number, locationId: number) { setProposedDays((prev) => { if (!prev) return null; const next = prev.map((d, i) => (i === dayIdx ? d.filter((l) => l.id !== locationId) : d)).filter((d) => d.length > 0); return next.length > 0 ? next : null; }); }
   const proposedDays = useMemo(() => proposedDaysRaw ? proposedDaysRaw.map((day, i) => ({ title: `روز ${i + 1}`, stops: day.map((d) => ({ id: d.id, name: d.name, lat: d.lat ?? 0, lng: d.lng ?? 0, legKm: null })), totalKm: null, completed: 0, total: day.length })) : null, [proposedDaysRaw]);
   const assignedIds = useMemo(() => new Set(proposedDaysRaw?.flat()?.map(l => l.id) ?? []), [proposedDaysRaw]);
-  const unassignedLocations = useMemo(() => routable.filter((l) => !assignedIds.has(l.id)), [routable, assignedIds]);
-  function proposeDays() { const k = daysNeeded(routable.length, stopsPerDay); if (k === 0) { toast("مکانی با مختصات برای تقسیم وجود ندارد.", "error"); return; } setProposedDays(clusterIntoDays(routable, k, runOrigin).map((d) => d.stops).sort((a, b) => b.length - a.length)); }
-  const withDistance = useMemo(() => locations.map((l) => ({ loc: l, km: sortAnchor && l.lat !== null && l.lng !== null ? distanceKm(sortAnchor, { lat: l.lat, lng: l.lng }) : null })), [locations, sortAnchor]);
+  const unassignedLocations = useMemo(() => available.filter((l) => !assignedIds.has(l.id)), [available, assignedIds]);
+  function proposeDays() {
+    const k = daysNeeded(available.length, stopsPerDay);
+    /* The old message -- "no location with coordinates" -- was true and useless here: the
+       leads exist, they are just all spoken for. Say so, and point at the toggle. */
+    if (k === 0) { toast(assignedBy.size > 0 && available.length === 0 ? "همه مکان‌ها در مسیر رانندگان دیگر هستند. برای پیشنهاد روز، «نمایش مکان‌های سپرده‌شده» را روشن کنید." : "مکانی با مختصات برای تقسیم وجود ندارد.", "error"); return; }
+    /* `stopsPerDay` is passed as the cap, and not just used to work out `k`. Leaving it out
+       made the cap `ceil(n / k)`, which is not the number the manager typed: 8 a day from 10
+       stops came back 5 and 5. The result is also no longer sorted biggest-first, which was
+       hiding which day was the short one by putting it last anyway. */
+    setProposedDays(clusterIntoDays(available, k, runOrigin, undefined, undefined, stopsPerDay).map((d) => d.stops));
+  }
+  const withDistance = useMemo(() => available.map((l) => ({ loc: l, km: sortAnchor ? distanceKm(sortAnchor, { lat: l.lat, lng: l.lng }) : null })), [available, sortAnchor]);
   const visible = useMemo(() => { const filtered = withDistance.filter(({ loc }) => matchesQuery(loc.name, query) || matchesQuery(loc.address ?? "", query)); const sorted = filtered.slice(); if (sortMode === "nearest") sorted.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity)); else if (sortMode === "score") sorted.sort((a, b) => (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) || (a.km ?? Infinity) - (b.km ?? Infinity)); else if (sortMode === "priority") sorted.sort((a, b) => (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) || (a.loc.status === "no_answer" ? 1 : 0) - (b.loc.status === "no_answer" ? 1 : 0)); else if (sortMode === "name") sorted.sort((a, b) => a.loc.name.localeCompare(b.loc.name, "fa")); else if (sortMode === "newest") sorted.sort((a, b) => b.loc.created_at.localeCompare(a.loc.created_at)); else { const rank = (s: LocationStatus | null) => (s === null ? 0 : s === "no_answer" ? 1 : 2); sorted.sort((a, b) => rank(a.loc.status) - rank(b.loc.status) || (a.km ?? Infinity) - (b.km ?? Infinity)); } return sorted; }, [withDistance, query, sortMode]);
-  const mapLeads = useMemo(() => routable.map((l) => { const idx = run.indexOf(l.id); return { id: l.id, name: l.name, address: l.address, lat: l.lat, lng: l.lng, runIndex: idx === -1 ? null : idx + 1, km: sortAnchor ? distanceKm(sortAnchor, { lat: l.lat, lng: l.lng }) : null, statusLabel: l.status ? STATUS_META[l.status ?? "no_answer"] : null }; }), [routable, run, sortAnchor]);
+  const mapLeads = useMemo(() => available.map((l) => { const idx = run.indexOf(l.id); return { id: l.id, name: l.name, address: l.address, lat: l.lat, lng: l.lng, runIndex: idx === -1 ? null : idx + 1, km: sortAnchor ? distanceKm(sortAnchor, { lat: l.lat, lng: l.lng }) : null, statusLabel: l.status ? STATUS_META[l.status ?? "no_answer"] : null }; }), [available, run, sortAnchor]);
   const runPoints = useMemo(() => { const pts: [number, number][] = []; if (runOrigin && runLocations.length) pts.push([runOrigin.lat, runOrigin.lng]); runLocations.forEach((l) => pts.push([l.lat, l.lng])); return pts; }, [runOrigin, runLocations]);
   const runHref = useMemo(() => routeUrl(navAppId, runLocations.map((l) => ({ lat: l.lat, lng: l.lng })), runOrigin), [navAppId, runLocations, runOrigin]);
   const activeList = activeListId === null ? null : lists.find((l) => l.id === activeListId) ?? null;
@@ -162,5 +237,5 @@ export function useLeads() {
   async function savePin(id: number, lat: number, lng: number) { try { const res = await fetch(`/api/locations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lat, lng }) }); if (!res.ok) throw new Error(); toast("موقعیت ثبت شد.", "success"); setPinningId(null); load(); } catch { toast("خطا در ثبت موقعیت", "error"); } }
   async function updateLocationName(id: number, name: string) { try { const res = await fetch(`/api/locations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) }); if (!res.ok) throw new Error(); toast("نام بروز شد.", "success"); load(); } catch { toast("خطا در بروز نام", "error"); } }
   async function convertToCustomer(id: number) { setConverting(id); try { const res = await fetch(`/api/locations/${id}/convert`, { method: "POST" }); const data = await res.json(); if (!data.ok) throw new Error(data.error); toast("به فهرست مشتریان اضافه شد.", "success"); load(); } catch (e) { toast(e instanceof Error && e.message ? e.message : "خطا در تبدیل به مشتری", "error"); } finally { setConverting(null); } }
-  return { locations, lists, activeListId, run, loading, busy, query, sortMode, pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName, selectedMapId, setSelectedMapId, isManager, sessionLoading, position, posStatus, posError, retryPosition, showManualPos, setShowManualPos, linkedId, linkedRef, sortAnchor, setSortAnchor, setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode, setNewListName, setProposedDays, setStopsPerDay, load, createList, renameList, deleteList, openList, updateRun, addToRun, removeFromRun, moveInRun, optimiseRun, clearRun, proposeDays, togglePriority, addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer, runLocations, runStops, runTotalKm, optimiseGain, routable, unassignedLocations, visible, mapLeads, runPoints, runHref, activeList, lastAssigned: receipt, recordAssigned, byId };
+  return { locations, lists, activeListId, run, loading, busy, query, sortMode, pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName, selectedMapId, setSelectedMapId, isManager, sessionLoading, position, posStatus, posError, retryPosition, showManualPos, setShowManualPos, linkedId, linkedRef, sortAnchor, setSortAnchor, setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode, setNewListName, setProposedDays, setStopsPerDay, load, createList, renameList, deleteList, openList, updateRun, addToRun, removeFromRun, moveInRun, optimiseRun, clearRun, proposeDays, refuseAssigned, togglePriority, addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer, runLocations, runStops, runTotalKm, optimiseGain, routable, unassignedLocations, available, hiddenCount, visible, mapLeads, runPoints, runHref, activeList, lastAssigned: receipt, recordAssigned, byId, assignedBy, showAssigned, setShowAssigned, assignmentsError };
 }

@@ -94,7 +94,7 @@ export default function PoolViewKanban({
               </span>
             </div>
             <div className="flex flex-col gap-1.5">
-              {colItems.map(({ location: loc, inRun, runIdx, km }) => {
+              {colItems.map(({ location: loc, inRun, runIdx, km, assignedTo }) => {
                 if (isNew) {
                   return (
                     <MinimalNameCard
@@ -108,6 +108,7 @@ export default function PoolViewKanban({
                   <div key={loc.id} onClick={() => onSelect(loc.id)} className="cursor-pointer">
                     <LocationCard
                       location={loc}
+                      assignedTo={assignedTo}
                       inRun={inRun}
                       navAppId={navAppId}
                       onPin={() => onPin(loc.id)}

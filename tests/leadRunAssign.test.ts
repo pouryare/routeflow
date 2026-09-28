@@ -7,6 +7,7 @@ import {
   donePhase,
   summaryOf,
   assignableIds,
+  removeHandedOver,
 } from "@/lib/leadRunAssign";
 
 const RUNS = [
@@ -127,5 +128,47 @@ describe("assignableIds", () => {
   it("returns empty rather than throwing when everything is stale", () => {
     expect(assignableIds([8, 9], (id) => live.has(id))).toEqual([]);
     expect(assignableIds([], (id) => live.has(id))).toEqual([]);
+  });
+});
+
+describe("removeHandedOver", () => {
+  const day = (...ids: number[]) => ids.map((id) => ({ id }));
+  const d1 = day(1, 2, 3);
+  const d2 = day(4, 5);
+  const d3 = day(6);
+
+  it("returns the proposal untouched when nothing was handed over", () => {
+    expect(removeHandedOver([d1, d2], [])).toEqual([d1, d2]);
+  });
+
+  it("removes the handed-over stops from whichever day holds them", () => {
+    expect(removeHandedOver([d1, d2], [2])).toEqual([day(1, 3), d2]);
+    expect(removeHandedOver([d1, d2], [4, 5])).toEqual([d1]);
+  });
+
+  it("drops a day that loses every stop, rather than leaving it empty", () => {
+    expect(removeHandedOver([d1, d2], [1, 2, 3])).toEqual([d2]);
+    expect(removeHandedOver([d1], [1, 2, 3])).toEqual([]);
+  });
+
+  it("handles a route drawn from several days at once", () => {
+    // The real case: a manager picked 3 stops out of روز ۱ and 1 out of روز ۳.
+    expect(removeHandedOver([d1, d2, d3], [2, 6])).toEqual([day(1, 3), d2]);
+  });
+
+  it("keeps the order of the stops that remain", () => {
+    expect(removeHandedOver([d1, d2], [2]).map((d) => d.map((s) => s.id))).toEqual([[1, 3], [4, 5]]);
+  });
+
+  it("ignores ids that are not in the proposal at all", () => {
+    // The route can hold a lead the proposal never had; that is not this function's problem.
+    expect(removeHandedOver([d1], [99])).toEqual([d1]);
+  });
+
+  it("does not mutate the days it was given", () => {
+    const input = [day(1, 2, 3)];
+    const before = input[0].map((s) => s.id);
+    removeHandedOver(input, [2]);
+    expect(input[0].map((s) => s.id)).toEqual(before);
   });
 });

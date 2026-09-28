@@ -17,6 +17,7 @@ import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import PoolViewToggle from "@/components/leads/PoolViewToggle";
 import DriverRunView from "@/components/leads/DriverRunView";
 import LeadRunPlannerTabFlow from "@/components/leads/LeadRunPlannerTabFlow";
+import LeadListsBar from "@/components/leads/LeadListsBar";
 import PoolViewWrapper from "@/components/leads/views/PoolViewWrapper";
 import { readViewMode } from "@/lib/leadViews";
 import type { LeadViewMode } from "@/lib/leadViews";
@@ -28,6 +29,7 @@ import CollapsibleSection from "@/components/CollapsibleSection";
 import NavAppSetting from "@/components/NavAppSetting";
 import { STATUS_META } from "./hooks/useLeads";
 import { averageScore } from "@/lib/leadScore";
+import { removeHandedOver } from "@/lib/leadRunAssign";
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 
 export { STATUS_META };
@@ -50,7 +52,7 @@ export default function LeadsPage() {
     addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer,
     runLocations, runStops, runTotalKm, optimiseGain,
     routable, unassignedLocations, visible, mapLeads, runPoints, runHref, activeList, byId,
-    lastAssigned, recordAssigned,
+    lastAssigned, recordAssigned, available, hiddenCount, assignedBy, showAssigned, setShowAssigned, assignmentsError, refuseAssigned,
   } = useLeads();
 
   const { matrix } = useRouteMatrix(routable as { lat: number; lng: number }[]);
@@ -59,7 +61,7 @@ export default function LeadsPage() {
   const [leadRunPlannerOpen, setLeadRunPlannerOpen] = useState(false);
 
   const handleSelectAll = () => {
-    const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
+    const ids = visible.map(({ loc }) => loc.id);
     const newIds = ids.filter((id) => !run.includes(id));
     if (newIds.length === 0) return;
     updateRun([...run, ...newIds]);
@@ -78,21 +80,22 @@ export default function LeadsPage() {
   const enhancedProposeDays = useMemo(() => {
     if (!matrix || !sortAnchor) return proposeDays;
     return () => {
-      const k = daysNeeded(routable.length, stopsPerDay);
+      const k = daysNeeded(available.length, stopsPerDay);
       if (k === 0) { /* handled by proposeDays */ return; }
-      const idx = new Map(routable.map((l, i) => [`${l.lat},${l.lng}`, i]));
+      const idx = new Map(available.map((l, i) => [`${l.lat},${l.lng}`, i]));
       const distanceFn = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
         const ai = idx.get(`${a.lat},${a.lng}`); const bi = idx.get(`${b.lat},${b.lng}`);
         if (ai === undefined || bi === undefined) return distanceKm(a, b);
         return matrix[ai][bi] ?? distanceKm(a, b);
       };
-      const prioritySeeds = routable.filter((l) => l.priority);
+      const prioritySeeds = available.filter((l) => l.priority);
+      // `stopsPerDay` goes in as the cap, not just into `k` -- see the note in useLeads.
       setProposedDays(
-        clusterIntoDays(routable, k, sortAnchor, distanceFn, prioritySeeds.length > 0 ? prioritySeeds : undefined)
-          .map((d) => d.stops).sort((a, b) => b.length - a.length)
+        clusterIntoDays(available, k, sortAnchor, distanceFn, prioritySeeds.length > 0 ? prioritySeeds : undefined, stopsPerDay)
+          .map((d) => d.stops)
       );
     };
-  }, [matrix, sortAnchor, routable, proposeDays, setProposedDays, stopsPerDay]);
+  }, [matrix, sortAnchor, available, proposeDays, setProposedDays, stopsPerDay]);
 
   return (
     <>
@@ -122,12 +125,52 @@ export default function LeadsPage() {
             <>
               <LeadImportPanel onAdded={load} />
 
+              {/* Where the empty-state copy has always pointed: "از فهرست بالا". */}
+              <LeadListsBar
+                lists={lists}
+                activeListId={activeListId}
+                onOpen={openList}
+                onCreate={(name) => { void createList(name, run); }}
+                onRename={renameList}
+                onDelete={(id) => { void deleteList(id); }}
+                newName={newListName}
+                onNewNameChange={setNewListName}
+                busy={busy}
+              />
+
               <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 flex flex-col gap-4">
+
+            {/* Never hide by silence. A pool that quietly omits leads is a screen you cannot
+                trust, so the count of what is held back is always on show -- and when the
+                phone book itself failed to load, that is said plainly too, because an empty
+                list and an unread one look identical otherwise. */}
+            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-xs)]">
+              <span className="flex items-center gap-1.5">
+                <Icon name="info" size="sm" className="shrink-0 text-text-faint" />
+                {hiddenCount > 0
+                  ? `${faNum(hiddenCount)} مکان در مسیر رانندگان دیگر پنهان است`
+                  : "همه مکان‌ها آزاد هستند"}
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowAssigned((v) => !v)}
+                className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-text-muted transition-colors hover:border-accent hover:text-accent"
+              >
+                {showAssigned ? "پنهان‌کردن سپرده‌شده‌ها" : "نمایش مکان‌های سپرده‌شده"}
+              </button>
+            </div>
+
+            {assignmentsError && (
+              <p className="flex items-start gap-1.5 rounded-[var(--radius-md)] border border-warn/40 bg-warn/10 px-3 py-2 text-[length:var(--text-xs)] text-warn">
+                <Icon name="warn" size="sm" className="mt-0.5 shrink-0" />
+                <span>وضعیت سپردن مکان‌ها بارگذاری نشد. فهرست ممکن است مکان‌های در مسیر رانندگان دیگر را هم نشان دهد.</span>
+              </p>
+            )}
 
             <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
               <div className="flex items-center gap-2 flex-1 min-w-0">
                 <h2 className="sechead__title truncate">
-                  همه مکان‌ها ({faNum(locations.length)})
+                  همه مکان‌ها ({faNum(available.length)})
                 </h2>
                 <div className="relative shrink-0">
                   <input
@@ -240,9 +283,10 @@ export default function LeadsPage() {
               onMove={moveInRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
               proposedDays={dayGroups}
               onTapFlow={undefined}
+              refuseAssigned={refuseAssigned}
               onAssignRoute={() => setLeadRunPlannerOpen(true)}
               isManager={isManager} stopsPerDay={stopsPerDay} setStopsPerDay={setStopsPerDay}
-              proposeDays={enhancedProposeDays} routableLength={routable.length} runOrigin={sortAnchor}
+              proposeDays={enhancedProposeDays} routableLength={available.length} runOrigin={sortAnchor}
               setProposedDays={setProposedDays} updateRun={updateRun} createList={createList}
               addToDayGroup={addToDayGroup} removeFromDayGroup={removeFromDayGroup}
               unassignedLocations={unassignedLocations}
@@ -276,6 +320,10 @@ export default function LeadsPage() {
           // filtered out on the way in does not make the receipt disagree with the route
           // the manager was actually looking at.
           recordAssigned({ ...meta, stopCount: run.length });
+          // A hand-over is of the route, not of a day, so the stops leave whichever
+          // proposal days hold them rather than one day being cleared. Untouched days keep
+          // their members and their order -- a proposal is a draft being shaped.
+          setProposedDays((prev) => (prev ? removeHandedOver(prev, run) : prev));
           updateRun([]);
         }}
         onClose={() => setLeadRunPlannerOpen(false)}

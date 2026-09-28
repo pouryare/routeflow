@@ -31,6 +31,14 @@ export interface LeadRunStop {
   next_action: string | null;
 }
 
+export interface LeadRunAssignment {
+  location_id: number;
+  run_id: number;
+  run_date: string;
+  /** Null when the driver row is gone; the lead is still spoken for, so it still blocks. */
+  driver_name: string | null;
+}
+
 export interface LeadRun {
   id: number;
   driver_user_id: number;
@@ -114,6 +122,68 @@ export function readTodaysLeadRun(conn: DatabaseSync, driverUserId: number, orgI
     ?? runs.find((r) => r.status !== "done")
     ?? runs[0]
     ?? null;
+}
+
+/** Who currently holds each lead, for the leads page.
+ *
+ *  Flat on purpose. The manager's roster endpoint hydrates every stop of every run -- name,
+ *  address, coordinates, status, outcome, two ratings -- and the pool needs one of those
+ *  fields: the driver's name. This returns the phone book and nothing else, so it does not
+ *  grow without limit as routes accumulate.
+ *
+ *  `status != 'done'` is the whole rule, and it is the same rule `readTodaysLeadRun` reasons
+ *  about: a finished day releases its leads, so a restaurant someone visited and finished is
+ *  plannable again. `assignedToAnotherDriver` below filters on the identical predicate, and
+ *  the two agreeing is what stops the client filter and the server guard drifting apart.
+ *
+ *  Newest first, so the first row for a location wins if a lead somehow sits on two
+ *  unfinished routes. That is a data anomaly rather than a case to model; picking the newest
+ *  is at least deterministic, and no extra rule is needed for it. */
+export function readLeadRunAssignments(conn: DatabaseSync, session: Session): LeadRunAssignment[] {
+  const all = session.role === "owner";
+  const rows = conn
+    .prepare(`SELECT s.location_id, r.id AS run_id, r.run_date, u.display_name AS driver_name
+                FROM lead_run_stops s
+                JOIN lead_runs r ON r.id = s.run_id
+                LEFT JOIN users u ON u.id = r.driver_user_id
+               WHERE r.organization_id = ? AND r.status != 'done'
+                 ${all ? "" : "AND r.group_id = ?"}
+               ORDER BY r.run_date DESC, r.id DESC`)
+    .all(...(all ? [session.organizationId] : [session.organizationId, session.groupId ?? -1])) as unknown as LeadRunAssignment[];
+  return rows;
+}
+
+/** The first of `locationIds` that is on someone else's unfinished route.
+ *
+ *  Returns the row rather than a boolean so the caller can name the driver, which is the
+ *  difference between "this lead is taken" and "this lead is Reza's, don't hand it to
+ *  someone else". `done` is excluded for the reason `readLeadRunAssignments` excludes it.
+ *
+ *  This is the server half of the arrangement: the browser filter is convenience, and a
+ *  filter that one failed request can lose is not a safety mechanism. `createOrReuseLeadRun`
+ *  calls this inside its transaction, so a rejection writes nothing. */
+export function assignedToAnotherDriver(
+  conn: DatabaseSync,
+  orgId: number,
+  driverUserId: number,
+  locationIds: number[],
+): { location_id: number; driver_name: string | null } | null {
+  if (locationIds.length === 0) return null;
+  const placeholders = locationIds.map(() => "?").join(",");
+  const row = conn
+    .prepare(`SELECT s.location_id, u.display_name AS driver_name
+                FROM lead_run_stops s
+                JOIN lead_runs r ON r.id = s.run_id
+                LEFT JOIN users u ON u.id = r.driver_user_id
+               WHERE s.location_id IN (${placeholders})
+                 AND r.organization_id = ?
+                 AND r.status != 'done'
+                 AND r.driver_user_id != ?
+               LIMIT 1`)
+    .get(...locationIds, orgId, driverUserId) as
+    | { location_id: number; driver_name: string | null }
+    | undefined;
+  return row ?? null;
 }
 
 export class LeadRunError extends Error {
@@ -248,6 +318,12 @@ export function createOrReuseLeadRun(
   const runDate = assertIsoDate(input.run_date);
   const driver = assertAssignableDriver(conn, session, input.driver_user_id);
   const now = new Date().toISOString();
+
+  const clash = assignedToAnotherDriver(conn, session.organizationId, driver.id, input.location_ids);
+  if (clash) {
+    const where = clash.driver_name ? `در مسیر ${clash.driver_name} است` : "در مسیر راننده دیگری است";
+    throw new LeadRunError(409, `مکان شماره ${clash.location_id} ${where}`);
+  }
 
   const existing = conn
     .prepare("SELECT id, status FROM lead_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?")

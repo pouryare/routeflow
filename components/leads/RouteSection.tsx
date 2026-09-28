@@ -9,7 +9,7 @@ import { faNum } from "@/lib/format";
 import CollapsibleSection from "@/components/CollapsibleSection";
 import { routeLengthKm, formatDistanceKm } from "@/lib/geo";
 import { daysNeeded } from "@/lib/clusterDays";
-import { toJalali } from "@/lib/jalali";
+import { faJalaliDate } from "@/lib/jalali";
 import type { NavAppId } from "@/lib/navApps";
 import type { RoutableLocation, DayStop, LastAssigned } from "@/app/(shell)/leads/hooks/useLeads";
 
@@ -36,6 +36,9 @@ export interface RouteSectionProps {
   busy: boolean;
   proposedDays: DayGroup[] | null;
   onTapFlow?: (stopId: number) => void;
+  /** Refuses a lead that is on a driver's live route. Reached by dragging one into a day,
+   *  which is the only way an assigned lead can be picked up now that the pool hides it. */
+  refuseAssigned?: (id: number) => boolean;
   /** Manager-only: opens the "سپردن مسیر" flow from inside the current-route actions. */
   onAssignRoute?: () => void;
   /* ---- automatic day split (manager only) ------------------------------- */
@@ -71,6 +74,7 @@ export default function RouteSection({
   busy,
   proposedDays,
   onTapFlow,
+  refuseAssigned,
   onAssignRoute,
   isManager,
   stopsPerDay,
@@ -93,6 +97,8 @@ export default function RouteSection({
         ?.closest<HTMLElement>("[data-day-index]")?.dataset.dayIndex ?? null,
     onDrop: (loc, fromLane, toLane) => {
       if (fromLane === toLane) return;
+      // The card snaps back untouched: nothing is removed before the refusal is known.
+      if (refuseAssigned?.(loc.id)) return;
       removeFromDayGroup(Number(fromLane), loc.id);
       addToDayGroup(Number(toLane), loc);
     },
@@ -114,7 +120,8 @@ export default function RouteSection({
       </button>
       <button
         onClick={() => createList(`روز ${i + 1}`, day.stops.map((d) => d.id))}
-        disabled={busy}
+        disabled={busy || day.stops.length === 0}
+        title={day.stops.length === 0 ? "این روز مکانی ندارد" : undefined}
         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
       >
         ذخیره به‌عنوان فهرست
@@ -123,14 +130,13 @@ export default function RouteSection({
   );
 
   /* Shown only while the pool is empty, so it never competes with the route the manager is
-   * currently building. `toJalali` returns null for a value it cannot parse; the ISO date is
-   * then shown rather than a blank or a wrong one. */
+   * currently building. */
   const receiptLine = (() => {
     if (run.length > 0 || !lastAssigned) return null;
-    const j = toJalali(lastAssigned.runDate);
-    const day = j
-      ? `${faNum(j.jy)}/${String(j.jm).padStart(2, "0")}/${String(j.jd).padStart(2, "0")}`
-      : lastAssigned.runDate;
+    // `faJalaliDate` rather than formatting it here: a hand-rolled version of this got the
+    // year in Persian digits and the month and day in Latin ones, which reads as a typo and
+    // which `no-gregorian-dates.test.ts` cannot see because the digits are not Gregorian.
+    const day = faJalaliDate(lastAssigned.runDate);
     return (
       <p className="mt-2 flex items-center gap-1.5 text-[length:var(--text-xs)] text-good">
         <Icon name="check" size="sm" className="shrink-0" />

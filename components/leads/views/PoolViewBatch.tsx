@@ -86,7 +86,7 @@ export default function PoolViewBatch({
           <span className="text-[length:var(--text-xs)] text-text-muted">انتخاب همه</span>
         </li>
 
-        {items.map(({ location: loc, inRun, runIdx, km }) => {
+        {items.map(({ location: loc, inRun, runIdx, km, assignedTo }) => {
           const isChecked = checked.has(loc.id);
           return (
             <li
@@ -107,6 +107,7 @@ export default function PoolViewBatch({
                 <div className="flex-1 min-w-0">
                   <LocationCard
                     location={loc}
+                    assignedTo={assignedTo}
                     inRun={inRun}
                     navAppId={navAppId}
                     onPin={() => onPin(loc.id)}

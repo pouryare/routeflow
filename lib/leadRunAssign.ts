@@ -103,3 +103,27 @@ export function summaryOf({ driverName, runDate, stopCount }: SummaryInput): str
     `${faNum(stopCount)} توقف`,
   ];
 }
+
+/** What is left of a day split once a route has been handed over.
+ *
+ *  A hand-over is of the *current route*, not of a day. Those differ: the route may be
+ *  exactly one day, or a mixture drawn from several. So this removes the assigned ids from
+ *  wherever they sit rather than dropping "the day that was assigned", which is not a thing
+ *  that exists.
+ *
+ *  Days that lose every stop disappear -- an empty day is not a day, and `removeFromDayGroup`
+ *  already drops them, so this keeps the two rules the same. Everything else keeps its
+ *  members *and* its order, which is the part that matters: a proposal is a draft being
+ *  shaped, and re-proposing it would throw away the tuning the manager did by hand.
+ *
+ *  Pure, and therefore testable, because it is the piece most likely to be subtly wrong. */
+export function removeHandedOver<T extends { id: number }>(
+  days: T[][],
+  handedOver: number[],
+): T[][] {
+  if (handedOver.length === 0) return days;
+  const gone = new Set(handedOver);
+  return days
+    .map((day) => day.filter((stop) => !gone.has(stop.id)))
+    .filter((day) => day.length > 0);
+}

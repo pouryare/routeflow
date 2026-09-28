@@ -42,6 +42,11 @@ export interface LocationCardProps {
   /** Tighter padding for grid/kanban views. */
   compactMode?: boolean;
   /** Show checkbox for batch selection. */
+  /** Set when this lead is on a driver's unfinished route. Rendered as a quiet chip, not a
+   *  warning: a lead on Reza's route is doing its job, not reporting a problem. Optional and
+   *  absent by default, so the card is unchanged anywhere it is rendered without the pool's
+   *  phone book. Five views share this card, so one chip here covers all of them. */
+  assignedTo?: { driverName: string | null; runDate: string } | null;
   showCheckboxes?: boolean;
   /** Whether this item is checked in batch mode. */
   checked?: boolean;
@@ -69,6 +74,7 @@ export default function LocationCard({
   notes,
   onNotesChange,
   compactMode = false,
+  assignedTo = null,
   showCheckboxes = false,
   checked = false,
 }: LocationCardProps) {
@@ -102,6 +108,14 @@ export default function LocationCard({
             {inRun && (
               <span className="shrink-0 rounded bg-accent/15 px-1.5 py-0.5 text-[length:var(--text-xs)] text-accent">
                 در مسیر
+              </span>
+            )}
+            {assignedTo && (
+              <span
+                className="shrink-0 rounded bg-border px-1.5 py-0.5 text-[length:var(--text-xs)] text-text-muted"
+                title={`در مسیر ${assignedTo.driverName ?? "راننده دیگر"}`}
+              >
+                {assignedTo.driverName ?? "راننده دیگر"}
               </span>
             )}
             {location.lat === null && (

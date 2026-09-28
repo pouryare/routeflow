@@ -169,7 +169,11 @@ describe("a manager plans a route", () => {
   });
 
   it("refuses a pin that does not exist, rather than sending a driver to nowhere", async () => {
-    const res = await createRun(...MANAGER(), { driver_user_id: otherDriverId, run_date: TOMORROW, location_ids: [pinA, 999999] });
+    // `pinC` rather than `pinA`: the assignment guard refuses a lead that is on another
+    // driver's live route with a 409, and an earlier test here hands `pinA` to one. The
+    // point of this test is the nonexistent pin, so it uses a lead nothing is holding, and
+    // the 404 still comes from `setRunStops` rather than from the guard.
+    const res = await createRun(...MANAGER(), { driver_user_id: otherDriverId, run_date: TOMORROW, location_ids: [pinC, 999999] });
     expect(res.status).toBe(404);
   });
 
@@ -260,5 +264,120 @@ describe("the manager's roster", () => {
     const otherRun = body.runs.find((r) => r.driver_user_id === otherDriverId)!;
     const res = await patchRun(...MANAGER(), otherRun.id, { driver_user_id: driverId });
     expect(res.status).toBe(409);
+  });
+});
+
+/** The leads page has to know who is holding which lead, and a lead must not end up on two
+ *  drivers' routes.
+ *
+ *  Both halves of one arrangement: the phone book is the convenience -- the pool can show
+ *  what is available -- and the 409 is the rule standing behind it when the phone book
+ *  fails to load.
+ *
+ *  These build their own pins rather than reusing pinA/B/C, because the describe above
+ *  assigns those and the order in which a shared pool of three leads is handed out is not
+ *  something these assertions should depend on. */
+describe("assignment awareness", () => {
+  let taken = 0;
+  let free = 0;
+  const loc = (name: string, url: string) => {
+    const stmt = getDb().prepare(
+      "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, organization_id) VALUES (?, ?, 35.80, 51.4, 'manual', ?, ?, 1)"
+    );
+    return Number(stmt.run(name, url, groupId, new Date().toISOString()).lastInsertRowid);
+  };
+
+  // Awaited: the hand-over is what every assertion below is measured against, and an
+  // un-awaited create leaves `taken` unassigned when the first test reads the phone book.
+  beforeAll(async () => {
+    taken = loc("سپرده‌شده", "u/taken");
+    free = loc("آزاد", "u/free");
+    const res = await createRun(ownerId, "owner", null, {
+      driver_user_id: driverId,
+      run_date: "2026-07-01",
+      location_ids: [taken],
+    });
+    expect(res.status).toBe(201);
+  });
+
+  const assignments = async (uid: number, role: string, gid: number | null) => {
+    const res = await GET(new NextRequest("http://localhost/api/lead-runs?assignments=1", { headers: { cookie: as(uid, role, gid) } }));
+    return (await res.json()).assignments as Array<{ location_id: number; driver_name: string | null; run_date: string; run_id: number }>;
+  };
+
+  it("names the driver holding each lead, and says nothing about a free one", async () => {
+    const rows = await assignments(managerId, "group_manager", groupId);
+    const mine = rows.find((a) => a.location_id === taken);
+    expect(mine?.driver_name).toBe("راننده یک");
+    expect(mine?.run_date).toBe("2026-07-01");
+    expect(rows.some((a) => a.location_id === free)).toBe(false);
+  });
+
+  it("refuses to hand another driver's lead to someone else, and says whose it is", async () => {
+    const res = await createRun(managerId, "group_manager", groupId, {
+      driver_user_id: otherDriverId,
+      run_date: "2026-07-02",
+      location_ids: [taken],
+    });
+    expect(res.status).toBe(409);
+    expect((await res.json()).error).toContain("راننده یک");
+  });
+
+  it("writes nothing when it refuses", async () => {
+    const before = (await (await listRuns(managerId, "group_manager", groupId)).json()).runs.length;
+    await createRun(managerId, "group_manager", groupId, {
+      driver_user_id: otherDriverId,
+      run_date: "2026-07-03",
+      location_ids: [taken],
+    });
+    expect((await (await listRuns(managerId, "group_manager", groupId)).json()).runs.length).toBe(before);
+  });
+
+  it("lets the holder re-plan a lead they already hold", async () => {
+    // The clash test is `driver_user_id != ?`, so a driver's own earlier plan is not in the way.
+    const res = await createRun(managerId, "group_manager", groupId, {
+      driver_user_id: driverId,
+      run_date: "2026-07-04",
+      location_ids: [taken],
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it("is not a back door around the guard via an override", async () => {
+    // Overriding a finished day reopens it. The clash check runs ahead of that branch, so a
+    // lead on someone else's live route still cannot be smuggled in with `override: true`.
+    const res = await createRun(managerId, "group_manager", groupId, {
+      driver_user_id: otherDriverId,
+      run_date: "2026-07-05",
+      location_ids: [taken],
+      override: true,
+    });
+    expect(res.status).toBe(409);
+  });
+
+  it("releases a lead once its route is finished, and the guard lifts with it", async () => {
+    // *Every* run holding it, not just one: the test above deliberately put `taken` on a
+    // second live route, and a lead is only released when nothing unfinished holds it.
+    const holding = (await assignments(managerId, "group_manager", groupId)).filter((a) => a.location_id === taken);
+    expect(holding.length).toBeGreaterThan(1);
+    for (const a of holding) {
+      expect((await patchRun(managerId, "group_manager", groupId, a.run_id, { status: "done" })).status).toBe(200);
+    }
+
+    // Gone from the phone book...
+    expect((await assignments(managerId, "group_manager", groupId)).some((a) => a.location_id === taken)).toBe(false);
+    // ...and no longer refused for someone else.
+    const res = await createRun(managerId, "group_manager", groupId, {
+      driver_user_id: otherDriverId,
+      run_date: "2026-07-06",
+      location_ids: [taken],
+    });
+    expect(res.status).toBe(201);
+  });
+
+  it("scopes a manager to their own group and an owner to the org", async () => {
+    const managerView = await assignments(managerId, "group_manager", groupId);
+    const ownerView = await assignments(ownerId, "owner", null);
+    expect(ownerView.length).toBeGreaterThanOrEqual(managerView.length);
   });
 });

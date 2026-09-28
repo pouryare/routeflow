@@ -27,7 +27,7 @@ export default function PoolViewGrid({
 }: PoolViewGridProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-      {items.map(({ location: loc, inRun, runIdx, km }) => (
+      {items.map(({ location: loc, inRun, runIdx, km, assignedTo }) => (
         <div
           key={loc.id}
           onClick={() => onSelect(loc.id)}
@@ -35,6 +35,7 @@ export default function PoolViewGrid({
         >
           <LocationCard
             location={loc}
+            assignedTo={assignedTo}
             inRun={inRun}
             navAppId={navAppId}
             onPin={() => onPin(loc.id)}
