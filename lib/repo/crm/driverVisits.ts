@@ -11,13 +11,19 @@ export interface DriverVisit {
   lat: number | null; lng: number | null; maps_url: string | null; hours: string; due_at: string | null;
 }
 
-/* A task is offered to a person when its hint names a role they HOLD. Matching one literal
-   (`t.role_hint = 'driver'`) matches nobody the moment 'driver' stops being a role, and this
-   fails silently: an empty list, no error, a field rep with no visits to make. 'driver' is
-   still accepted for rows written before the migration. */
+/* A task is offered to a person when its hint names a role they HOLD. role_hint is a TEXT
+   column holding a role NAME, so the column moves to the other side of the comparison: the
+   question is "does this person hold the role this row names?", which is an EXISTS over
+   user_roles rather than a list of literals. Matching a literal matches nobody the moment the
+   vocabulary moves, and this fails silently: an empty list, no error, a field rep with no
+   visits to make.
+
+   A task hinted `field_rep` is therefore offered to a driver who HOLDS field_rep even when
+   their primary is delivery_driver — which is the intent, and is why the earlier
+   hand-classified rows are forgiving rather than a source of silent loss. */
 const VISIBLE = `t.organization_id = ? AND t.kind = 'verify_visit' AND t.status = 'open' AND t.entity_type = 'customer'
   AND (t.assignee_user_id = ? OR (t.assignee_user_id IS NULL
-       AND t.role_hint IN ('field_rep', 'delivery_driver', 'driver')
+       AND EXISTS (SELECT 1 FROM user_roles ur WHERE ur.user_id = ? AND ur.role = t.role_hint)
        AND t.group_id = ?))`;
 
 export function driverVisitsFor(session: Session): DriverVisit[] {
@@ -28,7 +34,8 @@ export function driverVisitsFor(session: Session): DriverVisit[] {
                 FROM tasks t JOIN customers c ON c.id = t.entity_id
                WHERE ${VISIBLE} AND c.closed_at IS NULL
                ORDER BY COALESCE(t.due_at, '9999'), t.id`)
-    .all(session.organizationId, session.user.id, session.groupId ?? -1) as unknown as (Omit<DriverVisit, "hours"> & { working_hours_json: string | null })[];
+    // org, assignee, the EXISTS user_id, group — four placeholders in VISIBLE, in that order.
+    .all(session.organizationId, session.user.id, session.user.id, session.groupId ?? -1) as unknown as (Omit<DriverVisit, "hours"> & { working_hours_json: string | null })[];
   return rows.map(({ working_hours_json, ...r }) => ({ ...r, hours: formatHours(parseHours(working_hours_json)) }));
 }
 
@@ -39,7 +46,7 @@ export function applyDriverVisit(
   if (!isVanRole(session.role)) throw new CrmError(403, "دسترسی لازم را ندارید");
   const t = getDb()
     .prepare(`SELECT t.entity_id AS customer_id, c.business_name, c.address, c.area_label FROM tasks t JOIN customers c ON c.id = t.entity_id WHERE t.id = ? AND ${VISIBLE}`)
-    .get(taskId, session.organizationId, session.user.id, session.groupId ?? -1) as
+    .get(taskId, session.organizationId, session.user.id, session.user.id, session.groupId ?? -1) as
     { customer_id: number; business_name: string; address: string | null; area_label: string | null } | undefined;
   if (!t) throw new CrmError(404, "بازدید پیدا نشد");
   const ctx = { ...EMPTY_CONTEXT, entry: "driver_visit" as const, vars: { name: t.business_name, address: t.address ?? t.area_label ?? "" } };

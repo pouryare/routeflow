@@ -514,9 +514,14 @@ export function refreshSnapshots(organizationId: number, period: string): { writ
   const groups = (
     db.prepare("SELECT id FROM groups WHERE organization_id = ?").all(organizationId) as { id: number }[]
   ).map((r) => r.id);
+  // People who HOLD phone_sales, whoever their primary — otherwise a driver who also sells
+  // contributes no seller KPIs at all, and the snapshot silently omits them.
   const sellers = (
     db
-      .prepare("SELECT id FROM users WHERE organization_id = ? AND role IN ('phone_sales', 'salesperson')")
+      .prepare(
+        `SELECT u.id FROM users u JOIN user_roles _r ON _r.user_id = u.id AND _r.role = 'phone_sales'
+          WHERE u.organization_id = ? AND u.active = 1`
+      )
       .all(organizationId) as { id: number }[]
   ).map((r) => r.id);
 

@@ -46,11 +46,21 @@ export function pocketFor(
     .prepare("SELECT display_name, role, group_id FROM users WHERE id = ?")
     .get(target) as { display_name: string; role: string; group_id: number | null } | undefined;
 
-  /* A task is offered when its hint names a role this person HOLDS. Until the role SET lands
-     (Task 2) the set is the primary column plus both van roles, which is the widest set a
-     person can hold without inventing one. Matching one role fails silently -- no error,
-     just a shorter list. The old names stay accepted for pre-migration rows. */
-  const held: string[] = [u?.role ?? "phone_sales", "field_rep", "delivery_driver", "driver", "salesperson", "phone_sales"];
+  /* A task is offered when its hint names a role this person HOLDS — now read from
+     user_roles, which is the point of the table.
+     The previous version was a hand-written list that granted EVERY person both van roles
+     plus the retired names: "the widest set a person can hold without inventing one". That
+     was not conservative, it was wrong in the expensive direction — a phone seller was
+     offered delivery work, and a task hinted `field_rep` was offered to a manager.
+
+     An account with no set rows falls back to its primary, mirroring the session rule, so
+     the two never disagree about the same person. */
+  const heldRows = db
+    .prepare("SELECT role FROM user_roles WHERE user_id = ? ORDER BY role")
+    .all(target) as Array<{ role: string }>;
+  const held: string[] = heldRows.length
+    ? heldRows.map((r) => r.role)
+    : [u?.role ?? "phone_sales"];
   const placeholders = held.map(() => "?").join(", ");
   const rows = db
     .prepare(
@@ -126,10 +136,16 @@ export interface PocketTeamMember {
 export function pocketTeam(session: Session): PocketTeamMember[] {
   if (session.role === "phone_sales" || isVanRole(session.role)) return [];
   const db = getDb();
-  const roles = ["phone_sales", "salesperson", "field_rep", "delivery_driver", "driver", "rep_manager"];
+  // The manager's team: people who HOLD one of these roles, whoever their primary. A
+  // literal list cannot see a driver whose primary is a seller, and this is the list a
+  // manager uses to hand work out.
+  const roles = ["phone_sales", "field_rep", "delivery_driver", "rep_manager"];
   const roleIn = roles.map(() => "?").join(", ");
 
-  let where = "u.organization_id = ? AND u.role IN (" + roleIn + ") AND u.active = 1";
+  let where =
+    "u.organization_id = ? AND u.active = 1 AND EXISTS (" +
+    "SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role IN (" +
+    roles.map(() => "?").join(", ") + "))";
   const params: unknown[] = [session.organizationId, ...roles];
 
   if (session.role === "group_manager" || session.role === "rep_manager") {

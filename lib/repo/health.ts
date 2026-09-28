@@ -312,8 +312,14 @@ export function materialiseHealth(organizationId: number, period: string): numbe
     writes.push({ metric: "health_score", scope_type: "customer", scope_id: c.id, period, value: h.score });
   }
 
+  // People who HOLD phone_sales, whoever their primary. A widened literal is not enough:
+  // a driver who also sells has no seller health metrics at all, and the board goes blank
+  // for exactly the person doing both jobs.
   const sellers = db
-    .prepare("SELECT id FROM users WHERE organization_id = ? AND role IN ('phone_sales', 'salesperson')")
+    .prepare(
+      `SELECT u.id FROM users u JOIN user_roles _r ON _r.user_id = u.id AND _r.role = 'phone_sales'
+        WHERE u.organization_id = ? AND u.active = 1`
+    )
     .all(organizationId) as { id: number }[];
   for (const s of sellers) {
     writes.push({
@@ -326,7 +332,10 @@ export function materialiseHealth(organizationId: number, period: string): numbe
   }
 
   const drivers = db
-    .prepare("SELECT id FROM users WHERE organization_id = ? AND role IN ('delivery_driver', 'field_rep', 'driver')")
+    .prepare(
+      `SELECT u.id FROM users u JOIN user_roles _r ON _r.user_id = u.id AND _r.role IN ('delivery_driver', 'field_rep')
+        WHERE u.organization_id = ? AND u.active = 1`
+    )
     .all(organizationId) as { id: number }[];
   for (const d of drivers) {
     writes.push({

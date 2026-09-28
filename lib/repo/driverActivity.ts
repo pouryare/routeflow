@@ -19,15 +19,16 @@ export function readDriverActivity(
   days = 84,
 ): DriverActivity[] {
   const users = groupFilter(session, "u.group_id");
-  /* Both van roles, because a person who does either job has deliveries in their history.
-     The old `role = 'driver'` literal matched nobody the moment 'driver' stopped being a
-     role, and this query fails SILENTLY: an empty list, no error, a board reporting that
-     every driver is idle. */
+  /* People who HOLD a van role, whoever their primary. The old `role = 'driver'` literal
+     matched nobody the moment 'driver' stopped being a role, and this query fails SILENTLY:
+     an empty list, no error, a board reporting that every driver is idle. Widening the
+     literal fixed that but not this: a driver whose primary is something else is still
+     absent, and they are exactly the person whose activity matters. */
   const people = db
     .prepare(
       `SELECT u.id, u.display_name AS name FROM users u
-        WHERE u.active = 1
-          AND u.role IN ('delivery_driver', 'field_rep', 'driver')${users.sql}
+        JOIN user_roles _r ON _r.user_id = u.id AND _r.role IN ('delivery_driver', 'field_rep')
+        WHERE u.active = 1${users.sql}
         ORDER BY u.display_name`,
     )
     .all(...users.params) as unknown as { id: number; name: string }[];

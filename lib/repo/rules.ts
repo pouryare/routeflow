@@ -7,6 +7,7 @@ import {
   type RuleCondition,
 } from "@/lib/rules/engine";
 import { toJalali } from "@/lib/jalali";
+import { ROLES, type Role } from "@/lib/roles";
 import { rruleMatches } from "@/lib/tasks/recurrence";
 import { listRecurrences } from "./taskRecurrences";
 import { createTask } from "./tasks";
@@ -496,11 +497,20 @@ export function escalateStaleRuns(
     if (!isEscalatable(rr, rr.escalate_after_min, asOfIso)) continue;
     db.prepare("UPDATE rule_runs SET escalated_at = ? WHERE id = ?").run(asOfIso, rr.id);
     if (rr.task_id) {
-      const to = db
-        .prepare(
-          "SELECT id FROM users WHERE organization_id = ? AND role = ? AND active = 1 ORDER BY id LIMIT 1"
-        )
-        .get(organizationId, rr.escalate_to_role) as { id: number } | undefined;
+      /* An escalation matching nobody is a task that silently never escalates, so this
+         resolves through the SET — a manager whose primary is something else is still one.
+         The role is BOUND, not interpolated: it comes from a user-authored rule and must
+         never be pasted into a SQL string. */
+      const escalateTo = rr.escalate_to_role as Role;
+      const to = ROLES.includes(escalateTo)
+        ? (db
+            .prepare(
+              `SELECT u.id FROM users u
+                 JOIN user_roles _r ON _r.user_id = u.id AND _r.role = ?
+                WHERE u.organization_id = ? AND u.active = 1 ORDER BY u.id LIMIT 1`
+            )
+            .get(escalateTo, organizationId) as { id: number } | undefined)
+        : undefined;
       db.prepare(
         "UPDATE tasks SET assignee_user_id = COALESCE(?, assignee_user_id), priority = 'CRITICAL' WHERE id = ?"
       ).run(to?.id ?? null, rr.task_id);

@@ -159,8 +159,10 @@ export function addLeadContext(session: Session): FlowContext {
       .prepare(`SELECT u.id, u.display_name AS name,
                   (SELECT COUNT(*) FROM customers c WHERE c.owner_user_id = u.id AND c.closed_at IS NULL
                      AND COALESCE(c.sales_stage, 'unknown') NOT IN ${CUSTOMER_STAGES_SQL}) AS open
-                  FROM users u WHERE u.organization_id = ? AND u.role IN ('phone_sales', 'salesperson') AND u.active = 1${byGroup}
-                  ORDER BY u.display_name`)
+                  FROM users u
+                  JOIN user_roles _r ON _r.user_id = u.id AND _r.role = 'phone_sales'
+                 WHERE u.organization_id = ? AND u.active = 1${byGroup}
+                 ORDER BY u.display_name`)
       .all(...params) as unknown as FlowContext["reps"];
   }
   const f = crmFilter(session, "c");
