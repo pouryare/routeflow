@@ -10,7 +10,7 @@ const { applyIntel, updateTags } = await import("@/lib/repo/crm/intel");
 const { profileFor } = await import("@/lib/repo/crm/profile");
 const db = getDb(), now = new Date().toISOString();
 const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('intel','x','intel','owner',?,1)").run(now).lastInsertRowid);
-const session: Session = { user: { id: uid } as Session["user"], role: "owner", groupId: null, organizationId: 1 };
+const session: Session = { user: { id: uid } as Session["user"], role: "owner", groupId: null, organizationId: 1, roles: ["owner"], hasRole: (x) => x === "owner" };
 let n = 0;
 const customer = () => Number(db.prepare("INSERT INTO customers (customer_code,business_name,synced_at,organization_id) VALUES (?,'کافه',?,1)").run(`intel-${++n}`, now).lastInsertRowid);
 const answers = (unknown = false) => [

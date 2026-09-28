@@ -39,6 +39,8 @@ describe("rep_manager role", () => {
       role: "rep_manager" as never,
       groupId: null,
       organizationId: 8,
+      roles: ["rep_manager"] as import("@/lib/session").Session["roles"],
+      hasRole: (x: string) => x === "rep_manager",
     };
     expect(scopeGroupIds(s)).toEqual([]); // not "all", not a crash
   });

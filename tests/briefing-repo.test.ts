@@ -38,7 +38,7 @@ const jNow = toJalali(new Date().toISOString())!;
 const PERIOD = `${jNow.jy}-${String(jNow.jm).padStart(2, "0")}`;
 
 const sess = (id: number, role: string, gid: number | null): Session =>
-  ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1 }) as Session;
+  ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1, roles: [role] as Session["roles"], hasRole: (x) => x === role }) as Session;
 
 beforeEach(() => {
   const db = getDb();

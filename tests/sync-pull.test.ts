@@ -36,6 +36,8 @@ const sess = (id: number, role: string, orgId: number, groupId: number | null): 
     role: role as never,
     groupId,
     organizationId: orgId,
+    roles: [role] as Session["roles"],
+    hasRole: (x) => x === role,
   }) as Session;
 
 beforeEach(() => {

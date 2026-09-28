@@ -26,7 +26,7 @@ const PA = periodOf(`${DATE_A}T00:00:00.000Z`);
 const PB = periodOf(`${DATE_B}T00:00:00.000Z`);
 
 function session(role: Role, uid: number, gid: number | null): Session {
-  return { user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow, role, groupId: gid, organizationId: 1 };
+  return { user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow, role, groupId: gid, organizationId: 1, roles: [role], hasRole: (x) => x === role };
 }
 
 let gA = 0;

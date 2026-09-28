@@ -32,7 +32,7 @@ const lead = (gid: number) => {
 };
 const mine = lead(g1);
 const elsewhere = lead(g2);
-const D: Session = { user: { id: driver, display_name: "drv" } as Session["user"], role: "delivery_driver", groupId: g1, organizationId: 1 };
+const D: Session = { user: { id: driver, display_name: "drv" } as Session["user"], role: "delivery_driver", groupId: g1, organizationId: 1, roles: ["delivery_driver"], hasRole: (x) => x === "delivery_driver" };
 
 describe("driver visits", () => {
   it("lists only the driver's group's visits, with the minimum to find the door", () => {

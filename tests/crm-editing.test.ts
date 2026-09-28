@@ -11,7 +11,7 @@ const { profileFor } = await import("@/lib/repo/crm/profile");
 type Session = import("@/lib/session").Session;
 const db = getDb(), now = new Date().toISOString();
 const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('edit','x','edit','owner',?,1)").run(now).lastInsertRowid);
-const session: Session = { user: { id: uid } as Session["user"], role: "owner", groupId: null, organizationId: 1 };
+const session: Session = { user: { id: uid } as Session["user"], role: "owner", groupId: null, organizationId: 1, roles: ["owner"], hasRole: (x) => x === "owner" };
 let n = 0;
 const customer = () => Number(db.prepare("INSERT INTO customers (customer_code,business_name,synced_at,organization_id) VALUES (?,'کافه',?,1)").run(`edit-${++n}`, now).lastInsertRowid);
 afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(process.env.ROUTEFLOW_DB_PATH! + s, { force: true }); });

@@ -20,7 +20,7 @@ let a: Awaited<ReturnType<typeof seedTwoOrgs>>["a"];
 let b: Awaited<ReturnType<typeof seedTwoOrgs>>["b"];
 
 const owner = (f: { orgId: number; ownerId: number }): Session =>
-  ({ user: { id: f.ownerId } as never, role: "owner" as never, groupId: null, organizationId: f.orgId });
+  ({ user: { id: f.ownerId } as never, role: "owner" as never, groupId: null, organizationId: f.orgId, roles: ["owner"], hasRole: (x) => x === "owner" });
 
 describe("organisation A and organisation B cannot see each other", () => {
   beforeAll(() => {

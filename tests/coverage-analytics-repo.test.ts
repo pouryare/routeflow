@@ -24,7 +24,7 @@ function session(role: Role, uid: number, gid: number | null): Session {
     user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow,
     role,
     groupId: gid,
-    organizationId: 1,
+    organizationId: 1, roles: [role], hasRole: (x) => x === role 
   };
 }
 

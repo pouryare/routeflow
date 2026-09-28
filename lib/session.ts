@@ -2,16 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
 import { isVanRole } from "./roles";
+import { rolesFor } from "./repo/userRoles";
 
 export interface Session {
   user: UserRow;
+  /** TIER 1 — the ACTIVE role: which world is this person looking at? Their shell, their
+   *  nav, their home page. It is a claim in the cookie, so `proxy.ts` can read it without
+   *  touching the database. It falls back to the primary whenever the claim names a role
+   *  the person no longer holds. */
   role: Role;
+  /** TIER 2 — the FULL set: what may this person be handed? A delivery driver whose active
+   *  role is `field_rep` still has to be assignable a delivery run, so anything deciding
+   *  "can this person be given this work" asks THIS, never `.role`. */
+  roles: Role[];
   /** null for an owner or platform_owner, who are not scoped to any one group. */
   groupId: number | null;
   /** The tenant. Every business read is narrowed to this, except for a platform_owner. */
   organizationId: number;
   /** The owner acting as this user (Login-As), or undefined for an ordinary session. */
   actorId?: number;
+  /** Whether this person HOLDS a role, whatever their active one. Reads the same array as
+   *  `.roles`, so the two tiers can never disagree about what someone is. */
+  hasRole(role: Role): boolean;
 }
 
 export type Guard = { ok: true; session: Session } | { ok: false; response: NextResponse };
@@ -56,7 +68,31 @@ export function getSessionFromCookies(token: string | undefined | null): Session
     actorId = actor.id;
   }
 
-  return { user, role: user.role, groupId: user.group_id, organizationId: user.organization_id, actorId };
+  /* TIER 2 first, because TIER 1 is decided by it. The set is read from the database on
+     every request for the same reason the user row is: a role removed by an admin must take
+     effect now, not when a 30-day cookie expires. */
+  const held = rolesFor(user.id);
+
+  /* An account with NO set rows answers from its primary, and the set is REPLACED rather
+     than merely consulted. Returning `[]` alongside a populated `.role` would be a person
+     whose shell says phone_sales and whose capabilities say nothing — the two tiers
+     disagreeing about the same human, which is the one thing this design exists to
+     prevent. A single-role account therefore always has a one-element set. */
+  const roles: Role[] = held.length === 0 ? [user.role as Role] : held;
+
+  /* TIER 1 -- the claim, but only if they still hold it. A stale cookie naming a removed
+     role falls back to the primary, which is also the answer for an empty set. */
+  const role: Role = roles.includes(claims.role as Role) ? (claims.role as Role) : (user.role as Role);
+
+  return {
+    user,
+    role,
+    roles,
+    groupId: user.group_id,
+    organizationId: user.organization_id,
+    actorId,
+    hasRole: (r: Role) => roles.includes(r),
+  };
 }
 
 export function requireRole(req: NextRequest, roles: Role[]): Guard {

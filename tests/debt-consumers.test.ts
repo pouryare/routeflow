@@ -23,7 +23,7 @@ let userId = 0;
 let custId = 0;
 
 const ownerSession = (): Session =>
-  ({ user: { id: userId } as never, role: "owner" as never, groupId: null, organizationId: 1 });
+  ({ user: { id: userId } as never, role: "owner" as never, groupId: null, organizationId: 1, roles: ["owner"], hasRole: (x) => x === "owner" });
 
 function deliveredOrder(total: number, dateISO: string): number {
   const db = getDb();

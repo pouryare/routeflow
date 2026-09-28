@@ -16,7 +16,7 @@ afterAll(() => {
 });
 
 const s = (role: string, oid: number, uid = 7): Session =>
-  ({ user: { id: uid } as never, role: role as never, groupId: null, organizationId: oid });
+  ({ user: { id: uid } as never, role: role as never, groupId: null, organizationId: oid, roles: [role] as Session["roles"], hasRole: (x) => x === role });
 
 describe("platform access log", () => {
   beforeAll(() => {

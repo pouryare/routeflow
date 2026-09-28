@@ -35,7 +35,7 @@ const task = Number(db.prepare("INSERT INTO tasks (organization_id, kind, title,
 db.prepare("UPDATE customers SET next_task_id = ? WHERE id = ?").run(task, hotLead);
 db.prepare("INSERT INTO contacts (organization_id, customer_id, name, role, is_primary, created_at, updated_at) VALUES (1,?,?,?,1,?,?)").run(hotLead, "علی", "PURCHASING", NOW, NOW);
 
-const sess = (id: number, role: Session["role"]): Session => ({ user: { id } as Session["user"], role, groupId: g1, organizationId: 1 });
+const sess = (id: number, role: Session["role"]): Session => ({ user: { id } as Session["user"], role, groupId: g1, organizationId: 1, roles: [role], hasRole: (x) => x === role });
 const A = sess(repA, "phone_sales");
 const ids = (r: { rows: { id: number }[] }) => r.rows.map((x) => x.id).sort((a, b) => a - b);
 

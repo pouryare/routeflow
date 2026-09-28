@@ -20,7 +20,7 @@ describe("briefing → after-call flow", () => {
     const c = Number(db.prepare("INSERT INTO customers (customer_code,business_name,synced_at,organization_id) VALUES ('BR-1','ب',?,1)").run(now).lastInsertRowid);
     db.prepare("INSERT INTO tasks (organization_id, assignee_user_id, kind, title, entity_type, entity_id, due_at, created_at) VALUES (1,?,'call','تماس اول','customer',?,?,?)").run(rep, c, now, now);
     db.prepare("INSERT INTO tasks (organization_id, assignee_user_id, kind, title, created_at) VALUES (1,?,'note','یادداشت',?)").run(rep, now);
-    const s: Session = { user: { id: rep } as Session["user"], role: "phone_sales", groupId: null, organizationId: 1 };
+    const s: Session = { user: { id: rep } as Session["user"], role: "phone_sales", groupId: null, organizationId: 1, roles: ["phone_sales"], hasRole: (x) => x === "phone_sales" };
     const items = todayFor(s).panels.find((p) => p.key === "open_tasks")!.items;
     expect(items.find((i) => i.label === "تماس اول")!.action).toEqual({ kind: "task_outcome", task_id: expect.any(Number), customer_id: c });
     expect(items.find((i) => i.label === "یادداشت")!.action).toEqual({ kind: "task_outcome", task_id: expect.any(Number) });

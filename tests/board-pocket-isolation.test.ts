@@ -30,6 +30,8 @@ const mgr = (f: { orgId: number; groupId: number; managerId: number }): Session 
     role: "group_manager" as never,
     groupId: f.groupId,
     organizationId: f.orgId,
+    roles: ["group_manager"] as Session["roles"],
+    hasRole: (x) => x === "group_manager",
   });
 
 beforeAll(() => {

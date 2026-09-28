@@ -18,7 +18,7 @@ function user(name: string) {
   return Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,'x',?,'phone_sales',?,?,1)").run(name, name, group, NOW).lastInsertRowid);
 }
 const a = user("profile-a"), b = user("profile-b");
-const session: Session = { user: { id: a } as Session["user"], role: "phone_sales", groupId: group, organizationId: 1 };
+const session: Session = { user: { id: a } as Session["user"], role: "phone_sales", groupId: group, organizationId: 1, roles: ["phone_sales"], hasRole: (x) => x === "phone_sales" };
 let serial = 0;
 function customer(owner: number | null) {
   const code = `profile-${++serial}`;

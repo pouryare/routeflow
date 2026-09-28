@@ -26,6 +26,8 @@ function session(role: string, organizationId: number, groupId: number | null, i
     role: role as never,
     groupId,
     organizationId,
+    roles: [role] as Session["roles"],
+    hasRole: (x) => x === role,
   };
 }
 

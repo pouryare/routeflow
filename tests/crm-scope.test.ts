@@ -31,7 +31,7 @@ const pool2 = cust("P2", null, g2);
 const other = cust("O1", null, null, 2);
 
 const sess = (id: number, role: Session["role"], groupId: number | null, organizationId = 1): Session =>
-  ({ user: { id } as Session["user"], role, groupId, organizationId });
+  ({ user: { id } as Session["user"], role, groupId, organizationId, roles: [role], hasRole: (x) => x === role });
 const visible = (s: Session) => {
   const f = crmFilter(s, "c");
   return (db.prepare(`SELECT id FROM customers c WHERE 1 = 1${f.sql} ORDER BY id`).all(...f.params) as { id: number }[]).map((r) => r.id);

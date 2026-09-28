@@ -33,7 +33,7 @@ const openTask = (customerId: number) => {
   db.prepare("UPDATE customers SET next_task_id = ? WHERE id = ?").run(id, customerId);
   return id;
 };
-const A: Session = { user: { id: repA, display_name: "repA" } as Session["user"], role: "phone_sales", groupId: g1, organizationId: 1 };
+const A: Session = { user: { id: repA, display_name: "repA" } as Session["user"], role: "phone_sales", groupId: g1, organizationId: 1, roles: ["phone_sales"], hasRole: (x) => x === "phone_sales" };
 const row = (id: number) => db.prepare("SELECT * FROM customers WHERE id = ?").get(id) as Record<string, unknown>;
 const task = (id: number) => db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as Record<string, unknown>;
 const replayOf = (id: number) => replayCrmState(db.prepare(`SELECT ${ACTIVITY_FACT_COLUMNS} FROM activities WHERE customer_id = ? ORDER BY occurred_at, id`).all(id) as never[]);

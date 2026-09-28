@@ -18,7 +18,7 @@ afterAll(() => {
 });
 
 const sess = (id: number, role: string, gid: number | null): Session =>
-  ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1 }) as Session;
+  ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1, roles: [role] as Session["roles"], hasRole: (x) => x === role }) as Session;
 
 const TODAY = "2026-09-10";
 let owner = 0, mgrA = 0, driverA = 0, driverB = 0, idle = 0, groupA = 0, groupB = 0;

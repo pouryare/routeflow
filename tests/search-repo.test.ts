@@ -18,7 +18,7 @@ afterAll(() => {
 });
 
 const sess = (id: number, role: string, gid: number | null): Session =>
-  ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1 }) as Session;
+  ({ user: { id } as never, role: role as never, groupId: gid, organizationId: 1, roles: [role] as Session["roles"], hasRole: (x) => x === role }) as Session;
 
 let owner = 0, mgrA = 0, sellerA = 0, sellerA2 = 0, groupA = 0, groupB = 0, custA = 0, custB = 0;
 let orderMineId = 0, orderOther = "";

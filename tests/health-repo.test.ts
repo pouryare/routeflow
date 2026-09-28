@@ -25,7 +25,7 @@ const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * 86_400_000).toI
 const PERIOD = periodOf(new Date().toISOString());
 
 function session(role: Role, uid: number, gid: number | null): Session {
-  return { user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow, role, groupId: gid, organizationId: 1 };
+  return { user: { id: uid, role, group_id: gid, organization_id: 1 } as UserRow, role, groupId: gid, organizationId: 1, roles: [role], hasRole: (x) => x === role };
 }
 
 let gEast = 0;
