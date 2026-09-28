@@ -2,10 +2,21 @@
 
 **Date:** 2026-09-28
 **Status:** approved design, ready for an implementation plan
+**Revision 2 (2026-09-28):** a review pass against the code found that the first
+draft's claim — *"the diff at the comparison sites is zero, and the proxy needs
+no change"* — was **false**, and that it was hiding two larger classes of defect.
+Corrected in §2.3, §3.3, §3.4, §4.6, §5.0 and §7.1, with §8 revised upward from
+5–8 days to 9–13. The **design decision is unchanged**; what changed is the
+blast radius. Anyone reading only the summary of D1–D10 should read §3.3 too.
+
 **Touches:** `lib/roles.ts`, `lib/session.ts`, `lib/auth.ts`, `lib/appNav.ts`,
-`lib/repo/briefing.ts`, `lib/db.ts`, `proxy.ts`, `app/(bare)/today`,
-`app/(bare)/driver`, `components/meridian/ProfileMenu.tsx`,
-`scripts/create-user.mjs`
+`lib/repo/briefing.ts`, `lib/orderStateMachine.ts`, `lib/repo/orders.ts`,
+`lib/repo/syncMutations.ts`, `lib/repo/leadRuns.ts`, `lib/repo/pocket.ts`,
+`lib/repo/crm/driverVisits.ts`, `lib/delivery.ts`, `lib/commissionLedger.ts`,
+`lib/driverCommissionLedger.ts`, `lib/impersonation.ts`, `lib/db.ts`, `proxy.ts`,
+`app/(bare)/today`, `app/(bare)/driver`, `app/api/me/role`,
+`app/api/sales/runs`, `app/api/sales/commission/*`,
+`components/meridian/ProfileMenu.tsx`, `scripts/create-user.mjs`
 
 ---
 
@@ -108,21 +119,48 @@ shell, while `hasRole("delivery_driver")` remains true, so deliveries still work
 and they are still assignable for delivery runs. One screen, two separately
 assignable capabilities — D6 satisfied without a merged-permission model.
 
-### 2.3 Why the comparison sites do not change
+### 2.3 What changes at the comparison sites, and why
 
-`Session.role` keeps its name and its meaning-as-active-role. Every
-`session.role === "..."` site keeps reading it and keeps working. The diff at
-those sites is **zero**; only `lib/session.ts` changes what fills the field.
+`Session.role` keeps its name and its meaning-as-active-role, so the large
+majority of `session.role === "..."` sites need no edit: `briefing.todayFor`'s
+manager branches, `margin`, `why`, `board`, the group filters in `scopeGroupIds`.
+
+**But not the role-literal gates. Those fail OPEN, which is the opposite of
+safe.** `proxy.ts` compares the claim against role *literals*:
 
 ```ts
-// lib/session.ts — before
-return { user, role: user.role, groupId: user.group_id, organizationId, actorId };
-// after
-return { user, role: activeRole, roles, groupId: user.group_id, organizationId, actorId };
+proxy.ts:109   if (isDriver && claims.role !== "driver") return deny("/sales");
+proxy.ts:172   if (isCrm && !isDriverVisits && claims.role === "driver") return deny("/driver");
+proxy.ts:173   if (isDriverVisits && claims.role !== "driver") return deny("/sales");
+proxy.ts:196   if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
 ```
 
-The cookie claim is already named `role` and `proxy.ts` already reads
-`claims.role`, so the proxy's gate logic needs no change either.
+With `field_rep` in the token every one of these is false, so every gate falls
+through **open**: the driver whitelist at :196 never fires, and a field rep walks
+into `/report`, `/sales/orders` and the whole sales shell. Line 173 likewise
+opens `/api/crm/driver-visits` to a phone sales rep. This inverts the model —
+today a driver provably cannot reach the debt ledger, and after a naive rename
+they could, without anyone deciding it.
+
+`lib/appNav.ts:85` has the same shape: `if (r === "driver") return DRIVER_TABS`
+never fires, so a `field_rep` is handed the **full 19-tab sales menu** instead of
+the 3-tab van list.
+
+**So the rule is: a gate keyed on a role literal must become a set-membership
+test.** In `lib/roles.ts`, which already exists to be the one place a role is
+defined:
+
+```ts
+/** The two roles that work a route in a vehicle. A gate keyed on ONE of these
+ *  literals falls open the moment the other appears, which is how a field rep
+ *  ends up with the whole sales shell. */
+export const VAN_ROLES: Role[] = ["field_rep", "delivery_driver"];
+export function isVanRole(r: Role): boolean { return VAN_ROLES.includes(r); }
+```
+
+`proxy.ts` and `appNav.ts` then test membership. This is a small diff (six lines
+in the proxy, one in `appNav`), but it is **not zero**, and it is
+load-bearing.
 
 
 ---
@@ -226,6 +264,137 @@ UPDATE task_rules SET escalate_to_role = 'group_manager' WHERE escalate_to_role 
 
 Seeded defaults at `lib/db.ts:3720` and `:3742` also need updating.
 
+### 3.3 The bigger trap: queries that read the role from the database
+
+**A role set on `Session` is not enough.** A large class of code never reads the
+session at all — it queries `users.role` directly. `grep "session.role ==="` does
+not find any of these, which is exactly why they must be enumerated by hand.
+
+Every row below goes **silent** on a naive rename. None throws; each simply
+stops finding people.
+
+| Site | Query | Symptom after a naive rename |
+|---|---|---|
+| `lib/repo/leadRuns.ts:256` | `WHERE role = 'driver'` | **Assign-route dropdown is empty.** No lead run can be handed to anyone. |
+| `lib/repo/leadRuns.ts:229` | `if (u.role !== "driver") throw` | Every assignment rejected: «این کاربر راننده نیست» |
+| `lib/delivery.ts:79` | `if (driver.role !== "driver") throw` | **No delivery run can ever be created.** |
+| `app/api/sales/runs/route.ts:55` | `driver.role !== "driver"` | Same, from the API side |
+| `lib/repo/syncMutations.ts:36` | `ORDER_ROLES.includes(u?.role)` | **The offline driver's best path dies.** Falls through to `"salesperson"`, so a driver in a van, offline, cannot `startRoute` or `deliver` — no error, just a button that does nothing. |
+| `lib/repo/driverActivity.ts:25` | `WHERE role = 'driver'` | Driver-activity board reports zero drivers |
+| `lib/repo/health.ts:329` | `WHERE role = 'driver'` | No driver health metrics computed |
+| `lib/repo/health.ts:316` | `WHERE role = 'salesperson'` | **No seller health metrics at all** — the analytics board goes blank |
+| `lib/repo/kpiSnapshots.ts:513` | `WHERE role = 'salesperson'` | Same, for KPI snapshots |
+| `lib/commissionLedger.ts:235,238` | `WHERE role = 'salesperson'` | **No commission statements produced** for anyone |
+| `lib/driverCommissionLedger.ts:228,230` | `WHERE role = 'driver'` | Driver commission statements empty |
+| `app/api/sales/commission/rates/route.ts:57,89` | `role = 'driver'` / `'salesperson'` | Cannot set a commission rate for either kind |
+| `app/api/sales/commission/payments/route.ts:56` | `role = ?` | Paying a commission fails |
+| `lib/repo/pocket.ts:124` | `u.role IN ('salesperson','driver','rep_manager')` | Managers' team list loses phone sales **and both van roles** |
+| `lib/repo/pocket.ts:45,58` | reads `u.role`, compares to `t.role_hint` | Unassigned role-hinted tasks go invisible — see §3.4 |
+| `lib/repo/crm/driverVisits.ts:14` | `t.role_hint = 'driver'` | **Unassigned field visits disappear** |
+| `lib/repo/crm/businesses.ts:162` | `u.role = 'salesperson'` | Seller dropdown for claiming a business is empty |
+| `lib/repo/crm/migrate.ts:161` | `u.role IN ('salesperson',…)` | Customer↔rep backfill matches nobody |
+| `lib/repo/rules.ts:501` | `WHERE role = ?` (escalation) | Escalations to a renamed role find no recipient |
+
+`lib/repo/notifications.ts:153,178,189` also queries by role, but only for
+`group_manager` / `owner`, which this change does not rename — it still needs
+re-checking when `accountant` arrives.
+
+**The governing rule, and the fix.** Any query whose *purpose* is "people who
+can do X" must consult `user_roles`, not `users.role`:
+
+```sql
+-- before
+SELECT id, display_name FROM users WHERE organization_id = ? AND role = 'delivery_driver' AND active = 1
+-- after
+SELECT u.id, u.display_name FROM users u
+  JOIN user_roles r ON r.user_id = u.id
+ WHERE u.organization_id = ? AND r.role = 'delivery_driver' AND u.active = 1
+```
+
+The distinction that keeps this cheap: a query that wants **one specific person
+and their PRIMARY role** (`pocket.ts:45`, which asks "what is this person's
+primary role, to match their unassigned task hints") keeps reading `users.role`
+and needs no join. Only the *enumeration* queries — "all the drivers", "all the
+sellers" — need the join. Widening the literal list instead of joining is
+acceptable **only** where the role is the person's primary and the list is
+cosmetic (a dashboard); it is **not** acceptable where the list feeds an
+assignment control or a money calculation.
+
+This table is the single largest item in the estimate, and it did not exist in
+the first draft of this spec.
+
+### 3.4 Two more places the two systems have to meet
+
+**`role_hint` is a TEXT column, but it is queried against the active role.**
+`pocket.ts:58` passes `u?.role ?? "salesperson"` into `t.role_hint = ?`, and
+`driverVisits.ts:14` hardcodes `t.role_hint = 'driver'`. After §3.2 rewrites the
+stored values to `phone_sales` / `field_rep`, a `field_rep` asks for
+`role_hint = 'field_rep'` — which is correct — but a `delivery_driver` asking for
+its own unassigned hints asks for `role_hint = 'delivery_driver'`, and those rows
+were classified by hand in §3.2. So the migration and the query must agree, row
+for row.
+
+The safer shape is to stop treating `role_hint` as a single role and match it
+against the **set**:
+
+```sql
+-- a task is offered to this person if its hint is any role they hold
+AND (t.assignee_user_id = ? OR (t.assignee_user_id IS NULL AND EXISTS (
+      SELECT 1 FROM user_roles r WHERE r.user_id = ? AND r.role = t.role_hint
+    ) AND (t.group_id = ? OR t.group_id IS NULL)))
+```
+
+This makes the hand-classified rows forgiving: a task hinted `field_rep` is
+offered to a driver who holds both, which is the intent. Adopt this in
+`pocket.ts` and `driverVisits.ts`.
+
+**The order state machine is single-role, and must become set-aware.**
+`OrderRole` is a closed union —
+
+```ts
+// lib/orderStateMachine.ts:53
+export type OrderRole = "salesperson" | "group_manager" | "owner" | "driver" | "system";
+```
+
+— and the guard is `lib/repo/orders.ts:189`:
+
+```ts
+if (!t.roles.includes(actor.role)) throw new OrderRoleError("نقش شما اجازهٔ این تغییر وضعیت را ندارد");
+```
+
+**This is the sharpest edge in the whole design, and the two-tier model is what
+breaks it.** A `delivery_driver` whose *active* role is `field_rep` taps the
+van card, then tries to mark a stop delivered. `actor.role` is `field_rep`,
+`field_rep` is not in `OrderRole`, and the `deliver` edge lists `driver` — so the
+delivery is **refused**, to the one person the design exists to serve. The
+promise "they are still assignable for delivery runs" would be broken at the last
+step, in a van, with a Persian error about their role.
+
+The fix is to make the guard a set intersection, and to widen the two delivery
+edges:
+
+```ts
+export type OrderRole = "phone_sales" | "group_manager" | "owner"
+                     | "field_rep" | "delivery_driver" | "system";
+
+// orders.ts:189
+if (!t.roles.some((r) => actorRoles.includes(r))) throw new OrderRoleError(...);
+
+// orderStateMachine.ts — the two delivery edges
+{ from: "READY",            action: "startRoute",   roles: ["delivery_driver", "group_manager", "owner", "system"] },
+{ from: "OUT_FOR_DELIVERY", action: "deliver",      roles: ["delivery_driver", "system"] },
+```
+
+`legalOrderActions(from, role)` and `canAdvanceOrder` take the same set, so the
+buttons a person is *offered* agree with the transitions they may *fire* — the
+same invariant `orders.ts:266` already cares about ("what `role` could do to
+this order right now -- for rendering buttons").
+
+⚠️ `lib/repo/syncMutations.ts:36` is the **worst** instance, because the driver
+app is an offline client. `roleFor` reads the primary role from the database and
+falls back to `"salesperson"` for anything unrecognised, so a `delivery_driver`
+offline silently loses `startRoute` and `deliver`. It must read the full set.
+
 
 ---
 
@@ -310,18 +479,29 @@ says which app they are in.
 `ProfileMenu.tsx:101` renders `roleLabel` as one line. It becomes a list, with a
 «تغییر نقش» row above the existing links, shown only when `roles.length > 1`.
 
-### 4.6 What does not change
+### 4.6 What changes and what does not
 
 | Role | Nav | Home | API |
 |---|---|---|---|
 | `phone_sales` | identical | identical | identical |
 | `delivery_driver` | identical to today's driver | identical `/driver` | identical |
-| `field_rep` | identical to today's driver | new panel mix | new branch, same driver-visit queries |
+| `field_rep` | **must equal** today's driver 3-tab list | new panel mix | new branch, same driver-visit queries |
 | `owner`, `group_manager`, `rep_manager` | **unchanged** | **unchanged** | **unchanged** |
+
+`field_rep`'s row reads "must equal", not "identical", because it only *becomes*
+identical once §2.3's membership fix lands. Left alone, `appNav.ts:85` hands a
+field rep the full 19-tab sales menu — a different app, reached by accident.
 
 Management does not move at all: they are single-role, so they never see a
 picker. The blast radius is confined to the field team that was already confused
 by the current muddle.
+
+⚠️ **`briefing.todayFor` has no fallback.** It is a chain of
+`if (session.role === ...)` blocks ending in a bare `return` (`briefing.ts:267`).
+A role with no branch gets **zero panels** — a person who logs in and sees
+nothing, with no error anywhere. `field_rep` needs an explicit branch, and §7
+adds a test that *every* role produces at least one panel, so the next role
+cannot silently land here.
 
 
 ---
@@ -346,6 +526,34 @@ cannot read the database. Switching roles does **not** touch `token_version`, so
 nobody is logged out, and an owner's Login-As impersonation survives a switch
 (the `act` claim rides along).
 
+### 5.0 Login-As, when the target has two roles
+
+`lib/impersonation.ts` exists so an owner can answer "what does my person
+actually see?" — and that question becomes ambiguous the moment someone holds
+two roles. "What does Ali see?" has no single answer: as a driver he sees three
+tabs, as a seller he sees nineteen.
+
+The rules:
+
+- **The impersonated session starts at the target's PRIMARY role**, so an owner
+  lands where the person lands by default. It is not a random pick.
+- **The owner can switch roles while impersonating**, using the same picker and
+  the same endpoint. The `act` claim is preserved across the switch, so the
+  banner still attributes every action to the target, and the existing
+  `act` re-validation in `lib/session.ts:49-55` keeps working unchanged.
+- **`UNTOUCHABLE` is unchanged** — `owner` and `platform_owner` still cannot be
+  impersonated. A second hat does not make a manager impersonable, because the
+  rule is about *authority*, not about how many roles someone holds.
+- **The banner names both facts** — "you are seeing the app as Ali, as راننده
+  تحویل" — so an owner reading over a shoulder is never confused about whose
+  permissions they are exercising.
+
+⚠️ `lib/impersonation.ts:23` currently reads the target's role as a single
+value, and `impersonationRefusal` is a pure function over
+`{id, role, organization_id, active}`. It needs the target's role **set** to
+pick the primary correctly, and `UNTOUCHABLE` must be tested against every role
+the target holds, not just the primary.
+
 ### 5.1 Failure modes
 
 | Failure | Behaviour | Why |
@@ -369,14 +577,34 @@ migrations on boot, so they are idempotent by construction.
 **Step 2 — the two TEXT columns.** §3.2. Invisible, and it repairs latent
 mis-routing. Requires per-row judgement on the `driver` values.
 
-**Step 3 — rename `salesperson` → `phone_sales` in code.** ~125 sites, guided by
-`tsc`. Mechanical.
+**Step 3 — the rename, in two very different places.**
+
+- **3a, the comparison sites** — ~125 string occurrences, ~139 `session.role`
+  comparisons. `tsc`-guided and mechanical.
+- **3b, the §3.3 queries** — nineteen sites that read `users.role` from the
+  database. **These are the ones that break silently**, and they are what makes
+  this step the largest. `delivery.createRun` and
+  `leadRuns.assignableDrivers` are load-bearing for the entire delivery flow.
+- **3c, the order state machine** — set-aware `OrderRole`, the two delivery edges,
+  and `syncMutations.roleFor`, where the `?? "salesperson"` fallback would
+  silently break the offline driver.
+- **3d, the `role_hint` join** — `pocket.ts` and `driverVisits.ts`, so a task is
+  offered on any role the person holds.
 
 **Step 4 — the `users.role` `CHECK` widening.** The 5th table rebuild, after
 backfill so nothing is lost if it fails. Follows the existing
 `rebuildForTenantUnique` pattern.
 
-**Step 5 — `activeRole`, the picker, the banner.** Purely additive.
+**Step 5 — `activeRole`, the picker, the banner.** Purely additive. Carries four
+prerequisites that must land *first*, because each is invisible until it is
+missing:
+
+| Prerequisite | Why it must precede the picker |
+|---|---|
+| §2.3 `VAN_ROLES` gates in `proxy` + `appNav` | Otherwise the picker grants a field rep the whole sales shell |
+| §4.6 `field_rep` briefing branch | Otherwise a field rep logs in to an empty day |
+| §3.4 set-aware `OrderRole` | Otherwise a delivery driver's own `deliver` is refused |
+| §5.0 impersonation with a set | Otherwise Login-As on a two-role person picks the wrong world |
 
 Steps 1–4 can ship without Step 5: the data model can be corrected in production
 before any UI is exposed to a user.
@@ -403,11 +631,50 @@ assertion that the rebuild actually happened.
 | Test | Asserts |
 |---|---|
 | `tests/roles.test.ts` *(extend)* | the 8 roles; every label present; no orphan labels |
-| `tests/user-roles-schema.test.ts` *(new)* | table exists; backfill idempotent; a driver got **both** roles |
+| `tests/user-roles-schema.test.ts` *(new)* | table exists; backfill idempotent; a driver got **both** roles; no `driver` row survives |
 | `tests/role-migration.test.ts` *(new)* | no `role_hint` / `escalate_to_role` row still says `salesperson` or `driver` — **the guard against the §3.2 trap** |
-| `tests/proxy.test.ts` *(extend)* | the existing driver-menu-matches-the-gate assertion, now for both new roles |
-| `tests/appNav.test.ts` *(extend)* | both new roles get the driver menu; `phone_sales` keeps the sales menu |
-| `tests/switch-role.test.ts` *(new)* | a role you do not hold → 403; a stale claim → fallback to primary; `token_version` untouched |
+| `tests/proxy.test.ts` *(rewrite the gate test)* | see below — the existing mirror test is insufficient |
+| `tests/appNav.test.ts` *(extend)* | a `field_rep` gets **exactly** `DRIVER_TABS`, and does not get `/crm`, `/report` or `/sales/orders` |
+| `tests/switch-role.test.ts` *(new)* | a role you do not hold → 403; a stale claim → fallback to primary; `token_version` untouched; `act` survives a switch |
+| `tests/role-queries.test.ts` *(new)* | one case per §3.3 row: the enumeration returns a person who holds the role **non-primarily** |
+| `tests/order-roles.test.ts` *(new)* | a `delivery_driver` with active role `field_rep` may fire `startRoute` and `deliver`; `legalOrderActions` agrees with what the guard permits |
+| `tests/briefing.test.ts` *(extend)* | **every** role in `ROLES` produces ≥1 panel — catches the no-fallback branch |
+| `tests/offline-driver.test.ts` *(new)* | an offline `delivery_driver` can `startRoute` and `deliver` via `syncMutations` — catches the `?? "salesperson"` fallback |
+
+### 7.1 The existing proxy test cannot catch the §2.3 failure
+
+`tests/proxy.test.ts:119` asserts one direction only:
+
+```ts
+for (const t of appTabs({ role: "driver" }).filter((x) => x.ready)) {
+  expect(proxy(req(t.href, "driver")).status, t.href).toBe(200);
+}
+```
+
+**Two files that are consistently wrong satisfy this.** If `appNav` hands a field
+rep the sales menu *and* the proxy lets them through, the assertion passes — which
+is precisely the §2.3 bug. The failing case is the one it never asks: a tab the
+menu **hides** that the gate **admits**.
+
+The replacement asserts both directions, per role:
+
+```ts
+for (const role of ROLES) {
+  const shown = new Set(appTabs({ role }).filter((t) => t.ready).map((t) => t.href));
+  for (const href of ["/crm", "/report", "/sales/orders", "/driver", "/leads"]) {
+    const admitted = proxy(req(href, role)).status === 200;
+    expect(admitted, `${role} → ${href}`).toBe(shown.has(href));
+  }
+}
+```
+
+Plus a direct assertion of intent, so a future reader cannot "fix" a failure by
+loosening it:
+
+```ts
+expect(appTabs({ role: "field_rep" })).toEqual(appTabs({ role: "delivery_driver" }));
+expect(proxy(req("/report", "field_rep")).status).not.toBe(200);
+```
 
 `tests/roles.test.ts:46` already parses `scripts/create-user.mjs` and asserts its
 hardcoded list equals `ROLES`, so a forgotten copy in the bootstrap script fails
@@ -419,15 +686,35 @@ loudly rather than drifting.
 
 | | Estimate | Difficulty |
 |---|---|---|
-| Steps 1–3 (data + rename) | 2–3 days | low — mechanical, `tsc`-guided, plus the TEXT migration |
-| Step 4 (new role screens) | 1–2 days | low — the driver app exists; this is a filter |
-| Step 5 (switcher + banner) | 2–3 days | medium — one screen, one banner, a cookie round-trip |
-| **Total** | **5–8 days** | |
+| Step 1 — `user_roles` + backfill | 0.5 day | low — additive, no rebuild |
+| Step 2 — the two TEXT columns | 0.5 day | low — plus the per-row `driver` judgement |
+| Step 3a — rename in comparison sites | 1 day | low — `tsc`-guided, mechanical |
+| **Step 3b — the §3.3 query audit** | **2–3 days** | **medium — 19 sites, and two of them (`delivery.createRun`, `leadRuns.assignableDrivers`) are load-bearing for the whole delivery flow** |
+| Step 3c — the state machine + `syncMutations` | 1 day | medium — set-aware `OrderRole`, the offline path |
+| Step 3d — `role_hint` ⇄ `user_roles` join | 0.5 day | low — two queries |
+| Step 4 — the `users.role` `CHECK` rebuild | 0.5 day | low — the pattern already exists 4× |
+| Step 5a — `VAN_ROLES` gates in `proxy` + `appNav` | 0.5 day | low, but **security-critical** |
+| Step 5b — `field_rep` briefing branch | 0.5 day | low |
+| Step 5c — impersonation with a set | 0.5 day | medium — a pure function and its callers |
+| Step 5d — the picker, banner, `POST /api/me/role` | 2–3 days | medium — one screen, a cookie round-trip |
+| **Total** | **9–13 days** | |
 | Step 6 (accountant, warehouse) | ~1 day each, later | low — *because* of D1/D2 |
 
-The final row is the point of the two-tier model: a future role is a `ROLES`
-entry, a label, a nav branch and a briefing branch. No migration, no rebuild, no
-new concept.
+**The estimate went up from 5–8 days because the original number rested on a
+false premise.** "Zero diff at the comparison sites" was asserted, and that
+assertion is what hid §3.3 — nineteen queries that never touch the session. The
+rename is genuinely cheap; the query audit is not, and it is the difference
+between a system that keeps delivering and one where a driver in a van, offline,
+silently cannot mark a stop delivered.
+
+Two things soften it, and both are real: the §3.3 work is **mechanical once
+enumerated** (this table is the enumeration), and Steps 1–4 still ship with no UI
+at all, so the risky half can be corrected in production before a user sees
+anything.
+
+The final row of the table is still the point of the two-tier model: a future
+role is a `ROLES` entry, a label, a nav branch, a briefing branch and a row in
+§3.3. No migration, no rebuild, no new concept.
 
 ---
 
