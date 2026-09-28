@@ -911,6 +911,18 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
 
+    /* A person's roles as a SET, while users.role stays their primary.
+     *
+     *  Every query asking "who can do X" reads this table and never users.role — a single
+     *  column cannot say that someone both drives a delivery round and visits doors, and
+     *  reading the primary instead is how a driver silently becomes unreachable.
+     *  See lib/userRoles.ts, which is the only module that queries it. */
+    CREATE TABLE IF NOT EXISTS user_roles (
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      role    TEXT NOT NULL,
+      PRIMARY KEY (user_id, role)
+    );
+
     CREATE TABLE IF NOT EXISTS saved_locations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       name TEXT NOT NULL,
@@ -3231,6 +3243,87 @@ export function getDb(): DatabaseSync {
     // than a delivery. A manager always exists to unstick it, so this one IS mechanical.
     db.exec("UPDATE rules SET escalate_to_role = 'group_manager' WHERE escalate_to_role = 'driver'");
   }
+
+  /* Multi-role (docs/superpowers/specs/2026-09-28-multi-role-switcher-design.md): a person's
+   * roles become a SET, while users.role stays their primary. Guarded on the table being
+   * absent, so this runs exactly once and a re-boot is a no-op.
+   *
+   *  The plan's original version of this migration ALSO copied 'driver' -> both van roles,
+   *  because at the time users.role still held the retired name. It no longer does: the
+   *  vocabulary migration above has already rewritten every row to phone_sales or
+   *  delivery_driver. So today's delivery_driver accounts are ALREADY only delivery_driver
+   *  in this table, and the question the plan asked — "does today's driver do both jobs, and
+   *  must they keep both on the day this ships?" — can no longer be answered from the column.
+   *
+   *  The backfill is therefore deliberately honest rather than generous: it copies the
+   *  primary verbatim and does NOT invent a second role. Giving a real account a second hat
+   *  it was never granted is a privilege change disguised as a migration. A person who does
+   *  both jobs is granted both roles explicitly, through the admin screen, by a person who
+   *  knows they do both jobs. */
+  const hasUserRolesTable = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='user_roles'")
+    .get();
+  if (!hasUserRolesTable) {
+    db.exec(`
+      CREATE TABLE user_roles (
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        role    TEXT NOT NULL,
+        PRIMARY KEY (user_id, role)
+      );
+    `);
+  }
+  // The backfill runs on EVERY boot, guarded by INSERT OR IGNORE, and must NOT be keyed on
+  // the table's existence: the CREATE TABLE IF NOT EXISTS in the schema block above has
+  // already made the table by the time this runs, so a table-existence guard means the
+  // backfill never fires on a fresh database. Probed, not assumed — the first version of
+  // this guard produced an empty user_roles and a test that said "gives a fresh account its
+  // own primary role in the set" and got [].
+  db.exec(`
+      INSERT OR IGNORE INTO user_roles (user_id, role) SELECT id, role FROM users;
+      DELETE FROM user_roles WHERE role IN ('driver', 'salesperson');
+  `);
+
+  /* A new account MUST land in user_roles, and the plan's version did not arrange that.
+   *
+   *  Six places insert into users (lib/users.ts, the admin API, create-user.mjs, two seed
+   *  scripts, and the platform_owner bootstrap). The plan noted the scripts "do not write
+   *  user_roles; that is fine, because the session falls back to the primary when the set
+   *  is empty" — true for a SESSION, and false for every ENUMERATION.
+   *
+   *  The session fallback is a courtesy. The nineteen Task 4a queries are not: they ask
+   *  "everyone who can sell / drive / be assigned a run", and they read this table. A
+   *  salesperson created this morning with an empty set is invisible to all of them, so
+   *  their commission statement comes out empty and nobody notices until payday. The spec
+   *  names that exact failure as the reason this table exists, and a backfill that only
+   *  runs once would reintroduce it on the very next signup.
+   *
+   *  So the primary is kept in the set by the DATABASE, not by six call sites that can
+   *  each forget. That is what makes the invariant hold for the seventh, unseen one.
+   *
+   *  IF NOT EXISTS on both: these run on every boot, and a bare CREATE TRIGGER throws
+   *  "already exists" on the second one -- taking the whole boot down. */
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS user_roles_after_insert
+    AFTER INSERT ON users
+    BEGIN
+      INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (NEW.id, NEW.role);
+    END;
+
+    /* Changing someone's primary must move their set with it, or Task 3's session.roles
+     * would read a stale set and hand them permissions their column no longer claims.
+     *
+     *  The set is replaced ONLY when it still holds nothing but the old primary — i.e. the
+     *  person never had a second hat. A set with two or more roles was arranged on
+     *  purpose by the admin screen, and a primary change must not silently delete half of
+     *  it; that is the admin screen's job, and it is Task 9. */
+    CREATE TRIGGER IF NOT EXISTS user_roles_after_update
+    AFTER UPDATE OF role ON users
+    WHEN (SELECT COUNT(*) FROM user_roles WHERE user_id = NEW.id) <= 1
+      AND EXISTS (SELECT 1 FROM user_roles WHERE user_id = NEW.id AND role = OLD.role)
+    BEGIN
+      UPDATE user_roles SET role = NEW.role WHERE user_id = NEW.id;
+    END;
+  `);
 
   const nCols = (db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]).map((c) => c.name);
   if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");

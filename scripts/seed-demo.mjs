@@ -226,6 +226,17 @@ if (REMOVE) {
     );
     db.exec("DELETE FROM credit_approvals WHERE order_id NOT IN (SELECT id FROM orders)");
     db.exec("DELETE FROM representative_profiles WHERE rep_code LIKE 'DEMO-%'");
+    // user_roles first, keyed on the SAME marker the users use. This transaction runs with
+    // FK enforcement off, so `ON DELETE CASCADE` does not fire and these rows would survive
+    // their user — then foreign_key_check below aborts the teardown with "it would orphan
+    // N rows". The guard is doing its job; this is the arm it was not pointing at.
+    //
+    // Deliberately NOT `WHERE user_id NOT IN (SELECT id FROM users)`: that runs BEFORE the
+    // delete below, so every demo user still exists and nothing matches. First attempt at
+    // this fix used it and the teardown still aborted.
+    db.exec(
+      "DELETE FROM user_roles WHERE user_id IN (SELECT id FROM users WHERE username LIKE 'demo.%')"
+    );
     db.exec("DELETE FROM users WHERE username LIKE 'demo.%'");
     // The group only ever exists to hold those users -- deleted after them, so nothing
     // still references it, and guarded by the same slug it was created under.

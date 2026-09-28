@@ -182,6 +182,10 @@ describe("organization_id backfill", () => {
       "platform_access_log", // vendor audit trail; its organization_id names the tenant
                              // that was looked at, not one that owns the row
       "sales",              // the legacy imported ledger, read-only and being retired
+      "user_roles",         // a person's roles; reaches a tenant through user_id, exactly
+                             // like notification_prefs. NOT tenant-scoped: adding an
+                             // organization_id here would be a second answer to "whose roles
+                             // are these" that could disagree with the user's own row.
     ]);
 
     const unaccounted = all.filter((t) => !exempt.has(t) && !(TENANT_TABLES as readonly string[]).includes(t));
