@@ -53,7 +53,14 @@ export async function POST(req: NextRequest) {
   const rawId =
     kind === "driver" ? body?.driver_user_id : kind === "manager" ? body?.manager_user_id : body?.salesperson_user_id;
   const personId = Number(rawId);
-  const person = db.prepare("SELECT id FROM users WHERE id = ? AND role = ?").get(personId, ROLE_FOR_KIND[kind]);
+  // The SET, not the primary column: paying a driver whose primary is something else must
+  // still work, or a legitimate payment is refused over a detail the ledger itself ignores.
+  const person = db
+    .prepare(
+      `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
+        WHERE u.id = ? AND r.role = ?`
+    )
+    .get(personId, ROLE_FOR_KIND[kind]);
   if (!person) {
     return NextResponse.json({ ok: false, error: `این حساب ${NOT_THIS_KIND[kind]} نیست` }, { status: 400 });
   }

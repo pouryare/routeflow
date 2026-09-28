@@ -53,8 +53,14 @@ export async function POST(req: NextRequest) {
     if (driverId !== null) {
       // Same refusal-at-the-door as the فروشنده branch below: a rate attached to
       // anyone whose role driverStatementFor never queries would sit in the table
-      // unread forever.
-      const person = db.prepare("SELECT id FROM users WHERE id = ? AND role IN ('delivery_driver', 'driver')").get(driverId);
+      // unread forever. The test reads the SET -- a seller who also drives is a driver,
+      // and refusing their rate would make the refusal arbitrary.
+      const person = db
+        .prepare(
+          `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
+            WHERE u.id = ? AND r.role IN ('delivery_driver', 'field_rep')`
+        )
+        .get(driverId);
       if (!person) {
         return NextResponse.json({ ok: false, error: "این حساب راننده نیست" }, { status: 400 });
       }
@@ -84,9 +90,13 @@ export async function POST(req: NextRequest) {
 
   if (personId !== null) {
     // A rate attached to anyone statementFor never queries would sit in the table
-    // unread forever -- refused at the door rather than silently ignored.
+    // unread forever -- refused at the door rather than silently ignored. SET, not
+    // the primary column: a driver who also sells still earns a sales rate.
     const person = db
-      .prepare("SELECT id FROM users WHERE id = ? AND role IN ('phone_sales', 'salesperson')")
+      .prepare(
+        `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
+          WHERE u.id = ? AND r.role = 'phone_sales'`
+      )
       .get(personId);
     if (!person) {
       return NextResponse.json({ ok: false, error: "این حساب فروشنده نیست" }, { status: 400 });

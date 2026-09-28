@@ -226,11 +226,18 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
     | undefined;
   if (!u) throw new LeadRunError(404, "راننده پیدا نشد");
   if (!u.active) throw new LeadRunError(422, "این کاربر غیرفعال است");
-  // Either van role, because the two are one working day: a delivery driver who also
-  // visits shops is assignable a field route, and refusing them is how a route silently
-  // disappears from someone's day. 'driver' is still admitted while legacy rows exist.
-  if (u.role !== "driver" && u.role !== "field_rep" && u.role !== "delivery_driver")
-    throw new LeadRunError(422, "این کاربر بازدیدکننده نیست");
+  // The SET, not the column, and EITHER van role — the two are one working day (spec D6), so
+  // a delivery driver who also visits shops is assignable a field route, and a field rep who
+  // also drives is assignable a delivery round.
+  //
+  // The plan for this task narrowed the dropdown to field_rep only. That was wrong, and
+  // tests/api/lead-runs.test.ts caught it: its drivers are delivery_driver by primary and hold
+  // only that, so every route assignment started returning 422. Widening the literal list is
+  // not a safe intermediate step either — a dual-hat person still would not appear.
+  const canVisit = conn
+    .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role IN ('field_rep', 'delivery_driver')")
+    .get(u.id);
+  if (!canVisit) throw new LeadRunError(422, "این کاربر بازدیدکننده نیست");
   // 404 rather than 403 for another group's driver, as everywhere else here.
   if (!canReachGroup(session, u.group_id)) throw new LeadRunError(404, "راننده پیدا نشد");
   return { id: u.id, group_id: u.group_id, display_name: u.display_name };
@@ -255,15 +262,16 @@ export function isOnDriversRun(conn: DatabaseSync, driverUserId: number, orgId: 
 /** Drivers this manager may assign a route to. Feeds the dropdown. */
 export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null; avatar_url: string | null }> {
   const all = session.role === "owner";
-  // Either van role, for the same reason the guard above does. A lead run is work in a
-  // vehicle, and both roles are that. An empty dropdown here is silent: no error, just a
-  // route nobody can be handed.
+  // Everyone HOLDING either van role, whoever their primary. An empty dropdown here is silent:
+  // no error, just a route nobody can be handed — and a `role IN (...)` test cannot see a
+  // delivery driver who also visits shops, which is the person most likely to.
   const rows = conn
-    .prepare(`SELECT id, display_name, group_id, avatar_url FROM users
-               WHERE organization_id = ? AND active = 1
-                 AND role IN ('field_rep', 'delivery_driver', 'driver')
-                 ${all ? "" : "AND group_id = ?"}
-               ORDER BY display_name`)
+    .prepare(`SELECT u.id, u.display_name, u.group_id, u.avatar_url
+                FROM users u
+                JOIN user_roles r ON r.user_id = u.id AND r.role IN ('field_rep', 'delivery_driver')
+               WHERE u.organization_id = ? AND u.active = 1
+                 ${all ? "" : "AND u.group_id = ?"}
+               ORDER BY u.display_name`)
     .all(...(all ? [session.organizationId] : [session.organizationId, session.groupId ?? -1])) as
     | Array<{ id: number; display_name: string; group_id: number | null; avatar_url: string | null }>;
   return rows.map((r) => ({ id: r.id, name: r.display_name, group_id: r.group_id, avatar_url: r.avatar_url }));

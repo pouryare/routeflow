@@ -230,19 +230,28 @@ export function allStatements(
   // as "nothing", never as "everything".
   if (groupId === null) return [];
 
-  /* 'salesperson' is still admitted so a database that has not been through the rebuild
-     keeps paying people. This one fails SILENTLY when it matches nobody: a commission run
-     that produces no statements, and nobody notices until payday. */
+  /* People who HOLD phone_sales, whoever their primary.
+   *
+   * MONEY, so this is the one that must not be wrong: this query fails SILENTLY when it
+   * matches nobody — a commission run that produces no statements, and nobody notices until
+   * payday. A `role IN (...)` test cannot see a driver who also sells, and that is exactly
+   * the person whose sales commission would vanish.
+   *
+   * No DISTINCT is needed or wanted: a person holding both kinds appears in BOTH ledgers,
+   * keyed on the kind of work actually done. That is the point of the split, not a
+   * duplicate to be deduplicated. */
   const people = (
     groupId === undefined
       ? db
           .prepare(
-            "SELECT id FROM users WHERE role IN ('phone_sales', 'salesperson') ORDER BY display_name"
+            `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id AND r.role = 'phone_sales'
+              WHERE u.active = 1 ORDER BY u.display_name`
           )
           .all()
       : db
           .prepare(
-            "SELECT id FROM users WHERE role IN ('phone_sales', 'salesperson') AND group_id = ? ORDER BY display_name"
+            `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id AND r.role = 'phone_sales'
+              WHERE u.active = 1 AND u.group_id = ? ORDER BY u.display_name`
           )
           .all(groupId)
   ) as unknown as { id: number }[];

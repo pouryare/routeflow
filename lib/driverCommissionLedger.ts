@@ -223,19 +223,27 @@ export function allDriverStatements(
   const groupId = opts.groupId;
   if (groupId === null) return [];
 
-  /* Both van roles: a person who also sells appears in BOTH ledgers, keyed on the kind of
-     work they did, which is the point of the split. See commissionLedger for why the old
-     name is still admitted. */
+  /* People who HOLD a van role, whoever their primary — the driver ledger's counterpart to
+     commissionLedger, and for the same reason: it fails silently when it matches nobody. A
+     `role IN (...)` test cannot see a seller whose other hat is driving, and that is exactly
+     whose delivery commission would vanish.
+
+     A person holding both kinds appears in BOTH ledgers, keyed on the kind of work actually
+     done. That is the point of the split, not a duplicate to be deduplicated. */
   const people = (
     groupId === undefined
       ? db
           .prepare(
-            "SELECT id FROM users WHERE role IN ('delivery_driver', 'field_rep', 'driver') ORDER BY display_name"
+            `SELECT DISTINCT u.id FROM users u
+               JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
+              WHERE u.active = 1 ORDER BY u.display_name`
           )
           .all()
       : db
           .prepare(
-            "SELECT id FROM users WHERE role IN ('delivery_driver', 'field_rep', 'driver') AND group_id = ? ORDER BY display_name"
+            `SELECT DISTINCT u.id FROM users u
+               JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
+              WHERE u.active = 1 AND u.group_id = ? ORDER BY u.display_name`
           )
           .all(groupId)
   ) as unknown as { id: number }[];

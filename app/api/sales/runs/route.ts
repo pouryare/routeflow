@@ -51,8 +51,12 @@ export async function POST(req: NextRequest) {
     | undefined;
 
   // A driver outside the caller's group answers 404, like every other row they cannot
-  // reach -- a 403 would confirm the account exists.
-  if (!driver || (driver.role !== "driver" && driver.role !== "delivery_driver") || !canReachGroup(guard.session, driver.group_id)) {
+  // reach -- a 403 would confirm the account exists. The role test reads the SET, so a
+  // driver whose primary is something else is still a driver.
+  const canDrive = db
+    .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'")
+    .get(Number(body?.driver_user_id));
+  if (!driver || !canDrive || !canReachGroup(guard.session, driver.group_id)) {
     return NextResponse.json({ ok: false, error: "راننده پیدا نشد" }, { status: 404 });
   }
 

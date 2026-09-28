@@ -74,10 +74,13 @@ export function createRun(
     .get(input.driver_user_id) as { role: string; group_id: number | null } | undefined;
 
   if (!driver) throw new DeliveryError("راننده پیدا نشد");
-  // A run belongs to a driver by definition. Assigning one to a manager would make a
-  // day of stops that nothing in the driver app can reach.
-  if (driver.role !== "driver" && driver.role !== "delivery_driver")
-    throw new DeliveryError("این حساب راننده تحویل نیست");
+  // A run belongs to a DRIVER by definition, and driving is a HELD role, not a primary one.
+  // Assigning one to a manager would make a day of stops that nothing in the driver app can
+  // reach; refusing a driver who also sells would do the same, silently.
+  const canDrive = db
+    .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'")
+    .get(input.driver_user_id);
+  if (!canDrive) throw new DeliveryError("این حساب راننده تحویل نیست");
 
   const now = new Date().toISOString();
   return Number(
