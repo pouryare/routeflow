@@ -78,7 +78,7 @@ describe("Tier 2b scroll-driven entrances", () => {
   it("resolves corner-shape and sibling-index() in this browser", async () => {
     await page.goto(`${BASE}/sales/dashboard`, { waitUntil: "networkidle" });
     const support = await page.evaluate(() => ({
-      cornerShape: CSS.supports("corner-shape", "superellipse(0.6)"),
+      cornerShape: CSS.supports("corner-shape", "superellipse(1.5)"),
       timeline: CSS.supports("animation-timeline", "view()"),
       siblingIndex: CSS.supports("animation-delay", "calc(sibling-index() * 10ms)"),
     }));
