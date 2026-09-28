@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useLatest } from "@/lib/useLatest";
+import { useHydrated } from "@/lib/useHydrated";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
@@ -151,7 +152,13 @@ export default function LeadsMap({
 }) {
   const [summary, setSummary] = useState<RouteSummary | null>(null);
   const { position, status } = useMyPosition();
-  const [mounted, setMounted] = useState(false);
+  /* Whether this has left the server render. Read through useSyncExternalStore rather than a
+   * `mounted` state an effect flips: there is nothing external to subscribe to here, and the
+   * bump would be a second render pass on every mount that the server render already decided.
+   * This map is loaded with `ssr: false`, so in practice the client snapshot is true from the
+   * first render and the placeholder below never flashes. */
+  const hydrated = useHydrated();
+
   /* Bumped on every mount, and used to key the map container so it always gets a DOM node
    * Leaflet has never seen.
    *
@@ -169,20 +176,23 @@ export default function LeadsMap({
    * and changing it makes React discard the old div, which is what finally takes
    * `_leaflet_id` with it.
    *
-   * It rides along with `mounted` rather than being its own effect, so a real first load
-   * still builds exactly one map: the placeholder means the map is not created until this
-   * state has settled, and the key it is created with is already the final one. */
+   * The bump is scheduled on a microtask rather than run inline, which is the same deferral
+   * lib/useRunAfterMount exists for: nothing is set during the effect body, so there is no
+   * synchronous cascade to guard against. The cascade is still wanted -- React has to discard
+   * the old container -- it just does not have to happen before the browser has painted. */
   const [mapEpoch, setMapEpoch] = useState(0);
 
   useEffect(() => {
-    setMounted(true);
-    setMapEpoch((n) => n + 1);
+    void Promise.resolve().then(() => setMapEpoch((n) => n + 1));
   }, []);
 
   // Must be called unconditionally — hooks cannot be conditional.
   const allPoints = useMemo<[number, number][]>(() => leads.map((l) => [l.lat, l.lng]), [leads]);
 
-  if (!mounted) {
+  /* Gated on the epoch having settled as well as on hydration, so a real first load still
+   * builds exactly one map: the map is not created until the key it will be created with is
+   * already its final value, and so cannot be torn down and rebuilt one microtask later. */
+  if (!hydrated || mapEpoch === 0) {
     return <div className="h-80 w-full rounded-[var(--radius-lg)] border border-border" />;
   }
 
