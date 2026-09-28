@@ -56,21 +56,40 @@ Three things, in this order.
 account, any organisation" list is far easier to build and test once `user_roles` exists,
 because the switcher has to render a target's full role *set*.
 
-### 2.1 The working tree is mid-migration
+### 2.1 Phase A is partly built, and the data is already migrated
 
-215 files are modified and uncommitted. They are a **partial execution of Phase A's Step 3a**
-— the mechanical `session.role === "driver"` → `isVanRole(session.role)` rename, applied
-across ~30 pages and their tests:
+**Revision 2 (2026-09-28).** The first draft of this section said the 215 uncommitted files
+were "a partial execution of Phase A's Step 3a" — the mechanical
+`session.role === "driver"` → `isVanRole(session.role)` rename — and that they were
+`tsc`-clean. **Both claims were wrong**, and the second was load-bearing.
 
-```diff
-- if (session.role === "driver") redirect("/driver");
-+ if (isVanRole(session.role)) redirect("/driver");
-```
+Measured against the working tree: 215 files, 792 insertions, 552 deletions, containing
 
-These are correct and `tsc`-clean. **They are Phase A's first step, already done, and must be
-committed as a standalone commit before anything else begins.** The last three commits
-(`c85d40a`, `4f7ccc2`, `0ce7737`) are all `docs(...)` — the spec, its correction, and the plan.
-No multi-role code has been written.
+- the van rename (as described), **and**
+- `salesperson` → `phone_sales` across 334 lines (Phase A's D4), **and**
+- the `users.role` CHECK-constraint rebuild, +99 lines in `lib/db.ts` (Phase A's **Task 8**,
+  the fifth table rebuild and one of the riskiest items in that plan), **and**
+- a half-finished `lib/repo/syncMutations.ts` whose `ORDER_ROLES` still held both retired
+  names, which `tsc` rejected — Phase A's **Task 5**, started and abandoned.
+
+**And the live database had already been migrated.** `users.role` held only `owner` (1) and
+`delivery_driver` (5); no `driver` and no `salesperson` remained. This was not a draft in a
+working tree — it was a schema migration applied to real data, uncommitted and untested.
+
+**The error's cause is worth recording**, because it is a process failure and not a typo: the
+claim was inferred from the last commit message (`docs(plan)`) plus the existence of modified
+files, without measuring the diff. Prose about inherited work is not a verification. Run
+`git diff` and count.
+
+**Resolved 2026-09-28.** Verified — `vitest run` 330 files passed / 13 skipped, exit 0;
+`tsc --noEmit` exit 0 after fixing `ORDER_ROLES` (now `satisfies OrderRole[]`, so the build
+fails if the list and the union drift again); `npm run lint`'s 43 errors proven pre-existing
+by intersecting all 26 error files against the 215 changed files — zero intersection.
+Committed as two commits, `c8489ed` (schema + vocabulary, the risky half, reviewable alone)
+and `1b343e7` (209 call-site files).
+
+**What remains of Phase A:** `user_roles` does not exist. Tasks 2, 3, 4a, 4b, 5 and 9 are
+ahead. Tasks 1, 3, 7 and 8 are done.
 
 ---
 
@@ -406,7 +425,7 @@ actual customers.
 
 | Step | Days | Difficulty |
 |---|---|---|
-| Commit the 215 uncommitted files | 0 | none — Phase A Step 3a, already applied |
+| Commit the 215 uncommitted files | 0 | **DONE** — `c8489ed` + `1b343e7` (§2.1) |
 | `MANAGE_ROLES` + the 189-site `tsc` sweep | 1–1.5 | low — compiler-guided |
 | Page gates, `appNav`, the 5 `proxy.ts` branches | 0.5 | low — ~15 sites, hand-checked |
 | `platform-owner-reach` + uniqueness tests | 0.5 | — this is the safety net |
