@@ -38,10 +38,10 @@ beforeEach(() => {
   const tag = Date.now();
   owner = Number(u.run(`o${tag}`, "x", "مالک", "owner", null, 1, now).lastInsertRowid);
   mgrA = Number(u.run(`m${tag}`, "x", "مدیر", "group_manager", groupA, 1, now).lastInsertRowid);
-  driverA = Number(u.run(`da${tag}`, "x", "رانندهٔ الف", "driver", groupA, 1, now).lastInsertRowid);
-  driverB = Number(u.run(`db${tag}`, "x", "رانندهٔ ب", "driver", groupB, 1, now).lastInsertRowid);
-  idle = Number(u.run(`di${tag}`, "x", "رانندهٔ بیکار", "driver", groupA, 1, now).lastInsertRowid);
-  u.run(`dx${tag}`, "x", "رانندهٔ غیرفعال", "driver", groupA, 0, now);
+  driverA = Number(u.run(`da${tag}`, "x", "رانندهٔ الف", "delivery_driver", groupA, 1, now).lastInsertRowid);
+  driverB = Number(u.run(`db${tag}`, "x", "رانندهٔ ب", "delivery_driver", groupB, 1, now).lastInsertRowid);
+  idle = Number(u.run(`di${tag}`, "x", "رانندهٔ بیکار", "delivery_driver", groupA, 1, now).lastInsertRowid);
+  u.run(`dx${tag}`, "x", "رانندهٔ غیرفعال", "delivery_driver", groupA, 0, now);
 
   const cust = Number(
     db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C1','x','active',?,?,1)")

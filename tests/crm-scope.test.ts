@@ -19,8 +19,8 @@ const g1 = Number(db.prepare("INSERT INTO groups (name, slug, created_at, organi
 const g2 = Number(db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('g2','g2',?,1)").run(NOW).lastInsertRowid);
 const user = (u: string, role: string, gid: number | null, org = 1) =>
   Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,?,?,?,?,?,?)").run(u, "x", u, role, gid, NOW, org).lastInsertRowid);
-const repA = user("repA", "salesperson", g1);
-const repB = user("repB", "salesperson", g1);
+const repA = user("repA", "phone_sales", g1);
+const repB = user("repB", "phone_sales", g1);
 const mgr1 = user("mgr1", "group_manager", g1);
 const cust = (code: string, owner: number | null, gid: number | null, org = 1) =>
   Number(db.prepare("INSERT INTO customers (customer_code,business_name,owner_user_id,group_id,synced_at,organization_id) VALUES (?,?,?,?,?,?)").run(code, code, owner, gid, NOW, org).lastInsertRowid);
@@ -39,7 +39,7 @@ const visible = (s: Session) => {
 
 describe("crmFilter", () => {
   it("salesperson: own + own group's unassigned pool", () => {
-    expect(visible(sess(repA, "salesperson", g1))).toEqual([mineA, pool1]);
+    expect(visible(sess(repA, "phone_sales", g1))).toEqual([mineA, pool1]);
   });
   it("group manager and rep manager: their group", () => {
     expect(visible(sess(mgr1, "group_manager", g1))).toEqual([mineA, mineB, pool1]);
@@ -50,20 +50,20 @@ describe("crmFilter", () => {
     expect(visible(sess(1, "owner", null))).toEqual([mineA, mineB, pool1, pool2]);
     expect(visible(sess(1, "owner", null, 2))).toEqual([other]);
   });
-  it("driver: nothing", () => expect(visible(sess(99, "driver", g1))).toEqual([]));
+  it("driver: nothing", () => expect(visible(sess(99, "delivery_driver", g1))).toEqual([]));
 });
 
 describe("canSeeBusiness / canWriteBusiness", () => {
   const row = (owner_user_id: number | null, group_id: number | null, organization_id = 1) => ({ owner_user_id, group_id, organization_id });
   it("mirrors the filter", () => {
-    expect(canSeeBusiness(sess(repA, "salesperson", g1), row(repB, g1))).toBe(false);
-    expect(canSeeBusiness(sess(repA, "salesperson", g1), row(null, g1))).toBe(true);
+    expect(canSeeBusiness(sess(repA, "phone_sales", g1), row(repB, g1))).toBe(false);
+    expect(canSeeBusiness(sess(repA, "phone_sales", g1), row(null, g1))).toBe(true);
     expect(canSeeBusiness(sess(1, "owner", null), row(null, null, 2))).toBe(false);
   });
   it("lets a salesperson write their own and claim the pool; a manager writes the group", () => {
-    expect(canWriteBusiness(sess(repA, "salesperson", g1), row(repA, g1))).toBe(true);
-    expect(canWriteBusiness(sess(repA, "salesperson", g1), row(null, g1))).toBe(true);
-    expect(canWriteBusiness(sess(repA, "salesperson", g1), row(repB, g1))).toBe(false);
+    expect(canWriteBusiness(sess(repA, "phone_sales", g1), row(repA, g1))).toBe(true);
+    expect(canWriteBusiness(sess(repA, "phone_sales", g1), row(null, g1))).toBe(true);
+    expect(canWriteBusiness(sess(repA, "phone_sales", g1), row(repB, g1))).toBe(false);
     expect(canWriteBusiness(sess(mgr1, "group_manager", g1), row(repB, g1))).toBe(true);
     expect(canWriteBusiness(sess(mgr1, "group_manager", g1), row(repB, g2))).toBe(false);
   });

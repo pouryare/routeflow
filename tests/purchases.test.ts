@@ -36,7 +36,7 @@ beforeAll(() => {
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "driver", ctx.group, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.group, now).lastInsertRowid);
   ctx.customer = Number(
     db
       .prepare(

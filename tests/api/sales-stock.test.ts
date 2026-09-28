@@ -37,8 +37,8 @@ beforeAll(() => {
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.manager = Number(user.run("m", "مدیر", "group_manager", ctx.group, now).lastInsertRowid);
-  ctx.seller = Number(user.run("s", "نازنین", "salesperson", ctx.group, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "driver", ctx.group, now).lastInsertRowid);
+  ctx.seller = Number(user.run("s", "نازنین", "phone_sales", ctx.group, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.group, now).lastInsertRowid);
   ctx.product = createProduct(db, { name: "کره گیاهی", kg_per_base_unit: 0.25, organization_id: 1 });
 });
 
@@ -48,8 +48,8 @@ const cookieFor = (uid: number, role: Role, gid: number | null) =>
 const AS = {
   owner: () => cookieFor(ctx.owner, "owner", null),
   manager: () => cookieFor(ctx.manager, "group_manager", ctx.group),
-  seller: () => cookieFor(ctx.seller, "salesperson", ctx.group),
-  driver: () => cookieFor(ctx.driver, "driver", ctx.group),
+  seller: () => cookieFor(ctx.seller, "phone_sales", ctx.group),
+  driver: () => cookieFor(ctx.driver, "delivery_driver", ctx.group),
 };
 
 const get = (cookie: string | null) =>

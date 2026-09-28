@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { ordersRepo, orderEvents } from "@/lib/repo/orders";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/sales/orders/[id]/events">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

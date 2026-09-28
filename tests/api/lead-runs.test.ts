@@ -45,9 +45,9 @@ beforeAll(() => {
   );
   ownerId = Number(user.run("run-owner", "مالک", "owner", null, 1, now).lastInsertRowid);
   managerId = Number(user.run("run-manager", "مدیر", "group_manager", groupId, 1, now).lastInsertRowid);
-  driverId = Number(user.run("run-driver", "راننده یک", "driver", groupId, 1, now).lastInsertRowid);
-  otherDriverId = Number(user.run("run-driver-2", "راننده دو", "driver", groupId, 1, now).lastInsertRowid);
-  inactiveDriverId = Number(user.run("run-driver-off", "راننده خاموش", "driver", groupId, 0, now).lastInsertRowid);
+  driverId = Number(user.run("run-driver", "راننده یک", "delivery_driver", groupId, 1, now).lastInsertRowid);
+  otherDriverId = Number(user.run("run-driver-2", "راننده دو", "delivery_driver", groupId, 1, now).lastInsertRowid);
+  inactiveDriverId = Number(user.run("run-driver-off", "راننده خاموش", "delivery_driver", groupId, 0, now).lastInsertRowid);
   const loc = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, organization_id) VALUES (?, ?, ?, 51.4, 'manual', ?, ?, 1)"
   );
@@ -91,7 +91,7 @@ const LATER = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
    failure then looks like an auth bug rather than a test bug. */
 const OWNER = () => [ownerId, "owner", null] as const;
 const MANAGER = () => [managerId, "group_manager", groupId] as const;
-const DRIVER = () => [driverId, "driver", groupId] as const;
+const DRIVER = () => [driverId, "delivery_driver", groupId] as const;
 
 describe("a manager plans a route", () => {
   it("creates one with ordered stops, and gets the day back", async () => {
@@ -198,7 +198,7 @@ describe("a driver sees their own day", () => {
     expect(mine.run?.driver_user_id).toBe(driverId);
 
     await createRun(...MANAGER(), { driver_user_id: otherDriverId, run_date: TOMORROW, location_ids: [pinC] });
-    const theirs = (await (await listRuns(otherDriverId, "driver", groupId)).json()) as { run: { driver_user_id: number } | null };
+    const theirs = (await (await listRuns(otherDriverId, "delivery_driver", groupId)).json()) as { run: { driver_user_id: number } | null };
     expect(theirs.run?.driver_user_id).toBe(otherDriverId);
     // Two runs now exist for tomorrow; each driver still resolves to exactly one.
     const all = getDb().prepare("SELECT COUNT(*) AS n FROM lead_runs").get() as { n: number };
@@ -236,7 +236,7 @@ describe("a driver sees their own day", () => {
   });
 
   it("and cannot read another driver's run", async () => {
-    const theirs = (await (await listRuns(otherDriverId, "driver", groupId)).json()) as { run: { id: number } };
+    const theirs = (await (await listRuns(otherDriverId, "delivery_driver", groupId)).json()) as { run: { id: number } };
     const res = await readRun(...DRIVER(), theirs.run.id);
     // 404, not 403: a 403 would confirm somebody else's route exists.
     expect(res.status).toBe(404);

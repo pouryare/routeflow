@@ -30,6 +30,7 @@ import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
 import CoveragePanels from "@/components/analysis/CoveragePanels";
 import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -61,7 +62,7 @@ export default async function DashboardPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const db = getDb();
   const d = salesDashboard(db, session);
@@ -75,12 +76,12 @@ export default async function DashboardPage() {
   const groupId = session.role === "owner" ? undefined : session.groupId;
 
   const commission =
-    session.role === "salesperson"
+    session.role === "phone_sales"
       ? [statementFor(db, session.user.id, period)]
       : allStatements(db, period, { groupId });
   // A فروشنده sees none of this -- someone else's earnings, driver or manager, are
   // none of their business, the same boundary /sales/commission itself draws.
-  const driverCommission = session.role === "salesperson" ? [] : allDriverStatements(db, period, { groupId });
+  const driverCommission = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId });
   const managerCommission =
     session.role === "owner"
       ? allManagerStatements(db, period)
@@ -92,11 +93,11 @@ export default async function DashboardPage() {
     driverCommission.reduce((sum, c) => sum + c.owed_toman, 0) +
     managerCommission.reduce((sum, c) => sum + c.owed_toman, 0);
 
-  const stock = session.role === "salesperson" ? [] : stockPosition(db);
+  const stock = session.role === "phone_sales" ? [] : stockPosition(db);
   const stockValue = stock.reduce((sum, r) => sum + r.value_toman, 0);
   const negatives = stock.filter((r) => r.negative);
 
-  const drivers = session.role === "salesperson" ? [] : fillRateByDriver(db, session);
+  const drivers = session.role === "phone_sales" ? [] : fillRateByDriver(db, session);
 
   /* ── پوشش و میدان — the former standalone /analytics, folded in.
      Whole-group coverage, dormancy and cost-to-serve. proxy.ts denied a فروشنده the old
@@ -104,7 +105,7 @@ export default async function DashboardPage() {
      handed them the aggregate by the back door -- so the read itself is skipped, not
      just the markup. One clock for the whole section, so its day boundaries agree. */
   const coverageNow = new Date();
-  const coverage = session.role === "salesperson" ? null : coverageAnalytics(session, coverageNow, db);
+  const coverage = session.role === "phone_sales" ? null : coverageAnalytics(session, coverageNow, db);
 
   const newThisMonth = d.new_customers_by_month.find((p) => p.key === jalaliMonthKey(period.to))?.value ?? 0;
 
@@ -187,7 +188,7 @@ export default async function DashboardPage() {
           figure alone cannot answer, so it gets a card of its own rather than a clause
           buried in the revenue chip. Sized 1fr rather than sharing .statrow's validated
           1.5fr/1fr/1fr split, which assumes exactly three cards. */}
-      {session.role !== "salesperson" && (
+      {session.role !== "phone_sales" && (
         <div className="statrow" style={{ marginTop: -4 }}>
           <GradientStat
             tone="peach"
@@ -359,7 +360,7 @@ export default async function DashboardPage() {
             formatValue={faToman}
             empty={empty}
           />
-          {session.role !== "salesperson" && (
+          {session.role !== "phone_sales" && (
             <BarChart
               title="فروش هر فروشنده"
           barLabel={compactToman}
@@ -432,7 +433,7 @@ export default async function DashboardPage() {
         </div>
       </CollapsibleSection>
 
-      {session.role !== "salesperson" && (
+      {session.role !== "phone_sales" && (
         <CollapsibleSection title="انبار و تحویل" icon="package" storageKey="dash-stock">
           <div className="grid gap-[var(--space-4)] md:grid-cols-2">
             <BarChart

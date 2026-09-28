@@ -223,11 +223,20 @@ export function allDriverStatements(
   const groupId = opts.groupId;
   if (groupId === null) return [];
 
+  /* Both van roles: a person who also sells appears in BOTH ledgers, keyed on the kind of
+     work they did, which is the point of the split. See commissionLedger for why the old
+     name is still admitted. */
   const people = (
     groupId === undefined
-      ? db.prepare("SELECT id FROM users WHERE role = 'driver' ORDER BY display_name").all()
+      ? db
+          .prepare(
+            "SELECT id FROM users WHERE role IN ('delivery_driver', 'field_rep', 'driver') ORDER BY display_name"
+          )
+          .all()
       : db
-          .prepare("SELECT id FROM users WHERE role = 'driver' AND group_id = ? ORDER BY display_name")
+          .prepare(
+            "SELECT id FROM users WHERE role IN ('delivery_driver', 'field_rep', 'driver') AND group_id = ? ORDER BY display_name"
+          )
           .all(groupId)
   ) as unknown as { id: number }[];
 

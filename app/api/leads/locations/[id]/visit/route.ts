@@ -8,10 +8,11 @@ import { readLeadLocation } from "@/lib/repo/leads";
 import { CrmError } from "@/lib/repo/crm/write";
 import { startFlow, viewStep, type FlowState } from "@/lib/crm/flows/machine";
 import type { FlowContext } from "@/lib/crm/flows/types";
+import { isVanRole } from "@/lib/roles";
 
 /** GET: the location + a flow context for a driver standing in front of it. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
-  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -27,7 +28,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
     firstContact: true,
     attemptNo: 1,
     maxMisses: 5,
-    isManager: guard.session.role !== "driver",
+    isManager: !isVanRole(guard.session.role),
     vars: { name: loc.name, address: loc.address ?? "" },
     knownContacts: [],
     products: [],
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
 
 /** POST: save the driver's visit answers. */
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locations/[id]/visit">) {
-  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -55,7 +56,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
 
   // A driver may only record against a stop on their own run. A manager is not bound by one.
   // The query is in lib/repo/leadRuns.ts: raw SQL does not live in a route.
-  if (guard.session.role === "driver" && !isOnDriversRun(db, guard.session.user.id, guard.session.organizationId, id)) {
+  if (isVanRole(guard.session.role) && !isOnDriversRun(db, guard.session.user.id, guard.session.organizationId, id)) {
     return NextResponse.json({ ok: false, error: "این توقف در مسیر شما نیست" }, { status: 403 });
   }
 

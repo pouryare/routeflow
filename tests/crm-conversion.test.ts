@@ -12,7 +12,7 @@ afterAll(() => { for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}$
 
 const NOW = "2026-09-10T08:00:00.000Z";
 const db = getDb();
-const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('cv','x','cv','salesperson',?,1)").run(NOW).lastInsertRowid);
+const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('cv','x','cv','phone_sales',?,1)").run(NOW).lastInsertRowid);
 const lead = Number(db.prepare(`INSERT INTO customers (customer_code, business_name, owner_user_id, lifecycle, verification, sales_stage, contact_status, temperature, synced_at, organization_id)
   VALUES ('CV-1', 'سرنخ خریدار', ?, 'lead', 'unverified', 'unknown', 'not_contacted', 'cold', ?, 1)`).run(rep, NOW).lastInsertRowid);
 let n = 0;

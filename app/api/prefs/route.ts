@@ -4,7 +4,7 @@ import { getPrefs, setPrefs, type BoardPrefs } from "@/lib/repo/prefs";
 
 /** Self-service UI prefs. Every authenticated non-platform role may read and write their
  *  own; there is no cross-user access here. */
-const SELF_ROLES = ["owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const SELF_ROLES = ["owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...SELF_ROLES]);

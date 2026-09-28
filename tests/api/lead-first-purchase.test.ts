@@ -40,7 +40,7 @@ beforeAll(() => {
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, 1, ?, 1)"
   );
   ownerId = Number(insertUser.run("first-owner", "مالک", "owner", null, now).lastInsertRowid);
-  driverId = Number(insertUser.run("first-driver", "راننده", "driver", groupId, now).lastInsertRowid);
+  driverId = Number(insertUser.run("first-driver", "راننده", "delivery_driver", groupId, now).lastInsertRowid);
   // kg_per_base_unit is payroll input -- commission is paid per kilogram -- so an order
   // line freezes it. A product without one would make the order's accrual meaningless.
   productId = Number(
@@ -73,7 +73,7 @@ function order(body: unknown, who: { uid: number; role: string; gid: number | nu
     body: JSON.stringify(body),
   });
 }
-const DRIVER = () => ({ uid: driverId, role: "driver", gid: groupId });
+const DRIVER = () => ({ uid: driverId, role: "delivery_driver", gid: groupId });
 // A function, not a const array: module-level code runs before beforeAll, so a `const lines`
 // here captures productId and packagingId while they are still 0, and every order fails with
 // "packaging not found" in a way that looks like a product bug.

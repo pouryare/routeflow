@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { mintTelegramNonce, clearTelegram } from "@/lib/repo/notifications";
 
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 /** Mint a one-shot deep link the user opens to bind their telegram chat. The bot username
  *  is read from the environment at call time -- never inlined, and an unset one is a

@@ -9,8 +9,9 @@ export async function GET(req: NextRequest) {
     "owner",
     "group_manager",
     "rep_manager",
-    "salesperson",
-    "driver",
+    "phone_sales",
+    "field_rep",
+    "delivery_driver",
     "platform_owner",
   ]);
   if (!guard.ok) return guard.response;

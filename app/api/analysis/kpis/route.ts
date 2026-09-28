@@ -8,7 +8,7 @@ export const dynamic = "force-dynamic";
 /** The KPI strip. Reads `kpi_snapshots` + `targets` + `kpi_definitions` only — never
  *  scans `orders`. Scoped inside `kpiBoard` by the session's role. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "rep_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const period = req.nextUrl.searchParams.get("period") ?? currentPeriod();

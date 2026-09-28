@@ -53,7 +53,7 @@ describe("orderFilter", () => {
     // Narrower than the group on purpose: a فروشنده sees their own commission and
     // their own customers' orders, not a colleague's. organization_id rides along as
     // defence in depth -- see the comment on orderFilter for what it guards against.
-    const f = orderFilter(session("salesperson", 5, 7));
+    const f = orderFilter(session("phone_sales", 5, 7));
     expect(f.sql).toContain("salesperson_user_id = ?");
     expect(f.sql).toContain("organization_id = ?");
     expect(f.sql).not.toContain("group_id");
@@ -65,7 +65,7 @@ describe("orderFilter", () => {
     // real rows -- that another driver's stops stay hidden -- is covered in
     // delivery.test.ts against an actual database. organization_id comes first in the
     // params, matching the order the SQL fragment names it in.
-    const f = orderFilter(session("driver", 9, 7));
+    const f = orderFilter(session("delivery_driver", 9, 7));
     expect(f.sql).toContain("delivery_stops");
     expect(f.sql).toContain("driver_user_id = ?");
     expect(f.sql).toContain("organization_id = ?");
@@ -75,7 +75,7 @@ describe("orderFilter", () => {
   it("does not let a driver see by group", () => {
     // The group is the wrong boundary here: a driver on the east run has no business
     // reading every east order, only the ones on a van they are driving.
-    expect(orderFilter(session("driver", 9, 7)).sql).not.toContain("o.group_id");
+    expect(orderFilter(session("delivery_driver", 9, 7)).sql).not.toContain("o.group_id");
   });
 
   it("shows a manager with no group nothing, rather than everything", () => {
@@ -99,7 +99,7 @@ describe("orderFilter", () => {
     // The property that matters: for anyone scoped, appending this to a WHERE clause
     // must always remove rows. An empty string silently means "no filter". owner is
     // included now -- their fragment narrows by organisation rather than being empty.
-    for (const role of ["owner", "group_manager", "salesperson", "driver"] as Role[]) {
+    for (const role of ["owner", "group_manager", "phone_sales", "delivery_driver"] as Role[]) {
       for (const gid of [null, 7]) {
         expect(orderFilter(session(role, 4, gid)).sql).not.toBe("");
       }

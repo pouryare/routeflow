@@ -102,7 +102,7 @@ beforeEach(() => {
   );
   owner = Number(u.run(`o${T}`, "مالک", "owner", now, ORG).lastInsertRowid);
   mgr = Number(u.run(`m${T}`, "مدیر", "group_manager", now, ORG).lastInsertRowid);
-  seller = Number(u.run(`s${T}`, "فروشنده", "salesperson", now, ORG).lastInsertRowid);
+  seller = Number(u.run(`s${T}`, "فروشنده", "phone_sales", now, ORG).lastInsertRowid);
 
   g = Number(
     db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('گ','g',?,?)").run(now, ORG)

@@ -47,9 +47,9 @@ beforeEach(() => {
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
       )
-      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "salesperson", now).lastInsertRowid
+      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid
   );
-  sellerToken = createSessionToken({ uid: seller, role: "salesperson", gid: null, oid: 1, tv: 0, name: "ف" });
+  sellerToken = createSessionToken({ uid: seller, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "ف" });
 });
 
 describe("GET /api/notifications/prefs", () => {

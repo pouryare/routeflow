@@ -10,6 +10,7 @@ import CatalogueEditor from "@/components/sales/CatalogueEditor";
 import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function ProductsPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const db = getDb();
   const products = readCatalogue(db, session.organizationId, {

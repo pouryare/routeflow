@@ -44,7 +44,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "driver", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
   custId = Number(
     db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)")
@@ -70,7 +70,7 @@ function readyDelivery(): number {
   return deliveryForStop(1, stop)!.id;
 }
 
-function pushReq(mutations: unknown[], role = "driver", uid = driver) {
+function pushReq(mutations: unknown[], role = "delivery_driver", uid = driver) {
   return new NextRequest("http://localhost/api/sync/push", {
     method: "POST",
     headers: { "Content-Type": "application/json", cookie: cookie(uid, role) },
@@ -123,7 +123,7 @@ describe("sync routes", () => {
       ])
     );
     const res = await PULL(
-      new NextRequest("http://localhost/api/sync/pull", { headers: { cookie: cookie(driver, "driver") } })
+      new NextRequest("http://localhost/api/sync/pull", { headers: { cookie: cookie(driver, "delivery_driver") } })
     );
     const j = await res.json();
     expect(res.status).toBe(200);

@@ -46,7 +46,7 @@ beforeAll(() => {
     db
       .prepare(
         `INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id)
-         VALUES (?, 'x:y', ?, 'driver', NULL, 1, ?, ?)`
+         VALUES (?, 'x:y', ?, 'delivery_driver', NULL, 1, ?, ?)`
       )
       .run("driver-two", "راننده دو", now, ORG2).lastInsertRowid
   );

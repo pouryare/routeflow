@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { listTasks, createTask, TaskError } from "@/lib/repo/tasks";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver", "rep_manager"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   return NextResponse.json({
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "rep_manager"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.title || !b?.kind) return NextResponse.json({ ok: false, error: "عنوان و نوع لازم است" }, { status: 400 });

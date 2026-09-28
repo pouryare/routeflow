@@ -43,8 +43,8 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id,group_id) VALUES (?,?,?,?,?,1,?)"
   );
   gm = Number(u.run(`gm${Date.now()}`, "x", "مدیر", "group_manager", now, gid).lastInsertRowid);
-  sellerInGroup = Number(u.run(`si${Date.now()}`, "x", "سارا", "salesperson", now, gid).lastInsertRowid);
-  sellerOutGroup = Number(u.run(`so${Date.now()}`, "x", "علی", "salesperson", now, otherGid).lastInsertRowid);
+  sellerInGroup = Number(u.run(`si${Date.now()}`, "x", "سارا", "phone_sales", now, gid).lastInsertRowid);
+  sellerOutGroup = Number(u.run(`so${Date.now()}`, "x", "علی", "phone_sales", now, otherGid).lastInsertRowid);
 });
 
 describe("boardFor", () => {

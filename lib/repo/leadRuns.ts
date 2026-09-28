@@ -226,7 +226,11 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
     | undefined;
   if (!u) throw new LeadRunError(404, "راننده پیدا نشد");
   if (!u.active) throw new LeadRunError(422, "این کاربر غیرفعال است");
-  if (u.role !== "driver") throw new LeadRunError(422, "این کاربر راننده نیست");
+  // Either van role, because the two are one working day: a delivery driver who also
+  // visits shops is assignable a field route, and refusing them is how a route silently
+  // disappears from someone's day. 'driver' is still admitted while legacy rows exist.
+  if (u.role !== "driver" && u.role !== "field_rep" && u.role !== "delivery_driver")
+    throw new LeadRunError(422, "این کاربر بازدیدکننده نیست");
   // 404 rather than 403 for another group's driver, as everywhere else here.
   if (!canReachGroup(session, u.group_id)) throw new LeadRunError(404, "راننده پیدا نشد");
   return { id: u.id, group_id: u.group_id, display_name: u.display_name };
@@ -251,9 +255,13 @@ export function isOnDriversRun(conn: DatabaseSync, driverUserId: number, orgId: 
 /** Drivers this manager may assign a route to. Feeds the dropdown. */
 export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null; avatar_url: string | null }> {
   const all = session.role === "owner";
+  // Either van role, for the same reason the guard above does. A lead run is work in a
+  // vehicle, and both roles are that. An empty dropdown here is silent: no error, just a
+  // route nobody can be handed.
   const rows = conn
     .prepare(`SELECT id, display_name, group_id, avatar_url FROM users
-               WHERE organization_id = ? AND role = 'driver' AND active = 1
+               WHERE organization_id = ? AND active = 1
+                 AND role IN ('field_rep', 'delivery_driver', 'driver')
                  ${all ? "" : "AND group_id = ?"}
                ORDER BY display_name`)
     .all(...(all ? [session.organizationId] : [session.organizationId, session.groupId ?? -1])) as

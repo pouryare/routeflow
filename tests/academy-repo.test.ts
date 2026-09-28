@@ -33,7 +33,7 @@ beforeEach(() => {
     new Date().toISOString()
   );
   uid = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('a','x','م','salesperson',?,1)").run(new Date().toISOString()).lastInsertRowid
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('a','x','م','phone_sales',?,1)").run(new Date().toISOString()).lastInsertRowid
   );
 });
 

@@ -101,7 +101,7 @@ describe("named account login", () => {
     ).run("sara", hashPassword("sara-pass"), "سارا", "group_manager", gid, now);
     db.prepare(
       "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, ?, ?, ?, ?, 0, ?)"
-    ).run("ghost", hashPassword("ghost-pass"), "غایب", "driver", gid, now);
+    ).run("ghost", hashPassword("ghost-pass"), "غایب", "delivery_driver", gid, now);
   });
 
   it("mints a token carrying the account's role and group", async () => {

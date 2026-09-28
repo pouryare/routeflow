@@ -51,7 +51,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "driver", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
   product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
   packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
   setPrice(db, { product_id: product, price_toman: 1000, valid_from: "2026-01-01" });
@@ -104,7 +104,7 @@ describe("route freeze", () => {
     db.prepare("UPDATE delivery_runs SET route_template_id = ? WHERE id = ?").run(tmpl, runPast);
 
     const driver2 = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('d2','x','ر۲','driver',1,?,1)").run(new Date().toISOString()).lastInsertRowid
+      db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('d2','x','ر۲','delivery_driver',1,?,1)").run(new Date().toISOString()).lastInsertRowid
     );
     const runFrozen = createRun(db, {
       driver_user_id: driver2,

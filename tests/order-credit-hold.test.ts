@@ -40,7 +40,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,NULL,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "driver", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
   custId = Number(
     db
       .prepare(
@@ -80,7 +80,7 @@ describe("submitOrder credit hold", () => {
     });
     // born clean; the breach is caught on submit
     expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
-    const after = submitOrder(1, id, { id: owner, role: "salesperson" });
+    const after = submitOrder(1, id, { id: owner, role: "phone_sales" });
     expect(after).toBe("PENDING_CREDIT");
     expect(
       db.prepare("SELECT credit_hold, status FROM orders WHERE id=?").get(id)
@@ -100,7 +100,7 @@ describe("submitOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)], // 20_000 < 50_000
     });
-    expect(submitOrder(1, id, { id: owner, role: "salesperson" })).toBe("PENDING_REVIEW");
+    expect(submitOrder(1, id, { id: owner, role: "phone_sales" })).toBe("PENDING_REVIEW");
     expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
     expect(db.prepare("SELECT COUNT(*) n FROM credit_approvals").get()).toEqual({ n: 0 });
   });
@@ -119,7 +119,7 @@ describe("submitOrder credit hold", () => {
       organization_id: 1,
       lines: [line(2)],
     });
-    expect(submitOrder(1, id, { id: owner, role: "salesperson" })).toBe("CONFIRMED");
+    expect(submitOrder(1, id, { id: owner, role: "phone_sales" })).toBe("CONFIRMED");
     expect((db.prepare("SELECT credit_hold FROM orders WHERE id=?").get(id) as { credit_hold: number }).credit_hold).toBe(0);
     expect(db.prepare("SELECT COUNT(*) n FROM credit_approvals").get()).toEqual({ n: 0 });
   });
@@ -149,7 +149,7 @@ describe("submitOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)],
     });
-    submitOrder(1, id, { id: owner, role: "salesperson" });
+    submitOrder(1, id, { id: owner, role: "phone_sales" });
     const approvalId = (db.prepare("SELECT id FROM credit_approvals WHERE order_id=?").get(id) as { id: number }).id;
     decide(1, approvalId, "approved", owner);
     const row = db.prepare("SELECT credit_hold, status FROM orders WHERE id=?").get(id) as {
@@ -170,7 +170,7 @@ describe("submitOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)],
     });
-    submitOrder(1, id, { id: owner, role: "salesperson" });
+    submitOrder(1, id, { id: owner, role: "phone_sales" });
     const n = db
       .prepare("SELECT COUNT(*) AS n FROM reminders WHERE entity_type='customer' AND entity_id=?")
       .get(custId) as { n: number };
@@ -187,7 +187,7 @@ describe("submitOrder credit hold", () => {
       organization_id: 1,
       lines: [line(1)],
     });
-    submitOrder(1, id, { id: owner, role: "salesperson" });
+    submitOrder(1, id, { id: owner, role: "phone_sales" });
     const approvalId = (db.prepare("SELECT id FROM credit_approvals WHERE order_id=?").get(id) as { id: number }).id;
     decide(1, approvalId, "rejected", owner);
     expect((db.prepare("SELECT status FROM orders WHERE id=?").get(id) as { status: string }).status).toBe("ON_HOLD");

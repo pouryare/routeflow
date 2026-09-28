@@ -47,7 +47,7 @@ describe("createTask stage default", () => {
 
 describe("moveTask", () => {
   it("status view → done closes the task and stamps done_at + stage", () => {
-    const id = createTask(1, { title: "تماس تست", kind: "outreach", role_hint: "salesperson", priority: "NORMAL" });
+    const id = createTask(1, { title: "تماس تست", kind: "outreach", role_hint: "phone_sales", priority: "NORMAL" });
     const res = moveTask(1, id, { view: "status", toLane: "done", actor, nowIso: NOW });
     expect(res).toMatchObject({ status: "done", stage: "done" });
     const row = tasksRepo.get(1, id)!;

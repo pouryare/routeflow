@@ -6,7 +6,7 @@ import {
   markGroupsRead,
 } from "@/lib/repo/notifications";
 
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...ROLES]);

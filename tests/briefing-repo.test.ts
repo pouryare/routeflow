@@ -52,8 +52,8 @@ beforeEach(() => {
   );
   owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", null, now).lastInsertRowid);
   mgr = Number(u.run(`m${Date.now()}`, "x", "مد", "group_manager", groupId, now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "salesperson", groupId, now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x", "ر", "driver", groupId, now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", groupId, now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x", "ر", "delivery_driver", groupId, now).lastInsertRowid);
   custId = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','x','active',?,?,1)").run(now, groupId).lastInsertRowid);
   product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
   packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 10 });
@@ -64,7 +64,7 @@ describe("todayFor", () => {
   it("salesperson gets open_tasks and the target panel", () => {
     createTask(1, { title: "تماس با علی", kind: "call", assignee_user_id: seller });
     setTarget(1, { user_id: seller, period: PERIOD, metric: "revenue_toman", target_value: 100_000 });
-    const b = todayFor(sess(seller, "salesperson", groupId));
+    const b = todayFor(sess(seller, "phone_sales", groupId));
     const keys = b.panels.map((p) => p.key);
     expect(keys).toContain("open_tasks");
     expect(keys).toContain("target");
@@ -86,7 +86,7 @@ describe("todayFor", () => {
     addStop(db, run2, o2.id);
     db.prepare("UPDATE orders SET status = 'DELIVERY_FAILED' WHERE id = ?").run(o2.id);
 
-    const b = todayFor(sess(driver, "driver", groupId));
+    const b = todayFor(sess(driver, "delivery_driver", groupId));
     const keys = b.panels.map((p) => p.key);
     expect(keys).toContain("today_run");
     expect(keys).toContain("retry");
@@ -137,7 +137,7 @@ describe("todayFor", () => {
   });
 
   it("omits a panel with nothing actionable", () => {
-    const b = todayFor(sess(seller, "salesperson", groupId));
+    const b = todayFor(sess(seller, "phone_sales", groupId));
     // no tasks, no target -> neither panel present
     expect(b.panels.map((p) => p.key)).not.toContain("open_tasks");
     expect(b.panels.map((p) => p.key)).not.toContain("target");

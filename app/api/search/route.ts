@@ -8,7 +8,7 @@ import { searchCustomers, searchOrders, searchUsers } from "@/lib/repo/search";
  *  applies its own role and scope rules in lib/repo/search.ts. The role list here is
  *  just the union, so a driver is refused at the door. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const q = (new URL(req.url).searchParams.get("q") ?? "").slice(0, 80);

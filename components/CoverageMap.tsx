@@ -1252,7 +1252,7 @@ export default function CoverageMap({
    *  customer is rendered separately from the rest and both must agree. */
   function markerColor(c: CustomerRow): string {
     if (colorMode === "debt") return debtColor(c.debt);
-    if (colorMode === "salesperson") return salespersonColor(c.salesperson, salesIndex);
+    if (colorMode === "phone_sales") return salespersonColor(c.salesperson, salesIndex);
     if (colorMode === "inactivity") return inactivityColor(c);
     if (colorMode === "distance") return distanceColor(c, colourOrigin);
     return customerLifecycleColor(c.lifecycle);
@@ -1603,7 +1603,7 @@ export default function CoverageMap({
                 [
                   ["status", "وضعیت"],
                   ["debt", "بدهی"],
-                  ["salesperson", "فروشنده"],
+                  ["phone_sales", "فروشنده"],
                   ["inactivity", "رکود"],
                   ["distance", "فاصله"],
                 ] as [CustomerColorMode, string][]

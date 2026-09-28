@@ -5,7 +5,7 @@ import { listReasonCodes, createReasonCode, ReasonCodeError, type ReasonDomain }
 const DOMAINS: ReasonDomain[] = ["delivery_fail", "delivery_delay", "order_cancel", "order_return"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const d = req.nextUrl.searchParams.get("domain");
   const domain = DOMAINS.includes(d as ReasonDomain) ? (d as ReasonDomain) : undefined;

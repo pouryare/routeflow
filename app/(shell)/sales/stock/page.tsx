@@ -12,6 +12,7 @@ import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ export default async function StockPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const db = getDb();
   const stock = advancedStockPosition(db);

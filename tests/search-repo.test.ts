@@ -38,8 +38,8 @@ beforeEach(() => {
   const tag = Date.now();
   owner = Number(u.run(`o${tag}`, "x", "م", "owner", null, now).lastInsertRowid);
   mgrA = Number(u.run(`m${tag}`, "x", "مد", "group_manager", groupA, now).lastInsertRowid);
-  sellerA = Number(u.run(`s${tag}`, "x", "ف", "salesperson", groupA, now).lastInsertRowid);
-  sellerA2 = Number(u.run(`t${tag}`, "x", "ف۲", "salesperson", groupA, now).lastInsertRowid);
+  sellerA = Number(u.run(`s${tag}`, "x", "ف", "phone_sales", groupA, now).lastInsertRowid);
+  sellerA2 = Number(u.run(`t${tag}`, "x", "ف۲", "phone_sales", groupA, now).lastInsertRowid);
   const c = db.prepare(
     "INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES (?,?,'active',?,?,1)"
   );
@@ -67,7 +67,7 @@ describe("searchCustomers", () => {
   });
 
   it("a salesperson gets no customers: search must not be a side door to a list they cannot open", () => {
-    expect(searchCustomers(getDb(), sess(sellerA, "salesperson", groupA), "سوپر")).toEqual([]);
+    expect(searchCustomers(getDb(), sess(sellerA, "phone_sales", groupA), "سوپر")).toEqual([]);
   });
 
   it("folds Arabic ي into Persian ی", () => {
@@ -86,7 +86,7 @@ describe("searchCustomers", () => {
 
 describe("searchOrders", () => {
   it("a salesperson finds only their own order", () => {
-    const ids = searchOrders(getDb(), sess(sellerA, "salesperson", groupA), "سوپر").map((h) => h.id);
+    const ids = searchOrders(getDb(), sess(sellerA, "phone_sales", groupA), "سوپر").map((h) => h.id);
     expect(ids).toEqual([`order:${orderMineId}`]);
   });
 
@@ -109,7 +109,7 @@ describe("searchOrders", () => {
   });
 
   it("gives a driver nothing", () => {
-    expect(searchOrders(getDb(), sess(sellerA, "driver", groupA), "سوپر")).toEqual([]);
+    expect(searchOrders(getDb(), sess(sellerA, "delivery_driver", groupA), "سوپر")).toEqual([]);
   });
 });
 
@@ -124,7 +124,7 @@ describe("searchUsers (Login-As candidates)", () => {
 
   it("nobody but an owner gets the section", () => {
     expect(searchUsers(getDb(), sess(mgrA, "group_manager", groupA), "ف۲")).toEqual([]);
-    expect(searchUsers(getDb(), sess(sellerA, "salesperson", groupA), "ف۲")).toEqual([]);
+    expect(searchUsers(getDb(), sess(sellerA, "phone_sales", groupA), "ف۲")).toEqual([]);
   });
 
   it("never offers themselves, another owner or a deactivated account", () => {
@@ -133,7 +133,7 @@ describe("searchUsers (Login-As candidates)", () => {
     db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,?,?,1)")
       .run(`o2${Date.now()}`, "x", "مالک دوم", "owner", null, 1, now);
     db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,?,?,1)")
-      .run(`gone${Date.now()}`, "x", "مالک رفته", "salesperson", null, 0, now);
+      .run(`gone${Date.now()}`, "x", "مالک رفته", "phone_sales", null, 0, now);
     const labels = searchUsers(db, sess(owner, "owner", null), "مالک").map((h) => h.label);
     expect(labels).toEqual([]);
   });

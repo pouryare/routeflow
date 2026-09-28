@@ -39,7 +39,7 @@ beforeAll(() => {
   eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
 });
 
-function as(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, url: string, init: ReqInit = {}) {
+function as(userId: number, role: "owner" | "group_manager" | "delivery_driver", gid: number | null, url: string, init: ReqInit = {}) {
   const token = createSessionToken({ uid: userId, role, gid, oid: 1, tv: 0, name: "t" });
   return new NextRequest(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `${COOKIE_NAME}=${token}` } });
 }
@@ -54,16 +54,16 @@ const json = (method: string, payload: unknown): ReqInit =>
 describe("POST /api/admin/users", () => {
   it("creates an account with a role and a group", async () => {
     const res = await createUser(as(ownerId, "owner", null, URL_NEW,
-      json("POST", { username: "newdrv", password: "pw-123456", display_name: "راننده نو", role: "driver", group_id: east, staff_code: "DRV2" })));
+      json("POST", { username: "newdrv", password: "pw-123456", display_name: "راننده نو", role: "delivery_driver", group_id: east, staff_code: "DRV2" })));
     expect(res.status).toBe(200);
     const row = getDb().prepare("SELECT role, group_id, staff_code FROM users WHERE username = 'newdrv'")
       .get() as { role: string; group_id: number; staff_code: string };
-    expect(row).toEqual({ role: "driver", group_id: east, staff_code: "DRV2" });
+    expect(row).toEqual({ role: "delivery_driver", group_id: east, staff_code: "DRV2" });
   });
 
   it("stores a scrypt hash, never the password itself", async () => {
     await createUser(as(ownerId, "owner", null, URL_NEW,
-      json("POST", { username: "hashme", password: "pw-abcdef", display_name: "هش", role: "driver", group_id: east })));
+      json("POST", { username: "hashme", password: "pw-abcdef", display_name: "هش", role: "delivery_driver", group_id: east })));
     const row = getDb().prepare("SELECT password_hash FROM users WHERE username = 'hashme'").get() as { password_hash: string };
     expect(row.password_hash).not.toContain("pw-abcdef");
     expect(row.password_hash).toMatch(/^[0-9a-f]{32}:[0-9a-f]+$/);
@@ -78,7 +78,7 @@ describe("POST /api/admin/users", () => {
   it("requires a group for a group_manager and a driver", async () => {
     // An owner is unscoped by design. A non-owner with no group can reach nothing at all
     // (scopeGroupIds returns []), so creating one is a bug, not a valid state.
-    for (const role of ["group_manager", "driver"]) {
+    for (const role of ["group_manager", "delivery_driver"]) {
       const res = await createUser(as(ownerId, "owner", null, URL_NEW,
         json("POST", { username: `no-group-${role}`, password: "pw-123456", display_name: "بی‌گروه", role })));
       expect(res.status).toBe(400);
@@ -90,13 +90,13 @@ describe("POST /api/admin/users", () => {
 
   it("rejects a duplicate username with 409", async () => {
     const res = await createUser(as(ownerId, "owner", null, URL_NEW,
-      json("POST", { username: "newdrv", password: "pw-123456", display_name: "تکراری", role: "driver", group_id: east })));
+      json("POST", { username: "newdrv", password: "pw-123456", display_name: "تکراری", role: "delivery_driver", group_id: east })));
     expect(res.status).toBe(409);
   });
 
   it("refuses a non-owner with 403", async () => {
     const res = await createUser(as(eastMgrId, "group_manager", east, URL_NEW,
-      json("POST", { username: "sneaky", password: "pw-123456", display_name: "نفوذی", role: "driver", group_id: east })));
+      json("POST", { username: "sneaky", password: "pw-123456", display_name: "نفوذی", role: "delivery_driver", group_id: east })));
     expect(res.status).toBe(403);
   });
 });
@@ -131,7 +131,7 @@ describe("PATCH /api/admin/users/[id]", () => {
 
   it("refuses to demote the last remaining owner", async () => {
     const db = getDb();
-    db.prepare("UPDATE users SET role = 'driver', group_id = ? WHERE username = 'second-owner'").run(east);
+    db.prepare("UPDATE users SET role = 'delivery_driver', group_id = ? WHERE username = 'second-owner'").run(east);
     const owners = db.prepare("SELECT id FROM users WHERE role = 'owner' AND active = 1").all() as unknown as { id: number }[];
     expect(owners).toHaveLength(1);
     const res = await patchUser(

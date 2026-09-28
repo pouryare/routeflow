@@ -8,7 +8,7 @@ import {
 } from "@/lib/repo/payments";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

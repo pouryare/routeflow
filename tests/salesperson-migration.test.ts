@@ -98,7 +98,7 @@ describe("upgrading a production-shaped database", () => {
         .prepare(
           "INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)"
         )
-        .run("nazanin", "x", "نازنین", "salesperson", new Date().toISOString())
+        .run("nazanin", "x", "نازنین", "phone_sales", new Date().toISOString())
     ).not.toThrow();
   });
 

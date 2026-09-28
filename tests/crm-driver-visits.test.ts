@@ -18,21 +18,21 @@ const g = (s: string) => Number(db.prepare("INSERT INTO groups (name, slug, crea
 const g1 = g("g1"), g2 = g("g2");
 const user = (u: string, role: string, gid: number) =>
   Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,?,?,?,?,?,1)").run(u, "x", u, role, gid, NOW).lastInsertRowid);
-const rep = user("rep", "salesperson", g1);
-const driver = user("drv", "driver", g1);
+const rep = user("rep", "phone_sales", g1);
+const driver = user("drv", "delivery_driver", g1);
 const lead = (gid: number) => {
   const id = Number(db.prepare(`INSERT INTO customers (customer_code, business_name, address, lat, lng, location_precision, owner_user_id, group_id,
       verification, sales_stage, contact_status, temperature, synced_at, organization_id)
       VALUES (?, 'رستوران بی‌تلفن', 'سعادت‌آباد', 35.78, 51.37, 'approx', ?, ?, 'unverified', 'unknown', 'not_contacted', 'cold', ?, 1)`)
     .run(`D-${Math.random()}`, rep, gid, NOW).lastInsertRowid);
   const t = Number(db.prepare(`INSERT INTO tasks (organization_id, role_hint, group_id, kind, title, entity_type, entity_id, due_at, created_at)
-      VALUES (1, 'driver', ?, 'verify_visit', 'بازدید تأیید', 'customer', ?, ?, ?)`).run(gid, id, NOW, NOW).lastInsertRowid);
+      VALUES (1, 'delivery_driver', ?, 'verify_visit', 'بازدید تأیید', 'customer', ?, ?, ?)`).run(gid, id, NOW, NOW).lastInsertRowid);
   db.prepare("UPDATE customers SET next_task_id = ? WHERE id = ?").run(t, id);
   return { id, t };
 };
 const mine = lead(g1);
 const elsewhere = lead(g2);
-const D: Session = { user: { id: driver, display_name: "drv" } as Session["user"], role: "driver", groupId: g1, organizationId: 1 };
+const D: Session = { user: { id: driver, display_name: "drv" } as Session["user"], role: "delivery_driver", groupId: g1, organizationId: 1 };
 
 describe("driver visits", () => {
   it("lists only the driver's group's visits, with the minimum to find the door", () => {
@@ -55,7 +55,7 @@ describe("driver visits", () => {
   it("404s a visit in another group and refuses a non-driver", () => {
     expect(() => applyDriverVisit(D, elsewhere.t, { answers: [{ step: "found", option: "no" }, { step: "notfound", option: "gone" }] }))
       .toThrow(expect.objectContaining({ status: 404 }));
-    const R: Session = { ...D, user: { id: rep } as Session["user"], role: "salesperson" };
+    const R: Session = { ...D, user: { id: rep } as Session["user"], role: "phone_sales" };
     expect(() => driverVisitsFor(R)).toThrow(expect.objectContaining({ status: 403 }));
   });
 });

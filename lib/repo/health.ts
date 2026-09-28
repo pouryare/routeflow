@@ -313,7 +313,7 @@ export function materialiseHealth(organizationId: number, period: string): numbe
   }
 
   const sellers = db
-    .prepare("SELECT id FROM users WHERE organization_id = ? AND role = 'salesperson'")
+    .prepare("SELECT id FROM users WHERE organization_id = ? AND role IN ('phone_sales', 'salesperson')")
     .all(organizationId) as { id: number }[];
   for (const s of sellers) {
     writes.push({
@@ -326,7 +326,7 @@ export function materialiseHealth(organizationId: number, period: string): numbe
   }
 
   const drivers = db
-    .prepare("SELECT id FROM users WHERE organization_id = ? AND role = 'driver'")
+    .prepare("SELECT id FROM users WHERE organization_id = ? AND role IN ('delivery_driver', 'field_rep', 'driver')")
     .all(organizationId) as { id: number }[];
   for (const d of drivers) {
     writes.push({

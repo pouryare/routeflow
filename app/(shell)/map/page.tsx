@@ -12,6 +12,7 @@ import { getSessionFromCookies, groupFilterWithShared, scopeGroupIds } from "@/l
 import { readGroups } from "@/lib/groups";
 import { readLeadPins } from "@/lib/repo/leads";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 // The map's opening data comes from the server, not from fetches fired after hydration.
 // SQLite is local and these reads are sub-millisecond, so paying for them inline is
@@ -28,7 +29,7 @@ export default async function Home() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
   const scope = scopeGroupIds(session);
 
   const db = getDb();

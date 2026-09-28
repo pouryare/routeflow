@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
 
   // A driver outside the caller's group answers 404, like every other row they cannot
   // reach -- a 403 would confirm the account exists.
-  if (!driver || driver.role !== "driver" || !canReachGroup(guard.session, driver.group_id)) {
+  if (!driver || (driver.role !== "driver" && driver.role !== "delivery_driver") || !canReachGroup(guard.session, driver.group_id)) {
     return NextResponse.json({ ok: false, error: "راننده پیدا نشد" }, { status: 404 });
   }
 

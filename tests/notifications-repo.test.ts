@@ -37,7 +37,7 @@ beforeEach(() => {
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
   mgr = Number(u.run(`m${Date.now()}`, "x:y", "مد", "group_manager", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "salesperson", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid);
   custId = Number(
     db
       .prepare(

@@ -8,6 +8,7 @@ import ScheduleBoard from "@/components/meridian/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 import PageHeader from "@/components/meridian/PageHeader";
 import { Icon } from "@/components/meridian/Icon";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function SchedulePage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const db = getDb();
   // Qualified: the runs query joins delivery_runs to users, and for an owner this

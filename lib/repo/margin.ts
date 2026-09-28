@@ -18,6 +18,8 @@ import { rollUp, marginPct, type Keyed, type MarginRow } from "@/lib/analysis/ma
 import { periodRange } from "@/lib/analysis/period";
 import { upsertSnapshots, type SnapshotWrite } from "./kpiSnapshots";
 
+/** A reporting dimension, NOT a Role. Feeds kpi_snapshots.scope_type, whose CHECK still
+ *  names 'salesperson' -- so this list must keep the old vocabulary. */
 export type MarginDimension = "customer" | "product" | "salesperson" | "group" | "representative";
 
 export class MarginError extends Error {}
@@ -69,7 +71,7 @@ export function marginBy(
   period: string,
   session: Session
 ): MarginRow[] {
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     throw new MarginError("حاشیهٔ سود برای این نقش در دسترس نیست");
   }
   const d = DIMENSION_SQL[dimension];

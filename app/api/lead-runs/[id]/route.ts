@@ -7,6 +7,7 @@ import {
   updateLeadRun,
   type LeadRunStatus,
 } from "@/lib/repo/leadRuns";
+import { isVanRole } from "@/lib/roles";
 
 /** One run: read it, or change who it belongs to / when / what is on it.
  *
@@ -18,7 +19,7 @@ import {
 const STATUSES: LeadRunStatus[] = ["planned", "in_progress", "done"];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -27,14 +28,14 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[i
   const run = readLeadRun(db, id, guard.session.organizationId);
   // A driver may read only their own run. 404, not 403: a 403 would confirm it exists.
   if (!run) return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
-  if (guard.session.role === "driver" && run.driver_user_id !== guard.session.user.id) {
+  if (isVanRole(guard.session.role) && run.driver_user_id !== guard.session.user.id) {
     return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true, run });
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -46,13 +47,13 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-runs/
 
   const existing = readLeadRun(db, id, session.organizationId);
   if (!existing) return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
-  if (session.role === "driver" && existing.driver_user_id !== session.user.id) {
+  if (isVanRole(session.role) && existing.driver_user_id !== session.user.id) {
     return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   }
 
   // A driver gets the reorder and nothing else. Checked by inspecting the patch rather than
   // by a separate route, so there is one code path and one place the rule is written.
-  if (session.role === "driver") {
+  if (isVanRole(session.role)) {
     const keys = Object.keys(body);
     const onlyStops = keys.every((k) => k === "location_ids");
     if (!onlyStops) {

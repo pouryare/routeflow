@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { objectionCardFor, listObjectionCards, upsertObjectionCard } from "@/lib/repo/academy";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver", "rep_manager"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const code = sp.get("outcome_code");

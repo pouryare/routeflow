@@ -9,7 +9,7 @@ import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
 const MAX_UPLOAD_BYTES = 20 * 1024 * 1024;
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]/receipt">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -28,7 +28,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
 }
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/payments/[id]/receipt">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

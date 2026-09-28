@@ -40,7 +40,7 @@ describe("academy schema", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const uid = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('lp','x','م','salesperson',?,1)").run(now).lastInsertRowid
+      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('lp','x','م','phone_sales',?,1)").run(now).lastInsertRowid
     );
     const ins = db.prepare("INSERT INTO lesson_progress (organization_id,user_id,lesson_slug,completed_at) VALUES (1,?,'01-market-and-customer',?)");
     expect(() => ins.run(uid, now)).not.toThrow();

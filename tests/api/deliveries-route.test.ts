@@ -50,7 +50,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "driver", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
   custId = Number(
     db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES (?,?,'active','2026-01-01',1)")
@@ -83,7 +83,7 @@ describe("deliveries + reason-codes routes", () => {
   it("lists reason codes filtered by domain", async () => {
     const res = await RC(
       new NextRequest("http://localhost/api/sales/reason-codes?domain=delivery_fail", {
-        headers: { cookie: cookie(driver, "driver") },
+        headers: { cookie: cookie(driver, "delivery_driver") },
       })
     );
     expect(res.status).toBe(200);
@@ -157,7 +157,7 @@ describe("deliveries + reason-codes routes", () => {
     // proxy also blocks this, but the route re-checks.
     const res = await LIST(
       new NextRequest("http://localhost/api/sales/deliveries", {
-        headers: { cookie: cookie(owner, "salesperson") },
+        headers: { cookie: cookie(owner, "phone_sales") },
       })
     );
     expect(res.status).toBe(200); // salesperson IS allowed to read the list

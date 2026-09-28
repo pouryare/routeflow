@@ -40,7 +40,7 @@ beforeAll(() => {
   sellerId = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
       .run("ca-seller", "x:y", "فروشنده", now).lastInsertRowid
   );
@@ -89,7 +89,7 @@ describe("/api/admin/credit-approvals", () => {
       jreq("/api/admin/credit-approvals", {
         method: "POST",
         uid: sellerId,
-        role: "salesperson",
+        role: "phone_sales",
         body: JSON.stringify({
           order_id: orderId,
           customer_id: custId,
@@ -132,7 +132,7 @@ describe("/api/admin/credit-approvals", () => {
       jreq(`/api/admin/credit-approvals/${approvalId}/decide`, {
         method: "POST",
         uid: sellerId,
-        role: "salesperson",
+        role: "phone_sales",
         body: JSON.stringify({ verdict: "approved" }),
       }),
       ctx(approvalId)

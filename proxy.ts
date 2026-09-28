@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./lib/auth";
+import { isVanRole } from "@/lib/roles";
 
 // /sw.js, the manifest, and the offline fallback stay unauthenticated on purpose:
 // a service worker script must return the same bytes regardless of session state, or
@@ -106,14 +107,14 @@ export function proxy(req: NextRequest) {
   if (isAdmin && !isEndImpersonation && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
-  if (isDriver && claims.role !== "driver") return deny("/sales");
+  if (isDriver && !isVanRole(claims.role)) return deny("/sales");
 
   // /analytics and /report aggregate a whole group's revenue, debt and coverage, and
   // /report hands the reader a CSV of every row behind the totals. A salesperson is
   // scoped to their own orders, so for them these are not a wider view of their own data
   // but somebody else's -- they get their own figures at /sales/me instead.
   const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
-  if (isGroupWide && claims.role === "salesperson") return deny("/sales");
+  if (isGroupWide && claims.role === "phone_sales") return deny("/sales");
 
   // The cheque board and its API are a manager/owner tool -- a salesperson records a
   // cheque as a payment via /sales/payments, but does not run the deposit/bounce
@@ -169,8 +170,9 @@ export function proxy(req: NextRequest) {
   const isSync = pathname.startsWith("/api/sync");
   const isCrm = pathname === "/crm" || pathname.startsWith("/crm/") || pathname.startsWith("/api/crm");
   const isDriverVisits = pathname.startsWith("/api/crm/driver-visits");
-  if (isCrm && !isDriverVisits && claims.role === "driver") return deny("/driver");
-  if (isDriverVisits && claims.role !== "driver") return deny("/sales");
+  const isVan = isVanRole(claims.role);
+  if (isCrm && !isDriverVisits && isVan) return deny("/driver");
+  if (isDriverVisits && !isVan) return deny("/sales");
 
   const isDriverBriefing =
     pathname.startsWith("/api/crm/driver-visits") ||
@@ -193,7 +195,7 @@ export function proxy(req: NextRequest) {
     pathname === "/leads" ||
     pathname.startsWith("/api/leads/locations") ||
     pathname.startsWith("/api/lead-runs");
-  if (claims.role === "driver" && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
+  if (isVan && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
 
   return NextResponse.next();
 }

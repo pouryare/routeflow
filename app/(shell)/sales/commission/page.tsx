@@ -12,6 +12,7 @@ import CommissionEditor from "@/components/sales/CommissionEditor";
 import Avatar from "@/components/meridian/Avatar";
 import EarnerCard from "@/components/meridian/EarnerCard";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -31,7 +32,7 @@ export default async function CommissionPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const today = toJalali(new Date().toISOString())!;
   const period = {
@@ -43,13 +44,13 @@ export default async function CommissionPage() {
   const groupId = session.role === "owner" ? undefined : session.groupId;
 
   const statements =
-    session.role === "salesperson"
+    session.role === "phone_sales"
       ? [statementFor(db, session.user.id, period)]
       : allStatements(db, period, { groupId });
 
   // A فروشنده sees only their own figures -- someone else's earnings, driver or
   // manager, are none of their business, the same boundary their own statement draws.
-  const driverStatements = session.role === "salesperson" ? [] : allDriverStatements(db, period, { groupId });
+  const driverStatements = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId });
   const managerStatements =
     session.role === "owner"
       ? allManagerStatements(db, period)

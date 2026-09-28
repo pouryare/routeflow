@@ -17,7 +17,7 @@ import {
  *  override statement. The owner sees everyone, in every ledger.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
   const session = guard.session;
 
@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const db = getDb();
 
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     return NextResponse.json({
       ok: true,
       statements: [statementFor(db, session.user.id, period)],

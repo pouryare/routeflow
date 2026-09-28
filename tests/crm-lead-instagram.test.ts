@@ -14,8 +14,8 @@ type Session = import("@/lib/session").Session;
 
 const db = getDb();
 const now = new Date().toISOString();
-const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('igrep','x','ای‌جی','salesperson',?,1)").run(now).lastInsertRowid);
-const session: Session = { user: { id: uid } as Session["user"], role: "salesperson", groupId: null, organizationId: 1 };
+const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('igrep','x','ای‌جی','phone_sales',?,1)").run(now).lastInsertRowid);
+const session: Session = { user: { id: uid } as Session["user"], role: "phone_sales", groupId: null, organizationId: 1 };
 afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(process.env.ROUTEFLOW_DB_PATH! + s, { force: true }); });
 
 const PIN = JSON.stringify({ lat: 35.7, lng: 51.4, precision: "approx" });

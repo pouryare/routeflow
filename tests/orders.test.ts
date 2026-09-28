@@ -52,7 +52,7 @@ beforeAll(() => {
   ctx.seller = Number(
     db
       .prepare(
-        "INSERT INTO users (username, password_hash, display_name, role, group_id, created_at) VALUES (?, 'x', ?, 'salesperson', ?, ?)"
+        "INSERT INTO users (username, password_hash, display_name, role, group_id, created_at) VALUES (?, 'x', ?, 'phone_sales', ?, ?)"
       )
       .run("nazanin", "نازنین", ctx.group, now).lastInsertRowid
   );

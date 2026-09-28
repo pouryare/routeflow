@@ -25,7 +25,7 @@ beforeAll(() => {
     "INSERT INTO users (username, password_hash, display_name, role, active, created_at) VALUES (?, 'x', ?, ?, 1, ?)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", now).lastInsertRowid);
-  ctx.seller = Number(user.run("nazanin", "نازنین", "salesperson", now).lastInsertRowid);
+  ctx.seller = Number(user.run("nazanin", "نازنین", "phone_sales", now).lastInsertRowid);
 });
 
 const cols = (table: string) =>

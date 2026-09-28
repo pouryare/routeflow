@@ -7,6 +7,7 @@ import { readCustomers } from "@/lib/customers";
 import { readCatalogue } from "@/lib/catalogue";
 import ComplaintsPanel from "@/components/sales/ComplaintsPanel";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -14,7 +15,7 @@ export default async function ComplaintsPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const db = getDb();
   const customers = readCustomers(db, scopeGroupIds(session)).map((c) => ({

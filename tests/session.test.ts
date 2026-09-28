@@ -40,10 +40,10 @@ beforeAll(() => {
   );
   ownerId = Number(u.run("pourya", "x:y", "پوریا", "owner", null, now).lastInsertRowid);
   managerId = Number(u.run("sara", "x:y", "سارا", "group_manager", groupEast, now).lastInsertRowid);
-  driverId = Number(u.run("yousef", "x:y", "یوسف", "driver", groupEast, now).lastInsertRowid);
+  driverId = Number(u.run("yousef", "x:y", "یوسف", "delivery_driver", groupEast, now).lastInsertRowid);
 });
 
-function reqFor(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, tv = 0) {
+function reqFor(userId: number, role: "owner" | "group_manager" | "delivery_driver", gid: number | null, tv = 0) {
   const token = createSessionToken({ uid: userId, role, gid, oid: 1, tv, name: "t" });
   return new NextRequest("http://localhost/api/anything", { headers: { cookie: `${COOKIE_NAME}=${token}` } });
 }
@@ -70,15 +70,15 @@ describe("getSession", () => {
   it("rejects a deactivated user", () => {
     const db = getDb();
     db.prepare("UPDATE users SET active = 0 WHERE id = ?").run(driverId);
-    expect(getSession(reqFor(driverId, "driver", groupEast))).toBeNull();
+    expect(getSession(reqFor(driverId, "delivery_driver", groupEast))).toBeNull();
     db.prepare("UPDATE users SET active = 1 WHERE id = ?").run(driverId);
   });
 
   it("rejects a token whose version is behind the user's", () => {
     const db = getDb();
     db.prepare("UPDATE users SET token_version = 5 WHERE id = ?").run(driverId);
-    expect(getSession(reqFor(driverId, "driver", groupEast, 0))).toBeNull();
-    expect(getSession(reqFor(driverId, "driver", groupEast, 5))).not.toBeNull();
+    expect(getSession(reqFor(driverId, "delivery_driver", groupEast, 0))).toBeNull();
+    expect(getSession(reqFor(driverId, "delivery_driver", groupEast, 5))).not.toBeNull();
     db.prepare("UPDATE users SET token_version = 0 WHERE id = ?").run(driverId);
   });
 
@@ -94,7 +94,7 @@ describe("requireRole", () => {
   });
 
   it("refuses a role not on the list with 403", async () => {
-    const guard = requireRole(reqFor(driverId, "driver", groupEast), ["owner", "group_manager"]);
+    const guard = requireRole(reqFor(driverId, "delivery_driver", groupEast), ["owner", "group_manager"]);
     expect(guard.ok).toBe(false);
     if (!guard.ok) {
       expect(guard.response.status).toBe(403);
@@ -103,7 +103,7 @@ describe("requireRole", () => {
   });
 
   it("refuses an anonymous request with 401", () => {
-    const guard = requireRole(new NextRequest("http://localhost/api/anything"), ["driver"]);
+    const guard = requireRole(new NextRequest("http://localhost/api/anything"), ["delivery_driver"]);
     expect(guard.ok).toBe(false);
     if (!guard.ok) expect(guard.response.status).toBe(401);
   });

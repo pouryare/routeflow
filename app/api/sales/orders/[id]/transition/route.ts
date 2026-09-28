@@ -8,7 +8,7 @@ import {
 } from "@/lib/repo/orders";
 import type { OrderAction, OrderRole } from "@/lib/orderStateMachine";
 
-const ORDER_ROLES: OrderRole[] = ["salesperson", "group_manager", "owner", "driver"];
+const ORDER_ROLES: OrderRole[] = ["phone_sales", "group_manager", "owner", "field_rep", "delivery_driver"];
 
 /** Generic order transition. The transition table is the gate: an illegal (from, action)
  *  edge is 409 with the legal alternatives, a legal edge fired by the wrong role is 403,
@@ -17,8 +17,9 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
   const guard = requireRole(req, [
     "owner",
     "group_manager",
-    "salesperson",
-    "driver",
+    "phone_sales",
+    "field_rep",
+    "delivery_driver",
   ]);
   if (!guard.ok) return guard.response;
 
@@ -35,7 +36,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/order
 
   const role = ORDER_ROLES.includes(guard.session.role as OrderRole)
     ? (guard.session.role as OrderRole)
-    : ("salesperson" as OrderRole);
+    : ("phone_sales" as OrderRole);
 
   try {
     const to = advanceOrder(

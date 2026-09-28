@@ -10,7 +10,7 @@ import { currentPeriod } from "@/lib/analysis/period";
 
 export const dynamic = "force-dynamic";
 
-type Scope = "customer" | "salesperson" | "driver";
+type Scope = "customer" | "phone_sales" | "driver";
 
 /** Health scores. `?scope=customer` (default) returns the group-scoped overview;
  *  `?scope=customer&id=88` returns one; salesperson / driver scope need an id. */
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest) {
   if (!id) {
     return NextResponse.json({ ok: false, error: "برای این محدوده id لازم است" }, { status: 400 });
   }
-  if (scope === "salesperson") {
+  if (scope === "phone_sales") {
     return NextResponse.json({ ok: true, scope, id, health: salespersonScoreFor(org, id, period) });
   }
   if (scope === "driver") {

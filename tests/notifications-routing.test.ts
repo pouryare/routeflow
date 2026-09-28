@@ -22,7 +22,7 @@ beforeEach(() => {
   const db = getDb();
   db.exec("PRAGMA foreign_keys=OFF; DELETE FROM users WHERE id>0; DELETE FROM notification_prefs; DELETE FROM notification_channels; DELETE FROM push_subscriptions; PRAGMA foreign_keys=ON;");
   // users has no `name` column; username/password_hash/display_name are the NOT NULL cols.
-  uid = Number(db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'salesperson', 1, ?, 1)").run(`u${Date.now()}`, new Date().toISOString()).lastInsertRowid);
+  uid = Number(db.prepare("INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'phone_sales', 1, ?, 1)").run(`u${Date.now()}`, new Date().toISOString()).lastInsertRowid);
 });
 
 function connectPush() {

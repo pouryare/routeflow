@@ -35,7 +35,7 @@ beforeEach(() => {
   );
   const now = new Date().toISOString();
   seller = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('s','x','ف','salesperson',?,1)").run(now).lastInsertRowid
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('s','x','ف','phone_sales',?,1)").run(now).lastInsertRowid
   );
   custId = Number(
     db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C','x','active',?,1)").run(now).lastInsertRowid

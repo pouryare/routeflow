@@ -4,17 +4,24 @@ import { formatHours, parseHours } from "@/lib/crm/hours";
 import { EMPTY_CONTEXT, type FlowAnswer } from "@/lib/crm/flows/types";
 import { driverVisitFlow } from "@/lib/crm/flows/driverVisit";
 import { applyFlowCore, CrmError, type FlowWriteResult } from "./write";
+import { isVanRole } from "../../roles";
 
 export interface DriverVisit {
   task_id: number; customer_id: number; business_name: string; address: string | null; area_label: string | null;
   lat: number | null; lng: number | null; maps_url: string | null; hours: string; due_at: string | null;
 }
 
+/* A task is offered to a person when its hint names a role they HOLD. Matching one literal
+   (`t.role_hint = 'driver'`) matches nobody the moment 'driver' stops being a role, and this
+   fails silently: an empty list, no error, a field rep with no visits to make. 'driver' is
+   still accepted for rows written before the migration. */
 const VISIBLE = `t.organization_id = ? AND t.kind = 'verify_visit' AND t.status = 'open' AND t.entity_type = 'customer'
-  AND (t.assignee_user_id = ? OR (t.assignee_user_id IS NULL AND t.role_hint = 'driver' AND t.group_id = ?))`;
+  AND (t.assignee_user_id = ? OR (t.assignee_user_id IS NULL
+       AND t.role_hint IN ('field_rep', 'delivery_driver', 'driver')
+       AND t.group_id = ?))`;
 
 export function driverVisitsFor(session: Session): DriverVisit[] {
-  if (session.role !== "driver") throw new CrmError(403, "دسترسی لازم را ندارید");
+  if (!isVanRole(session.role)) throw new CrmError(403, "دسترسی لازم را ندارید");
   const rows = getDb()
     .prepare(`SELECT t.id AS task_id, c.id AS customer_id, c.business_name, c.address, c.area_label, c.lat, c.lng, c.maps_url,
                      c.working_hours_json, t.due_at
@@ -29,7 +36,7 @@ export function applyDriverVisit(
   session: Session, taskId: number,
   input: { answers: FlowAnswer[]; pos?: { lat: number; lng: number; accuracy: number } | null; nowIso?: string; clientUuid?: string | null }
 ): FlowWriteResult {
-  if (session.role !== "driver") throw new CrmError(403, "دسترسی لازم را ندارید");
+  if (!isVanRole(session.role)) throw new CrmError(403, "دسترسی لازم را ندارید");
   const t = getDb()
     .prepare(`SELECT t.entity_id AS customer_id, c.business_name, c.address, c.area_label FROM tasks t JOIN customers c ON c.id = t.entity_id WHERE t.id = ? AND ${VISIBLE}`)
     .get(taskId, session.organizationId, session.user.id, session.groupId ?? -1) as

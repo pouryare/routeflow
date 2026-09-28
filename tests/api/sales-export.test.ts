@@ -39,7 +39,7 @@ beforeAll(() => {
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "driver", ctx.east, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
@@ -87,7 +87,7 @@ describe("GET /api/sales/orders/export", () => {
   });
 
   it("refuses a driver", async () => {
-    expect((await GET(req(ctx.driver, "driver", ctx.east))).status).toBe(403);
+    expect((await GET(req(ctx.driver, "delivery_driver", ctx.east))).status).toBe(403);
   });
 
   it("returns a spreadsheet, not JSON", async () => {

@@ -30,25 +30,29 @@ function insertUser(username: string, role: string) {
 
 describe("the salesperson role", () => {
   it("is one of the roles the app knows about", () => {
-    expect(ROLES).toContain("salesperson");
+    expect(ROLES).toContain("phone_sales");
   });
 
   it("is accepted by the users table CHECK constraint", () => {
-    expect(() => insertUser("nazanin", "salesperson")).not.toThrow();
+    expect(() => insertUser("nazanin", "phone_sales")).not.toThrow();
     const row = getDb().prepare("SELECT role FROM users WHERE username = ?").get("nazanin") as {
       role: string;
     };
-    expect(row.role).toBe("salesperson");
+    expect(row.role).toBe("phone_sales");
   });
 
   it("still rejects a role that is not in the list", () => {
     expect(() => insertUser("nobody", "accountant")).toThrow();
   });
 
-  it("keeps the three roles that existed before", () => {
+  it("keeps the roles that existed before, under their new names", () => {
     expect(() => insertUser("a", "owner")).not.toThrow();
     expect(() => insertUser("b", "group_manager")).not.toThrow();
+    // 'driver' split into two. A legacy row keeps the old name until the CHECK is widened
+    // (Task 8); both halves are admitted once it is.
     expect(() => insertUser("c", "driver")).not.toThrow();
+    expect(() => insertUser("d", "field_rep")).not.toThrow();
+    expect(() => insertUser("e", "delivery_driver")).not.toThrow();
   });
 });
 
@@ -62,6 +66,6 @@ describe("migrating a database that predates the role", () => {
         .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
         .get() as { sql: string }
     ).sql;
-    expect(sql).toContain("salesperson");
+    expect(sql).toContain("phone_sales");
   });
 });

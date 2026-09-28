@@ -26,7 +26,7 @@ describe("pillModel", () => {
   /* A chip whose menu holds one item is a click that only shows you where you were going
      anyway. Such a group becomes a plain link, labelled with the tab it goes to. */
   it("a group with one reachable tab is a solo link carrying that tab's label", () => {
-    const m = pillModel(appTabs({ role: "salesperson" }), APP_GROUPS, "/sales");
+    const m = pillModel(appTabs({ role: "phone_sales" }), APP_GROUPS, "/sales");
     const stock = m.groups.find((g) => g.href === "/sales/stock");
     expect(stock?.solo).toBe(true);
     expect(stock?.label).toBe("انبار و خرید");
@@ -46,7 +46,7 @@ describe("pillModel", () => {
   });
 
   it("never offers a tab the role cannot reach", () => {
-    const m = pillModel(appTabs({ role: "salesperson" }), APP_GROUPS, "/sales");
+    const m = pillModel(appTabs({ role: "phone_sales" }), APP_GROUPS, "/sales");
     for (const list of Object.values(m.tabsByGroup)) {
       for (const t of list) expect(t.ready).toBe(true);
     }

@@ -21,7 +21,7 @@ const SEVERITIES: ComplaintSeverity[] = ["low", "medium", "high", "critical"];
 const STATUSES: ComplaintStatus[] = ["open", "investigating", "resolved", "dismissed"];
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const sp = req.nextUrl.searchParams;
@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

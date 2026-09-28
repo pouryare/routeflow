@@ -4,7 +4,7 @@ import { completeTask, dismissTask, tasksRepo, taskCustomerType, TaskError } fro
 import { objectionCardFor } from "@/lib/repo/academy";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver", "rep_manager"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   const org = guard.session.organizationId;

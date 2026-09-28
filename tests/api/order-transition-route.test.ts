@@ -76,7 +76,7 @@ beforeEach(() => {
   seller = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('s','x:y','ف','salesperson',1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('s','x:y','ف','phone_sales',1,?,1)"
       )
       .run(now).lastInsertRowid
   );
@@ -103,7 +103,7 @@ describe("POST /api/sales/orders/[id]/transition", () => {
     const res = await TRANSITION(
       new NextRequest(`http://localhost/api/sales/orders/${id}/transition`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", cookie: cookie(seller, "salesperson") },
+        headers: { "Content-Type": "application/json", cookie: cookie(seller, "phone_sales") },
         body: JSON.stringify({ action: "passReview" }),
       }),
       ctxFor(id)

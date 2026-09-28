@@ -2,13 +2,13 @@ import { describe, it, expect } from "vitest";
 import { impersonationRefusal, type ImpersonationParty } from "@/lib/impersonation";
 
 const owner: ImpersonationParty = { id: 1, role: "owner", organization_id: 1, active: 1 };
-const seller: ImpersonationParty = { id: 2, role: "salesperson", organization_id: 1, active: 1 };
+const seller: ImpersonationParty = { id: 2, role: "phone_sales", organization_id: 1, active: 1 };
 
 describe("impersonationRefusal", () => {
   it("lets an active owner act as an active member of their own organisation", () => {
     expect(impersonationRefusal(owner, seller)).toBeNull();
     expect(impersonationRefusal(owner, { ...seller, role: "group_manager" })).toBeNull();
-    expect(impersonationRefusal(owner, { ...seller, role: "driver" })).toBeNull();
+    expect(impersonationRefusal(owner, { ...seller, role: "delivery_driver" })).toBeNull();
   });
 
   it("refuses anyone who is not an active owner", () => {

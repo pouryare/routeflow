@@ -10,7 +10,7 @@ import { readRun, readDriverRuns } from "@/lib/delivery";
  *  screen telling them they have no work.
  */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["driver"]);
+  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const db = getDb();

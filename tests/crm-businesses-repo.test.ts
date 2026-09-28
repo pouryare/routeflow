@@ -18,8 +18,8 @@ const db = getDb();
 const g1 = Number(db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('g1','g1',?,1)").run(NOW).lastInsertRowid);
 const user = (u: string, role: string) =>
   Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,?,?,?,?,?,1)").run(u, "x", u, role, g1, NOW).lastInsertRowid);
-const repA = user("repA", "salesperson");
-const repB = user("repB", "salesperson");
+const repA = user("repA", "phone_sales");
+const repB = user("repB", "phone_sales");
 const mgr = user("mgr", "group_manager");
 const cust = (name: string, owner: number | null, extra: Record<string, unknown> = {}) => {
   const row = { customer_code: name, business_name: name, owner_user_id: owner, group_id: g1, synced_at: NOW, organization_id: 1,
@@ -36,7 +36,7 @@ db.prepare("UPDATE customers SET next_task_id = ? WHERE id = ?").run(task, hotLe
 db.prepare("INSERT INTO contacts (organization_id, customer_id, name, role, is_primary, created_at, updated_at) VALUES (1,?,?,?,1,?,?)").run(hotLead, "علی", "PURCHASING", NOW, NOW);
 
 const sess = (id: number, role: Session["role"]): Session => ({ user: { id } as Session["user"], role, groupId: g1, organizationId: 1 });
-const A = sess(repA, "salesperson");
+const A = sess(repA, "phone_sales");
 const ids = (r: { rows: { id: number }[] }) => r.rows.map((x) => x.id).sort((a, b) => a - b);
 
 describe("listBusinesses", () => {

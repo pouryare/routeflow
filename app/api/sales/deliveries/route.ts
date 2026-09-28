@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { listDeliveries } from "@/lib/repo/deliveries";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const orderId = sp.get("order_id");

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { requireRole, orderFilter } from "@/lib/session";
 import { readOrder, confirmOrder, addLine, OrderError } from "@/lib/orders";
 
-const CAN_SELL = ["owner", "group_manager", "salesperson"] as const;
+const CAN_SELL = ["owner", "group_manager", "phone_sales"] as const;
 
 /** Whether this session may see this order at all.
  *

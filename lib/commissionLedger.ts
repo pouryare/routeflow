@@ -230,12 +230,19 @@ export function allStatements(
   // as "nothing", never as "everything".
   if (groupId === null) return [];
 
+  /* 'salesperson' is still admitted so a database that has not been through the rebuild
+     keeps paying people. This one fails SILENTLY when it matches nobody: a commission run
+     that produces no statements, and nobody notices until payday. */
   const people = (
     groupId === undefined
-      ? db.prepare("SELECT id FROM users WHERE role = 'salesperson' ORDER BY display_name").all()
+      ? db
+          .prepare(
+            "SELECT id FROM users WHERE role IN ('phone_sales', 'salesperson') ORDER BY display_name"
+          )
+          .all()
       : db
           .prepare(
-            "SELECT id FROM users WHERE role = 'salesperson' AND group_id = ? ORDER BY display_name"
+            "SELECT id FROM users WHERE role IN ('phone_sales', 'salesperson') AND group_id = ? ORDER BY display_name"
           )
           .all(groupId)
   ) as unknown as { id: number }[];

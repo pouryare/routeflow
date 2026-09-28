@@ -19,8 +19,8 @@ const db = getDb();
 const g1 = Number(db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('g1','g1',?,1)").run(NOW).lastInsertRowid);
 const user = (u: string, role: string) =>
   Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,?,?,?,?,?,1)").run(u, "x", u, role, g1, NOW).lastInsertRowid);
-const repA = user("repA", "salesperson");
-const repB = user("repB", "salesperson");
+const repA = user("repA", "phone_sales");
+const repB = user("repB", "phone_sales");
 let n = 0;
 const cust = (owner: number | null, extra: Record<string, unknown> = {}) => {
   const row = { customer_code: `W-${++n}`, business_name: `کسب‌وکار ${n}`, owner_user_id: owner, group_id: g1, synced_at: NOW, organization_id: 1,
@@ -33,7 +33,7 @@ const openTask = (customerId: number) => {
   db.prepare("UPDATE customers SET next_task_id = ? WHERE id = ?").run(id, customerId);
   return id;
 };
-const A: Session = { user: { id: repA, display_name: "repA" } as Session["user"], role: "salesperson", groupId: g1, organizationId: 1 };
+const A: Session = { user: { id: repA, display_name: "repA" } as Session["user"], role: "phone_sales", groupId: g1, organizationId: 1 };
 const row = (id: number) => db.prepare("SELECT * FROM customers WHERE id = ?").get(id) as Record<string, unknown>;
 const task = (id: number) => db.prepare("SELECT * FROM tasks WHERE id = ?").get(id) as Record<string, unknown>;
 const replayOf = (id: number) => replayCrmState(db.prepare(`SELECT ${ACTIVITY_FACT_COLUMNS} FROM activities WHERE customer_id = ? ORDER BY occurred_at, id`).all(id) as never[]);
@@ -150,7 +150,7 @@ describe("createLead", () => {
   it("sends a phone-less lead to a driver visit", () => {
     const r = createLead(A, { answers: answers(basics(""), "driver"), nowIso: NOW });
     expect(row(r.id).phone_norm).toBeNull();
-    expect(task(r.nextTaskId!)).toMatchObject({ kind: "verify_visit", role_hint: "driver", assignee_user_id: null, group_id: g1 });
+    expect(task(r.nextTaskId!)).toMatchObject({ kind: "verify_visit", role_hint: "field_rep", assignee_user_id: null, group_id: g1 });
   });
 
   it("422s without a usable location", () => {

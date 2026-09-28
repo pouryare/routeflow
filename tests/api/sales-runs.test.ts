@@ -51,8 +51,8 @@ beforeAll(() => {
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
   ctx.westManager = Number(user.run("wm", "مدیر غرب", "group_manager", ctx.west, now).lastInsertRowid);
-  ctx.eastDriver = Number(user.run("ed", "راننده شرق", "driver", ctx.east, now).lastInsertRowid);
-  ctx.westDriver = Number(user.run("wd", "راننده غرب", "driver", ctx.west, now).lastInsertRowid);
+  ctx.eastDriver = Number(user.run("ed", "راننده شرق", "delivery_driver", ctx.east, now).lastInsertRowid);
+  ctx.westDriver = Number(user.run("wd", "راننده غرب", "delivery_driver", ctx.west, now).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at) VALUES (?, ?, ?, ?)"
@@ -97,7 +97,7 @@ const params = (id: number) => ({ params: Promise.resolve({ id: String(id) }) })
 describe("POST /api/sales/runs", () => {
   it("refuses a driver, who does not plan their own day", async () => {
     const res = await POST(
-      post("/api/sales/runs", cookie(ctx.eastDriver, "driver", ctx.east), {
+      post("/api/sales/runs", cookie(ctx.eastDriver, "delivery_driver", ctx.east), {
         driver_user_id: ctx.eastDriver,
         run_date: "2026-08-26",
       })

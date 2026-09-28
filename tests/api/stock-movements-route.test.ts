@@ -31,7 +31,7 @@ beforeAll(() => {
     db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)").run("m-mgr", "x:y", "م", now).lastInsertRowid
   );
   sellerId = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)").run("m-seller", "x:y", "ف", now).lastInsertRowid
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)").run("m-seller", "x:y", "ف", now).lastInsertRowid
   );
   prod = Number(
     db.prepare("INSERT INTO products (name,sku,created_at,updated_at,organization_id) VALUES ('کره',?,?,?,1)").run(`s${Date.now()}`, now, now).lastInsertRowid
@@ -84,9 +84,9 @@ describe("/api/sales/stock/movements", () => {
   });
 
   it("refuses a salesperson on movements but allows them on expiry", async () => {
-    const denied = await GET(jreq("/api/sales/stock/movements", { uid: sellerId, role: "salesperson" }));
+    const denied = await GET(jreq("/api/sales/stock/movements", { uid: sellerId, role: "phone_sales" }));
     expect(denied.status).toBe(403);
-    const ok = await EXPIRY(jreq("/api/sales/stock/expiry", { uid: sellerId, role: "salesperson" }));
+    const ok = await EXPIRY(jreq("/api/sales/stock/expiry", { uid: sellerId, role: "phone_sales" }));
     expect(ok.status).toBe(200);
   });
 });

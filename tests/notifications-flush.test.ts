@@ -120,7 +120,7 @@ beforeEach(() => {
   uid = Number(
     db
       .prepare(
-        "INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'salesperson', 1, ?, 1)"
+        "INSERT INTO users (username, password_hash, display_name, role, active, created_at, organization_id) VALUES (?, 'x:y', 'ک', 'phone_sales', 1, ?, 1)"
       )
       .run(`u${Date.now()}${Math.random().toString(36).slice(2)}`, new Date().toISOString()).lastInsertRowid
   );

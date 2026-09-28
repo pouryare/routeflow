@@ -4,7 +4,7 @@ import { getPrefsMatrix, setPref, NotifInputError } from "@/lib/repo/notificatio
 
 // Byte-identical to GET /api/notifications: every signed-in role owns its own settings
 // screen. `platform_owner` first -- omitting it puts that role in a permanent 403.
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 /** The settings screen's whole payload for the caller: the two channel states plus every
  *  catalogue type with its effective push/telegram flags. */

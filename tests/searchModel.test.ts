@@ -22,7 +22,7 @@ describe("rankPages", () => {
   });
 
   it("never offers a page the role cannot reach", () => {
-    const hrefs = rankPages(appTabs({ role: "salesperson" }), "کاربران").map((h) => h.href);
+    const hrefs = rankPages(appTabs({ role: "phone_sales" }), "کاربران").map((h) => h.href);
     expect(hrefs).not.toContain("/sales/admin/users");
   });
 

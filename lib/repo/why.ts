@@ -78,7 +78,7 @@ type Bucketed = { values: Record<string, number>; labels: Record<string, string>
 function bucketise(
   rows: ScopeRow[],
   metric: WhyMetric,
-  dim: "group" | "salesperson"
+  dim: "group" | "phone_sales"
 ): Bucketed {
   const values: Record<string, number> = {};
   const labels: Record<string, string> = {};
@@ -159,7 +159,7 @@ export function whyChain(
   periodA: string,
   periodB: string
 ): WhyRung[] {
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     throw new WhyError("این تحلیل برای نقش فروشنده در دسترس نیست");
   }
 
@@ -176,8 +176,8 @@ export function whyChain(
   const groupId = Number(g.key);
 
   // rung 2 — by salesperson within that territory
-  const sA = bucketise(scopeRows(session, periodA, { group_id: groupId }), metric, "salesperson");
-  const sB = bucketise(scopeRows(session, periodB, { group_id: groupId }), metric, "salesperson");
+  const sA = bucketise(scopeRows(session, periodA, { group_id: groupId }), metric, "phone_sales");
+  const sB = bucketise(scopeRows(session, periodB, { group_id: groupId }), metric, "phone_sales");
   const r2 = explainDelta(sA.values, sB.values, { ...sA.labels, ...sB.labels });
   rungs.push({ ...r2, dimension_fa: "فروشنده", scope_fa: g.label });
 

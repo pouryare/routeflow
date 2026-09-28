@@ -39,7 +39,7 @@ beforeAll(() => {
   sellerId = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
       .run("c-seller", "x:y", "ف", now).lastInsertRowid
   );
@@ -96,7 +96,7 @@ describe("/api/cheques", () => {
   });
 
   it("refuses a salesperson", async () => {
-    const res = await GET(jreq("/api/cheques", { uid: sellerId, role: "salesperson" }));
+    const res = await GET(jreq("/api/cheques", { uid: sellerId, role: "phone_sales" }));
     expect(res.status).toBe(403);
   });
 

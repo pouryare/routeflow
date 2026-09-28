@@ -76,7 +76,8 @@ export function createRun(
   if (!driver) throw new DeliveryError("راننده پیدا نشد");
   // A run belongs to a driver by definition. Assigning one to a manager would make a
   // day of stops that nothing in the driver app can reach.
-  if (driver.role !== "driver") throw new DeliveryError("این حساب راننده نیست");
+  if (driver.role !== "driver" && driver.role !== "delivery_driver")
+    throw new DeliveryError("این حساب راننده تحویل نیست");
 
   const now = new Date().toISOString();
   return Number(
@@ -323,7 +324,7 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
         orgId,
         stop.order_id,
         action,
-        { id: input.by, role: "driver" },
+        { id: input.by, role: "delivery_driver" },
         { db, reason_code_id: nothingTaken ? input.fail_reason_id ?? null : null }
       );
       if (nothingTaken) {

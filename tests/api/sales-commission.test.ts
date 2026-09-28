@@ -49,10 +49,10 @@ beforeAll(() => {
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nazanin", "نازنین", "salesperson", ctx.east, now).lastInsertRowid);
-  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "salesperson", ctx.east, now).lastInsertRowid);
-  ctx.westSeller = Number(user.run("w", "فروشنده غرب", "salesperson", ctx.west, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "driver", ctx.east, now).lastInsertRowid);
+  ctx.nazanin = Number(user.run("nazanin", "نازنین", "phone_sales", ctx.east, now).lastInsertRowid);
+  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "phone_sales", ctx.east, now).lastInsertRowid);
+  ctx.westSeller = Number(user.run("w", "فروشنده غرب", "phone_sales", ctx.west, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
 
   setRate(db, { rate_per_kg_toman: 2000, valid_from: "2026-01-01", created_by: ctx.owner });
 });
@@ -64,8 +64,8 @@ function cookieFor(uid: number, role: Role, gid: number | null) {
 const AS = {
   owner: () => cookieFor(ctx.owner, "owner", null),
   eastManager: () => cookieFor(ctx.eastManager, "group_manager", ctx.east),
-  nazanin: () => cookieFor(ctx.nazanin, "salesperson", ctx.east),
-  driver: () => cookieFor(ctx.driver, "driver", ctx.east),
+  nazanin: () => cookieFor(ctx.nazanin, "phone_sales", ctx.east),
+  driver: () => cookieFor(ctx.driver, "delivery_driver", ctx.east),
 };
 
 const get = (cookie: string | null, qs = "") =>

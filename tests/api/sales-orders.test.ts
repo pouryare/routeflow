@@ -52,9 +52,9 @@ beforeAll(() => {
   ctx.owner = Number(user.run("owner", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
   ctx.westManager = Number(user.run("wm", "مدیر غرب", "group_manager", ctx.west, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nazanin", "نازنین", "salesperson", ctx.east, now).lastInsertRowid);
-  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "salesperson", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("driver", "راننده", "driver", ctx.east, now).lastInsertRowid);
+  ctx.nazanin = Number(user.run("nazanin", "نازنین", "phone_sales", ctx.east, now).lastInsertRowid);
+  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "phone_sales", ctx.east, now).lastInsertRowid);
+  ctx.driver = Number(user.run("driver", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
@@ -79,9 +79,9 @@ const AS = {
   owner: () => cookieFor(ctx.owner, "owner", null),
   eastManager: () => cookieFor(ctx.eastManager, "group_manager", ctx.east),
   westManager: () => cookieFor(ctx.westManager, "group_manager", ctx.west),
-  nazanin: () => cookieFor(ctx.nazanin, "salesperson", ctx.east),
-  yasamin: () => cookieFor(ctx.yasamin, "salesperson", ctx.east),
-  driver: () => cookieFor(ctx.driver, "driver", ctx.east),
+  nazanin: () => cookieFor(ctx.nazanin, "phone_sales", ctx.east),
+  yasamin: () => cookieFor(ctx.yasamin, "phone_sales", ctx.east),
+  driver: () => cookieFor(ctx.driver, "delivery_driver", ctx.east),
 };
 
 function post(cookie: string, body: unknown) {

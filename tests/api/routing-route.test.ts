@@ -55,8 +55,8 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "driver", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "salesperson", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid);
   db.prepare(
     "INSERT INTO facilities (slug,kind,name,lat,lng,updated_at,organization_id,created_at) VALUES ('wh','warehouse','ا',35.7,51.4,?,1,?)"
   ).run(now, now);
@@ -90,7 +90,7 @@ describe("routing routes", () => {
   });
 
   it("403s a salesperson", async () => {
-    const res = await V_POST(jreq("/api/sales/vehicles", { name: "x" }, "salesperson", seller));
+    const res = await V_POST(jreq("/api/sales/vehicles", { name: "x" }, "phone_sales", seller));
     expect(res.status).toBe(403);
   });
 

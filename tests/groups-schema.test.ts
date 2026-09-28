@@ -70,7 +70,7 @@ describe("users rebuild", () => {
     const db = getDb();
     const now = new Date().toISOString();
     db.prepare("INSERT INTO users (username, password_hash, display_name, role, created_at) VALUES (?, ?, ?, ?, ?)")
-      .run("driver1", "x:y", "یوسف", "driver", now);
+      .run("driver1", "x:y", "یوسف", "delivery_driver", now);
     const row = db.prepare("SELECT active, token_version FROM users WHERE username = 'driver1'").get() as {
       active: number; token_version: number;
     };

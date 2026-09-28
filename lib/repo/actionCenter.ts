@@ -16,6 +16,7 @@ import { customerHealthFor } from "@/lib/repo/health";
 import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
 import { customerHref } from "@/lib/deepLink";
+import { isVanRole } from "../roles";
 
 /** Alert categories, in Persian.
  *
@@ -213,7 +214,7 @@ function atRiskCandidates(session: Session): Candidate[] {
 
 function stockoutCandidates(session: Session): Candidate[] {
   // Stock is org-wide (no group column), so this source only shows for owner / manager.
-  if (session.role === "salesperson" || session.role === "driver") return [];
+  if (session.role === "phone_sales" || isVanRole(session.role)) return [];
   const db = getDb();
   const since = new Date(Date.now() - 14 * DAY_MS).toISOString();
   const runRate = new Map(
@@ -263,7 +264,7 @@ function stockoutCandidates(session: Session): Candidate[] {
 }
 
 function crossSellCandidates(session: Session): Candidate[] {
-  if (session.role === "driver") return [];
+  if (isVanRole(session.role)) return [];
   const db = getDb();
   const active = new Date(Date.now() - 60 * DAY_MS).toISOString();
   const oScope = orderFilter(session, "o");
@@ -363,7 +364,7 @@ function churnCandidates(session: Session): Candidate[] {
 }
 
 export function actionCenterFor(session: Session): Record<Bucket, RankedItem[]> {
-  if (session.role === "driver") {
+  if (isVanRole(session.role)) {
     return { critical: [], warning: [], opportunity: [] };
   }
   const cands: Candidate[] = [

@@ -28,7 +28,7 @@ beforeEach(() => {
   );
   const now = new Date().toISOString();
   driver = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('d','x','ر','driver',?,1)").run(now).lastInsertRowid
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('d','x','ر','delivery_driver',?,1)").run(now).lastInsertRowid
   );
 });
 

@@ -158,7 +158,7 @@ export function backfillCrm(db: DatabaseSync): void {
       UPDATE customers SET owner_user_id = (
         SELECT u.id FROM users u
          WHERE u.organization_id = customers.organization_id AND u.display_name = customers.salesperson
-           AND u.role IN ('salesperson', 'group_manager', 'rep_manager', 'owner') AND u.active = 1
+           AND u.role IN ('phone_sales', 'salesperson', 'group_manager', 'rep_manager', 'owner') AND u.active = 1
          ORDER BY u.id LIMIT 1)
       WHERE owner_user_id IS NULL AND salesperson IS NOT NULL AND TRIM(salesperson) <> ''`);
 

@@ -33,7 +33,7 @@ beforeAll(() => {
     db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'group_manager',NULL,1,?,1)").run("q-mgr", "x:y", "م", now).lastInsertRowid
   );
   sellerId = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)").run("q-seller", "x:y", "ف", now).lastInsertRowid
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)").run("q-seller", "x:y", "ف", now).lastInsertRowid
   );
   custId = Number(
     db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)").run().lastInsertRowid
@@ -64,7 +64,7 @@ describe("/api/sales/complaints", () => {
       jreq("/api/sales/complaints", {
         method: "POST",
         uid: sellerId,
-        role: "salesperson",
+        role: "phone_sales",
         body: JSON.stringify({ customer_id: custId, category: "spoilage", severity: "high", description: "کپک" }),
       })
     );
@@ -99,7 +99,7 @@ describe("/api/sales/complaints", () => {
       jreq(`/api/sales/complaints/${complaintId}`, {
         method: "PATCH",
         uid: sellerId,
-        role: "salesperson",
+        role: "phone_sales",
         body: JSON.stringify({ status: "open" }),
       }),
       ctx(complaintId)

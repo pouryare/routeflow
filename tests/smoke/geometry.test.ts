@@ -476,7 +476,7 @@ describe("global services", () => {
   it("an owner can act as a salesperson and come back", async () => {
     const db = new DatabaseSync(process.env.ROUTEFLOW_DB_PATH!, { readOnly: true });
     const target = db
-      .prepare("SELECT id, display_name FROM users WHERE role = 'salesperson' AND active = 1 ORDER BY id LIMIT 1")
+      .prepare("SELECT id, display_name FROM users WHERE role = 'phone_sales' AND active = 1 ORDER BY id LIMIT 1")
       .get() as { id: number; display_name: string } | undefined;
     db.close();
     expect(target, "the snapshot has no active salesperson").toBeTruthy();

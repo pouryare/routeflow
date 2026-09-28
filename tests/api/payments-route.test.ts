@@ -40,7 +40,7 @@ beforeAll(() => {
   sellerId = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
       .run("p-seller", "x:y", "ف", now).lastInsertRowid
   );
@@ -103,7 +103,7 @@ describe("/api/payments", () => {
       jreq("/api/payments", {
         method: "POST",
         uid: sellerId,
-        role: "salesperson",
+        role: "phone_sales",
         body: JSON.stringify({
           customer_id: custId,
           amount_toman: 30_000,
@@ -156,7 +156,7 @@ describe("/api/payments", () => {
       jreq(`/api/payments/${paymentId}?action=void`, {
         method: "POST",
         uid: sellerId,
-        role: "salesperson",
+        role: "phone_sales",
         body: JSON.stringify({ reason: "x" }),
       }),
       ctx(paymentId)

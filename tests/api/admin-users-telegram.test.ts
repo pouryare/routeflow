@@ -59,9 +59,9 @@ beforeEach(() => {
   owner = Number(u.run(`o${Date.now()}`, "x:y", "مالک", "owner", now, null).lastInsertRowid);
   // A salesperson must belong to a group — PATCH rejects the whole request otherwise, so
   // an ungrouped target would make every assertion below fail for the wrong reason.
-  target = Number(u.run(`t${Date.now()}`, "x:y", "هدف", "salesperson", now, gid).lastInsertRowid);
+  target = Number(u.run(`t${Date.now()}`, "x:y", "هدف", "phone_sales", now, gid).lastInsertRowid);
   ownerToken = createSessionToken({ uid: owner, role: "owner", gid: null, oid: 1, tv: 0, name: "مالک" });
-  sellerToken = createSessionToken({ uid: target, role: "salesperson", gid: null, oid: 1, tv: 0, name: "هدف" });
+  sellerToken = createSessionToken({ uid: target, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "هدف" });
 });
 
 describe("admin-set telegram_chat_id", () => {

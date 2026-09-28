@@ -76,7 +76,7 @@ function overLimitOrder(): number {
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 1 }], // 20_000 > 10_000
   }).id;
-  submitOrder(1, id, { id: owner, role: "salesperson" });
+  submitOrder(1, id, { id: owner, role: "phone_sales" });
   return id;
 }
 

@@ -38,7 +38,7 @@ beforeAll(() => {
   driverId = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'driver',NULL,1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'delivery_driver',NULL,1,?,1)"
       )
       .run("lc-driver", "x:y", "راننده", now).lastInsertRowid
   );
@@ -61,8 +61,8 @@ beforeAll(() => {
 function cookie(uid: number, role: string, oid = 1) {
   return `${COOKIE_NAME}=${createSessionToken({ uid, role: role as never, gid: null, oid, tv: 0, name: "م" })}`;
 }
-function req(id: number, lifecycle: string, who: "owner" | "driver" = "owner") {
-  const c = who === "driver" ? cookie(driverId, "driver") : cookie(ownerId, "owner");
+function req(id: number, lifecycle: string, who: "owner" | "delivery_driver" = "owner") {
+  const c = who === "delivery_driver" ? cookie(driverId, "delivery_driver") : cookie(ownerId, "owner");
   return new NextRequest(`http://localhost/api/customers/${id}/lifecycle`, {
     method: "PATCH",
     body: JSON.stringify({ lifecycle }),
@@ -92,7 +92,7 @@ describe("PATCH /api/customers/[id]/lifecycle", () => {
   });
 
   it("refuses a driver", async () => {
-    expect((await PATCH(req(custId, "active", "driver"), ctx(custId))).status).toBe(403);
+    expect((await PATCH(req(custId, "active", "delivery_driver"), ctx(custId))).status).toBe(403);
   });
 
   it("cannot touch another organisation's customer", async () => {

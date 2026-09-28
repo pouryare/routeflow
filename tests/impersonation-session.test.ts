@@ -43,19 +43,19 @@ beforeEach(() => {
   );
   const tag = Date.now();
   owner = row(Number(u.run(`o${tag}`, "x", "مالک", "owner", null, now).lastInsertRowid));
-  seller = row(Number(u.run(`s${tag}`, "x", "فروشنده", "salesperson", null, now).lastInsertRowid));
+  seller = row(Number(u.run(`s${tag}`, "x", "فروشنده", "phone_sales", null, now).lastInsertRowid));
 });
 
 describe("a Login-As session", () => {
   it("is the target's session, and says who is behind it", () => {
     const s = getSessionFromCookies(actingAs(seller, owner.id));
     expect(s?.user.id).toBe(seller.id);
-    expect(s?.role).toBe("salesperson");
+    expect(s?.role).toBe("phone_sales");
     expect(s?.actorId).toBe(owner.id);
   });
 
   it("an ordinary session has no actor", () => {
-    const t = createSessionToken({ uid: seller.id, role: "salesperson", gid: null, oid: 1, tv: seller.token_version, name: "x" });
+    const t = createSessionToken({ uid: seller.id, role: "phone_sales", gid: null, oid: 1, tv: seller.token_version, name: "x" });
     expect(getSessionFromCookies(t)?.actorId).toBeUndefined();
   });
 

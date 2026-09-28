@@ -32,7 +32,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "salesperson", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
 });
 
 describe("tasks repo", () => {

@@ -8,10 +8,13 @@ const ROLES: Role[] = [
   "owner",
   "group_manager",
   "rep_manager",
-  "salesperson",
-  // A driver used to be missing from this list, so the menu they are handed had no
+  "phone_sales",
+  // A van role used to be missing from this list, so the menu they are handed had no
   // coverage at all -- and it is the one menu written out by hand rather than derived.
-  "driver",
+  // Both are here now: they must resolve to the SAME three tabs, or one of them is
+  // silently walking around with somebody else's menu.
+  "field_rep",
+  "delivery_driver",
 ];
 const GROUP_IDS = new Set(APP_GROUPS.map((g) => g.id));
 
@@ -84,13 +87,13 @@ describe("where each destination lives", () => {
     expect(hrefsIn("customers")).toEqual(["/crm", "/gallery", "/leads", "/map", "/sales/complaints"]);
   });
   it("the CRM is every role's but the driver's", () => {
-    for (const role of ["owner", "group_manager", "rep_manager", "salesperson"] as const) {
+    for (const role of ["owner", "group_manager", "rep_manager", "phone_sales"] as const) {
       expect(appTabs({ role }).find((t) => t.href === "/crm")?.ready, role).toBe(true);
     }
     // A driver is no longer a filtered case in the list above -- they get their own, and
     // it holds no CRM at all. Asserting the absence is what keeps this test's name true;
     // for a while it asserted only the half that was already passing.
-    expect(appTabs({ role: "driver" }).some((t) => t.href === "/crm")).toBe(false);
+    expect(appTabs({ role: "delivery_driver" }).some((t) => t.href === "/crm")).toBe(false);
   });
 
   it("the order pipeline board sits with orders, not with team management", () => {
@@ -147,7 +150,7 @@ describe("each role's menu", () => {
   const menu = (role: Role) => pillModel(appTabs({ role }), APP_GROUPS, "/sales/today");
 
   it("a salesperson gets no organisation settings and no team tools beyond academy", () => {
-    const m = menu("salesperson");
+    const m = menu("phone_sales");
     const ids = m.groups.map((g) => g.id);
     expect(ids).not.toContain("org");
     const offered = Object.values(m.tabsByGroup).flat().map((t) => t.href);
@@ -157,7 +160,7 @@ describe("each role's menu", () => {
   });
 
   it("the salesperson's lone stock and academy tabs are direct links, not menus", () => {
-    const m = menu("salesperson");
+    const m = menu("phone_sales");
     const solo = m.groups.filter((g) => g.solo).map((g) => g.href).sort();
     expect(solo).toEqual(["/sales/academy", "/sales/stock"]);
   });
@@ -177,7 +180,7 @@ describe("each role's menu", () => {
  *  other half of the guarantee -- that the gate agrees with it -- is in tests/proxy.test.ts,
  *  because only that file can run the middleware. */
 describe("a driver's menu", () => {
-  const driver = appTabs({ role: "driver" });
+  const driver = appTabs({ role: "delivery_driver" });
 
   it("is their round, their stops and the door library, and nothing else", () => {
     expect(driver.map((t) => t.href)).toEqual(["/driver", "/leads", "/sales/academy"]);
@@ -210,7 +213,7 @@ describe("the surfaces that join the shell", () => {
   });
 
   it("ready mirrors proxy.ts: a salesperson gets neither /report nor /planner", () => {
-    const sp = appTabs({ role: "salesperson" });
+    const sp = appTabs({ role: "phone_sales" });
     expect(sp.find((t) => t.href === "/report")?.ready).toBe(false);
     expect(sp.find((t) => t.href === "/planner")?.ready).toBe(false);
     expect(sp.find((t) => t.href === "/map")?.ready).toBe(true);

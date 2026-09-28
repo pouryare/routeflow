@@ -15,10 +15,10 @@ const NOW = "2026-09-11T08:00:00.000Z";
 afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(file + s, { force: true }); });
 const group = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('profile','profile',?,1)").run(NOW).lastInsertRowid);
 function user(name: string) {
-  return Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,'x',?,'salesperson',?,?,1)").run(name, name, group, NOW).lastInsertRowid);
+  return Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES (?,'x',?,'phone_sales',?,?,1)").run(name, name, group, NOW).lastInsertRowid);
 }
 const a = user("profile-a"), b = user("profile-b");
-const session: Session = { user: { id: a } as Session["user"], role: "salesperson", groupId: group, organizationId: 1 };
+const session: Session = { user: { id: a } as Session["user"], role: "phone_sales", groupId: group, organizationId: 1 };
 let serial = 0;
 function customer(owner: number | null) {
   const code = `profile-${++serial}`;

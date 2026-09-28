@@ -84,7 +84,7 @@ beforeEach(() => {
 describe("advanceOrder", () => {
   it("submits a draft and records the event", () => {
     const oid = makeOrder("DRAFT");
-    const to = advanceOrder(1, oid, "submit", { id: user, role: "salesperson" });
+    const to = advanceOrder(1, oid, "submit", { id: user, role: "phone_sales" });
     expect(to).toBe("PENDING_REVIEW");
     const ev = orderEvents(1, oid);
     expect(ev.at(-1)).toMatchObject({
@@ -110,7 +110,7 @@ describe("advanceOrder", () => {
 
   it("refuses the right role on a legal edge", () => {
     const oid = makeOrder("PENDING_REVIEW");
-    expect(() => advanceOrder(1, oid, "passReview", { id: user, role: "salesperson" })).toThrow(
+    expect(() => advanceOrder(1, oid, "passReview", { id: user, role: "phone_sales" })).toThrow(
       OrderRoleError
     );
   });

@@ -4,7 +4,7 @@ import { expiringBatches } from "@/lib/repo/batches";
 import { complaintClusters } from "@/lib/repo/complaints";
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const withinDays = req.nextUrl.searchParams.get("within_days");

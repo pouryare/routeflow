@@ -10,7 +10,7 @@ import { recordDelivery, DeliveryError } from "@/lib/delivery";
  *  again -- which is what makes the offline queue possible without a dedupe table.
  */
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  const guard = requireRole(req, ["driver"]);
+  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const stopId = Number((await ctx.params).id);

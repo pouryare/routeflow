@@ -75,7 +75,7 @@ describe("GET /api/sales/products", () => {
     // cannot read a price cannot quote one at the door, which is the whole point of letting
     // them close a sale on a visit. The catalogue is company-wide, so there is no group
     // filter here; writing a price is still owner-only.
-    const res = await GET(req("/api/sales/products", "driver"));
+    const res = await GET(req("/api/sales/products", "delivery_driver"));
     expect(res.status).toBe(200);
     const body = await res.json();
     expect(Array.isArray(body.products)).toBe(true);
@@ -88,7 +88,7 @@ describe("GET /api/sales/products", () => {
   });
 
   it("lets a salesperson read it, because they have to quote a price", async () => {
-    expect((await GET(req("/api/sales/products", "salesperson"))).status).toBe(200);
+    expect((await GET(req("/api/sales/products", "phone_sales"))).status).toBe(200);
   });
 
   it("lets a group manager read it", async () => {
@@ -105,7 +105,7 @@ describe("POST /api/sales/products", () => {
 
   it("refuses a salesperson", async () => {
     // Reading a price is part of selling. Setting one is not.
-    expect((await POST(req("/api/sales/products", "salesperson", body))).status).toBe(403);
+    expect((await POST(req("/api/sales/products", "phone_sales", body))).status).toBe(403);
   });
 
   it("refuses a group manager", async () => {
@@ -147,7 +147,7 @@ describe("POST /api/sales/packagings", () => {
 
   it("refuses a salesperson", async () => {
     const res = await POST_PACKAGING(
-      req("/api/sales/packagings", "salesperson", {
+      req("/api/sales/packagings", "phone_sales", {
         product_id: ids.product,
         name: "کارتن",
         qty_per_pack: 24,

@@ -8,6 +8,7 @@ import {
   type TaskCard,
   type TaskCardRow,
 } from "./taskCard";
+import { isVanRole } from "../roles";
 
 export interface PocketTile {
   key: "reminders_today" | "tasks_today" | "orders_open" | "visits_week";
@@ -45,6 +46,12 @@ export function pocketFor(
     .prepare("SELECT display_name, role, group_id FROM users WHERE id = ?")
     .get(target) as { display_name: string; role: string; group_id: number | null } | undefined;
 
+  /* A task is offered when its hint names a role this person HOLDS. Until the role SET lands
+     (Task 2) the set is the primary column plus both van roles, which is the widest set a
+     person can hold without inventing one. Matching one role fails silently -- no error,
+     just a shorter list. The old names stay accepted for pre-migration rows. */
+  const held: string[] = [u?.role ?? "phone_sales", "field_rep", "delivery_driver", "driver", "salesperson", "phone_sales"];
+  const placeholders = held.map(() => "?").join(", ");
   const rows = db
     .prepare(
       `SELECT ${TASK_CARD_SELECT}
@@ -52,10 +59,11 @@ export function pocketFor(
         WHERE t.organization_id = ?
           AND t.status != 'dismissed'
           AND ( t.assignee_user_id = ?
-                OR ( t.assignee_user_id IS NULL AND t.role_hint = ?
+                OR ( t.assignee_user_id IS NULL
+                     AND t.role_hint IN (${placeholders})
                      AND (t.group_id = ? OR t.group_id IS NULL) ) )`
     )
-    .all(org, target, u?.role ?? "salesperson", u?.group_id ?? -1) as unknown as TaskCardRow[];
+    .all(org, target, ...held, u?.group_id ?? -1) as unknown as TaskCardRow[];
 
   const cards = rows
     .map(rowToCard)
@@ -116,9 +124,9 @@ export interface PocketTeamMember {
 /** The people a manager can scope the Pocket to — their reports, each with an open-task
  *  count. Empty for a plain member. */
 export function pocketTeam(session: Session): PocketTeamMember[] {
-  if (session.role === "salesperson" || session.role === "driver") return [];
+  if (session.role === "phone_sales" || isVanRole(session.role)) return [];
   const db = getDb();
-  const roles = ["salesperson", "driver", "rep_manager"];
+  const roles = ["phone_sales", "salesperson", "field_rep", "delivery_driver", "driver", "rep_manager"];
   const roleIn = roles.map(() => "?").join(", ");
 
   let where = "u.organization_id = ? AND u.role IN (" + roleIn + ") AND u.active = 1";

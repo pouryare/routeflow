@@ -75,9 +75,9 @@ beforeAll(() => {
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nazanin", "نازنین", "salesperson", ctx.group, now).lastInsertRowid);
-  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "salesperson", ctx.group, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "driver", ctx.group, now).lastInsertRowid);
+  ctx.nazanin = Number(user.run("nazanin", "نازنین", "phone_sales", ctx.group, now).lastInsertRowid);
+  ctx.yasamin = Number(user.run("yasamin", "یاسمین", "phone_sales", ctx.group, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.group, now).lastInsertRowid);
 
   ctx.customer = Number(
     db

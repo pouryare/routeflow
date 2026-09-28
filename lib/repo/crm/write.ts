@@ -19,6 +19,7 @@ import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import type { CustomerLifecycle } from "@/lib/types";
 import { addLeadContext, flowContextFor, getBusiness } from "./businesses";
 import { findDuplicates } from "./dedupe";
+import { isVanRole } from "../../roles";
 
 export class CrmError extends Error {
   constructor(public status: number, message: string, public extra?: Record<string, unknown>) {
@@ -86,9 +87,9 @@ function openNextTask(session: Session, core: Core, acc: FlowSet, st: FlowState,
   if (!raw) throw new CrmError(400, "روز را انتخاب کنید");
   const due = nextOpenAt(parseHours(core.working_hours_json), raw);
   let assignee = core.owner_user_id;
-  let roleHint: string | null = assignee ? null : "salesperson";
+  let roleHint: string | null = assignee ? null : "phone_sales";
   if (acc.next_assignee === "group_manager") { assignee = null; roleHint = "group_manager"; }
-  if (acc.next_assignee === "driver_pool") { assignee = null; roleHint = "driver"; }
+  if (acc.next_assignee === "driver_pool") { assignee = null; roleHint = "field_rep"; }
   return createTask(core.organization_id, {
     title: `${interpolate(acc.next_title ?? "پیگیری", ctx, acc)} · ${core.business_name}`,
     kind: acc.next_kind ?? "call",
@@ -154,7 +155,7 @@ export function applyFlowCore(
   let nextTaskId: number | null;
   try {
     let owner = core.owner_user_id;
-    if (opts.claim && owner === null && session.role === "salesperson") {
+    if (opts.claim && owner === null && session.role === "phone_sales") {
       db.prepare("UPDATE customers SET owner_user_id = ? WHERE id = ?").run(session.user.id, customerId);
       owner = session.user.id;
       insertActivity(db, org, { customerId, userId: session.user.id, type: "owner_change", note: "برداشتن از استخر گروه", at });
@@ -261,7 +262,7 @@ export function applyLeadVisit(
     firstContact: true,
     attemptNo: 1,
     maxMisses: 5,
-    isManager: session.role !== "driver",
+    isManager: !isVanRole(session.role),
     vars: { name: loc.name, address: loc.address ?? "" },
     knownContacts: [],
     products: [],
@@ -299,8 +300,8 @@ export function applyLeadVisit(
       nextTaskId = createTask(org, {
         title: acc.next_title ?? "یادآوری بازدید",
         kind: acc.next_kind,
-        assignee_user_id: session.role === "driver" ? null : session.user.id,
-        role_hint: session.role === "driver" ? "group_manager" : null,
+        assignee_user_id: isVanRole(session.role) ? null : session.user.id,
+        role_hint: isVanRole(session.role) ? "group_manager" : null,
         group_id: loc.group_id as unknown as number | undefined,
         entity_type: "lead_location",
         entity_id: input.locationId,
@@ -355,7 +356,7 @@ function tomorrow10(now: string): string {
   return d.toISOString();
 }
 
-const CRM_ROLES = new Set(["platform_owner", "owner", "group_manager", "rep_manager", "salesperson"]);
+const CRM_ROLES = new Set(["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales"]);
 
 export function createLead(session: Session, input: { answers: FlowAnswer[]; clientUuid?: string | null; nowIso?: string }): { id: number; nextTaskId: number | null; acc: FlowSet } {
   if (!CRM_ROLES.has(session.role)) throw new CrmError(403, "دسترسی لازم را ندارید");
@@ -399,11 +400,11 @@ export function createLead(session: Session, input: { answers: FlowAnswer[]; cli
     if (acc.owner === "pool") owner = null;
     else if (typeof acc.owner === "number") {
       const u = db.prepare("SELECT role FROM users WHERE id = ? AND organization_id = ? AND active = 1").get(acc.owner, org) as { role: string } | undefined;
-      if (!u || u.role !== "salesperson" || !canReachUser(session, acc.owner)) throw new CrmError(400, "فروشنده نامعتبر است");
+      if (!u || u.role !== "phone_sales" || !canReachUser(session, acc.owner)) throw new CrmError(400, "فروشنده نامعتبر است");
       owner = acc.owner;
     }
   }
-  const groupId = session.role === "salesperson" ? session.groupId : groupForPoint(db, pin.lat, pin.lng) ?? session.groupId;
+  const groupId = session.role === "phone_sales" ? session.groupId : groupForPoint(db, pin.lat, pin.lng) ?? session.groupId;
   const districtId = districtIdForPoint(db, pin.lat, pin.lng);
   const area = districtId ? (db.prepare("SELECT name FROM districts WHERE id = ?").get(districtId) as { name: string } | undefined)?.name ?? null : null;
   const link = linkOf(st.values);
@@ -449,7 +450,7 @@ export function claimBusiness(session: Session, id: number): void {
   const db = getDb();
   const core = loadCore(db, id);
   if (!core || !canSeeBusiness(session, core)) throw new CrmError(404, "کسب‌وکار پیدا نشد");
-  if (session.role !== "salesperson" || core.owner_user_id !== null) throw new CrmError(409, "این کسب‌وکار صاحب دارد");
+  if (session.role !== "phone_sales" || core.owner_user_id !== null) throw new CrmError(409, "این کسب‌وکار صاحب دارد");
   const at = new Date().toISOString();
   db.exec("BEGIN IMMEDIATE");
   try {

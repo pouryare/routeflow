@@ -48,8 +48,8 @@ beforeEach(() => {
   gA = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('شرق','e',?,1)").run(now).lastInsertRowid);
   gB = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('غرب','w',?,1)").run(now).lastInsertRowid);
   owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','مالک','owner',?,1)").run(now).lastInsertRowid);
-  sellerA = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('sa','x','آرش','salesperson',?,?,1)").run(gA, now).lastInsertRowid);
-  sellerB = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('sb','x','بیتا','salesperson',?,?,1)").run(gB, now).lastInsertRowid);
+  sellerA = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('sa','x','آرش','phone_sales',?,?,1)").run(gA, now).lastInsertRowid);
+  sellerB = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('sb','x','بیتا','phone_sales',?,?,1)").run(gB, now).lastInsertRowid);
   custA = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('CA','الف','active',?,?,1)").run(now, gA).lastInsertRowid);
   custB = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('CB','ب','active',?,?,1)").run(now, gB).lastInsertRowid);
   product = Number(db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now).lastInsertRowid);
@@ -106,6 +106,6 @@ describe("why repo", () => {
   });
 
   it("refuses a salesperson session", () => {
-    expect(() => whyChain(session("salesperson", sellerA, gA), "net_sales", PA, PB)).toThrow(WhyError);
+    expect(() => whyChain(session("phone_sales", sellerA, gA), "net_sales", PA, PB)).toThrow(WhyError);
   });
 });

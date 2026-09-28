@@ -69,25 +69,25 @@ describe("submitOrder", () => {
 
   it("leaves an under-limit direct order at PENDING_REVIEW", () => {
     const id = newOrder();
-    expect(submitOrder(1, id, { id: owner, role: "salesperson" })).toBe("PENDING_REVIEW");
+    expect(submitOrder(1, id, { id: owner, role: "phone_sales" })).toBe("PENDING_REVIEW");
   });
 
   it("auto-confirms a SAMPLE order on submit", () => {
     const id = newOrder();
     getDb().prepare("UPDATE orders SET order_type = 'SAMPLE' WHERE id = ?").run(id);
-    expect(submitOrder(1, id, { id: owner, role: "salesperson" })).toBe("CONFIRMED");
+    expect(submitOrder(1, id, { id: owner, role: "phone_sales" })).toBe("CONFIRMED");
   });
 
   it("refuses to submit an order with no lines", () => {
     const db = getDb();
     const id = newOrder();
     db.exec(`DELETE FROM order_lines WHERE order_id = ${id}`);
-    expect(() => submitOrder(1, id, { id: owner, role: "salesperson" })).toThrow(OrderError);
+    expect(() => submitOrder(1, id, { id: owner, role: "phone_sales" })).toThrow(OrderError);
   });
 
   it("refuses a second submit", () => {
     const id = newOrder();
-    submitOrder(1, id, { id: owner, role: "salesperson" });
-    expect(() => submitOrder(1, id, { id: owner, role: "salesperson" })).toThrow(OrderError);
+    submitOrder(1, id, { id: owner, role: "phone_sales" });
+    expect(() => submitOrder(1, id, { id: owner, role: "phone_sales" })).toThrow(OrderError);
   });
 });

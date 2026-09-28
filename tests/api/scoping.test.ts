@@ -32,7 +32,7 @@ beforeAll(() => {
   );
   ownerId = Number(u.run("owner", "x:y", "مالک", "owner", null, now).lastInsertRowid);
   eastMgrId = Number(u.run("east-mgr", "x:y", "شرقی", "group_manager", east, now).lastInsertRowid);
-  driverId = Number(u.run("drv", "x:y", "راننده", "driver", east, now).lastInsertRowid);
+  driverId = Number(u.run("drv", "x:y", "راننده", "delivery_driver", east, now).lastInsertRowid);
 
   const c = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, synced_at, organization_id) VALUES (?, ?, ?, ?, 1)"
@@ -49,7 +49,7 @@ beforeAll(() => {
 
 type ReqInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 
-function as(userId: number, role: "owner" | "group_manager" | "driver", gid: number | null, url = "http://localhost/api/customers", init: ReqInit = {}) {
+function as(userId: number, role: "owner" | "group_manager" | "delivery_driver", gid: number | null, url = "http://localhost/api/customers", init: ReqInit = {}) {
   const token = createSessionToken({ uid: userId, role, gid, oid: 1, tv: 0, name: "t" });
   return new NextRequest(url, { ...init, headers: { ...(init.headers ?? {}), cookie: `${COOKIE_NAME}=${token}` } });
 }
@@ -68,7 +68,7 @@ describe("GET /api/customers", () => {
   });
 
   it("refuses a driver entirely", async () => {
-    const res = await getCustomers(as(driverId, "driver", east));
+    const res = await getCustomers(as(driverId, "delivery_driver", east));
     expect(res.status).toBe(403);
   });
 
@@ -234,14 +234,14 @@ describe("GET /api/districts", () => {
     expect(names).toEqual(["محله شرق"]);
   });
   it("refuses a driver with 403", async () => {
-    const res = await getDistricts(as(driverId, "driver", east, "http://localhost/api/districts"));
+    const res = await getDistricts(as(driverId, "delivery_driver", east, "http://localhost/api/districts"));
     expect(res.status).toBe(403);
   });
 });
 
 describe("GET /api/districts/geometry", () => {
   it("refuses a driver with 403", async () => {
-    const res = await getGeometry(as(driverId, "driver", east, "http://localhost/api/districts/geometry"));
+    const res = await getGeometry(as(driverId, "delivery_driver", east, "http://localhost/api/districts/geometry"));
     expect(res.status).toBe(403);
   });
 });
@@ -253,7 +253,7 @@ describe("GET /api/locations", () => {
     expect(names).toEqual(["پین شرق"]);
   });
   it("refuses a driver with 403", async () => {
-    const res = await getLocations(as(driverId, "driver", east, "http://localhost/api/locations"));
+    const res = await getLocations(as(driverId, "delivery_driver", east, "http://localhost/api/locations"));
     expect(res.status).toBe(403);
   });
   it("hides another group's pin behind a 404 on PATCH", async () => {
@@ -281,7 +281,7 @@ describe("GET /api/lead-lists", () => {
     expect(names).toEqual(["لیست شرق"]);
   });
   it("refuses a driver with 403", async () => {
-    const res = await getLeadLists(as(driverId, "driver", east, "http://localhost/api/lead-lists"));
+    const res = await getLeadLists(as(driverId, "delivery_driver", east, "http://localhost/api/lead-lists"));
     expect(res.status).toBe(403);
   });
   it("hides another group's list behind a 404 on PATCH", async () => {
@@ -303,7 +303,7 @@ describe("GET /api/facilities", () => {
     expect(names).not.toContain("انبار غرب");
   });
   it("refuses a driver with 403", async () => {
-    const res = await getFacilities(as(driverId, "driver", east, "http://localhost/api/facilities"));
+    const res = await getFacilities(as(driverId, "delivery_driver", east, "http://localhost/api/facilities"));
     expect(res.status).toBe(403);
   });
   it("hides another group's site behind a 404 on PATCH", async () => {
@@ -328,7 +328,7 @@ describe("GET /api/reminders", () => {
     expect(msgs).toEqual(["پیگیری شرق"]);
   });
   it("refuses a driver with 403", async () => {
-    const res = await getReminders(as(driverId, "driver", east, "http://localhost/api/reminders"));
+    const res = await getReminders(as(driverId, "delivery_driver", east, "http://localhost/api/reminders"));
     expect(res.status).toBe(403);
   });
   it("refuses a reminder posted against another group's customer", async () => {
@@ -356,7 +356,7 @@ describe("GET /api/photos", () => {
     expect(caps).toEqual(["عکس شرق"]);
   });
   it("refuses a driver with 403", async () => {
-    const res = await getPhotos(as(driverId, "driver", east, "http://localhost/api/photos"));
+    const res = await getPhotos(as(driverId, "delivery_driver", east, "http://localhost/api/photos"));
     expect(res.status).toBe(403);
   });
   it("hides another group's photo behind a 404 on DELETE", async () => {
@@ -376,7 +376,7 @@ describe("GET /api/visit-plans", () => {
     expect(ids).toEqual([eastPlanId]);
   });
   it("refuses a driver with 403", async () => {
-    const res = await getPlans(as(driverId, "driver", east, "http://localhost/api/visit-plans"));
+    const res = await getPlans(as(driverId, "delivery_driver", east, "http://localhost/api/visit-plans"));
     expect(res.status).toBe(403);
   });
   it("refuses a stop planned at another group's customer", async () => {
@@ -410,7 +410,7 @@ describe("GET /api/activity", () => {
   });
   it("refuses a driver with 403", async () => {
     const res = await getActivity(
-      as(driverId, "driver", east, `http://localhost/api/activity?entity_type=customer&entity_id=${eastCustomerId}`)
+      as(driverId, "delivery_driver", east, `http://localhost/api/activity?entity_type=customer&entity_id=${eastCustomerId}`)
     );
     expect(res.status).toBe(403);
   });
@@ -463,7 +463,7 @@ describe("GET /api/sales", () => {
   });
 
   it("refuses a driver with 403", async () => {
-    const res = await getSales(as(driverId, "driver", east, "http://localhost/api/sales?customer=x"));
+    const res = await getSales(as(driverId, "delivery_driver", east, "http://localhost/api/sales?customer=x"));
     expect(res.status).toBe(403);
   });
 });
@@ -507,7 +507,7 @@ describe("sales aggregates reach their group through the customer", () => {
 
 describe("push/subscribe", () => {
   it("lets a driver register their device", async () => {
-    const req = as(driverId, "driver", east, "http://localhost/api/push/subscribe", {
+    const req = as(driverId, "delivery_driver", east, "http://localhost/api/push/subscribe", {
       method: "POST",
       body: JSON.stringify({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
       headers: { "Content-Type": "application/json" },

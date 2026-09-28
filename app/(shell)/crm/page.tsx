@@ -8,6 +8,7 @@ import CrmBoard from "@/components/crm/CrmBoard";
 import { listBusinesses, viewCounts } from "@/lib/repo/crm/businesses";
 import { pageMetaFor } from "@/lib/pageMeta";
 import type { Metadata } from "next";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +23,10 @@ export default async function CrmPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
   getDb();
   const counts = viewCounts(session);
-  const view = counts.today > 0 ? "today" : session.role === "salesperson" ? "my_leads" : "all";
+  const view = counts.today > 0 ? "today" : session.role === "phone_sales" ? "my_leads" : "all";
   const { rows } = listBusinesses(session, { view });
   return (
     <>

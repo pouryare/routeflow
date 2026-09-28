@@ -8,6 +8,7 @@ import { targetProgress } from "./targets";
 import { SEVERITY_FA } from "@/lib/repo/actionCenter";
 import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { customerHref } from "@/lib/deepLink";
+import { isVanRole } from "../roles";
 
 export interface BriefingItem {
   label: string;
@@ -47,9 +48,9 @@ export function todayFor(session: Session): Briefing {
   const today = new Date().toISOString().slice(0, 10);
   const panels: (BriefingPanel | null)[] = [];
 
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     const tasks = listTasks(org, { assignee: session.user.id }).concat(
-      listTasks(org, { role: "salesperson" }).filter((t) => t.assignee_user_id === null)
+      listTasks(org, { role: "phone_sales" }).filter((t) => t.assignee_user_id === null)
     );
     panels.push(
       panel(
@@ -107,7 +108,7 @@ export function todayFor(session: Session): Briefing {
     }
   }
 
-  if (session.role === "driver") {
+  if (isVanRole(session.role)) {
     const run = db
       .prepare(
         "SELECT id, weather_json FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?"

@@ -58,8 +58,8 @@ beforeAll(() => {
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d1", "راننده یک", "driver", ctx.group, now).lastInsertRowid);
-  ctx.otherDriver = Number(user.run("d2", "راننده دو", "driver", ctx.group, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d1", "راننده یک", "delivery_driver", ctx.group, now).lastInsertRowid);
+  ctx.otherDriver = Number(user.run("d2", "راننده دو", "delivery_driver", ctx.group, now).lastInsertRowid);
 
   ctx.customer = Number(
     db
@@ -140,7 +140,7 @@ describe("addStop", () => {
 
 describe("what a driver can see", () => {
   it("shows a driver the orders on their own run", () => {
-    const f = orderFilter(session("driver", ctx.driver, ctx.group));
+    const f = orderFilter(session("delivery_driver", ctx.driver, ctx.group));
     const rows = getDb()
       .prepare(`SELECT o.id FROM orders o WHERE 1 = 1${f.sql}`)
       .all(...f.params) as { id: number }[];
@@ -148,7 +148,7 @@ describe("what a driver can see", () => {
   });
 
   it("hides the same order from a different driver", () => {
-    const f = orderFilter(session("driver", ctx.otherDriver, ctx.group));
+    const f = orderFilter(session("delivery_driver", ctx.otherDriver, ctx.group));
     const rows = getDb()
       .prepare(`SELECT o.id FROM orders o WHERE 1 = 1${f.sql}`)
       .all(...f.params) as { id: number }[];
@@ -156,7 +156,7 @@ describe("what a driver can see", () => {
   });
 
   it("shows a driver with no run at all nothing", () => {
-    const f = orderFilter(session("driver", ctx.otherDriver, ctx.group));
+    const f = orderFilter(session("delivery_driver", ctx.otherDriver, ctx.group));
     const rows = getDb()
       .prepare(`SELECT o.id FROM orders o WHERE 1 = 1${f.sql}`)
       .all(...f.params) as { id: number }[];

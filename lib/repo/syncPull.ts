@@ -2,6 +2,7 @@ import { getDb, plain } from "@/lib/db";
 import { orderFilter, groupFilter } from "@/lib/session";
 import type { Session } from "@/lib/session";
 import { tombstonesSince, type Tombstone } from "./tombstones";
+import { isVanRole } from "../roles";
 
 export interface PullRow {
   table: string;
@@ -77,7 +78,7 @@ export function pullSince(session: Session, since: string | null): PullResult {
     "created_at"
   );
 
-  const isDriver = session.role === "driver";
+  const isDriver = isVanRole(session.role);
 
   if (isDriver) {
     const runIds = (

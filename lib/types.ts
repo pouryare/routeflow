@@ -163,12 +163,12 @@ export const LIFECYCLE_LABEL: Record<CustomerLifecycle, string> = {
   blocked: "مسدود",
 };
 
-export type CustomerColorMode = "status" | "debt" | "salesperson" | "inactivity" | "distance";
+export type CustomerColorMode = "status" | "debt" | "phone_sales" | "inactivity" | "distance";
 
 export const CUSTOMER_COLOR_MODES: CustomerColorMode[] = [
   "status",
   "debt",
-  "salesperson",
+  "phone_sales",
   "inactivity",
   "distance",
 ];
@@ -253,7 +253,7 @@ export function shapeForColor(color: string): MarkerShape {
   return "diamond";
 }
 
-// Categorical palette for the "salesperson" color mode -- deliberately outside the
+// Categorical palette for the "phone_sales" color mode -- deliberately outside the
 // good/warn/crit/accent set (MASTER.md: those never carry non-semantic meaning).
 const SALES_PALETTE = ["#5B8DEF", "#8B7CF6", "#E8749C", "#C9A227", "#4A9DA8", "#B0854A"];
 export function salespersonColor(name: string | null, index: Map<string, number>): string {

@@ -6,7 +6,7 @@ import { recordDriverPayment } from "@/lib/driverCommissionLedger";
 import { recordManagerPayment } from "@/lib/managerCommissionLedger";
 import { isToman } from "@/lib/money";
 
-const ROLE_FOR_KIND = { sales: "salesperson", driver: "driver", manager: "group_manager" } as const;
+const ROLE_FOR_KIND = { sales: "phone_sales", driver: "delivery_driver", manager: "group_manager" } as const;
 const NOT_THIS_KIND = { sales: "فروشنده", driver: "راننده", manager: "مدیر گروه" } as const;
 
 /** Owner only. Recording a commission payment is recording that money left.

@@ -46,7 +46,7 @@ beforeEach(() => {
   const now = new Date().toISOString();
   grp = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now).lastInsertRowid);
   owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o'||abs(random()),'x','م','owner',?,1)").run(now).lastInsertRowid);
-  seller = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','salesperson',?,?,1)").run(grp, now).lastInsertRowid);
+  seller = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','phone_sales',?,?,1)").run(grp, now).lastInsertRowid);
   const cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','م','active',?,?,1)").run(now, grp).lastInsertRowid);
   const product = Number(db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now).lastInsertRowid);
   const pkg = Number(db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, now).lastInsertRowid);
@@ -79,14 +79,14 @@ describe("analysis routes", () => {
   });
 
   it("refresh is refused for a salesperson", async () => {
-    const res = await REFRESH(req("/api/analysis/refresh", cookie(seller, "salesperson", grp), { method: "POST" }));
+    const res = await REFRESH(req("/api/analysis/refresh", cookie(seller, "phone_sales", grp), { method: "POST" }));
     expect(res.status).toBe(403);
   });
 
   it("margin and why are 403 for a salesperson, kpis is 200", async () => {
-    expect((await MARGIN(req(`/api/analysis/margin?dimension=customer&period=${PERIOD}`, cookie(seller, "salesperson", grp)))).status).toBe(403);
-    expect((await WHY(req(`/api/analysis/why?metric=net_sales&from=${PERIOD}&to=${PERIOD}`, cookie(seller, "salesperson", grp)))).status).toBe(403);
-    expect((await KPIS(req(`/api/analysis/kpis?period=${PERIOD}`, cookie(seller, "salesperson", grp)))).status).toBe(200);
+    expect((await MARGIN(req(`/api/analysis/margin?dimension=customer&period=${PERIOD}`, cookie(seller, "phone_sales", grp)))).status).toBe(403);
+    expect((await WHY(req(`/api/analysis/why?metric=net_sales&from=${PERIOD}&to=${PERIOD}`, cookie(seller, "phone_sales", grp)))).status).toBe(403);
+    expect((await KPIS(req(`/api/analysis/kpis?period=${PERIOD}`, cookie(seller, "phone_sales", grp)))).status).toBe(200);
   });
 
   it("margin (owner) returns rows for a valid dimension and 400 for a bad one", async () => {

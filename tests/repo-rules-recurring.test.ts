@@ -76,7 +76,7 @@ describe("spawnRecurringTasks", () => {
     const tomorrowDay = tehranDay(tomorrow);
     createRecurrence(
       1,
-      { title: "کار هفتگی فردا", kind: "outreach", role_hint: "salesperson", rrule: `weekly:${tomorrowDay}`, priority: "LOW" },
+      { title: "کار هفتگی فردا", kind: "outreach", role_hint: "phone_sales", rrule: `weekly:${tomorrowDay}`, priority: "LOW" },
       user
     );
     expect(spawnRecurringTasks(1, today.toISOString()).spawned).toBe(0);

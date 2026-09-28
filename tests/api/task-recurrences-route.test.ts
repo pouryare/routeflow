@@ -49,7 +49,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
   );
   gm = Number(u.run(`gm${Date.now()}`, "x", "م", "group_manager", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "salesperson", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
 });
 
 describe("/api/task-recurrences", () => {
@@ -91,7 +91,7 @@ describe("/api/task-recurrences", () => {
     );
     expect(gone.status).toBe(404);
 
-    const forbidden = await GET(req("/api/task-recurrences", seller, "salesperson"));
+    const forbidden = await GET(req("/api/task-recurrences", seller, "phone_sales"));
     expect(forbidden.status).toBe(403);
   });
 

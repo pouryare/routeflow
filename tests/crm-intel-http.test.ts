@@ -19,7 +19,7 @@ afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(pro
 
 const g = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('ig','ig',?,1)").run(now).lastInsertRowid);
 const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igowner','x','igowner','owner',?,?,1)").run(g, now).lastInsertRowid);
-const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igrep','x','igrep','salesperson',?,?,1)").run(g, now).lastInsertRowid);
+const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('igrep','x','igrep','phone_sales',?,?,1)").run(g, now).lastInsertRowid);
 const token = (role: string, id_: number) => createSessionToken({ uid: id_, role: role as "owner", gid: g, oid: 1, tv: 0, name: role });
 const req = (p: string, method: string, body: unknown, actor: string) =>
   new NextRequest(`http://test.local${p}`, { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { cookie: `${COOKIE_NAME}=${actor}` } });
@@ -33,7 +33,7 @@ const answers = () => [
 describe("intel + tags HTTP surface (handlers, temp DB)", () => {
   it("rejects anonymous and out-of-scope callers before touching data", async () => {
     expect((await intelPOST(req("/x", "POST", { answers: answers() }, "bad-token"), ctx(id))).status).toBe(401);
-    expect((await intelPOST(req("/x", "POST", { answers: answers() }, token("salesperson", rep)), ctx(id))).status).toBe(404);
+    expect((await intelPOST(req("/x", "POST", { answers: answers() }, token("phone_sales", rep)), ctx(id))).status).toBe(404);
     expect((await tagsPUT(req("/x", "PUT", { tags: [] }, "bad-token"), ctx(id))).status).toBe(401);
     expect(db.prepare("SELECT count(*) n FROM activities WHERE customer_id = ?").get(id)).toEqual({ n: 0 });
   });

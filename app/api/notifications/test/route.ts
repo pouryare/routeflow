@@ -3,7 +3,7 @@ import { requireRole } from "@/lib/session";
 import { getChannelState, flushNotifications } from "@/lib/repo/notifications";
 import { insertTestNotification, testNotificationOutcome } from "@/lib/repo/notification-test";
 
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 /** Past lib/repo/notifications.ts's 120s DEBOUNCE_MS (module-private there, so this is a
  *  deliberate duplicate) so the row we just wrote is not held back as a still-arriving

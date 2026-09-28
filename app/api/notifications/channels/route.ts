@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { putChannelState, NotifInputError } from "@/lib/repo/notifications";
 
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 /** The keys `putChannelState` patches. Its own `ChannelPatch` type is module-private, so
  *  this structurally-identical literal type is what the route builds. */

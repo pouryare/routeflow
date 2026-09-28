@@ -16,6 +16,7 @@ import { getSessionFromCookies, groupFilter, groupFilterWithShared } from "@/lib
 import { customerDebtsForOrg } from "@/lib/repo/payments";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faJalaliDateTime } from "@/lib/jalali";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +54,7 @@ export default async function ReportPage({
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
   const f = groupFilter(session);
 
   const db = getDb();

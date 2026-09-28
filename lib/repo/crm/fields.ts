@@ -96,7 +96,7 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
       const others = findDuplicates(session, { instagram: values.instagram }).filter(m => m.kind === "instagram" && m.id !== id);
       if (others.length) throw new CrmError(409, "این صفحهٔ اینستاگرام مال کسب‌وکار دیگری است", { matches: others });
     }
-    if (session.role === "salesperson" && b.owner_user_id === null) values.owner_user_id = session.user.id;
+    if (session.role === "phone_sales" && b.owner_user_id === null) values.owner_user_id = session.user.id;
     db.prepare(`UPDATE customers SET ${Object.keys(values).map(k => `${k} = ?`).join(",")} WHERE id = ? AND organization_id = ?`).run(...Object.values(values), id, org);
     correction(session, id, org, "اطلاعات کسب‌وکار اصلاح شد");
     db.exec("COMMIT");

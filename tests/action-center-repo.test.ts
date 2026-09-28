@@ -40,7 +40,7 @@ beforeEach(() => {
   const now = new Date().toISOString();
   grp = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now).lastInsertRowid);
   owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','م','owner',?,1)").run(now).lastInsertRowid);
-  driver = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('d','x','ر','driver',?,?,1)").run(grp, now).lastInsertRowid);
+  driver = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('d','x','ر','delivery_driver',?,?,1)").run(grp, now).lastInsertRowid);
   cust = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('C','مشتری','active',?,?,1)").run(now, grp).lastInsertRowid);
   product = Number(db.prepare("INSERT INTO products (name,sku,kg_per_base_unit,created_at,updated_at,organization_id) VALUES ('کره','K',0.25,?,?,1)").run(now, now).lastInsertRowid);
   pkg = Number(db.prepare("INSERT INTO packagings (product_id,name,qty_per_pack,created_at) VALUES (?,'ج',1,?)").run(product, now).lastInsertRowid);
@@ -90,7 +90,7 @@ describe("action center repo", () => {
     getDb()
       .prepare("INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','stock','x',?)")
       .run(iso(1));
-    const r = actionCenterFor(session("driver", driver, grp));
+    const r = actionCenterFor(session("delivery_driver", driver, grp));
     expect(r).toEqual({ critical: [], warning: [], opportunity: [] });
   });
 

@@ -1,8 +1,8 @@
 import { describe, expect, test } from "vitest";
-import { ROLES, ROLE_LABEL, homePathFor, type Role } from "@/lib/roles";
+import { ROLES, ROLE_LABEL, homePathFor, VAN_ROLES, isVanRole, type Role } from "@/lib/roles";
 
 describe("the role list", () => {
-  test("is the six roles the app has, widest access first", () => {
+  test("is the seven roles the app has, widest access first", () => {
     // platform_owner is the vendor account: RouteFlow is sold to other distributors, so
     // somebody has to be able to read across tenants to support them. Every other role
     // stops at the edge of its own organisation. rep_manager runs the representative
@@ -12,8 +12,9 @@ describe("the role list", () => {
       "owner",
       "group_manager",
       "rep_manager",
-      "salesperson",
-      "driver",
+      "phone_sales",
+      "field_rep",
+      "delivery_driver",
     ]);
   });
 
@@ -62,19 +63,37 @@ describe("the bootstrap script", () => {
 });
 
 describe("homePathFor", () => {
-  test("sends a driver to their own app and everyone else to the day's briefing", () => {
+  test("sends a van role to their own app and everyone else to the day's briefing", () => {
     // platform_owner used to be sent to /platform, a page that was never built — every
     // vendor login landed on a 404. /sales/today already scopes itself to "all" for them.
-    expect(homePathFor("driver")).toBe("/driver");
-    for (const role of ROLES.filter((r) => r !== "driver")) {
+    expect(homePathFor("field_rep")).toBe("/driver");
+    expect(homePathFor("delivery_driver")).toBe("/driver");
+    for (const role of ROLES.filter((r) => !isVanRole(r))) {
       expect(homePathFor(role), role).toBe("/sales/today");
+    }
+  });
+});
+
+describe("the van roles", () => {
+  test("groups the two roles that work a route in a vehicle", () => {
+    // A gate keyed on ONE of these literals fails OPEN: with field_rep in the token,
+    // `role === "driver"` is false, so the gate admits everything instead of refusing.
+    // That is how a field rep ends up holding the whole sales shell. Gate on membership.
+    expect(VAN_ROLES).toEqual(["field_rep", "delivery_driver"]);
+    expect(isVanRole("field_rep")).toBe(true);
+    expect(isVanRole("delivery_driver")).toBe(true);
+  });
+
+  test("does not treat anyone else as a van role", () => {
+    for (const role of ROLES.filter((r) => !isVanRole(r))) {
+      expect(isVanRole(role), role).toBe(false);
     }
   });
 });
 
 describe("Role", () => {
   test("accepts each member of ROLES", () => {
-    const roles: Role[] = ["platform_owner", "owner", "group_manager", "salesperson", "driver"];
+    const roles: Role[] = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep"];
     expect(roles).toHaveLength(5);
   });
 });

@@ -22,6 +22,12 @@ import {
 } from "@/lib/analysis/metrics";
 import { periodRange } from "@/lib/analysis/period";
 
+/** The scope a snapshot is filed under.
+ *
+ *  NOT the same vocabulary as Role. This is a reporting dimension stored in
+ *  kpi_snapshots.scope_type, whose CHECK still names 'salesperson' and 'driver' -- a
+ *  separate list that a role rename must not touch. Renaming one without the other writes
+ *  a value the constraint rejects. */
 export type ScopeType =
   | "org"
   | "group"
@@ -510,7 +516,7 @@ export function refreshSnapshots(organizationId: number, period: string): { writ
   ).map((r) => r.id);
   const sellers = (
     db
-      .prepare("SELECT id FROM users WHERE organization_id = ? AND role = 'salesperson'")
+      .prepare("SELECT id FROM users WHERE organization_id = ? AND role IN ('phone_sales', 'salesperson')")
       .all(organizationId) as { id: number }[]
   ).map((r) => r.id);
 
@@ -561,7 +567,7 @@ function boardScope(session: Session): MetricScope {
   if (session.role === "group_manager" && session.groupId != null) {
     return { scope_type: "group", scope_id: session.groupId };
   }
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     return { scope_type: "salesperson", scope_id: session.user.id };
   }
   return { scope_type: "org", scope_id: 0 };

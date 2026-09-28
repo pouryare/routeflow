@@ -12,6 +12,7 @@ import SyncStatus from "@/components/SyncStatus";
 import VerifyVisits from "@/components/driver/VerifyVisits";
 import NotificationBell from "@/components/NotificationBell";
 import { Icon } from "@/components/meridian/Icon";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -38,7 +39,7 @@ export default async function DriverPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "driver") redirect("/map");
+  if (!isVanRole(session.role)) redirect("/map");
 
   const db = getDb();
   const runs = readDriverRuns(db, session.user.id);

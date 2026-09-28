@@ -36,7 +36,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "salesperson", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
 });
 
 describe("weather routes", () => {
@@ -84,7 +84,7 @@ describe("weather routes", () => {
     const res = await CF_PATCH(
       new NextRequest("http://localhost/api/sales/capacity-factors", {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", cookie: cookie(seller, "salesperson") },
+        headers: { "Content-Type": "application/json", cookie: cookie(seller, "phone_sales") },
         body: JSON.stringify({ condition_code: "fog", stop_factor: 0.6 }),
       })
     );

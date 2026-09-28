@@ -54,8 +54,8 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,?,?,1,?,?)"
   );
   ownerA = Number(u.run(`oa${Date.now()}`, "x", "م", "owner", null, now, 1).lastInsertRowid);
-  driverA = Number(u.run(`da${Date.now()}`, "x", "ر", "driver", groupA, now, 1).lastInsertRowid);
-  driverB = Number(u.run(`db${Date.now()}`, "x", "ر", "driver", groupA, now, 1).lastInsertRowid);
+  driverA = Number(u.run(`da${Date.now()}`, "x", "ر", "delivery_driver", groupA, now, 1).lastInsertRowid);
+  driverB = Number(u.run(`db${Date.now()}`, "x", "ر", "delivery_driver", groupA, now, 1).lastInsertRowid);
   custA = Number(
     db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('CA','x','active',?,?,1)")
@@ -93,7 +93,7 @@ describe("pullSince", () => {
     );
     const notMine = runFor(driverB, custOther);
 
-    const res = pullSince(sess(driverA, "driver", 1, groupA), null);
+    const res = pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
     const orderIds = res.rows.filter((r) => r.table === "orders").map((r) => r.row.id);
     expect(orderIds).toContain(mine);
     expect(orderIds).not.toContain(notMine);
@@ -106,15 +106,15 @@ describe("pullSince", () => {
 
   it("an immediate re-pull at the watermark returns no rows", () => {
     runFor(driverA, custA);
-    const first = pullSince(sess(driverA, "driver", 1, groupA), null);
-    const second = pullSince(sess(driverA, "driver", 1, groupA), first.watermark);
+    const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     expect(second.rows.filter((r) => r.table === "orders")).toEqual([]);
   });
 
   it("surfaces a tombstone recorded after the watermark", () => {
-    const first = pullSince(sess(driverA, "driver", 1, groupA), null);
+    const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
     tombstone(1, "order_line", 999);
-    const second = pullSince(sess(driverA, "driver", 1, groupA), first.watermark);
+    const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     expect(second.tombstones.map((t) => t.entity_id)).toContain(999);
   });
 

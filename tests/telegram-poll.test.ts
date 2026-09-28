@@ -24,9 +24,9 @@ beforeEach(() => {
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id,telegram_link_nonce) VALUES (?,?,?,?,1,?,1,?)"
   );
-  withNonce = Number(u.run(`a${Date.now()}`, "x:y", "الف", "salesperson", now, "abc").lastInsertRowid);
+  withNonce = Number(u.run(`a${Date.now()}`, "x:y", "الف", "phone_sales", now, "abc").lastInsertRowid);
   // A second user with no pending link at all — the nonce lookup must never reach it.
-  noNonce = Number(u.run(`b${Date.now()}`, "x:y", "ب", "salesperson", now, null).lastInsertRowid);
+  noNonce = Number(u.run(`b${Date.now()}`, "x:y", "ب", "phone_sales", now, null).lastInsertRowid);
 });
 
 function userRow(id: number) {

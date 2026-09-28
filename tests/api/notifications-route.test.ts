@@ -45,7 +45,7 @@ beforeEach(() => {
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "salesperson", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid);
   manager = Number(u.run(`m${Date.now()}`, "x:y", "مد", "group_manager", now).lastInsertRowid);
   custId = Number(
     db
@@ -85,7 +85,7 @@ beforeEach(() => {
     null
   );
 
-  sellerToken = createSessionToken({ uid: seller, role: "salesperson", gid: null, oid: 1, tv: 0, name: "ف" });
+  sellerToken = createSessionToken({ uid: seller, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "ف" });
 });
 
 describe("GET/PATCH /api/notifications", () => {

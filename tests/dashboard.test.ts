@@ -105,8 +105,8 @@ beforeAll(() => {
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("em", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
-  ctx.nazanin = Number(user.run("nz", "نازنین", "salesperson", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("dr", "راننده", "driver", ctx.east, now).lastInsertRowid);
+  ctx.nazanin = Number(user.run("nz", "نازنین", "phone_sales", ctx.east, now).lastInsertRowid);
+  ctx.driver = Number(user.run("dr", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
 
   const customer = db.prepare(
     "INSERT INTO customers (customer_code, business_name, group_id, lifecycle, opening_balance_toman, synced_at, organization_id) VALUES (?, ?, ?, 'active', ?, ?, 1)"
@@ -203,7 +203,7 @@ describe("salesDashboard", () => {
   });
 
   it("gives a salesperson only their own figures", () => {
-    const d = salesDashboard(getDb(), session("salesperson", ctx.nazanin, ctx.east));
+    const d = salesDashboard(getDb(), session("phone_sales", ctx.nazanin, ctx.east));
     expect(d.revenue_toman).toBe(13000);
     // The west order is not hers, and neither is the group total.
     expect(d.revenue_by_salesperson.every((r) => r.label === "نازنین")).toBe(true);

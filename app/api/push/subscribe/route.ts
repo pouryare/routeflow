@@ -10,7 +10,7 @@ interface SubscriptionBody {
 // Every signed-in role: a subscription is a device endpoint, not business data, and
 // Phase 2 routes loud notifications to whichever user owns it. Same list, same order, as
 // GET /api/notifications.
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"] as const;
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 export async function POST(req: NextRequest) {
   const guard = requireRole(req, [...ROLES]);

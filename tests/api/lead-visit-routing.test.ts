@@ -51,8 +51,8 @@ beforeAll(() => {
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, 1, ?, 1)"
   );
   ownerId = Number(insertUser.run("visit-owner", "مالک", "owner", null, now).lastInsertRowid);
-  driverId = Number(insertUser.run("visit-driver", "راننده", "driver", groupId, now).lastInsertRowid);
-  salespersonId = Number(insertUser.run("visit-sales", "فروشنده", "salesperson", groupId, now).lastInsertRowid);
+  driverId = Number(insertUser.run("visit-driver", "راننده", "delivery_driver", groupId, now).lastInsertRowid);
+  salespersonId = Number(insertUser.run("visit-sales", "فروشنده", "phone_sales", groupId, now).lastInsertRowid);
   const insertLoc = db.prepare(
     "INSERT INTO saved_locations (name, maps_url, lat, lng, resolution, group_id, created_at, organization_id) VALUES (?, ?, 35.7, 51.4, 'manual', ?, ?, 1)"
   );
@@ -83,7 +83,7 @@ function post(locationId: number, answers: unknown[], who: { uid: number; role: 
   });
 }
 const ctx = (id: number) => ({ params: Promise.resolve({ id: String(id) }) }) as never;
-const DRIVER = () => ({ uid: driverId, role: "driver", gid: groupId });
+const DRIVER = () => ({ uid: driverId, role: "delivery_driver", gid: groupId });
 
 /** The path a driver walks when the owner says yes, we are buying. */
 const boughtNow = [
@@ -220,7 +220,7 @@ describe("who may record a visit", () => {
     // re-reads the user and takes the role from the database, so a forged claim resolves
     // to the real one and this test would silently be testing the owner.
     const res = await POST(
-      post(locInGroup, boughtNow, { uid: salespersonId, role: "salesperson", gid: groupId }),
+      post(locInGroup, boughtNow, { uid: salespersonId, role: "phone_sales", gid: groupId }),
       ctx(locOnRun)
     );
     expect(res.status).toBe(403);

@@ -7,6 +7,7 @@ import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +18,7 @@ export default async function SalesTodayPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   getDb();
   const data = todayFor(session);

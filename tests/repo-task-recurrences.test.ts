@@ -42,7 +42,7 @@ describe("task_recurrences repo", () => {
       {
         title: "یافتن مشتری جدید — منطقهٔ ۴ تهران",
         kind: "outreach",
-        role_hint: "salesperson",
+        role_hint: "phone_sales",
         rrule: "weekly:mon",
         priority: "NORMAL",
       },

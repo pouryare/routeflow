@@ -19,7 +19,7 @@ import { ROLE_LABEL } from "@/lib/roles";
  *  and people type all three. */
 
 const CUSTOMER_ROLES: readonly string[] = ["owner", "group_manager"];
-const ORDER_ROLES: readonly string[] = ["owner", "group_manager", "salesperson"];
+const ORDER_ROLES: readonly string[] = ["owner", "group_manager", "phone_sales"];
 const DEFAULT_LIMIT = 6;
 /** Newest orders considered before matching. Search is for "that order from last week",
  *  not for archaeology; the orders page has filters for that. */

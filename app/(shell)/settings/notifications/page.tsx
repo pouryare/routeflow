@@ -11,7 +11,7 @@ export const dynamic = "force-dynamic";
 /** Same six roles as GET /api/notifications and the prefs route — everyone who can receive
  *  a notification can govern it. Kept as a literal here rather than imported so the page
  *  and its API can never disagree silently about who is allowed in. */
-const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "salesperson", "driver"];
+const ROLES = ["platform_owner", "owner", "group_manager", "rep_manager", "phone_sales", "driver"];
 
 export default async function NotificationSettingsPage() {
   const jar = await cookies();

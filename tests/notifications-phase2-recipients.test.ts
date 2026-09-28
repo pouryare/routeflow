@@ -34,7 +34,7 @@ beforeEach(() => {
     "INSERT INTO users (username, password_hash, display_name, group_id, role, active, created_at, organization_id) VALUES (?,?,?,?,?,1,?,1)"
   );
   mgr = Number(u.run(`m${Date.now()}`, "x:y", "مدیر", g, "group_manager", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "فروشنده", g, "salesperson", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x:y", "فروشنده", g, "phone_sales", now).lastInsertRowid);
   // customers has no `created_at`; customer_code + synced_at are NOT NULL with no default.
   custId = Number(
     db

@@ -43,7 +43,7 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id,group_id) VALUES (?,?,?,?,?,1,?)"
   );
   gm = Number(u.run(`gm${Date.now()}`, "x", "م", "group_manager", now, gid).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "salesperson", now, gid).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now, gid).lastInsertRowid);
 });
 
 describe("/api/board & /api/pocket routes", () => {
@@ -57,19 +57,19 @@ describe("/api/board & /api/pocket routes", () => {
       "کارت بورد"
     );
 
-    const bad = await BOARD(get("/api/board?view=status", seller, "salesperson", gid));
+    const bad = await BOARD(get("/api/board?view=status", seller, "phone_sales", gid));
     expect(bad.status).toBe(403);
   });
 
   it("GET /api/pocket returns the caller's tiles; ?user_id of a peer is ignored", async () => {
     createTask(1, { title: "کارِ من", kind: "reminder", assignee_user_id: seller, priority: "NORMAL", due_at: new Date().toISOString().slice(0, 10) });
-    const res = await POCKET(get("/api/pocket", seller, "salesperson", gid));
+    const res = await POCKET(get("/api/pocket", seller, "phone_sales", gid));
     const j = await res.json();
     expect(res.status).toBe(200);
     expect(j.pocket.scopeUserId).toBe(seller);
     expect(j.pocket.tiles).toHaveLength(4);
 
-    const scoped = await POCKET(get(`/api/pocket?user_id=${gm}`, seller, "salesperson", gid));
+    const scoped = await POCKET(get(`/api/pocket?user_id=${gm}`, seller, "phone_sales", gid));
     expect((await scoped.json()).pocket.scopeUserId).toBe(seller); // peer scope ignored
   });
 });

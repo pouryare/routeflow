@@ -14,7 +14,7 @@ const VALID: CustomerLifecycle[] = [
 ];
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/customers/[id]/lifecycle">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

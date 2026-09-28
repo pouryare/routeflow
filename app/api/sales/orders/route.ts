@@ -21,7 +21,7 @@ import {
  *  driver places from a lead will not appear in this list until it is on a delivery run.
  *  A van order needs either its own scope rule or a "my orders" read that follows
  *  salesperson_user_id -- deliberately not changed here. */
-const CAN_SELL = ["owner", "group_manager", "salesperson", "driver"] as const;
+const CAN_SELL = ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...CAN_SELL]);
@@ -114,7 +114,7 @@ export async function POST(req: NextRequest) {
   // A فروشنده's order is always credited to them. Commission is paid off this column,
   // so letting the request name someone else would be a way to move money.
   const salespersonId =
-    session.role === "salesperson"
+    session.role === "phone_sales"
       ? session.user.id
       : body?.salesperson_user_id === undefined || body?.salesperson_user_id === null
         ? null

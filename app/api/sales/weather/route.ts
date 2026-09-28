@@ -4,7 +4,7 @@ import { snapshotFor, runWeatherAdjustment } from "@/lib/repo/weather";
 
 /** The stored snapshot for a cell/date plus the capacity adjustment it implies. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
   const lat = Number(sp.get("lat"));

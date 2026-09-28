@@ -46,7 +46,7 @@ beforeAll(() => {
   sellerId = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES ('s-s','x:y','ف','salesperson',?,1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES ('s-s','x:y','ف','phone_sales',?,1,?,1)"
       )
       .run(groupA, now).lastInsertRowid
   );
@@ -110,12 +110,12 @@ describe("/api/customers/[id]/statement", () => {
   });
 
   it("lets a salesperson see a customer in their own group", async () => {
-    const res = await GET(jreq(custA, sellerId, "salesperson", groupA), ctx(custA));
+    const res = await GET(jreq(custA, sellerId, "phone_sales", groupA), ctx(custA));
     expect(res.status).toBe(200);
   });
 
   it("404s a customer outside the salesperson's group", async () => {
-    const res = await GET(jreq(custB, sellerId, "salesperson", groupA), ctx(custB));
+    const res = await GET(jreq(custB, sellerId, "phone_sales", groupA), ctx(custB));
     expect(res.status).toBe(404);
   });
 });

@@ -17,6 +17,7 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function OrderDetailPage({
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
+  if (isVanRole(session.role)) redirect("/driver");
 
   const id = Number((await params).id);
   const db = getDb();

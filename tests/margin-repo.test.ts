@@ -57,7 +57,7 @@ beforeEach(() => {
     db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o','x','مالک','owner',?,1)").run(now).lastInsertRowid
   );
   seller = Number(
-    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('s','x','فروشنده','salesperson',?,?,1)").run(groupId, now).lastInsertRowid
+    db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('s','x','فروشنده','phone_sales',?,?,1)").run(groupId, now).lastInsertRowid
   );
   custA = Number(
     db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,group_id,organization_id) VALUES ('CA','مغازهٔ الف','active',?,?,1)").run(now, groupId).lastInsertRowid
@@ -127,7 +127,7 @@ describe("margin repo", () => {
   });
 
   it("refuses a salesperson session", () => {
-    expect(() => marginBy(1, "customer", PERIOD, session("salesperson", seller, groupId))).toThrow(MarginError);
+    expect(() => marginBy(1, "customer", PERIOD, session("phone_sales", seller, groupId))).toThrow(MarginError);
   });
 
   it("materialiseMargin writes an org gross_margin snapshot equal to total margin / total revenue", () => {

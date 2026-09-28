@@ -38,8 +38,8 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "مالک", "owner", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x:y", "راننده", "driver", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x:y", "فروشنده", "salesperson", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x:y", "راننده", "delivery_driver", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x:y", "فروشنده", "phone_sales", now).lastInsertRowid);
   custId = Number(
     db
       .prepare(

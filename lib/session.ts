@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./auth";
 import { getDb, type Role, type UserRow } from "./db";
+import { isVanRole } from "./roles";
 
 export interface Session {
   user: UserRow;
@@ -282,7 +283,7 @@ export function crmFilter(session: Session, alias = "c"): { sql: string; params:
     case "rep_manager":
       if (session.groupId === null) return { sql: " AND 1 = 0", params: [] };
       return { sql: ` AND ${a}organization_id = ? AND ${a}group_id = ?`, params: [session.organizationId, session.groupId] };
-    case "salesperson":
+    case "phone_sales":
       if (session.groupId === null) {
         return { sql: ` AND ${a}organization_id = ? AND ${a}owner_user_id = ?`, params: [session.organizationId, session.user.id] };
       }
@@ -302,7 +303,7 @@ export function canSeeBusiness(session: Session, row: BusinessScopeRow): boolean
   if (row.organization_id !== session.organizationId) return false;
   if (session.role === "owner") return true;
   if (session.role === "group_manager" || session.role === "rep_manager") return session.groupId !== null && row.group_id === session.groupId;
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     return row.owner_user_id === session.user.id || (row.owner_user_id === null && session.groupId !== null && row.group_id === session.groupId);
   }
   return false;
@@ -321,14 +322,14 @@ export function orderFilter(session: Session, alias = "o"): { sql: string; param
     return { sql: ` AND ${alias}.organization_id = ?`, params: [session.organizationId] };
   }
 
-  if (session.role === "salesperson") {
+  if (session.role === "phone_sales") {
     return {
       sql: ` AND ${alias}.salesperson_user_id = ? AND ${alias}.organization_id = ?`,
       params: [session.user.id, session.organizationId],
     };
   }
 
-  if (session.role === "driver") {
+  if (isVanRole(session.role)) {
     // The orders on runs assigned to this driver, and nothing else. Scoped by run
     // rather than by date: a driver needs yesterday's run to reprint a receipt or fix
     // what they typed at the door, and a date clause would cut that off at midnight in
@@ -400,7 +401,7 @@ export function canReachGroup(session: Session, groupId: number | null): boolean
  *  whose group is in their scope. A salesperson or driver reaches only themselves. */
 export function canReachUser(session: Session, userId: number): boolean {
   if (userId === session.user.id) return true;
-  if (session.role === "salesperson" || session.role === "driver") return false;
+  if (session.role === "phone_sales" || isVanRole(session.role)) return false;
   const u = getDb()
     .prepare("SELECT group_id, organization_id FROM users WHERE id = ?")
     .get(userId) as { group_id: number | null; organization_id: number } | undefined;

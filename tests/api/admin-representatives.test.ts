@@ -39,7 +39,7 @@ beforeAll(() => {
   sellerId = Number(
     db
       .prepare(
-        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'salesperson',NULL,1,?,1)"
+        "INSERT INTO users (username,password_hash,display_name,role,group_id,active,created_at,organization_id) VALUES (?,?,?,'phone_sales',NULL,1,?,1)"
       )
       .run("ar-seller", "x:y", "فروشنده", now).lastInsertRowid
   );
@@ -141,7 +141,7 @@ describe("/api/admin/representatives", () => {
   });
 
   it("refuses a salesperson", async () => {
-    expect((await GET(req("/api/admin/representatives", { as: sellerId, role: "salesperson" }))).status).toBe(403);
+    expect((await GET(req("/api/admin/representatives", { as: sellerId, role: "phone_sales" }))).status).toBe(403);
   });
 
   it("404s another org's representative id", async () => {

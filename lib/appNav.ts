@@ -17,6 +17,7 @@
  *  to a route the role cannot reach 404s in the console before anyone clicks it.
  */
 import type { Role } from "./roles";
+import { isVanRole } from "./roles";
 
 export type AppGroupId =
   | "day"
@@ -82,13 +83,13 @@ export function appTabs(session: { role: Role }): AppTab[] {
   const r = session.role;
   // Copied, not returned by reference: a caller that sorts or edits the result must not
   // be rearranging the shared constant for the next caller.
-  if (r === "driver") return DRIVER_TABS.map((t) => ({ ...t }));
+  if (isVanRole(r)) return DRIVER_TABS.map((t) => ({ ...t }));
   return [
     // روز من
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
     { href: "/sales/pocket", label: "کارهای من", group: "day", ready: true },
     { href: "/sales/schedule", label: "برنامهٔ بازدید", group: "day", ready: true },
-    { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "salesperson" },
+    { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "phone_sales" },
 
     // مشتریان
     // The CRM is ready for every role that reaches this list. It used to read
@@ -110,7 +111,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/commission", label: "پورسانت", group: "sales", ready: true },
 
     // تحویل و انبار
-    { href: "/sales/runs", label: "سفرهای تحویل", group: "ops", ready: r !== "salesperson" },
+    { href: "/sales/runs", label: "سفرهای تحویل", group: "ops", ready: r !== "phone_sales" },
     { href: "/sales/deliveries", label: "تحویل‌ها", group: "ops", ready: isManager(r) },
     { href: "/sales/routing", label: "مسیریابی", group: "ops", ready: isManager(r) },
     { href: "/sales/stock", label: "انبار و خرید", group: "ops", ready: true },
@@ -122,7 +123,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/forecast", label: "پیش‌بینی", group: "reports", ready: isManager(r) },
     /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report
        because it aggregates a whole group's revenue, debt and coverage. */
-    { href: "/report", label: "گزارش پوشش", group: "reports", ready: r !== "salesperson" },
+    { href: "/report", label: "گزارش پوشش", group: "reports", ready: r !== "phone_sales" },
 
     // تیم
     { href: "/sales/tasks", label: "کارتابل", group: "team", ready: isRepLead(r) },

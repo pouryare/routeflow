@@ -58,9 +58,9 @@ beforeEach(() => {
       .prepare(
         "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES (?,?,?,?,1,?,1)"
       )
-      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "salesperson", now).lastInsertRowid
+      .run(`s${Date.now()}${Math.random()}`, "x:y", "ف", "phone_sales", now).lastInsertRowid
   );
-  sellerToken = createSessionToken({ uid: seller, role: "salesperson", gid: null, oid: 1, tv: 0, name: "ف" });
+  sellerToken = createSessionToken({ uid: seller, role: "phone_sales", gid: null, oid: 1, tv: 0, name: "ف" });
 });
 
 afterEach(() => {
@@ -251,7 +251,7 @@ describe("POST /api/notifications/test", () => {
         .prepare(
           "INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id,telegram_chat_id) VALUES (?,?,?,?,1,?,1,?)"
         )
-        .run(`o${Date.now()}${Math.random()}`, "x:y", "هم‌کار", "salesperson", now, "55384696").lastInsertRowid
+        .run(`o${Date.now()}${Math.random()}`, "x:y", "هم‌کار", "phone_sales", now, "55384696").lastInsertRowid
     );
     db.prepare(
       `INSERT INTO notifications (organization_id, user_id, type_code, title_fa, group_key, priority, created_at)

@@ -4,7 +4,7 @@ import { applyDriverVisit } from "@/lib/repo/crm/driverVisits";
 import { crmErrorResponse, idParam } from "@/lib/repo/crm/http";
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/crm/driver-visits/[taskId]">) {
-  const guard = requireRole(req, ["driver"]);
+  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const taskId = idParam((await ctx.params).taskId);
   if (taskId === null) return NextResponse.json({ ok: false, error: "بازدید پیدا نشد" }, { status: 404 });

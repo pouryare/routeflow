@@ -11,6 +11,7 @@ import DriverStreaks from "@/components/sales/DriverStreaks";
 import { readDriverActivity } from "@/lib/repo/driverActivity";
 import { buildStreak } from "@/lib/streak";
 import PageHeader from "@/components/meridian/PageHeader";
+import { isVanRole } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -23,8 +24,8 @@ export default async function RunsPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role === "driver") redirect("/driver");
-  if (session.role === "salesperson") redirect("/sales");
+  if (isVanRole(session.role)) redirect("/driver");
+  if (session.role === "phone_sales") redirect("/sales");
 
   const db = getDb();
   const userScope = groupFilter(session);

@@ -57,7 +57,7 @@ describe("routing schema", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const drv = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('drv','x','ر','driver',?,1)").run(now).lastInsertRowid
+      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('drv','x','ر','delivery_driver',?,1)").run(now).lastInsertRowid
     );
     expect(() =>
       db

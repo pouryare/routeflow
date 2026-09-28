@@ -76,8 +76,8 @@ beforeAll(() => {
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("me", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
   ctx.westManager = Number(user.run("mw", "مدیر غرب", "group_manager", ctx.west, now).lastInsertRowid);
-  ctx.seller = Number(user.run("s", "فروشنده", "salesperson", ctx.east, now).lastInsertRowid);
-  ctx.driver = Number(user.run("d", "راننده", "driver", ctx.east, now).lastInsertRowid);
+  ctx.seller = Number(user.run("s", "فروشنده", "phone_sales", ctx.east, now).lastInsertRowid);
+  ctx.driver = Number(user.run("d", "راننده", "delivery_driver", ctx.east, now).lastInsertRowid);
 
   ctx.customer = Number(
     db

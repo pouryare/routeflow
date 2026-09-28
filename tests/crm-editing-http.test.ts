@@ -21,9 +21,9 @@ afterAll(() => { db.close(); for (const s of ["", "-wal", "-shm"]) fs.rmSync(pro
 
 const g = Number(db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('http','http',?,1)").run(now).lastInsertRowid);
 const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('http','x','http','owner',?,?,1)").run(g, now).lastInsertRowid);
-const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('httprep','x','httprep','salesperson',?,?,1)").run(g, now).lastInsertRowid);
+const rep = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,group_id,created_at,organization_id) VALUES ('httprep','x','httprep','phone_sales',?,?,1)").run(g, now).lastInsertRowid);
 const token = (role: string, id_: number) => createSessionToken({ uid: id_, role: role as "owner", gid: g, oid: 1, tv: 0, name: role });
-const ownerToken = () => token("owner", uid), repToken = token("salesperson", rep);
+const ownerToken = () => token("owner", uid), repToken = token("phone_sales", rep);
 const req = (path: string, method: string, body: unknown, actor: string) =>
   new NextRequest(`http://test.local${path}`, { method, body: body === undefined ? undefined : JSON.stringify(body), headers: { cookie: `${COOKIE_NAME}=${actor}` } });
 const ctx = (id_: number, extra?: Record<string, string>) => ({ params: Promise.resolve({ id: String(id_), ...(extra ?? {}) }) }) as never;

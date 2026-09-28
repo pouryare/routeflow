@@ -39,8 +39,8 @@ beforeEach(() => {
   const u = db.prepare(
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id,group_id) VALUES (?,?,?,?,?,1,?)"
   );
-  sp = Number(u.run(`sp${Date.now()}`, "x", "سارا", "salesperson", now, gid).lastInsertRowid);
-  other = Number(u.run(`ot${Date.now()}`, "x", "رضا", "salesperson", now, gid).lastInsertRowid);
+  sp = Number(u.run(`sp${Date.now()}`, "x", "سارا", "phone_sales", now, gid).lastInsertRowid);
+  other = Number(u.run(`ot${Date.now()}`, "x", "رضا", "phone_sales", now, gid).lastInsertRowid);
   gm = Number(u.run(`gm${Date.now()}`, "x", "مدیر", "group_manager", now, gid).lastInsertRowid);
 });
 
@@ -51,7 +51,7 @@ describe("pocketFor", () => {
     createTask(1, { title: "کار هفتهٔ بعد", kind: "admin", assignee_user_id: sp, priority: "LOW", due_at: "2026-09-20" });
     createTask(1, { title: "مالِ رضا", kind: "admin", assignee_user_id: other, priority: "NORMAL", due_at: NOW.slice(0, 10) });
 
-    const p = pocketFor(sess(sp, "salesperson", gid), { nowIso: NOW });
+    const p = pocketFor(sess(sp, "phone_sales", gid), { nowIso: NOW });
     expect(p.scopeUserId).toBe(sp);
     expect(p.tiles.map((t) => t.key)).toEqual([
       "reminders_today",
@@ -70,12 +70,12 @@ describe("pocketFor", () => {
     createTask(1, {
       title: "یادآوری منتقل‌شده",
       kind: "reminder",
-      role_hint: "salesperson",
+      role_hint: "phone_sales",
       group_id: gid,
       priority: "NORMAL",
       due_at: NOW.slice(0, 10),
     });
-    const p = pocketFor(sess(sp, "salesperson", gid), { nowIso: NOW });
+    const p = pocketFor(sess(sp, "phone_sales", gid), { nowIso: NOW });
     expect(p.today.map((c) => c.title)).toContain("یادآوری منتقل‌شده");
   });
 
@@ -86,7 +86,7 @@ describe("pocketFor", () => {
     expect(mgrView.scopeUserId).toBe(other);
     expect(mgrView.today.map((c) => c.title)).toContain("کار رضا");
 
-    const peerView = pocketFor(sess(sp, "salesperson", gid), { scopeUserId: other, nowIso: NOW });
+    const peerView = pocketFor(sess(sp, "phone_sales", gid), { scopeUserId: other, nowIso: NOW });
     expect(peerView.scopeUserId).toBe(sp); // ignored, fell back to self
   });
 });
@@ -107,6 +107,6 @@ describe("pocketTeam", () => {
   });
 
   it("is empty for a plain salesperson", () => {
-    expect(pocketTeam(sess(sp, "salesperson", gid))).toEqual([]);
+    expect(pocketTeam(sess(sp, "phone_sales", gid))).toEqual([]);
   });
 });

@@ -15,7 +15,7 @@ interface MarginRow {
 const DIMS: { key: string; label: string }[] = [
   { key: "customer", label: "مشتری" },
   { key: "product", label: "کالا" },
-  { key: "salesperson", label: "فروشنده" },
+  { key: "phone_sales", label: "فروشنده" },
   { key: "group", label: "منطقه" },
   { key: "representative", label: "نماینده" },
 ];

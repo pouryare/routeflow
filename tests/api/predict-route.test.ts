@@ -39,7 +39,7 @@ beforeEach(() => {
   );
   const now = new Date().toISOString();
   owner = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('o'||abs(random()),'x','م','owner',?,1)").run(now).lastInsertRowid);
-  seller = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','salesperson',?,1)").run(now).lastInsertRowid);
+  seller = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('s'||abs(random()),'x','ف','phone_sales',?,1)").run(now).lastInsertRowid);
 });
 
 describe("predict routes", () => {
@@ -50,7 +50,7 @@ describe("predict routes", () => {
       [CAPACITY, "/api/predict/capacity"],
     ] as const) {
       expect((await fn(req(url, cookie(owner, "owner")))).status).toBe(200);
-      expect((await fn(req(url, cookie(seller, "salesperson")))).status).toBe(403);
+      expect((await fn(req(url, cookie(seller, "phone_sales")))).status).toBe(403);
     }
   });
 
@@ -62,7 +62,7 @@ describe("predict routes", () => {
     expect(j).toHaveProperty("churn");
     expect(j).toHaveProperty("capacity");
 
-    expect((await REFRESH(req("/api/predict/refresh", cookie(seller, "salesperson"), { method: "POST" }))).status).toBe(403);
+    expect((await REFRESH(req("/api/predict/refresh", cookie(seller, "phone_sales"), { method: "POST" }))).status).toBe(403);
   });
 
   it("demand with a bad entity is 400", async () => {

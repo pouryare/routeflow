@@ -9,7 +9,7 @@ import { getScopedCustomer } from "@/lib/repo/customers";
  *  balance behind the debt pill. Scoped -- a salesperson sees only a customer in
  *  their own territory; anyone else's customer reads as not found. */
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/customers/[id]/statement">) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

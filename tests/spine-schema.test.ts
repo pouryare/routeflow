@@ -62,7 +62,7 @@ describe("spine schema", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const uid = Number(
-      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('tgt','x','م','salesperson',?,1)").run(now).lastInsertRowid
+      db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('tgt','x','م','phone_sales',?,1)").run(now).lastInsertRowid
     );
     const gid = Number(
       db.prepare("INSERT INTO groups (name,slug,created_at,organization_id) VALUES ('گ','g',?,1)").run(now).lastInsertRowid

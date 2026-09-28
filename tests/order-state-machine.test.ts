@@ -22,13 +22,13 @@ describe("ORDER_TRANSITIONS", () => {
   });
 
   it("gives a driver exactly the three door outcomes from OUT_FOR_DELIVERY", () => {
-    expect(legalOrderActions("OUT_FOR_DELIVERY", "driver").sort()).toEqual(
+    expect(legalOrderActions("OUT_FOR_DELIVERY", "delivery_driver").sort()).toEqual(
       ["deliver", "deliverPartial", "failDelivery"].sort()
     );
   });
 
   it("lets only a manager or owner approve a credit hold", () => {
-    expect(canAdvanceOrder("PENDING_CREDIT", "approveCredit", "salesperson")).toBe(false);
+    expect(canAdvanceOrder("PENDING_CREDIT", "approveCredit", "phone_sales")).toBe(false);
     expect(canAdvanceOrder("PENDING_CREDIT", "approveCredit", "group_manager")).toBe(true);
     expect(canAdvanceOrder("PENDING_CREDIT", "approveCredit", "owner")).toBe(true);
   });

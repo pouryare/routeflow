@@ -13,7 +13,7 @@ import { readCatalogue, createProduct } from "@/lib/catalogue";
  *  rep, and a rep who cannot read a price cannot quote one at the door. Writing a price
  *  stays owner-only either way. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, ["owner", "group_manager", "salesperson", "driver"]);
+  const guard = requireRole(req, ["owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);

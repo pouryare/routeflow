@@ -43,18 +43,18 @@ beforeEach(() => {
     "INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES (?,?,?,?,?,1)"
   );
   owner = Number(u.run(`o${Date.now()}`, "x", "م", "owner", now).lastInsertRowid);
-  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "salesperson", now).lastInsertRowid);
-  driver = Number(u.run(`d${Date.now()}`, "x", "ر", "driver", now).lastInsertRowid);
+  seller = Number(u.run(`s${Date.now()}`, "x", "ف", "phone_sales", now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x", "ر", "delivery_driver", now).lastInsertRowid);
 });
 
 describe("spine routes", () => {
   it("GET /api/today returns panels for a driver", async () => {
     const res = await TODAY(
-      new NextRequest("http://localhost/api/today", { headers: { cookie: cookie(driver, "driver") } })
+      new NextRequest("http://localhost/api/today", { headers: { cookie: cookie(driver, "delivery_driver") } })
     );
     const j = await res.json();
     expect(res.status).toBe(200);
-    expect(j.role).toBe("driver");
+    expect(j.role).toBe("delivery_driver");
     expect(Array.isArray(j.panels)).toBe(true);
   });
 
@@ -69,13 +69,13 @@ describe("spine routes", () => {
     expect(post.status).toBe(201);
     const { id } = await post.json();
 
-    const list = await (await TASKS_GET(new NextRequest("http://localhost/api/tasks", { headers: { cookie: cookie(seller, "salesperson") } }))).json();
+    const list = await (await TASKS_GET(new NextRequest("http://localhost/api/tasks", { headers: { cookie: cookie(seller, "phone_sales") } }))).json();
     expect(list.tasks.some((t: { id: number }) => t.id === id)).toBe(true);
 
     const patch = await TASK_PATCH(
       new NextRequest(`http://localhost/api/tasks/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", cookie: cookie(seller, "salesperson") },
+        headers: { "Content-Type": "application/json", cookie: cookie(seller, "phone_sales") },
         body: JSON.stringify({ status: "done", outcome_code: "PRICE_OBJECTION" }),
       }),
       ctxFor(id)
@@ -102,7 +102,7 @@ describe("spine routes", () => {
     const res = await TASK_PATCH(
       new NextRequest(`http://localhost/api/tasks/${id}`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", cookie: cookie(seller, "salesperson") },
+        headers: { "Content-Type": "application/json", cookie: cookie(seller, "phone_sales") },
         body: JSON.stringify({ status: "done", outcome_code: "PRICE_OBJECTION" }),
       }),
       ctxFor(id)
@@ -127,7 +127,7 @@ describe("spine routes", () => {
     const res = await TARGETS_POST(
       new NextRequest("http://localhost/api/targets", {
         method: "POST",
-        headers: { "Content-Type": "application/json", cookie: cookie(seller, "salesperson") },
+        headers: { "Content-Type": "application/json", cookie: cookie(seller, "phone_sales") },
         body: JSON.stringify({ period: "1405-01", metric: "kg", target_value: 10 }),
       })
     );

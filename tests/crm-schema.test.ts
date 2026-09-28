@@ -51,7 +51,7 @@ describe("backfillCrm", () => {
   });
   it("backfills owner, primary contact, phone_norm and state = replay", () => {
     const db = getDb();
-    const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('bf1','x','فاطمه','salesperson',?,1)").run(NOW).lastInsertRowid);
+    const uid = Number(db.prepare("INSERT INTO users (username,password_hash,display_name,role,created_at,organization_id) VALUES ('bf1','x','فاطمه','phone_sales',?,1)").run(NOW).lastInsertRowid);
     const lead = Number(db.prepare("INSERT INTO customers (customer_code,business_name,contact_person,phone,synced_at,organization_id,lifecycle) VALUES ('BF-1','سرنخ','علی','0912 000 1234',?,1,'lead')").run(NOW).lastInsertRowid);
     const qual = Number(db.prepare("INSERT INTO customers (customer_code,business_name,salesperson,synced_at,organization_id,lifecycle) VALUES ('BF-2','پیگیری','فاطمه',?,1,'qualified')").run(NOW).lastInsertRowid);
     db.prepare("DELETE FROM app_meta WHERE key = 'crm_backfill_v1'").run();
