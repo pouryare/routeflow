@@ -52,13 +52,33 @@ export default function LeadsPage() {
     addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer,
     runLocations, runStops, runTotalKm, optimiseGain,
     routable, unassignedLocations, visible, mapLeads, runPoints, runHref, activeList, byId,
-    lastAssigned, recordAssigned, available, hiddenCount, assignedBy, showAssigned, setShowAssigned, assignmentsError, refuseAssigned,
+    lastAssigned, recordAssigned, available, hiddenCount, assignedBy, appendToRun, showAssigned, setShowAssigned, assignmentsError, refuseAssigned,
   } = useLeads();
 
   const { matrix } = useRouteMatrix(routable as { lat: number; lng: number }[]);
   const [navAppId] = useNavApp();
   const [activeView, setActiveView] = useState<LeadViewMode>(readViewMode());
   const [leadRunPlannerOpen, setLeadRunPlannerOpen] = useState(false);
+  /* What the assign sheet is handing over. `null` is not a third option -- it means "the
+   * route", which is what the button inside the route card always meant. A set of ids means
+   * a saved list was sent straight to a driver, and the two have to be told apart on the
+   * way back: assigning the route empties the pool, assigning a list must touch nothing. */
+  const [assignScope, setAssignScope] = useState<{ listId: number; ids: number[] } | null>(null);
+  /* Splitting one saved set on its own, rather than the whole working set. Keeps whatever
+     the manager had already tuned in پیشنهادات روز out of it, which is also why this
+     replaces rather than merges: a merge would reorganise days by hand without warning. */
+  const splitList = (listId: number) => {
+    const ids = lists.find((l) => l.id === listId)?.location_ids;
+    if (!ids || ids.length === 0) return;
+    proposeDays(ids);
+  };
+  const openAssignForRoute = () => { setAssignScope(null); setLeadRunPlannerOpen(true); };
+  const openAssignForList = (listId: number) => {
+    const ids = lists.find((l) => l.id === listId)?.location_ids ?? [];
+    if (ids.length === 0) return;
+    setAssignScope({ listId, ids });
+    setLeadRunPlannerOpen(true);
+  };
 
   const handleSelectAll = () => {
     const ids = visible.map(({ loc }) => loc.id);
@@ -124,19 +144,6 @@ export default function LeadsPage() {
           {isManager && (
             <>
               <LeadImportPanel onAdded={load} />
-
-              {/* Where the empty-state copy has always pointed: "از فهرست بالا". */}
-              <LeadListsBar
-                lists={lists}
-                activeListId={activeListId}
-                onOpen={openList}
-                onCreate={(name) => { void createList(name, run); }}
-                onRename={renameList}
-                onDelete={(id) => { void deleteList(id); }}
-                newName={newListName}
-                onNewNameChange={setNewListName}
-                busy={busy}
-              />
 
               <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 flex flex-col gap-4">
 
@@ -284,7 +291,7 @@ export default function LeadsPage() {
               proposedDays={dayGroups}
               onTapFlow={undefined}
               refuseAssigned={refuseAssigned}
-              onAssignRoute={() => setLeadRunPlannerOpen(true)}
+              onAssignRoute={openAssignForRoute}
               isManager={isManager} stopsPerDay={stopsPerDay} setStopsPerDay={setStopsPerDay}
               proposeDays={enhancedProposeDays} routableLength={available.length} runOrigin={sortAnchor}
               setProposedDays={setProposedDays} updateRun={updateRun} createList={createList}
@@ -295,11 +302,30 @@ export default function LeadsPage() {
             />
           )}
 
+          {/* Saved sets sit between the route and the map: next to the thing they feed,
+              rather than a screen away above the pool. */}
+          {isManager && (
+            <LeadListsBar
+              lists={lists}
+              activeListId={activeListId}
+              onOpen={openList}
+              onAppend={appendToRun}
+              onSplit={splitList}
+              onSendToDriver={openAssignForList}
+              onCreate={(name) => { void createList(name, run); }}
+              onRename={renameList}
+              onDelete={(id) => { void deleteList(id); }}
+              newName={newListName}
+              onNewNameChange={setNewListName}
+              busy={busy}
+              routeIsEmpty={run.length === 0}
+              openListName={activeList?.name ?? null}
+            />
+          )}
+
           <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} />
 
-          <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
-            <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
-          </section>
+          <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
         </div>
       </div>
 
@@ -310,7 +336,7 @@ export default function LeadsPage() {
       <LeadRunPlannerTabFlow
         key={leadRunPlannerOpen ? "assign-open" : "assign-closed"}
         open={leadRunPlannerOpen}
-        locationIds={runLocations.map((l) => l.id)}
+        locationIds={assignScope ? assignScope.ids : runLocations.map((l) => l.id)}
         onAssigned={(_assigned, meta) => {
           // `updateRun([])` and not `setRun([])`: the scratch pool is persisted, and a raw
           // set left `localStorage` holding the route that had just been given away, so a
@@ -319,14 +345,19 @@ export default function LeadsPage() {
           // where the route went. The count is the pool's own, not the POST's, so a stale id
           // filtered out on the way in does not make the receipt disagree with the route
           // the manager was actually looking at.
-          recordAssigned({ ...meta, stopCount: run.length });
+          const stopCount = assignScope ? assignScope.ids.length : run.length;
+          recordAssigned({ ...meta, stopCount });
+          /* A list handed straight to a driver leaves everything alone: the pool still holds
+             whatever it held, and the saved list still holds its stops. Only a hand-over of
+             the route itself empties the pool and trims the proposal. */
+          if (assignScope) { setAssignScope(null); return; }
           // A hand-over is of the route, not of a day, so the stops leave whichever
           // proposal days hold them rather than one day being cleared. Untouched days keep
           // their members and their order -- a proposal is a draft being shaped.
           setProposedDays((prev) => (prev ? removeHandedOver(prev, run) : prev));
           updateRun([]);
         }}
-        onClose={() => setLeadRunPlannerOpen(false)}
+        onClose={() => { setAssignScope(null); setLeadRunPlannerOpen(false); }}
       />
     </>
   );

@@ -168,6 +168,26 @@ export function useLeads() {
   }, [assignedBy, toast]);
   const addToRun = useCallback((id: number) => { const loc = byId.get(id); if (!loc || loc.lat === null || loc.lng === null) { toast("این مکان مختصات ندارد و نمی‌تواند در مسیر باشد.", "error"); return; } if (run.includes(id)) return; if (refuseAssigned(id)) return; updateRun([...run, id]); }, [byId, run, updateRun, toast, refuseAssigned]);
   const removeFromRun = useCallback((id: number) => updateRun(run.filter((x) => x !== id)), [run, updateRun]);
+  /** Appends a whole set to the route, keeping what is already there.
+   *
+   *  The additive twin of `openList`, which replaces the route outright. Two things it has
+   *  to be honest about:
+   *
+   *  Ids already in the route are skipped rather than duplicated -- a list saved from a
+   *  route and then appended back to that same route would otherwise grow by its own
+   *  length every time.
+   *
+   *  Ids that no longer resolve are dropped. `openList` filters for the same reason, and
+   *  the server would refuse the lot at save time with `مکان پیدا نشد` if they were not.
+   *
+   *  Returns how many were actually added, so the caller can say something useful when a
+   *  list turns out to be entirely duplicates. */
+  const appendToRun = useCallback((ids: number[]) => {
+    const fresh = stillAssignable(ids).filter((id) => !run.includes(id));
+    if (fresh.length > 0) updateRun([...run, ...fresh]);
+    return fresh.length;
+  }, [run, stillAssignable, updateRun]);
+
   /** Records the hand-over that just landed. Called from the assign flow's success path, so
    *  it only ever runs against a run the server actually accepted. */
   const recordAssigned = useCallback((next: LastAssigned) => {
@@ -216,16 +236,29 @@ export function useLeads() {
   const proposedDays = useMemo(() => proposedDaysRaw ? proposedDaysRaw.map((day, i) => ({ title: `روز ${i + 1}`, stops: day.map((d) => ({ id: d.id, name: d.name, lat: d.lat ?? 0, lng: d.lng ?? 0, legKm: null })), totalKm: null, completed: 0, total: day.length })) : null, [proposedDaysRaw]);
   const assignedIds = useMemo(() => new Set(proposedDaysRaw?.flat()?.map(l => l.id) ?? []), [proposedDaysRaw]);
   const unassignedLocations = useMemo(() => available.filter((l) => !assignedIds.has(l.id)), [available, assignedIds]);
-  function proposeDays() {
-    const k = daysNeeded(available.length, stopsPerDay);
+  /** Proposes days. With a `scope`, only those leads are considered.
+   *
+   *  Without one this works on the whole working set, which is what the «پیشنهاد بده» button
+   *  means. With one it works on a single saved list, so a set saved for later can be split
+   *  on its own terms instead of dragging the rest of the pool in with it.
+   *
+   *  The scope is intersected with `available` rather than trusted: an id that is not in the
+   *  working set, or that another driver holds, cannot be smuggled in by naming a list. */
+  function proposeDays(scope?: number[]) {
+    const pool = scope
+      ? stillAssignable(scope)
+          .map((id) => available.find((l) => l.id === id))
+          .filter((l): l is RoutableLocation => !!l)
+      : available;
+    const k = daysNeeded(pool.length, stopsPerDay);
     /* The old message -- "no location with coordinates" -- was true and useless here: the
        leads exist, they are just all spoken for. Say so, and point at the toggle. */
-    if (k === 0) { toast(assignedBy.size > 0 && available.length === 0 ? "همه مکان‌ها در مسیر رانندگان دیگر هستند. برای پیشنهاد روز، «نمایش مکان‌های سپرده‌شده» را روشن کنید." : "مکانی با مختصات برای تقسیم وجود ندارد.", "error"); return; }
+    if (k === 0) { toast(available.length === 0 && assignedBy.size > 0 ? "همه مکان‌ها در مسیر رانندگان دیگر هستند. برای پیشنهاد روز، «نمایش مکان‌های سپرده‌شده» را روشن کنید." : "مکانی با مختصات برای تقسیم وجود ندارد.", "error"); return; }
     /* `stopsPerDay` is passed as the cap, and not just used to work out `k`. Leaving it out
        made the cap `ceil(n / k)`, which is not the number the manager typed: 8 a day from 10
        stops came back 5 and 5. The result is also no longer sorted biggest-first, which was
        hiding which day was the short one by putting it last anyway. */
-    setProposedDays(clusterIntoDays(available, k, runOrigin, undefined, undefined, stopsPerDay).map((d) => d.stops));
+    setProposedDays(clusterIntoDays(pool, k, runOrigin, undefined, undefined, stopsPerDay).map((d) => d.stops));
   }
   const withDistance = useMemo(() => available.map((l) => ({ loc: l, km: sortAnchor ? distanceKm(sortAnchor, { lat: l.lat, lng: l.lng }) : null })), [available, sortAnchor]);
   const visible = useMemo(() => { const filtered = withDistance.filter(({ loc }) => matchesQuery(loc.name, query) || matchesQuery(loc.address ?? "", query)); const sorted = filtered.slice(); if (sortMode === "nearest") sorted.sort((a, b) => (a.km ?? Infinity) - (b.km ?? Infinity)); else if (sortMode === "score") sorted.sort((a, b) => (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) || (a.km ?? Infinity) - (b.km ?? Infinity)); else if (sortMode === "priority") sorted.sort((a, b) => (averageScore(b.loc) ?? -1) - (averageScore(a.loc) ?? -1) || (a.loc.status === "no_answer" ? 1 : 0) - (b.loc.status === "no_answer" ? 1 : 0)); else if (sortMode === "name") sorted.sort((a, b) => a.loc.name.localeCompare(b.loc.name, "fa")); else if (sortMode === "newest") sorted.sort((a, b) => b.loc.created_at.localeCompare(a.loc.created_at)); else { const rank = (s: LocationStatus | null) => (s === null ? 0 : s === "no_answer" ? 1 : 2); sorted.sort((a, b) => rank(a.loc.status) - rank(b.loc.status) || (a.km ?? Infinity) - (b.km ?? Infinity)); } return sorted; }, [withDistance, query, sortMode]);
@@ -237,5 +270,5 @@ export function useLeads() {
   async function savePin(id: number, lat: number, lng: number) { try { const res = await fetch(`/api/locations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lat, lng }) }); if (!res.ok) throw new Error(); toast("موقعیت ثبت شد.", "success"); setPinningId(null); load(); } catch { toast("خطا در ثبت موقعیت", "error"); } }
   async function updateLocationName(id: number, name: string) { try { const res = await fetch(`/api/locations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) }); if (!res.ok) throw new Error(); toast("نام بروز شد.", "success"); load(); } catch { toast("خطا در بروز نام", "error"); } }
   async function convertToCustomer(id: number) { setConverting(id); try { const res = await fetch(`/api/locations/${id}/convert`, { method: "POST" }); const data = await res.json(); if (!data.ok) throw new Error(data.error); toast("به فهرست مشتریان اضافه شد.", "success"); load(); } catch (e) { toast(e instanceof Error && e.message ? e.message : "خطا در تبدیل به مشتری", "error"); } finally { setConverting(null); } }
-  return { locations, lists, activeListId, run, loading, busy, query, sortMode, pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName, selectedMapId, setSelectedMapId, isManager, sessionLoading, position, posStatus, posError, retryPosition, showManualPos, setShowManualPos, linkedId, linkedRef, sortAnchor, setSortAnchor, setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode, setNewListName, setProposedDays, setStopsPerDay, load, createList, renameList, deleteList, openList, updateRun, addToRun, removeFromRun, moveInRun, optimiseRun, clearRun, proposeDays, refuseAssigned, togglePriority, addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer, runLocations, runStops, runTotalKm, optimiseGain, routable, unassignedLocations, available, hiddenCount, visible, mapLeads, runPoints, runHref, activeList, lastAssigned: receipt, recordAssigned, byId, assignedBy, showAssigned, setShowAssigned, assignmentsError };
+  return { locations, lists, activeListId, run, loading, busy, query, sortMode, pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName, selectedMapId, setSelectedMapId, isManager, sessionLoading, position, posStatus, posError, retryPosition, showManualPos, setShowManualPos, linkedId, linkedRef, sortAnchor, setSortAnchor, setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode, setNewListName, setProposedDays, setStopsPerDay, load, createList, renameList, deleteList, openList, updateRun, addToRun, removeFromRun, moveInRun, optimiseRun, clearRun, proposeDays, appendToRun, refuseAssigned, togglePriority, addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer, runLocations, runStops, runTotalKm, optimiseGain, routable, unassignedLocations, available, hiddenCount, visible, mapLeads, runPoints, runHref, activeList, lastAssigned: receipt, recordAssigned, byId, assignedBy, showAssigned, setShowAssigned, assignmentsError };
 }

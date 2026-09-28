@@ -172,3 +172,40 @@ describe("removeHandedOver", () => {
     expect(input[0].map((s) => s.id)).toEqual(before);
   });
 });
+
+describe("mergeRouteIds", () => {
+  /* The rule `appendToRun` is built on, kept pure so it can be said out loud: appending is
+     additive and idempotent. Loading a list and then appending it back must not grow the
+     route by the list's own length, and a duplicate is never something a manager meant. */
+  const merge = (run: number[], ids: number[], assignable: (id: number) => boolean) => {
+    const fresh = ids.filter((id) => assignable(id) && !run.includes(id));
+    return fresh.length > 0 ? [...run, ...fresh] : run;
+  };
+  const all = () => true;
+
+  it("appends after what is already there, keeping route order", () => {
+    expect(merge([1, 2], [3, 4], all)).toEqual([1, 2, 3, 4]);
+  });
+
+  it("skips ids the route already holds, so appending is idempotent", () => {
+    expect(merge([1, 2, 3], [2, 3, 4], all)).toEqual([1, 2, 3, 4]);
+    // The whole list is already in: nothing changes, and the same array comes back.
+    const run = [1, 2, 3];
+    expect(merge(run, [1, 2, 3], all)).toBe(run);
+  });
+
+  it("never loses what was in the route", () => {
+    expect(merge([1, 2], [3], all).slice(0, 2)).toEqual([1, 2]);
+  });
+
+  it("drops ids that can no longer be assigned", () => {
+    // A pin deleted since the list was saved. The server would refuse the lot at save time.
+    const live = new Set([1, 2]);
+    expect(merge([], [1, 9, 2], (id) => live.has(id))).toEqual([1, 2]);
+  });
+
+  it("leaves the route alone when nothing survives", () => {
+    const run = [1, 2];
+    expect(merge(run, [8, 9], () => false)).toBe(run);
+  });
+});

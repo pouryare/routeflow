@@ -147,11 +147,13 @@ export default function RouteSection({
     );
   })();
 
+  /* A fragment, not a box. The day split and the current route are two separate surfaces
+   * that happen to belong to the same page region: nesting one inside the other drew a
+   * card in a card, and the day split's own `.sect` was a third surface inside both. */
   return (
-    <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
+    <>
       {/* ---- automatic day split (manager only) -------------------------------- */}
       {isManager && (
-        <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 mb-4">
           <CollapsibleSection
             title="تقسیم خودکار بین روزها" icon="folders"
             storageKey="leads_split"
@@ -216,9 +218,10 @@ export default function RouteSection({
               </div>
             )}
           </CollapsibleSection>
-        </section>
       )}
 
+      {/* The route is its own card, a sibling of the split rather than its parent. */}
+      <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
       {/* ---- proposed day groups (editable) -------------------------------- */}
       {proposedDays && proposedDays.length > 0 && (
         <div className="mt-4 flex flex-col gap-3">
@@ -305,7 +308,7 @@ export default function RouteSection({
           <Icon name="compass" size="lg" className="mx-auto text-text-faint mb-2" />
           <p className="text-[length:var(--text-sm)] text-text-muted">مسیری انتخاب نشده</p>
           <p className="text-[length:var(--text-xs)] text-text-faint mt-1">
-            از فهرست بالا هر مکانی را بزنید تا به مسیر اضافه شود
+            از فهرست مکان‌ها بالا هر مکانی را بزنید تا به مسیر اضافه شود
           </p>
           {receiptLine}
         </div>
@@ -326,6 +329,7 @@ export default function RouteSection({
           onAssignRoute={onAssignRoute}
         />
       )}
-    </section>
+      </section>
+    </>
   );
 }
