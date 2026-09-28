@@ -3,6 +3,7 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 import type { Session } from "@/lib/session";
+import { ROLES } from "@/lib/roles";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -141,5 +142,21 @@ describe("todayFor", () => {
     // no tasks, no target -> neither panel present
     expect(b.panels.map((p) => p.key)).not.toContain("open_tasks");
     expect(b.panels.map((p) => p.key)).not.toContain("target");
+  });
+
+  it("gives EVERY role at least one panel, even on an empty day", () => {
+    // todayFor is a chain of `if (role === ...)` blocks with no fallback, so a role with no
+    // branch produces ZERO panels: a person who signs in to an empty screen, with no error
+    // anywhere to explain it. That is how the next new role lands in production unnoticed.
+    //
+    // The stronger half of this: `panel()` returns null for an empty item list, so even a
+    // role WITH a branch renders nothing when there is no data. platform_owner hit exactly
+    // that — it matched no branch at all, and the owner branch it now shares also filters
+    // empties. A founder on a quiet day must still get SOMETHING, or the briefing is
+    // indistinguishable from a broken page.
+    for (const role of ROLES) {
+      const b = todayFor(sess(owner, role, role === "owner" || role === "platform_owner" ? null : groupId));
+      expect(b.panels.length, `${role} produced no briefing panel`).toBeGreaterThan(0);
+    }
   });
 });

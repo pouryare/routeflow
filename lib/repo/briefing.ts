@@ -166,7 +166,15 @@ export function todayFor(session: Session): Briefing {
     );
   }
 
-  if (session.role === "group_manager" || session.role === "owner") {
+  /* A platform_owner is a god key: they see everything, so their briefing is the OWNER's
+     briefing over every group. Without this they matched no branch at all and signed in to a
+     blank screen — a person who signs in to nothing, with no error anywhere to explain it.
+     `isManager` (lib/appNav.ts) answers the same question the same way. */
+  if (
+    session.role === "group_manager" ||
+    session.role === "owner" ||
+    session.role === "platform_owner"
+  ) {
     const gids = scopeGroupIds(session);
     const inClause = gids === "all" || gids.length === 0 ? null : gids.join(",");
 
@@ -265,5 +273,18 @@ export function todayFor(session: Session): Briefing {
     );
   }
 
-  return { role: session.role, panels: panels.filter((p): p is BriefingPanel => p !== null) };
+  const kept = panels.filter((p): p is BriefingPanel => p !== null);
+
+  /* A briefing with nothing in it is indistinguishable from a broken page — the person
+     cannot tell "quiet day" from "signed in wrong", and neither can we.
+     So an empty day still renders one panel saying so. The per-panel emptiness filter stays
+     exactly as it is: it is what keeps a screen from showing five empty headings. */
+  if (kept.length === 0) {
+    return {
+      role: session.role,
+      panels: [{ key: "empty_day", title: "امروز", items: [{ label: "کاری برای امروز ثبت نشده است" }] }],
+    };
+  }
+
+  return { role: session.role, panels: kept };
 }

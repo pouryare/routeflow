@@ -5,6 +5,7 @@ import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
+import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole } from "@/lib/roles";
@@ -42,6 +43,10 @@ export default async function SalesTodayPage() {
           <h2>امروز</h2>
           <div className="n">{session.user.display_name}</div>
         </div>
+        {/* The same picker the bare /today page shows, so someone holding several roles can
+            leave the sales world as readily as they entered it. Without it here, a dual-hat
+            person who lands in the sales shell has no way back to their van card. */}
+        <RolePicker roles={session.roles} active={session.role} />
         {(session.role === "owner" || session.role === "group_manager") && (
           <SweepButton endpoint="/api/rules/run" idleLabel="به‌روزرسانی کارها" />
         )}

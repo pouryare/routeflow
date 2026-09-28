@@ -1,4 +1,5 @@
 import ImpersonationBanner from "@/components/meridian/ImpersonationBanner";
+import RoleBanner from "@/components/meridian/RoleBanner";
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
@@ -43,6 +44,10 @@ export default async function AppHeader() {
     <Chrome>
       {/* Login-As: an owner seeing the app as this user. Not dismissible, see the banner. */}
       {session.actorId ? <ImpersonationBanner asName={session.user.display_name} /> : null}
+      {/* Which world they are in. Both can be true at once — a driver impersonated by the
+          founder is in a state neither banner alone describes — so they stack rather than
+          replace one another. Each renders nothing for a single-role person. */}
+      <RoleBanner role={session.role} roles={session.roles} />
       <div className="top">
         <HoverPill tabs={tabs} groups={APP_GROUPS} />
         <div className="topright">
