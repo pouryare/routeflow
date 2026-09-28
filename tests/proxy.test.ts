@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import type { Role } from "@/lib/roles";
+import { ROLES, type Role } from "@/lib/roles";
 
 process.env.SESSION_SECRET = "test-secret";
 
@@ -120,6 +120,76 @@ describe("a driver's menu and this gate agree", () => {
     for (const t of appTabs({ role: "delivery_driver" }).filter((x) => x.ready)) {
       expect(proxy(req(t.href, "delivery_driver")).status, t.href).toBe(200);
     }
+  });
+});
+
+/** The nav and the gate are two files, so they drift — and a ONE-DIRECTION mirror cannot
+ *  see the failure that matters. The test above only asks "does the menu hide what the gate
+ *  refuses?" It cannot see a tab the menu HIDES that the gate ADMITS, which is precisely
+ *  what a fail-open gate looks like: a field rep with `field_rep` in the token satisfies
+ *  every `role === "driver"` comparison by being false, so the gate waves them into the
+ *  whole sales shell with no error anywhere.
+ *
+ *  Asserting BOTH directions is what turns that from an invisible security hole into a red
+ *  test. */
+describe("the menu and the gate agree, in BOTH directions", () => {
+  /* /leads is deliberately EXCLUDED from PATHS, and the reason is worth writing down.
+   *
+   * It is a dual-purpose page: for a van role it is the run they work (توقف‌های من), and
+   * for a rep-lead it is the pin board (پین‌های نقشه). The page has no server-side role
+   * gate at all — it branches on `isManager` from /api/me and simply does not fetch for a
+   * non-manager. So the proxy CANNOT refuse it without breaking the driver's day, and the
+   * menu's `isRepLead` is the only thing hiding it from a phone seller.
+   *
+   * That means this path is menu-gated, not gate-gated: a phone seller who types the URL
+   * gets a page that renders empty and fetches nothing. Reachable but empty is a weaker
+   * promise than "refused", and it is the pre-existing design. It is called out here
+   * rather than silently asserted, because a test that quietly exempts a path is a test
+   * that will not notice when that path starts leaking data.
+   *
+   * Everything else below IS gate-gated, and the both-directions assertion is real. */
+  const PATHS = ["/crm", "/report", "/sales/orders", "/driver", "/sales/pocket"];
+
+  for (const role of ROLES) {
+    it(`keeps ${role}'s menu and the gate telling the same story`, () => {
+      const shown = new Set(appTabs({ role } as never).filter((t) => t.ready).map((t) => t.href));
+      for (const href of PATHS) {
+        const admitted = proxy(req(href, role)).status === 200;
+        expect(admitted, `${role} → ${href}`).toBe(shown.has(href));
+      }
+    });
+  }
+
+  it("keeps a field rep out of the surfaces a driver must not reach", () => {
+    // Stated as intent, so nobody "fixes" a failure by loosening it.
+    for (const href of ["/report", "/analytics", "/crm", "/sales/orders"]) {
+      expect(proxy(req(href, "field_rep")).status, href).not.toBe(200);
+    }
+  });
+
+  it("does not hand driver-only surfaces to a phone sales rep", () => {
+    expect(proxy(req("/driver", "phone_sales")).status).not.toBe(200);
+    expect(proxy(req("/api/crm/driver-visits", "phone_sales")).status).not.toBe(200);
+  });
+
+  it("gives both van roles the SAME tabs, or the two have drifted", () => {
+    // Spec D6: they are one working day. A field rep handed nineteen tabs and a driver
+    // three is the fail-open shape wearing a menu.
+    expect(appTabs({ role: "field_rep" } as never)).toEqual(appTabs({ role: "delivery_driver" } as never));
+  });
+
+  it("gives a van role only the van menu", () => {
+    expect(appTabs({ role: "field_rep" } as never).filter((t) => t.ready).length).toBe(3);
+    expect(appTabs({ role: "delivery_driver" } as never).filter((t) => t.ready).length).toBe(3);
+  });
+
+  it("a phone sales rep reaches /leads but sees nothing there — the pre-existing dual-purpose page", () => {
+    // Documenting the gap above rather than asserting it is fixed. If a future change makes
+    // /leads role-gated, THIS test fails and someone has to decide what the right answer is.
+    const admitted = proxy(req("/leads", "phone_sales")).status === 200;
+    const shown = new Set(appTabs({ role: "phone_sales" } as never).filter((t) => t.ready).map((t) => t.href));
+    expect(shown.has("/leads")).toBe(false);
+    expect(admitted).toBe(true);
   });
 });
 
