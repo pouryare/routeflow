@@ -659,7 +659,15 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
    *
    * The join is what makes that work. Checking only `lead_run_stops` would skip the pin
    * FOREVER, because the stop row outlives the run's status: a run that finished still
-   * has its stops, and a stop is the thing whose deletion we are avoiding. */
+   * has its stops, and a stop is the thing whose deletion we are avoiding.
+   *
+   * `lead_import_items` is here too, and it is the one that bites. A pasted import row
+   * carries `saved_location_id INTEGER REFERENCES saved_locations(id)` (lib/db.ts:1069) —
+   * no CASCADE, no NOT NULL, so `PRAGMA foreign_key_check` reports nothing for it, and a
+   * read of the schema's CASCADE clauses alone would miss it too. Deleting such a pin
+   * raises FOREIGN KEY constraint failed and aborts the whole transaction, which on a real
+   * database meant /leads could not boot at all. Every referrer gets a vote, because the
+   * question is "does any row still point at this pin", not "does any row CASCADE". */
   const pins = db
     .prepare(
       `SELECT DISTINCT s.id, s.name, s.address, s.lat, s.lng, s.notes, s.group_id, s.organization_id
@@ -668,7 +676,9 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
         WHERE NOT EXISTS (
                 SELECT 1 FROM lead_run_stops st
                   JOIN lead_runs r ON r.id = st.run_id
-                 WHERE st.location_id = s.id AND r.status != 'done')`
+                 WHERE st.location_id = s.id AND r.status != 'done')
+          AND NOT EXISTS (
+                SELECT 1 FROM lead_import_items ii WHERE ii.saved_location_id = s.id)`
     )
     .all() as Array<{
     id: number;
@@ -680,10 +690,10 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
     group_id: number | null;
     organization_id: number;
   }>;
-  /* Every pin that is in a list AND on an UNFINISHED run -- the same predicate the SELECT
-     above uses, so the two cannot disagree. Counted before the loop so the number
-     reported is the number DECLINED, not merely what is left over: a skipped pin is
-     still a pin, and the operator is the one who needs to hear about it. */
+  /* Every pin that is in a list AND still pointed at by something — the SAME predicate
+     the SELECT above uses, so the two cannot disagree. Counted before the loop so the
+     number reported is the number DECLINED, not merely what is left over: a skipped pin
+     is still a pin, and the operator is the one who needs to hear about it. */
   const skipped = (
     db
       .prepare(
@@ -692,7 +702,9 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
           WHERE EXISTS (
                   SELECT 1 FROM lead_run_stops st
                     JOIN lead_runs r ON r.id = st.run_id
-                   WHERE st.location_id = s.id AND r.status != 'done')`,
+                   WHERE st.location_id = s.id AND r.status != 'done')
+             OR EXISTS (
+                  SELECT 1 FROM lead_import_items ii WHERE ii.saved_location_id = s.id)`,
       )
       .all() as unknown as { id: number }[]
   ).map((r) => r.id);

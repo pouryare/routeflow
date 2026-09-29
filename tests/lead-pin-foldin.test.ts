@@ -137,6 +137,42 @@ describe("lead-pin fold-in", () => {
     expect(db.prepare("SELECT 1 FROM saved_locations WHERE id=?").get(pinId)).toBeUndefined();
   });
 
+  it("skips a pin an import row still points at, and does not abort the fold", () => {
+    /* The fourth referrer, and the one that actually breaks the page.
+     *
+     * `lead_import_items.saved_location_id INTEGER REFERENCES saved_locations(id)`
+     * (lib/db.ts:1069) — NO `ON DELETE CASCADE`, and the column is nullable. So
+     * `PRAGMA foreign_key_check` reports nothing for it, a read of the schema's CASCADE
+     * clauses alone would miss it, and the spec's §1.1 inventory did not list it.
+     *
+     * Found by booting the REAL dev database, which is the only thing that could have
+     * found it: the fold raised FOREIGN KEY constraint failed, rolled the whole
+     * transaction back, and /leads could not open at all. 45 pins qualified; the first
+     * one it touched had a pasted import row hanging off it.
+     *
+     * A guard that only consults CASCADE referrers is a guard that passes while the
+     * database is unusable. The question is "does ANY row point at this pin". */
+    const db = getDb();
+    db.exec(`INSERT OR IGNORE INTO lead_import_jobs (id, organization_id, status, created_at)
+             VALUES (700, 3, 'done', '2026-01-01')`);
+    db.exec(`INSERT INTO saved_locations (id, name, maps_url, resolution, group_id, created_at, updated_at, organization_id)
+             VALUES (940, 'پین وارداتی', 'https://maps.example/imp-940', 'manual', 30, '2026-01-01', '2026-01-01', 3)`);
+    db.exec(`INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (40, 940, 2, '2026-01-01')`);
+    db.exec(`INSERT INTO lead_import_items (id, organization_id, job_id, ordinal, name, maps_url, resolution, status, saved_location_id)
+             VALUES (710, 3, 700, 0, 'x', 'https://maps.example/imp-940', 'manual', 'done', 940)`);
+
+    // Must not throw. Before the fix this aborted the entire transaction.
+    const result = foldLeadPinsIntoCustomers(db);
+
+    expect(
+      db.prepare("SELECT 1 FROM customers WHERE customer_code='LEAD-940'").get(),
+    ).toBeUndefined();
+    expect(db.prepare("SELECT 1 FROM saved_locations WHERE id=940").get()).toBeTruthy();
+    expect(db.prepare("SELECT 1 FROM lead_import_items WHERE saved_location_id=940").get())
+      .toBeTruthy();
+    expect(result.skipped).toContain(940);
+  });
+
   it("still runs when the one-shot marker is set", () => {
     /* The regression this task exists to prevent.
      *
