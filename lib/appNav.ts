@@ -92,7 +92,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     // روز من
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
     { href: "/sales/pocket", label: "کارهای من", group: "day", ready: true },
-    { href: "/sales/schedule", label: "برنامهٔ بازدید", group: "day", ready: true },
+    { href: "/sales/schedule", label: "برنامهٔ تحویل", group: "day", ready: true },
     { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "phone_sales" },
 
     // مشتریان
@@ -107,16 +107,12 @@ export function appTabs(session: { role: Role }): AppTab[] {
 
     // فروش و دریافت
     { href: "/sales/orders", label: "سفارش‌ها", group: "sales", ready: true },
-    { href: "/sales/board", label: "تابلوی سفارش‌ها", group: "sales", ready: true },
-    { href: "/sales/journey", label: "پیگیری سفارش", group: "sales", ready: true },
     { href: "/sales/products", label: "کالاها و قیمت‌ها", group: "sales", ready: true },
     { href: "/sales/payments", label: "دریافت‌ها", group: "sales", ready: true },
     { href: "/sales/cheques", label: "چک‌ها", group: "sales", ready: isManager(r) },
     { href: "/sales/commission", label: "پورسانت", group: "sales", ready: true },
 
     // تحویل و انبار
-    { href: "/sales/runs", label: "سفرهای تحویل", group: "ops", ready: r !== "phone_sales" },
-    { href: "/sales/deliveries", label: "تحویل‌ها", group: "ops", ready: isManager(r) },
     { href: "/sales/routing", label: "مسیریابی", group: "ops", ready: isManager(r) },
     { href: "/sales/stock", label: "انبار و خرید", group: "ops", ready: true },
     { href: "/sales/batches", label: "سری‌های ساخت", group: "ops", ready: isManager(r) },

@@ -189,7 +189,14 @@ export function todayFor(session: Session): Briefing {
       panel(
         "orders_by_state",
         "سفارش‌های امروز",
-        byState.map((s) => ({ label: s.status, sub: String(s.n), href: "/sales/board" }))
+        byState.map((s) => ({
+          label: s.status,
+          sub: String(s.n),
+          /* The board is a view of the orders page now, and the link carries the view --
+             without it a manager tapping today's order counts lands on the pocket list,
+             which answers a different question from the one they asked. */
+          href: "/sales/orders?view=board",
+        }))
       )
     );
 

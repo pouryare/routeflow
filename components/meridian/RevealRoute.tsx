@@ -16,16 +16,17 @@ import { useEffect } from "react";
  */
 const REVEAL: Record<string, string[]> = {
   "/sales": [".gcard", ".kblock", ".cradlewrap"],
-  "/sales/orders": [".bhead", ".pocket"],
+  /* One key per HOST now, not per view. The reveal reads the pathname, which does not
+     carry `?view=` -- so the board and the journey would animate as the orders list
+     unless their selectors join it here. That means a page can animate a list it is not
+     showing, which is a lesser evil than a page animating the wrong thing outright. */
+  "/sales/orders": [".bhead", ".pocket", ".hint", ".col", ".spine__step", ".funnel__row"],
   "/sales/orders/new": [".card", ".kblock"],
-  "/sales/board": [".hint", ".col"],
-  "/sales/journey": [".bhead", ".spine__step", ".funnel__row"],
-  "/sales/schedule": [".notice", ".sched > .kblock"],
+  "/sales/schedule": [".notice", ".sched > .kblock", ".card", ".kblock", ".run-column"],
   "/sales/dashboard": [".gcard", ".dash-top > .card", ".sect"],
   "/sales/products": [".card", ".kblock"],
   "/sales/commission": [".card", ".kblock"],
   "/sales/stock": [".gcard", ".stalert", ".stcard", ".card"],
-  "/sales/runs": [".card", ".kblock", ".run-column"],
   "/sales/admin/users": [".card", ".kblock"],
   "/sales/admin/groups": [".card", ".kblock"],
 };

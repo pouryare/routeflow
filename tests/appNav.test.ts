@@ -96,9 +96,43 @@ describe("where each destination lives", () => {
     expect(appTabs({ role: "delivery_driver" }).some((t) => t.href === "/crm")).toBe(false);
   });
 
-  it("the order pipeline board sits with orders, not with team management", () => {
-    expect(groupOf("/sales/board")).toBe("sales");
-    expect(groupOf("/sales/journey")).toBe("sales");
+  it("the order pipeline board and the journey are views of the orders page", () => {
+    // They were three adjacent entries in the sales group over one readOrders, at limits
+    // 100/60/60. The host is one entry now, and the other two are ?view= values on it.
+    expect(groupOf("/sales/orders")).toBe("sales");
+    expect(appTabs({ role: "owner" }).some((t) => t.href === "/sales/board")).toBe(false);
+    expect(appTabs({ role: "owner" }).some((t) => t.href === "/sales/journey")).toBe(false);
+  });
+
+  it("the host groups keep more than one tab, so the header keeps its row", () => {
+    /* PageHeader.tsx:54 renders the tab row only when `siblings.length > 1`, so a group
+       that drops to one silently loses the header's navigation — which is how this
+       consolidation could have broken navigation without breaking a single page.
+
+       Scoped to the two HOST groups, and to the roles that actually use them. After
+       folding /sales/runs and /sales/deliveries away, a rep_manager and a phone_sales
+       rep are left with ONE ready ops tab (انبار و خرید), because the other two are
+       manager-only by design. That is not a broken menu: `pillModel` already marks a
+       one-tab group `solo` (HoverPill.tsx:53) and draws it as a plain link, which is
+       exactly the right shape for a single destination. Asserting `> 1` for every
+       role/group pair would fail on a case the app handles on purpose. */
+    for (const role of ["owner", "group_manager"] as const) {
+      for (const group of ["sales", "ops", "day"] as const) {
+        const n = appTabs({ role }).filter((t) => t.group === group && t.ready).length;
+        expect(n, `${role} → ${group}`).toBeGreaterThan(1);
+      }
+    }
+  });
+
+  it("a group reduced to one tab becomes a plain link, not a broken menu", () => {
+    /* The other half of the invariant above, stated so the reduction is a decision
+       rather than an accident: whatever the counts, a group a role can reach exactly
+       one destination in must render as a link. */
+    const m = pillModel(appTabs({ role: "rep_manager" }), APP_GROUPS, "/sales/stock");
+    const ops = m.groups.find((g) => g.id === "ops");
+    expect(ops, "rep_manager still has an ops group").toBeTruthy();
+    expect(ops!.solo, "a one-tab group must be marked solo").toBe(true);
+    expect(ops!.href, "and it must still point somewhere real").toBe("/sales/stock");
   });
 
   it("money tabs join the order flow they settle", () => {
@@ -108,9 +142,9 @@ describe("where each destination lives", () => {
   });
 
   it("delivery and stock share one operations group", () => {
-    expect(hrefsIn("ops")).toEqual(
-      ["/sales/batches", "/sales/deliveries", "/sales/routing", "/sales/runs", "/sales/stock"].sort(),
-    );
+    // /sales/runs and /sales/deliveries are a view and a redirect now; the planner moved
+    // to /sales/schedule, which sits in the day group beside the month it plans against.
+    expect(hrefsIn("ops")).toEqual(["/sales/batches", "/sales/routing", "/sales/stock"].sort());
   });
 
   it("every read-only overview is a report, the forecast included", () => {
