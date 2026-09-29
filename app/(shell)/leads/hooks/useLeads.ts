@@ -131,10 +131,12 @@ export function useLeads() {
   useEffect(() => { if (linkedId === undefined) return; linkedRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [linkedId, loading]);
   useEffect(() => { saveSortMode(sortMode); }, [sortMode]);
   /* A driver has no pool. /api/locations and /api/lead-lists are owner/group_manager
-     routes, so asking for them as a driver is two guaranteed 403s -- and the page used to
-     fire them on mount before rendering anything. Skipping them keeps a driver's network
-     clean and their console free of errors they can do nothing about. Their data comes
-     from /api/lead-runs, in useDriverRun. */
+     routes, so asking for them as a driver is two guaranteed 403s. Since spec
+     2026-09-29-leads-manager-only-driver-my-day section 3.2 the proxy refuses a van role
+     at /leads, so this guard is dead in practice -- but it is kept, deliberately: a
+     cached bundle or a third-party mount can still run this hook with a driver's
+     session, and one wasted request is cheaper than a page of red console. The driver's
+     own data no longer comes through here at all; it is on /driver. */
   const load = useCallback(async () => {
     if (isManager === false) { setLoading(false); return; }
     setLoading(true);

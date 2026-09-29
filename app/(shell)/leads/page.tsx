@@ -41,7 +41,7 @@ export default function LeadsPage() {
   const {
     locations, lists, activeListId, run, loading, busy, query, sortMode,
     pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName,
-    selectedMapId, setSelectedMapId, isManager, sessionLoading,
+    selectedMapId, setSelectedMapId, sessionLoading,
     position, posStatus, posError, retryPosition, showManualPos, setShowManualPos,
     linkedId, linkedRef, sortAnchor, setSortAnchor,
     setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode,
@@ -136,185 +136,180 @@ export default function LeadsPage() {
             ) : <span className="text-text-muted">در حال یافتن موقعیت شما…</span>}
           </div>
 
-          {/* The pool, the import panel and the planner are the manager's. A driver opening
-              /leads gets their route and nothing else -- no search, no sorting, no way to
-              add a pin. Gating each block on isManager rather than branching the whole page
-              keeps the manager path byte-identical. */}
-          {isManager && (
-            <>
-              <LeadImportPanel onAdded={load} />
+          {/* The pool, the import panel and the planner are the manager's.
+              /leads is the office now (spec 2026-09-29-leads-manager-only-driver-my-day
+              section 3.2), so there is no second audience to gate these blocks for --
+              they used to be wrapped in `{isManager && …}` and each wrapper was always
+              true. The blocks are unwrapped, not hidden. */}
+          <>
+            <LeadImportPanel onAdded={load} />
 
-              <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 flex flex-col gap-4">
+            <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 flex flex-col gap-4">
 
-            {/* Never hide by silence. A pool that quietly omits leads is a screen you cannot
-                trust, so the count of what is held back is always on show -- and when the
-                phone book itself failed to load, that is said plainly too, because an empty
-                list and an unread one look identical otherwise. */}
-            <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-xs)]">
-              <span className="flex items-center gap-1.5">
-                <Icon name="info" size="sm" className="shrink-0 text-text-faint" />
-                {hiddenCount > 0
-                  ? `${faNum(hiddenCount)} مکان در مسیر رانندگان دیگر پنهان است`
-                  : "همه مکان‌ها آزاد هستند"}
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowAssigned((v) => !v)}
-                className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-text-muted transition-colors hover:border-accent hover:text-accent"
-              >
-                {showAssigned ? "پنهان‌کردن سپرده‌شده‌ها" : "نمایش مکان‌های سپرده‌شده"}
-              </button>
-            </div>
+          {/* Never hide by silence. A pool that quietly omits leads is a screen you cannot
+              trust, so the count of what is held back is always on show -- and when the
+              phone book itself failed to load, that is said plainly too, because an empty
+              list and an unread one look identical otherwise. */}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-xs)]">
+            <span className="flex items-center gap-1.5">
+              <Icon name="info" size="sm" className="shrink-0 text-text-faint" />
+              {hiddenCount > 0
+                ? `${faNum(hiddenCount)} مکان در مسیر رانندگان دیگر پنهان است`
+                : "همه مکان‌ها آزاد هستند"}
+            </span>
+            <button
+              type="button"
+              onClick={() => setShowAssigned((v) => !v)}
+              className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-text-muted transition-colors hover:border-accent hover:text-accent"
+            >
+              {showAssigned ? "پنهان‌کردن سپرده‌شده‌ها" : "نمایش مکان‌های سپرده‌شده"}
+            </button>
+          </div>
 
-            {assignmentsError && (
-              <p className="flex items-start gap-1.5 rounded-[var(--radius-md)] border border-warn/40 bg-warn/10 px-3 py-2 text-[length:var(--text-xs)] text-warn">
-                <Icon name="warn" size="sm" className="mt-0.5 shrink-0" />
-                <span>وضعیت سپردن مکان‌ها بارگذاری نشد. فهرست ممکن است مکان‌های در مسیر رانندگان دیگر را هم نشان دهد.</span>
-              </p>
-            )}
+          {assignmentsError && (
+            <p className="flex items-start gap-1.5 rounded-[var(--radius-md)] border border-warn/40 bg-warn/10 px-3 py-2 text-[length:var(--text-xs)] text-warn">
+              <Icon name="warn" size="sm" className="mt-0.5 shrink-0" />
+              <span>وضعیت سپردن مکان‌ها بارگذاری نشد. فهرست ممکن است مکان‌های در مسیر رانندگان دیگر را هم نشان دهد.</span>
+            </p>
+          )}
 
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <div className="flex items-center gap-2 flex-1 min-w-0">
-                <h2 className="sechead__title truncate">
-                  همه مکان‌ها ({faNum(available.length)})
-                </h2>
-                <div className="relative shrink-0">
-                  <input
-                    type="text"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="جستجوی نام مکان..."
-                    className="w-48 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-1.5 pl-7 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none transition-colors focus:border-accent"
-                    aria-label="جستجوی مکان"
-                  />
-                  {/* One icon, one side, swapped by emptiness: a magnifier while the field is
-                      empty, a clear button the moment there is something to clear. Both sit
-                      on the left, the end side in RTL, because that is the side the input
-                      already reserves (pl-7) -- so Persian text, which grows from the right
-                      towards the left, can never slide underneath whichever icon is showing. */}
-                  {query ? (
-                    <button
-                      type="button"
-                      onClick={() => setQuery("")}
-                      className="absolute left-2 top-1/2 -translate-y-1/2 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
-                      aria-label="پاک کردن جستجو"
-                    >
-                      <Icon name="x" size="sm" />
-                    </button>
-                  ) : (
-                    <Icon name="search" size="sm" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-faint" />
-                  )}
-                </div>
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button
-                  onClick={() => {
-                    const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
-                    const newIds = ids.filter((id) => !run.includes(id));
-                    if (newIds.length === 0) return;
-                    updateRun([...run, ...newIds]);
-                  }}
-                  className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors flex items-center gap-1"
-                >
-                  <Icon name="check" size="sm" /> انتخاب همه
-                </button>
-                {sortAnchor ? (
-                  <span className="text-[length:var(--text-xs)] text-text-muted">نزدیک‌ترین</span>
-                ) : (
-                  <button
-                    onClick={() => setShowManualPos(true)}
-                    className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
-                  >
-                    <Icon name="locate" size="sm" /> تعیین موقعیت
-                  </button>
-                )}
-                <select
-                  value={sortMode}
-                  onChange={(e) => setSortMode(e.target.value as SortMode)}
-                  className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-                  aria-label="ترتیب"
-                >
-                  <option value="nearest">نزدیک‌ترین</option>
-                  <option value="score">امتیاز</option>
-                  <option value="name">نام</option>
-                  <option value="newest">تازه‌ترین</option>
-                  <option value="status">وضعیت</option>
-                  <option value="route">ترتیب مسیر</option>
-                  <option value="priority">اولویت</option>
-                </select>
-              </div>
-            </div>
-
-            {loading ? <SkeletonRows /> : visible.length === 0 ? <EmptyState icon="search" title="سرنخی یافت نشد" hint="سرنخی با این فیلتری یافت نشد" /> : (
-              <>
-                <PoolViewToggle activeView={activeView} onChange={setActiveView} />
-                <PoolViewWrapper
-                  viewMode={activeView}
-                  locations={visible.map((v) => v.loc)}
-                  loading={loading}
-                  navAppId={navAppId}
-                  run={run}
-                  selectedMapId={selectedMapId}
-                  linkedId={linkedId ?? null}
-                  linkedRef={linkedRef}
-                  onSelect={setSelectedMapId}
-                  onToggleRun={(id) => { if (run.includes(id)) removeFromRun(id); else addToRun(id); }}
-                  onPin={setPinningId}
-                  onTogglePriority={togglePriority}
-                  onAddToPlan={() => {}}
-                  onNotesChange={() => {}}
-                  onNameChange={(id, name) => updateLocationName(id, name)}
-                  sortAnchor={sortAnchor}
-                  sortMode={sortMode}
-                  priorityHigh={false}
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2 flex-1 min-w-0">
+              <h2 className="sechead__title truncate">
+                همه مکان‌ها ({faNum(available.length)})
+              </h2>
+              <div className="relative shrink-0">
+                <input
+                  type="text"
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="جستجوی نام مکان..."
+                  className="w-48 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-1.5 pl-7 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none transition-colors focus:border-accent"
+                  aria-label="جستجوی مکان"
                 />
-              </>
-            )}
-              </section>
+                {/* One icon, one side, swapped by emptiness: a magnifier while the field is
+                    empty, a clear button the moment there is something to clear. Both sit
+                    on the left, the end side in RTL, because that is the side the input
+                    already reserves (pl-7) -- so Persian text, which grows from the right
+                    towards the left, can never slide underneath whichever icon is showing. */}
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => setQuery("")}
+                    className="absolute left-2 top-1/2 -translate-y-1/2 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+                    aria-label="پاک کردن جستجو"
+                  >
+                    <Icon name="x" size="sm" />
+                  </button>
+                ) : (
+                  <Icon name="search" size="sm" className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-text-faint" />
+                )}
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button
+                onClick={() => {
+                  const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
+                  const newIds = ids.filter((id) => !run.includes(id));
+                  if (newIds.length === 0) return;
+                  updateRun([...run, ...newIds]);
+                }}
+                className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors flex items-center gap-1"
+              >
+                <Icon name="check" size="sm" /> انتخاب همه
+              </button>
+              {sortAnchor ? (
+                <span className="text-[length:var(--text-xs)] text-text-muted">نزدیک‌ترین</span>
+              ) : (
+                <button
+                  onClick={() => setShowManualPos(true)}
+                  className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
+                >
+                  <Icon name="locate" size="sm" /> تعیین موقعیت
+                </button>
+              )}
+              <select
+                value={sortMode}
+                onChange={(e) => setSortMode(e.target.value as SortMode)}
+                className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
+                aria-label="ترتیب"
+              >
+                <option value="nearest">نزدیک‌ترین</option>
+                <option value="score">امتیاز</option>
+                <option value="name">نام</option>
+                <option value="newest">تازه‌ترین</option>
+                <option value="status">وضعیت</option>
+                <option value="route">ترتیب مسیر</option>
+                <option value="priority">اولویت</option>
+              </select>
+            </div>
+          </div>
+
+          {loading ? <SkeletonRows /> : visible.length === 0 ? <EmptyState icon="search" title="سرنخی یافت نشد" hint="سرنخی با این فیلتری یافت نشد" /> : (
+            <>
+              <PoolViewToggle activeView={activeView} onChange={setActiveView} />
+              <PoolViewWrapper
+                viewMode={activeView}
+                locations={visible.map((v) => v.loc)}
+                loading={loading}
+                navAppId={navAppId}
+                run={run}
+                selectedMapId={selectedMapId}
+                linkedId={linkedId ?? null}
+                linkedRef={linkedRef}
+                onSelect={setSelectedMapId}
+                onToggleRun={(id) => { if (run.includes(id)) removeFromRun(id); else addToRun(id); }}
+                onPin={setPinningId}
+                onTogglePriority={togglePriority}
+                onAddToPlan={() => {}}
+                onNotesChange={() => {}}
+                onNameChange={(id, name) => updateLocationName(id, name)}
+                sortAnchor={sortAnchor}
+                sortMode={sortMode}
+                priorityHigh={false}
+              />
             </>
           )}
+            </section>
+          </>
 
           {/* The pool is a manager's scratch run until it is assigned here: a driver sees
               none of it. So the "سپردن مسیر" button lives inside RouteSection, on the
               current-route action row, rather than floating over the page. */}
-          {isManager && (
-            <RouteSection
-              run={run} runStops={runStops} totalKm={runTotalKm} navAppId={navAppId} routeHref={runHref}
-              navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
-              onMove={moveInRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
-              proposedDays={dayGroups}
-              onTapFlow={undefined}
-              refuseAssigned={refuseAssigned}
-              onAssignRoute={openAssignForRoute}
-              isManager={isManager} stopsPerDay={stopsPerDay} setStopsPerDay={setStopsPerDay}
-              proposeDays={enhancedProposeDays} routableLength={available.length} runOrigin={sortAnchor}
-              setProposedDays={setProposedDays} updateRun={updateRun} createList={createList}
-              addToDayGroup={addToDayGroup} removeFromDayGroup={removeFromDayGroup}
-              unassignedLocations={unassignedLocations}
-              lastAssigned={lastAssigned}
-            />
-          )}
+          <RouteSection
+            run={run} runStops={runStops} totalKm={runTotalKm} navAppId={navAppId} routeHref={runHref}
+            navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
+            onMove={moveInRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
+            proposedDays={dayGroups}
+            onTapFlow={undefined}
+            refuseAssigned={refuseAssigned}
+            onAssignRoute={openAssignForRoute}
+            isManager stopsPerDay={stopsPerDay} setStopsPerDay={setStopsPerDay}
+            proposeDays={enhancedProposeDays} routableLength={available.length} runOrigin={sortAnchor}
+            setProposedDays={setProposedDays} updateRun={updateRun} createList={createList}
+            addToDayGroup={addToDayGroup} removeFromDayGroup={removeFromDayGroup}
+            unassignedLocations={unassignedLocations}
+            lastAssigned={lastAssigned}
+          />
 
           {/* Saved sets sit between the route and the map: next to the thing they feed,
               rather than a screen away above the pool. */}
-          {isManager && (
-            <LeadListsBar
-              lists={lists}
-              activeListId={activeListId}
-              onOpen={openList}
-              onAppend={appendToRun}
-              onSplit={splitList}
-              onSendToDriver={openAssignForList}
-              onCreate={(name) => { void createList(name, run); }}
-              onRename={renameList}
-              onDelete={(id) => { void deleteList(id); }}
-              newName={newListName}
-              onNewNameChange={setNewListName}
-              busy={busy}
-              routeIsEmpty={run.length === 0}
-              openListName={activeList?.name ?? null}
-            />
-          )}
+          <LeadListsBar
+            lists={lists}
+            activeListId={activeListId}
+            onOpen={openList}
+            onAppend={appendToRun}
+            onSplit={splitList}
+            onSendToDriver={openAssignForList}
+            onCreate={(name) => { void createList(name, run); }}
+            onRename={renameList}
+            onDelete={(id) => { void deleteList(id); }}
+            newName={newListName}
+            onNewNameChange={setNewListName}
+            busy={busy}
+            routeIsEmpty={run.length === 0}
+            openListName={activeList?.name ?? null}
+          />
 
           <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} />
 
