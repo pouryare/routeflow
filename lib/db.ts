@@ -629,12 +629,46 @@ export function backfillReminderTasks(db: DatabaseSync): void {
  *  uses, so it cannot collide with a manually-converted pin) and delete the pin and its
  *  list membership. Pins in no list stay as pins. Idempotent: `ON CONFLICT DO NOTHING`
  *  on the code, so a second run is a no-op. */
-export function foldLeadPinsIntoCustomers(db: DatabaseSync): void {
+/** What one pass of the fold did. Returned, not merely logged, because the whole failure
+ *  mode of this migration is silence: a pin silently not promoted, a stop silently
+ *  destroyed. A test can assert a return value; it cannot assert a log line. */
+export interface LeadPinFoldResult {
+  /** Pins promoted to `customers` and deleted from `saved_locations`. */
+  promoted: number[];
+  /** Pins left alone because a `lead_run_stops` row points at them. */
+  skipped: number[];
+}
+
+export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
+  /* NOT EXISTS is the whole precondition, and it is unconditional.
+   *
+   * lead_run_stops.location_id is `REFERENCES saved_locations(id) ON DELETE CASCADE`
+   * (schema), and the loop below issues a hand-written `DELETE FROM saved_locations`.
+   * So promoting a pin that is on a run would delete the pin, the cascade would take the
+   * stop with it, and SQLite would call the whole transaction correct. A driver's
+   * assigned work — a promise the office made that morning — gone, silently.
+   *
+   * The count of affected rows cannot be measured in advance: on a dev database it is a
+   * handful, on a real one it is zero or every run in the business. So the guard does not
+   * depend on the count.
+   *
+   * A finished run releases its leads. The join and the `status != 'done'` are the same
+   * rule `readLeadRunAssignments` already reasons about (lib/repo/leadRuns.ts:149), not a
+   * new one invented here — so the pin is promoted on a later boot rather than never. The
+   * migration is eventually consistent with the runs, not destructive to them.
+   *
+   * The join is what makes that work. Checking only `lead_run_stops` would skip the pin
+   * FOREVER, because the stop row outlives the run's status: a run that finished still
+   * has its stops, and a stop is the thing whose deletion we are avoiding. */
   const pins = db
     .prepare(
       `SELECT DISTINCT s.id, s.name, s.address, s.lat, s.lng, s.notes, s.group_id, s.organization_id
          FROM saved_locations s
-         JOIN lead_list_items i ON i.location_id = s.id`
+         JOIN lead_list_items i ON i.location_id = s.id
+        WHERE NOT EXISTS (
+                SELECT 1 FROM lead_run_stops st
+                  JOIN lead_runs r ON r.id = st.run_id
+                 WHERE st.location_id = s.id AND r.status != 'done')`
     )
     .all() as Array<{
     id: number;
@@ -646,7 +680,27 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): void {
     group_id: number | null;
     organization_id: number;
   }>;
-  if (pins.length === 0) return;
+  /* Every pin that is in a list AND on an UNFINISHED run -- the same predicate the SELECT
+     above uses, so the two cannot disagree. Counted before the loop so the number
+     reported is the number DECLINED, not merely what is left over: a skipped pin is
+     still a pin, and the operator is the one who needs to hear about it. */
+  const skipped = (
+    db
+      .prepare(
+        `SELECT s.id FROM saved_locations s
+           JOIN lead_list_items i ON i.location_id = s.id
+          WHERE EXISTS (
+                  SELECT 1 FROM lead_run_stops st
+                    JOIN lead_runs r ON r.id = st.run_id
+                   WHERE st.location_id = s.id AND r.status != 'done')`,
+      )
+      .all() as unknown as { id: number }[]
+  ).map((r) => r.id);
+
+  if (pins.length === 0) {
+    if (skipped.length > 0) reportFold(0, skipped);
+    return { promoted: [], skipped };
+  }
 
   const insert = db.prepare(
     `INSERT INTO customers (customer_code, business_name, address, lat, lng, notes,
@@ -668,6 +722,21 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): void {
     db.exec("ROLLBACK");
     throw e;
   }
+
+  const promotedIds = pins.map((p) => p.id);
+  reportFold(promotedIds, skipped);
+  return { promoted: promotedIds, skipped };
+}
+
+/** One line, so an operator can see a fold that declined work without opening a log file.
+ *  Silent is the failure mode this whole migration is about. */
+function reportFold(promoted: number | number[], skipped: number[]): void {
+  const n = typeof promoted === "number" ? promoted : promoted.length;
+  if (n === 0 && skipped.length === 0) return;
+  console.log(
+    `[lead-pin-fold] ${n} promoted, ${skipped.length} waiting on a run` +
+      (skipped.length ? ` (${skipped.join(", ")})` : ""),
+  );
 }
 
 export function getDb(): DatabaseSync {
