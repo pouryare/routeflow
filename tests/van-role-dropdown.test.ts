@@ -60,8 +60,8 @@ describe("the van-role dropdown queries", () => {
        literals. Spelling them would also satisfy the behavioural test and would drift
        the next time a van role is added — which is the failure this whole task is about. */
     for (const file of [
-      "app/(shell)/sales/runs/page.tsx",
       "app/(shell)/sales/commission/page.tsx",
+      "app/(shell)/sales/schedule/page.tsx",
     ]) {
       const src = readFileSync(file, "utf8");
       /* Comments are stripped, and deliberately. The fix's own comment has to name the
