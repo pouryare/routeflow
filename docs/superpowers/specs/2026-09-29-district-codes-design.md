@@ -90,11 +90,64 @@ each centroid against the `بخش` polygons:
 | پردیس | بخش مرکزی پردیس | شهرستان پردیس | ✅ |
 | دماوند / آبسرد / کیلان | بخش مرکزی دماوند | شهرستان دماوند | ✅ |
 
-The original request also named **هراز** and **گیلاوند**; neither is in
-`outer-towns.json` (7 towns). Out of scope for this spec — the 7 are what we have data
-for. Anything without a polygon stays `NULL` and is reported.
+### 2.4 The unknown-places problem, and why the town list is not the answer
 
-### 2.4 Seed order
+The original request named places we have no polygons for. Treating that list as complete
+would be a mistake, because **we do not know the full set of places this business will
+ever need** — and neither does the repo. The 7 towns in `outer-towns.json` came from one
+OSM query someone ran once.
+
+So this spec does **not** hand-pick towns. Instead:
+
+**The 34 `بخش` are the complete net.** Verified two ways:
+- all 7 known towns fall fully inside the `بخش` extent (`71/71` … `355/355` vertices)
+- 48 of the 369 `محله` also fall inside a `بخش`, in exactly two: `بخش رودبار قصران` (32)
+  and `بخش مرکزی ری` (16)
+
+A pin anywhere in Tehran province therefore lands in *something* once seeded — هراز and
+گیلاوند included, whether or not anyone has ever heard of them. Anything finer than a
+`بخش` is added by an operator as an `is_custom = 1` polygon, which the app already
+supports and which `districtIdForPoint` already prefers (§2.5).
+
+**Consequence:** the 7 towns are seeded because they are *proven* (all 25 pins already
+match پردیس), not because they are a curated list of "the places we care about". Adding
+one is a data task, never a design change. A pin matching nothing stays `NULL` and is
+reported — an honest gap beats a guess.
+
+### 2.5 Add, never split
+
+**A `محله` with customers in it is never split.** This is a data-integrity rule, not a
+preference.
+
+`customers.district_id` is a plain INTEGER foreign key. When `split-districts.ts` splits
+one district into two, the largest piece keeps the original row id (so existing links
+resolve) and the new piece gets a **new** id — and **no customer is moved to it**. Every
+customer in that محله keeps pointing at the piece that kept the id, even when
+geographically they are in the other half. Nothing re-derives them; only a later write
+to that customer would.
+
+That is the same class of bug this repo has already hit twice: the pin fold deleting a
+run stop mid-run (`a98ae50`), and the fourth FK referrer (`d523fe3`).
+
+The mechanism for "add, never split" already exists — `districtIdForPoint` orders
+fine-before-coarse, so a narrower custom `mahalle` shadows an enclosing `بخش` without
+touching the parent's row:
+
+```sql
+-- lib/groups.ts:51-52
+ORDER BY CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id
+```
+
+| Situation | Move |
+|---|---|
+| Need a cut finer than a `بخش` (هراز, گیلاوند) | Add an `is_custom = 1` district. Parent row untouched. |
+| Two places share a name (کوهسار, 13 cases) | Split **at seed time**, before any customer exists. Fine — nothing to lose. |
+| A `محله` with customers needs dividing | **Do not.** Add a child district instead. |
+
+`split-districts.ts` therefore runs once, at step 5 of the seed order, against a table
+that has never had a customer in it, and is not re-run afterwards.
+
+### 2.6 Seed order
 
 Each is `INSERT OR IGNORE` and safe to re-run; order matters because the codes come last.
 
@@ -102,6 +155,17 @@ Each is `INSERT OR IGNORE` and safe to re-run; order matters because the codes c
 1. scripts/seed-districts.ts   → 22 منطقه + 369 محله
 2. scripts/seed-bakhsh.ts      → 34 بخش
 3. scripts/seed-outer-towns.ts → 7 towns  (with the §2.3 fix)
+4. scripts/assign-district-codes.ts → codes, deterministic, WHERE code IS NULL
+5. scripts/split-districts.ts --apply  → repairs same-name-different-place
+6. scripts/backfill-districts.ts --apply → district_id on customers + pins
+```
+
+**Step 4 is separate from step 1 on purpose.** If codes were assigned during the seed, a
+re-seed after a split would renumber existing districts and every printed route sheet
+would silently point somewhere else. `WHERE code IS NULL` makes step 4 idempotent.
+
+**Step 5 must precede step 6**, so the split halves exist before any customer is
+pointed at a district.
 
 ## 3. The code scheme
 
@@ -115,8 +179,8 @@ ALTER TABLE districts ADD COLUMN parent_no INTEGER;
 CREATE UNIQUE INDEX IF NOT EXISTS ix_districts_code ON districts(code) WHERE code IS NOT NULL;
 ```
 
-Partial-unique because `is_custom = 1` districts and split halves have no code until
-one is assigned. A hard `UNIQUE` would fail the moment two customs are left blank.
+Partial-unique because `is_custom = 1` districts and split halves have no code until one
+is assigned. A hard `UNIQUE` would fail the moment two customs are left blank.
 
 ### 3.1 The rules
 
@@ -137,27 +201,51 @@ confusion the code exists to prevent.
 
 ### 3.2 Why the ordinal is geographic, not alphabetical
 
-The first proposal was `parent + alphabetical ordinal`. It parsed cleanly and had zero
-collisions, and it was wrong:
+The first proposal was `parent + alphabetical ordinal`. It parsed cleanly, had zero
+collisions, and was wrong:
 
 ```
 منطقه 14 | alphabetical order == west-to-east order?  2/25
 منطقه  5 | alphabetical order == west-to-east order?  0/27
 ```
 
-Sorting `501, 502, 503…` walks across the city in Persian-alphabet jumps — آپادانا,
-ارم, اکباتان are nowhere near each other. A code that looks like it encodes order but
-doesn't is worse than no code, because a rep trusts it and drives an hour for nothing.
+Sorting `501, 502, 503…` walks across the city in Persian-alphabet jumps — آپادانا, ارم,
+اکباتان are nowhere near each other. A code that looks like it encodes order but doesn't
+is worse than no code, because a rep trusts it and drives an hour for nothing.
 
-**So the ordinal is west→east**, per the decision that matches پردیس/رودهن being east of
-the city. Verified: 0 collisions across all 356 distinct `محله`; 3–4 digits, all numeric.
+**So the ordinal is west→east**, matching پردیس/رودهن being east of the city. Verified:
+0 collisions across all 356 distinct `محله`; 3–4 digits, all numeric.
 
 This also means **a `محله` code survives its rename** — the code came from where the
-polygon *is*. Under a split, the main body keeps its row and code, and the new piece
-takes the next ordinal, invalidating neither half's printed sheet.
+polygon *is*, not what it is called. Per §2.5, a seed-time split gives each half its own
+ordinal, so neither invalidates the other's printed sheet.
 
 ### 3.3 The case for having codes at all
 
+**13 names collide inside their own `منطقه`:**
+
+```
+شهرک نفت → منطقه 5 (×2)     کوهسار → منطقه 4 (×2)
+صادقیه    → منطقه 18 (×2)    جوادیه → منطقه 16 (×2)
+پونک جنوبی → منطقه 5 (×2)    قیام   → منطقه 14 (×2)
+... 13 total
+```
+
+`UNIQUE(name, level, parent_name)` forces these into one MultiPolygon, which is wrong —
+`کوهسار` is drawn 21km apart. `planSplit` splits them into near-identical names. That is
+precisely when a rep needs a number: *کوهسار 4* vs *کوهسار 4 east*.
+
+### 3.4 What a code is not
+
+It is not typed by a rep, anywhere. Not in Add Lead, not required to save, not needed to
+find anything. The name is the interface; the code is the tiebreaker and the print
+artifact. It appears in exactly three places:
+
+| Where | Shows |
+|---|---|
+| Coverage map legend | `منطقه 14` with `۱۴` as a badge |
+| Customer card / detail | `منطقه 14 · محله ۱۴۰۵`, dimmed secondary line |
+| Printed route sheet | `۱۴۰۵ — جابری` per stop |
 
 ## 4. Backfill, search, route sheet
 
@@ -186,8 +274,8 @@ This is a `scripts/` script with a dry-run default — **not** a boot migration,
 `lib/searchModel.ts` already runs input through `normalisePersian`, so `۱۴`, `14` and
 `١٤` collapse together. Two additions:
 
-- `SearchKind` gains `"district"`; selecting a hit flies to it on the coverage map, like
-  a customer hit does via `MAP_FOCUS_EVENT`.
+- `SearchKind` gains `"district"`; selecting a hit flies to it on the coverage map, like a
+  customer hit does via `MAP_FOCUS_EVENT`.
 - Code lookup is a **prefix** match — `code LIKE '14%'`. Substring would let `1` return
   `منطقه 1` plus all 26 of `1401`–`1426` for one keystroke.
 
@@ -207,12 +295,14 @@ promise about driving time."
 |---|---|
 | `districts.json` absent at seed time | Throw with a named message; write nothing. A 22-without-369 seed leaves `parent_name` pointing at rows that don't exist |
 | Source feature has no `name` | Skip, count, report |
-| `planSplit` returns multiple pieces | Each gets its own code; largest keeps the plain name and the original row (existing behaviour) |
+| `planSplit` returns multiple pieces | Each gets its own code; largest keeps the plain name and the original row (existing behaviour). Only ever reached at seed time, before any customer exists (§2.5) |
 | Two districts compute the same code | **Abort.** Impossible by construction, so a collision means malformed geometry |
 | A `محله` falls outside all 22 outlines | Coded under its **declared** parent, `is_custom=1`, reported |
 | Customer has no `lat`/`lng` | `district_id` stays `NULL`, listed in the report |
 | Pin moves | `setLocation` re-derives it — already the case, which is why codes are not on the customer |
 | Boundary redrawn | `district_id` re-derived on next write; the **code does not change** |
+| A pin matches no district at all | `NULL`, reported. An honest gap beats a guess (§2.4) |
+| `split-districts.ts --apply` run after customers exist | **Out of band, not a code path.** Manual script, dry-run by default, forbidden by §2.5, and a test asserts it is not wired into any migration |
 
 ## 6. Testing
 
@@ -238,6 +328,16 @@ Modelled on `tests/districtSplit.test.ts` (pure logic), `tests/crm-schema.test.t
 - پردیس → شهرستان پردیس
 - every town centroid falls inside its declared parent's `بخش`
 
+**`tests/district-split-guard.test.ts`** — the §2.5 rule, mechanically
+- a split district that already has a customer pointing at it is refused, with the
+  customer count in the message
+- `split-districts.ts` is not invoked from `lib/db.ts` or any migration
+- the seed-time split still succeeds against an empty `customers` table
+
+This is what makes "add, never split" a rule rather than a habit. Without it the rule is
+one `node scripts/split-districts.ts --apply` from being violated, and half a محله's
+customers would be silently misfiled.
+
 **`tests/district-code-search.test.ts`** — the prefix rule
 - `14` ranks `منطقه 14` first
 - `14` does not flood the first page with every `14xx`
@@ -248,51 +348,19 @@ Modelled on `tests/districtSplit.test.ts` (pure logic), `tests/crm-schema.test.t
 
 ## 7. Out of scope
 
-- **هراز / گیلاوند** — named in the original ask, absent from `outer-towns.json`. Needs
-  its own OSM `admin_level=7` extraction, like a separate change.
+- **Sourcing polygons for unknown places** (هراز, گیلاوند, anything else). Excluded, and
+  the reason is the point: we do not know the full set, so the design does not depend on
+  enumerating it. The 34 `بخش` are the net (§2.4); anything finer is an `is_custom = 1`
+  polygon an operator draws. No OSM extraction list is ever authored.
 - **A new `location_code` on `customers`** — deliberately rejected. Two sources that can
   disagree the moment a customer moves is the bug the origin thread warned about.
 - **A rep-facing "speak a code to the app" input.** The code is printed and searchable;
   nobody has to memorise it.
+- **Splitting a district that has customers.** Forbidden by §2.5, guarded by
+  `tests/district-split-guard.test.ts`.
 
 ## 8. Open question this cannot answer in code
 
 Whether a rep finds `۱۴۰۵` useful in the van. Kept cheap to be wrong about: a nullable
 column and three display sites, so dropping it means not rendering it, with no data to
 unwind.
-
-**13 names collide inside their own `منطقه`:**
-
-```
-شهرک نفت → منطقه 5 (×2)     کوهسار → منطقه 4 (×2)
-صادقیه    → منطقه 18 (×2)    جوادیه → منطقه 16 (×2)
-پونک جنوبی → منطقه 5 (×2)    قیام   → منطقه 14 (×2)
-... 13 total
-```
-
-`UNIQUE(name, level, parent_name)` forces these into one MultiPolygon, which is wrong —
-`کوهسار` is drawn 21km apart. `planSplit` splits them into near-identical names. That is
-precisely when a rep needs a number: *کوهسار 4* vs *کوهسار 4 east*.
-
-### 3.4 What a code is not
-
-It is not typed by a rep, anywhere. Not in Add Lead, not in search-as-input-except-code,
-not required to save. The name is the interface; the code is the tiebreaker and the
-print artifact. It appears in exactly three places:
-
-| Where | Shows |
-|---|---|
-| Coverage map legend | `منطقه 14` with `۱۴` as a badge |
-| Customer card / detail | `منطقه 14 · محله ۱۴۰۵`, dimmed secondary line |
-| Printed route sheet | `۱۴۰۵ — جابری` per stop |
-
-4. scripts/assign-district-codes.ts → codes, deterministic, WHERE code IS NULL
-5. scripts/split-districts.ts --apply  → repairs same-name-different-place
-6. scripts/backfill-districts.ts --apply → district_id on customers + pins
-```
-
-**Step 4 is separate from step 1 on purpose.** If codes were assigned during the seed, a
-re-seed after a split would renumber existing districts and every printed route sheet
-would silently point somewhere else. `WHERE code IS NULL` makes step 4 idempotent.
-
-   *P-one*. A code that duplicates a name the rep already speaks is noise.
