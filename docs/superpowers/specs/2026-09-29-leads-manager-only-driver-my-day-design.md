@@ -34,6 +34,28 @@ Three consequences follow, all of them current bugs rather than preferences:
 but empty is a weaker thing than refused." This spec closes that hole rather than
 documenting it further.
 
+### 1.1 A fourth bug, found while writing this: the driver's page has no position
+
+`MyPositionProvider` is mounted **only** in `app/(shell)/layout.tsx:27`. `/driver` lives in
+`app/(bare)`, which mounts nothing but the design-system scope (`(bare)/layout.tsx:19-21`).
+
+So `useMyPosition()` on `/driver` returns the context **default** from
+`components/MyPositionProvider.tsx:30-35` — `{ position: null, status: "idle", retry: () => {} }`.
+
+**This already ships.** `components/driver/VerifyVisits.tsx:7,20` calls `useMyPosition()`
+and is already rendered on `/driver` (`driver/page.tsx:70`). `VerifyVisits.tsx:40` passes
+`pos = null` into the visit flow, so a driver recording a visit today has no position to
+attach to it.
+
+Worse than a crash, because it is not one: `useContext` on an unprovided context returns
+the default, so nothing throws and no test goes red. §3.3 would put a **map** and a
+**next-stop distance** on that same page, both of which read `position` — so the driver
+would get a next-stop banner with no distance and a map with no blue dot, and every signal
+would say the app is fine.
+
+This is why §3.5 exists. It is a prerequisite, not a consequence: without it, §3.3 ships a
+page that renders perfectly and lies.
+
 ## 2. What we are building
 
 Two front doors, each with one job:
@@ -58,12 +80,29 @@ Moving rather than copying is deliberate. A copy leaves two sources of truth for
 stops," which is the exact failure `lib/roles.ts` documents when `db.ts` held a
 hand-copied duplicate of the role union that then drifted.
 
-`useLeads` keeps its `isManager` return. It still decides whether to load the manager's
-pool, and the page is manager-only now, so the branch collapses to always-true.
+**The hook moves out of the route folder, and this is load-bearing.** Today seven files
+import from `@/app/(shell)/leads/hooks/` — including `DriverRunView.tsx:6` and
+`NextStopBanner.tsx:6`. A `components/` file importing from a route directory already
+points the wrong way; making an `app/(bare)` page depend on `app/(shell)` internals
+inverts it entirely, and Next treats route folders as boundaries.
+
+So `useDriverRun.ts` moves to a location both groups can import — `lib/useDriverRun.ts`
+alongside the other shared hooks, or colocated at `components/driver/useDriverRun.ts`. The
+plan picks one; the requirement is that **no `app/(bare)` file imports from
+`app/(shell)`, and none of the seven importers is left behind.**
+
+`useLeads` keeps its `isManager` return, but §3.1's "collapses to always-true" needs
+stating precisely: `useLeads.ts:139` reads `if (isManager === false) { setLoading(false);
+return; }` — a guard that stops a driver fetching manager data. On a manager-only page
+that guard is dead but harmless. **The plan should decide whether `useSession()` stays** or
+is removed along with it. Keeping it costs one `/api/me` fetch per load for an answer
+that no longer varies; removing it touches 6 return-value lines. Either is defensible;
+leaving it undecided is not.
 
 ### 3.2 The gate — one place, in the proxy
 
-Remove `pathname === "/leads"` from the `isDriverBriefing` allowlist in `proxy.ts:196`.
+Remove `pathname === "/leads"` from the `isDriverBriefing` allowlist at **`proxy.ts:204`**
+(the line is 204, not 196 — the allowlist grew when the notifications paths were added).
 The final `isVan` gate (`proxy.ts:207`) then catches a van role reaching `/leads` and
 redirects to `/driver`.
 
@@ -118,7 +157,46 @@ initializer reads `initialRun ?? null`, which is safe because the server and fir
 render agree.
 
 
-### 3.5 The hat switcher stays on `/today`
+### 3.5 The position context — a prerequisite, not a detail
+
+`DriverRunView.tsx:8` calls `useMyPosition()` and renders `LeadsMap`, which calls it again
+(`LeadsMap.tsx:14`). `NextStopBanner` shows a distance derived from it
+(`DriverRunView.tsx:41-44`).
+
+**So the move in §3.3 does not work until the bare group has a position.** The fix is one
+line in `app/(bare)/layout.tsx`:
+
+```tsx
+import { MyPositionProvider } from "@/components/MyPositionProvider";
+
+export default function BareLayout({ children }: { children: ReactNode }) {
+  return (
+    <div className="meridian">
+      <MyPositionProvider>{children}</MyPositionProvider>
+    </div>
+  );
+}
+```
+
+**This is safe against the repo's own guards.** `tests/shellGroups.test.ts:43-49` asserts
+the bare layout (a) is not `export default async function` and (b) does not import
+`next/headers`. A client component satisfies both — it makes no server call and awaits
+nothing — and the layout stays synchronous. `tests/shellGroups.test.ts:23` forbids
+`AppShell` in the bare layout, which this does not add.
+
+The provider's own comment says it is "always on, mounted at the root, and every map and
+list reads from it … One watch rather than one per consumer matters for a device that
+spends the working day in a vehicle." That argument is *stronger* here than it was in the
+shell: `(bare)` is where the vehicle screens live, and it is exactly where the watch was
+missing. Mounting it here fixes `VerifyVisits` (§1.1) as a side effect.
+
+**Rejected alternative: move `/driver` into `(shell)`.** It would get the provider for
+free, but `(bare)/layout.tsx:9-11` states the group's purpose — "a phone held in a moving
+vehicle … chrome is precisely the thing they must not have" — and `(shell)/layout.tsx:7-19`
+documents that the shell exists for the desktop-shaped office app. Trading a design
+decision for a plumbing problem is the wrong direction.
+
+### 3.6 The hat switcher stays on `/today`
 
 `components/today/RolePicker.tsx` renders only when `roles.length >= 2`, and posts to
 `/api/me/role`, which re-signs the cookie so `proxy.ts` sees the new active role.
@@ -130,7 +208,7 @@ the office world**, and `/today` is where that lives. `/driver` already links th
 
 Nothing changes about `RolePicker` or `/today` in this spec.
 
-### 3.6 The menu drops to two tabs
+### 3.7 The menu drops to two tabs
 
 `lib/appNav.ts:69-73` — remove the `/leads` entry from `DRIVER_TABS`. A driver's menu
 becomes:
@@ -147,7 +225,7 @@ becomes:
 `/leads` removed from both the nav and the allowlist, the two files stay in agreement
 without a new invariant.
 
-### 3.7 The `role = 'driver'` bug, fixed here
+### 3.8 The `role = 'driver'` bug, fixed here — but see spec 2 §8
 
 Two manager pages query a role that **no longer exists**:
 
@@ -171,40 +249,65 @@ WHERE role IN (...) AND active = 1   -- the VAN_ROLES set
 with the values inlined from `VAN_ROLES` so a future rename is caught, and a test
 asserting the query returns a real `delivery_driver`.
 
+**This fix lands on a page spec 2 removes.** `/sales/runs/page.tsx` is one of the four
+routes spec 2 folds into `/sales/schedule?view=runs`. So the fix must be carried into
+whichever file ends up owning the run planner, and spec 2 §8 records the handoff. The
+alternative — fix it here, have spec 2 move a page containing the identical broken query —
+is how the bug survives. **This is the one place the two specs touch the same file.**
+
 ## 4. Data flow
 
 ```
 van role opens /driver
-  └─ cookies() → getSessionFromCookies
-       ├─ !isVanRole        → NotAVanNotice (platform_owner) | redirect /map
-       └─ isVanRole
-            ├─ readDriverRuns(db, user.id)           → delivery_runs → DriverRun
-            ├─ readTodaysLeadRun(db, id, org, today) → lead_runs     → DriverRunView (initialRun)
-            └─ driverStatementFor(db, user.id, period) → commission card
-                 │
-                 └─ DriverRunView re-fetches GET /api/lead-runs after a reorder
-                    (requireRole: MANAGE_ROLES + both van roles) → readTodaysLeadRun
+  └─ (bare)/layout.tsx → MyPositionProvider          ← §3.5, supplies position to both sections
+       └─ cookies() → getSessionFromCookies
+            ├─ !isVanRole        → NotAVanNotice (platform_owner) | redirect /map
+            └─ isVanRole
+                 ├─ readDriverRuns(db, user.id)           → delivery_runs → DriverRun
+                 ├─ readTodaysLeadRun(db, id, org, today) → lead_runs     → DriverRunView (initialRun)
+                 └─ driverStatementFor(db, user.id, period) → commission card
+                      │
+                      └─ DriverRunView re-fetches GET /api/lead-runs after a reorder
+                         (requireRole: MANAGE_ROLES + both van roles) → readTodaysLeadRun
 ```
 
 No new API route. No schema change. No migration.
 
 ## 5. Testing
 
+**A constraint that shapes this whole section.** `/driver` is an **async server
+component** that calls `cookies()`. `vitest.config.mts` sets `environment: "node"`, and
+**no test in `tests/` imports anything from `@/app/`** — there is no precedent for
+rendering a page. So "assert both sections render" is not a test that can be written
+against the page directly. It has to be written against something testable.
+
 | File | Asserts | State |
 |---|---|---|
-| `tests/driver-my-day.test.ts` | **new** — both sections render for a single-hat van role; a `field_rep` sees the visit section; a `delivery_driver` sees the delivery section; a **dual-hat session with one active role sees both** | new |
+| `tests/driver-my-day-sections.test.ts` | **new** — a **pure** section-decision function, given a session, returns both sections. Dual-hat with one active role → both. Single hat → both. Non-van → neither. | new |
+| `tests/use-driver-run.test.ts` | **new** — `readTodaysLeadRun` returns the run for a driver who holds either van role, and `null` for one who holds neither | new |
+| `tests/bare-layout-has-position.test.ts` | **new** — `app/(bare)/layout.tsx` mounts `MyPositionProvider`; source-text assertion, in the style of `tests/shellGroups.test.ts:19-24` | new |
 | `tests/proxy.test.ts` | **edit** — `delivery_driver` → `/leads` is now a 307 to `/driver`, not 200 (line 99 inverts); the both-directions `PATHS` note at 136-145 is rewritten, since the page is no longer dual-purpose | edit |
 | `tests/appNav.test.ts` | **edit** — driver tabs are `["/driver", "/sales/academy"]` (line 185); the `pillModel` assertion at 192-198 loses the `/leads` row | edit |
-| `tests/van-role-dropdown.test.ts` | **new** — the run-planner and commission queries return a real `delivery_driver`; would have failed before §3.7 | new |
+| `tests/van-role-dropdown.test.ts` | **new** — the run-planner and commission queries return a real `delivery_driver`; would have failed before §3.8 | new |
+| `tests/shellGroups.test.ts` | **must stay green** — this is what proves the §3.5 provider mount does not break the bare layout's guarantees | regression |
 | `tests/leads-plain-objects.test.ts` | unchanged — the pool still returns plain objects | must stay green |
 | `tests/briefing-repo.test.ts` | unchanged — `/today` untouched | must stay green |
 | `tests/crm-driver-visits.test.ts` | unchanged — visit recording untouched | must stay green |
 
-The dual-hat test is the one that earns its keep. Since §3.3 renders both sections
-unconditionally, the single-hat cases would all pass even if the page branched on the
-ACTIVE role instead of showing everything — so the test deliberately builds a two-role
-session with a single active role, and asserts the section belonging to the *inactive*
-hat is present. That is the exact regression this design exists to prevent.
+**The dual-hat test needs a seam to test through.** §3.3's decision — which sections a
+session gets — currently lives as scattered `{isManager && …}` JSX. Extract it as a pure
+function (`sectionsFor(session): Section[]`) and the highest-value assertion in this spec
+becomes writable. That extraction is a **testability requirement of this spec**, not a
+refactor: without it, the dual-hat regression is unverifiable and the spec's central
+promise — that a person sees all their work regardless of which hat is active — ships on
+nothing but a code review.
+
+Component-level rendering *is* available if needed: several tests use
+`// @vitest-environment jsdom` with `createRoot` (e.g. `tests/crm-basics-ux.test.ts:1,4`).
+That covers `DriverRunView`'s own logic, but not the server page around it.
+
+The seven files importing `@/app/(shell)/leads/hooks/` must all be repointed when the hook
+moves (§3.1); `tsc` catches the misses, and the suite catches the rest.
 
 ## 6. Out of scope
 
@@ -219,10 +322,21 @@ hat is present. That is the exact regression this design exists to prevent.
 
 ## 7. Risk
 
-Low. No DB migration, no API change, no route removal, no schema change. The two edits
-that could break other things are the proxy gate and the nav list, and both are already
-asserted in `tests/proxy.test.ts` and `tests/appNav.test.ts`.
+**Low, once §3.5 is in place — and the risk ordering is the point.** §3.5 is not
+optional: without it, §3.3 does not fail loudly, it fails *silently*, producing a driver
+page with no position, no distance, and no error. A spec whose worst outcome is a crash is
+safer than one whose worst outcome is a plausible lie.
 
-The genuine risk is a **behavioural** one: a driver who has never seen both sections may
-read the empty one as a fault. The empty-state copy is therefore part of this spec, not a
-follow-up — it must say *why* it is empty and *who fills it*.
+Ranked:
+
+1. **The position context (§3.5).** Mitigated by mounting the provider, and guarded by a
+   new test plus `tests/shellGroups.test.ts` staying green.
+2. **The hook relocation (§3.1).** Seven importers; `tsc` catches every miss. This is
+   mechanical, not risky — but skipping it inverts a dependency direction, which is the
+   kind of thing that is cheap to do now and expensive to unpick later.
+3. **The proxy gate and nav list.** Both already asserted in `tests/proxy.test.ts` and
+   `tests/appNav.test.ts`.
+4. **The `role = 'driver'` fix (§3.8) landing on a page spec 2 removes.** The one place
+   the specs collide. Sequencing spec 1 first makes it a non-issue.
+
+No DB migration, no API change, no route removal, no schema change.

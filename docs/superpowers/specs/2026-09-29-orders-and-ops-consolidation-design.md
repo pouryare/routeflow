@@ -149,6 +149,56 @@ decide whether it becomes a third tab on the day host or stays inside the `runs`
 This spec puts it in the `runs` tab, which is the conservative choice, and flags it
 rather than deciding it here.
 
+## 8. Compatibility with spec 1
+
+**Compatible, with one ordering constraint and one shared file that a first pass missed.**
+
+The three governing files — `lib/appNav.ts`, `proxy.ts`, `tests/appNav.test.ts` — are
+touched by both specs, in different parts, and the nav edits are provably independent
+because `appNav.ts:86` returns `DRIVER_TABS` via an early `if (isVanRole(r))`, before the
+inline non-driver list that spec 2 edits.
+
+| File | Spec 1 | Spec 2 | Conflict |
+|---|---|---|---|
+| `lib/appNav.ts` | removes `/leads` from `DRIVER_TABS` | removes 4 entries from the non-driver list | **None** — separate arrays, early return at `:86` |
+| `proxy.ts` | removes `pathname === "/leads"` from `isDriverBriefing` | none | **None** |
+| `tests/appNav.test.ts` | driver tabs → 2 | invariants re-run over a smaller set | **None** — assertions get *looser* |
+| `tests/proxy.test.ts` | `/leads` for a van role inverts 200 → 307 | none | **None** |
+| **`app/(shell)/sales/runs/page.tsx`** | **§3.8 fixes the `role = 'driver'` query at line 37** | **§4 deletes the page into a tab** | **Yes — the one real collision** |
+
+### 8.1 The collision, stated plainly
+
+Spec 1 §3.8 fixes a query that matches nobody:
+
+```sql
+WHERE role = 'driver' AND active = 1   -- no such role; db.ts:3220 renamed it
+```
+
+Spec 2 §4 removes this exact page, folding `RunPlanner` into `/sales/schedule?view=runs`.
+
+**If spec 2 lands first, the fix is lost** — the broken query is carried into the new file
+or, worse, retyped. **If spec 1 lands first, spec 2 inherits a corrected query** and must
+preserve it when it moves the code.
+
+So the ordering is not merely convenient (it also keeps two branches from editing
+`tests/appNav.test.ts:185` at once), it is **load-bearing**. Spec 1 first, and spec 2's
+plan must name the fixed query as an input it must not regress.
+
+### 8.2 The shared invariant
+
+Both specs narrow the menu — spec 1 removes a driver tab, spec 2 removes four manager
+tabs. `PageHeader.tsx:40,54` derives the tab row from the same nav list and renders
+nothing when `siblings.length <= 1`. After spec 2, `sales` holds 5 tabs and `ops` holds 4,
+so both survive. **This is the invariant to re-check after each spec lands**, and the
+reason the plan should run the full `vitest` suite rather than only the new tests.
+
+### 8.3 What the two specs do *not* share
+
+Worth stating so nobody assumes a connection that isn't there: spec 1's §3.5 (the position
+context in `(bare)`) and spec 2's tab hosts are unrelated. Spec 1 touches the vehicle
+screens; spec 2 touches the office screens. They share no component, no data, and no
+route. The only seams between them are the nav list and the one file in §8.1.
+
 ## 9. Testing
 
 | File | Asserts | State |
@@ -191,6 +241,4 @@ redirects). The genuine risks are all about *links*, not code:
 The plan should run the **full** `vitest` suite, not just the new tests, because the
 existing nav/pageMeta/proxy invariants are what stand between a clean merge and a
 plausible-looking one that is quietly broken.
-
-## 8. Compatibility with spec 1
 
