@@ -150,15 +150,39 @@ describe("the menu and the gate agree, in BOTH directions", () => {
    * Everything else below IS gate-gated, and the both-directions assertion is real. */
   const PATHS = ["/crm", "/report", "/sales/orders", "/driver", "/sales/pocket"];
 
+  /* The ONE admitted-without-a-tab case, and it is deliberate (spec §4.3 / P9).
+   *
+   * /driver is admitted for a platform_owner so the NotAVanNotice can render and offer the
+   * switcher — without the exemption the request is bounced here and the notice never
+   * appears. The notice is deliberately NOT a nav tab: it is a dead end by design, and a
+   * tab advertising it would invite people to click something that only ever says "no".
+   *
+   * So the bidirectional invariant below is stated for every role EXCEPT this one pair,
+   * rather than weakened globally. An exception named here is a decision; an exception
+   * smuggled in by relaxing the loop is a hole. */
+  const ADMITTED_WITHOUT_A_TAB = new Set(["platform_owner→/driver"]);
+
   for (const role of ROLES) {
     it(`keeps ${role}'s menu and the gate telling the same story`, () => {
       const shown = new Set(appTabs({ role } as never).filter((t) => t.ready).map((t) => t.href));
       for (const href of PATHS) {
+        if (ADMITTED_WITHOUT_A_TAB.has(`${role}→${href}`)) continue;
         const admitted = proxy(req(href, role)).status === 200;
         expect(admitted, `${role} → ${href}`).toBe(shown.has(href));
       }
     });
   }
+
+  it("admits a platform_owner to /driver precisely so the notice can offer the switcher", () => {
+    expect(proxy(req("/driver", "platform_owner")).status).toBe(200);
+    /* Everyone who is genuinely not a van role still bounces. `field_rep` is DELIBERATELY
+       absent from this list: it is a van role, so being admitted here is the pre-existing
+       design and has nothing to do with the notice. Listing it was my mistake — it would
+       have "passed" for the wrong reason if the exemption had been opened up. */
+    for (const role of ["owner", "group_manager", "phone_sales", "rep_manager"]) {
+      expect(proxy(req("/driver", role as never)).status, role).not.toBe(200);
+    }
+  });
 
   it("keeps a field rep out of the surfaces a driver must not reach", () => {
     // Stated as intent, so nobody "fixes" a failure by loosening it.

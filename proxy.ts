@@ -112,7 +112,11 @@ export function proxy(req: NextRequest) {
       && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
-  if (isDriver && !isVanRole(claims.role)) return deny("/sales");
+  /* A platform_owner is let through to see NotAVanNotice, which offers the switcher. Without
+     this exemption the request is bounced here and the notice never renders — the spec's
+     §4.3 calls this out by name. Scoped to platform_owner ONLY: an owner or group_manager
+     is still denied, because they were not invited to inspect a driver's day. */
+  if (isDriver && !isVanRole(claims.role) && claims.role !== "platform_owner") return deny("/sales");
 
   // /analytics and /report aggregate a whole group's revenue, debt and coverage, and
   // /report hands the reader a CSV of every row behind the totals. A salesperson is

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { homePathFor, isVanRole } from "@/lib/roles";
+import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 import { getDb } from "@/lib/db";
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
@@ -24,7 +25,14 @@ export default async function TodayPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.roles.length < 2 && !isVanRole(session.role)) redirect(homePathFor(session.role));
+  if (session.roles.length < 2 && !isVanRole(session.role)) {
+    /* Same rule as /driver: a platform_owner gets the notice and a way forward, everyone
+       else is still redirected. The `roles.length < 2` test stays OUTSIDE this — a
+       multi-role person landing here is a feature (the picker), not a dead end, and only
+       the founder's single-role founder account is the case the spec means. */
+    if (session.role === "platform_owner") return <NotAVanNotice />;
+    redirect(homePathFor(session.role));
+  }
 
   getDb();
   const data = todayFor(session);

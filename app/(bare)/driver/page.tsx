@@ -13,6 +13,7 @@ import VerifyVisits from "@/components/driver/VerifyVisits";
 import NotificationBell from "@/components/NotificationBell";
 import { Icon } from "@/components/meridian/Icon";
 import { isVanRole } from "@/lib/roles";
+import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,15 @@ export default async function DriverPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (!isVanRole(session.role)) redirect("/map");
+  if (!isVanRole(session.role)) {
+    /* A platform_owner is offered the way forward; everyone else is still bounced. The
+       founder's whole job is to inspect how the app looks to his people, and "you may not"
+       without a next step is a dead end. Widening this to owners and group managers is
+       deliberately NOT done — they were not invited to inspect a driver's day, and
+       quietly widening a gate is how a gate stops meaning anything. */
+    if (session.role === "platform_owner") return <NotAVanNotice />;
+    redirect("/map");
+  }
 
   const db = getDb();
   const runs = readDriverRuns(db, session.user.id);
