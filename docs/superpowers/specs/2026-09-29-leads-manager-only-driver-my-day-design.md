@@ -29,6 +29,12 @@ Three consequences follow, all of them current bugs rather than preferences:
 3. **The menu lies about the URL.** `appNav.ts:71` labels `/leads` «توقف‌های من» for a
    driver; `appNav.ts:100` labels the *same href* «پین‌های نقشه» for a rep lead. One
    destination, two names, depending on who is holding the keys.
+4. **`/leads` is also unreachable-by-gate, and that is separate.** `leads/page.tsx` is
+   `"use client"` and its layout holds only the page header — there is **no
+   `isVanRole` check, no `requireRole`, and no session read anywhere in the route**
+   (verified: zero matches). So §3.2 is the *only* thing that ever refused this page to
+   anyone. Removing the van allowlist entry is therefore not a narrowing — it is the first
+   time this route is gated on role at all, and the gate has to be right the first time.
 
 `tests/proxy.test.ts:136-145` already documents this as "a dual-purpose page … Reachable
 but empty is a weaker thing than refused." This spec closes that hole rather than
@@ -111,6 +117,29 @@ second `/leads` check would be the drift the file's own header comment warns abo
 
 `/api/leads/locations` and `/api/lead-runs` stay allowlisted — a driver still records a
 visit at the door, now from `/driver`.
+
+**The same gate also has to close the top of the list, not just the bottom.** §1.1(4)
+establishes that this route has never been gated. Today `phone_sales` reaches the pool and
+the «سپردن مسیر» hand-off, because `isManager` is `!isVanRole` and the proxy's
+`isDriverBriefing` allowlist only describes who a *van role* may reach — it says nothing
+about a *rep* who should not.
+
+`appNav.ts:100` already draws the line: `/leads` is `ready: isRepLead(r)`. **The proxy must
+match it, or the nav is a suggestion rather than a gate.** So §3.2 becomes two rules:
+
+- a van role reaching `/leads` → `deny("/driver")` (the existing `isVan` gate, once the
+  allowlist entry is gone);
+- a role that is not a rep-lead reaching `/leads` → `deny("/crm")`, which is where a
+  `phone_sales` rep's own leads actually live.
+
+`/crm` is the right redirect rather than `/sales` because `crm/page.tsx:26` already
+redirects a van role to `/driver` and opens on *today's follow-ups* for everyone else —
+it is the nearest correct home for a rep's leads, and `/api/crm/businesses` admits
+`CRM_ROLES` (verified), which includes `phone_sales`.
+
+The nav and the gate now agree in both directions, which is what
+`tests/proxy.test.ts:115-145` already asserts for the driver menu and currently cannot
+assert for this path.
 
 ### 3.3 `/driver` — "My Day", two sections
 
@@ -286,13 +315,36 @@ against the page directly. It has to be written against something testable.
 | `tests/driver-my-day-sections.test.ts` | **new** — a **pure** section-decision function, given a session, returns both sections. Dual-hat with one active role → both. Single hat → both. Non-van → neither. | new |
 | `tests/use-driver-run.test.ts` | **new** — `readTodaysLeadRun` returns the run for a driver who holds either van role, and `null` for one who holds neither | new |
 | `tests/bare-layout-has-position.test.ts` | **new** — `app/(bare)/layout.tsx` mounts `MyPositionProvider`; source-text assertion, in the style of `tests/shellGroups.test.ts:19-24` | new |
-| `tests/proxy.test.ts` | **edit** — `delivery_driver` → `/leads` is now a 307 to `/driver`, not 200 (line 99 inverts); the both-directions `PATHS` note at 136-145 is rewritten, since the page is no longer dual-purpose | edit |
+| `tests/proxy.test.ts` | **edit** — `delivery_driver` → `/leads` is now a 307 to `/driver`, not 200 (line 99 inverts); `phone_sales` → `/leads` is now a 307 to `/crm` (new); the both-directions `PATHS` note at 136-145 is rewritten, since the page is no longer dual-purpose and is now genuinely gated | edit |
 | `tests/appNav.test.ts` | **edit** — driver tabs are `["/driver", "/sales/academy"]` (line 185); the `pillModel` assertion at 192-198 loses the `/leads` row | edit |
 | `tests/van-role-dropdown.test.ts` | **new** — the run-planner and commission queries return a real `delivery_driver`; would have failed before §3.8 | new |
 | `tests/shellGroups.test.ts` | **must stay green** — this is what proves the §3.5 provider mount does not break the bare layout's guarantees | regression |
 | `tests/leads-plain-objects.test.ts` | unchanged — the pool still returns plain objects | must stay green |
 | `tests/briefing-repo.test.ts` | unchanged — `/today` untouched | must stay green |
 | `tests/crm-driver-visits.test.ts` | unchanged — visit recording untouched | must stay green |
+
+### 5.1 Two guards this spec earns for the whole repo
+
+Both are one test file each, and both turn a bug class that had to be *found by reading*
+into one that fails the build. They are not required by the driver work — they are
+required by having discovered the class.
+
+**`tests/no-silent-context-default.test.ts`** — §1.1's failure mode is that
+`useContext` on an unprovided context returns a *valid-looking* default, so a missing
+provider is indistinguishable from real data. Scan `components/**` for `createContext(` and
+assert the default value cannot be mistaken for a real state (a `position: null` alongside
+a `status: "idle"` that claims to be a real status; an empty array that reads as "no
+results" rather than "not loaded"). A context whose default is a *throwing* function, or
+whose hook asserts, is the pattern to migrate toward.
+
+**`tests/no-role-string-literals.test.ts`** — §3.8's `WHERE role = 'driver'` survived a
+rename because it is a raw string in a page. Scan `app/**` and `components/**` and fail
+on `role = '`, `role === "` and ``role === ` `` outside the two files where a role string
+legitimately lives: `lib/roles.ts` (the union) and `lib/db.ts` (the migrations that
+rewrite old vocabulary). This would have caught both dropdowns on the day the rename
+shipped, and it is the difference between documenting a hazard and preventing it.
+
+### 5.2 A seam, so the dual-hat promise is testable
 
 **The dual-hat test needs a seam to test through.** §3.3's decision — which sections a
 session gets — currently lives as scattered `{isManager && …}` JSX. Extract it as a pure
@@ -309,7 +361,27 @@ That covers `DriverRunView`'s own logic, but not the server page around it.
 The seven files importing `@/app/(shell)/leads/hooks/` must all be repointed when the hook
 moves (§3.1); `tsc` catches the misses, and the suite catches the rest.
 
-## 6. Out of scope
+## 6. How this lands — two commits, not one
+
+**Commit A: the position fix (§3.5).** One line in `app/(bare)/layout.tsx`, plus
+`tests/bare-layout-has-position.test.ts`. It is **independent of everything else here**:
+no moved component, no new prop, no nav change, no proxy change. It fixes a live bug —
+`VerifyVisits` already records visits with `pos = null` today — and it is safe against
+`tests/shellGroups.test.ts` by construction.
+
+It goes first, alone, because a bug that ships in production should not be queued behind a
+refactor. If the rest of this spec is later re-scoped, deferred, or abandoned, **the fix
+still stands on its own.** That is the entire argument for splitting it.
+
+**Commit B: the rest** — the `/leads` branch removal, the hook relocation, the
+`DriverRunView` move, `initialRun`, the two proxy rules, the nav change, and §3.8's
+`role = 'driver'` fix.
+
+Ordering is not merely tidy. Commit A is what makes Commit B's §3.3 move *correct*, so B
+cannot be reviewed without A in the tree. And §3.8's fix must land in the same series as
+spec 2, which is the one place the two specs collide (spec 2 §8.1).
+
+## 7. Out of scope
 
 - **`/today` is not folded into `/driver`.** The `retry` panel (failed deliveries) is
   real work with no home elsewhere. Adjacent cleanup, different spec.
@@ -320,7 +392,7 @@ moves (§3.1); `tsc` catches the misses, and the suite catches the rest.
 - **`RouteSection`, `useLeads`, the eight pool views, `LeadListsBar`** — untouched.
   They stay on `/leads` and keep working.
 
-## 7. Risk
+## 8. Risk
 
 **Low, once §3.5 is in place — and the risk ordering is the point.** §3.5 is not
 optional: without it, §3.3 does not fail loudly, it fails *silently*, producing a driver
