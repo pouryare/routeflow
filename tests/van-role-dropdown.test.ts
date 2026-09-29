@@ -78,4 +78,26 @@ describe("the van-role dropdown queries", () => {
       expect(code, `${file} must match on the set, not one name`).toMatch(/role\s+IN\s*\(/);
     }
   });
+
+  it("the planner's driver list still resolves wherever the planner lives", () => {
+    /* /sales/runs became a redirect to /sales/schedule?view=runs (spec
+       2026-09-29-orders-and-ops-consolidation section 4), so the fix MOVED rather than
+       travelling with the old file name. The loop above checks commission and the
+       redirect page; the moved query is here.
+
+     This is the second time this class of assertion has needed repointing, and the
+     second time it caught a real regression rather than a stale expectation. A guard
+     that names a path has to be updated when the code moves -- that is the guard doing
+     its job, not a cost of it. */
+    const src = readFileSync("app/(shell)/sales/schedule/page.tsx", "utf8");
+    const code = src
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l) => !/^\s*\/\//.test(l))
+      .join("\n");
+    expect(code, "the moved planner must carry the van-role set").toContain("VAN_ROLES");
+    expect(code).toMatch(/role\s+IN\s*\(/);
+    expect(code, "and must not have reintroduced the dead role name")
+      .not.toMatch(/role\s*=\s*'driver'/);
+  });
 });
