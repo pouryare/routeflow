@@ -78,7 +78,7 @@ export default async function NewOrderPage({
           db
           .prepare(
             `SELECT id, display_name FROM users
-              WHERE role = 'salesperson' AND active = 1${scope.sql}
+              WHERE role = 'phone_sales' AND active = 1${scope.sql}
               ORDER BY display_name`
           )
           .all(...scope.params)

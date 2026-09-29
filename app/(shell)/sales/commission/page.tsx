@@ -58,11 +58,15 @@ export default async function CommissionPage() {
         ? [managerStatementFor(db, session.user.id, period)]
         : [];
 
+  /* The salesperson's name, from the same stale-vocabulary bug as the drivers below:
+     this read `role = 'salesperson'`, which matched nobody after lib/db.ts:3219 renamed
+     that role to `phone_sales`. The commission seller's list was empty for the same
+     reason and the same length of time. */
   const sellers =
     session.role === "owner"
       ? (plain(
           db
-            .prepare("SELECT id, display_name FROM users WHERE role = 'salesperson' AND active = 1 ORDER BY display_name")
+            .prepare("SELECT id, display_name FROM users WHERE role = 'phone_sales' AND active = 1 ORDER BY display_name")
             .all()
         ) as unknown as { id: number; display_name: string }[])
       : [];

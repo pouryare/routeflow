@@ -27,11 +27,34 @@ interface MyPositionValue {
   retry: () => void;
 }
 
+/* The default is NOT a plausible real state, and that is deliberate.
+ *
+ *  `useContext` on an unprovided context does not throw — it returns this. So a default
+ *  of `{ position: null, status: "idle" }` is indistinguishable from a real context that
+ *  has not found a fix yet, and the two produce opposite conclusions: "there is no
+ *  position" versus "nobody is watching". /driver is how this was found: it lives in
+ *  app/(bare), which mounted no provider, so VerifyVisits recorded every visit with
+ *  pos = null and rendered perfectly while lying.
+ *
+ *  `retry` therefore THROWS, and names itself. A consumer that offers a retry button —
+ *  which is the case a driver actually hits — gets an error naming the missing provider
+ *  instead of a spinner that never resolves.
+ *
+ *  Honest scope: that covers the retry path only. A consumer that merely READS `position`
+ *  still gets `null`, and cannot tell it from a real absence. Closing that fully means
+ *  adding a "missing" status to the PositionStatus union, which is a type change
+ *  rippling through every consumer, and is a different change.
+ *  tests/no-silent-context-default.test.ts is what holds the rest: no context default
+ *  anywhere may carry a field whose value is the ordinary empty result of a real one. */
 const MyPositionContext = createContext<MyPositionValue>({
   position: null,
   status: "idle",
   error: null,
-  retry: () => {},
+  retry: () => {
+    throw new Error(
+      "useMyPosition() was called with no MyPositionProvider above it. Mount one in the route group's layout.",
+    );
+  },
 });
 
 /** One geolocation watch for the whole app.
