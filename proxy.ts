@@ -66,6 +66,9 @@ export function proxy(req: NextRequest) {
       : NextResponse.redirect(new URL(to, req.url));
 
   const isAdmin = pathname.startsWith("/sales/admin") || pathname.startsWith("/api/admin");
+  // The account switcher: owner/platform_owner only, and it shares the admin gate so the
+  // two cannot drift. Listed separately because it is NOT under /admin.
+  const isSwitch = pathname === "/switch" || pathname.startsWith("/api/admin/impersonatable");
   const isDriver = pathname.startsWith("/driver") || pathname.startsWith("/api/driver");
   // The representatives admin surface is also open to rep_manager -- it is the channel
   // they run. Every other admin path stays owner-only. The routes themselves re-check.
@@ -104,7 +107,9 @@ export function proxy(req: NextRequest) {
      this one method on this one path is open to any signed-in session. The route itself
      refuses anything that is not a genuine impersonation by the saved owner. */
   const isEndImpersonation = pathname === "/api/admin/impersonate" && req.method === "DELETE";
-  if (isAdmin && !isEndImpersonation && claims.role !== "owner" && !(isRepAdmin && claims.role === "rep_manager")) {
+  if ((isAdmin || isSwitch) && !isEndImpersonation
+      && claims.role !== "owner" && claims.role !== "platform_owner"
+      && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
   if (isDriver && !isVanRole(claims.role)) return deny("/sales");

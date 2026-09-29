@@ -102,6 +102,14 @@ export default function ProfileMenu({
             </div>
           </div>
 
+          {/* The switcher: a RARE, deliberate, consequential action, so it lives here among
+              "things about this account" rather than as a nav tab. A tab is a place you
+              work; this is a place you observe. The full list is /switch — a link, not a
+              second copy, so the two mounts cannot drift. */}
+          <Link className="pm__link" href="/switch" onClick={() => setOpen(false)}>
+            <Icon name="repeat" size="sm" /> ورود به‌عنوان…
+          </Link>
+
           <Link className="pm__link" href="/map" onClick={() => setOpen(false)}>
             <Icon name="arrow-up-right" size="sm" /> نقشهٔ پوشش
           </Link>
