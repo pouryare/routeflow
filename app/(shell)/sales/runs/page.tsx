@@ -11,7 +11,7 @@ import DriverStreaks from "@/components/sales/DriverStreaks";
 import { readDriverActivity } from "@/lib/repo/driverActivity";
 import { buildStreak } from "@/lib/streak";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, VAN_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -30,11 +30,19 @@ export default async function RunsPage() {
   const db = getDb();
   const userScope = groupFilter(session);
 
+  /* The van roles, inlined from the one list that defines them. This read
+     `role = 'driver'`, which matched nobody after lib/db.ts renamed that role to
+     `delivery_driver` — so the planner's driver dropdown was silently empty, with no
+     error anywhere to say so. A gate written against a role NAME fails to match the
+     moment the name changes; a gate written against the SET does not.
+     tests/van-role-dropdown.test.ts holds both halves: that the SQL is right, and that
+     this file is the SQL that runs. */
+  const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
   const drivers = plain(
     db
       .prepare(
         `SELECT id, display_name FROM users
-          WHERE role = 'driver' AND active = 1${userScope.sql}
+          WHERE role IN (${vanRoleList}) AND active = 1${userScope.sql}
           ORDER BY display_name`
       )
       .all(...userScope.params)

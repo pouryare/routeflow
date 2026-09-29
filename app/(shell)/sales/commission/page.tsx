@@ -12,7 +12,7 @@ import CommissionEditor from "@/components/sales/CommissionEditor";
 import Avatar from "@/components/meridian/Avatar";
 import EarnerCard from "@/components/meridian/EarnerCard";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, VAN_ROLES } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -66,10 +66,20 @@ export default async function CommissionPage() {
             .all()
         ) as unknown as { id: number; display_name: string }[])
       : [];
+  /* Same bug as the run planner's driver list, in the same shape: `role = 'driver'`
+     matched nobody after the rename, so the manager-overrides picker was empty. The van
+     roles, inlined from the one list that defines them. See tests/van-role-dropdown.test.ts. */
+  const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
   const drivers =
     session.role === "owner"
       ? (plain(
-          db.prepare("SELECT id, display_name FROM users WHERE role = 'driver' AND active = 1 ORDER BY display_name").all()
+          db
+            .prepare(
+              `SELECT id, display_name FROM users
+                WHERE role IN (${vanRoleList}) AND active = 1
+                ORDER BY display_name`
+            )
+            .all()
         ) as unknown as { id: number; display_name: string }[])
       : [];
   const managers =
