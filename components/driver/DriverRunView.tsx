@@ -2,8 +2,8 @@
 
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
-import NextStopBanner from "@/components/leads/NextStopBanner";
-import { useDriverRun, pendingStops, type DriverStop } from "@/components/driver/useDriverRun";
+import NextStopBanner from "@/components/driver/NextStopBanner";
+import { useDriverRun, pendingStops, type DriverRun, type DriverStop } from "@/components/driver/useDriverRun";
 import { navigateUrl, type NavAppId } from "@/lib/navApps";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import { distanceKm } from "@/lib/geo";
@@ -14,23 +14,36 @@ import { SkeletonRows } from "@/components/Skeleton";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
 
-/** A driver's whole screen: where next, then the rest of the day.
+/** The driver's prospect visits: where next, then the rest of the day.
  *
- *  The order is deliberate. The next stop is above the fold because it is the only thing
- *  that has to be read before getting out of the van; everything else sits behind a
- *  disclosure, so a long day does not push the answer off the screen.
+ *  This is the second section of /driver, under the deliveries. It used to be the whole
+ *  of a driver's page, on /leads, behind a role branch.
  *
- *  A visited stop stays in the list, struck through, rather than vanishing. Same reasoning
- *  as a handed-off lead staying visible: a list that silently shrinks reads as a broken app,
- *  and a driver who cannot see why a stop disappeared will assume the worst. */
+ *  The order within the section is deliberate. The next stop is above the fold because it
+ *  is the only thing that has to be read before getting out of the van; everything else
+ *  sits behind a disclosure, so a long day does not push the answer off the screen.
+ *
+ *  A visited stop stays in the list, struck through, rather than vanishing. Same
+ *  reasoning as a handed-off lead staying visible: a list that silently shrinks reads as
+ *  a broken app, and a driver who cannot see why a stop disappeared will assume the
+ *  worst. */
 export default function DriverRunView({
+  initialRun,
   onRecord,
   navAppId,
 }: {
+  /** The server's read of today's run, handed in by /driver.
+   *
+   *  Without it the view client-fetches /api/lead-runs and renders a skeleton. On
+   *  /driver that meant the delivery section above was already painted and the page
+   *  visibly filled in twice. It is the FIRST PAINT, not a cache: the hook still
+   *  re-fetches on mount and after every reorder or recorded visit, so this view must
+   *  not be trusted to stay fresh — and it is not. */
+  initialRun?: DriverRun | null;
   onRecord: (locationId: number) => void;
   navAppId: NavAppId;
 }) {
-  const { run, stops, loading, error, reload, move } = useDriverRun();
+  const { run, stops, loading, error, reload, move } = useDriverRun(initialRun);
   const { position } = useMyPosition();
   const [showAll, setShowAll] = useState(false);
 

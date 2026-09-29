@@ -15,7 +15,6 @@ import EmptyState from "@/components/EmptyState";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
 import RouteSection, { type DayGroup } from "@/components/leads/RouteSection";
 import PoolViewToggle from "@/components/leads/PoolViewToggle";
-import DriverRunView from "@/components/leads/DriverRunView";
 import LeadRunPlannerTabFlow from "@/components/leads/LeadRunPlannerTabFlow";
 import LeadListsBar from "@/components/leads/LeadListsBar";
 import PoolViewWrapper from "@/components/leads/views/PoolViewWrapper";
@@ -273,11 +272,6 @@ export default function LeadsPage() {
             )}
               </section>
             </>
-          )}
-
-          {/* A driver sees their day, and the manager's tools are simply not rendered. */}
-          {!isManager && (
-            <DriverRunView onRecord={setTapFlowId} navAppId={navAppId} />
           )}
 
           {/* The pool is a manager's scratch run until it is assigned here: a driver sees

@@ -476,6 +476,29 @@ The first line currently reads "A driver's whole screen" — it is now a *sectio
  *  sits behind a disclosure, so a long day does not push the answer off the screen.
  *
  *  A visited stop stays in the list, struck through, rather than vanishing. Same
+- [ ] **Step 6: Type-check**
+
+Run: `npx tsc --noEmit`
+
+Expected: zero errors. Detached on this box (`setsid nohup npx tsc --noEmit > /tmp/tsc-spec1-task4.log 2>&1 &`) — it takes ~15 min here, so launch it and continue rather than waiting on the foreground.
+
+- [ ] **Step 7: Commit**
+
+```bash
+git add components/driver components/leads "app/(shell)/leads/page.tsx"
+git commit -m "refactor(driver): the driver's run view moves to components/driver
+
+Moved, not copied. A copy would leave two sources of truth for 'my stops' -- the
+exact failure lib/roles.ts documents when db.ts held a hand-copied duplicate of the
+role union that then drifted.
+
+Takes an optional initialRun so the /driver page can server-render the run. Task 5
+is what passes it -- until then the prop is wired but dark, and behaviour is
+unchanged."
+```
+
+### Task 5: `/driver` renders both sections, server-side
+
  *  reasoning as a handed-off lead staying visible: a list that silently shrinks reads as a
  *  broken app, and a driver who cannot see why a stop disappeared will assume the worst. */
 ```
