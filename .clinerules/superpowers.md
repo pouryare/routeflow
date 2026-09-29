@@ -57,6 +57,14 @@ When any workflow says "invoke the X skill", "use the X skill", or "REQUIRED SUB
 
 **Context filling up mid-task?** Whatever workflow you're in — if Cline's context use is getting high (rule of thumb: past ~60% of the window, or anywhere near where the model starts to degrade), **stop, don't push through.** Switch to `/long-haul-development.md`: write `.cline/plan.md` + `.cline/journal.md` capturing the plan and current state, then `/newtask` to continue with a clean window. A handed-off, curated state beats a maxed-out context every time.
 
+## The always-on rules
+
+Three rules load into every task with no slash command:
+
+- `.clinerules/todo.md` — the task list. Keep `.cline/todo.md` current and render it at the bottom of every response.
+- `.clinerules/report.md` — how to report: ELI5 depth, BEFORE/AFTER examples, the three-part summary, and this machine's constraints.
+- `.clinerules/cline-tools.md` — the tool-name mapping.
+
 ## The Rule
 
 **Invoke relevant or requested workflows BEFORE any response or action.** Even a 1% chance a workflow might apply means you should run it to check. If it turns out to be wrong for the situation, you don't need to use it.
