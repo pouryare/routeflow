@@ -42,8 +42,15 @@ export default async function AppHeader() {
 
   return (
     <Chrome>
-      {/* Login-As: an owner seeing the app as this user. Not dismissible, see the banner. */}
-      {session.actorId ? <ImpersonationBanner asName={session.user.display_name} /> : null}
+      {/* Login-As: an owner seeing the app as this user. Not dismissible, see the banner.
+          asRole matters as much as asName: a dual-hat driver sees a different app in each
+          hat, so naming only the person would not say whose permissions are in play. */}
+      {session.actorId ? (
+        <ImpersonationBanner
+          asName={session.user.display_name}
+          asRole={ROLE_LABEL[session.role]}
+        />
+      ) : null}
       {/* Which world they are in. Both can be true at once — a driver impersonated by the
           founder is in a state neither banner alone describes — so they stack rather than
           replace one another. Each renders nothing for a single-role person. */}
