@@ -165,7 +165,22 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/predict") ||
     pathname.startsWith("/sales/forecast");
   if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
-    return deny("/sales");
+    /* Four of these paths are now REDIRECT pages rather than gated ones, and the gate must
+       not pre-empt the redirect. It runs first, so a `platform_owner` asking for
+       /sales/deliveries was answered 307 -> /sales by THIS line, and the page's own
+       `redirect("/sales/orders")` never executed: the reader landed on the sales summary
+       instead of the orders page, with no error anywhere. `/sales/runs` reached its page
+       correctly only because it is not in the list.
+     *
+     * The rule that follows: a gate may DENY, but it may not answer a question the route
+     * has already been rewritten to answer itself. The API paths stay in the list -- they
+     * are still real, still desk-only, and nothing redirects them. */
+    const isRedirectPage =
+      pathname === "/sales/deliveries" ||
+      pathname === "/sales/runs" ||
+      pathname === "/sales/board" ||
+      pathname === "/sales/journey";
+    if (!isRedirectPage) return deny("/sales");
   }
 
   // A driver has a short list, not a menu. Sending them anywhere outside it back to their
