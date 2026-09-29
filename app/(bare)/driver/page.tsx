@@ -15,6 +15,7 @@ import SyncStatus from "@/components/SyncStatus";
 import VerifyVisits from "@/components/driver/VerifyVisits";
 import NotificationBell from "@/components/NotificationBell";
 import { Icon } from "@/components/meridian/Icon";
+import SectionHead from "@/components/meridian/SectionHead";
 import { isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 
@@ -121,9 +122,7 @@ export default async function DriverPage() {
       {/* ── Section 1: deliveries ─────────────────────────────────────────── */}
       {sections.includes("deliveries") && (
         <section aria-labelledby="day-deliveries" className="mb-[var(--space-5)]">
-          <h2 id="day-deliveries" className="mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
-            تحویل‌ها
-          </h2>
+          <SectionHead id="day-deliveries" title="تحویل‌ها" />
 
           {run && weatherLine(run as unknown as { weather_json?: string | null }) && (
             <p className="mb-[var(--space-3)] flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
@@ -169,9 +168,7 @@ export default async function DriverPage() {
       {/* ── Section 2: prospect visits ────────────────────────────────────── */}
       {sections.includes("visits") && (
         <section aria-labelledby="day-visits" className="mb-[var(--space-5)]">
-          <h2 id="day-visits" className="mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
-            بازدیدها و سرنخ‌ها
-          </h2>
+          <SectionHead id="day-visits" title="بازدیدها و سرنخ‌ها" />
           <DriverDaySection initialRun={leadRun} />
         </section>
       )}
