@@ -18,8 +18,22 @@ import BentoStrip, {
   BentoGauge,
 } from "@/components/BentoStrip";
 import { isVanRole } from "@/lib/roles";
+import { readOrderDeliveryHistory } from "@/lib/repo/orderDeliveries";
 
 export const dynamic = "force-dynamic";
+
+/** The nine delivery states, in the words the office uses. */
+const ATTEMPT_LABEL: Record<string, string> = {
+  PLANNED: "برنامه‌ریزی‌شده",
+  ASSIGNED: "تخصیص‌یافته",
+  LOADED: "بارگیری‌شده",
+  IN_TRANSIT: "در مسیر",
+  DELIVERED: "تحویل‌شده",
+  PARTIAL: "تحویل ناقص",
+  FAILED: "ناموفق",
+  RETURNED: "مرجوعی",
+  CANCELLED: "لغوشده",
+};
 
 
 export default async function OrderDetailPage({
@@ -46,6 +60,11 @@ export default async function OrderDetailPage({
 
   const order = readOrder(db, id);
   if (!order) notFound();
+
+  /* Every attempt at delivering THIS order, oldest first. It lived on a cross-order page
+     at /sales/deliveries, which answered "what happened recently" and not "what happened
+     to this" — and this page had no trace of it. */
+  const attempts = readOrderDeliveryHistory(db, session.organizationId, order.id);
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
@@ -159,6 +178,51 @@ export default async function OrderDetailPage({
           ))}
         </tbody>
       </table>
+
+      {/* One order's attempts, which is what `deliveries` records. Absent, not empty:
+          an order that has never shipped says so in a sentence. */}
+      <section className="mt-[var(--space-5)]">
+        <h2 className="sechead__title">تلاش‌های تحویل</h2>
+        {attempts.length === 0 ? (
+          <p className="m-0 mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            برای این سفارش هنوز تلاشی برای تحویل ثبت نشده است.
+          </p>
+        ) : (
+          <ol className="m-0 mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0">
+            {attempts.map((a) => (
+              <li
+                key={a.id}
+                className="rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)]"
+              >
+                <div className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)]">
+                  <span className="text-[length:var(--text-sm)] font-medium text-[var(--text)]">
+                    تلاش {faNum(a.seq)} · {ATTEMPT_LABEL[a.status] ?? "نامشخص"}
+                  </span>
+                  <span className="text-[length:var(--text-xs)] tabular-nums text-[var(--text-muted)]">
+                    {a.actual_arrival
+                      ? faJalaliDateTime(a.actual_arrival)
+                      : a.planned_arrival
+                        ? `برنامه: ${faJalaliDateTime(a.planned_arrival)}`
+                        : "—"}
+                  </span>
+                </div>
+                {(a.fail_reason || a.delay_reason) && (
+                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    {a.fail_reason ? `دلیل ناموفقی: ${a.fail_reason}` : null}
+                    {a.fail_reason && a.delay_reason ? " · " : null}
+                    {a.delay_reason ? `دلیل تأخیر: ${a.delay_reason}` : null}
+                  </p>
+                )}
+                {a.receiver_name && (
+                  <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                    تحویل به {a.receiver_name}
+                  </p>
+                )}
+              </li>
+            ))}
+          </ol>
+        )}
+      </section>
 
       {order.status === "DRAFT" ? (
         <p className="m-0 text-[length:var(--text-xs)] leading-6 text-[var(--text-muted)]">
