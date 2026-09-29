@@ -2,7 +2,8 @@
 
 **Date:** 2026-09-29
 **Status:** approved in dialogue, awaiting implementation plan
-**Scope:** spec 2 of 2. **Must be reconciled with** `2026-09-29-leads-manager-only-driver-my-day-design.md` — see §8.
+**Scope:** spec 2 of 3. **Must be reconciled with** `2026-09-29-leads-manager-only-driver-my-day-design.md`
+— see §9. A third spec, `2026-09-29-one-lead-one-place-design.md`, runs *after* this one.
 
 ---
 
@@ -95,9 +96,30 @@ The month calendar is already the spine. `/sales/runs` redirects to
 **`RunTimeline` shows *past* runs** (`runs/page.tsx:128` filters `status !== "done"` for
 the timeline but the board above it lists the recent 30). It is a third kind of question
 from the month ahead. It renders in the `runs` tab; whether it earns its own tab depends
-on §7's open question.
+on §8's open question.
 
-## 5. What this removes from the menu
+## 5. One copy fix that closes the vocabulary
+
+Measured, the app's vocabulary is already disciplined: **سفر** for a run
+(`delivery_runs`, `lead_runs`), **بازدید** for a planned visit (`visit_plans`), and
+**مسیر** for the *optimized order* — a property of a سفر, not a third entity.
+`/sales/routing`'s own overview already says so: *«خروجی این صفحه، «سفرهای تحویل» است»*.
+
+**One page breaks it.** `lib/pageMeta.ts:24` describes `/planner` as *«مسیر پیشنهادی را
+می‌توانید دستی جابه‌جا کنید»* — it calls an ordered sequence of **visits** a *مسیر*. By
+the app's own rule that is a **بازدید** sequence, not a route.
+
+**Fix:** `/planner`'s overview changes `مسیر پیشنهادی` → `ترتیب پیشنهادی بازدیدها`. One
+string, in one file, and the vocabulary is then consistent across every page. No
+structural change, no new test beyond the copy audit that already runs
+(`scripts/audit-copy.mjs`, wired to `npm run audit-copy`).
+
+**Why it belongs here rather than in its own spec:** it is a single string with no
+behaviour behind it. Spec 2 is already the change that settles what the day is called
+(tabs برنامه / سفرها), so the vocabulary is being touched anyway — and a one-line copy fix
+does not warrant its own document, plan, and review cycle.
+
+## 6. What this removes from the menu
 
 | Before | After |
 |---|---|
@@ -114,7 +136,7 @@ this data differently). That is the Shopify arrangement, and the two rows answer
 questions. They must be visually distinct — the implementation plan should use the
 existing header pill style for the first and a page-level control for the second.
 
-## 6. Redirects and every reference that must be repointed
+## 7. Redirects and every reference that must be repointed
 
 Consolidation is worthless if it breaks a link. Full inventory, found by grepping for the
 four hrefs:
@@ -141,7 +163,7 @@ routes rather than left orphaned.
 page, after the gate, so a `phone_sales` user still gets bounced by the proxy rather than
 landing on a tab host it may not see.
 
-## 7. Open question for the implementation plan
+## 8. Open question for the implementation plan
 
 `RunTimeline` shows runs in progress and recently finished — a third question (not "what
 happened on the 14th", not "assign these orders") from the month ahead. The plan should
@@ -149,7 +171,7 @@ decide whether it becomes a third tab on the day host or stays inside the `runs`
 This spec puts it in the `runs` tab, which is the conservative choice, and flags it
 rather than deciding it here.
 
-## 8. Compatibility with spec 1
+## 9. Compatibility with spec 1
 
 **Compatible, with one ordering constraint and one shared file that a first pass missed.**
 
@@ -197,9 +219,9 @@ reason the plan should run the full `vitest` suite rather than only the new test
 Worth stating so nobody assumes a connection that isn't there: spec 1's §3.5 (the position
 context in `(bare)`) and spec 2's tab hosts are unrelated. Spec 1 touches the vehicle
 screens; spec 2 touches the office screens. They share no component, no data, and no
-route. The only seams between them are the nav list and the one file in §8.1.
+route. The only seams between them are the nav list and the one file in §9.1.
 
-## 9. Testing
+## 10. Testing
 
 | File | Asserts | State |
 |---|---|---|
@@ -216,7 +238,7 @@ bookmark is worse than no consolidation. All four old hrefs must be asserted to 
 the right host *and the right view* — `/sales/board` → `/sales/orders?view=board`, not
 just `/sales/orders`.
 
-## 10. Out of scope
+## 11. Out of scope
 
 - **`/sales/routing` stays its own page.** It is a batch optimizer (§2), not a view.
 - **`/planner` is untouched.** It optimizes `visit_plans` for customers and districts,
@@ -224,15 +246,15 @@ just `/sales/orders`.
   day host as a fourth view; naming that here prevents it being assumed done.
 - **No API, schema, or migration change.** Every endpoint stays exactly where it is; this
   is a routing and rendering consolidation only.
-- **`RunTimeline`'s tab placement** — see §7.
+- **`RunTimeline`'s tab placement** — see §8.
 
-## 11. Risk
+## 12. Risk
 
 **Low-to-medium.** No DB migration, no API change, no route removal (four routes become
 redirects). The genuine risks are all about *links*, not code:
 
 1. A hardcoded `href` into a merged route, in a file that isn't a page. `briefing.ts:192`
-   is exactly this and is already inventoried in §6.
+   is exactly this and is already inventoried in §7.
 2. A `loading.tsx` orphaned by its route's move, producing a 404 on a slow connection.
    Delete them with the routes.
 3. `PAGE_META` losing a route that still resolves, which `pageMeta.test.ts` catches but

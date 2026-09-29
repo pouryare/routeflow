@@ -254,7 +254,7 @@ becomes:
 `/leads` removed from both the nav and the allowlist, the two files stay in agreement
 without a new invariant.
 
-### 3.8 The `role = 'driver'` bug, fixed here — but see spec 2 §8
+### 3.8 The `role = 'driver'` bug, fixed here — but see spec 2 §9
 
 Two manager pages query a role that **no longer exists**:
 
@@ -280,7 +280,7 @@ asserting the query returns a real `delivery_driver`.
 
 **This fix lands on a page spec 2 removes.** `/sales/runs/page.tsx` is one of the four
 routes spec 2 folds into `/sales/schedule?view=runs`. So the fix must be carried into
-whichever file ends up owning the run planner, and spec 2 §8 records the handoff. The
+whichever file ends up owning the run planner, and spec 2 §9 records the handoff. The
 alternative — fix it here, have spec 2 move a page containing the identical broken query —
 is how the bug survives. **This is the one place the two specs touch the same file.**
 
@@ -379,7 +379,7 @@ still stands on its own.** That is the entire argument for splitting it.
 
 Ordering is not merely tidy. Commit A is what makes Commit B's §3.3 move *correct*, so B
 cannot be reviewed without A in the tree. And §3.8's fix must land in the same series as
-spec 2, which is the one place the two specs collide (spec 2 §8.1).
+spec 2, which is the one place the two specs collide (spec 2 §9.1).
 
 ## 7. Out of scope
 

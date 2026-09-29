@@ -7,39 +7,54 @@
 
 ---
 
-## 1. What the live data actually says
+## 1. What the code says, independent of the data
 
-This spec started from a wrong assumption, so the first section is the measurement that
-corrected it. Queried against `data/routeflow.db` on 2026-09-29:
+**This section originally led with row counts from the dev database. That was a mistake**,
+and the mistake is worth recording: the dev database is seeded demo data, so a count of
+zero proves nothing about the product and a count of 25 proves nothing either. Every
+conclusion below now rests on the **schema and the code**, which hold whatever the data
+happens to be.
 
-| Query | Result |
-|---|---|
-| `saved_locations` (pins) | **25** |
-| pins that are in a lead list | **25** (all of them) |
-| `lead_list_items` | 76 rows across 14 lists |
-| `lead_list_items` whose pin is gone | **0** |
-| `customers` | **1** (`CRM-…-ksws4w`, lifecycle `qualified`) |
-| `customers` with `lifecycle='lead'` | **0** |
-| `customers` with a `LEAD-` code | **0** |
-| `customers.lead_location_id` set | **0** |
-| `app_meta.lead_pin_foldin_done` | `2026-09-16T23:29:16.573Z` |
-| oldest `saved_locations.created_at` | **`2026-09-19T00:13:40.508Z`** |
-| pins with no `lat`/`lng` | **0** |
+### 1.1 The structural facts
 
-**The fold ran on 16 September. Every pin was created on or after 19 September.**
+**1. The fold is guarded by a one-shot marker.** `lib/db.ts:3072-3075` reads
+`app_meta.lead_pin_foldin_done` and only calls `foldLeadPinsIntoCustomers` when it is
+absent.
 
-`lib/db.ts:3072-3079` guards `foldLeadPinsIntoCustomers` behind a one-shot marker. It
-ran, found nothing, wrote the marker, and will never run again. So the 25 pins that *now*
-satisfy its own `JOIN lead_list_items` predicate are, and will remain, **pins** — because
-they arrived three days after the migration that would have absorbed them.
+**2. A one-shot guard is wrong for a data-dependent migration.** The fold's predicate is
+"a pin that is in a lead list." That is a fact about *rows*, not about time. A marker makes
+it time-dependent: any qualifying row that arrives after the marker is written is never
+promoted, no matter how long it waits. On the dev database the marker is dated
+2026-09-16 and the oldest pin is 2026-09-19, so **every** pin there sits after it — but the
+exact dates are demo artefacts. The defect is the guard, not the gap.
 
-The migration is not half-finished by accident. **It finished, and then the work
-continued in the old shape.**
+**3. So `/leads` and `/crm` can permanently disagree.** A pin promoted to a customer is
+visible to `CRM_ROLES`; a pin still in `saved_locations` is reachable only through
+`/api/locations`, which is `MANAGE_ROLES`. Whether any row is currently in the wrong
+shape depends on the data — but **the code permits it permanently**, and nothing ever
+reconciles the two. That is the incoherence, and it is a property of the code.
 
-**And the obvious fix is a trap.** §4.1 proposes re-running the fold. Measured against the
-live schema, that would **silently destroy 10 of 58 run stops** — see §5. The precondition
-in §5.1 is not an optional refinement; it is the difference between this spec being a fix
-and being a data-loss incident.
+**4. The obvious fix destroys data.** `lead_run_stops.location_id` is
+`REFERENCES saved_locations(id) ON DELETE CASCADE` (schema), and the fold issues
+`DELETE FROM saved_locations WHERE id = ?` (`db.ts:662`). Any pin that is both in a list
+and on a run is deleted, and its stop goes with it — **silently, by design.** How many
+rows that affects depends entirely on the data; on the dev database it is 10 of 25 pins
+and 10 of 58 stops. On a real one it could be zero, or it could be every run. **The
+hazard is structural; only the count is incidental.**
+
+### 1.2 What this changes about the recommendation
+
+None of the design moves. §4.1 still replaces the one-shot guard with a state check, and
+§5.1's `NOT EXISTS` precondition is still mandatory. Both were derived from the schema and
+the code, and both survive the correction.
+
+**What is withdrawn is any claim about product intent.** An earlier draft of this review
+observed that `orders`, `delivery_runs` and `deliveries` were all empty and inferred the
+delivery half of the app was unused or speculative. That inference was wrong: the database
+is a dev seed, so those tables are empty because **nothing has been entered yet**, not
+because the feature is unused. Specs 1–3 are unaffected — none of them rests on row
+counts.
+
 
 ## 2. The incoherence this creates
 
@@ -54,13 +69,13 @@ models:
 | Is it a "lead"? | it *is* one | `lifecycle='lead'` |
 | Reachable by a rep? | **no — 403** | yes |
 
-So **`phone_sales` sees zero leads on `/crm`** (there are none — `lifecycle='lead'` is
-0) and **cannot open `/leads`** (`/api/locations` is manager-gated). A rep with leads to
-work has nowhere to look. Meanwhile a manager looking at `/crm` sees one `qualified`
-customer and no prospects at all, because the 25 real prospects are pins.
+So **a `phone_sales` rep's leads live in the half they cannot read.** A promoted lead is
+visible to them through `/crm`; an unpromoted one is not. The split is decided by whether
+a migration ran, so which of the two pages shows a given lead is a function of *when* it
+was added — a rule no user can hold in their head, and no manager can explain to a rep.
 
-**Neither page shows the truth.** That is the incoherence, and it is why "show me the
-leads" has no single answer in this app.
+**Both pages can be right and still disagree**, because they are reading different tables.
+That is the incoherence, and it is why "show me the leads" has no single answer in this app.
 
 ## 3. What the code already believes
 
@@ -132,32 +147,22 @@ and the capability it unlocks was already built.
   (`lib/repo/leadRuns.ts:62`). Deleting the table would break the driver run.
 - **`/leads` is not merged into `/crm`.** They answer different questions — *places I
   noticed* vs *businesses I know*. Spec 1 already separates them by audience.
-- **No data is invented.** 25 pins become at most 25 leads, and 10 of them wait for their
-  run. Nothing is created, merged, or guessed.
+- **No data is invented.** Every qualifying pin becomes exactly one lead, and pins on an
+  unfinished run wait. Nothing is created, merged, or guessed.
 
 ## 5. Risk
 
-**The data is safe; the deletion is not — and this is the whole risk.**
-
-`lead_run_stops` carries `location_id INTEGER NOT NULL REFERENCES saved_locations(id)
-ON DELETE CASCADE` (verified against the live schema). The fold does
-`DELETE FROM saved_locations WHERE id = ?` (`db.ts:662`).
+**The dangerous part is not the data, it is the `DELETE`.** `lead_run_stops` carries
+`location_id INTEGER NOT NULL REFERENCES saved_locations(id) ON DELETE CASCADE` (schema),
+and the fold issues `DELETE FROM saved_locations WHERE id = ?` (`db.ts:662`).
 
 **So promoting a pin deletes the row its run stop points at, and the cascade takes the
-stop with it — silently.**
+stop with it — silently, and correctly, by the database's own definition of a cascade.**
 
-Measured on live data, this is not hypothetical:
-
-| Query | Result |
-|---|---|
-| `lead_runs` | 6 |
-| `lead_run_stops` | **58** (all `status='planned'` — none finished) |
-| pins in a list **and** on a run | **10 of the 25** |
-| those 10 as a share of all run stops | **10 of 58** |
-
-**Running the fold as it stands would silently destroy 10 stops on 6 live, unfinished runs
-— a fifth of a driver's day, with no error anywhere.** No exception, no failed test, no
-console message. A cascade is the database agreeing to help.
+**This is not a question of how many rows are affected.** On the dev database, where 10 of
+25 pins sit on 6 unfinished runs, it would destroy 10 of 58 stops. On a real database the
+count is different and unknowable in advance — zero, or every run in the business.
+**The guard therefore has to be unconditional, because the exposure cannot be measured.**
 
 This is the reason the naive reading of §4.1 ("just drop the guard and re-run it") is
 wrong, and it is why the spec's own §1 measurement mattered: had I designed this from the
@@ -212,8 +217,18 @@ combination that destroys data quietly, and the repo has no guard against it.
 
 - **Spec 1 and spec 2 land first.** They change `/leads` and the pages around it; this
   spec changes what `/leads` *holds*. Doing it first means redoing the framing.
-- **The three-maps consolidation** (`CoverageMap` / `LeadsMap` / `PlannerRouteMap`) — a
-  real coherence issue, with its own risk profile.
-- **The vocabulary cleanup** ("route" meaning four different things) — naming, not data.
-  Follows the pages settling.
 - **No UI work beyond the §4.2 copy.** The page's structure is spec 1's business.
+
+**Two items previously listed here are withdrawn, and the reasons are worth keeping:**
+
+- **The three-maps consolidation** (`CoverageMap` / `LeadsMap` / `PlannerRouteMap`) is
+  **not a real problem.** Measured: `CoverageMap` is 2,513 lines with clustering, GeoJSON
+  districts, heat layers and panes; `LeadsMap` is 309 and `PlannerRouteMap` is 141. They
+  share a *library* (react-leaflet), not a component, and the two small ones share no
+  duplicated logic — the `_leaflet_id` remount workaround exists only in `LeadsMap`.
+  Merging them would produce one file with a mode flag. **Dropped, not deferred.**
+- **The "route means four things" vocabulary problem** was measured and is **one stale
+  sentence, not a systemic issue.** The app already uses سفر for a run, بازدید for a
+  visit, and مسیر for the optimized order, and `/sales/routing`'s own copy says its output
+  is «سفرهای تحویل». The residue is `/planner` calling a visit sequence a *مسیر*. **Fixed
+  as a copy change in spec 2**, not a spec.
