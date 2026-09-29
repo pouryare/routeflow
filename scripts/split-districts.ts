@@ -41,6 +41,23 @@ const rows = db
 const now = new Date().toISOString();
 let split = 0;
 let created = 0;
+let skipped = 0;
+
+// Add, never split. customers.district_id is a plain INTEGER foreign key, and the split
+// below gives the largest piece the ORIGINAL row id while the new piece gets a fresh one.
+// No customer is moved. So every customer in a split محله would keep the old classification
+// even when they are geographically in the other half, and nothing re-derives them until
+// someone edits that customer -- silent, and permanent.
+//
+// Before a seed this is a no-op; after one it is corruption. It is the same shape as the
+// pin fold deleting a run stop mid-run (a98ae50) and the fourth FK referrer (d523fe3), and
+// the reason the alternative is to ADD a district rather than divide one: an is_custom row
+// nested inside an existing one wins on specificity, so nothing has to be renumbered.
+const customersPerDistrict = new Map<number, number>(
+  (db
+    .prepare("SELECT district_id, COUNT(*) n FROM customers WHERE district_id IS NOT NULL GROUP BY district_id")
+    .all() as unknown as { district_id: number; n: number }[]).map((r) => [r.district_id, r.n])
+);
 
 for (const row of rows) {
   let geometry: PolyGeometry;
@@ -51,6 +68,19 @@ for (const row of rows) {
   }
   const pieces = planSplit(row.name, geometry);
   if (!pieces) continue;
+
+  // The refusal. Checked before the dry-run printout too, so a dry run tells an operator
+  // the truth about what --apply would do rather than promising a split it will not perform.
+  const referencing = customersPerDistrict.get(row.id) ?? 0;
+  if (apply && referencing > 0) {
+    skipped++;
+    console.log(
+      `\n${row.name} (id ${row.id}) -- SKIPPED, ${referencing} customer(s) point at it. ` +
+        `Splitting would leave them classified into the wrong half. Add a district for the ` +
+        `other place instead (scripts/assign-district-codes.ts will code it).`
+    );
+    continue;
+  }
 
   split++;
   console.log(`\n${row.name} (${row.parent_name ?? "—"}, id ${row.id}) -> ${pieces.length} districts`);
@@ -84,8 +114,13 @@ for (const row of rows) {
   }
 }
 
+// Silent is the failure mode this whole script is about, so a refused split is reported
+// with the same weight as a performed one. An operator who ran --apply and saw only
+// "0 new rows" would have no idea a split had been declined and why.
 console.log(
-  `\n${split} district(s) were really two places; ${apply ? `${created} new row(s) created` : "run again with --apply to fix"}.`
+  `\n${split} district(s) were really two places; ` +
+    `${apply ? `${created} new row(s) created` : "run again with --apply to fix"}` +
+    `${skipped ? `; ${skipped} skipped because customers point at them (add a district instead)` : ""}.`
 );
 if (apply && created > 0) {
   // centroids and the geometry payload are both derived from boundary_geojson.
