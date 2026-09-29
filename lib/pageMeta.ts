@@ -31,7 +31,11 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/leads": {
     title: "پین‌های نقشه",
     overview:
-      "مکان‌هایی که از روی لینک نقشه ذخیره شده‌اند و هنوز سرنخ نشده‌اند. امتیاز بدهید و آن‌هایی که ارزش بازدید دارند را به یک روز کاری تبدیل کنید.",
+      /* The inbox, not a half-finished CRM. Every pin here is one nobody has DECIDED
+       * about yet: the moment you add it to a list it becomes a سرنخ and stops being a
+       * dot on a map. So the verb on this page is «افزودن به فهرست», and the copy names
+       * the two questions the two pages answer. */
+      "مکان‌هایی که روی نقشه دیده‌اید و هنوز دربارهٔ آن‌ها تصمیم نگرفته‌اید. هر پینی که به یک فهرست اضافه شود، سرنخ می‌شود و از این صفحه می‌رود. «پین‌های نقشه» جای مکان‌هایی است که دیده‌اید، «مشتریان و سرنخ‌ها» جای کسب‌وکارهایی که می‌شناسید.",
   },
 
   // روز من

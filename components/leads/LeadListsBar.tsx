@@ -90,7 +90,18 @@ export default function LeadListsBar({
    * border, a radius and a shadow -- wrapping it in another bordered section put a box
    * inside a box and read as two surfaces where there is one. */
   return (
-    <CollapsibleSection title="فهرست‌ها" icon="list" storageKey="leads_lists" keywords="فهرست ذخیره">
+    /* The title names the COMMIT, not just the storage. Since spec
+       2026-09-29-one-lead-one-place, adding a pin to a list is what MAKES it a lead --
+       the fold promotes it to `customers` and it leaves /leads. So this box is not
+       where pins are filed away; it is the decision.
+       Copy only: the «تبدیل به مشتری» button keeps its place, because the page's
+       structure is spec 1's business. */
+    <CollapsibleSection
+      title="فهرست‌ها — با افزودن پین به فهرست، سرنخ می‌شود"
+      icon="list"
+      storageKey="leads_lists"
+      keywords="فهرست ذخیره"
+    >
       {lists.length === 0 ? (
         <p className="py-2 text-[length:var(--text-xs)] text-text-faint">هنوز فهرستی ساخته نشده است.</p>
       ) : (
