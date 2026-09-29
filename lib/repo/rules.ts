@@ -398,11 +398,16 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
     entity_id: number;
     message: string;
   }[]) {
-    // reminders carry no organization_id -- only fire for reminders whose entity is in THIS org
+    // Reminders carry no organization_id of their own, so the entity decides who may see
+    // them. A customer is owned, and the check is membership. A district is shared
+    // reference data (see the districts rebuild in lib/db.ts), so the check is existence --
+    // every org's reminder on a shared district is due, and filtering by organization_id
+    // would suppress all of them. The column that filter named is gone, so leaving the
+    // query alone would throw here on every district reminder rather than merely mis-scope.
     const inOrg =
       r.entity_type === "customer"
         ? db.prepare("SELECT 1 FROM customers WHERE id = ? AND organization_id = ?").get(r.entity_id, organizationId)
-        : db.prepare("SELECT 1 FROM districts WHERE id = ? AND organization_id = ?").get(r.entity_id, organizationId);
+        : db.prepare("SELECT 1 FROM districts WHERE id = ?").get(r.entity_id);
     if (inOrg) consider("notify_reminder_due", r.entity_type, r.entity_id, { meta: { message: r.message } });
   }
 

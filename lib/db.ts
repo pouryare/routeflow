@@ -47,7 +47,11 @@ export function plain<T>(rows: T[]): T[] {
 export const TENANT_TABLES = [
   "groups",
   "customers",
-  "districts",
+  /* districts is deliberately ABSENT: it is shared geography, not tenant data. Tehran's
+     22 منطقه are the same for every organisation, and per-tenant copies of the same
+     polygons can drift apart until منطقه 14 means two different places. It was in this
+     list, which meant the sweeps below re-ALTERed an organization_id onto it and stamped
+     it to 1 on every row, every boot. */
   "facilities",
   "saved_locations",
   "lead_import_jobs",
@@ -141,6 +145,77 @@ function rebuildForTenantUnique(
     `);
   } finally {
     db.exec("PRAGMA foreign_keys = ON;");
+  }
+}
+
+/** Rebuild `districts` back to shared reference data: no organization_id, plain natural key.
+ *
+ *  The mirror image of rebuildForTenantUnique, and it exists because that helper copies
+ *  every column by name out of PRAGMA table_info. That is right for a table whose columns do
+ *  not change -- which is all rebuildForTenantUnique is for -- but this one DROPS a column,
+ *  so the generic copy list would name a column the replacement does not have. Hence an
+ *  explicit list, and hence the row-count assertion below.
+ *
+ *  The count assertion is the point. This is the only place in getDb() that can drop a
+ *  populated table, and it is the same shape of catastrophe as the pin fold deleting a run
+ *  stop mid-run (a98ae50): a rebuild that quietly lost rows would leave districts
+ *  half-populated with no error anywhere. So it counts before, counts after, and throws if
+ *  they differ. Zero rows in, zero rows out is the expected case and must also pass.
+ *
+ *  Guarded on the constraint text, like its siblings, so a database already migrated is a
+ *  no-op and a fresh one migrates once. */
+function rebuildDistrictsShared(db: DatabaseSync): void {
+  const schema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'districts'")
+    .get() as { sql: string } | undefined;
+  if (!schema || schema.sql.includes("UNIQUE(name, level, parent_name)")) return;
+
+  // Every column that survives, in the order the replacement declares them. If one of these
+  // is left out of either list the copy silently loses it, so the two lists are written out
+  // rather than derived.
+  const KEEP = [
+    "id", "name", "level", "parent_name", "boundary_geojson", "coverage_status",
+    "notes", "is_custom", "updated_at", "assigned_to", "centroid_lat", "centroid_lng", "group_id",
+  ];
+  const cols = KEEP.map((c) => `"${c}"`).join(", ");
+
+  const before = (db.prepare("SELECT COUNT(*) c FROM districts").get() as { c: number }).c;
+
+  db.exec("PRAGMA foreign_keys = OFF;");
+  try {
+    db.exec(`
+      DROP TABLE IF EXISTS districts_tn_new;
+      CREATE TABLE districts_tn_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        level TEXT NOT NULL CHECK (level IN ('mantaghe', 'mahalle')),
+        parent_name TEXT,
+        boundary_geojson TEXT NOT NULL,
+        coverage_status TEXT NOT NULL DEFAULT 'unknown'
+          CHECK (coverage_status IN ('visited', 'needs_coverage', 'not_allowed', 'unknown')),
+        notes TEXT,
+        is_custom INTEGER NOT NULL DEFAULT 0,
+        updated_at TEXT NOT NULL,
+        assigned_to TEXT,
+        centroid_lat REAL,
+        centroid_lng REAL,
+        group_id INTEGER REFERENCES groups(id),
+        UNIQUE(name, level, parent_name)
+      );
+      INSERT INTO districts_tn_new (${cols}) SELECT ${cols} FROM districts;
+      DROP TABLE districts;
+      ALTER TABLE districts_tn_new RENAME TO districts;
+    `);
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
+  }
+
+  const after = (db.prepare("SELECT COUNT(*) c FROM districts").get() as { c: number }).c;
+  if (after !== before) {
+    throw new Error(
+      `rebuildDistrictsShared lost rows: ${before} before, ${after} after. The table is now ` +
+      `${after} rows and the copy list is wrong -- restore from backups/ before going further.`
+    );
   }
 }
 
@@ -2751,29 +2826,10 @@ export function getDb(): DatabaseSync {
     );`
   );
 
-  rebuildForTenantUnique(
-    db,
-    "districts",
-    "UNIQUE (organization_id, name, level, parent_name)",
-    `CREATE TABLE districts_tn_new (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      name TEXT NOT NULL,
-      level TEXT NOT NULL CHECK (level IN ('mantaghe', 'mahalle')),
-      parent_name TEXT,
-      boundary_geojson TEXT NOT NULL,
-      coverage_status TEXT NOT NULL DEFAULT 'unknown'
-        CHECK (coverage_status IN ('visited', 'needs_coverage', 'not_allowed', 'unknown')),
-      notes TEXT,
-      is_custom INTEGER NOT NULL DEFAULT 0,
-      updated_at TEXT NOT NULL,
-      assigned_to TEXT,
-      centroid_lat REAL,
-      centroid_lng REAL,
-      group_id INTEGER REFERENCES groups(id),
-      organization_id INTEGER REFERENCES organizations(id),
-      UNIQUE (organization_id, name, level, parent_name)
-    );`
-  );
+  // Shared geography, so the opposite of its seven siblings: this one REMOVES the tenant
+  // scoping rather than adding it. It has to run before the group_id and centroid ALTERs
+  // below, which then re-add those columns to the fresh table.
+  rebuildDistrictsShared(db);
 
   rebuildForTenantUnique(
     db,

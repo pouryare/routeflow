@@ -49,20 +49,22 @@ export async function POST(req: NextRequest) {
   try {
     const result = db
       .prepare(
-        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, group_id, updated_at, organization_id)
-         VALUES (?, 'mahalle', NULL, ?, ?, ?, 1, ?, ?, ?)`
+        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, group_id, updated_at)
+         VALUES (?, 'mahalle', '', ?, ?, ?, 1, ?, ?)`
       )
-      // A custom district belongs to whoever drew it. An owner draws for nobody in
-      // particular, so theirs is left unowned until territory is assigned explicitly --
-      // but it still belongs to the drawer's organisation.
+      // A custom district belongs to nobody in the tenant sense: districts is shared
+      // reference data, so a boundary an owner draws is visible to the whole install and
+      // carries no organization_id. The group_id is what scopes it for territory -- an
+      // owner's own group until territory is reassigned. parent_name is '' and not NULL
+      // because UNIQUE(name, level, parent_name) treats every NULL as distinct from every
+      // other NULL, so a NULL here would let a second identical draw through.
       .run(
         name.trim(),
         JSON.stringify(geometry),
         status,
         notes ?? null,
         guard.session.groupId,
-        now,
-        guard.session.organizationId
+        now
       );
     return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
   } catch (e) {
