@@ -6,14 +6,36 @@
 // Safe to re-run: INSERT OR IGNORE, never overwrites a status a user already set.
 import fs from "node:fs";
 import path from "node:path";
-import { getDb } from "../lib/db.ts";
+import { fileURLToPath } from "node:url";
+import { DatabaseSync } from "node:sqlite";
 
+// Checked by casting each town's centroid against the bakhsh polygons in
+// data/bakhsh-districts.json. بومهن sits in بخش بومهن and آبعلی and رودهن both in
+// بخش رودهن -- all three are شهرستان ری, roughly 40km from دماوند, which is where the
+// old single-entry map sent them. The other four were already right.
 const PARENT_COUNTY: Record<string, string> = {
   پردیس: "شهرستان پردیس",
+  بومهن: "شهرستان ری",
+  آبعلی: "شهرستان ری",
+  رودهن: "شهرستان ری",
+  دماوند: "شهرستان دماوند",
+  آبسرد: "شهرستان دماوند",
+  کیلان: "شهرستان دماوند",
 };
+// Only reached if a town is added to outer-towns.json without a county above. Naming
+// دماوند is the safer guess of the two: it is the county the other three fall in.
 const DEFAULT_PARENT = "شهرستان دماوند";
 
-const db = getDb();
+// Opens the database directly rather than through lib/db.ts: a seed is a data load, not
+// a boot, and lib/db.ts pulls in the rest of the app -- which Node's type stripping cannot
+// resolve without a bundler (ERR_MODULE_NOT_FOUND on lib/repo/retiredWording). The same
+// reason, and the same fix, as scripts/split-districts.ts:17-22.
+const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(ROOT, "data", "routeflow.db");
+const db = new DatabaseSync(DB_PATH);
+db.exec("PRAGMA journal_mode = WAL;");
+db.exec("PRAGMA foreign_keys = ON;");
+
 const now = new Date().toISOString();
 
 const towns = JSON.parse(fs.readFileSync(path.join(process.cwd(), "data", "outer-towns.json"), "utf8"));
