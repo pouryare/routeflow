@@ -95,8 +95,13 @@ describe("role prefixes", () => {
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/driver");
   });
-  it("lets a driver into their lead run", () => {
-    expect(proxy(req("/leads", "delivery_driver")).status).toBe(200);
+  it("sends a driver hitting the lead pool back to their own day", () => {
+    // /leads is the office now. The pool is the pin board, /driver is My Day, and both
+    // kinds of work a driver holds are on the second one -- so a driver asking for the
+    // pool is asking for a page that holds none of their work.
+    const res = proxy(req("/leads", "delivery_driver"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/driver");
   });
   it("lets a driver record the visit at the door", () => {
     // The route has admitted a driver in requireRole since it was written, but it sits
@@ -133,22 +138,20 @@ describe("a driver's menu and this gate agree", () => {
  *  Asserting BOTH directions is what turns that from an invisible security hole into a red
  *  test. */
 describe("the menu and the gate agree, in BOTH directions", () => {
-  /* /leads is deliberately EXCLUDED from PATHS, and the reason is worth writing down.
+  /* /leads is now in PATHS. It used to be EXEMPT from this list, and the reason is worth
+   * keeping, because the exemption was an admission.
    *
-   * It is a dual-purpose page: for a van role it is the run they work (توقف‌های من), and
-   * for a rep-lead it is the pin board (پین‌های نقشه). The page has no server-side role
-   * gate at all — it branches on `isManager` from /api/me and simply does not fetch for a
-   * non-manager. So the proxy CANNOT refuse it without breaking the driver's day, and the
-   * menu's `isRepLead` is the only thing hiding it from a phone seller.
+   * The page had no server-side role gate at all — it branched on `isManager` from
+   * /api/me and simply did not fetch for a non-manager — and `isManager` is
+   * `!isVanRole`, so a phone seller satisfied it. The proxy therefore COULD NOT refuse
+   * /leads without breaking a driver's day, and the menu's `isRepLead` was the only thing
+   * hiding it from a rep. Reachable but empty is a weaker promise than "refused".
    *
-   * That means this path is menu-gated, not gate-gated: a phone seller who types the URL
-   * gets a page that renders empty and fetches nothing. Reachable but empty is a weaker
-   * promise than "refused", and it is the pre-existing design. It is called out here
-   * rather than silently asserted, because a test that quietly exempts a path is a test
-   * that will not notice when that path starts leaking data.
-   *
-   * Everything else below IS gate-gated, and the both-directions assertion is real. */
-  const PATHS = ["/crm", "/report", "/sales/orders", "/driver", "/sales/pocket"];
+   * That is fixed (spec 2026-09-29-leads-manager-only-driver-my-day section 3.2): the
+   * allowlist entry is gone, so a van role is sent to /driver, and a role that is not a
+   * rep-lead is sent to /crm. The page is one audience now, so it can be on PATHS and the
+   * both-directions assertion below is real for it. */
+  const PATHS = ["/crm", "/report", "/sales/orders", "/driver", "/sales/pocket", "/leads"];
 
   /* The ONE admitted-without-a-tab case, and it is deliberate (spec §4.3 / P9).
    *
@@ -203,17 +206,20 @@ describe("the menu and the gate agree, in BOTH directions", () => {
   });
 
   it("gives a van role only the van menu", () => {
-    expect(appTabs({ role: "field_rep" } as never).filter((t) => t.ready).length).toBe(3);
-    expect(appTabs({ role: "delivery_driver" } as never).filter((t) => t.ready).length).toBe(3);
+    expect(appTabs({ role: "field_rep" } as never).filter((t) => t.ready).length).toBe(2);
+    expect(appTabs({ role: "delivery_driver" } as never).filter((t) => t.ready).length).toBe(2);
   });
 
-  it("a phone sales rep reaches /leads but sees nothing there — the pre-existing dual-purpose page", () => {
-    // Documenting the gap above rather than asserting it is fixed. If a future change makes
-    // /leads role-gated, THIS test fails and someone has to decide what the right answer is.
-    const admitted = proxy(req("/leads", "phone_sales")).status === 200;
+  it("refuses a phone sales rep the pin pool, and sends them where their leads actually live", () => {
+    // This is the hole the both-directions note below used to EXEMPT and document: /leads
+    // had no server-side role gate at all, and `isManager` is `!isVanRole`, so a rep
+    // satisfied it and reached the pool AND the «سپردن مسیر» hand-off on a URL nobody
+    // checked. The nav hid it (isRepLead); the gate did not. Now both agree.
+    const res = proxy(req("/leads", "phone_sales"));
+    expect(res.status).toBe(307);
+    expect(res.headers.get("location")).toContain("/crm");
     const shown = new Set(appTabs({ role: "phone_sales" } as never).filter((t) => t.ready).map((t) => t.href));
     expect(shown.has("/leads")).toBe(false);
-    expect(admitted).toBe(true);
   });
 });
 

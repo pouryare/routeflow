@@ -197,14 +197,46 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/settings") ||
     pathname.startsWith("/api/notifications") ||
     pathname.startsWith("/api/push/subscribe") ||
-    // The lead run a driver works. /api/leads/locations/[id]/visit has admitted a driver
-    // in requireRole since it was written, but it lives under /api/leads rather than
-    // /api/crm/driver-visits -- so the gate below answered every visit a driver tried to
-    // record, and the route never ran. The allowlist is what lets the request arrive.
-    pathname === "/leads" ||
+    // The lead run a driver works, and the visit recorded at the door.
+    // /api/leads/locations/[id]/visit has admitted a driver in requireRole since it was
+    // written, but it lives under /api/leads rather than /api/crm/driver-visits -- so the
+    // gate below answered every visit a driver tried to record, and the route never ran.
+    // The allowlist is what lets the request arrive.
+    //
+    // `/leads` was on this list and is not any more: the page is the office's pin pool
+    // now, and the driver's own work is on /driver, which they are already allowed. With
+    // this line gone, the `isVan` gate below catches a van role asking for the pool and
+    // sends them to their own day. There is deliberately no second /leads check further
+    // down -- the two-tier gate already says it, and a third copy is how a gate drifts.
     pathname.startsWith("/api/leads/locations") ||
     pathname.startsWith("/api/lead-runs");
   if (isVan && !isDriver && !isSync && !isDriverBriefing) return deny("/driver");
+
+  /* /leads is the office's pin pool, and the pool is a manager's tool. The allowlist
+     above describes who a VAN role may reach -- it says nothing about a rep who should
+     not. `isManager` is `!isVanRole`, so a phone_sales rep satisfies every manager
+     comparison in the app and reached the pool and the «سپردن مسیر» hand-off, on a URL
+     the nav hid but the gate never checked.
+
+     appNav.ts already draws the line: /leads is `ready: isRepLead(r)`. This makes the
+     gate match it, so the nav is a gate rather than a suggestion.
+
+     /crm rather than /sales, because that is where a rep's leads actually live:
+     crm/page.tsx redirects a van role and otherwise opens on today's follow-ups, and
+     /api/crm/businesses admits CRM_ROLES -- which includes phone_sales.
+
+     Placed AFTER the isVan gate on purpose. A van role must be sent to /driver (their
+     own day, which now holds both kinds of work) rather than /crm -- which would bounce
+     them straight back, because the isCrm gate above 403s them first. */
+  const isPinPool = pathname === "/leads" || pathname.startsWith("/leads/");
+  if (
+    isPinPool &&
+    claims.role !== "owner" &&
+    claims.role !== "group_manager" &&
+    claims.role !== "rep_manager"
+  ) {
+    return deny("/crm");
+  }
 
   return NextResponse.next();
 }

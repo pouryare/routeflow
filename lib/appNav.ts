@@ -62,13 +62,17 @@ const isRepLead = (r: Role) => r === "owner" || r === "group_manager" || r === "
  *  against each other in tests/proxy.test.ts -- a tab marked ready here that the gate would
  *  redirect is a lie the driver can click, and that test is what stops it coming back.
  *
- *  /leads is the lead run: the stops they drive, in order, with what happened at each one.
+ *  Two tabs. /leads used to be the third, labelled «توقف‌های من» here and «پین‌های نقشه» on
+ *  the same href for a rep lead -- one destination, two names, depending on who was
+ *  holding the keys. The stops they drive are now the second section of /driver, where a
+ *  dual-hat person sees them and their deliveries together rather than navigating between
+ *  two pages for one working day.
+ *
  *  The objection library is here because it is useful standing at the door, which is the
  *  same reason proxy.ts allowlists it.
  */
 const DRIVER_TABS: AppTab[] = [
   { href: "/driver", label: "روز من", group: "day", ready: true },
-  { href: "/leads", label: "توقف‌های من", group: "day", ready: true },
   { href: "/sales/academy", label: "آموزش", group: "day", ready: true },
 ];
 

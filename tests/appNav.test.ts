@@ -182,8 +182,10 @@ describe("each role's menu", () => {
 describe("a driver's menu", () => {
   const driver = appTabs({ role: "delivery_driver" });
 
-  it("is their round, their stops and the door library, and nothing else", () => {
-    expect(driver.map((t) => t.href)).toEqual(["/driver", "/leads", "/sales/academy"]);
+  it("is their whole day and the door library, and nothing else", () => {
+    // /leads is the office's pin pool now. The stops a driver drives are the second
+    // section of /driver, so a dual-hat person sees both jobs on one page.
+    expect(driver.map((t) => t.href)).toEqual(["/driver", "/sales/academy"]);
   });
 
   it("keeps the customer and coverage surface off the vehicle", () => {
@@ -192,11 +194,10 @@ describe("a driver's menu", () => {
   });
 
   it("is one group, so the header offers a menu rather than a row of lone pills", () => {
-    const m = pillModel(driver, APP_GROUPS, "/leads");
+    const m = pillModel(driver, APP_GROUPS, "/driver");
     expect(m.groups.map((g) => g.id)).toEqual(["day"]);
     expect(m.tabsByGroup.day.map((t) => t.href)).toEqual([
       "/driver",
-      "/leads",
       "/sales/academy",
     ]);
   });
