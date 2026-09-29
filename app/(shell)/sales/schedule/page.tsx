@@ -1,16 +1,46 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, groupFilter } from "@/lib/session";
+import { getSessionFromCookies, groupFilter, orderFilter, type Session } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { toJalali, jalaliToIsoDate, jalaliMonthGrid } from "@/lib/jalali";
 import ScheduleBoard from "@/components/meridian/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 import PageHeader from "@/components/meridian/PageHeader";
 import { Icon } from "@/components/meridian/Icon";
-import { isVanRole } from "@/lib/roles";
+import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
+import { oneOf, type SearchParams } from "@/lib/viewParam";
+import { isVanRole, VAN_ROLES } from "@/lib/roles";
+import { readOrders } from "@/lib/orders";
+import RunPlanner from "@/components/sales/RunPlanner";
+import AssignmentBoard from "@/components/sales/AssignmentBoard";
+import RunTimeline, { type TimelineStop } from "@/components/sales/RunTimeline";
+import DriverStreaks from "@/components/sales/DriverStreaks";
+import { readDriverActivity } from "@/lib/repo/driverActivity";
+import { buildStreak } from "@/lib/streak";
+import type { DatabaseSync } from "node:sqlite";
 
 export const dynamic = "force-dynamic";
+
+/** برنامه / سفرها — what is planned, and who is carrying it.
+ *
+ *  The month grid was already the spine: this page queries delivery_runs AND
+ *  visit_plans and merges them into one calendar, which is the answer to "the day's
+ *  plan". Assignment is the same subject read one verb later — "whose van is it" rather
+ *  than "what is on". So it is a second view of this page, not a separate route.
+ *
+ *  `RunTimeline` stays inside the runs view rather than earning a third tab. It shows
+ *  runs in progress and recently finished, which is a third question from the month
+ *  ahead — but a third tab here would put three *views* of one page into the nav group
+ *  the header draws its own tab row from, so the two rows would answer the same
+ *  question. Spec 2 section 8 flags this; the conservative placement wins for now. */
+const DAY_VIEWS = ["", "runs"] as const;
+type DayView = (typeof DAY_VIEWS)[number];
+
+const DAY_TABS: ViewTab[] = [
+  { value: "", label: "برنامه", route: "/sales/schedule" },
+  { value: "runs", label: "سفرها", route: "/sales/schedule" },
+];
 
 /** برنامهٔ روز — the artifact's fifth screen.
  *
@@ -21,13 +51,140 @@ export const dynamic = "force-dynamic";
  *  day's plan" means routes, visits, or both is a product decision, not a layout one, so
  *  the notice says so rather than the screen inventing an answer.
  */
-export default async function SchedulePage() {
+/** «سفرها» — assigning the day's orders to vans. Which was /sales/runs.
+ *
+ *  The queries below are moved, not retyped. The driver list in particular: it read
+ *  `role = 'driver'`, which matched nobody after lib/db.ts renamed that role to
+ *  `delivery_driver`, and spec 1 (2026-09-29-leads-manager-only-driver-my-day section
+ *  3.8) fixed it to the van-role set. Carrying the SET is the point of this comment: a
+ *  copy of the old query would silently reintroduce the empty dropdown in its new home.
+ *
+ *  Only confirmed orders are offered. A draft is a list somebody is still editing, and
+ *  loading a van from one means the quantities can change after it has left the depot. */
+function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
+  const userScope = groupFilter(session);
+
+  const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
+  const drivers = plain(
+    db
+      .prepare(
+        `SELECT id, display_name FROM users
+          WHERE role IN (${vanRoleList}) AND active = 1${userScope.sql}
+          ORDER BY display_name`,
+      )
+      .all(...userScope.params),
+  ) as unknown as { id: number; display_name: string }[];
+
+  const runScope = groupFilter(session, "dr.group_id");
+  const runs = plain(
+    db
+      .prepare(
+        `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, u.display_name AS driver_name,
+                COUNT(ds.id) AS stop_count,
+                COALESCE(SUM(CASE WHEN ds.status = 'pending' THEN 1 ELSE 0 END), 0) AS remaining
+           FROM delivery_runs dr
+           JOIN users u ON u.id = dr.driver_user_id
+           LEFT JOIN delivery_stops ds ON ds.run_id = dr.id
+          WHERE 1 = 1${runScope.sql}
+          GROUP BY dr.id
+          ORDER BY dr.run_date DESC, dr.id DESC
+          LIMIT 30`,
+      )
+      .all(...runScope.params),
+  ) as unknown as {
+    id: number;
+    run_date: string;
+    status: string;
+    driver_user_id: number;
+    driver_name: string;
+    stop_count: number;
+    remaining: number;
+  }[];
+
+  /* Every stop on the runs above, in delivery order, with the order total each carries.
+     One query for all runs rather than one per run: at 30 runs the per-run version is
+     30 round trips to answer a question SQLite can answer once. */
+  const stopScope = groupFilter(session, "dr.group_id");
+  const stopRows = plain(
+    db
+      .prepare(
+        `SELECT ds.id, ds.run_id, ds.status, o.order_no,
+                COALESCE(c.business_name, '—') AS customer_name,
+                COALESCE(SUM(ol.packs_ordered * ol.unit_price_toman), 0) AS total_toman
+           FROM delivery_stops ds
+           JOIN delivery_runs dr ON dr.id = ds.run_id
+           JOIN orders o ON o.id = ds.order_id
+           LEFT JOIN customers c ON c.id = o.customer_id
+           LEFT JOIN order_lines ol ON ol.order_id = o.id
+          WHERE 1 = 1${stopScope.sql}
+          GROUP BY ds.id
+          ORDER BY ds.run_id, ds.sort_order, ds.id`,
+      )
+      .all(...stopScope.params),
+  ) as unknown as (TimelineStop & { run_id: number })[];
+
+  const stopsByRun = new Map<number, TimelineStop[]>();
+  for (const row of stopRows) {
+    const { run_id, ...stop } = row;
+    if (!stopsByRun.has(run_id)) stopsByRun.set(run_id, []);
+    stopsByRun.get(run_id)!.push(stop);
+  }
+
+  // Confirmed orders not already on a run -- the pool a manager is choosing from.
+  const unassigned = readOrders(db, orderFilter(session), { status: "CONFIRMED", limit: 200 }).filter(
+    (order) => db.prepare("SELECT 1 FROM delivery_stops WHERE order_id = ?").get(order.id) === undefined,
+  );
+
+  const today = new Date().toISOString().slice(0, 10);
+
+  return (
+    <div className="flex flex-col gap-[var(--space-6)]">
+      <RunPlanner drivers={drivers} />
+      <AssignmentBoard
+        runs={runs}
+        orders={unassigned.map((o) => ({
+          id: o.id,
+          order_no: o.order_no,
+          customer_name: o.customer_name,
+          total_toman: o.total_toman,
+          order_date: o.order_date,
+        }))}
+      />
+      <RunTimeline
+        runs={runs.filter((r) => r.status !== "done").map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}
+      />
+      <DriverStreaks
+        people={readDriverActivity(db, session, today).map((d) => ({
+          id: d.id,
+          name: d.name,
+          streak: buildStreak(d.dates, today, 12),
+        }))}
+      />
+    </div>
+  );
+}
+
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
+  const params = (await searchParams) as SearchParams;
+  const view: DayView = oneOf(params, DAY_VIEWS, "");
+
+  /* Carried over from /sales/runs, and load-bearing. proxy.ts's isBatchAdmin covers
+     /sales/runs and /sales/deliveries by PREFIX, so it no longer covers this page once
+     the planner moved here -- a phone_sales rep would otherwise be let in and shown the
+     delivery-run planner. The gate is now the page's own, and it must stay. */
+  if (view === "runs" && session.role === "phone_sales") redirect("/sales");
+
   const db = getDb();
+  if (view === "runs") return <RunsView db={db} session={session} />;
   // Qualified: the runs query joins delivery_runs to users, and for an owner this
   // fragment filters on organization_id -- a column both tables carry.
   const scope = groupFilter(session, "r.group_id");
@@ -95,6 +252,7 @@ export default async function SchedulePage() {
   return (
     <>
     <PageHeader route="/sales/schedule" />
+    <ViewTabs tabs={DAY_TABS} current={view} />
     <>
       <div className="legend2">
         <span className="legend2__t">هدف سفر:</span>

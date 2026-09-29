@@ -33,6 +33,8 @@ const EXEMPT: Record<string, string> = {
     "A redirect to /sales/orders?view=journey. Same reason as the board: a view, not a page.",
   "app/(shell)/sales/deliveries/page.tsx":
     "A redirect to /sales/orders. Its content went to the order detail page and the /today retry panel.",
+  "app/(shell)/sales/runs/page.tsx":
+    "A redirect to /sales/schedule?view=runs. The planner became a view of the day host; it renders nothing.",
   "app/(shell)/sales/orders/[id]/page.tsx":
     "A detail view of ONE order. The overview card prints the section's title and blurb, " +
     "which would be the wrong copy over a single record. Giving detail routes a header of " +

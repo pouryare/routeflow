@@ -53,9 +53,18 @@ describe("the day host serves two views", () => {
     /* The driver list used to read `role = 'driver'`, which matched nobody after
        lib/db.ts renamed that role. Spec 1 Task 9 fixed it; this task must MOVE the fix
        rather than retype the old query, so the dropdown does not go silently empty
-       again in its new home. */
-    expect(host, "the planner must build its driver list from VAN_ROLES").toContain("VAN_ROLES");
-    expect(host).not.toMatch(/role\s*=\s*'driver'/);
+       again in its new home.
+
+       Comments are stripped, and deliberately: the fix's own comment has to name the old
+       predicate to explain the bug, and a test that forbids a string must not forbid
+       the sentence explaining why it was removed. */
+    const code = host
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l) => !/^\s*\/\//.test(l))
+      .join("\n");
+    expect(code, "the planner must build its driver list from VAN_ROLES").toContain("VAN_ROLES");
+    expect(code).not.toMatch(/role\s*=\s*'driver'/);
   });
 });
 
