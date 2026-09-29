@@ -86,3 +86,8 @@ tmp/
 __pycache__/
 *.pyc
 tmp/visual/
+
+# graphify knowledge-graph output (see .clinerules/workflows/graphify.md).
+# Generated HTML, a SHA256 cache and graph.json — never source.
+graphify-out/
+.graphifyignore
