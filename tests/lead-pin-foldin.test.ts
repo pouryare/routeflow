@@ -137,10 +137,50 @@ describe("lead-pin fold-in", () => {
     expect(db.prepare("SELECT 1 FROM saved_locations WHERE id=?").get(pinId)).toBeUndefined();
   });
 
-  it("records that it ran, so the boot migration skips it", () => {
-    const marker = getDb()
-      .prepare("SELECT value FROM app_meta WHERE key = 'lead_pin_foldin_done'")
-      .get();
-    expect(marker).toBeTruthy();
+  it("still runs when the one-shot marker is set", () => {
+    /* The regression this task exists to prevent.
+     *
+     * The boot call site guarded the fold on `app_meta.lead_pin_foldin_done`, which makes
+     * a data-dependent migration time-dependent: a pin added to a lead list today would
+     * never be promoted, on any future boot, however long it waited. The marker is written
+     * once and the guard then hides the fold forever.
+     *
+     * This asserts the FUNCTION's behaviour; the next test is what checks the call site,
+     * because that is where the guard actually was. */
+    const db = getDb();
+    db.exec(`INSERT OR REPLACE INTO app_meta (key, value) VALUES ('lead_pin_foldin_done', '2020-01-01T00:00:00Z')`);
+
+    // A pin that entered the business AFTER the marker was written.
+    db.exec(`INSERT INTO saved_locations (id, name, maps_url, resolution, group_id, created_at, updated_at, organization_id)
+             VALUES (930, 'پین تازه', 'https://maps.example/new-930', 'manual', 30, '2026-02-01', '2026-02-01', 3)`);
+    db.exec(`INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (40, 930, 1, '2026-02-01')`);
+
+    foldLeadPinsIntoCustomers(db);
+
+    /* Promoted. With the old one-shot guard, nothing would have touched it — which is the
+       whole defect: a row that qualifies, silently not promoted, forever. */
+    expect(
+      db.prepare("SELECT lifecycle FROM customers WHERE customer_code='LEAD-930'").get(),
+    ).toMatchObject({ lifecycle: "lead" });
+  });
+
+  it("the boot call site does not gate the fold on a marker", () => {
+    /* The test above passes whether or not the boot call site is guarded, so this is the
+     * assertion that actually holds the fix. A one-shot guard there would make every
+     * qualifying row that arrives later permanently unpromoted — and no test anywhere
+     * would notice, because the function itself is fine.
+     *
+     * Comments are stripped, and deliberately: the fix's own comment has to name the
+     * marker key to explain the bug, and a test that forbids a string must not forbid
+     * the sentence explaining why it was removed. */
+    const src = fs.readFileSync("lib/db.ts", "utf8");
+    const from = src.indexOf("export function getDb");
+    const raw = src.slice(from, src.indexOf("backfillLegacyPayments", from));
+    const code = raw
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .split("\n")
+      .filter((l) => !/^\s*\/\//.test(l))
+      .join("\n");
+    expect(code, "the boot call must be unconditional").not.toMatch(/lead_pin_foldin_done/);
   });
 });

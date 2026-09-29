@@ -3137,17 +3137,26 @@ export function getDb(): DatabaseSync {
            ON customers(organization_id, lead_location_id)
            WHERE lead_location_id IS NOT NULL`);
 
-  // Phase 0b: pins that reached a lead list become customers. Once, guarded on a marker,
-  // but foldLeadPinsIntoCustomers is idempotent so a stray re-run is harmless.
-  const foldDone = db
-    .prepare("SELECT value FROM app_meta WHERE key = 'lead_pin_foldin_done'")
-    .get() as { value: string } | undefined;
-  if (!foldDone) {
-    foldLeadPinsIntoCustomers(db);
-    db.prepare("INSERT OR REPLACE INTO app_meta (key, value) VALUES ('lead_pin_foldin_done', ?)").run(
-      new Date().toISOString()
-    );
-  }
+  /* Phase 0b: pins that reached a lead list become customers.
+   *
+   * This used to run ONCE, guarded on an `app_meta` marker, and that guard was the bug.
+   * The fold's predicate is "a pin that is in a lead list" — a fact about ROWS, not
+   * about time. A one-shot marker makes it time-dependent: any qualifying row that
+   * arrives after the marker is written is never promoted, on any future boot, however
+   * long it waits. Which page shows a given lead was then a function of WHEN it was
+   * added, and /leads (MANAGE_ROLES, pins) and /crm (CRM_ROLES, customers) could
+   * permanently disagree about where it lives. The code permitted that forever, and
+   * nothing reconciled the two.
+   *
+   * So it runs on every boot. The fold is idempotent (ON CONFLICT DO NOTHING on the
+   * LEAD-<id> code, the same scheme the manual convert uses, so it cannot collide), and
+   * it skips any pin a live lead-run stop points at rather than cascading it away. The
+   * cost is a couple of indexed queries per boot; the marker it replaces was saving work
+   * at the price of correctness.
+   *
+   * The old key is left in app_meta untouched — a marker nobody reads is harmless, and
+   * deleting it would be a migration for no gain. */
+  foldLeadPinsIntoCustomers(db);
 
   // Phase 1: give every legacy paid_toman a payment row to stand on before the derived
   // recompute can zero it.
