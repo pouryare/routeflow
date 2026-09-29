@@ -3,7 +3,7 @@
 import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
-import type { DriverStop } from "@/app/(shell)/leads/hooks/useDriverRun";
+import type { DriverStop } from "@/components/driver/useDriverRun";
 
 /** What the driver needs to know before they get out of the van.
  *

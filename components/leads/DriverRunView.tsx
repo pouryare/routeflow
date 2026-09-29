@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import dynamic from "next/dynamic";
 import NextStopBanner from "@/components/leads/NextStopBanner";
-import { useDriverRun, pendingStops, type DriverStop } from "@/app/(shell)/leads/hooks/useDriverRun";
+import { useDriverRun, pendingStops, type DriverStop } from "@/components/driver/useDriverRun";
 import { navigateUrl, type NavAppId } from "@/lib/navApps";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import { distanceKm } from "@/lib/geo";

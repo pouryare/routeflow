@@ -4,14 +4,18 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 /** A driver's own day, from /api/lead-runs.
  *
+ *  It used to live in app/(shell)/leads/hooks/, beside useLeads, and two components/
+ *  files imported it from a route directory. It is now components/driver/, because the
+ *  only thing that consumes it is the driver's own screen — which lives on /driver in
+ *  app/(bare) — and a bare page must not reach into the shell's internals.
+ *
  *  Deliberately separate from useLeads rather than a branch inside it. useLeads is the
  *  manager's pool -- it fetches /api/locations and /api/lead-lists, both of which are
- *  owner/group_manager routes, so a driver asking for them gets two 403s and an empty page.
- *  This hook asks for the one endpoint a driver is meant to read, and the page renders one or
- *  the other. The two views share no state, which is the point: a driver has no pool.
+ *  owner/group_manager routes, so a driver asking for them gets two 403s and an empty
+ *  page. The two share no state, which is the point: a driver has no pool.
  *
- *  What the driver sees is derived on the server (lib/repo/leadRuns.ts) from the pin itself,
- *  so "the next stop" cannot disagree with what the office sees. */
+ *  What the driver sees is derived on the server (lib/repo/leadRuns.ts) from the pin
+ *  itself, so "the next stop" cannot disagree with what the office sees. */
 
 export interface DriverStop {
   location_id: number;
@@ -50,9 +54,19 @@ export function nextStop(stops: DriverStop[]): DriverStop | null {
   return pendingStops(stops)[0] ?? null;
 }
 
-export function useDriverRun() {
-  const [run, setRun] = useState<DriverRun | null>(null);
-  const [loading, setLoading] = useState(true);
+/* The server render is the FIRST PAINT, not a cache. It is passed in as `initialRun`
+   from the /driver page so the page does not fill in twice — the delivery section above
+   is already painted by the time a client fetch would resolve. The fetch still runs on
+   mount, and still runs after a reorder or a recorded visit: DriverRunView must not be
+   trusted to stay fresh, and it is not.
+
+   `null` and `undefined` are deliberately different. `null` is "the server ran and there
+   is no run", so there is nothing to wait for and no skeleton to show. `undefined` is
+   "the server did not answer", so `loading` starts true and the skeleton is the honest
+   first state. */
+export function useDriverRun(initialRun?: DriverRun | null) {
+  const [run, setRun] = useState<DriverRun | null>(initialRun ?? null);
+  const [loading, setLoading] = useState(initialRun === undefined);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {

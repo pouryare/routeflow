@@ -276,6 +276,28 @@ nowhere to be asserted. Extracted the decision so it can be."
 
 Moving rather than copying is deliberate: a copy leaves two sources of truth for "my stops" — the exact failure `lib/roles.ts` documents when `db.ts` held a hand-copied duplicate of the role union that then drifted.
 
+- [ ] **Step 1: Verify the current import graph**
+
+Run: `grep -rn "leads/hooks/useDriverRun" --include=*.tsx --include=*.ts . | grep -v node_modules`
+
+Expected: exactly two hits —
+```
+./components/leads/DriverRunView.tsx:6
+./components/leads/NextStopBanner.tsx:6
+```
+
+**The spec says seven importers. Measure rather than trust that number** — this plan was written from the spec, and the spec counted files that *could* import rather than files that do. If there turn out to be more than two, every one is an importer this task must repoint, and `tsc` in Step 6 catches a miss either way.
+
+- [ ] **Step 2: Move the file**
+
+Run:
+
+```bash
+git mv "app/(shell)/leads/hooks/useDriverRun.ts" components/driver/useDriverRun.ts
+```
+
+`git mv` rather than delete-then-create, so the diff records a **rename**. This is a move, and a reader should be able to see that in one line of history.
+
 
 - [ ] **Step 3: Add the `initialRun` prop and rewrite the doc comment**
 
