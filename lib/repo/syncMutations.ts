@@ -165,7 +165,15 @@ function reminder(db: DatabaseSync, customerId: number, message: string): void {
 export function applyMutations(
   organizationId: number,
   userId: number,
-  muts: IncomingMutation[]
+  muts: IncomingMutation[],
+  /* Who is really behind this session, when it is an impersonation.
+   *
+   * The driver app is an OFFLINE client, so its writes are queued in a van and land later.
+   * If the impersonator is not carried across that queue, a write the founder performs in
+   * the driver's browser is recorded as the driver's alone — and attribution lost in a
+   * queue is attribution lost for good. Passed in rather than looked up, because the
+   * session already resolved it and this module has no cookie. */
+  actorId?: number
 ): Record<string, MutationResult> {
   const db = getDb();
   const auth = rolesForOffline(db, userId);
@@ -223,7 +231,7 @@ export function applyMutations(
 
     let result: MutationResult;
     try {
-      result = applyOne(db, organizationId, userId, auth.roles, auth.primary, mut, resolved);
+      result = applyOne(db, organizationId, userId, auth.roles, auth.primary, mut, resolved, actorId);
     } catch (e) {
       result =
         e instanceof OrderError || e instanceof PaymentError || e instanceof DeliveryError
@@ -262,7 +270,8 @@ function applyOne(
   roles: readonly OrderRole[],
   primary: OrderRole,
   mut: IncomingMutation,
-  resolved: Resolved
+  resolved: Resolved,
+  actorId?: number
 ): MutationResult {
   if (!isOfflineOp(mut.op)) return { status: "failed", error: "کنش ناشناخته" };
   const p = mut.payload;
@@ -300,7 +309,7 @@ function applyOne(
         .get(orderId, organizationId) as { status: string } | undefined;
       if (!before) return { status: "failed", error: "سفارش پیدا نشد" };
       if (isTerminal(before.status)) return { status: "conflict", reason: "سفارش پیش‌تر بسته شده بود" };
-      submitOrder(organizationId, orderId, { id: userId, role: primary, roles });
+      submitOrder(organizationId, orderId, { id: userId, role: primary, roles, actorId });
       return { status: "applied", server_id: orderId };
     }
 
@@ -309,7 +318,7 @@ function applyOne(
         resolveRef(db, organizationId, p.order_ref as string, resolved) ??
         (p.order_id as number | undefined);
       if (orderId === undefined) return { status: "failed", error: "سفارش پیدا نشد" };
-      advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles });
+      advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles, actorId });
       return { status: "applied", server_id: orderId };
     }
 

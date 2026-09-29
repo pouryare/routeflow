@@ -24,6 +24,8 @@ export async function POST(req: NextRequest) {
   }
 
   const stamped = muts.map((m) => ({ ...m, device_id: m.device_id ?? body?.device_id ?? null }));
-  const results = applyMutations(session.organizationId, session.user.id, stamped);
+  /* The impersonator rides along: this is an OFFLINE client, so a write queued in the
+     * founder's browser under a driver's name must still record that the founder was there. */
+  const results = applyMutations(session.organizationId, session.user.id, stamped, session.actorId);
   return NextResponse.json({ ok: true, results, server_time: new Date().toISOString() });
 }

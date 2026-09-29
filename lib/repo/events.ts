@@ -7,6 +7,9 @@ export interface EventInput {
   entity_type?: string | null;
   entity_id?: number | null;
   actor_user_id?: number | null;
+  /** Who was really driving, when this happened under Login-As. NULL by default, so no
+   *  existing call site has to change. */
+  impersonated_by?: number | null;
   metadata?: Record<string, unknown> | null;
   occurred_at?: string;
 }
@@ -32,8 +35,9 @@ export function emitEvent(organizationId: number, input: EventInput, db?: Databa
     (db ?? getDb())
       .prepare(
         `INSERT INTO events
-           (organization_id, kind, entity_type, entity_id, actor_user_id, metadata_json, occurred_at, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+           (organization_id, kind, entity_type, entity_id, actor_user_id, impersonated_by,
+            metadata_json, occurred_at, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         organizationId,
@@ -41,6 +45,8 @@ export function emitEvent(organizationId: number, input: EventInput, db?: Databa
         input.entity_type ?? null,
         input.entity_id ?? null,
         input.actor_user_id ?? null,
+        /* Who was really driving, when this happened under Login-As. NULL by default. */
+        input.impersonated_by ?? null,
         input.metadata ? JSON.stringify(input.metadata) : null,
         input.occurred_at ?? now,
         now

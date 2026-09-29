@@ -3325,6 +3325,20 @@ export function getDb(): DatabaseSync {
     END;
   `);
 
+  /* Who was really driving. Nullable, no cascade: an audit row must outlive the user it
+   * names, which is why `events` carries no FKs on any reference at all.
+   *
+   * NULL for every ordinary write, so "not an impersonation" is the DEFAULT and no caller
+   * has to special-case it. The three tables are exactly the ones that already record an
+   * actor — activity_log.changed_by_user_id, order_events.actor_user_id,
+   * events.actor_user_id — so this is a missing column, not a missing audit system. */
+  for (const t of ["activity_log", "order_events", "events"]) {
+    const cols = (db.prepare("PRAGMA table_info(" + t + ")").all() as { name: string }[]).map((c) => c.name);
+    if (!cols.includes("impersonated_by")) {
+      db.exec("ALTER TABLE " + t + " ADD COLUMN impersonated_by INTEGER REFERENCES users(id)");
+    }
+  }
+
   /* The founder is the platform owner, AND he runs طعمینو, so he holds both hats. This is
    * the one account in the app with two roles, and it is the whole reason the multi-role
    * work exists: "I am the vendor AND I am the owner of this company" is a single sentence
@@ -3750,11 +3764,15 @@ export function setLeadListItems(db: DatabaseSync, listId: number, locationIds: 
 
 export function logActivity(
   db: DatabaseSync,
-  entry: Omit<ActivityEntry, "id" | "created_at" | "changed_by_user_id"> & { changed_by_user_id?: number | null }
+  entry: Omit<ActivityEntry, "id" | "created_at" | "changed_by_user_id"> & {
+    changed_by_user_id?: number | null;
+    /** Who was really driving, when this happened under Login-As. */
+    impersonated_by?: number | null;
+  }
 ): void {
   db.prepare(
-    `INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, changed_by_user_id, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO activity_log (entity_type, entity_id, event_type, old_value, new_value, note, changed_by, changed_by_user_id, impersonated_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   ).run(
     entry.entity_type,
     entry.entity_id,
@@ -3764,6 +3782,7 @@ export function logActivity(
     entry.note,
     entry.changed_by,
     entry.changed_by_user_id ?? null,
+    entry.impersonated_by ?? null,
     new Date().toISOString()
   );
 }

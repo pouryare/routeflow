@@ -83,6 +83,9 @@ export function appendOrderEvent(
     to_status: string;
     action: string;
     actor_user_id: number | null;
+    /** Who was really driving, when this happened under Login-As. NULL for an ordinary
+     *  write, so a caller that knows nothing about impersonation needs no change. */
+    impersonated_by?: number | null;
     reason_code_id?: number | null;
     note?: string | null;
     device_time?: string | null;
@@ -92,8 +95,8 @@ export function appendOrderEvent(
     .prepare(
       `INSERT INTO order_events
          (organization_id, order_id, from_status, to_status, action, actor_user_id,
-          reason_code_id, note, device_time, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+          impersonated_by, reason_code_id, note, device_time, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
     )
     .run(
       row.organization_id,
@@ -102,6 +105,7 @@ export function appendOrderEvent(
       row.to_status,
       row.action,
       row.actor_user_id,
+      row.impersonated_by ?? null,
       row.reason_code_id ?? null,
       row.note ?? null,
       row.device_time ?? null,
@@ -167,7 +171,7 @@ export function advanceOrder(
   organizationId: number,
   orderId: number,
   action: OrderAction,
-  actor: { id: number | null; role: OrderRole; roles?: readonly OrderRole[] },
+  actor: { id: number | null; role: OrderRole; roles?: readonly OrderRole[]; actorId?: number },
   opts: AdvanceOpts = {}
 ): OrderStatus {
   const conn = opts.db ?? ordersRepo.db();
@@ -220,6 +224,9 @@ export function advanceOrder(
       to_status: t.to,
       action,
       actor_user_id: actor.role === "system" ? actor.id : actor.id,
+      /* The two names. actor_id is whose account the order moved in; this is who was
+         really holding it. NULL whenever nobody is impersonating. */
+      impersonated_by: actor.actorId ?? null,
       reason_code_id: opts.reason_code_id ?? null,
       note: opts.note ?? null,
       device_time: opts.device_time ?? null,
