@@ -220,13 +220,17 @@ each script, and that assertion was wrong.
 
 **Fix, in this order:**
 
-1. Remove `"districts"` from `TENANT_TABLES` (`lib/db.ts:50`).
-2. Rebuild `districts` without `organization_id` and with `UNIQUE (name, level, parent_name)`
-   — the guarded table-rebuild pattern the repo already uses for `reason_codes`. The table
-   has **0 rows**, so the rebuild copies nothing and cannot lose data.
-3. Make the rebuild verify post-conditions: 0 rows before, 0 rows after, and the new
-   constraint present in `sqlite_master`. A rebuild that silently dropped a non-empty table
-   is the failure mode `tests/no-one-shot-data-migration.test.ts` exists to prevent.
+1. Remove `"districts"` from `TENANT_TABLES` (`lib/db.ts:50`). This is the change that
+   stops the two `for (const table of TENANT_TABLES)` sweeps at `lib/db.ts:2625` and
+   `:3471` from re-`ALTER`ing the column back and from stamping `organization_id = 1`
+   on every row every boot.
+2. Rebuild `districts` with `UNIQUE (name, level, parent_name)` and no
+   `organization_id` — **as a boot migration, not a script** (decided, see below).
+3. Fix the one consumer that filters districts by org: `lib/repo/rules.ts:405` does
+   `SELECT 1 FROM districts WHERE id = ? AND organization_id = ?`. With the column
+   gone that query throws. It must become an existence check, which is what it means:
+   a district is shared, so *every* org's reminder may fire on it. Silently skipping
+   the throw by catching it would suppress district reminders entirely.
 4. Only then seed. With `organization_id` gone from the key, `UNIQUE(name, level, parent_name)`
    still has the NULL-`parent_name` defect for the 22 `منطقه` and 34 `بخش`, so those
    must be seeded with an **empty string** `parent_name = ''`, not NULL. `''` compares
@@ -237,13 +241,47 @@ Verified: with `parent_name=''`, three identical seed runs produce one row.
 `recomputeCustomerGroups` and `districtIdForPoint` need no org change — they never
 filtered on it, and after this there is nothing to filter.
 
+**Why a boot migration, not a script.** `districts` is already in the rebuild list:
+
+```ts
+// lib/db.ts:2754
+rebuildForTenantUnique(
+  db,
+  "districts",
+  "UNIQUE (organization_id, name, level, parent_name)",
+  ...
+);
+```
+
+`rebuildForTenantUnique` (`lib/db.ts:118`) is guarded on `sqlite_master` text, not on
+`app_meta`, and it copies every live column by name via `PRAGMA table_info`. So this is
+the *same* change in the same place, in the same idiom, and:
+
+- the guard is `if (!schema || schema.sql.includes(marker)) return;` — the marker flips
+  from the org-scoped key to the plain one, so an already-migrated database is a no-op
+  and a fresh one migrates once. Re-running is free.
+- it is **not** an `app_meta` marker read, so `tests/no-one-shot-data-migration.test.ts`
+  — which requires every marker read in `lib/db.ts` to be on its reasoned exempt list —
+  does not need a new exemption. A script would have needed no marker either, but a
+  script is a thing a human must remember to run, and the whole failure mode here is a
+  seed that runs before the schema it depends on.
+- a rebuild that finds rows where it expected none is the one genuinely risky step, so
+  it must assert: 0 rows before, 0 rows after, and the new constraint present in
+  `sqlite_master`. Dropping a populated `districts` is the same shape of catastrophe as
+  the pin fold (`a98ae50`), and the guard is the difference.
+
+The helper needs one adaptation: its `INSERT ... SELECT` copies columns by name, so a
+rebuild that *drops* `organization_id` cannot reuse the generic path unchanged. Either
+the copy list is explicit, or the column is added back, copied, and dropped after.
+The plan will pick the explicit list and assert the row count across it.
+
 ### 2.7 Seed order
 
 Each is `INSERT OR IGNORE` and safe to re-run **only after §2.6**; order matters because
 the codes come last.
 
 ```
-0. the §2.6 rebuild (districts is empty; nothing to copy)
+(0. the §2.6 rebuild runs at boot, not here)
 1. scripts/seed-districts.ts   → 22 منطقه + 369 محله
 2. scripts/seed-bakhsh.ts      → 34 بخش
 3. scripts/seed-outer-towns.ts → 7 towns  (with the §2.3 fix)
@@ -258,6 +296,10 @@ would silently point somewhere else. `WHERE code IS NULL` makes step 4 idempoten
 
 **Step 5 must precede step 6**, so the split halves exist before any customer is
 pointed at a district.
+
+**Step 0 is not a step because it cannot be one.** The §2.6 rebuild is a boot migration,
+so by the time any seed script runs, the schema is already correct — there is no ordering
+for a human to get wrong. That is the entire argument for making it a migration.
 
 ## 3. The code scheme
 
@@ -413,6 +455,7 @@ promise about driving time."
 | A custom district is drawn inside a `بخش` | The `بخش` wins unless the §2.4 ordering fix lands — both are `level='mantaghe'`, so the tie-break is `id` and a later insert loses. Fixed by `is_custom DESC` |
 | The §2.6 rebuild runs against a non-empty table | Refuse. It asserts 0 rows before and after; a rebuild that quietly dropped real districts is the failure `tests/no-one-shot-data-migration.test.ts` exists to prevent |
 | A second organisation is ever created | No effect on districts — they are shared reference data and no longer tenant-scoped (§2.6) |
+| A district reminder fires | `lib/repo/rules.ts:405` currently filters districts by `organization_id`; that column is gone, so the query throws and district reminders stop silently. It becomes a plain existence check, which is the correct meaning for shared geography. Covered by a test that fires a district reminder and expects it to be considered |
 | `split-districts.ts --apply` run after customers exist | **Out of band, not a code path.** Manual script, dry-run by default, forbidden by §2.5, and a test asserts it is not wired into any migration |
 
 ## 6. Testing
@@ -471,6 +514,25 @@ customers would be silently misfiled.
 **`tests/district-code-uniqueness.test.ts`** — the index
 - two `is_custom` rows with `code = NULL` coexist (partial-unique)
 - two rows with the same non-null code are rejected
+
+**`tests/district-coverage.test.ts`** — the net is a net, not a hope
+
+§2.4 promises a pin anywhere in the province lands in *some* district. That claim is
+currently verified only for the 7 places we happen to know about, and the grid test run
+during review **timed out at 30s** before finishing. So it is measured, not proved.
+
+- grid Tehran province at a coarse step and assert every cell falls in some `بخش`,
+  `منطقه`, `محله` or town polygon
+- report uncovered cells **by coordinate** rather than just failing, so a hole is
+  identifiable instead of a bare number
+- the grid must run inside the test budget, so it samples a bounded lattice restricted to
+  the province rather than the full bounding box — the box spans most of Iran, which is
+  why the naive version was both slow *and* misleading (its "63.6% gap" was mostly
+  outside the province entirely)
+
+This is the test that makes the unknown-places design honest. Without it, "هراز will be
+covered" is a hope; with it, it is a checked fact that fails loudly if a data source ever
+ships a hole.
 
 ## 7. Out of scope
 
