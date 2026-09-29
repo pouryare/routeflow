@@ -106,8 +106,33 @@ So this spec does **not** hand-pick towns. Instead:
 
 A pin anywhere in Tehran province therefore lands in *something* once seeded — هراز and
 گیلاوند included, whether or not anyone has ever heard of them. Anything finer than a
-`بخش` is added by an operator as an `is_custom = 1` polygon, which the app already
-supports and which `districtIdForPoint` already prefers (§2.5).
+`بخش` is added by an operator as an `is_custom = 1` polygon.
+
+**But a custom district does not shadow a `بخش` today, and this spec has to fix that.**
+`districtIdForPoint` orders `mahalle` before `mantaghe`, and a `بخش` is stored as
+`level='mantaghe'` (`scripts/seed-bakhsh.ts:21`) — the same level a hand-drawn district
+gets, because the CHECK allows only those two. The ordering therefore falls through to
+`id`, and a custom district is always inserted *after* the seeds, so it always has the
+higher id and **loses**. Verified on a two-row database: a point inside a custom هراز
+polygon nested in `بخش رودهن` resolves to `بخش رودهن`.
+
+Without a fix, §2.4's whole promise is false: every unknown place would be filed under
+the coarse `بخش` and an operator's carefully drawn boundary would be silently ignored.
+
+The fix is to make the tie-break explicit rather than incidental — order by specificity
+*then* recency, so a smaller custom polygon is consulted before the `بخش` containing it:
+
+```sql
+-- lib/groups.ts:51-52, today
+ORDER BY CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id
+-- becomes
+ORDER BY is_custom DESC, CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id
+```
+
+`is_custom DESC` first: a hand-drawn boundary is a deliberate, finer statement about a
+place and must win over the coarse administrative polygon drawn from OSM. `recomputeCustomerGroups`
+(`lib/groups.ts:81-83`) carries the same ORDER BY and must change identically, or the
+backfill and the app would disagree about which district a point is in.
 
 **Consequence:** the 7 towns are seeded because they are *proven* (all 25 pins already
 match پردیس), not because they are a curated list of "the places we care about". Adding
@@ -147,11 +172,78 @@ ORDER BY CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id
 `split-districts.ts` therefore runs once, at step 5 of the seed order, against a table
 that has never had a customer in it, and is not re-run afterwards.
 
-### 2.6 Seed order
+### 2.6 Districts are shared reference data, not tenant data
 
-Each is `INSERT OR IGNORE` and safe to re-run; order matters because the codes come last.
+**Decision: one set of districts for the whole install.** Tehran's 22 `منطقه` are the
+same for everyone; per-tenant copies would be duplicated geometry that can drift apart
+and would make `منطقه 14` mean different things in different accounts.
+
+The schema currently says the opposite, and both halves of that are bugs:
+
+**Bug A — `districts` is listed as a tenant table.** `lib/db.ts:50` puts it in
+`TENANT_TABLES`, whose stated purpose is to catch a table that "is readable by every
+organisation and looks like nothing at all until a second tenant is on the system." A
+geography table is exactly that, deliberately. It must come out of the list.
+
+**Bug B — the seed scripts write `organization_id = NULL`, so they do not dedupe.**
+The live constraint is:
+
+```sql
+UNIQUE (organization_id, name, level, parent_name)
+```
+
+All three seeds omit `organization_id` (`seed-districts.ts:76`, `seed-bakhsh.ts:20`,
+`seed-outer-towns.ts:22`), so every row lands with `organization_id = NULL`. And in
+SQLite a NULL never equals another NULL inside a UNIQUE index, so **`INSERT OR IGNORE`
+does not ignore anything**. Measured, running the real seed statement three times:
 
 ```
+after seed run #1: rows = 1
+after seed run #2: rows = 2     ← duplicate
+after seed run #3: rows = 3     ← duplicate
+```
+
+It is worse for the coarse layers, because `parent_name` is NULL for them too, and one
+NULL is enough to defeat the constraint. All four seed shapes:
+
+```
+DUPLICATES  mantaghe (منطقه)  parent=NULL  org=1
+DUPLICATES  bakhsh         parent=NULL  org=1
+DEDUPES     town           parent=SET   org=1
+DEDUPES     mahalle        parent=SET   org=1
+```
+
+So a second `seed-districts.ts` run would append 22 more `منطقه` and 369 more `محله`, and
+`districtIdForPoint` — which filters by **no** organization — would then match whichever
+duplicate came first. My spec asserted "safe to re-run" on the strength of the comment in
+each script, and that assertion was wrong.
+
+**Fix, in this order:**
+
+1. Remove `"districts"` from `TENANT_TABLES` (`lib/db.ts:50`).
+2. Rebuild `districts` without `organization_id` and with `UNIQUE (name, level, parent_name)`
+   — the guarded table-rebuild pattern the repo already uses for `reason_codes`. The table
+   has **0 rows**, so the rebuild copies nothing and cannot lose data.
+3. Make the rebuild verify post-conditions: 0 rows before, 0 rows after, and the new
+   constraint present in `sqlite_master`. A rebuild that silently dropped a non-empty table
+   is the failure mode `tests/no-one-shot-data-migration.test.ts` exists to prevent.
+4. Only then seed. With `organization_id` gone from the key, `UNIQUE(name, level, parent_name)`
+   still has the NULL-`parent_name` defect for the 22 `منطقه` and 34 `بخش`, so those
+   must be seeded with an **empty string** `parent_name = ''`, not NULL. `''` compares
+   equal to `''`, so `INSERT OR IGNORE` finally does what its comment claims.
+
+Verified: with `parent_name=''`, three identical seed runs produce one row.
+
+`recomputeCustomerGroups` and `districtIdForPoint` need no org change — they never
+filtered on it, and after this there is nothing to filter.
+
+### 2.7 Seed order
+
+Each is `INSERT OR IGNORE` and safe to re-run **only after §2.6**; order matters because
+the codes come last.
+
+```
+0. the §2.6 rebuild (districts is empty; nothing to copy)
 1. scripts/seed-districts.ts   → 22 منطقه + 369 محله
 2. scripts/seed-bakhsh.ts      → 34 بخش
 3. scripts/seed-outer-towns.ts → 7 towns  (with the §2.3 fix)
@@ -181,6 +273,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS ix_districts_code ON districts(code) WHERE cod
 
 Partial-unique because `is_custom = 1` districts and split halves have no code until one
 is assigned. A hard `UNIQUE` would fail the moment two customs are left blank.
+
+**The index is global, not per-tenant**, and that follows directly from §2.6: districts
+are shared, so `14` identifies one place on the whole install. Had geography stayed
+per-tenant, this index would have needed `organization_id` in both the key and the
+predicate, and `منطقه 14` would mean something different in each account.
 
 ### 3.1 The rules
 
@@ -251,23 +348,33 @@ artifact. It appears in exactly three places:
 
 ### 4.1 Backfill
 
-| Target | Rows | Coordinates | Mechanism |
+| Target | Rows | With coordinates | Mechanism |
 |---|---|---|---|
-| `customers` | 16 | 14 | `districtIdForPoint` |
-| `saved_locations` (pins) | 25 | 25 | `districtIdForPoint` |
+| `saved_locations` (pins) | 25 | **25** | `districtIdForPoint` |
 | `lead_list_items` | 76 | via pin | join through |
+| `customers` | 16 | **1** | `districtIdForPoint` |
 
-All 25 pins already resolve — every one lands inside پردیس.
+All 25 pins already resolve — every one lands inside پردیس. The pins are tightly
+clustered: `lat 35.732–35.769`, `lng 51.756–51.842`, a box roughly 3km on a side. The
+backfill is therefore a **pin** exercise, not a customer exercise.
+
+The customer figure is worth stating plainly: **15 of 16 customers have no coordinates
+at all.** They are `CRM-…`-coded rows with `business_name` like `تست` and `x`. So
+`district_id` will be set for 25 pins and 1 customer, and the other 15 stay `NULL` and
+are reported. That is the honest outcome — a row with no location has no district, and
+inventing one from a text address would be a guess wearing a foreign key.
 
 It calls the **same function the app uses on write** (`lib/groups.ts:48`), so a backfilled
 value is bit-identical to what a new lead would get. No second implementation to drift.
 
-Rows without coordinates (`LEAD-12`, `LEAD-14`) stay `NULL` and are reported. A pin with
-no location has no district, and guessing one is worse than an empty field.
-
 This is a `scripts/` script with a dry-run default — **not** a boot migration, because
 `tests/no-one-shot-data-migration.test.ts` forbids a row-dependent predicate behind an
 `app_meta` marker.
+
+**The real payoff is not the backfill at all.** `districtIdForPoint` runs on every
+customer write, so once the districts exist, every *new* lead and every pin-dropped
+location is classified automatically. The backfill only fixes the 25 pins that predate
+the geography.
 
 ### 4.2 Search
 
@@ -302,6 +409,10 @@ promise about driving time."
 | Pin moves | `setLocation` re-derives it — already the case, which is why codes are not on the customer |
 | Boundary redrawn | `district_id` re-derived on next write; the **code does not change** |
 | A pin matches no district at all | `NULL`, reported. An honest gap beats a guess (§2.4) |
+| A seed is re-run before the §2.6 rebuild | **Duplicates.** `organization_id`/`parent_name` NULL defeats the UNIQUE index, so a second run silently doubles the table. The rebuild is step 0 for this reason, and a test asserts `districts` is out of `TENANT_TABLES` |
+| A custom district is drawn inside a `بخش` | The `بخش` wins unless the §2.4 ordering fix lands — both are `level='mantaghe'`, so the tie-break is `id` and a later insert loses. Fixed by `is_custom DESC` |
+| The §2.6 rebuild runs against a non-empty table | Refuse. It asserts 0 rows before and after; a rebuild that quietly dropped real districts is the failure `tests/no-one-shot-data-migration.test.ts` exists to prevent |
+| A second organisation is ever created | No effect on districts — they are shared reference data and no longer tenant-scoped (§2.6) |
 | `split-districts.ts --apply` run after customers exist | **Out of band, not a code path.** Manual script, dry-run by default, forbidden by §2.5, and a test asserts it is not wired into any migration |
 
 ## 6. Testing
@@ -345,6 +456,21 @@ customers would be silently misfiled.
 
 **`tests/no-one-shot-data-migration.test.ts`** — extended, not replaced
 - assert `lib/db.ts` gained no new marker read, so the guarantee is pinned
+
+**`tests/districts-shared-reference.test.ts`** — the §2.6 tenancy decision
+- `districts` is **not** in `TENANT_TABLES`
+- the live schema's UNIQUE is `(name, level, parent_name)` and has no `organization_id`
+- **re-running a seed three times leaves one row**, not three — the NULL trap of §2.6
+- the rebuild refuses to run against a non-empty table
+
+**`tests/district-custom-precedence.test.ts`** — the §2.4 ordering fix
+- a point inside a custom district nested in a `بخش` resolves to the **custom** district
+- `districtIdForPoint` and `recomputeCustomerGroups` agree — same ORDER BY, or the
+  backfill and the app would classify the same point two different ways
+
+**`tests/district-code-uniqueness.test.ts`** — the index
+- two `is_custom` rows with `code = NULL` coexist (partial-unique)
+- two rows with the same non-null code are rejected
 
 ## 7. Out of scope
 
