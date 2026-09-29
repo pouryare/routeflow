@@ -4,10 +4,13 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { readRun, readDriverRuns } from "@/lib/delivery";
+import { readTodaysLeadRun } from "@/lib/repo/leadRuns";
 import { driverStatementFor } from "@/lib/driverCommissionLedger";
+import { driverDaySections } from "@/lib/driverDay";
 import { faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { faToman, faNum } from "@/lib/format";
 import DriverRun from "@/components/driver/DriverRun";
+import DriverDaySection from "@/components/driver/DriverDaySection";
 import SyncStatus from "@/components/SyncStatus";
 import VerifyVisits from "@/components/driver/VerifyVisits";
 import NotificationBell from "@/components/NotificationBell";
@@ -36,6 +39,20 @@ function weatherLine(run: { weather_json?: string | null }): string | null {
  *  opening this at 00:30 after a late round is finishing yesterday's work, not starting
  *  a day with no stops.
  */
+/** «روز من» — the driver's whole day, and every hat they hold.
+ *
+ *  Two sections, both rendered for every van role, unconditionally. The decision is a
+ *  pure function (lib/driverDay.ts) rather than inline JSX, because /driver is an async
+ *  server component and no test in this repo can render a page — the promise that a
+ *  person sees all their work has to live somewhere testable. See
+ *  tests/driver-my-day-sections.test.ts.
+ *
+ *  A dual-hat person used to see deliveries here and prospect visits on /leads, and had
+ *  to navigate between two pages for one working day. `isManager` answered a single
+ *  question, so it could only ever show one of the two jobs.
+ *
+ *  The commission card stays inside the deliveries section, gated on `commission.kg > 0`.
+ *  It is money, not work, and it belongs to the delivery job only. */
 export default async function DriverPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
@@ -50,11 +67,22 @@ export default async function DriverPage() {
     redirect("/map");
   }
 
+  const sections = driverDaySections(session.role);
   const db = getDb();
-  const runs = readDriverRuns(db, session.user.id);
   const today = new Date().toISOString().slice(0, 10);
+
+  /* Deliveries. Falls back to the most recent run rather than showing an empty screen --
+     a driver opening this at 00:30 after a late round is finishing yesterday's work, not
+     starting a day with no stops. */
+  const runs = readDriverRuns(db, session.user.id);
   const chosen = runs.find((r) => r.run_date === today) ?? runs[0];
   const run = chosen ? readRun(db, chosen.id) : null;
+
+  /* Prospect visits. readTodaysLeadRun is the same authority /api/lead-runs calls, and it
+     applies the same "today, else the most recent not finished" rule. Called on the server
+     so the section is painted alongside the deliveries rather than filling in under a
+     skeleton. The client still re-fetches on mount -- this is a first paint, not a cache. */
+  const leadRun = readTodaysLeadRun(db, session.user.id, session.organizationId, today);
 
   // A read-only glance at their own commission -- a driver never reaches /sales/commission
   // (proxy.ts sends every /sales/* request from a driver back here), so this one card is
@@ -90,41 +118,64 @@ export default async function DriverPage() {
         </form>
       </header>
 
-      {run && weatherLine(run as unknown as { weather_json?: string | null }) && (
-        <p className="mb-[var(--space-3)] flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
-          <Icon name="weather" size="sm" />
-          {weatherLine(run as unknown as { weather_json?: string | null })}
-        </p>
+      {/* ── Section 1: deliveries ─────────────────────────────────────────── */}
+      {sections.includes("deliveries") && (
+        <section aria-labelledby="day-deliveries" className="mb-[var(--space-5)]">
+          <h2 id="day-deliveries" className="mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            تحویل‌ها
+          </h2>
+
+          {run && weatherLine(run as unknown as { weather_json?: string | null }) && (
+            <p className="mb-[var(--space-3)] flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-2)] text-center text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              <Icon name="weather" size="sm" />
+              {weatherLine(run as unknown as { weather_json?: string | null })}
+            </p>
+          )}
+
+          {!run || run.stops.length === 0 ? (
+            /* An EMPTY section, not a missing one. A driver must never read this as
+               "there are no deliveries" when the truth is that the section did not
+               render. */
+            <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-faint)]">
+              امروز مسیری برای شما ثبت نشده است. وقتی مدیر سفارش‌ها را به مسیر شما اضافه کند،
+              همین‌جا نمایش داده می‌شود.
+            </p>
+          ) : (
+            <DriverRun
+              run={plain([run])[0]}
+              driverName={session.user.display_name}
+              businessName="فروش و پخش"
+            />
+          )}
+
+          {commission.kg > 0 && (
+            <div className="mt-[var(--space-4)] flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border)] p-[var(--space-4)]">
+              <div>
+                <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+                  پورسانت از {faJalaliDate(period.from)}
+                </div>
+                <div className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
+                  {faNum(commission.kg)} کیلو تحویل‌شده
+                </div>
+              </div>
+              <div className="tabular-nums text-[length:var(--text-md)] font-medium text-[var(--text)]">
+                {faToman(commission.accrued_toman)}
+              </div>
+            </div>
+          )}
+        </section>
       )}
 
-      {!run || run.stops.length === 0 ? (
-        <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] leading-7 text-[var(--text-faint)]">
-          امروز مسیری برای شما ثبت نشده است. وقتی مدیر سفارش‌ها را به مسیر شما اضافه کند،
-          همین‌جا نمایش داده می‌شود.
-        </p>
-      ) : (
-        <DriverRun
-          run={plain([run])[0]}
-          driverName={session.user.display_name}
-          businessName="فروش و پخش"
-        />
+      {/* ── Section 2: prospect visits ────────────────────────────────────── */}
+      {sections.includes("visits") && (
+        <section aria-labelledby="day-visits" className="mb-[var(--space-5)]">
+          <h2 id="day-visits" className="mb-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+            بازدیدها و سرنخ‌ها
+          </h2>
+          <DriverDaySection initialRun={leadRun} />
+        </section>
       )}
 
-      {commission.kg > 0 && (
-        <div className="mt-[var(--space-4)] flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border)] p-[var(--space-4)]">
-          <div>
-            <div className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
-              پورسانت از {faJalaliDate(period.from)}
-            </div>
-            <div className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">
-              {faNum(commission.kg)} کیلو تحویل‌شده
-            </div>
-          </div>
-          <div className="tabular-nums text-[length:var(--text-md)] font-medium text-[var(--text)]">
-            {faToman(commission.accrued_toman)}
-          </div>
-        </div>
-      )}
       <NotificationBell />
     </main>
   );
