@@ -1,5 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb, type SavedLocationRow } from "@/lib/db";
+import { districtIdForPoint } from "@/lib/groups";
 import { findDuplicates, type DupMatch } from "./dedupe";
 import { recomputeState } from "./state";
 
@@ -83,8 +84,22 @@ export function promoteLeadToCustomer(
     // match is reachable does not narrow its id, which is how a null reaches the UPDATE.
     const reachable = matches.find((m): m is DupMatch & { id: number } => m.id !== null);
     if (!reachable) throw new LeadPromotionError(409, "مکان پیدا نشد");
-    db.prepare("UPDATE customers SET lead_location_id = ? WHERE id = ? AND organization_id = ?")
-      .run(locationId, reachable.id, orgId);
+    // COALESCE on district_id, deliberately. The business behind this pin is already a
+    // customer, located by its own means, and a pin is an approximate drop that could be
+    // across the city -- so its district is not ours to overwrite. Filling a gap is safe;
+    // replacing a real classification is not.
+    //
+    // The value is computed here rather than in the SQL: districtIdForPoint is a JS
+    // function over boundary_geojson, and a first attempt at inlining it produced
+    // "no such column: db" at runtime.
+    const linkedDistrict = districtIdForPoint(db, loc.lat, loc.lng);
+    db.prepare(
+      `UPDATE customers
+          SET lead_location_id = ?,
+              district_id = COALESCE(district_id, ?)
+        WHERE id = ? AND organization_id = ?`
+    )
+      .run(locationId, linkedDistrict as number | null, reachable.id, orgId);
     return { customerId: reachable.id, created: false, linked: matches };
   }
 
@@ -93,17 +108,26 @@ export function promoteLeadToCustomer(
   const notes = ["از فهرست مکان‌های پیشنهادی تبدیل شد", loc.address, loc.notes]
     .filter(Boolean)
     .join(" — ");
+  // The district, from the pin's own coordinates. This is the path every Google Maps pin
+  // takes -- a rep drops a pin, the first purchase promotes it -- so without this a promoted
+  // customer carried lat/lng but no district, and therefore no code, no territory and no
+  // place on the map. Every other field looked right, which is what made it invisible.
+  // Same function, and therefore the same precedence rules, as the add-lead path.
+  const districtId = districtIdForPoint(db, loc.lat, loc.lng);
   const result = db.prepare(`
       INSERT INTO customers (customer_code, business_name, address, city, province, lat, lng, notes,
-                             group_id, lead_location_id, synced_at, organization_id)
-      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?, ?, ?)
+                             group_id, lead_location_id, district_id, synced_at, organization_id)
+      VALUES (?, ?, ?, 'تهران', 'تهران', ?, ?, ?, ?, ?, ?, ?, ?)
       ON CONFLICT(organization_id, customer_code) DO NOTHING
     `).run(
       code, loc.name, loc.address, loc.lat, loc.lng, notes,
       // A pin with no group is a real state, and the column stays nullable to match it --
-      // node:sqlite's run() overloads just do not admit null here.
+      // node:sqlite's run() overloads just do not admit null here. Same for district_id: a
+      // point outside every polygon has no district, and NULL says that honestly.
       loc.group_id as number | null,
-      locationId, now, orgId
+      locationId,
+      districtId as number | null,
+      now, orgId
     );
 
   if (result.changes === 0) {
