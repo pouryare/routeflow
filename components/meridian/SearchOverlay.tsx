@@ -13,14 +13,14 @@ import {
   type SearchHit, type SearchKind,
 } from "@/lib/searchModel";
 
-const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user" };
+const KIND_ICON: Record<SearchKind, IconName> = { page: "link", customer: "building", order: "receipt", user: "user", district: "map-pin" };
 const SECTION: Record<SearchKind | "recent", string> = {
-  recent: "اخیر", page: "صفحه‌ها", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر",
+  recent: "اخیر", page: "صفحه‌ها", district: "مناطق", customer: "مشتریان", order: "سفارش‌ها", user: "ورود به‌جای کاربر",
 };
 
 type Section = { key: SearchKind | "recent"; hits: SearchHit[] };
-type Remote = { customers: SearchHit[]; orders: SearchHit[]; users: SearchHit[] };
-const NO_REMOTE: Remote = { customers: [], orders: [], users: [] };
+type Remote = { customers: SearchHit[]; orders: SearchHit[]; users: SearchHit[]; districts: SearchHit[] };
+const NO_REMOTE: Remote = { customers: [], orders: [], users: [], districts: [] };
 
 /** One search for the whole app (spec D4): pages, customers and orders, full-screen.
  *
@@ -84,7 +84,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
     const t = window.setTimeout(() => {
       fetch(`/api/search?q=${encodeURIComponent(q)}`, { signal: ctl.signal })
         .then((r) => (r.ok ? r.json() : NO_REMOTE))
-        .then((j) => setRemote({ customers: j.customers ?? [], orders: j.orders ?? [], users: j.users ?? [], for: q }))
+        .then((j) => setRemote({ customers: j.customers ?? [], orders: j.orders ?? [], users: j.users ?? [], districts: j.districts ?? [], for: q }))
         .catch(() => { /* aborted by the next keystroke, or offline: pages still answer */ });
     }, 180);
     return () => { window.clearTimeout(t); ctl.abort(); };
@@ -97,6 +97,9 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
     if (!q.trim()) return recent.length ? [{ key: "recent", hits: recent }] : [];
     return ([
       { key: "page", hits: rankPages(tabs, q) },
+      // Districts first among the remote kinds: the code is the shortest thing a rep
+      // can type, so "14" should land on the place before on a customer whose name contains 14.
+      { key: "district", hits: fresh ? remote.districts : [] },
       { key: "customer", hits: fresh ? remote.customers : [] },
       { key: "order", hits: fresh ? remote.orders : [] },
       { key: "user", hits: fresh ? remote.users : [] },

@@ -98,3 +98,50 @@ export function searchUsers(db: DatabaseSync, session: Session, q: string, limit
       href: "/sales",
     }));
 }
+
+/** Districts, for the overlay. The code lookup is a PREFIX match, and that is the whole
+ *  design.
+ *
+ *  Substring matching makes one keystroke useless: "1" would return منطقه 1 plus all 26 of
+ *  1401-1426 -- 27 rows for a single character. Prefix narrows "14" to منطقه 14 and lets a
+ *  longer query walk down into the محله beneath it. So the SQL narrows on the indexed code
+ *  column and matchesQuery does what it does everywhere else in this file: folding ي/ی, ك/ک
+ *  and digit sets, which LIKE does not. Ordered by LENGTH(code) so a two-digit منطقه
+ *  outranks the four-digit محله under it -- asking for "14" wants the district, not its 26
+ *  neighbourhoods.
+ *
+ *  No role gate, unlike searchCustomers. Districts is shared reference data and carries no
+ *  tenant row, so there is nothing to scope and nothing to leak -- and a driver who has
+ *  been sent to ۱۴۰۵ has to be able to look it up. */
+export function searchDistricts(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
+  void session; // deliberately unscoped -- see above
+  if (tooShort(q)) return [];
+  const rows = db
+    .prepare(
+      `SELECT id, name, code FROM districts
+        WHERE code IS NOT NULL AND code LIKE ? ESCAPE '\\'
+        ORDER BY LENGTH(code), code`,
+    )
+    .all(`${escapeLike(normalisePersian(q.trim()))}%`) as unknown as {
+    id: number; name: string; code: string;
+  }[];
+  return rows
+    .filter((r) => matchesQuery(`${r.name} ${r.code}`, q))
+    .slice(0, limit)
+    .map((r) => ({
+      kind: "district",
+      id: `district:${r.id}`,
+      label: r.name,
+      // faDigits because the stored code is ASCII ("1405") and every other number in this
+      // overlay is shown in Persian. Stored ASCII keeps the prefix match and the
+      // west-to-east sort stable; the display is a rendering concern only.
+      sub: faDigits(r.code),
+      href: `/map?district=${r.id}`,
+    }));
+}
+
+/** LIKE treats % and _ as wildcards, so a query of "5%" would return every code ending in
+ *  5 -- a search box producing nonsense rather than an error. */
+function escapeLike(s: string): string {
+  return s.replace(/[\\%_]/g, (c) => `\\${c}`);
+}

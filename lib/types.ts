@@ -53,6 +53,12 @@ export interface DistrictProperties {
   coverage_status: CoverageStatus;
   notes: string | null;
   is_custom: boolean;
+  /** The short speakable code ("14", "1405", "B1", "T1"), NULL for a hand-drawn district
+   *  that has not been assigned one. Lives on the PROPERTIES side, never the geometry
+   *  payload: lib/districtGeometry.ts splits immutable geometry from mutable properties and
+   *  caches the geometry indefinitely behind a version stamp, so a field that changes would
+   *  bust that cache for nothing. */
+  code: string | null;
   updated_at: string;
   /** Which group holds this territory, NULL when unclaimed. This replaced the old
    *  free-text assigned_to: responsibility for an area is now a group's, not a name

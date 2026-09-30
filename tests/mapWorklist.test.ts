@@ -18,7 +18,7 @@ const cust = (id: number, over: Partial<CustomerRow> = {}): CustomerRow =>
 
 const dist = (id: number, over: Partial<DistrictProperties> = {}): DistrictProperties => ({
   id, name: `منطقه ${id}`, level: "mahalle", parent_name: null, coverage_status: "visited",
-  notes: null, is_custom: false, updated_at: TODAY, group_id: null,
+  notes: null, is_custom: false, code: `M${id}`, updated_at: TODAY, group_id: null,
   centroid_lat: IN.lat, centroid_lng: IN.lng, ...over,
 });
 

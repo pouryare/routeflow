@@ -3699,6 +3699,12 @@ export interface District {
   coverage_status: CoverageStatus;
   notes: string | null;
   is_custom: number;
+  /** Short speakable code, NULL for a hand-drawn district with none assigned yet. */
+  code: string | null;
+  /** The منطقه number as an integer, 0 when the district names no number (a بخش or a town).
+   *  An integer because the two source files spell the same district differently and
+   *  UNIQUE(name, level, parent_name) joins on the name. */
+  parent_no: number | null;
   updated_at: string;
   /** Which group holds this territory. NULL means unclaimed -- an owner sees it, no
    *  group manager does. Replaced the free-text assigned_to column, which is retained in

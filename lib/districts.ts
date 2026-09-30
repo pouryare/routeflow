@@ -29,6 +29,7 @@ export function readDistrictProperties(
     coverage_status: r.coverage_status,
     notes: r.notes,
     is_custom: !!r.is_custom,
+    code: r.code,
     updated_at: r.updated_at,
     group_id: r.group_id,
     centroid_lat: r.centroid_lat,

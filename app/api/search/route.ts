@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { searchCustomers, searchOrders, searchUsers } from "@/lib/repo/search";
+import { searchCustomers, searchDistricts, searchOrders, searchUsers } from "@/lib/repo/search";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 /** GET /api/search?q=… for the search overlay. Pages are matched client-side from the
@@ -17,6 +17,10 @@ export async function GET(req: NextRequest) {
   return NextResponse.json(
     {
       ok: true,
+      // Districts is shared reference data with no tenant row, so searchDistricts applies
+      // no scope of its own -- but it still goes through the same door guard, because this
+      // route is a read path and a new kind in it is a new place to leak.
+      districts: searchDistricts(db, guard.session, q),
       customers: searchCustomers(db, guard.session, q),
       orders: searchOrders(db, guard.session, q),
       users: searchUsers(db, guard.session, q),
