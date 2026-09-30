@@ -38,6 +38,7 @@
 | `tests/briefing.test.ts` | **Modify.** Existing role assertions. |
 
 ---
+
 ### Task 1: The card logic, as pure functions
 
 Before any rendering. "How many things need me" and "which one is most urgent" are decisions, not layout, so they belong in a module with no database and no React.
@@ -203,6 +204,12 @@ Expected: **10/10 pass.**
 
 ```bash
 cd /home/pourya/Desktop/routeflow
+git add lib/repo/briefingCards.ts tests/briefing-hello.test.ts
+git commit -m "feat(briefing): which panels demand something, and which one first"
+```
+
+---
+
 ### Task 2: The hero payload in `briefing.ts`
 
 `todayFor` returns `{ role, panels }`. Add a `hero` so the page does not re-derive identity, and give every role the monthly target.
