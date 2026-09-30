@@ -468,7 +468,15 @@ export default function SearchBox({
               {sortAnchor ? (
                 <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1 text-[length:var(--text-xs)] text-accent">
                   <Icon name="map-pin" size="sm" /> شما
-                  <button type="button" onClick={onPositionClear} className="text-accent/60 hover:text-accent">↵</button>
+                  <button
+                    type="button"
+                    onClick={onPositionClear}
+                    aria-label="پاک کردن موقعیت"
+                    title="پاک کردن موقعیت"
+                    className="inline-flex items-center text-accent/60 hover:text-accent"
+                  >
+                    <Icon name="x" size="sm" />
+                  </button>
                 </span>
               ) : (
                 <button type="button" onClick={() => onSetPosition?.()} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent">
