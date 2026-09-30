@@ -55,17 +55,29 @@ describe("district seed sources", () => {
     expect((JSON.parse(fs.readFileSync(DATA("outer-towns.json"), "utf8")) as unknown[]).length).toBe(7);
   });
 
-  it("gives bomehen, abali and rudehen the Rey county they are actually in", () => {
-    // They are all in شهرستان ری -- bomehen in بخش بومهن, the other two in بخش رودهن --
-    // and the script filed every town under دماوند, roughly 40km away. Checked by casting
-    // each centroid against the bakhsh polygons.
+  // Each town's county, from the bakhsh polygons: بخش رودهن is a separate بخش from
+  // بخش مرکزی ری, so رودهن and آبعلی are in شهرستان رودهن, and بومهن is in شهرستان ری.
+  // An earlier revision guessed all three were ری and was wrong about two of them.
+  it("gives every outer town the county its own bakhsh implies", () => {
     const src = fs.readFileSync(path.join(process.cwd(), "scripts", "seed-outer-towns.ts"), "utf8");
-    for (const town of ["بومهن", "آبعلی", "رودهن"]) {
-      expect(src, `${town} must be parented to شهرستان ری`).toMatch(
-        new RegExp(`${town}:\\s*"شهرستان ری"`)
+    const expected: [string, string][] = [
+      ["پردیس", "شهرستان پردیس"],
+      ["بومهن", "شهرستان ری"],
+      ["رودهن", "شهرستان رودهن"],
+      ["آبعلی", "شهرستان رودهن"],
+      ["دماوند", "شهرستان دماوند"],
+      ["آبسرد", "شهرستان دماوند"],
+      ["کیلان", "شهرستان دماوند"],
+    ];
+    for (const [town, county] of expected) {
+      expect(src, `${town} must be parented to ${county}`).toMatch(
+        new RegExp(`${town}:\\s*"${county}"`)
       );
     }
-    expect(src).toMatch(/پردیس:\s*"شهرستان پردیس"/);
+    // رودهن and آبعلی are NOT in ری. The regression that matters, because ری is the
+    // neighbouring county and the mistake is plausible rather than obvious.
+    expect(src).not.toMatch(/رودهن:\s*"شهرستان ری"/);
+    expect(src).not.toMatch(/آبعلی:\s*"شهرستان ری"/);
   });
 
   // The landmine. All three scripts say "safe to re-run: INSERT OR IGNORE", and in SQLite

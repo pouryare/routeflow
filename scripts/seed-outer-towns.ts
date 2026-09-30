@@ -9,21 +9,27 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DatabaseSync } from "node:sqlite";
 
-// Checked by casting each town's centroid against the bakhsh polygons in
-// data/bakhsh-districts.json. بومهن sits in بخش بومهن and آبعلی and رودهن both in
-// بخش رودهن -- all three are شهرستان ری, roughly 40km from دماوند, which is where the
-// old single-entry map sent them. The other four were already right.
+// Each town's county, established by casting its centroid against the bakhsh polygons in
+// data/bakhsh-districts.json. That file settles it on its own: بخش رودهن is a SEPARATE
+// بخش from بخش مرکزی ری, so رودهن and آبعلی are in شهرستان رودهن and not ری -- the
+// neighbouring-county guess an earlier revision of this file made, and one this file's own
+// data disproves. بومهن is in بخش بومهن, which is in شهرستان ری. The remaining three
+// fall in بخش مرکزی شهرستان دماوند.
+//
+// The old single-entry map sent all seven to دماوند, which was wrong for پردیس and بومهن
+// as well as these three.
 const PARENT_COUNTY: Record<string, string> = {
   پردیس: "شهرستان پردیس",
   بومهن: "شهرستان ری",
-  آبعلی: "شهرستان ری",
-  رودهن: "شهرستان ری",
+  رودهن: "شهرستان رودهن",
+  آبعلی: "شهرستان رودهن",
   دماوند: "شهرستان دماوند",
   آبسرد: "شهرستان دماوند",
   کیلان: "شهرستان دماوند",
 };
-// Only reached if a town is added to outer-towns.json without a county above. Naming
-// دماوند is the safer guess of the two: it is the county the other three fall in.
+// Only reached if a town is added to outer-towns.json without a county above. دماوند is
+// the fallback because two thirds of the seeded towns are in it, and a wrong-but-uniform
+// default is easier to spot in the admin UI than a wrong-but-plausible guess.
 const DEFAULT_PARENT = "شهرستان دماوند";
 
 // Opens the database directly rather than through lib/db.ts: a seed is a data load, not
