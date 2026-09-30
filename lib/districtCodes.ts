@@ -10,7 +10,13 @@
  *  tiebreaker and the print artifact. Thirteen محله names collide inside their own منطقه
  *  (کوهسار is drawn 21km apart), and that is the case where a number earns its keep. */
 
-import { normalisePersian } from "./persian";
+// The .ts extension is deliberate and is the only one in lib/. scripts/ runs under
+// `node --experimental-strip-types`, which cannot resolve an extensionless relative import
+// (ERR_MODULE_NOT_FOUND) -- the same thing that made all three seed scripts unrunnable
+// until they were repointed at SQLite directly. scripts/*.ts already import lib modules
+// this way, and tsconfig sets allowImportingTsExtensions, so this costs nothing and keeps
+// the rules testable AND runnable from scripts/assign-district-codes.ts.
+import { normalisePersian } from "./persian.ts";
 
 /** The number inside a منطقه's name, whichever digits it is written in.
  *

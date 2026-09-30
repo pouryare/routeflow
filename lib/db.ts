@@ -3020,6 +3020,30 @@ export function getDb(): DatabaseSync {
   }
   backfillDistrictCentroids(db);
 
+  // A short, speakable code per district, and the منطقه number as an integer.
+  //
+  // parent_no exists because the two source files spell the same district differently --
+  // map.tehran.ir writes "منطقه ۱۴ شهر تهران" and our own mahalle.geojson writes "منطقه 14"
+  // -- and UNIQUE(name, level, parent_name) joins on the name. An integer cannot be
+  // spelled two ways, so the 369 محله resolve to their منطقه regardless of which file they
+  // came from.
+  //
+  // The code index is PARTIAL-unique. A hand-drawn district (is_custom = 1) has no code
+  // until an operator assigns one, and a hard UNIQUE would fail the moment two of them sat
+  // blank -- which is exactly the state a freshly drawn district is in.
+  //
+  // Assigned by scripts/assign-district-codes.ts, never here. A code written during boot
+  // would be recomputed on every seed, so a split would renumber existing districts and
+  // every printed route sheet would silently point somewhere else.
+  const districtCodeCols = db.prepare("PRAGMA table_info(districts)").all() as { name: string }[];
+  if (!districtCodeCols.some((c) => c.name === "code")) {
+    db.exec("ALTER TABLE districts ADD COLUMN code TEXT");
+  }
+  if (!districtCodeCols.some((c) => c.name === "parent_no")) {
+    db.exec("ALTER TABLE districts ADD COLUMN parent_no INTEGER");
+  }
+  db.exec("CREATE UNIQUE INDEX IF NOT EXISTS ix_districts_code ON districts(code) WHERE code IS NOT NULL");
+
   const customerCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
   if (!customerCols.some((c) => c.name === "last_purchase_date")) {
     db.exec("ALTER TABLE customers ADD COLUMN last_purchase_date TEXT");
