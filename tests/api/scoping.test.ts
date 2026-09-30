@@ -42,7 +42,7 @@ beforeAll(() => {
 
   westDistrictId = Number(
     db.prepare(
-      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at, organization_id) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?, 1)"
+      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
     ).run("محله غرب", west, now).lastInsertRowid
   );
 });
@@ -169,7 +169,7 @@ beforeAll(() => {
   westCustomerId = (db.prepare("SELECT id FROM customers WHERE customer_code = 'W1'").get() as { id: number }).id;
   eastDistrictId = Number(
     db.prepare(
-      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at, organization_id) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?, 1)"
+      "INSERT INTO districts (name, level, boundary_geojson, coverage_status, group_id, updated_at) VALUES (?, 'mahalle', '{}', 'unknown', ?, ?)"
     ).run("محله شرق", east, now).lastInsertRowid
   );
 

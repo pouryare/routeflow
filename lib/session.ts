@@ -161,13 +161,32 @@ export function scopeGroupIds(session: Session): number[] | "all" {
  *  to have over their own company, not a narrowing anyone asked for. So the owner branch
  *  filters by organisation only, admitting grouped and ungrouped rows alike -- the same
  *  breadth "all" used to give them, now bounded to their own organisation. */
-export function groupFilter(session: Session, column = "group_id"): { sql: string; params: number[] } {
+/** Scope rows to the caller's organisation and groups.
+ *
+ *  `shared: true` is for tables that hold the same rows for every organisation -- districts
+ *  is the one, since Tehran's 22 منطقه are identical for everyone and the table carries no
+ *  organization_id to filter on. Without it the owner's branch appends
+ *  `organization_id = ?` to a column that does not exist, and the query throws rather than
+ *  merely over-scoping. A caller that forgets gets a loud failure, which is right for a
+ *  scoping helper; the alternative -- guessing the table from a column name -- cannot work,
+ *  because `groupFilter(session)` carries no table at all. */
+export function groupFilter(
+  session: Session,
+  column = "group_id",
+  opts: { shared?: boolean } = {},
+): { sql: string; params: number[] } {
   const scope = scopeGroupIds(session);
   if (scope === "all") return { sql: "", params: [] };
+  // Shared reference data has no tenant boundary, so the caller sees the whole set. Only the
+  // organisation guard is dropped; a group filter is still applied below, because which group
+  // holds a piece of territory is a real, per-organisation question.
+  const orgScoped = !opts.shared;
 
   if (session.role === "owner") {
     const prefix = column.includes(".") ? column.slice(0, column.indexOf(".") + 1) : "";
-    return { sql: ` AND ${prefix}organization_id = ?`, params: [session.organizationId] };
+    return orgScoped
+      ? { sql: ` AND ${prefix}organization_id = ?`, params: [session.organizationId] }
+      : { sql: "", params: [] };
   }
 
   if (scope.length === 0) return { sql: " AND 1 = 0", params: [] };
@@ -244,7 +263,11 @@ export function entityGroupFilter(
 
   if (session.role === "platform_owner") return { joins, sql: "", params: [] };
 
-  const orgGuard = `COALESCE(_ec.organization_id, _ed.organization_id, _ef.organization_id, _el.organization_id) = ?`;
+  // districts is shared reference data and has no organization_id -- a district belongs to
+  // every organisation, so a district-typed entity is not org-filtered at all. Only the
+  // tenant-owned joins contribute to the guard; naming _ed here would throw on every
+  // district-typed reminder or visit plan.
+  const orgGuard = `COALESCE(_ec.organization_id, _ef.organization_id, _el.organization_id) = ?`;
 
   if (session.role === "owner") {
     // Same reasoning as groupFilter's owner branch: before tenancy, owner saw every

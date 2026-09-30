@@ -106,22 +106,25 @@ describe("natural keys are unique per tenant, not globally", () => {
     expect(() => ins(1, cust1)).toThrow();
   });
 
-  it("lets two organisations name the same district", () => {
-    // A non-null parent_name, deliberately: SQLite treats NULL as distinct from NULL in
-    // a UNIQUE constraint, so two districts both carrying parent_name = NULL would never
-    // collide regardless of tenancy -- that is pre-existing SQLite semantics on this
-    // table, not something this migration changes, and testing it would only prove
-    // NULL-handling rather than the tenant boundary this task actually adds.
-    const ins = (org: number) =>
+  it("refuses a duplicate district name globally, because districts is shared", () => {
+    // districts is the ONE natural key that is NOT per-tenant. Tehran's 22 منطقه are the
+    // same for every organisation, and per-tenant copies of the same polygons drift apart
+    // until منطقه 14 means two different places. So it left TENANT_TABLES, lost its
+    // organization_id column, and its key is now UNIQUE(name, level, parent_name).
+    //
+    // A non-null parent_name, deliberately: SQLite treats NULL as distinct from NULL inside
+    // a UNIQUE index, so two rows both carrying parent_name = NULL would never collide
+    // regardless of the constraint -- that is SQLite semantics, not tenancy, and testing it
+    // would only prove NULL handling.
+    const ins = () =>
       db
         .prepare(
-          `INSERT INTO districts (name, level, parent_name, boundary_geojson, updated_at, organization_id)
-           VALUES ('محله ۱', 'mahalle', 'منطقه ۱', '{}', '2026-01-01', ?)`
+          `INSERT INTO districts (name, level, parent_name, boundary_geojson, updated_at)
+           VALUES ('محله ۱', 'mahalle', 'منطقه ۱', '{}', '2026-01-01')`
         )
-        .run(org);
-    ins(1);
-    expect(() => ins(2)).not.toThrow();
-    expect(() => ins(1)).toThrow();
+        .run();
+    ins();
+    expect(() => ins()).toThrow();
   });
 
   it("lets two organisations save the same maps link", () => {

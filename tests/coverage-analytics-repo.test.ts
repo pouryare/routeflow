@@ -78,7 +78,7 @@ function customer(name: string, group: number, lastPurchaseDaysAgo: number | nul
 function district(group: number, status: string) {
   getDb()
     .prepare(
-      "INSERT INTO districts (name,level,boundary_geojson,coverage_status,updated_at,group_id,organization_id) VALUES ('م'||abs(random()),'mantaghe','{}',?,?,?,1)",
+      "INSERT INTO districts (name,level,boundary_geojson,coverage_status,updated_at,group_id) VALUES ('م'||abs(random()),'mantaghe','{}',?,?,?)",
     )
     .run(status, new Date().toISOString(), group);
 }

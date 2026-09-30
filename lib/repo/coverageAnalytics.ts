@@ -69,7 +69,9 @@ export function coverageAnalytics(
   now: Date = new Date(),
   db: DatabaseSync = getDb(),
 ): CoverageAnalytics {
-  const f = groupFilter(session);
+  // districts is shared reference data (no organization_id), so the org guard is dropped;
+  // the group filter still applies, since which group holds a territory is per-organisation.
+  const f = groupFilter(session, "group_id", { shared: true });
   const districts = db
     .prepare(`SELECT * FROM districts WHERE 1 = 1${f.sql}`)
     .all(...f.params) as unknown as District[];

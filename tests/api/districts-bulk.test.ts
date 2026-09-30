@@ -17,8 +17,8 @@ function seedDistrict(status = "unknown") {
   const now = new Date().toISOString();
   const result = db
     .prepare(
-      `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, updated_at, organization_id)
-       VALUES (?, 'mahalle', NULL, ?, ?, NULL, 0, ?, 1)`
+      `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, updated_at)
+       VALUES (?, 'mahalle', '', ?, ?, NULL, 0, ?)`
     )
     .run(`Test District ${Math.random()}`, JSON.stringify({ type: "Polygon", coordinates: [] }), status, now);
   return Number(result.lastInsertRowid);
