@@ -108,7 +108,29 @@ describe("API write paths stamp the session's organisation", () => {
     );
     const body = await res.json();
     expect(res.status).toBe(200);
-    expect(orgOf("districts", body.id)).toBe(ORG2);
+    // districts is the one write path that does NOT stamp an organisation, and that is the
+    // point of it: Tehran's 22 منطقه are shared reference data, identical for every
+    // organisation, so a per-tenant copy would drift until منطقه 14 meant two places. The row
+    // has no organization_id column at all -- asserting one here would re-add the very
+    // tenancy this table was removed from.
+    const db = getDb();
+    // The real assertion: the column is gone, so no organisation could have been stamped.
+    // This is the whole point of districts being shared, and it is why the org-stamping
+    // check above does not apply to this route.
+    expect(
+      db.prepare("PRAGMA table_info(districts)").all().map((c) => c.name),
+      "districts must not carry an organization_id"
+    ).not.toContain("organization_id");
+
+    const row = db.prepare("SELECT is_custom, group_id FROM districts WHERE id = ?").get(body.id) as
+      | { is_custom: number; group_id: number | null }
+      | undefined;
+    expect(row, "the drawn district must exist").toBeDefined();
+    expect(row!.is_custom).toBe(1);
+    // group_id is what scopes a district for territory instead, and it is nullable on
+    // purpose: a district nobody has claimed yet is a real state, and this session's user
+    // has no group. So NULL here is the correct outcome, not a missing stamp.
+    expect(row!.group_id).toBeNull();
   });
 
   it("POST /api/locations", async () => {
