@@ -20,6 +20,8 @@
 
 **Driver mode is out of scope.** `/driver` is a thumb in a moving vehicle and MASTER.md bans overshoot there. `/today` and `/sales/today` get the new layout; `/driver` does not.
 
+**Build order.** Plan B (`2026-09-30-avatars.md`) first — the hero is built around a photograph. `2026-09-30-icon-rule.md` before `2026-09-30-weather-holidays.md`, which needs glyphs. The weather plan is independent of this one and can run in parallel with it.
+
 ---
 
 ## File Structure
