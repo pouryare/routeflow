@@ -40,16 +40,32 @@ function outerRings(geojson: string): [number, number][][] {
 
 /** The district whose boundary contains the point, or null.
  *
- *  Ordered so 'mahalle' is tested before 'mantaghe': every mahalle sits inside a
- *  mantaghe, so a point inside one is inside both, and territory is assigned at the
- *  finer level. Testing coarse-first would hand every point to the enclosing mantaghe
- *  and make neighbourhood-level assignment meaningless.
+ *  Two rules, in this order:
+ *
+ *  1. **A hand-drawn district wins.** `is_custom DESC` first, because a boundary an
+ *     operator drew is a deliberate, finer statement about a place and must beat the
+ *     coarse administrative polygon underneath it. This is not cosmetic: a بخش is stored
+ *     at level='mantaghe' -- the same level a drawn district gets, since the CHECK allows
+ *     only those two values -- so without is_custom the ordering fell through to `id` and
+ *     the custom district, always inserted after the seeds, always lost. Every boundary an
+ *     operator drew would have been silently ignored, while the point still matched
+ *     something so nothing ever errored. That is the whole "add, never split" rule working:
+ *     a new place is added as a nested district precisely because it beats its parent.
+ *
+ *  2. **Finer before coarser.** Every محله sits inside a منطقه, so a point inside one is
+ *     inside both, and territory is assigned at the finer level. Testing coarse-first
+ *     would hand every point to the enclosing منطقه and make neighbourhood assignment
+ *     meaningless.
+ *
+ *  recomputeCustomerGroups below carries the identical ORDER BY and must keep doing so: if
+ *  the two drift, a backfill and the running app classify the same point two different
+ *  ways, which is worse than either being wrong on its own.
  */
 export function districtIdForPoint(db: DatabaseSync, lat: number, lng: number): number | null {
   const rows = db
     .prepare(
       `SELECT id, level, group_id, boundary_geojson FROM districts
-       ORDER BY CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id`
+       ORDER BY is_custom DESC, CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id`
     )
     .all() as unknown as DistrictShape[];
 
@@ -79,7 +95,7 @@ export function recomputeCustomerGroups(db: DatabaseSync): number {
   const districts = db
     .prepare(
       `SELECT id, level, group_id, boundary_geojson FROM districts
-       ORDER BY CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id`
+       ORDER BY is_custom DESC, CASE level WHEN 'mahalle' THEN 0 ELSE 1 END, id`
     )
     .all() as unknown as DistrictShape[];
 
