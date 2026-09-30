@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/meridian/Icon";
-import { faNum } from "@/lib/format";
+import { faDigits, faNum } from "@/lib/format";
 import type { Worklist, WorkReminder } from "@/lib/mapWorklist";
 import type { CustomerRow, DistrictProperties } from "@/lib/types";
 
@@ -93,6 +93,11 @@ export default function MapWorklist({
                       <Icon name="map" size="sm" />
                       <span className="mwork__text">
                         <span className="mwork__title">{d.name}</span>
+                        {/* The code, so a rep can read it out over the phone. faDigits because
+                            the stored code is ASCII and every other number here is Persian.
+                            NULL for a hand-drawn district that has not been assigned one, which
+                            is why this is conditional rather than defaulted. */}
+                        {d.code ? <span className="mwork__sub">{faDigits(d.code)}</span> : null}
                         {d.parent_name ? <span className="mwork__sub">{d.parent_name}</span> : null}
                       </span>
                     </button>

@@ -4,6 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import CustomerBento, { useCustomerSummary } from "./CustomerBento";
 import { Icon } from "@/components/meridian/Icon";
+import { faDigits } from "@/lib/format";
 
 /** پنجرهٔ مشتری — the artifact's bottom bento sheet.
  *
@@ -56,7 +57,14 @@ export default function CustomerSheet({
             <h2 id="sh-name">{data?.business_name ?? fallbackName ?? "مشتری"}</h2>
             <div className="s">
               {data
-                ? [data.where, data.status, data.salesperson && `فروشنده: ${data.salesperson}`]
+                ? [
+                    data.where,
+                    // The district code a rep can read out over the phone, right after the
+                    // place name it belongs to. faDigits because it is stored ASCII.
+                    data.district_code && faDigits(data.district_code),
+                    data.status,
+                    data.salesperson && `فروشنده: ${data.salesperson}`,
+                  ]
                     .filter(Boolean)
                     .join(" · ")
                 : failed

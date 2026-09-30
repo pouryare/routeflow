@@ -19,6 +19,9 @@ export interface CustomerSummary {
   business_name: string;
   /** «منطقه ۵ · پونک» — whatever of city/province/address is actually known. */
   where: string | null;
+  /** The district's short code ("1405"), NULL when the customer has no district or its
+   *  district has no code. Stored ASCII, rendered Persian by the caller. */
+  district_code: string | null;
   status: string | null;
   salesperson: string | null;
   /** Delivered spend in the window, in toman. */
@@ -58,7 +61,7 @@ export function readCustomerSummary(
     db
       .prepare(
         `SELECT id, business_name, city, province, address, lifecycle, salesperson,
-                organization_id, last_purchase_date
+                organization_id, last_purchase_date, district_id
            FROM customers WHERE id = ?`
       )
       .all(customerId)
@@ -73,6 +76,8 @@ export function readCustomerSummary(
         salesperson: string | null;
         organization_id: number;
         last_purchase_date: string | null;
+        /** NULL for a customer with no location -- most of them today. */
+        district_id: number | null;
       }
     | undefined;
   if (!customer) return null;
@@ -118,15 +123,28 @@ export function readCustomerSummary(
     .sort((a, b) => b.order_date.localeCompare(a.order_date) || b.id - a.id)
     .slice(0, 5);
 
+  // The district, when the customer has one, is a better answer than the free-text city:
+  // it is resolved from lat/lng by point-in-ring rather than typed, and it carries the code
+  // a rep can read out. Falls through to city/address exactly as before when there is no
+  // district -- which is most rows today, since only located customers have one.
+  const district = customer.district_id
+    ? (db.prepare("SELECT name, code FROM districts WHERE id = ?").get(customer.district_id) as
+        | { name: string; code: string | null }
+        | undefined)
+    : undefined;
   const where =
+    district?.name ||
     [customer.city, customer.province].filter(Boolean).join(" · ") ||
     customer.address?.slice(0, 60) ||
     null;
+  // The code, shown next to the name. ASCII in the database, Persian on screen.
+  const district_code = district?.code ?? null;
 
   return {
     customer_id: customer.id,
     business_name: customer.business_name,
     where,
+    district_code,
     status: customer.lifecycle,
     salesperson: customer.salesperson,
     spend,
