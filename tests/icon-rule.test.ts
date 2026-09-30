@@ -29,7 +29,7 @@ const SANCTIONED = new Set([
  *  would make an icon test fail on Persian holiday copy — which is Plan D's business and is
  *  handled there. */
 const EMOJI =
-  /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/u;
+  /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu;
 
 /** Comments are stripped before the emoji scan: a comment explaining WHY emoji are banned
  *  must be able to name one. */

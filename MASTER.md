@@ -688,6 +688,47 @@ the customer detail view opened by tapping a pocket card.
 ### Assignment board `SHIPPED`
 Superseded by **Order pipeline** above. Same endpoint, same authorisation surface.
 
+## Icons `SHIPPED` — one library, reached one way
+
+**Lucide, and only Lucide.** Every glyph comes from `lucide-react` through
+`components/meridian/icon-map.ts` and is rendered by `components/meridian/Icon`. This file
+once left the choice open and named Phosphor as the candidate, while the app had
+already shipped Lucide everywhere. The reason it is kept is worth recording, because
+the open question was not merely stale:
+
+**Lucide is stroke-only and monochrome.** Every glyph is an outline that inherits
+`currentColor` and takes its colour from CSS. That is exactly the rule this file already
+states for icons, so Lucide complies with the system rather than negotiating with it.
+Phosphor — the alternative considered — is defined by its duotone and fill weights, which
+would either have broken the monochrome rule in several places, or meant using only its thin
+outline set, which is what Lucide already is. Settled, and not to be reopened by a later
+redesign.
+
+**The rules.**
+
+- **Never import `lucide-react` in a feature file.** Add a name to `ICONS` in
+  `icon-map.ts`, render it with `<Icon>`. A direct import is how stroke width and pixel size
+  drift back in, which is the entire reason the wrapper exists.
+- **Every action button carries an icon.** Icon first, then the label, reading
+  right-to-left in this RTL app.
+- **Icon + label on anything whose meaning is not obvious from the glyph.** Add, delete,
+  edit, print, export, filter — these get both.
+- **Icon-only only where a label genuinely will not fit**, and never without an accessible
+  name: `<Icon name="trash" label="حذف" />`. An icon-only button with no `label` is invisible
+  to a screen reader.
+- **Size is a token, never raw pixels.** `sm` / `md` / `lg` from `IconSize`.
+- **`filled` is a state, not a colour knob.** It marks an on/off glyph (a rated star, a
+  pinned marker). The icon stays one ink either way.
+- **No emoji as an icon, ever.** An emoji is a coloured picture from a font you do not
+  control: it renders in the vendor's palette (Apple's bell is amber, Noto's is brown),
+  ignores `color`, ignores stroke weight, and changes shape between the reader's phone and
+  their desktop. One emoji in a panel is enough to make an otherwise monochrome interface
+  look assembled from parts.
+
+`tests/icon-rule.test.ts` enforces the first and last of these mechanically and fails on a
+stale `MASTER.md`, so a glyph added straight to a feature file fails the suite the day it
+lands.
+
 ## Anti-patterns
 
 - No purple/pink AI-gradient anything. (Warm mesh gradients are specified above and are
@@ -717,8 +758,6 @@ Superseded by **Order pipeline** above. Same endpoint, same authorisation surfac
 - Whether `/report` print styles get a light-theme pass or keep their own sheet. Print is
   already the one place the MVP allowed a light world, and it may simply become light
   mode now.
-- Icon set. The app currently has no consistent one; Lucide and Feather are the AI
-  defaults and are excluded. Phosphor is the leading candidate.
 Decided since: the map's tile sets are hosted styles, not CSS filters. «رادار» is CARTO
 Dark Matter drawn as vector through MapLibre — the pre-redesign basemap itself rather than
 an inversion of a light one, which is what made every filtered attempt look wrong. A CSS
