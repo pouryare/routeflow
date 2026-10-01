@@ -78,6 +78,39 @@ export const ROLE_LABEL: Record<Role, string> = {
   delivery_driver: "راننده تحویل",
 };
 
+/** Names the `Role` union RETIRED but `users.role`'s CHECK still admits, on purpose.
+ *
+ *  'driver' split into `field_rep` + `delivery_driver` and 'salesperson' into `phone_sales`.
+ *  The CHECK keeps admitting both so an account created by a script that predates the split
+ *  keeps working instead of failing to log in — see tests/salesperson-role.test.ts, which
+ *  asserts the insert still succeeds. Retiring a NAME and refusing the old ROWS are two
+ *  different decisions, and only the second one was taken.
+ *
+ *  The hazard is that the retirement is invisible in the type. `lib/session.ts` and
+ *  `user_roles_after_insert` both launder these strings through `as Role`, so the picker
+ *  receives "driver" wearing a `Role` costume — and `ROLE_LABEL[r] ?? r` then printed the
+ *  raw English token on a Persian screen. Four components had that fallback.
+ *
+ *  So: the labels live here, and `roleLabel()` is the only sanctioned way to name a role.
+ *  tests/role-label-legacy.test.ts reads this CHECK back out of db.ts and fails if anything
+ *  storable lacks a label, which is what stops the next retirement from repeating this. */
+export const RETIRED_ROLE_LABEL: Record<string, string> = {
+  driver: "راننده",
+  salesperson: "فروشنده",
+};
+
+/** The Persian name for a role, whatever version of the name the row still carries.
+ *
+ *  Total on purpose: the last argument is a human-facing placeholder, never the raw token.
+ *  Returning "driver" to a Persian reader is the bug this exists to make impossible. */
+export function roleLabel(role: string): string {
+  return (
+    ROLE_LABEL[role as Role] ??
+    RETIRED_ROLE_LABEL[role] ??
+    "نامشخص" // نامشخص = "unknown" — a Persian word, not an empty button.
+  );
+}
+
 /** What each role is for, shown beside the picker when creating an account -- the labels
  *  alone do not say that a فروشنده sees only their own orders. */
 export const ROLE_DESCRIPTION: Record<Role, string> = {

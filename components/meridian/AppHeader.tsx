@@ -3,7 +3,7 @@ import RoleBanner from "@/components/meridian/RoleBanner";
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { ROLE_LABEL } from "@/lib/roles";
+import { roleLabel } from "@/lib/roles";
 import ProfileMenu from "@/components/meridian/ProfileMenu";
 import NotificationBell from "@/components/NotificationBell";
 import SearchSlot from "@/components/meridian/SearchSlot";
@@ -48,7 +48,7 @@ export default async function AppHeader() {
       {session.actorId ? (
         <ImpersonationBanner
           asName={session.user.display_name}
-          asRole={ROLE_LABEL[session.role]}
+          asRole={roleLabel(session.role)}
         />
       ) : null}
       {/* Which world they are in. Both can be true at once — a driver impersonated by the
@@ -63,7 +63,7 @@ export default async function AppHeader() {
           <ProfileMenu
             userId={session.user.id}
             name={session.user.display_name}
-            roleLabel={ROLE_LABEL[session.role]}
+            roleLabel={roleLabel(session.role)}
           />
         </div>
       </div>

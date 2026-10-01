@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
-import { ROLE_LABEL, type Role } from "@/lib/roles";
+import { roleLabel, type Role } from "@/lib/roles";
 
 /** Names the ACTIVE role, for someone holding more than one.
  *
@@ -35,7 +35,7 @@ export default function RoleBanner({ role, roles }: { role: Role; roles: Role[] 
   return (
     <div className="actas" role="status">
       <span className="actas__text">
-        نقش فعال شما: <b>{ROLE_LABEL[role] ?? role}</b>
+        نقش فعال شما: <b>{roleLabel(role)}</b>
       </span>
       {others.map((r) => (
         <button
@@ -46,7 +46,7 @@ export default function RoleBanner({ role, roles }: { role: Role; roles: Role[] 
           onClick={() => void switchTo(r)}
         >
           <Icon name="users" size="md" />
-          {ROLE_LABEL[r] ?? r}
+          {roleLabel(r)}
         </button>
       ))}
     </div>

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/meridian/Avatar";
-import { ROLE_LABEL, type Role } from "@/lib/roles";
+import { roleLabel, type Role } from "@/lib/roles";
 import SectionHead from "@/components/meridian/SectionHead";
 
 type Row = {
@@ -113,7 +113,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
                     {/* Every hat, not just the primary: the point of the feature is to see
                         what this person really is. */}
                     <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                      {r.roles.map((x) => ROLE_LABEL[x as Role] ?? x).join("، ")}
+                      {r.roles.map((x) => roleLabel(x)).join("، ")}
                     </span>
                   </span>
                   {r.isSelf && (

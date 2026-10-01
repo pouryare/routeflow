@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
-import { ROLE_LABEL, type Role } from "@/lib/roles";
+import { roleLabel, type Role } from "@/lib/roles";
 
 /* The role switcher — the one user-visible thing multi-role adds.
  *
@@ -56,7 +56,7 @@ export default function RolePicker({ roles, active }: { roles: Role[]; active: R
             }
           >
             <Icon name="users" size="sm" />
-            {ROLE_LABEL[r] ?? r}
+            {roleLabel(r)}
           </button>
         );
       })}

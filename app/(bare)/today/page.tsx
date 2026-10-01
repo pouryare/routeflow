@@ -9,7 +9,7 @@ import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import BriefingHero from "@/components/today/BriefingHero";
 import { cardFor } from "@/lib/repo/briefingCards";
-import { ROLE_LABEL, type Role } from "@/lib/roles";
+import { roleLabel, type Role } from "@/lib/roles";
 import RolePicker from "@/components/today/RolePicker";
 import NotificationBell from "@/components/NotificationBell";
 
@@ -47,7 +47,7 @@ export default async function TodayPage() {
       <BriefingHero
         data={data}
         card={cardFor(data.panels)}
-        roleLabel={ROLE_LABEL[session.role as Role] ?? "نامشخص"}
+        roleLabel={roleLabel(session.role)}
         dateIso={new Date().toISOString()}
       />
       <RolePicker roles={session.roles} active={session.role} />
