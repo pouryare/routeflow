@@ -10,7 +10,7 @@ import { cardFor } from "@/lib/repo/briefingCards";
 import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, ROLE_LABEL } from "@/lib/roles";
+import { isVanRole, ROLE_LABEL, type Role } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 
@@ -58,7 +58,7 @@ export default async function SalesTodayPage() {
       <BriefingHero
         data={data}
         card={cardFor(data.panels)}
-        roleLabel={ROLE_LABEL[session.role] ?? session.role}
+        roleLabel={ROLE_LABEL[session.role as Role] ?? "نامشخص"}
         dateIso={new Date().toISOString()}
       />
 
