@@ -2395,6 +2395,51 @@ body {
  *
  * `aria-hidden` on the photo span lives in the component, not here: it is behaviour, and a
  * CSS-only rule for it would be invisible to anyone reading the JSX. */
+/* A count plus the one named item to act on.
+ *
+ * Named `actile__*` rather than `tile__*` on purpose: `.tile` already exists and is live in
+ * CustomerBento and the planner, and reusing it here would have restyled every existing
+ * card in the app to get this one right. Radius follows the neighbouring `.tile` rule
+ * (--r-xl) so the two read as the same family at a glance. */
+.meridian .actile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+  padding: var(--space-3);
+  border-radius: var(--r-xl);
+  background: var(--card);
+  box-shadow: var(--sh-1);
+  text-decoration: none;
+  color: var(--text);
+  transition: box-shadow 160ms var(--ease);
+}
+.meridian .actile--action:hover {
+  box-shadow: var(--sh-2);
+}
+.meridian .actile__count {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-2xl);
+  font-weight: 700;
+  line-height: 1.1;
+}
+.meridian .actile__title {
+  font-size: var(--text-sm);
+  color: var(--muted);
+}
+.meridian .actile__urgent {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  margin-top: var(--space-1);
+  padding-top: var(--space-1);
+  border-top: 1px solid var(--border);
+  font-size: var(--text-sm);
+  color: var(--accent);
+  min-width: 0;
+}
+
 .meridian .hello {
   display: flex;
   flex-direction: column;
