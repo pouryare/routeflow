@@ -8,28 +8,44 @@
  *
  *  Write for someone who has just arrived: what this screen holds, and what they are
  *  expected to do with it. Not a feature list.
- */
-export type PageMeta = { title: string; overview: string };
+ *
+ *  `titleEn` exists because this app is used by people who read Persian and systems that do
+ *  not — browser tabs, <title>, a screenshot in a bug report. It is NOT a word-for-word
+ *  translation of the Persian title; it is the name a bilingual person would actually use for
+ *  the page in English. That is why no two routes may share one: two pages with the same
+ *  English name is how someone ends up on the wrong browser tab for ten minutes.
+ *
+ *  Required, not optional. Every route is forced to answer on the day it is added, because
+ *  tests/pageMeta.test.ts walks app/(shell) and fails on any route missing an entry.
+ *
+ *  `help` is an optional id into `lib/help/` rather than a second paragraph: the copy already
+ *  lives there, and a page should not be able to drift from it. */
+export type PageMeta = { title: string; titleEn: string; overview: string; help?: string };
+
 
 export const PAGE_META: Record<string, PageMeta> = {
   // میدان و نقشه
   "/map": {
     title: "نقشهٔ پوشش",
+    titleEn: "Coverage map",
     overview:
       "همهٔ مشتریان و مناطق روی یک نقشه. لایه‌ها را روشن و خاموش کنید تا پوشش، تراکم و مسیرها را کنار هم ببینید؛ روی هر نقطه بزنید تا پروندهٔ آن مشتری باز شود.",
   },
   "/planner": {
     title: "برنامه‌ریز مسیر",
+    titleEn: "Route planner",
     overview:
       "مقصدهای یک روز را انتخاب کنید و ترتیب بهینهٔ بازدید را بگیرید. ترتیب پیشنهادی بازدیدها را می‌توانید جابه‌جا کنید و در پایان به ناوبری گوشی بفرستید.",
   },
   "/crm": {
     title: "مشتریان و سرنخ‌ها",
+    titleEn: "Customers and leads",
     overview:
       "همهٔ کسب‌وکارهایی که با آن‌ها کار دارید، از سرنخ تازه تا مشتری دائمی. تماس بگیرید، نتیجه را با چند لمس ثبت کنید، و ببینید امروز با چه کسی کار دارید.",
   },
   "/leads": {
     title: "پین‌های نقشه",
+    titleEn: "Map pins",
     overview:
       /* The inbox, not a half-finished CRM. Every pin here is one nobody has DECIDED
        * about yet: the moment you add it to a list it becomes a سرنخ and stops being a
@@ -41,21 +57,25 @@ export const PAGE_META: Record<string, PageMeta> = {
   // روز من
   "/sales/today": {
     title: "امروز",
+    titleEn: "Today",
     overview:
       "خلاصهٔ روز شما در یک صفحه: کارهای سررسیدشده، سفارش‌های منتظر، و هشدارهایی که همین امروز باید دیده شوند. از بالا به پایین کار کنید.",
   },
   "/sales/pocket": {
     title: "کارهای من",
+    titleEn: "My tasks",
     overview:
       "کارهای شما در سه دسته: امروز، این هفته و انجام‌شده. مدیرها نوار تیم را هم می‌بینند و با زدن روی هر نفر، کارهای او را باز می‌کنند.",
   },
   "/sales/schedule": {
     title: "برنامهٔ تحویل",
+    titleEn: "Delivery schedule",
     overview:
       "تقویم ماه، از بازدیدها و سفرهای تحویل با هم. در نمای «سفرها» سفارش‌های تأییدشده را به راننده‌ها تخصیص دهید و برگهٔ مسیرها را ببینید.",
   },
   "/sales/journey": {
     title: "پیگیری سفارش",
+    titleEn: "Order tracking",
     overview:
       "این نمای از «سفارش‌ها» است. چرخهٔ عمر سفارش از ثبت تا تسویه، به تفکیک مرحله. برای دیدن اینکه کار کجا گیر کرده و مسئولش کیست.",
   },
@@ -63,41 +83,49 @@ export const PAGE_META: Record<string, PageMeta> = {
   // فروش و سفارش
   "/sales": {
     title: "خلاصهٔ فروش",
+    titleEn: "Sales overview",
     overview:
       "نمای کلی فروش: ارقام سرصفحه، روند دوره، و میان‌برهایی به کارهایی که بیشتر از همه انجام می‌دهید.",
   },
   "/sales/dashboard": {
     title: "تحلیل فروش",
+    titleEn: "Sales analysis",
     overview:
       "ارقام فروش در بازهٔ انتخابی، همراه با مقایسهٔ دوره و تفکیک منطقه و نماینده. برای فهمیدن «چرا» پشت عددها، نه فقط خودشان.",
   },
   "/sales/analysis": {
     title: "تحلیل",
+    titleEn: "Analysis",
     overview:
       "تحلیل‌های عمیق‌تر فروش و پوشش: شاخص‌ها، دلایل تغییر، و مرکز اقدامی که می‌گوید کدام کار بیشترین اثر را دارد.",
   },
   "/sales/orders": {
     title: "سفارش‌ها",
+    titleEn: "Orders",
     overview:
       "همهٔ سفارش‌ها با وضعیت و مدارکشان، در سه نما: فهرست کارت‌ها، تابلوی مرحله‌ها، و پیگیری یک سفارش از ثبت تا تسویه. روی هر کارت بزنید تا جزئیاتش باز شود.",
   },
   "/sales/orders/new": {
     title: "سفارش جدید",
+    titleEn: "New order",
     overview:
       "ثبت سفارش تازه: مشتری، اقلام و قیمت‌ها. پیش از تأیید، مانده و اعتبار مشتری کنار فرم نشان داده می‌شود.",
   },
   "/sales/forecast": {
     title: "پیش‌بینی",
+    titleEn: "Forecast",
     overview:
       "برآورد فروش دوره‌های آینده بر پایهٔ روند گذشته و ظرفیت. برای برنامه‌ریزی خرید و انبار، نه برای تعهد به عدد.",
   },
   "/sales/products": {
     title: "کالاها و قیمت‌ها",
+    titleEn: "Products and prices",
     overview:
       "فهرست کالاها با قیمت جاری و تاریخچهٔ تغییرات. قیمت را اینجا عوض کنید تا در سفارش‌های بعدی اعمال شود.",
   },
   "/sales/commission": {
     title: "پورسانت",
+    titleEn: "Commission",
     overview:
       "پورسانت هر نماینده بر پایهٔ فروش تأییدشده و نرخ‌های تعریف‌شده. ردیف‌ها تا سفارش‌های پشتشان قابل باز کردن‌اند.",
   },
@@ -105,21 +133,25 @@ export const PAGE_META: Record<string, PageMeta> = {
   // تحویل
   "/sales/runs": {
     title: "سفرهای تحویل",
+    titleEn: "Delivery runs",
     overview:
       "این نمای از «برنامهٔ تحویل» است. سفرهای تحویل روز: هر سفر با راننده و توقف‌هایش.",
   },
   "/sales/deliveries": {
     title: "تحویل‌ها",
+    titleEn: "Deliveries",
     overview:
       "تلاش‌های تحویل هر سفارش روی صفحهٔ همان سفارش است؛ فهرست کارهای امروز در «مسیر امروز».",
   },
   "/sales/batches": {
     title: "سری‌های ساخت",
+    titleEn: "Production batches",
     overview:
       "سری‌های ساخت با وضعیت کیفی و موجودی هرکدام. برای ردیابی اینکه یک شکایت کیفی به کدام سری ساخت برمی‌گردد.",
   },
   "/sales/routing": {
     title: "مسیریابی",
+    titleEn: "Routing",
     overview:
       "ساخت و تنظیم مسیرهای تحویل: قالب‌های مسیر، خودروها و ظرفیت روزانه. خروجی این صفحه، «سفرهای تحویل» است.",
   },
@@ -127,16 +159,19 @@ export const PAGE_META: Record<string, PageMeta> = {
   // مالی
   "/sales/payments": {
     title: "دریافت‌ها",
+    titleEn: "Payments received",
     overview:
       "ثبت و پیگیری دریافتی‌ها از مشتریان. مانده و سررسید هر مشتری کنار فرم می‌آید تا پیش از ثبت، تصویر کامل را ببینید.",
   },
   "/sales/cheques": {
     title: "چک‌ها",
+    titleEn: "Cheques",
     overview:
       "چرخهٔ عمر چک‌ها از دریافت تا وصول یا برگشت. چک‌های نزدیک سررسید و برگشتی‌ها بالای فهرست می‌آیند.",
   },
   "/report": {
     title: "گزارش پوشش",
+    titleEn: "Coverage report",
     overview:
       "گزارش کامل پوشش و مالی گروه، قابل چاپ و خروجی‌گیری. برای مرور دوره‌ای و بایگانی، نه برای کار روزانه.",
   },
@@ -145,6 +180,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   // how they are distributed by status, and how many convert.
   "/analytics": {
     title: "تحلیل سرنخ‌ها",
+    titleEn: "Lead analytics",
     overview:
       "پراکندگی جغرافیایی سرنخ‌ها، توزیع امتیاز، وضعیت هرکدام و قیف تبدیل. برای اینکه بدانید کجا سرنخ بیشتری لازم دارید و کدام مسیر جواب می‌دهد.",
   },
@@ -152,6 +188,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   // انبار
   "/sales/stock": {
     title: "انبار و خرید",
+    titleEn: "Stock and purchasing",
     overview:
       "موجودی جاری، نقطهٔ سفارش، و خریدهای در راه. اقلامی که زیر حد هشدار رفته‌اند بالای فهرست علامت خورده‌اند.",
   },
@@ -159,50 +196,60 @@ export const PAGE_META: Record<string, PageMeta> = {
   // مدیریت
   "/sales/board": {
     title: "تابلوی سفارش‌ها",
+    titleEn: "Order board",
     overview:
       "این نمای از «سفارش‌ها» است. سفارش‌ها در ستون‌های مرحله، از ثبت تا تحویل. کارت‌ها را بین ستون‌ها بکشید تا مرحله‌شان عوض شود.",
   },
   "/sales/tasks": {
     title: "کارتابل",
+    titleEn: "Work queue",
     overview:
       "کارهای تعریف‌شده و تکرارشونده، با مسئول و سررسید. برای تنظیم اینکه چه کاری، هرچند وقت یک‌بار، برای چه کسی ساخته شود.",
   },
   "/sales/reps": {
     title: "نمایندگان فروش",
+    titleEn: "Sales representatives",
     overview:
       "کارنامهٔ نمایندگان: فروش، پوشش و کارهای باز هرکدام. برای دیدن اینکه چه کسی به کمک نیاز دارد.",
   },
   "/switch": {
     title: "ورود به‌عنوان یک حساب",
+    titleEn: "Switch account",
     overview:
       "دیدن برنامه از چشم هر کاربر، در هر سازمانی. هر کاری که اینجا انجام دهید به نام همان شخص ثبت می‌شود.",
   },
   "/sales/academy": {
     title: "آموزش",
+    titleEn: "Academy",
     overview:
       "کتابخانهٔ پاسخ به اعتراض‌های رایج و نکات فروش. کوتاه و قابل مرور پشت درٔ مشتری.",
   },
   "/sales/complaints": {
     title: "شکایات",
+    titleEn: "Complaints",
     overview:
       "شکایت‌های ثبت‌شده و مسیر رسیدگی هرکدام. گراف رسیدگی نشان می‌دهد کار روی کدام گام ایستاده است.",
   },
   "/sales/admin/holidays": {
     title: "تعطیلات",
+    titleEn: "Holidays",
     overview:
       "ثبت تعطیلات قمری که هر سال جابه‌جا می‌شوند. تاریخ اعلامی را اینجا وارد کنید؛ تعطیلات شمسی خودکارند.",
   },
   "/sales/admin/users": {
     title: "کاربران",
+    titleEn: "Users",
     overview:
       "افزودن و ویرایش کاربران و نقش‌هایشان. تغییر نقش بلافاصله روی دسترسی‌ها اثر می‌گذارد.",
   },
   "/sales/admin/representatives": {
     title: "نمایندگان",
+    titleEn: "Representatives",
     overview: "تعریف و راه‌اندازی نمایندگان حالا بخشی از صفحهٔ «نمایندگان فروش» است؛ این نشانی به همان‌جا می‌رود.",
   },
   "/sales/admin/groups": {
     title: "گروه‌ها",
+    titleEn: "Groups",
     overview:
       "تعریف گروه‌های فروش و قلمرو هرکدام. قلمرو تعیین می‌کند هر گروه کدام مشتریان را می‌بیند.",
   },
@@ -211,16 +258,19 @@ export const PAGE_META: Record<string, PageMeta> = {
   // نقشه‌ای‌ها و تنظیمات
   "/facilities": {
     title: "مکان‌های ما",
+    titleEn: "Our locations",
     overview:
       "انبارها و پایگاه‌های خودمان روی نقشه و در فهرست. فاصلهٔ هر مشتری تا نزدیک‌ترین سایت از همین‌ها حساب می‌شود.",
   },
   "/gallery": {
     title: "گالری تصاویر",
+    titleEn: "Image gallery",
     overview:
       "همهٔ عکس‌های ثبت‌شده روی پرونده‌ها و بازدیدها، یک‌جا. برای مرور سریع آنچه از میدان برگشته است.",
   },
   "/settings/notifications": {
     title: "تنظیمات اعلان‌ها",
+    titleEn: "Notification settings",
     overview:
       "انتخاب اینکه چه رویدادی، از چه راهی، و در چه ساعت‌هایی به شما خبر بدهد. ساعات سکوت و اتصال تلگرام هم اینجاست.",
   },
@@ -234,5 +284,10 @@ export function pageMetaFor(pathname: string): PageMeta {
   const key = Object.keys(PAGE_META)
     .filter((k) => pathname === k || pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];
-  return key ? PAGE_META[key] : { title: "RouteFlow", overview: "" };
+  // The fallback names the APP, not the missing page. An unmatched route is usually a stale
+  // link, and showing the product name is the honest answer — the alternative is a Persian
+  // title that claims to describe a screen nobody built.
+  return key
+    ? PAGE_META[key]
+    : { title: "RouteFlow", titleEn: "RouteFlow", overview: "" };
 }

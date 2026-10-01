@@ -37,6 +37,49 @@ describe("pageMeta", () => {
     expect(missing, `no overview copy for:\n${missing.join("\n")}`).toEqual([]);
   });
 
+  it("every page carries an English title", () => {
+    const missing = routes.filter((r) => !PAGE_META[r]?.titleEn);
+    expect(missing, `no English title for:\n${missing.join("\n")}`).toEqual([]);
+  });
+
+  it("an English title is Latin and does not merely repeat the Persian", () => {
+    // A Persian string in an English field is worse than no field: it looks bilingual and
+    // is not.
+    const offenders = Object.entries(PAGE_META)
+      .filter(([, m]) => /[\u0600-\u06FF]/.test(m.titleEn ?? ""))
+      .map(([r, m]) => `${r}: ${m.titleEn}`);
+    expect(offenders).toEqual([]);
+  });
+
+  it("no two routes share an English title", () => {
+    // The English title is what appears in <title> and in a browser tab. Two pages sharing
+    // one is how someone ends up on the wrong tab for ten minutes.
+    const seen = new Map<string, string[]>();
+    for (const [r, m] of Object.entries(PAGE_META)) {
+      if (!m.titleEn) continue;
+      seen.set(m.titleEn, [...(seen.get(m.titleEn) ?? []), r]);
+    }
+    const dupes = [...seen.entries()].filter(([, rs]) => rs.length > 1);
+    expect(dupes, `these routes share an English title:\n${dupes.map(([t, rs]) => `${t}: ${rs.join(", ")}`).join("\n")}`).toEqual([]);
+  });
+
+  it("an English title is more than the route path mechanically filled in", () => {
+    /* I wrote a stronger version of this and it was WRONG: it flagged "Orders", "Routing",
+     * "Cheques" and "Holidays" for equalling their route segment. Those are the correct
+     * English names — the segment carries real information, and a bilingual person calls the
+     * page "Orders" because that is what an order page is called.
+     *
+     * What IS a defect is a title that is the RAW PATH, slashes and all, or the segment with
+     * hyphens left in: "/sales/orders" as "Sales orders" is a string nobody would utter. */
+    const mechanical = Object.entries(PAGE_META)
+      .filter(([route, m]) => {
+        const en = (m.titleEn ?? "").toLowerCase();
+        return en.includes("/") || en.includes("-");
+      })
+      .map(([route, m]) => `${route}: ${m.titleEn}`);
+    expect(mechanical, `mechanically derived from the path:\n${mechanical.join("\n")}`).toEqual([]);
+  });
+
   it("carries no entry for a route that no longer exists", () => {
     const stale = Object.keys(PAGE_META).filter((r) => !routes.includes(r));
     expect(stale, `stale pageMeta entries:\n${stale.join("\n")}`).toEqual([]);
