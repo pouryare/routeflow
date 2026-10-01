@@ -2387,6 +2387,64 @@ body {
 .meridian .phc__title { margin: 0 0 6px; font-size: 20px; font-weight: 700; color: var(--ink); }
 /* The day briefing's panels (Briefing.tsx, meridian variant). Item 4: they were a
    full-width single column, each a short list stretched across the page. */
+/* The Hello header: photo, name, one number.
+ *
+ * Centred, generous vertical rhythm, and nothing above the fold that is not identity or
+ * "how many things need me". The figure uses --text-3xl, which MASTER.md reserves for
+ * "the one headline number on a dashboard" — this is that one number.
+ *
+ * `aria-hidden` on the photo span lives in the component, not here: it is behaviour, and a
+ * CSS-only rule for it would be invisible to anyone reading the JSX. */
+.meridian .hello {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: var(--space-2);
+  padding: var(--space-8) var(--space-4) var(--space-6);
+}
+.meridian .hello__photo {
+  display: block;
+  border-radius: 35%;
+  box-shadow: var(--sh-2);
+  overflow: hidden;
+}
+.meridian .hello__name {
+  margin: 0;
+  font-size: var(--text-xl);
+  font-weight: 600;
+  color: var(--text);
+}
+.meridian .hello__meta {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.meridian .hello__figure {
+  margin-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-1);
+}
+.meridian .hello__count {
+  font-family: var(--font-num);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--text-3xl);
+  font-weight: 700;
+  line-height: 1.1;
+  color: var(--text);
+}
+.meridian .hello__caption {
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.meridian .hello__quiet {
+  margin: var(--space-4) 0 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+
 .meridian .briefing-grid {
   display: grid; gap: 14px; align-items: start;
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr));
