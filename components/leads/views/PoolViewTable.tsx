@@ -75,11 +75,13 @@ export default function PoolViewTable({
                     onClick={(e) => { e.stopPropagation(); onPin(loc.id); }}
                     className="h-6 w-6 rounded border border-border text-text-faint hover:border-accent hover:text-accent flex items-center justify-center text-[length:var(--text-xs)] transition-colors"
                   >
-                    <Icon name="map-pin" size="sm" />
+                    <Icon name="map-pin" size="sm" label="پین در نقشه" />
                   </button>
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); onTogglePriority(loc.id); }}
+                    aria-label={loc.priority ? "حذف اولویت" : "تعیین اولویت"}
+                    aria-pressed={loc.priority}
                     className={`h-6 w-6 rounded border flex items-center justify-center text-[length:var(--text-xs)] transition-colors ${
                       loc.priority
                         ? "border-accent bg-accent text-accent-ink"
@@ -107,7 +109,7 @@ function DropdownMenu({ loc, inRun, runIdx, onToggleRun, onPin, onTogglePriority
         onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
         className="h-6 w-6 rounded border border-border text-text-faint hover:border-accent hover:text-accent flex items-center justify-center text-[length:var(--text-xs)] transition-colors"
       >
-        <Icon name="more" size="sm" />
+        <Icon name="more" size="sm" label="گزینه‌های بیشتر" />
       </button>
       {open && (
         <>

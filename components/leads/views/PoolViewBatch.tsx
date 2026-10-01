@@ -80,7 +80,7 @@ export default function PoolViewBatch({
 
       <ul className="flex flex-col gap-1">
         <li className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2">
-          <button type="button" onClick={toggleAll} className="h-5 w-5 shrink-0 rounded border border-border hover:border-accent text-[length:var(--text-xs)]">
+          <button type="button" onClick={toggleAll} aria-label="انتخاب همه" aria-pressed={selectAll} className="h-5 w-5 shrink-0 rounded border border-border hover:border-accent text-[length:var(--text-xs)]">
             {selectAll ? <Icon name="check" size="sm" /> : null}
           </button>
           <span className="text-[length:var(--text-xs)] text-text-muted">انتخاب همه</span>
@@ -100,6 +100,8 @@ export default function PoolViewBatch({
                 <button
                   type="button"
                   onClick={(e) => toggleItem(e, loc.id)}
+                  aria-label="انتخاب موقعیت"
+                  aria-pressed={isChecked}
                   className="h-5 w-5 shrink-0 rounded border border-border hover:border-accent text-[length:var(--text-xs)]"
                 >
                   {isChecked ? <Icon name="check" size="sm" /> : null}
