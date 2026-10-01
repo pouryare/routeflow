@@ -6,6 +6,7 @@ import { Icon } from "@/components/meridian/Icon";
 import PageHeader from "@/components/meridian/PageHeader";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { faJalaliDate } from "@/lib/jalali";
+import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 
 interface StoredHoliday {
   iso_date: string;
@@ -106,14 +107,18 @@ export default function AdminHolidaysPage() {
         <form onSubmit={add} className="rounded-lg border border-border bg-surface p-4">
           <h2 className="sechead__title mb-3">ثبت تعطیل قمری</h2>
           <div className="flex flex-wrap items-end gap-2">
+            {/* JalaliDateInput rather than a native date field: the browser's picker is
+                Gregorian, so an owner hunting for عید فطر would be reading the wrong
+                calendar entirely while the field looked Persian. This component shows and
+                returns Jalali while speaking ISO underneath. tests/no-gregorian-dates.test.ts
+                enforces that no rendered file reaches for the native picker. */}
             <label className="flex flex-col gap-1 text-xs text-text-muted">
-              تاریخ میلادی
-              <input
-                type="date"
+              تاریخ
+              <JalaliDateInput
                 value={iso}
-                onChange={(e) => setIso(e.target.value)}
+                onChange={setIso}
                 required
-                className="rounded-md border border-border bg-surface-raised px-2 py-1 text-sm text-text outline-none focus:border-accent"
+                aria-label="تاریخ تعطیل"
               />
             </label>
             <label className="flex flex-1 flex-col gap-1 text-xs text-text-muted">
@@ -158,7 +163,14 @@ export default function AdminHolidaysPage() {
                       title={r.kind === "official" ? "تعطیل رسمی" : "یادبود"}
                     />
                     <span className="text-text">{r.title_fa}</span>
-                    <span className="font-mono text-xs text-text-faint" dir="ltr">
+                    {/* The stored ISO, shown as the exact value the API holds. It is a
+                        machine identifier, not a date for a reader — the Jalali date beside
+                        it is that. */}
+                    <span
+                      className="font-mono text-xs text-text-faint"
+                      dir="ltr"
+                      title="شناسهٔ ذخیره‌شده (میلادی)"
+                    >
                       {r.iso_date}
                     </span>
                     <span className="text-xs text-text-faint">{faJalaliDate(r.iso_date)}</span>

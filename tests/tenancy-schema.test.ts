@@ -186,6 +186,13 @@ describe("organization_id backfill", () => {
                              // like notification_prefs. NOT tenant-scoped: adding an
                              // organization_id here would be a second answer to "whose roles
                              // are these" that could disagree with the user's own row.
+      "holidays",           // national public holidays, NOT tenant data. Nowruz is Nowruz in
+                             // every organisation on this server, and Eid al-Fitr is one date
+                             // a year, fixed by moon sighting, not by tenant. An
+                             // organization_id here would let one tenant's admin record a
+                             // different Eid from another's -- and the calendar would then show
+                             // different holidays to different drivers, which is exactly the
+                             // drift this table exists to prevent. Same reasoning as districts.
       "districts",          // shared geography, NOT tenant data. Tehran's 22 mantaghe are the
                              // same for every organisation, and per-tenant copies of the same
                              // polygons drift apart until منطقه 14 means two different places.
