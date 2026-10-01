@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { encodeImage, PHOTO_MAX_EDGE } from "@/lib/imagePipeline";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
-import sharp from "sharp";
 import { getDb, Photo, EntityType, logActivity } from "@/lib/db";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
@@ -92,13 +92,9 @@ export async function POST(req: NextRequest) {
   let avifBuffer: Buffer;
   let webpBuffer: Buffer;
   try {
-    const pipeline = sharp(inputBuffer)
-      .rotate()
-      .resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true });
-    [avifBuffer, webpBuffer] = await Promise.all([
-      pipeline.clone().avif({ quality: 60 }).toBuffer(),
-      pipeline.clone().webp({ quality: 78 }).toBuffer(),
-    ]);
+    // The encoding itself lives in lib/imagePipeline because avatars run through the
+    // exact same treatment. One implementation, so the two cannot drift apart.
+    ({ avif: avifBuffer, webp: webpBuffer } = await encodeImage(inputBuffer, PHOTO_MAX_EDGE));
   } catch {
     return NextResponse.json({ ok: false, error: "فایل تصویر قابل پردازش نیست" }, { status: 422 });
   }
