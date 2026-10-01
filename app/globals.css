@@ -3222,6 +3222,21 @@ body {
 /* Official = the office closes. Commemorative = observed, office open. Two shapes, not two
    colours: colour alone is banned as the only signal, and a filled vs hollow marker reads
    correctly in greyscale and to a colour-blind driver. */
+/* Air-quality band inside a day cell.
+ *
+ * Present ONLY for a day worse than "good", because a badge on every clean day is noise that
+ * trains the eye to ignore it. It always carries a title AND an aria-label from
+ * AIR_BAND_LABEL_FA, so the number a driver reads is never colour alone — and the label
+ * itself says «تخمین», because this is CAMS reanalysis and not a station reading. */
+.meridian .airband { width: 6px; height: 6px; display: block; flex: none; border-radius: 50%; }
+.meridian .airband--moderate { background: var(--warn); }
+.meridian .airband--poor { background: var(--crit); }
+.meridian .airband--very_poor { background: var(--crit); box-shadow: 0 0 0 1.5px var(--crit); }
+.meridian .day.today .airband,
+.meridian .day.sel .airband { background: rgba(255,255,255,.9); }
+.meridian .day.today .airband--very_poor,
+.meridian .day.sel .airband--very_poor { background: rgba(255,255,255,.9); box-shadow: 0 0 0 1.5px rgba(255,255,255,.9); }
+
 .meridian .calflag { width: 6px; height: 6px; display: block; flex: none; border-radius: 2px; }
 .meridian .calflag--official { background: var(--crit); }
 .meridian .calflag--commemorative {

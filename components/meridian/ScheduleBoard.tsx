@@ -6,6 +6,7 @@ import { faJalaliDate, jalaliToIsoDate, JALALI_MONTHS } from "@/lib/jalali";
 import { tripPurpose } from "@/lib/tripPurpose";
 import { Icon } from "@/components/meridian/Icon";
 import type { IconName } from "@/components/meridian/icon-map";
+import { AIR_BAND_LABEL_FA, type AirBand } from "@/lib/weather/openMeteoAir";
 
 export interface ScheduleRun {
   id: number;
@@ -39,6 +40,7 @@ export default function ScheduleBoard({
   marks,
   weather,
   holidays,
+  air,
 }: {
   jy: number;
   jm: number;
@@ -58,6 +60,10 @@ export default function ScheduleBoard({
   weather: Record<number, { icon: IconName; label: string }>;
   /** Day-of-month → the holiday, when that day is one. */
   holidays: Map<number, { title_fa: string; kind: "official" | "commemorative" }>;
+  /** Day-of-month → air band. A MODEL estimate, never an official index, so it is rendered
+   *  with its Persian label rather than as a bare colour — MASTER.md bans colour as the only
+   *  signal, and "a model thinks the air is bad" is precisely the case that rule exists for. */
+  air: Record<number, AirBand>;
 }) {
   const [sel, setSel] = useState(today);
   const selIso = jalaliToIsoDate(jy, jm, sel);
@@ -117,6 +123,13 @@ export default function ScheduleBoard({
                   })()}
                   {weather[d] ? (
                     <Icon name={weather[d].icon} size="sm" label={weather[d].label} />
+                  ) : null}
+                  {air[d] && air[d] !== "good" ? (
+                    <span
+                      className={`airband airband--${air[d]}`}
+                      title={AIR_BAND_LABEL_FA[air[d]]}
+                      aria-label={AIR_BAND_LABEL_FA[air[d]]}
+                    />
                   ) : null}
                 </span>
                 <span className="dots">

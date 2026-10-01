@@ -10,6 +10,7 @@ import {
 } from "@/lib/weather/capacityAdjust";
 import type { WeatherReading } from "@/lib/weather/conditions";
 import type { ForecastRow } from "@/lib/weather/calendarForecast";
+import { parseAirQuality, type AirDay } from "@/lib/weather/openMeteoAir";
 import { resolvedCapacityFactorsFor } from "@/lib/repo/capacityLearning";
 
 export interface SnapshotRow extends WeatherSnapshotInput {
@@ -169,6 +170,35 @@ export async function refreshForecast(points: LatLng[], dates: string[]): Promis
   if (!rows) return 0;
   for (const r of rows) upsertSnapshot(r);
   return rows.length;
+}
+
+/** Air quality for one point and date range, from Open-Meteo's sibling endpoint.
+ *
+ *  Deliberately returns `null` on EVERY failure — network, HTTP status, unparseable body —
+ *  and never throws. A missing air-quality reading must not fail a weather snapshot, because
+ *  routing already depends on the latter: this is a nice-to-have label on a calendar cell,
+ *  and losing it costs a missing badge, not a wrong route.
+ *
+ *  The data is CAMS reanalysis — a model, not a sensor. Whatever consumes it must say so.
+ *  See lib/weather/openMeteoAir.ts. */
+export async function fetchAirQuality(
+  point: LatLng,
+  fromIso: string,
+  toIso: string,
+): Promise<Record<string, AirDay> | null> {
+  const url =
+    "https://air-quality-api.open-meteo.com/v1/air-quality" +
+    `?latitude=${point.lat}&longitude=${point.lng}` +
+    "&hourly=pm2_5,pm10,european_aqi" +
+    "&timezone=Asia%2FTehran" +
+    `&start_date=${fromIso}&end_date=${toIso}`;
+  try {
+    const res = await fetch(url, { signal: AbortSignal.timeout(15_000) });
+    if (!res.ok) return null;
+    return parseAirQuality(await res.json());
+  } catch {
+    return null;
+  }
 }
 
 /** The capacity adjustment for a cell + date from the stored snapshot. Neutral when

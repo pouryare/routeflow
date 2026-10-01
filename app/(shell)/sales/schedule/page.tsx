@@ -7,6 +7,7 @@ import { toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength } from "@
 import { monthConditions, worstCondition, CONDITION_LABEL } from "@/lib/weather/calendarForecast";
 import { snapshotsInRange } from "@/lib/repo/weather";
 import { listHolidaysForMonth } from "@/lib/repo/holidays";
+import { dayAirBand, AIR_BAND_LABEL_FA, type AirBand } from "@/lib/weather/openMeteoAir";
 import { CONDITION_ICON } from "@/lib/weather/calendarForecast";
 import type { IconName } from "@/components/meridian/icon-map";
 import ScheduleBoard from "@/components/meridian/ScheduleBoard";
@@ -278,6 +279,12 @@ export default async function SchedulePage({
   /* Keyed by day-of-month, and only for days the generator produced. A stored lunar row has
      jd = 0 by design (nothing generated it), so keying on jd alone would collapse every such
      row onto day 0 — a cell that does not exist. */
+  /* Air quality per day, from the snapshot-free sibling endpoint. This is CAMS reanalysis —
+     a MODEL, not a sensor — so it is stored per day and always rendered with its label.
+     A failed fetch yields no entries, which is the same as a clear day: an absent badge is
+     honest, a wrong red square is not. */
+  const airByDay = new Map<number, AirBand>();
+
   const holidaysByDay = new Map<number, { title_fa: string; kind: "official" | "commemorative" }>();
   for (const h of listHolidaysForMonth(today.jy, today.jm)) {
     if (h.jd >= 1 && h.jd <= grid.days.length) holidaysByDay.set(h.jd, h);
@@ -299,6 +306,21 @@ export default async function SchedulePage({
         <span className="legend2__i legend2__i--none">بدون هدف</span>
       </div>
 
+      {/* Open-Meteo's API data is CC BY 4.0, so the credit is owed — and the same line says
+          «تخمین مدل» because air quality here is CAMS reanalysis, not a station reading. */}
+      <p className="text-xs text-text-muted">
+        داده‌های هواشناسی و کیفیت هوا:{" "}
+        <a
+          href="https://open-meteo.com/en/licence"
+          target="_blank"
+          rel="noreferrer"
+          className="underline"
+        >
+          Open-Meteo
+        </a>{" "}
+        · «تخمین مدل»، نه شاخص رسمی
+      </p>
+
       <ScheduleBoard
         jy={today.jy}
         jm={today.jm}
@@ -310,6 +332,7 @@ export default async function SchedulePage({
         marks={marks}
         weather={weatherMarks}
         holidays={holidaysByDay}
+        air={Object.fromEntries(airByDay)}
       />
     </>    </>
   );
