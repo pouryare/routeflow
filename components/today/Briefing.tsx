@@ -1,5 +1,7 @@
 import Link from "next/link";
 import TaskRow from "./TaskRow";
+import BriefingCardTile from "./BriefingCardTile";
+import { cardFor, type BriefingCard } from "@/lib/repo/briefingCards";
 import type { Briefing as BriefingData, BriefingItem } from "@/lib/repo/briefing";
 
 /** "plain" is the driver's standalone /today (generic tokens, phone-width column).
@@ -65,13 +67,39 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   );
 }
 
+/** The panels that are a FIGURE rather than a list. `target` and `credit_waiting` answer a
+ *  reader's question with a number; the rest are worklists and stay panels. */
+const CARD_KEYS = ["target", "credit_waiting"] as const;
+
 export default function Briefing({
   data,
   variant = "plain",
+  showCards = true,
 }: {
   data: BriefingData;
   variant?: Variant;
+  /** Both call sites want the cards; the prop exists so a future embed can opt out. */
+  showCards?: boolean;
 }) {
+  /* `cardFor` is the SAME function the hero uses, so the count on a card and the count in
+   * the hero can never disagree. The title travels on the card object rather than being
+   * re-derived from the panel key — a card whose title drifts from its own panel is worse
+   * than no card at all. */
+  const cards: Array<{ title: string; card: BriefingCard }> = showCards
+    ? data.panels
+        .filter((p) => (CARD_KEYS as readonly string[]).includes(p.key))
+        .map((p) => ({ title: p.title, card: cardFor([p]) }))
+        .filter((c): c is { title: string; card: BriefingCard } => c.card !== null)
+    : [];
+  const cardRow =
+    cards.length > 0 ? (
+      <div className="tiles">
+        {cards.map((c) => (
+          <BriefingCardTile key={c.title} title={c.title} card={c.card} />
+        ))}
+      </div>
+    ) : null;
+
   if (data.panels.length === 0) {
     return variant === "meridian" ? (
       <p
@@ -94,6 +122,8 @@ export default function Briefing({
 
   if (variant === "meridian") {
     return (
+      <>
+        {cardRow}
       <div className="briefing-grid" dir="rtl">
         {data.panels.map((p) => (
           <div key={p.key} className="kblock">
@@ -111,11 +141,13 @@ export default function Briefing({
           </div>
         ))}
       </div>
+      </>
     );
   }
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]" dir="rtl">
+      {cardRow}
       {data.panels.map((p) => (
         <section key={p.key} className="rounded-[var(--radius-lg)] border border-[var(--border)] p-[var(--space-3)]">
           <h3 className="sechead__title sechead__title--minor mb-[var(--space-1)]">

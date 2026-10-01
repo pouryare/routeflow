@@ -2401,6 +2401,13 @@ body {
  * CustomerBento and the planner, and reusing it here would have restyled every existing
  * card in the app to get this one right. Radius follows the neighbouring `.tile` rule
  * (--r-xl) so the two read as the same family at a glance. */
+.meridian .tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+
 .meridian .actile {
   display: flex;
   flex-direction: column;

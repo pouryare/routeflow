@@ -7,8 +7,10 @@ import NotAVanNotice from "@/components/meridian/NotAVanNotice";
 import { getDb } from "@/lib/db";
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
+import BriefingHero from "@/components/today/BriefingHero";
+import { cardFor } from "@/lib/repo/briefingCards";
+import { ROLE_LABEL } from "@/lib/roles";
 import RolePicker from "@/components/today/RolePicker";
-import { faJalaliLong } from "@/lib/jalali";
 import NotificationBell from "@/components/NotificationBell";
 
 export const dynamic = "force-dynamic";
@@ -39,12 +41,15 @@ export default async function TodayPage() {
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]" dir="rtl">
-      <header className="mb-[var(--space-4)]">
-        <h1 className="m-0 text-[length:var(--text-lg)] font-medium text-[var(--text)]">امروز</h1>
-        <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-          {session.user.display_name} · {faJalaliLong(new Date().toISOString())}
-        </p>
-      </header>
+      {/* The hero replaces the hand-rolled header: same facts (name, role, date) with the
+          photo and the one number attached. The role picker stays directly beneath it, which
+          is where the decision at the top of the plan puts it. */}
+      <BriefingHero
+        data={data}
+        card={cardFor(data.panels)}
+        roleLabel={ROLE_LABEL[session.role] ?? session.role}
+        dateIso={new Date().toISOString()}
+      />
       <RolePicker roles={session.roles} active={session.role} />
       <Briefing data={data} />
       <NotificationBell />
