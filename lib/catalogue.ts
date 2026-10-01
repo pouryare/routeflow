@@ -11,7 +11,7 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
-import { priceAt, type PriceRow } from "./pricing";
+import { priceAt, effectiveAt, type PriceRow } from "./pricing";
 import { isToman } from "./money";
 
 export interface ProductRow {
@@ -191,6 +191,135 @@ export function setPrice(
     new Date().toISOString()
   );
   return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+}
+
+/** One effective-dated cost row. */
+export interface CostRow {
+  id: number;
+  product_id: number;
+  packaging_id: number | null;
+  method: "weighted_average" | "landed";
+  cost_toman: number;
+  valid_from: string;
+}
+
+/** What the calculator treats as the cost of one unit. */
+export interface CostBasis {
+  cost_toman: number;
+  method: "weighted_average" | "landed";
+  /** null when it came from products.avg_cost_toman rather than a product_costs row. */
+  cost_id: number | null;
+}
+
+/** Records a cost override. Always an INSERT -- there is no updateCost, on purpose.
+ *
+ *  Rejects a fractional amount rather than rounding it, for the reason `setPrice` does:
+ *  a fraction arriving here means a float got into a money path upstream, and rounding
+ *  it away hides the bug at the moment it is cheapest to find.
+ */
+export function setCost(
+  db: DatabaseSync,
+  input: {
+    product_id: number;
+    packaging_id?: number | null;
+    method: "weighted_average" | "landed";
+    cost_toman: number;
+    valid_from: string;
+    created_by?: number | null;
+  }
+): number {
+  if (!isToman(input.cost_toman)) {
+    throw new TypeError(`بهای تمام‌شده باید عدد صحیح تومان باشد: ${input.cost_toman}`);
+  }
+  db.prepare(
+    `INSERT INTO product_costs (product_id, packaging_id, method, cost_toman, valid_from, created_by, created_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`
+  ).run(
+    input.product_id,
+    input.packaging_id ?? null,
+    input.method,
+    input.cost_toman,
+    input.valid_from.slice(0, 10),
+    input.created_by ?? null,
+    new Date().toISOString()
+  );
+  return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
+}
+
+function costsFor(db: DatabaseSync, productId: number): CostRow[] {
+  return db
+    .prepare(
+      `SELECT id, product_id, packaging_id, method, cost_toman, valid_from
+         FROM product_costs WHERE product_id = ?`
+    )
+    .all(productId) as unknown as CostRow[];
+}
+
+/** The cost of one unit on a date, or null when nothing is known.
+ *
+ *  Packaging-specific beats product-wide, exactly as `resolvePrice` does two functions
+ *  above -- the same precedence, because a box of 24 and a single unit genuinely cost
+ *  different amounts and picking the wrong one is a real margin error.
+ *
+ *  THREE outcomes, and the third is the one that matters:
+ *
+ *    1. a product_costs row in force          -> that row, labelled with its method
+ *    2. no row in force, avg_cost_toman > 0  -> the moving average
+ *    3. no row in force, avg_cost_toman == 0 -> null
+ *
+ *  Case 3 is NOT a cost of zero. `priceAt()` returns null rather than falling back to
+ *  the earliest price because "a product with no price on the day of sale is a data
+ *  problem the person recording the order has to see, not something to paper over with
+ *  a number that was never charged" -- and the arithmetic here is worse, because
+ *  P = (C + F) / (1 - a - m) will happily return a confident price built from overheads
+ *  alone for a product nobody ever purchased. Same distinction order_lines draws when it
+ *  says a null `packs_delivered` is not the same thing as a delivered zero.
+ */
+export function costBasisFor(
+  db: DatabaseSync,
+  productId: number,
+  packagingId: number | null,
+  onDate: string
+): CostBasis | null {
+  const rows = costsFor(db, productId);
+  const specific =
+    packagingId === null ? [] : rows.filter((r) => r.packaging_id === packagingId);
+  const hit =
+    effectiveAt(specific, onDate) ??
+    effectiveAt(
+      rows.filter((r) => r.packaging_id === null),
+      onDate
+    );
+
+  if (hit) {
+    return { cost_toman: hit.cost_toman, method: hit.method, cost_id: hit.id };
+  }
+
+  const row = db
+    .prepare("SELECT avg_cost_toman FROM products WHERE id = ?")
+    .get(productId) as { avg_cost_toman: number } | undefined;
+  if (!row || row.avg_cost_toman <= 0) return null;
+  return { cost_toman: row.avg_cost_toman, method: "weighted_average", cost_id: null };
+}
+
+/** `costBasisFor` scoped to one organisation.
+ *
+ *  The tenancy filter lives here and not in the caller, so no route or repo function can
+ *  forget it. The join through products is what makes scoping possible at all --
+ *  product_costs carries no tenant column of its own.
+ */
+export function readCostBasis(
+  db: DatabaseSync,
+  organizationId: number,
+  productId: number,
+  packagingId: number | null,
+  onDate: string
+): CostBasis | null {
+  const owned = db
+    .prepare("SELECT id FROM products WHERE id = ? AND organization_id = ?")
+    .get(productId, organizationId);
+  if (!owned) return null;
+  return costBasisFor(db, productId, packagingId, onDate);
 }
 
 /** Sets a product's reorder policy. A plain UPDATE, unlike setPrice and setRate --

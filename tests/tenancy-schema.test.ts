@@ -168,6 +168,7 @@ describe("organization_id backfill", () => {
       "lead_run_stops",     // through lead_runs
       "packagings",         // through products
       "product_prices",     // through products
+      "product_costs",      // through products
       "photos",             // through (entity_type, entity_id)
       "reminders",          // through (entity_type, entity_id)
       "visit_plans",        // through (entity_type, entity_id)

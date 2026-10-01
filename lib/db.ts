@@ -1292,6 +1292,41 @@ export function getDb(): DatabaseSync {
       ON product_prices(product_id, packaging_id, valid_from);
     CREATE INDEX IF NOT EXISTS idx_packagings_product ON packagings(product_id);
 
+    /* What a unit actually cost, over time. Same shape and same reasoning as
+       product_prices: a cost row is an INSERT, never an UPDATE.
+
+       NO organization_id, and deliberately not in TENANT_TABLES either. A cost row
+       reaches its tenant through products, exactly as product_prices and packagings
+       do -- which is why all three sit on the exempt list in tests/tenancy-schema
+       .test.ts with the reason "through products". Putting it in TENANT_TABLES instead
+       would ALTER a column this table never declares and then stamp every row
+       organization_id = 1: a SECOND answer to "whose cost is this" that can disagree
+       with the product's own tenant. commission_tiers is not the precedent here -- it
+       carries its own organization_id AND its own salesperson_user_id, so it really is
+       independently tenant-scoped. This table has neither.
+
+       No backticks anywhere in this comment: it lives inside a JS template literal, so
+       one here closes the string and turns the rest of the sentence into a syntax error
+       far from the cause.
+
+       The method column is stored rather than inferred. 'weighted_average' is what purchase
+       receipts maintain on products.avg_cost_toman and what a row here overrides;
+       'landed' is a hand-entered figure including freight and duty. There is no 'fifo'
+       or 'lifo': batches carry real expiry dates and are consumed FEFO, so a costing
+       method keyed on purchase order would describe a system this one is not. */
+    CREATE TABLE IF NOT EXISTS product_costs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+      packaging_id INTEGER REFERENCES packagings(id) ON DELETE CASCADE,
+      method TEXT NOT NULL CHECK (method IN ('weighted_average', 'landed')),
+      cost_toman INTEGER NOT NULL,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_product_costs_lookup
+      ON product_costs(product_id, packaging_id, valid_from);
+
     /* ---- Orders ------------------------------------------------------------------
        The table that replaces the paper. Sales were never recorded in the workbook --
        they were written on slips -- so there is nothing to migrate into this and no
