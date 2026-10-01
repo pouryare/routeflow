@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useCallback, useEffect, useRef } from "react";
 import { carvedCardPath } from "@/lib/design/carve";
 import type { AppTab } from "@/lib/appNav";
+import { CardHelp } from "@/components/meridian/CardHelp";
 
 /** The card every shell page opens with: what this screen is, in a couple of lines, with
  *  the section's sibling tabs sitting in a bay cut out of its top edge.
@@ -30,12 +31,15 @@ const MIN_CARVE_WIDTH = 360;
 export default function PageHeaderCard({
   title,
   overview,
+  help,
   tabs = [],
   currentHref,
   date,
 }: {
   title: string;
   overview: string;
+  /** Id into `lib/help/`. Absent means the card shows no trigger rather than an empty one. */
+  help?: string;
   date?: string;
   tabs?: AppTab[];
   currentHref?: string;
@@ -89,7 +93,13 @@ export default function PageHeaderCard({
       <div className="phc" ref={card}>
         <div className="phc__body">
           {date ? <p className="phc__date">{date}</p> : null}
-          <h1 className="phc__title">{title}</h1>
+          <h1 className="phc__title">
+            {title}
+            {/* Only when the page declares one. A trigger that opened "not found" would be
+                worse than no trigger, and every claimed id is checked against lib/help by
+                tests/pageMeta.test.ts. */}
+            {help ? <CardHelp id={help} /> : null}
+          </h1>
           {overview ? <p className="phc__overview">{overview}</p> : null}
         </div>
       </div>

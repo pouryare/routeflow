@@ -9,6 +9,27 @@ export type { HelpEntry };
  *  Seeded with the highest-traffic dashboard figures; the long tail lands in Part 2 as
  *  the trigger is rolled out. */
 export const HELP: Record<string, Extract<HelpEntry, { title: string }>> = {
+  /* PAGE-level entries. The three below the fold are FIGURE-level: they explain one number
+   * inside the dashboard. These explain what the page IS, and they are what a card's (i)
+   * trigger opens when a page declares `help` in lib/pageMeta.ts. */
+  "page.dashboard": {
+    id: "page.dashboard",
+    title: "این صفحه چه چیزی را نشان می‌دهد",
+    what: "خلاصهٔ فروش برای بازهٔ انتخابی: درآمد، بدهی‌های سررسیدشده و پوشش هر منطقه، کنار هم.",
+    how: "بازه را از نوار بالا عوض کنید. روی هر عدد راهنما بزنید تا توضیح همان عدد را ببینید، نه توضیح صفحه.",
+  },
+  "page.orders": {
+    id: "page.orders",
+    title: "این صفحه چه چیزی را نشان می‌دهد",
+    what: "همهٔ سفارش‌ها با وضعیت فعلی‌شان. «تأییدشده» یعنی فروش قطعی است؛ «لغوشده» یعنی برگشته و در درآمد نمی‌آید.",
+    how: "برای دیدن اینکه هر سفارش کجا رفته، «پیگیری سفارش» را باز کنید.",
+  },
+  "page.map": {
+    id: "page.map",
+    title: "این صفحه چه چیزی را نشان می‌دهد",
+    what: "همهٔ مشتریان و مناطق روی یک نقشه. لایه‌ها را روشن و خاموش کنید تا پوشش، تراکم و مسیرها کنار هم دیده شوند.",
+    how: "روی هر نقطه بزنید تا پروندهٔ آن مشتری باز شود. «پین‌های نقشه» جای مکان‌هایی است که هنوز تصمیمی درباره‌شان نگرفته‌اید.",
+  },
   "dashboard.revenue": {
     id: "dashboard.revenue",
     title: "درآمد دوره",

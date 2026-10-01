@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { readdirSync, existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { PAGE_META, pageMetaFor } from "@/lib/pageMeta";
+import { HELP } from "@/lib/help";
 
 /** Every shell route opens with a card carrying its title and a short overview. Walking
  *  the tree rather than listing routes by hand means a page added tomorrow fails this
@@ -78,6 +79,36 @@ describe("pageMeta", () => {
       })
       .map(([route, m]) => `${route}: ${m.titleEn}`);
     expect(mechanical, `mechanically derived from the path:\n${mechanical.join("\n")}`).toEqual([]);
+  });
+
+  it("every route that CLAIMS help has a help entry that actually exists", () => {
+    // A card showing a help button that opens "not found" is worse than no button, so the
+    // claim and the entry are checked against each other here rather than at runtime.
+    const claiming = Object.entries(PAGE_META).filter(([, m]) => m.help);
+    for (const [route, m] of claiming) {
+      expect(
+        Object.prototype.hasOwnProperty.call(HELP, m.help!),
+        `${route} claims help="${m.help}" but lib/help has no such id`,
+      ).toBe(true);
+      // And the entry must not be the placeholder, which is what getHelp invents at runtime.
+      expect(m.help!, `${route} points at a placeholder entry`).not.toBe("");
+    }
+  });
+
+  it("no two routes claim the SAME help id unless they are the same page", () => {
+    // Two routes sharing one help entry means the text describes one screen while being
+    // offered on another. Shared ids are legitimate only when one page owns both routes
+    // (a detail page under its list), which the prefix check below allows.
+    const seen = new Map<string, string[]>();
+    for (const [route, m] of Object.entries(PAGE_META)) {
+      if (!m.help) continue;
+      seen.set(m.help, [...(seen.get(m.help) ?? []), route]);
+    }
+    const dupes = [...seen.entries()].filter(([, rs]) => rs.length > 1);
+    expect(
+      dupes,
+      `these routes share a help id:\n${dupes.map(([h, rs]) => `${h}: ${rs.join(", ")}`).join("\n")}`,
+    ).toEqual([]);
   });
 
   it("carries no entry for a route that no longer exists", () => {

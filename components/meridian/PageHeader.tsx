@@ -32,7 +32,11 @@ export default async function PageHeader({ route }: { route: string }) {
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
 
   if (!session) {
-    return <PageHeaderCard title={meta.title} overview={meta.overview} date={date} />;
+    /* The signed-out card still gets its help: "what is this screen" does not require a
+       login, and the reader who most needs it is the one who has not signed in yet. */
+    return (
+      <PageHeaderCard title={meta.title} overview={meta.overview} help={meta.help} date={date} />
+    );
   }
 
   const all = appTabs(session);
@@ -50,6 +54,7 @@ export default async function PageHeader({ route }: { route: string }) {
     <PageHeaderCard
       title={meta.title}
       overview={meta.overview}
+      help={meta.help}
       date={date}
       tabs={current && siblings.length > 1 ? siblings : []}
       currentHref={current}

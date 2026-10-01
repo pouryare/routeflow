@@ -28,6 +28,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/map": {
     title: "نقشهٔ پوشش",
     titleEn: "Coverage map",
+    help: "page.map",
     overview:
       "همهٔ مشتریان و مناطق روی یک نقشه. لایه‌ها را روشن و خاموش کنید تا پوشش، تراکم و مسیرها را کنار هم ببینید؛ روی هر نقطه بزنید تا پروندهٔ آن مشتری باز شود.",
   },
@@ -90,6 +91,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/dashboard": {
     title: "تحلیل فروش",
     titleEn: "Sales analysis",
+    help: "page.dashboard",
     overview:
       "ارقام فروش در بازهٔ انتخابی، همراه با مقایسهٔ دوره و تفکیک منطقه و نماینده. برای فهمیدن «چرا» پشت عددها، نه فقط خودشان.",
   },
@@ -102,6 +104,7 @@ export const PAGE_META: Record<string, PageMeta> = {
   "/sales/orders": {
     title: "سفارش‌ها",
     titleEn: "Orders",
+    help: "page.orders",
     overview:
       "همهٔ سفارش‌ها با وضعیت و مدارکشان، در سه نما: فهرست کارت‌ها، تابلوی مرحله‌ها، و پیگیری یک سفارش از ثبت تا تسویه. روی هر کارت بزنید تا جزئیاتش باز شود.",
   },
