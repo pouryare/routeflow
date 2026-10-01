@@ -17,7 +17,10 @@ import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
 import { lineKg, type LineSnapshot } from "./orderMath";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
-import { isToman } from "./money";
+import { isToman, roundToman } from "./money";
+import { commissionFor, effectiveRate, type PlanMode } from "./commission/tiers";
+import { measureFor, type MeasurableOrder } from "./commission/measure";
+import { planFor } from "./repo/commissionTiers";
 
 export interface Period {
   from: string;
@@ -30,6 +33,9 @@ export interface StatementOrder {
   order_date: string;
   customer_name: string;
   kg: number;
+  /** The rate this order was paid at. Under a tiered plan this is the tier's EFFECTIVE rate
+   *  at the period total, not a per-kilogram rate — which is why `plan_mode` exists beside
+   *  it, so a screen never implies a flat per-kg rule that is not in force. */
   rate_per_kg_toman: number;
   accrual_toman: number;
 }
@@ -42,6 +48,8 @@ export interface Statement {
   paid_toman: number;
   /** Lifetime, not period: what is actually still owed to this person today. */
   owed_toman: number;
+  /** Which rule produced `accrued_toman`. Null means the flat per-kilogram rate, unchanged. */
+  plan_mode: PlanMode | null;
   orders: StatementOrder[];
 }
 
@@ -156,15 +164,66 @@ function accrualsFor(
        FROM order_lines WHERE order_id = ?`
   );
 
-  return orders.map((order) => {
+  const measured = orders.map((order) => {
     const lines = linesOf.all(order.order_id) as unknown as LineSnapshot[];
-    const kg = lines.reduce((total, line) => total + lineKg(line), 0);
-    // The rate in force on the day the order was taken -- not today's, and not the rate
-    // on the delivery date, so a rate change mid-round cannot split one round in two.
-    const rate = rateFor(rates, salespersonId, order.order_date);
-    const perKg = rate?.rate_per_kg_toman ?? 0;
-    return { ...order, kg, rate_per_kg_toman: perKg, accrual_toman: accrualToman(kg, perKg) };
+    return { order, lines, kg: lines.reduce((total, line) => total + lineKg(line), 0) };
   });
+
+  /* A tiered plan replaces the flat rate for this person, measured over the WHOLE PERIOD.
+   *
+   *  Period, not per order: a tier is a statement-level concept. Splitting it per order would
+   *  mean the same 60kg paid differently depending on how it happened to be invoiced, which
+   *  is not a plan anyone would agree to. So the plan is priced once from the period total,
+   *  and the per-order accruals below become the SHAPE of that total rather than the sum of
+   *  independent prices.
+   *
+   *  `planFor` returns null when the person is on the flat rate, and the fallback is the
+   *  ORIGINAL code path unchanged — deliberately. Two implementations of accrual would
+   *  drift, and the people on the flat rate are on real payroll today. */
+  const plan = planFor(orgOf(db, salespersonId), salespersonId, period.to, db);
+  if (!plan) {
+    return measured.map(({ order, kg }) => {
+      // The rate in force on the day the order was taken -- not today's, and not the rate
+      // on the delivery date, so a rate change mid-round cannot split one round in two.
+      const rate = rateFor(rates, salespersonId, order.order_date);
+      const perKg = rate?.rate_per_kg_toman ?? 0;
+      return { ...order, kg, rate_per_kg_toman: perKg, accrual_toman: accrualToman(kg, perKg) };
+    });
+  }
+
+  const measurable: MeasurableOrder[] = measured.map((m) => ({ lines: m.lines }));
+  const planTotal = commissionFor(plan, measureFor(plan.metric, measurable));
+  const totalKg = measured.reduce((t, m) => t + m.kg, 0);
+  const rateNow = effectiveRate(plan, totalKg);
+
+  /* The period total is split across orders PROPORTIONALLY to weight, rather than each
+   * order being priced on its own. Proportional is what keeps the per-order numbers adding
+   * up to the statement — a UI that lists orders and shows a total the rows do not make is
+   * worse than one that shows no rows at all. Orders of zero weight take nothing, and the
+   * rounding remainder lands on the last one so the sum is exact rather than 1 Toman short. */
+  const out = measured.map(({ order, kg }) => ({
+    ...order,
+    kg,
+    rate_per_kg_toman: rateNow,
+    accrual_toman: totalKg === 0 ? 0 : roundToman((kg / totalKg) * planTotal),
+  }));
+  const drift = planTotal - out.reduce((t, o) => t + o.accrual_toman, 0);
+  if (drift !== 0 && out.length > 0) {
+    out[out.length - 1].accrual_toman += drift;
+  }
+  return out;
+}
+
+/** The organisation a salesperson belongs to.
+ *
+ *  `planFor` is tenant-scoped, so the lookup has to know the tenant. Taken from the user row
+ *  rather than passed in, because a caller that supplied the wrong one would read another
+ *  company's plan. */
+function orgOf(db: DatabaseSync, userId: number): number {
+  const row = db
+    .prepare("SELECT organization_id FROM users WHERE id = ?")
+    .get(userId) as { organization_id: number } | undefined;
+  return row?.organization_id ?? 1;
 }
 
 export function statementFor(
@@ -208,6 +267,9 @@ export function statementFor(
     accrued_toman: accrued,
     paid_toman: paidInPeriod.total,
     owed_toman: lifetimeAccrued - lifetimePaid.total,
+    // Read from the same lookup the accrual used, so the label cannot disagree with the
+    // number it labels. Null means the flat rate path ran, unchanged.
+    plan_mode: planFor(orgOf(db, salespersonId), salespersonId, period.to, db)?.mode ?? null,
     orders,
   };
 }
