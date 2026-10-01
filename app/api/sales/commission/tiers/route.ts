@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { savePlan, listPlans, deletePlan } from "@/lib/repo/commissionTiers";
+import {
+  savePlan,
+  listPlans,
+  deletePlan,
+  userInOrganization,
+} from "@/lib/repo/commissionTiers";
 import {
   validatePlan,
   type Plan,
@@ -89,13 +93,8 @@ export async function POST(req: NextRequest) {
   // Tenant-scoped, same as the rates route: an owner administers their own organisation's
   // staff. A cross-tenant id reads as "not found", which is also the more honest answer —
   // from this side of the wall that person does not exist at all.
-  if (personId !== null) {
-    const person = getDb()
-      .prepare("SELECT id FROM users WHERE id = ? AND organization_id = ?")
-      .get(personId, guard.session.organizationId);
-    if (!person) {
-      return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
-    }
+  if (personId !== null && !userInOrganization(guard.session.organizationId, personId)) {
+    return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
   }
 
   const plan = readPlan(body?.plan);

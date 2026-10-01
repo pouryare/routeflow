@@ -202,3 +202,19 @@ export function deletePlan(
       WHERE organization_id = ? AND salesperson_user_id IS ? AND valid_from = ?`,
   ).run(organizationId, salespersonUserId, validFrom.slice(0, 10));
 }
+
+/** Does this person exist in this organisation?
+ *
+ *  Refused at the door rather than trusted: a plan attached to a user id from another tenant
+ *  would sit in the table naming someone this owner cannot see, and `planFor` would never
+ *  reach it — a row that pays nobody and looks configured. Raw SQL lives here, not in the
+ *  route (tests/repo-boundary.test.ts, whose allowlist only shrinks). */
+export function userInOrganization(
+  organizationId: number,
+  userId: number,
+  db: DatabaseSync = getDb(),
+): boolean {
+  return !!db
+    .prepare("SELECT id FROM users WHERE id = ? AND organization_id = ?")
+    .get(userId, organizationId);
+}
