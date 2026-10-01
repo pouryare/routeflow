@@ -60,3 +60,38 @@ export async function readAvatarBytes(stem: string, format: AvatarFormat): Promi
     return null;
   }
 }
+/** Is this stem one of the shared presets rather than somebody's own photograph?
+ *
+ *  The distinction that makes deletion safe at all. `scripts/seed-avatars.mjs` writes the
+ *  presets into THIS SAME directory, so "the file is under AVATAR_DIR" says nothing about
+ *  whether it is one person's photo or five people's faces. Deleting a preset because one
+ *  user replaced their own picture would 404 that preset for everyone still using it. */
+export function isPresetStem(stem: string): boolean {
+  return AVATAR_PRESETS.some((p) => p.key === stem);
+}
+
+/** Delete one person's PREVIOUS avatar, both encodings, when they replace it.
+ *
+ *  Every upload writes a fresh `crypto.randomUUID()` stem and nothing ever removed the
+ *  previous one, so each re-upload stranded two files under data/photos/avatars/ forever —
+ *  unreachable, unbounded, and photographs of real people to keep for no reason.
+ *
+ *  Three refusals, all load-bearing:
+ *  - a PRESET is never deleted (see isPresetStem);
+ *  - a stem that is not a bare token is refused, because `avatar_stem` is a COLUMN and a
+ *    column can arrive from a restored backup or a hand-edited row. A stem carrying `../`
+ *    must not turn a tidy-up into an arbitrary delete elsewhere on the disk;
+ *  - ENOENT is swallowed, because "nothing to delete" is the normal case for the majority
+ *    of accounts and must not fail an otherwise-successful upload. */
+export async function removeAvatarFiles(stem: string | null | undefined): Promise<void> {
+  if (!stem) return;
+  if (isPresetStem(stem)) return;
+  // The same shape safePresetKey enforces on the READ path: one bare token, no separators.
+  // Uploads mint a UUID, so nothing legitimate is refused here.
+  if (!/^[A-Za-z0-9_-]{1,64}$/.test(stem)) return;
+  await Promise.all(
+    (["avif", "webp"] as AvatarFormat[]).map((fmt) =>
+      fs.rm(avatarPaths(stem, fmt), { force: true }).catch(() => null),
+    ),
+  );
+}

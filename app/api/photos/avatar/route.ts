@@ -2,10 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import { encodeImage, AVATAR_MAX_EDGE } from "@/lib/imagePipeline";
-import { ensureAvatarDir, avatarPaths } from "@/lib/avatarStore";
+import { ensureAvatarDir, avatarPaths, removeAvatarFiles } from "@/lib/avatarStore";
 import { requireRole } from "@/lib/session";
 import { getDb } from "@/lib/db";
-import { userInOrg, setAvatar } from "@/lib/repo/avatars";
+import { userInOrg, setAvatar, readAvatarStem } from "@/lib/repo/avatars";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** 8MB. A phone portrait is 2–4MB; a 20MB phone panorama is a mistake, not a portrait. */
@@ -68,7 +68,17 @@ export async function POST(req: NextRequest) {
 
   // The row is written here rather than by a second client PATCH: one request, one outcome,
   // and no window in which the bytes exist but nothing points at them.
+  //
+  // Read the PREVIOUS stem first: after setAvatar the old one is unrecoverable from the row,
+  // and it is the only record that those two files are now garbage. Doing it in this order
+  // also means a failure above leaves the old photograph still serving.
+  const previousStem = readAvatarStem(db, userId);
   setAvatar(db, userId, `/api/users/${userId}/avatar`, stem);
+
+  // Only now that the row points at the new files is it safe to drop the old ones. A
+  // re-upload used to strand two files per upload, forever. Failures here are swallowed by
+  // removeAvatarFiles: a stranded file is untidy, and must not fail a good upload.
+  await removeAvatarFiles(previousStem);
 
   return NextResponse.json({ ok: true, avatar_url: `/api/users/${userId}/avatar` });
 }
