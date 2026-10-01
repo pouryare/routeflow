@@ -6,6 +6,7 @@ import { getDb, plain } from "@/lib/db";
 import { salesDashboard } from "@/lib/dashboard";
 import { orderKg, orderTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import { faToman, faNum } from "@/lib/format";
+import CountUp from "@/components/meridian/CountUp";
 import { faJalaliDate } from "@/lib/jalali";
 import GradientStat from "@/components/meridian/GradientStat";
 import SalesSpark, { type SparkPoint } from "@/components/meridian/SalesSpark";
@@ -104,7 +105,7 @@ export default async function SalesHomePage() {
         <GradientStat
           tone="peach"
           label="فروش امروز"
-          value={faNum(today)}
+          value={<CountUp value={today} />}
           unit="تومان"
           chip={
             delta === null
@@ -117,7 +118,7 @@ export default async function SalesHomePage() {
           small
           icon="clock"
           label="در انتظار تحویل"
-          value={`${faNum(awaiting)} سفارش`}
+          value={<><CountUp value={awaiting} suffix=" سفارش" /></>}
           chip={`${faNum(Math.round(d.kg))} کیلو · نرخ تحویل ${faNum(Math.round(d.fill_rate * 100))}٪`}
           chipTone="sky"
         />
@@ -126,7 +127,7 @@ export default async function SalesHomePage() {
           small
           icon="banknote"
           label="مانده حساب مشتریان"
-          value={fa1(d.debt.total / M)}
+          value={<CountUp value={Math.round((d.debt.total / M) * 10) / 10} />}
           unit="میلیون"
           chip={
             d.debt.over_30 > 0
