@@ -20,6 +20,11 @@ export interface Binding {
   routes: string[];
   /** Position in the cheatsheet. Lower first. */
   order: number;
+  /** What the key does. ABSENT means documentation-only — that is how a binding that
+   *  predates the registry (the map's own shortcuts, which still have their own working
+   *  listeners) enters without claiming to be dispatched here. A registry that fired every
+   *  documented key would double-handle the ones that already work. */
+  run?: () => void;
 }
 
 /** Normalise a chord so "K", "k", "Ctrl+K" and "Shift+Ctrl+K" collide correctly.
@@ -161,4 +166,58 @@ export function eventMatchesChord(event: KeyboardEvent, keys: string): boolean {
   }
   if (needsShift !== event.shiftKey) return false;
   return bare[0] === key;
+}
+
+/** Every binding the shell dispatches, plus the documented ones it does not.
+ *
+ *  Short, on purpose: this is a registry for the SHELL's own keys, not a migration of the
+ *  sixteen listeners. Those keep working exactly as they do — Escape handling in a dialog is
+ *  not this module's business, and removing a working listener without a replacement is how a
+ *  dialog stops closing. */
+export const BINDINGS: Binding[] = [];
+
+/** The bindings this listener may actually fire. A documented-only binding has no `run`. */
+export function runnableBindings(bindings: readonly Binding[]): Binding[] {
+  return bindings.filter((b) => typeof b.run === "function");
+}
+
+/** The first binding live on `route` whose chord this event presses, or null.
+ *
+ *  `runnableBindings` first, so a documentation-only entry can never shadow a real one.
+ *  That ordering is the whole point: the map's "?" is documented and the help dialog's "?"
+ *  is real, and the real one must win. */
+export function bindingFor(
+  bindings: readonly Binding[],
+  route: string,
+  event: KeyboardEvent,
+): Binding | null {
+  const candidates = runnableBindings(bindings).filter(
+    (b) => b.routes.length === 0 || b.routes.some((r) => routeMatches(route, r)),
+  );
+  return candidates.find((b) => eventMatchesChord(event, b.keys)) ?? null;
+}
+
+/** Is this event something the browser or an assistive technology owns?
+ *
+ *  Tab-and-modifier chords are left alone so focus movement keeps working, and anything with
+ *  a modifier is passed through unless a binding explicitly claims it — a shortcut that eats
+ *  a keystroke a screen reader needs is worse than a shortcut that does not fire. */
+export function isReservedChord(event: KeyboardEvent): boolean {
+  const key = (event.key ?? "").toLowerCase();
+  if (key === "tab") return true;
+  if (key === "escape" || key === "enter") return true;
+  // F1..F12 are browser and OS shortcuts; hijacking one is never a kindness.
+  if (/^f([1-9]|1[0-2])$/.test(key)) return true;
+  return false;
+}
+
+/** Would this keystroke be swallowed by a text field?
+ *
+ *  The reason a shortcut that eats a typed character is worse than no shortcut: someone
+ *  half-way through a customer's name presses K and the letter vanishes. */
+export function isTypingTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el || typeof el.tagName !== "string") return false;
+  if (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.tagName === "SELECT") return true;
+  return el.isContentEditable === true;
 }

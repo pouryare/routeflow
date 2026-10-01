@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import AppShell from "@/components/meridian/AppShell";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
+import HotkeyProvider from "@/components/HotkeyProvider";
 
 /** The shell group: /sales, /map, /facilities, /gallery, /planner, /report, /leads,
  *  /settings. One header, one theme, one entrance, for all of them.
@@ -24,6 +25,10 @@ import { MyPositionProvider } from "@/components/MyPositionProvider";
 export default function ShellLayout({ children }: { children: ReactNode }) {
   return (
     <div className="meridian min-h-screen">
+      {/* ONE keydown listener for the whole shell, mounted here and nowhere else. A provider
+          per page would put back the duplicate-listener problem the registry exists to
+          remove — and this layout renders once for every route in the group. */}
+      <HotkeyProvider />
       <MyPositionProvider>
         <AppShell>{children}</AppShell>
       </MyPositionProvider>

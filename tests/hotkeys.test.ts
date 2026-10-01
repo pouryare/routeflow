@@ -4,6 +4,10 @@ import {
   conflicts,
   helpRows,
   eventMatchesChord,
+  bindingFor,
+  isTypingTarget,
+  isReservedChord,
+  runnableBindings,
   type Binding,
 } from "@/lib/hotkeys";
 
@@ -208,5 +212,69 @@ describe("matching a real key event", () => {
 
   it("does not throw on an event with no key", () => {
     expect(eventMatchesChord({ metaKey: false, ctrlKey: false, shiftKey: false, altKey: false } as KeyboardEvent, "K")).toBe(false);
+  });
+});
+
+/** What the ONE listener does. These are the rules that decide whether a keystroke reaches
+ *  the app or is swallowed, and the plan specified them only in prose inside the component. */
+describe("dispatching a keystroke", () => {
+  const run = (over: Partial<Binding> = {}) => b({ order: 1, ...over });
+  const ev = (o: Partial<KeyboardEvent> = {}) =>
+    ({ key: "k", metaKey: false, ctrlKey: false, shiftKey: false, altKey: false, ...o }) as KeyboardEvent;
+
+  it("fires the binding live on this route", () => {
+    let fired = 0;
+    const hit = bindingFor([run({ keys: "K", routes: ["/sales"], run: () => fired++ })], "/sales", ev());
+    expect(hit).not.toBeNull();
+    hit!.run!();
+    expect(fired).toBe(1);
+  });
+
+  it("does not fire a binding scoped to another route", () => {
+    const hit = bindingFor([run({ keys: "K", routes: ["/map"], run: () => {} })], "/sales", ev());
+    expect(hit).toBeNull();
+  });
+
+  it("a documentation-only binding is never fired, even when it matches", () => {
+    // No `run` means the entry documents a key that already has its own listener. Firing it
+    // here would double-handle it.
+    const doc = run({ keys: "K", routes: ["/sales"] });
+    expect(doc.run).toBeUndefined();
+    expect(bindingFor([doc], "/sales", ev())).toBeNull();
+    expect(runnableBindings([doc])).toEqual([]);
+  });
+
+  it("a runnable binding WINS over a documentation-only one on the same chord", () => {
+    // The map documents "?" and the help dialog really handles it. If the documented entry
+    // were consulted first it would shadow the real one and "?" would silently stop working.
+    const doc = run({ keys: "?", routes: ["/map"], order: 1 });
+    let fired = 0;
+    const real = run({ keys: "?", routes: ["/map"], order: 2, run: () => fired++ });
+    const hit = bindingFor([doc, real], "/map", ev({ key: "?", shiftKey: true }));
+    expect(hit).toBe(real);
+    hit!.run!();
+    expect(fired).toBe(1);
+  });
+
+  it("leaves Tab, Escape, Enter and the function keys to the browser", () => {
+    // Hijacking Escape is how a dialog stops closing, and Tab is how anyone moves focus.
+    for (const key of ["Tab", "Escape", "Enter", "F5", "F12"]) {
+      expect(isReservedChord(ev({ key })), `${key} was hijackable`).toBe(true);
+    }
+  });
+
+  it("does not reserve ordinary keys", () => {
+    for (const key of ["k", "K", "?", "/", "s", "g"]) {
+      expect(isReservedChord(ev({ key })), `${key} was wrongly reserved`).toBe(false);
+    }
+  });
+
+  it("recognises a text field so a shortcut never eats a typed letter", () => {
+    for (const tag of ["INPUT", "TEXTAREA", "SELECT"]) {
+      expect(isTypingTarget({ tagName: tag } as unknown as EventTarget), tag).toBe(true);
+    }
+    expect(isTypingTarget({ tagName: "DIV", isContentEditable: true } as unknown as EventTarget)).toBe(true);
+    expect(isTypingTarget({ tagName: "DIV", isContentEditable: false } as unknown as EventTarget)).toBe(false);
+    expect(isTypingTarget(null)).toBe(false);
   });
 });
