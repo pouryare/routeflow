@@ -63,7 +63,29 @@ function detectRawEnum(str) {
   return null;
 }
 function detectArabicChars(str) {
-  if (/[\u0649\u0643\u064A\u0629]/.test(str)) return { status: "ARABIC-CHAR", note: "use Persian ي/ک instead" };
+  /* The four Arabic letters a Persian keyboard slips into — U+0649 ARABIC YEH, U+0643
+   * ARABIC KAF, U+064A ARABIC YEH (dotless, the one that looks Persian), U+0629 TEH
+   * MARBUTA — plus two ranges that arrive in real copy and were missing until 2026-10-01:
+   *
+   *  - U+064B..U+0652, ARABIC diacritics (FATHATON..SUKUN).
+   *  - U+FE70..U+FEFF, ARABIC PRESENTATION FORMS-A. This is the one that matters. The
+   *    string for "عید سعید فطر" written as presentation glyphs RENDERS correctly, contains
+   *    ZERO Persian codepoints, and is invisible to a human reviewing the rendered page — so
+   *    it slips through review and lands in the database. Iranian holiday data arrives
+   *    exactly like this: 178 such codepoints in the vendored IR.yaml.
+   *
+   *  NFKC repairs it mechanically: all 178 fold away and every yeh becomes PERSIAN U+06CC.
+   *  Measured on the real file, not assumed — see tests/copy-audit-arabic.test.ts.
+   *
+   *  The /u flag is REQUIRED. Without it the range is read as 16 separate UTF-16 code units
+   *  and the class does not mean what it looks like it means.
+   *
+   *  The class is unreviewable in a diff and easy to corrupt in transit, which is exactly
+   *  why the test EXECUTES this function against real strings instead of asserting that a
+   *  pattern like "FE70" appears somewhere in this file. */
+  if (/[\u0649\u0643\u064A\u0629\u064B-\u0652\uFE70-\uFEFF]/u.test(str)) {
+    return { status: "ARABIC-CHAR", note: "use Persian ی/ک, never Arabic or presentation forms" };
+  }
   return null;
 }
 function detectStaleSurface(route) {

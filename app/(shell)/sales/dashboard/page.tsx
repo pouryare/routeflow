@@ -302,7 +302,7 @@ export default async function DashboardPage() {
           />
           <BarChart
             title="مشتریان جدید"
-            subtitle="بر اساس ماه شمسیِ اولین سفارش"
+            subtitle="بر اساس ماه شمسیٔ اولین سفارش"
             data={d.new_customers_by_month.map((p) => ({ label: p.label, value: p.value }))}
             formatValue={(v) => faNum(v)}
             empty={empty}
