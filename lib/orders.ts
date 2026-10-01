@@ -7,7 +7,7 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "./db";
-import { resolvePrice } from "./catalogue";
+import { resolvePrice, costBasisFor } from "./catalogue";
 import { toJalali } from "./jalali";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
@@ -137,9 +137,33 @@ function snapshotLine(db: DatabaseSync, orderDate: string, input: LineInput) {
     throw new OrderError(`«${packaging.product_name}» در این تاریخ قیمت ندارد`);
   }
 
+  /* Cost resolves through the SAME `costBasisFor` the margin drawer reads, rather than
+     being hard-wired to `packaging.avg_cost_toman` as it was. That is the difference
+     between a tool that is right and a tool that agrees with itself.
+
+     The failure this prevents is specific. With an override in force, the drawer would
+     compute the margin at the landed cost and tell the owner "charge this"; the order
+     would then book at the moving average, and `repo/margin.ts`, `kpiSnapshots.ts` and
+     `repo/health.ts` -- all of which read `ol.unit_cost_toman` straight off the line --
+     would report a BETTER margin than the tool that advised the price. Two numbers for
+     one product on one day, one of them fiction.
+
+     This is the same shape as the price resolution ten lines above, and for the same
+     reason: the lookup happens once, at sale, and the ANSWER is frozen onto the line so
+     a deliberate correction later cannot rewrite what the books already hold. A
+     backdated cost row restates nothing already booked -- exactly as a backdated price
+     restates no revenue. See lib/pricing.ts.
+
+     A null basis -- never purchased, so nothing is known -- falls back to the moving
+     average exactly as before. It is a fallback rather than a throw because the price
+     is the figure a free order is really about, and refusing to record an order over an
+     unknown COST would block sales the owner is trying to make; the drawer is where that
+     gap belongs, and it says so. */
+  const basis = costBasisFor(db, input.product_id, input.packaging_id, orderDate);
+
   return {
     unit_price_toman: price.price_toman,
-    unit_cost_toman: packaging.avg_cost_toman,
+    unit_cost_toman: basis?.cost_toman ?? packaging.avg_cost_toman,
     qty_per_pack: packaging.qty_per_pack,
     kg_per_base_unit: packaging.kg_per_base_unit,
     price_id: price.id,

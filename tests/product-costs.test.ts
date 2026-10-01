@@ -36,16 +36,11 @@ beforeAll(() => {
     name: "دوغ لیوانی",
     kg_per_base_unit: 0.25,
     organization_id: 1,
-    created_by: null,
-    created_at: now,
-    notes: null,
   });
   pack = createPackaging(db, {
     product_id: product,
     name: "جعبه ۲۴ تایی",
     qty_per_pack: 24,
-    organization_id: 1,
-    created_at: now,
   });
   db.prepare("UPDATE products SET avg_cost_toman = 40000 WHERE id = ?").run(product);
 });
@@ -80,9 +75,6 @@ describe("product_costs", () => {
       name: "کالای خام",
       kg_per_base_unit: 1,
       organization_id: 1,
-      created_by: null,
-      created_at: now,
-      notes: null,
     });
     // avg_cost_toman is 0 -- a real zero, not an answer.
     expect(costBasisFor(db, bare, null, "2026-06-01")).toBeNull();
@@ -143,9 +135,6 @@ describe("product_costs", () => {
       name: "کالای آن‌ها",
       kg_per_base_unit: 1,
       organization_id: 2,
-      created_by: null,
-      created_at: now,
-      notes: null,
     });
     db.prepare("UPDATE products SET avg_cost_toman = 99000 WHERE id = ?").run(theirs);
     expect(readCostBasis(db, 1, theirs, null, "2026-06-01")).toBeNull();
