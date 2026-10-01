@@ -3321,6 +3321,10 @@ export function getDb(): DatabaseSync {
   // A real face, when there is one. Nullable on purpose: most accounts have no photo, and
   // Avatar falls back to initials rather than inventing a face the system does not have.
   if (!uCols.includes("avatar_url")) db.exec("ALTER TABLE users ADD COLUMN avatar_url TEXT");
+  // avatar_url names the ROUTE; this names the FILE. Keeping them apart is what lets an
+  // avatar_url hold a `?key=chef-2` preset while avatar_stem still points at the real
+  // upload -- so clearing a preset does not lose the photograph.
+  if (!uCols.includes("avatar_stem")) db.exec("ALTER TABLE users ADD COLUMN avatar_stem TEXT");
 
   // Widen users.role to the new vocabulary. SQLite cannot ALTER a CHECK, so this is the
   // table-rebuild pattern already used four times in this file -- build the replacement,
@@ -3333,9 +3337,9 @@ export function getDb(): DatabaseSync {
   // row carries them.
   //
   // The copy is driven by PRAGMA table_info rather than a written column list, because
-  // telegram_chat_id, telegram_link_nonce, prefs_json and avatar_url were all added by ALTER
-  // after the previous rebuild. A hand-written list drops them, and every user's Telegram
-  // link dies with no error anywhere.
+  // telegram_chat_id, telegram_link_nonce, prefs_json, avatar_url and avatar_stem were all
+  // added by ALTER after the previous rebuild. A hand-written list drops them, and every
+  // user's Telegram link dies with no error anywhere.
   const usersSplitSchema = db
     .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='users'")
     .get() as { sql: string } | undefined;
@@ -3366,7 +3370,8 @@ export function getDb(): DatabaseSync {
           telegram_chat_id TEXT,
           telegram_link_nonce TEXT,
           prefs_json TEXT,
-          avatar_url TEXT
+          avatar_url TEXT,
+          avatar_stem TEXT
         );
         INSERT INTO users_rolesplit_new (${usersCols})
           SELECT ${usersCols} FROM users;
@@ -3841,6 +3846,11 @@ export interface UserRow {
   token_version: number;
   location_consent_at: string | null;
   created_at: string;
+  /** The route a person's face is served from, or null for initials. */
+  avatar_url: string | null;
+  /** The file stem behind that route. Separate from avatar_url so a `?key=` preset can be
+   *  shown without losing the upload it is standing in for. */
+  avatar_stem: string | null;
 }
 
 export type LocationResolution = "direct" | "pluscode" | "browser" | "nominatim" | "manual" | "unresolved";
