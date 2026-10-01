@@ -51,6 +51,46 @@ export function deleteHoliday(iso: string): void {
   getDb().prepare("DELETE FROM holidays WHERE iso_date = ?").run(iso);
 }
 
+/** Every stored row, oldest first, for the owner screen.
+ *
+ *  Shared reference data, so this is deliberately NOT tenant-scoped: a national holiday is
+ *  the same in every tenant, which is why the table carries no organization_id (see
+ *  lib/db.ts). Recording one is still an owner act — the gate lives in the route. */
+export function listStoredHolidays(): StoredHolidayRow[] {
+  return getDb()
+    .prepare(
+      `SELECT iso_date, title_fa, kind, is_lunar, note, created_at
+         FROM holidays
+        ORDER BY iso_date`,
+    )
+    .all() as unknown as StoredHolidayRow[];
+}
+
+export interface StoredHolidayRow {
+  iso_date: string;
+  title_fa: string;
+  kind: "official" | "commemorative";
+  is_lunar: number;
+  note: string | null;
+  created_at: string;
+}
+
+/** The one place a stored title is judged, so the admin API and the copy audit agree.
+ *
+ *  These strings land on a calendar grid in an app whose own scripts/audit-copy.mjs bans
+ *  Arabic letters and presentation forms. Refusing at the door is cheaper than discovering
+ *  it in a screenshot, and the rule is identical to the detector's so the two cannot drift. */
+export function hasArabicScript(s: string): boolean {
+  return /[\u0649\u0643\u064A\u0629\u064B-\u0652\uFE70-\uFEFF]/u.test(s);
+}
+
+/** A real calendar date, not merely a well-shaped string: 2026-02-30 is rejected too. */
+export function isRealIsoDate(s: unknown): s is string {
+  if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const d = new Date(`${s}T00:00:00Z`);
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
+}
+
 function storedInMonth(jy: number, jm: number): Map<string, StoredHoliday> {
   const from = jalaliToIsoDate(jy, jm, 1).slice(0, 10);
   const last = jalaliMonthLength(jy, jm);

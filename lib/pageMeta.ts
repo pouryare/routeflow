@@ -187,6 +187,11 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "شکایت‌های ثبت‌شده و مسیر رسیدگی هرکدام. گراف رسیدگی نشان می‌دهد کار روی کدام گام ایستاده است.",
   },
+  "/sales/admin/holidays": {
+    title: "تعطیلات",
+    overview:
+      "ثبت تعطیلات قمری که هر سال جابه‌جا می‌شوند. تاریخ اعلامی را اینجا وارد کنید؛ تعطیلات شمسی خودکارند.",
+  },
   "/sales/admin/users": {
     title: "کاربران",
     overview:

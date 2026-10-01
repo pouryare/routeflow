@@ -3208,8 +3208,12 @@ body {
  * Deliberately NOT extra dots in `.dots`: that row is a colour list sliced to three, and a
  * fifth dot is unreadable at phone size. A separate flag row keeps a holiday identifiable
  * even when the weather glyph is absent, which matters because a day off is the one mark a
- * dispatcher must never miss. */
-.meridian .day .calflags {
+ * dispatcher must never miss.
+ *
+ * The BASE flag rules are deliberately unscoped so the admin holidays list reuses the same
+ * marker; only the row layout and the today/selected inversion are cell-specific. Scoping
+ * them to `.day` left that page's flag unstyled and invisible. */
+.meridian .calflags {
   display: flex; align-items: center; gap: 3px; height: 10px; line-height: 0;
 }
 /* Fixed height whether or not anything is in it, so the day numbers stay on a common
@@ -3218,9 +3222,9 @@ body {
 /* Official = the office closes. Commemorative = observed, office open. Two shapes, not two
    colours: colour alone is banned as the only signal, and a filled vs hollow marker reads
    correctly in greyscale and to a colour-blind driver. */
-.meridian .day .calflag { width: 6px; height: 6px; display: block; border-radius: 2px; }
-.meridian .day .calflag--official { background: var(--crit); }
-.meridian .day .calflag--commemorative {
+.meridian .calflag { width: 6px; height: 6px; display: block; flex: none; border-radius: 2px; }
+.meridian .calflag--official { background: var(--crit); }
+.meridian .calflag--commemorative {
   background: transparent; border: 1.5px solid var(--muted);
 }
 /* The selected and today cells invert to a filled background, so an ink-coloured flag would
