@@ -64,6 +64,7 @@ export const TENANT_TABLES = [
   "lead_runs",
   "lead_visit_activities",
   "commission_rates",
+  "commission_tiers",
   "commission_payments",
   "driver_commission_rates",
   "driver_commission_payments",
@@ -1551,6 +1552,47 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_commission_rates_lookup
       ON commission_rates(salesperson_user_id, valid_from);
+
+    /* A tiered plan for one salesperson, effective-dated like every other rate in this file.
+     *
+     *  Kept SEPARATE from commission_rates rather than added as columns to it. A flat rate
+     *  is exactly a marginal plan with one tier, so the two share an implementation -- but
+     *  they do not share a row shape: a flat rate is one number, a plan is an ordered set
+     *  with bounds and a mode. Putting tiers in the same table would mean nullable bound
+     *  columns that are meaningless for every existing row.
+     *
+     *  mode is stored rather than inferred, because 'marginal' and 'accelerator' differ
+     *  only in how the tiers are applied and an inference would have to guess. 'cliff' is
+     *  stored for the same reason: it is the one mode that can pay LESS for delivering more,
+     *  and that has to be an explicit, recorded decision.
+     *
+     *  valid_from mirrors commission_rates so a backdated plan restates unpaid accruals and
+     *  never a recorded payment -- the asymmetry lib/commission.ts already documents.
+     *
+     *  organization_id is in the CREATE and not left to the TENANT_TABLES sweep: this table
+     *  is new, so there is no existing database to backfill, and a plan that cannot say which
+     *  company it belongs to is a cross-tenant leak waiting for the first query. Same
+     *  reasoning as lead_runs. */
+    CREATE TABLE IF NOT EXISTS commission_tiers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      salesperson_user_id INTEGER REFERENCES users(id),
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      mode TEXT NOT NULL DEFAULT 'marginal'
+        CHECK (mode IN ('marginal', 'accelerator', 'cliff')),
+      metric TEXT NOT NULL DEFAULT 'kg'
+        CHECK (metric IN ('kg', 'volume_m3', 'revenue_toman', 'margin_toman', 'orders')),
+      from_value REAL NOT NULL,
+      to_value REAL,
+      rate_type TEXT NOT NULL CHECK (rate_type IN ('flat', 'pct')),
+      rate_value REAL NOT NULL,
+      valid_from TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_commission_tiers_lookup
+      ON commission_tiers(salesperson_user_id, valid_from);
+    CREATE INDEX IF NOT EXISTS idx_commission_tiers_org
+      ON commission_tiers(organization_id, valid_from);
 
     /* Money that actually moved. Accrual is derived from delivered weight and the rate
        in force, and can therefore be restated by a backdated rate; a payment cannot,
