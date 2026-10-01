@@ -5,6 +5,7 @@ import { encodeImage, AVATAR_MAX_EDGE } from "@/lib/imagePipeline";
 import { ensureAvatarDir, avatarPaths } from "@/lib/avatarStore";
 import { requireRole } from "@/lib/session";
 import { getDb } from "@/lib/db";
+import { userInOrg, setAvatar } from "@/lib/repo/avatars";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** 8MB. A phone portrait is 2–4MB; a 20MB phone panorama is a mistake, not a portrait. */
@@ -41,10 +42,7 @@ export async function POST(req: NextRequest) {
   // Tenant-scoped, same rule as the admin PATCH: an owner administers their own
   // organisation's staff and no one else's. A cross-tenant id reads as "not found".
   const db = getDb();
-  const exists = db
-    .prepare("SELECT id FROM users WHERE id = ? AND organization_id = ?")
-    .get(userId, guard.session.organizationId);
-  if (!exists) {
+  if (!userInOrg(db, userId, guard.session.organizationId)) {
     return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
   }
 
@@ -70,11 +68,7 @@ export async function POST(req: NextRequest) {
 
   // The row is written here rather than by a second client PATCH: one request, one outcome,
   // and no window in which the bytes exist but nothing points at them.
-  db.prepare("UPDATE users SET avatar_url = ?, avatar_stem = ? WHERE id = ?").run(
-    `/api/users/${userId}/avatar`,
-    stem,
-    userId,
-  );
+  setAvatar(db, userId, `/api/users/${userId}/avatar`, stem);
 
   return NextResponse.json({ ok: true, avatar_url: `/api/users/${userId}/avatar` });
 }

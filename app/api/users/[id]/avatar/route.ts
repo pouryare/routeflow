@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { readAvatarStem } from "@/lib/repo/avatars";
 import { getSession } from "@/lib/session";
 import { AVATAR_PRESETS, readAvatarBytes, safePresetKey } from "@/lib/avatarStore";
 
@@ -28,10 +29,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const q = new URL(req.url).searchParams;
   const format = q.get("format") === "avif" ? "avif" : "webp";
 
-  const row = getDb().prepare("SELECT avatar_stem FROM users WHERE id = ?").get(userId) as
-    | { avatar_stem: string | null }
-    | undefined;
-  if (!row) {
+  // `undefined` is "no such user" and `null` is "a real user with no photo". Both are a 404
+  // to a caller, but they are not the same fact, so the repo keeps them apart.
+  const ownStem = readAvatarStem(getDb(), userId);
+  if (ownStem === undefined) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
 
@@ -42,12 +43,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
 
-  const stem = presetKey ?? row.avatar_stem;
-  if (!stem) {
+  const fileStem = presetKey ?? ownStem;
+  if (!fileStem) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
 
-  const bytes = await readAvatarBytes(stem, format);
+  const bytes = await readAvatarBytes(fileStem, format);
   if (!bytes) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
