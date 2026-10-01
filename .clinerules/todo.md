@@ -132,6 +132,8 @@ Under full-suite load these two exceed vitest's 5s default and fail with
 
 - `tests/jalali.test.ts` — "agrees with Intl for every day across 20 Jalali years"
 - `tests/api/routing-route.test.ts` — "plans, commits and freezes"
+- `tests/routing-repo.test.ts` — "builds a greedy plan ordered nearest-first from the depot"
+  (third flake, found 2026-10-01; all pass alone)
 
 **Both pass in isolation.** They are CPU contention, not regressions. A run reporting
 2 failed / 2735 passed with those two names **is a pass**.

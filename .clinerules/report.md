@@ -32,21 +32,28 @@ assume a foreground command that "timed out" means the test failed. It very like
 running. Same for `tsc` and anything over ~30s: the shell has a ~30s cap, so long commands
 need backgrounding.
 
-### Two tests flake under full-suite load — this is expected, not a regression
+### Tests that flake under full-suite load — expected, not regressions
 
-With all 356 files competing for this machine's cores, two tests exceed vitest's 5-second
-default and fail with `Test timed out in 5000ms`:
+With all ~383 files competing for this machine's cores, some tests exceed vitest's
+5-second default and fail with `Test timed out in 5000ms`:
 
 - `tests/jalali.test.ts` → *"agrees with Intl for every day across 20 Jalali years"*
 - `tests/api/routing-route.test.ts` → *"plans, commits and freezes"*
+- `tests/routing-repo.test.ts` → *"builds a greedy plan ordered nearest-first from the depot"*
+  (observed 2026-10-01; passes alone in ~1s)
 
-**Both pass when run alone** (19/19 and 3/3). They are pure CPU contention, and they have
+**All pass when run alone** (19/19, 3/3, 4/4). They are pure CPU contention, and they have
 no relation to any dependency or code change. So:
 
-- A run reporting **2 failed / 2735 passed** with those two names is a **pass**.
+- A run reporting **1–2 failed / rest passed** with those names is a **pass**.
 - Before reporting a failure, re-run the file alone: `npx vitest run tests/<file>`.
   Only a failure that reproduces in isolation is real.
 - Do not "fix" them by raising the global timeout to paper over slowness.
+
+Note the shape of the trap: the total pass count and the file count both drift as work
+lands, so match on the **test name**, never on the counts. A run reporting 1 failure whose
+name is NOT on this list is a real failure — that is exactly how
+`tests/repo-boundary.test.ts` was caught after the avatar routes.
 
 **Do not** run `next build`, `next start`, or the Playwright smoke suite
 (`vitest.smoke.mts` — it boots a browser and a dev server). If a task seems to need a
