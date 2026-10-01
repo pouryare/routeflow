@@ -1,6 +1,29 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, afterAll } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+
+/* The tmp database is set before lib/db is imported anywhere, exactly as in every other
+ * suite here. ROUTEFLOW_DB_PATH is read once at module load. */
+const testDbPath = path.join(
+  os.tmpdir(),
+  `holidays-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
+);
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
+
+const { getDb } = await import("@/lib/db");
+const { upsertHoliday, deleteHoliday, listHolidaysForMonth } = await import("@/lib/repo/holidays");
+
 import { toJalali, jalaliToIsoDate } from "@/lib/jalali";
-import { SOLAR_HOLIDAYS, holidaysForJalaliYear, holidaysForJalaliMonth } from "@/lib/holidays";
+import {
+  SOLAR_HOLIDAYS,
+  holidaysForJalaliYear,
+  holidaysForJalaliMonth,
+} from "@/lib/holidays";
+
+afterAll(() => {
+  for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
+});
 
 /** What the generator must get right.
  *
@@ -152,5 +175,148 @@ describe("the fixed-in-Jalali holidays", () => {
     expect(/\u0641\u0637\u0631/u.test(titles), "Eid al-Fitr is lunar; it must not be here").toBe(false);
     expect(/\u0642\u0631\u0628\u0627\u0646/u.test(titles), "Eid al-Adha is lunar").toBe(false);
     expect(/\u0627\u0634\u0648\u0631\u0647/u.test(titles), "Ashura is lunar").toBe(false);
+  });
+});
+/* Eid al-Fitr 2026: the vendored dataset says 2026-03-20 (the day of Eid). The plan's
+ * draft test called `listHolidaysForMonth(2026, 1)` — passing a GREGORIAN year where a
+ * JALALI one belongs. 2026-03-20 is Jalali 1404/12/29, not 1405/1, so that call would have
+ * searched the wrong month and the test would have passed or failed for the wrong reason.
+ * Every month argument below is a real Jalali coordinate, derived with `toJalali`. */
+const LUNAR_ISO = "2026-03-20";
+const LUNAR_J = toJalali(LUNAR_ISO)!; // { jy: 1404, jm: 12, jd: 29 }
+
+/* 2026-03-20 is ALSO a generated holiday: Jalali 1404/12/29 is "ملی شدن صنعت نفت". That
+ * makes it a perfect OVERRIDE case and a terrible DELETE case -- deleting it correctly
+ * restores the generated row, so asserting "nothing is there" would be asserting a bug.
+ * PURE_LUNAR is a date in the same month that nothing generates, which is what the
+ * delete-and-stays-gone test needs. */
+const PURE_LUNAR_ISO = "2026-03-25"; // Jalali 1405/1/5
+const PURE_LUNAR_J = toJalali(PURE_LUNAR_ISO)!;
+
+describe("the holidays table (the lunar ones)", () => {
+  it("the plan's date really is a Jalali coordinate we can look up", () => {
+    expect(LUNAR_J).toMatchObject({ jy: 1404, jm: 12, jd: 29 });
+    expect(jalaliToIsoDate(LUNAR_J.jy, LUNAR_J.jm, LUNAR_J.jd)).toBe(LUNAR_ISO);
+  });
+
+  it("stores an owner-confirmed lunar holiday", () => {
+    upsertHoliday({ iso: LUNAR_ISO, title_fa: "عید فطر", kind: "official", lunar: true });
+    expect(
+      listHolidaysForMonth(LUNAR_J.jy, LUNAR_J.jm).find((h) => h.iso === LUNAR_ISO),
+    ).toMatchObject({ title_fa: "عید فطر", kind: "official" });
+  });
+
+  it("is idempotent — the same date twice is one row, last write wins", () => {
+    upsertHoliday({ iso: LUNAR_ISO, title_fa: "عید فطر", kind: "official", lunar: true });
+    upsertHoliday({ iso: LUNAR_ISO, title_fa: "عید فطر (اصلاح)", kind: "official", lunar: true });
+    const rows = listHolidaysForMonth(LUNAR_J.jy, LUNAR_J.jm).filter((h) => h.iso === LUNAR_ISO);
+    expect(rows).toHaveLength(1);
+    expect(rows[0].title_fa).toBe("عید فطر (اصلاح)");
+  });
+
+  it("merges the generated solar holidays in without them ever being seeded", () => {
+    const month = listHolidaysForMonth(1405, 1);
+    expect(month.filter((h) => h.title_fa.includes("نوروز")).length).toBeGreaterThanOrEqual(1);
+    for (const h of month) {
+      expect(h.iso).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(h.title_fa.length).toBeGreaterThan(0);
+    }
+    // And the table itself holds none of them: the merge is not a copy.
+    const stored = getDb()
+      .prepare("SELECT COUNT(*) AS n FROM holidays WHERE title_fa LIKE '%نوروز%'")
+      .get() as { n: number };
+    expect(stored.n, "a generated solar holiday was written to the table").toBe(0);
+  });
+
+  it("an owner row wins over a generated one on the same date", () => {
+    const generated = holidaysForJalaliMonth(1405, 1).find((h) => h.jd === 12)!;
+    upsertHoliday({
+      iso: generated.iso,
+      title_fa: "روز جمهوری اسلامی (تعطیل رسمی)",
+      kind: "official",
+      lunar: false,
+    });
+    const merged = listHolidaysForMonth(1405, 1).find((h) => h.iso === generated.iso);
+    expect(merged?.title_fa).toBe("روز جمهوری اسلامی (تعطیل رسمی)");
+    expect(merged?.kind).toBe("official");
+    // The override must not change which day it is.
+    expect(merged?.jm).toBe(generated.jm);
+    expect(merged?.jd).toBe(generated.jd);
+  });
+
+  it("deleting an override restores the generated row, not an empty day", () => {
+    const generated = holidaysForJalaliMonth(1405, 1).find((h) => h.jd === 13)!;
+    upsertHoliday({ iso: generated.iso, title_fa: "موقتی", kind: "official", lunar: false });
+    deleteHoliday(generated.iso);
+    expect(listHolidaysForMonth(1405, 1).find((h) => h.iso === generated.iso)?.title_fa).toBe(
+      "سیزده بدر",
+    );
+  });
+
+  it("deleting a LUNAR row on a generated day RESTORES the generated row", () => {
+    // The collision case, and the reason DELETE means "stop overriding" rather than
+    // "erase the holiday". 2026-03-20 is both an Eid and ملی شدن صنعت نفت.
+    upsertHoliday({ iso: LUNAR_ISO, title_fa: "عید فطر", kind: "official", lunar: true });
+    deleteHoliday(LUNAR_ISO);
+    expect(listHolidaysForMonth(LUNAR_J.jy, LUNAR_J.jm).find((h) => h.iso === LUNAR_ISO)?.title_fa)
+      .toBe("ملی شدن صنعت نفت");
+  });
+
+  it("deleting a LUNAR row nothing generates really removes it", () => {
+    expect(holidaysForJalaliMonth(PURE_LUNAR_J.jy, PURE_LUNAR_J.jm)
+      .some((h) => h.iso === PURE_LUNAR_ISO)).toBe(false);
+    upsertHoliday({ iso: PURE_LUNAR_ISO, title_fa: "عید فطر", kind: "official", lunar: true });
+    expect(listHolidaysForMonth(PURE_LUNAR_J.jy, PURE_LUNAR_J.jm)
+      .some((h) => h.iso === PURE_LUNAR_ISO)).toBe(true);
+    deleteHoliday(PURE_LUNAR_ISO);
+    expect(listHolidaysForMonth(PURE_LUNAR_J.jy, PURE_LUNAR_J.jm)
+      .find((h) => h.iso === PURE_LUNAR_ISO)).toBeUndefined();
+  });
+
+  it("has no organization_id — a national holiday is the same in every tenant", () => {
+    const cols = (getDb().prepare("PRAGMA table_info(holidays)").all() as { name: string }[]).map(
+      (c) => c.name,
+    );
+    expect(cols).not.toContain("organization_id");
+  });
+
+  it("marks the row as lunar, so the admin screen can say which need confirming", () => {
+    upsertHoliday({ iso: LUNAR_ISO, title_fa: "عید فطر", kind: "official", lunar: true });
+    const row = getDb().prepare("SELECT is_lunar FROM holidays WHERE iso_date = ?").get(LUNAR_ISO) as {
+      is_lunar: number;
+    };
+    expect(row.is_lunar).toBe(1);
+  });
+
+  it("refuses a kind outside the two it knows, at the database", () => {
+    // The CHECK is the last line of defence; a new kind added to the UI without adding it
+    // here should fail loudly rather than write a row nothing can render.
+    expect(() =>
+      getDb()
+        .prepare(
+          "INSERT INTO holidays (iso_date, title_fa, kind, is_lunar, created_at) VALUES (?,?,?,?,?)",
+        )
+        .run("2020-01-01", "تست", "invented", 0, new Date().toISOString()),
+    ).toThrow();
+  });
+
+  it("keeps a lunar row's Jalali fields blank — nothing generated it", () => {
+    upsertHoliday({ iso: PURE_LUNAR_ISO, title_fa: "عید فطر", kind: "official", lunar: true });
+    const h = listHolidaysForMonth(PURE_LUNAR_J.jy, PURE_LUNAR_J.jm)
+      .find((x) => x.iso === PURE_LUNAR_ISO)!;
+    // jm/jd are 0 rather than a guess: a caller must not render "month 0" as a date.
+    expect(h.jm).toBe(0);
+    expect(h.jd).toBe(0);
+    expect(h.jy).toBe(0);
+  });
+
+  it("the merged month is still in date order after an override", () => {
+    const month = listHolidaysForMonth(LUNAR_J.jy, LUNAR_J.jm);
+    const isos = month.map((h) => h.iso);
+    expect(isos).toEqual([...isos].sort((a, b) => a.localeCompare(b)));
+  });
+
+  it("a month with neither stored nor generated holidays is empty, not an error", () => {
+    expect(listHolidaysForMonth(1405, 7)).toEqual([]);
   });
 });
