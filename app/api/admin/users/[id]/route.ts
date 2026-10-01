@@ -146,6 +146,31 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
     sets.push("telegram_link_nonce = NULL");
   }
 
+  /* The photo a person's face is shown as, everywhere in the app.
+   *
+   *  Only ever an app-relative `/api/users/<id>/avatar` (optionally with a `?key=` preset
+   *  query). An arbitrary URL is refused rather than sanitised: this column is rendered as
+   *  an <img src> on every page showing a person, so accepting one would make every
+   *  reader's browser fetch a third party on login, and a `javascript:` value would make
+   *  the admin screen an XSS sink. Validating at the door is cheaper than defending the
+   *  renderer.
+   *
+   *  An empty string clears it — the Avatar component's initials fallback is the correct
+   *  answer for "we have no photo", and it says so honestly. */
+  if (body?.avatar_url !== undefined) {
+    const raw = typeof body.avatar_url === "string" ? body.avatar_url.trim() : "";
+    if (raw === "") {
+      sets.push("avatar_url = NULL");
+    } else if (/^\/api\/users\/\d+\/avatar(\?[a-z0-9=&_-]*)?$/i.test(raw)) {
+      sets.push("avatar_url = ?");
+      values.push(raw);
+    } else {
+      return NextResponse.json({ ok: false, error: "نشانی تصویر نامعتبر است" }, { status: 400 });
+    }
+    /* No bumpVersion: a photo is not an authorisation surface, and bumping it would sign
+     * everyone out of their session each time an owner tidied the staff list. */
+  }
+
   if (body?.active !== undefined) {
     const active = body.active ? 1 : 0;
     if (!active && wouldStrandTheApp(db, target, true)) {
