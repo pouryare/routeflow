@@ -25,7 +25,7 @@ const eslintConfig = defineConfig([
      * than with an in-source `eslint-disable`, which tests/no-lint-suppressions.test.ts
      * bans outright -- lint stays clean because the code is right, not because the linter
      * was told to look away. */
-    files: ["components/meridian/Avatar.tsx"],
+    files: ["components/meridian/Avatar.tsx", "app/(shell)/sales/admin/users/page.tsx"],
     rules: { "@next/next/no-img-element": "off" },
   },
 ]);

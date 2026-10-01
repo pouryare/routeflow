@@ -2,8 +2,9 @@
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { Icon } from "@/components/meridian/Icon";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
+import Avatar from "@/components/meridian/Avatar";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
 
@@ -20,6 +21,8 @@ interface UserRow {
   active: number;
   location_consent_at: string | null;
   created_at: string;
+  /** The avatar route to render, or null for the initials fallback. */
+  avatar_url: string | null;
 }
 
 interface GroupRow {
@@ -49,6 +52,135 @@ function TelegramCell({ user, onSave }: { user: UserRow; onSave: (v: string | nu
       }}
       className="w-32 rounded-md border border-border bg-surface-raised px-2 py-1 text-left font-mono text-xs text-text outline-none placeholder:text-text-faint focus:border-accent"
     />
+  );
+}
+
+/** The five portraits `scripts/seed-avatars.mjs` encoded from `public/avatars/`. Kept in
+ *  sync by hand with `AVATAR_PRESETS` in lib/avatarStore — a mismatch shows as a 404 on
+ *  one thumbnail, not as an error. */
+const PRESETS = [
+  { key: "hossein", label_fa: "حسین" },
+  { key: "maryam", label_fa: "مریم" },
+  { key: "reza", label_fa: "رضا" },
+  { key: "saeed", label_fa: "سعید" },
+  { key: "zahra", label_fa: "زهرا" },
+];
+
+/** Give one person a real face.
+ *
+ *  Three deliberate details. The preset grid uses the same `<picture>` chain as an upload —
+ *  one avatar, one set of encodings, no second code path to keep in step. "حذف عکس" exists
+ *  because `Avatar` falls back to initials BY DESIGN: a missing photo is a fact about the
+ *  record, so an owner who picks the wrong picture needs an undo that is not a database
+ *  edit. And clearing sends `""`, which the PATCH turns into NULL — never a sentinel
+ *  string, because a sentinel is a value some later query has to know about. */
+function AvatarCell({
+  user,
+  onSave,
+}: {
+  user: UserRow;
+  onSave: (v: string | null) => Promise<boolean>;
+}) {
+  const [busy, setBusy] = useState(false);
+  const [open, setOpen] = useState(false);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  async function upload(file: File) {
+    setBusy(true);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("user_id", String(user.id));
+      const res = await fetch("/api/photos/avatar", { method: "POST", body: form });
+      // The upload route already wrote the row, so on failure there is nothing to undo
+      // here; on success the value is already correct and this is belt-and-braces for the
+      // case where the row was edited between the two requests.
+      await onSave(res.ok ? `/api/users/${user.id}/avatar` : null);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="flex items-center gap-2">
+      <Avatar userId={user.id} name={user.display_name} src={user.avatar_url} size={34} />
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-expanded={open}
+        aria-label={`انتخاب عکس برای ${user.display_name}`}
+        className="flex cursor-pointer items-center gap-1 rounded-md border border-border px-2 py-1 text-xs text-text transition-colors hover:border-accent"
+      >
+        <Icon name="camera" size="md" />
+        انتخاب
+      </button>
+      {open ? (
+        <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-2">
+          <div className="flex flex-wrap gap-2">
+            {PRESETS.map((p) => (
+              <button
+                key={p.key}
+                type="button"
+                onClick={() => onSave(`/api/users/${user.id}/avatar?key=${p.key}`)}
+                className="cursor-pointer overflow-hidden rounded-lg border border-border transition-colors hover:border-accent"
+                title={p.label_fa}
+                aria-label={`عکس ${p.label_fa} برای ${user.display_name}`}
+              >
+                <picture>
+                  <source
+                    srcSet={`/api/users/${user.id}/avatar?key=${p.key}&format=avif`}
+                    type="image/avif"
+                  />
+                  {/* Plain <img>: these are 40px thumbnails of files this app already serves
+                      in exactly the right size, so the optimiser would cost a request to
+                      resize nothing. Exempted in eslint.config.mjs, not silenced inline. */}
+                  <img
+                    src={`/api/users/${user.id}/avatar?key=${p.key}&format=webp`}
+                    alt={p.label_fa}
+                    width={40}
+                    height={40}
+                    className="block h-10 w-10 object-cover"
+                  />
+                </picture>
+              </button>
+            ))}
+          </div>
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/*"
+            className="hidden"
+            aria-label={`بارگذاری عکس برای ${user.display_name}`}
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void upload(f);
+              e.target.value = "";
+            }}
+          />
+          <div className="flex gap-2">
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => fileRef.current?.click()}
+              className="cursor-pointer rounded-md border border-border px-2 py-1 text-xs text-text transition-colors hover:border-accent disabled:opacity-50"
+            >
+              <Icon name="image" size="md" />
+              {busy ? "در حال بارگذاری…" : "بارگذاری عکس"}
+            </button>
+            {user.avatar_url ? (
+              <button
+                type="button"
+                onClick={() => onSave("")}
+                className="cursor-pointer rounded-md border border-border px-2 py-1 text-xs text-text-muted transition-colors hover:border-crit"
+              >
+                <Icon name="trash" size="md" />
+                حذف عکس
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -200,6 +332,7 @@ export default function AdminUsersPage() {
             <table className="w-full min-w-3xl text-right text-sm">
               <thead>
                 <tr className="border-b border-border text-xs text-text-muted">
+                  <th className="p-2 font-normal">عکس</th>
                   <th className="p-2 font-normal">نام</th>
                   <th className="p-2 font-normal">نام کاربری</th>
                   <th className="p-2 font-normal">نقش</th>
@@ -214,6 +347,12 @@ export default function AdminUsersPage() {
               <tbody>
                 {users.map((u) => (
                   <tr key={u.id} className={`border-b border-border last:border-b-0 ${u.active ? "" : "opacity-50"}`}>
+                    <td className="p-2">
+                      <AvatarCell
+                        user={u}
+                        onSave={(v) => send(`/api/admin/users/${u.id}`, "PATCH", { avatar_url: v ?? "" })}
+                      />
+                    </td>
                     <td className="p-2">
                       <input
                         key={u.display_name}
