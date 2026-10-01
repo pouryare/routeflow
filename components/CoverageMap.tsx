@@ -1384,7 +1384,7 @@ export default function CoverageMap({
               names this page. What stays is the one map-native action the old «لینک‌های
               سریع» section held: the current view as a link. */}
           <div className="mapside__bar">
-            <button type="button" className="mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی پیوند این نما" title="کپی پیوند این نما">
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی پیوند این نما" title="کپی پیوند این نما">
               <Icon name="link" size="sm" />
             </button>
           </div>
@@ -1400,8 +1400,9 @@ export default function CoverageMap({
               {positionError ?? "دسترسی به موقعیت داده نشده"} — موقعیت شما روی نقشه نشان داده نمی‌شود.
               <button
                 onClick={retryPosition}
-                className="rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
               >
+                <Icon name="undo" size="md" />
                 تلاش دوباره
               </button>
             </p>
@@ -1473,6 +1474,7 @@ export default function CoverageMap({
                     onClick={() => openReminderEntity(r)}
                     className="flex-1 text-right text-[length:var(--text-sm)] text-text hover:text-accent"
                   >
+                    <Icon name="clock" size="sm" />
                     <div className="font-medium">{r.label}</div>
                     <div className="text-[length:var(--text-xs)] text-text-muted">{r.message}</div>
                   </button>
@@ -1519,6 +1521,7 @@ export default function CoverageMap({
                     onClick={() => flyToCustomer(customer)}
                     className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
                   >
+                    <Icon name="map-pin" size="md" />
                     <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                     <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-accent">
                       {formatDistanceKm(km)}
@@ -1542,6 +1545,7 @@ export default function CoverageMap({
                     onClick={() => flyToCustomer(c)}
                     className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
                   >
+                    <Icon name="map-pin" size="sm" />
                     {c.business_name}
                   </button>
                   <button
@@ -1570,6 +1574,7 @@ export default function CoverageMap({
                     onClick={() => flyToCustomer(c)}
                     className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
                   >
+                    <Icon name="map-pin" size="sm" />
                     {c.business_name}
                   </button>
                   <button
@@ -1618,6 +1623,7 @@ export default function CoverageMap({
                       : "text-text-muted hover:bg-white/5 hover:text-text"
                   }`}
                 >
+                  <Icon name="map-pin" size="sm" />
                   {label}
                 </button>
               ))}
@@ -1665,6 +1671,7 @@ export default function CoverageMap({
                   onClick={() => flyToCustomer(customer)}
                   className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
                 >
+                  <Icon name="calendar" size="md" />
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span
                     className="shrink-0 font-mono text-[length:var(--text-xs)]"
@@ -1694,6 +1701,7 @@ export default function CoverageMap({
                   onClick={() => flyToCustomer(customer)}
                   className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
                 >
+                  <Icon name="map-pin" size="md" />
                   <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
                   <span className="shrink-0 text-[length:var(--text-xs)] text-text-faint">
                     {customer.phone ?? "—"}
@@ -1717,6 +1725,7 @@ export default function CoverageMap({
                   onClick={() => flyToFacility(f)}
                   className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                 >
+                  <Icon name="map-pin" size="md" />
                   <span
                     className="shrink-0"
                     aria-hidden="true"
@@ -1764,6 +1773,7 @@ export default function CoverageMap({
                               : "text-text-muted hover:bg-white/5 hover:text-text"
                           }`}
                         >
+                          <Icon name="route" size="sm" />
                           {km} کیلومتر
                         </button>
                       ))}
@@ -1815,6 +1825,7 @@ export default function CoverageMap({
                         : "text-text-muted hover:bg-white/5 hover:text-text"
                     }`}
                   >
+                    <Icon name="map-pin" size="sm" />
                     {label}
                   </button>
                 ))}
@@ -1882,6 +1893,7 @@ export default function CoverageMap({
                   geofenceOn ? "border-accent bg-accent" : "border-border bg-surface"
                 }`}
               >
+                <Icon name="plus" size="md" />
                 <span
                   className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
                   style={{ right: geofenceOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
@@ -1932,6 +1944,7 @@ export default function CoverageMap({
                   driverMode ? "border-accent bg-accent" : "border-border bg-surface"
                 }`}
               >
+                <Icon name="minimize" size="md" />
                 <span
                   className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
                   style={{ right: driverMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
@@ -1959,6 +1972,7 @@ export default function CoverageMap({
                   shapedMarkers ? "border-accent bg-accent" : "border-border bg-surface"
                 }`}
               >
+                <Icon name="maximize" size="md" />
                 <span
                   className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
                   style={{ right: shapedMarkers ? "calc(100% - 1.25rem)" : "0.125rem" }}
@@ -1986,6 +2000,7 @@ export default function CoverageMap({
                   nextStopOn ? "border-accent bg-accent" : "border-border bg-surface"
                 }`}
               >
+                <Icon name="layers" size="md" />
                 <span
                   className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
                   style={{ right: nextStopOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
@@ -2015,6 +2030,7 @@ export default function CoverageMap({
                   bulkMode ? "border-accent bg-accent" : "border-border bg-surface"
                 }`}
               >
+                <Icon name="locate" size="md" />
                 <span
                   className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
                   style={{ right: bulkMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
@@ -2062,6 +2078,7 @@ export default function CoverageMap({
                         : "text-text-muted hover:bg-white/5 hover:text-text"
                     }`}
                   >
+                    <Icon name="map-pin" size="sm" />
                     {label}
                   </button>
                 ))}
@@ -2085,6 +2102,7 @@ export default function CoverageMap({
           onClick={() => setShowShortcuts(true)}
           className="self-start font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
         >
+          <Icon name="help" size="sm" />
           میان‌برهای صفحه‌کلید (؟)
         </button>
 
@@ -2377,6 +2395,7 @@ export default function CoverageMap({
                     onClick={() => setFoundLocation(null)}
                     className="mt-2 text-[length:var(--text-xs)] text-accent hover:underline"
                   >
+                    <Icon name="trash" size="sm" />
                     حذف نشانگر
                   </button>
                 </div>
@@ -2496,13 +2515,15 @@ export default function CoverageMap({
               onClick={() => setBulkSelectedIds(new Set())}
               className="rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-sm)] text-text-muted hover:border-crit hover:text-crit"
             >
+              <Icon name="x" size="sm" />
               لغو انتخاب
             </button>
             <button
               onClick={applyBulk}
               disabled={bulkSaving || (!bulkStatusChoice && !bulkGroupChoice)}
-              className="rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
+              <Icon name="map-pin" size="sm" />
               {bulkSaving ? "در حال اعمال…" : "اعمال روی همه"}
             </button>
           </div>

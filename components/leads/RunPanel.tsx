@@ -76,8 +76,9 @@ export default function RunPanel({
           <button
             onClick={onOptimise}
             disabled={busy}
-            className="rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
           >
+            <Icon name="sparkle" size="sm" />
             مرتب‌سازی خودکار — {faNum(optimiseGain)}٪ کوتاه‌تر
           </button>
         )}
@@ -93,8 +94,9 @@ export default function RunPanel({
         <button
           onClick={onClear}
           disabled={busy}
-          className="rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-crit hover:text-crit disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-crit hover:text-crit disabled:opacity-50"
         >
+          <Icon name="trash" size="sm" />
           خالی کردن
         </button>
 

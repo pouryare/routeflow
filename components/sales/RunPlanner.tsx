@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 
@@ -102,6 +103,7 @@ export default function RunPlanner({
                 }
                 className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-40"
               >
+                <Icon name="plus" size="sm" />
                 ساخت مسیر
               </button>
             </div>

@@ -29,7 +29,9 @@ export default function FlowDone({ chips, next, actions, seconds = 5, onReturn }
       </div>
       {actions ? <div className="tf-acts">{actions}</div> : null}
       <p className="tf-sub">برگشت به فهرست در {faDigits(String(Math.max(left, 0)))}…</p>
-      <button type="button" className="tf-skip" onClick={go}>همین حالا برگرد</button>
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={go}>
+      <Icon name="undo" size="md" />
+      همین حالا برگرد</button>
     </div>
   );
 }

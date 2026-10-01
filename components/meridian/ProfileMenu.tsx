@@ -82,13 +82,14 @@ export default function ProfileMenu({
     >
       <button
         type="button"
-        className="pm__trigger"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] pm__trigger"
         aria-haspopup="true"
         aria-expanded={open}
         aria-label={`${name} — ${roleLabel}`}
         title={`${name} · ${roleLabel}`}
         onClick={() => setOpen((v) => !v)}
       >
+        <Icon name="user" size="md" />
         <Avatar userId={userId} name={name} size={34} />
       </button>
 

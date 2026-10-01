@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 
 /** Paste a Google Maps / SnappFood / Instagram link; the server resolves name, pin and address. */
@@ -38,11 +39,17 @@ export default function LinkStep({ api }: { api: CustomStepApi }) {
     <>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
         <input className="tf-input ltr" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://maps.app.goo.gl/…" aria-label="لینک" inputMode="url" />
-        <button type="button" className="btn ghost" onClick={() => void paste()}>چسباندن</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => void paste()}>
+        <Icon name="clipboard" size="md" />
+        چسباندن</button>
       </div>
       {err ? <div className="tf-card warn">{err}</div> : null}
-      <button type="button" className="tf-go" disabled={!url.trim() || busy} onClick={() => void resolve(url.trim())}>{busy ? "در حال خواندن…" : "ادامه"}</button>
-      <button type="button" className="tf-skip" onClick={() => api.submit("nolink")}>لینک ندارم</button>
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={!url.trim() || busy} onClick={() => void resolve(url.trim())}>
+      <Icon name="link" size="md" />
+      {busy ? "در حال خواندن…" : "ادامه"}</button>
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("nolink")}>
+      <Icon name="link" size="md" />
+      لینک ندارم</button>
     </>
   );
 }

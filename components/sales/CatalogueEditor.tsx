@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
@@ -143,6 +144,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
         </div>
         <div className="md:col-span-4">
           <button className={BUTTON} disabled={busy} type="submit">
+            <Icon name="plus" size="md" />
             افزودن کالا
           </button>
         </div>
@@ -213,6 +215,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
         </div>
         <div className="md:col-span-4">
           <button className={BUTTON} disabled={busy} type="submit">
+            <Icon name="plus" size="md" />
             افزودن بسته‌بندی
           </button>
         </div>
@@ -303,6 +306,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
             around the button and the two collided. */}
         <div className="flex flex-col items-start gap-[var(--space-2)] md:col-span-4 md:flex-row md:items-center md:gap-[var(--space-3)]">
           <button className={BUTTON} disabled={busy || parsedPrice === null} type="submit">
+            <Icon name="check" size="md" />
             ثبت قیمت
           </button>
           <span className="text-[length:var(--text-xs)] leading-5 text-[var(--text-muted)]">

@@ -29,7 +29,8 @@ export default function ImpersonationBanner({ asName, asRole }: { asName: string
       <span className="actas__text">
         در حال دیدن برنامه به‌جای <b>{asName}</b>، نقش <b>{asRole}</b>. هر کاری که اینجا انجام دهید به نام او ثبت می‌شود.
       </span>
-      <button type="button" className="btn solid" onClick={() => void back()} disabled={busy}>
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void back()} disabled={busy}>
+        <Icon name="user" size="md" />
         {busy ? "در حال بازگشت…" : "بازگشت به حساب خودم"}
       </button>
     </div>

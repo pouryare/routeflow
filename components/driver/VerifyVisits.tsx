@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import TapFlow from "@/components/tapflow/TapFlow";
 import FlowDone from "@/components/tapflow/FlowDone";
 import { useToast } from "@/components/ToastProvider";
@@ -68,9 +69,12 @@ export default function VerifyVisits() {
             <p className="title">{v.business_name}</p>
             <div className="meta"><span>{v.address ?? v.area_label ?? ""}</span></div>
             <div className="acts">
-              <button type="button" className="btn solid" onClick={() => start(v)}>ثبت بازدید</button>
-              <button type="button" className="btn ghost" disabled={v.lat === null || v.lng === null}
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => start(v)}>
+              <Icon name="check" size="md" />
+              ثبت بازدید</button>
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={v.lat === null || v.lng === null}
                 onClick={() => v.lat !== null && v.lng !== null && window.open(navigateUrl(navApp, { lat: v.lat, lng: v.lng }, v.business_name), "_blank", "noopener")}>
+                <Icon name="route" size="md" />
                 مسیریابی
               </button>
             </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useState } from "react";
 
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
@@ -183,8 +184,9 @@ export default function AdminUsersPage() {
         <button
           type="submit"
           disabled={busy}
-          className="mt-3 cursor-pointer rounded-md border border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-[filter,opacity] hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] mt-3 cursor-pointer rounded-md border border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-[filter,opacity] hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
         >
+          <Icon name="plus" size="md" />
           ساخت حساب
         </button>
       </form>
@@ -309,6 +311,7 @@ export default function AdminUsersPage() {
                           onClick={() => resetPassword(u)}
                           className="cursor-pointer text-text-muted transition-colors hover:text-accent"
                         >
+                          <Icon name="undo" size="md" />
                           رمز تازه
                         </button>
                         <button
@@ -316,6 +319,7 @@ export default function AdminUsersPage() {
                           onClick={() => send(`/api/admin/users/${u.id}`, "PATCH", { active: !u.active })}
                           className="cursor-pointer text-text-muted transition-colors hover:text-crit"
                         >
+                          <Icon name="ban" size="md" />
                           {u.active ? "غیرفعال کردن" : "فعال کردن"}
                         </button>
                       </div>

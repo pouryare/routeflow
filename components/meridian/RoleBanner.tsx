@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 
@@ -40,10 +41,11 @@ export default function RoleBanner({ role, roles }: { role: Role; roles: Role[] 
         <button
           key={r}
           type="button"
-          className="btn"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] btn"
           disabled={busy}
           onClick={() => void switchTo(r)}
         >
+          <Icon name="users" size="md" />
           {ROLE_LABEL[r] ?? r}
         </button>
       ))}

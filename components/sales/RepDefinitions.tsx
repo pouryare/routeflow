@@ -157,7 +157,8 @@ export default function RepDefinitions() {
               className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-text"
             />
           </label>
-          <button type="submit" disabled={busy || !customerId || !repCode.trim()} className="btn solid">
+          <button type="submit" disabled={busy || !customerId || !repCode.trim()} className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid">
+            <Icon name="plus" size="md" />
             افزودن نماینده
           </button>
           {error && <span className="text-[length:var(--text-xs)] text-[var(--crit)]">{error}</span>}
@@ -188,6 +189,7 @@ export default function RepDefinitions() {
                   <td className="px-3 py-2 text-text-muted">{faJalaliDateTime(r.created_at)}</td>
                   <td className="px-3 py-2 text-left">
                     <button onClick={() => openDrawer(r)} className="btn ghost">
+                      <Icon name="flag" size="md" />
                       پذیرش و مرحله
                     </button>
                   </td>
@@ -251,6 +253,7 @@ export default function RepDefinitions() {
                     onClick={() => patch(openRep.id, { action: "complete_step", step_code: s.step_code })}
                     className="mr-auto text-[length:var(--text-xs)] text-accent hover:underline"
                   >
+                    <Icon name="check" size="sm" />
                     تکمیل
                   </button>
                 )}

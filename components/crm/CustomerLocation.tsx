@@ -23,7 +23,9 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
     return () => window.removeEventListener("keydown", close);
   }, [open]);
   const hasPin = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
-  const editButton = canWrite && onConfirm ? <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={() => setEditing(true)}>{hasPin ? "ویرایش موقعیت" : "افزودن موقعیت"}</button> : null;
+  const editButton = canWrite && onConfirm ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => setEditing(true)}>
+  <Icon name="map-pin" size="md" />
+  {hasPin ? "ویرایش موقعیت" : "افزودن موقعیت"}</button> : null;
   if (editing && canWrite && onConfirm) return <LocationEditor initial={hasPin ? { lat: lat!, lng: lng!, link: mapsUrl ?? undefined } : null} onCancel={() => setEditing(false)} onConfirm={async (pLat, pLng, link) => { await onConfirm(pLat, pLng, link); setEditing(false); }} />;
   if (!hasPin) return <div className="no-pin"><Icon name="map-pin" size="sm" /> موقعیت ثبت نشده است{editButton}</div>;
   return (
@@ -32,7 +34,7 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
         <Suspense fallback={<div className="map-loading">…</div>}>
           <Map key={`${lat},${lng}`} lat={lat!} lng={lng!} name={name} />
         </Suspense>
-        <button type="button" className="map-expand" style={TOUCH} aria-label="بزرگ‌نمایی نقشه" onClick={() => setOpen(true)}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] map-expand" style={TOUCH} aria-label="بزرگ‌نمایی نقشه" onClick={() => setOpen(true)}>
           <Icon name="maximize" size="sm" /> بزرگ‌نمایی
         </button>
       </div>
@@ -44,7 +46,7 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
         <div className="sheet on map-sheet" role="dialog" aria-modal="true" aria-label={`نقشهٔ موقعیت ${name}`}>
           <div className="sheethead">
             <h2>موقعیت {name}</h2>
-            <button className="x" type="button" aria-label="بستن" onClick={() => setOpen(false)}><Icon name="x" size="sm" /></button>
+            <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن" onClick={() => setOpen(false)}><Icon name="x" size="sm" /></button>
           </div>
           <div className="map-frame tall">
             <Suspense fallback={<div className="map-loading">…</div>}>

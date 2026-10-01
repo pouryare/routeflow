@@ -73,7 +73,7 @@ export default function TapFlow(p: TapFlowProps) {
             <h2 id="tf-title">{p.title}</h2>
             {p.subtitle ? <div className="s">{p.subtitle}</div> : null}
           </div>
-          <button className="x" type="button" aria-label="بستن" onClick={onClose}>
+          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن" onClick={onClose}>
             <Icon name="x" size="sm" />
           </button>
         </div>
@@ -84,7 +84,7 @@ export default function TapFlow(p: TapFlowProps) {
                 <>
                   <div className="tf-nav">
                     {p.state.answers.length > 0 ? (
-                      <button type="button" className="tf-back" onClick={() => p.onState(backStep(p.config, p.ctx, p.state))}>
+                      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-back" onClick={() => p.onState(backStep(p.config, p.ctx, p.state))}>
                         <Icon name="chevron-right" size="sm" /> قبلی
                       </button>
                     ) : <span />}
@@ -104,7 +104,8 @@ export default function TapFlow(p: TapFlowProps) {
                     ? p.renderCustom?.({ step: view, state: p.state, submit })
                     : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} />}
                   {view && (view.skipable || view.timeStep) ? (
-                      <button type="button" className="tf-skip" onClick={() => submit(SKIP)}>
+                      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => submit(SKIP)}>
+                        <Icon name="arrow-left" size="md" />
                         {view.id === "navigate" ? "رد کردن" : "بدون کار بعدی…"}
                       </button>
                     ) : null}
@@ -128,8 +129,12 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: Reso
     return (
       <div className="tf-grid one">
         <JalaliDateInput value={date} onChange={setDate} aria-label="روز" />
-        <button type="button" className="tf-go" disabled={!date} onClick={() => submit(pickFor, date)}>همین روز</button>
-        <button type="button" className="tf-skip" onClick={() => setPickFor(null)}>برگشت</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={!date} onClick={() => submit(pickFor, date)}>
+        <Icon name="calendar" size="md" />
+        همین روز</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => setPickFor(null)}>
+        <Icon name="arrow-right" size="md" />
+        برگشت</button>
       </div>
     );
   }
@@ -187,6 +192,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: Reso
           {view.choices.map((c) => (
             <button key={c.id} type="button" aria-pressed={picked.includes(c.id)} className={`tf-opt${picked.includes(c.id) ? " on" : ""}`}
               onClick={() => setPicked((xs) => (xs.includes(c.id) ? xs.filter((x) => x !== c.id) : [...xs, c.id]))}>
+              <Icon name="check" size="md" />
               {c.label}
             </button>
           ))}
@@ -195,8 +201,9 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: Reso
       {view.kind === "choice" ? (
         <div className="tf-grid one">
           {view.choices.map((c) => (
-            <button key={c.id} type="button" className="tf-opt"
+            <button key={c.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt"
               onClick={() => { if (view.id === "navigate" && onNavigate && navigateUrl) { onNavigate(navigateUrl); } else { submit(c.id); } }}>
+              <Icon name="check" size="md" />
               {c.label}
             </button>
           ))}

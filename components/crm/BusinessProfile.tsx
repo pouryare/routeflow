@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import type { Profile, ContactRow } from "@/lib/repo/crm/profile";
 import type { TimelineItem } from "@/lib/crm/timeline";
@@ -91,8 +92,12 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
       <Link className="btn solid" style={TOUCH} href={`/sales/orders/new?customer=${profile.business.id}`}>ثبت سفارش تازه</Link>
     </div>
     <h1>{profile.business.business_name}</h1>
-    {error && <div role="alert">{error} <button className="btn ghost" style={TOUCH} disabled={busy} onClick={() => { setError(null); void reload().catch(e => setError(e.message)); }}>بارگذاری دوباره</button></div>}
-    {(profile.business.verification ?? "unverified") === "unverified" && <section className="tile"><strong>اطلاعات تأییدنشده</strong><p>نام و راه تماس را در تماس یا بازدید بررسی کنید.</p>{profile.canWrite && <button className="btn solid" style={TOUCH} onClick={() => setEdit({ kind: "verify" })}>تأیید اطلاعات</button>}</section>}
+    {error && <div role="alert">{error} <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => { setError(null); void reload().catch(e => setError(e.message)); }}>
+    <Icon name="undo" size="md" />
+    بارگذاری دوباره</button></div>}
+    {(profile.business.verification ?? "unverified") === "unverified" && <section className="tile"><strong>اطلاعات تأییدنشده</strong><p>نام و راه تماس را در تماس یا بازدید بررسی کنید.</p>{profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} onClick={() => setEdit({ kind: "verify" })}>
+    <Icon name="check" size="md" />
+    تأیید اطلاعات</button>}</section>}
     <BusinessDetails business={profile.business} canWrite={profile.canWrite} disabled={busy} onPatch={patch} onHours={openHours} />
     <section className="tile"><h2>شناخت پیش از بازدید</h2>
       <div style={{ display: "grid", gap: 6 }}>
@@ -102,26 +107,36 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
         <span>زمان بازدید · {isOneOf(["morning", "afternoon", "evening", "any", "unknown"], profile.business.visit_window ?? undefined) ? VISIT_WINDOW_LABEL[profile.business.visit_window as "morning"] : "ثبت نشده"}</span>
         <span>یادداشت · {profile.business.visit_note || "ثبت نشده"}</span>
       </div>
-      {profile.canWrite && <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={() => {
+      {profile.canWrite && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => {
         const ctx: FlowContext = { ...EMPTY_CONTEXT, products: profile.products, vars: { name: profile.business.business_name } };
         setIntel({ ctx, st: startFlow(intelFlow, ctx) });
-      }}>ثبت شناخت</button>}
+      }}>
+      <Icon name="check" size="md" />
+      ثبت شناخت</button>}
     </section>
     <section className="tile"><h2>برچسب‌ها</h2>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>{profile.tags.length ? profile.tags.map(t => <span key={t} className="pill">{t}</span>) : <p>برچسبی ثبت نشده است.</p>}</div>
-      {profile.canWrite && <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={() => setEdit({ kind: "tags" })}>ویرایش برچسب‌ها</button>}
+      {profile.canWrite && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => setEdit({ kind: "tags" })}>
+      <Icon name="edit" size="md" />
+      ویرایش برچسب‌ها</button>}
     </section>
     <section className="tile"><h2>مخاطبان</h2>{!profile.contacts.length && <p>هنوز مخاطبی ثبت نشده است.</p>}
       {profile.contacts.map(c => <div key={c.id} style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 8 }}>
         <span style={{ flex: 1 }}>{c.name || "بدون نام"} · {isOneOf(CONTACT_ROLES, c.role) ? CONTACT_ROLE_LABEL[c.role] : "سایر"}{c.is_primary ? " · مخاطب اصلی" : ""}<br />{c.phone_norm ? `0${c.phone_norm}` : "بدون تلفن"}</span>
-        {profile.canWrite && <button className="btn ghost" style={TOUCH} onClick={() => setEdit({ kind: "contact", contact: c })}>ویرایش</button>}
+        {profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} onClick={() => setEdit({ kind: "contact", contact: c })}>
+        <Icon name="edit" size="md" />
+        ویرایش</button>}
       </div>)}
-      {profile.canWrite && <button className="btn solid" style={TOUCH} onClick={() => setEdit({ kind: "contact", contact: null })}>افزودن مخاطب</button>}
+      {profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} onClick={() => setEdit({ kind: "contact", contact: null })}>
+      <Icon name="plus" size="md" />
+      افزودن مخاطب</button>}
     </section><CustomerBento data={profile.summary} />
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}>همهٔ سفارش‌ها</Link></div>
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}
       {history.items.map(i => <article key={`${i.kind}-${i.id}`} style={{ padding: "12px 0", borderBottom: "1px solid var(--border)" }}>{i.href ? <Link href={i.href}>{i.title}</Link> : <strong>{i.title}</strong>}<p>{i.sub}</p><small><time dateTime={i.at} dir="ltr">{faJalaliDateTime(i.at)}</time> {i.who}</small></article>)}
-      {history.nextBefore && <button className="btn ghost" style={TOUCH} disabled={busy} onClick={() => void more()}>رویدادهای قدیمی‌تر</button>}
+      {history.nextBefore && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => void more()}>
+      <Icon name="clock" size="md" />
+      رویدادهای قدیمی‌تر</button>}
     </section>
     {edit && <ProfileEditor key={JSON.stringify(edit)} edit={edit} busy={busy} onClose={() => setEdit(null)} onSave={save} profile={profile} />}
     {intel && <TapFlow open title="شناخت پیش از بازدید" subtitle={profile.business.business_name} config={intelFlow} ctx={intel.ctx} state={intel.st}
@@ -175,9 +190,15 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
       {edit.kind === "business" && (edit.field === "business_type" ? <select className="tf-input" aria-label="نوع کسب‌وکار" value={value} onChange={e => setValue(e.target.value)} required><option value="">انتخاب کنید</option>{BUSINESS_TYPES.map(t => <option key={t} value={t}>{BUSINESS_TYPE_LABEL[t]}</option>)}</select> : <input autoFocus className="tf-input" aria-label={title} value={value} required={edit.field === "business_name"} inputMode={isPhone ? "tel" : "text"} dir={isPhone ? "ltr" : "rtl"} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setValue(isPhone ? sanitizePhoneInput(e.target.value) : e.target.value)} />)}
       {edit.kind === "contact" && <><label>نام<input className="tf-input" value={name} onChange={e => setName(e.target.value)} /></label><label>تلفن<input className="tf-input" dir="ltr" inputMode="tel" value={phone} aria-invalid={touched && bad} onBlur={() => setTouched(true)} onChange={e => setPhone(sanitizePhoneInput(e.target.value))} /></label><label>سمت<select className="tf-input" value={role} onChange={e => setRole(e.target.value)}>{CONTACT_ROLES.map(r => <option key={r} value={r}>{CONTACT_ROLE_LABEL[r]}</option>)}</select></label><label style={TOUCH}><input type="checkbox" checked={primary} onChange={e => setPrimary(e.target.checked)} /> مخاطب اصلی</label></>}
       {touched && bad && <p role="alert">شماره تلفن معتبر نیست</p>}
-      <button type="submit" className="btn solid" style={TOUCH} disabled={busy || bad}>{busy ? "در حال ثبت…" : edit.kind === "verify" ? "بله، اطلاعات درست است" : "ذخیره"}</button>
-      <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={onClose}>انصراف</button>
-      {c && <button type="button" className="btn ghost" style={TOUCH} disabled={busy} onClick={() => archive ? void onSave(`/contacts/${c.id}`, "DELETE") : setArchive(true)}>{archive ? "بله، مخاطب بایگانی شود" : "بایگانی مخاطب"}</button>}
+      <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={busy || bad}>
+      <Icon name="edit" size="md" />
+      {busy ? "در حال ثبت…" : edit.kind === "verify" ? "بله، اطلاعات درست است" : "ذخیره"}</button>
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={onClose}>
+      <Icon name="x" size="md" />
+      انصراف</button>
+      {c && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => archive ? void onSave(`/contacts/${c.id}`, "DELETE") : setArchive(true)}>
+      <Icon name="edit" size="md" />
+      {archive ? "بله، مخاطب بایگانی شود" : "بایگانی مخاطب"}</button>}
     </form></div></>;
 }
 

@@ -9,6 +9,7 @@ import {
   useState,
 } from "react";
 import Island, { IslandTone } from "./Island";
+import { Icon, type IconName } from "@/components/meridian/Icon";
 import {
   Countdown,
   isElapsed,
@@ -51,29 +52,14 @@ const TONE: Record<ToastVariant, IslandTone> = {
   info: "accent",
 };
 
-/** Drawn rather than typed. The glyphs these replace (✓ ⚠ ℹ) rendered in whatever the
- *  system had for them, which on Android meant a different weight and baseline per device
- *  and, in a Persian layout, occasional mirroring. */
-const ICON: Record<ToastVariant, React.ReactNode> = {
-  success: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M3 8.5l3.2 3.2L13 5" />
-    </svg>
-  ),
-  error: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <path d="M8 2.6l5.8 10.1H2.2L8 2.6z" />
-      <path d="M8 6.6v3" />
-      <path d="M8 11.4h.01" />
-    </svg>
-  ),
-  info: (
-    <svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
-      <circle cx="8" cy="8" r="6" />
-      <path d="M8 7.4v3.2" />
-      <path d="M8 5.2h.01" />
-    </svg>
-  ),
+/** Named, never typed. The glyphs this replaces (✓ ⚠ ℹ) were a text emoji, and an emoji
+ *  renders in whatever the system has for it: on Android that meant a different weight and
+ *  baseline per device and, in a Persian layout, occasional mirroring. A named Lucide icon
+ *  is one drawing on every platform. */
+const ICON: Record<ToastVariant, IconName> = {
+  success: "check",
+  error: "warn",
+  info: "info",
 };
 
 const LIFETIME_MS: Record<ToastVariant, number> = { success: 3500, error: 6500, info: 4000 };
@@ -222,7 +208,7 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
     <Island
       open={open}
       tone={TONE[toast.variant]}
-      icon={ICON[toast.variant]}
+      icon={<Icon name={ICON[toast.variant]} size="md" />}
       className="pointer-events-auto"
       footer={
         // Only on toasts that carry an action. On a plain message the countdown is not
@@ -250,8 +236,9 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
             onClick={runAction}
             disabled={running}
             aria-label={actionLabel}
-            className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
           >
+            <Icon name="check" size="sm" />
             {running ? "…" : toast.action.label}
           </button>
         )}
@@ -259,11 +246,9 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
         <button
           onClick={exit}
           aria-label="بستن اعلان"
-          className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
-          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round">
-            <path d="M3.5 3.5l7 7M10.5 3.5l-7 7" />
-          </svg>
+          <Icon name="x" size="sm" />
         </button>
       </div>
     </Island>

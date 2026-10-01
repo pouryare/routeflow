@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import BusinessCard from "./BusinessCard";
 import AfterCallFlow from "./AfterCallFlow";
 import AddLeadFlow from "./AddLeadFlow";
@@ -97,11 +98,14 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
             aria-label="جستجو"
           />
         </div>
-        <button type="button" className="btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>+ سرنخ</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setLead({ kind: "lead", open: true, prefillPhone: null })}>
+        <Icon name="plus" size="md" />
+        + سرنخ</button>
       </div>
       <div className="crm-views" role="toolbar" aria-label="نمای فهرست">
         {VIEW_ORDER.map((v) => (
           <button key={v} type="button" aria-pressed={view === v} onClick={() => setView(v)}>
+            <Icon name="user" size="md" />
             {VIEW_LABEL[v]}<i>{faDigits(String(counts[v] ?? 0))}</i>
           </button>
         ))}

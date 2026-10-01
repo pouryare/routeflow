@@ -1,6 +1,7 @@
 "use client";
 
 import dynamic from "next/dynamic";
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 
@@ -22,12 +23,15 @@ export default function PinStep({ api, initial, allowApprox }: {
       />
       {allowApprox ? (
         <button type="button" aria-pressed={approx} className={`tf-opt${approx ? " on" : ""}`} onClick={() => setApprox((a) => !a)}>
+          <Icon name="map-pin" size="md" />
           آدرس تقریبی است
           <small>مثلاً از روی منوی اسنپ‌فود — راننده دقیقش می‌کند</small>
         </button>
       ) : null}
       {others.map((o) => (
-        <button key={o.id} type="button" className="tf-skip" onClick={() => api.submit(o.id)}>{o.label}</button>
+        <button key={o.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit(o.id)}>
+        <Icon name="map-pin" size="md" />
+        {o.label}</button>
       ))}
     </div>
   );

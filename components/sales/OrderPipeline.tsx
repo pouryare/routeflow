@@ -237,6 +237,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                     }}
                     aria-label={`سفارش ${o.order_no} برای ${o.customer_name}`}
                   >
+                    <Icon name="package" size="md" />
                     <div className="top">
                       <span className="n">{o.customer_name}</span>
                       <span className="amt">{faNum(o.total_toman)}</span>

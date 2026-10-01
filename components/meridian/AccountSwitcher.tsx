@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/meridian/Avatar";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
@@ -103,6 +104,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
                   onClick={() => void actAs(r)}
                   className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2)] py-[var(--space-2)] text-right disabled:opacity-40 enabled:hover:bg-[var(--surface-raised)]"
                 >
+                  <Icon name="users" size="md" />
                   <Avatar userId={r.id} name={r.display_name} size={26} />
                   <span className="flex-1">
                     <span className="block text-[length:var(--text-sm)] text-[var(--text)]">

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 
 /** POSTs a sweep endpoint (rules / analysis / prediction refresh), then re-renders the
@@ -33,8 +34,9 @@ export default function SweepButton({
       type="button"
       onClick={run}
       disabled={busy}
-      className="cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)] disabled:opacity-50"
+      className="inline-flex items-center justify-center gap-[var(--space-2)] cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)] disabled:opacity-50"
     >
+      <Icon name="sparkle" size="sm" />
       {busy ? busyLabel : idleLabel}
     </button>
   );

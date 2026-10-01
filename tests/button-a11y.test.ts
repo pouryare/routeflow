@@ -418,3 +418,42 @@ describe("every button a reader can identify", () => {
     ).toEqual([]);
   });
 });
+
+/**
+ * Two buttons are allowed to stay iconless, and both are here because an icon would be
+ * noise rather than a label. If you add a third, you have to justify it in the same way --
+ * that friction is the point of naming them.
+ *
+ *  - `gallery/page.tsx` — the button IS a photo. The image is the content; a camera glyph
+ *    beside it says nothing the picture does not.
+ *  - `JalaliDatePicker` — a calendar DAY CELL. It is a cell in a grid, not an action. Every
+ *    one of the 31 has the same glyph; an icon repeated 31 times is decoration.
+ */
+const ALLOWED_ICONLESS = [
+  "app/(shell)/gallery/page.tsx",
+  "components/JalaliDatePicker.tsx",
+];
+
+describe("every button carries an icon", () => {
+  it("no button is iconless without a recorded reason", () => {
+    const all: string[] = [];
+    for (const f of [...walk("app"), ...walk("components")]) {
+      if (ALLOWED_ICONLESS.includes(f.split(path.sep).join("/"))) continue;
+      const src = read(f);
+      for (let i = src.indexOf("<button"); i !== -1; i = src.indexOf("<button", i + 1)) {
+        const body = elementBody(src, i);
+        if (!body) continue;
+        const content = elementContent(src, i, src.indexOf(">", i) + 1 + body.length);
+        // a button that IS its own picture, or renders one, is not iconless
+        if (/<Icon\b/.test(content) || /<svg\b/.test(content)) continue;
+        if (/<img\b/.test(content)) continue;
+        const line = src.slice(0, i).split("\n").length;
+        all.push(`${f}:${line}`);
+      }
+    }
+    expect(
+      all,
+      `Add an <Icon name="…" /> to these, or record why not:\n${all.join("\n")}`,
+    ).toEqual([]);
+  });
+});

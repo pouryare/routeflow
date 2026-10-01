@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import RunSummary from "@/components/leads/assign/RunSummary";
 import { donePhase } from "@/lib/leadRunAssign";
 
@@ -75,13 +76,15 @@ export default function AssignDone({
         <div className="flex w-full flex-col gap-2">
           <button
             type="button"
-            className="btn solid w-full px-4 py-2"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid w-full px-4 py-2"
             disabled={saving}
             onClick={onRetry}
           >
+            <Icon name="check" size="md" />
             {saving ? "در حال تلاش…" : "تلاش دوباره"}
           </button>
-          <button type="button" className="btn ghost w-full px-4 py-2" onClick={onClose}>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost w-full px-4 py-2" onClick={onClose}>
+            <Icon name="x" size="md" />
             بستن
           </button>
         </div>
@@ -104,10 +107,12 @@ export default function AssignDone({
       <p className="text-[length:var(--text-xs)] text-text-muted">{message?.text}</p>
       <p className="text-[length:var(--text-xs)] text-text-faint">۵ ثانیه دیگر، راننده بعدی</p>
       <div className="flex w-full flex-col gap-2">
-        <button type="button" className="btn solid w-full px-4 py-2" onClick={onRestart}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid w-full px-4 py-2" onClick={onRestart}>
+          <Icon name="route" size="md" />
           سپردن مسیر دیگر
         </button>
-        <button type="button" className="btn ghost w-full px-4 py-2" onClick={onClose}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost w-full px-4 py-2" onClick={onClose}>
+          <Icon name="clock" size="md" />
           همین حالا
         </button>
       </div>

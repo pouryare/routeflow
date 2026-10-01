@@ -1,6 +1,7 @@
 "use client";
 
 import CollapsibleSection from "./CollapsibleSection";
+import { Icon } from "@/components/meridian/Icon";
 import { faNum } from "@/lib/format";
 
 export default function CustomerFilters({
@@ -51,6 +52,7 @@ export default function CustomerFilters({
           <div className="flex flex-wrap gap-1">
             {salespeople.map((s) => (
               <button key={s} onClick={() => toggle(salespersonFilter, s, onSalespersonFilterChange)} className={chipClass(salespersonFilter.has(s))}>
+                <Icon name="filter" size="md" />
                 {s}
               </button>
             ))}

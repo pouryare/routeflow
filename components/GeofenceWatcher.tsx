@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { CustomerRow } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { distanceKm } from "@/lib/geo";
@@ -231,15 +232,17 @@ export default function GeofenceWatcher({
               : confirmFacilityStop
           }
           disabled={saving}
-          className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
         >
+          <Icon name="check" size="sm" />
           {saving ? "..." : "بله، ثبت شد"}
         </button>
         <button
           onClick={dismiss}
           disabled={saving}
-          className="rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text disabled:opacity-50"
         >
+          <Icon name="arrow-left" size="sm" />
           بعداً
         </button>
       </div>

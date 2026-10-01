@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useMemo, useState } from "react";
 import { faJalaliDateTime } from "@/lib/jalali";
 
@@ -163,7 +164,8 @@ export default function ComplaintsPanel({
           ))}
         </select>
         <input className="col-span-2 rounded border border-border bg-bg p-2 text-sm md:col-span-1" placeholder="توضیح" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
-        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+          <Icon name="check" size="md" />
           ثبت شکایت
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}
@@ -202,6 +204,7 @@ export default function ComplaintsPanel({
                         .filter((s) => s !== c.status)
                         .map((s) => (
                           <button key={s} onClick={() => setStatus(c.id, s)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                            <Icon name="warn" size="md" />
                             {STATUS_LABEL[s]}
                           </button>
                         ))}

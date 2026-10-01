@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Icon } from "@/components/meridian/Icon";
 import StatePage from "@/components/meridian/StatePage";
 
 /** A page inside the shell threw. The header stays (this boundary sits below the shell
@@ -26,7 +27,8 @@ export default function ShellError({
       code={error.digest}
       actions={
         <>
-          <button type="button" className="btn solid" onClick={() => retry()}>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => retry()}>
+            <Icon name="undo" size="md" />
             تلاش دوباره
           </button>
           <Link className="btn ghost" href="/sales">

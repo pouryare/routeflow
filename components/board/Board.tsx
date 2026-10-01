@@ -128,6 +128,7 @@ export default function Board({
             className={`btn ${view === v ? "solid" : "ghost"}`}
             onClick={() => pickView(v)}
           >
+            <Icon name="grip-vertical" size="md" />
             {v === "status" ? "وضعیت" : v === "time" ? "زمان" : "گردش‌کار"}
           </button>
         ))}
@@ -141,6 +142,7 @@ export default function Board({
               className={`btn ${wfKind === k.key ? "solid" : "ghost"}`}
               onClick={() => pickKind(k.key)}
             >
+              <Icon name="package" size="md" />
               {k.label}
             </button>
           ))}
@@ -240,13 +242,14 @@ export default function Board({
                       {card.customer ? (
                         <button
                           type="button"
-                          className="more"
+                          className="inline-flex items-center justify-center gap-[var(--space-2)] more"
                           style={{ border: 0, background: "none", padding: 0, cursor: "pointer" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             if (!drag.isSuppressed()) setCustId(card.customer!.id);
                           }}
                         >
+                          <Icon name="package" size="md" />
                           {card.customer.name}
                         </button>
                       ) : null}
@@ -311,6 +314,7 @@ export default function Board({
                               cursor: "pointer",
                             }}
                           >
+                            <Icon name="info" size="md" />
                             بدون نتیجه
                           </button>
                         </div>
@@ -352,6 +356,7 @@ export default function Board({
                                 cursor: "pointer",
                               }}
                             >
+                              <Icon name="grip-vertical" size="md" />
                               {l.label}
                             </button>
                           ))}

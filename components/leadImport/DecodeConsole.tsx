@@ -112,8 +112,9 @@ export default function DecodeConsole({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-[var(--radius-sm)] px-1.5 py-0.5 transition-colors duration-[var(--dur-base)] hover:text-text"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] px-1.5 py-0.5 transition-colors duration-[var(--dur-base)] hover:text-text"
           >
+            <Icon name="ban" size="md" />
             توقف
           </button>
         </p>
@@ -161,16 +162,18 @@ export default function DecodeConsole({
             <button
               type="button"
               onClick={onUndo}
-              className="rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] hover:border-accent hover:text-accent"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] hover:border-accent hover:text-accent"
             >
+              <Icon name="external-link" size="sm" />
               بازگرداندن
             </button>
           )}
           <button
             type="button"
             onClick={onDismiss}
-            className="mr-auto text-[length:var(--text-xs)] text-text-faint hover:text-text"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] mr-auto text-[length:var(--text-xs)] text-text-faint hover:text-text"
           >
+            <Icon name="x" size="sm" />
             بستن
           </button>
         </div>

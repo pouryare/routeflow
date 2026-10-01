@@ -1,6 +1,7 @@
 "use client";
 
 import Avatar from "@/components/meridian/Avatar";
+import { Icon } from "@/components/meridian/Icon";
 import { busyLabel, type DriverRef } from "@/lib/leadRunAssign";
 import type { LeadRunStatus } from "@/lib/repo/leadRuns";
 
@@ -44,6 +45,7 @@ export default function DriverPicker({
             title={d.name}
             onClick={() => onSelect(d.id)}
           >
+            <Icon name="truck" size="md" />
             <Avatar userId={d.id} name={d.name} src={d.avatar_url} size={34} />
             <span className="tf-person__text">
               <span className="tf-person__name">{d.name}</span>

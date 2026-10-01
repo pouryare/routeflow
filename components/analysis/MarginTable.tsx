@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { Icon } from "@/components/meridian/Icon";
 interface MarginRow {
   key: string;
   label: string;
@@ -74,6 +75,7 @@ export default function MarginTable({ period }: { period: string }) {
                 color: dim === d.key ? "var(--accent)" : "var(--text-muted)",
               }}
             >
+              <Icon name="chart" size="sm" />
               {d.label}
             </button>
           ))}

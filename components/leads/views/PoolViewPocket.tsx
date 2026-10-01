@@ -1,6 +1,7 @@
 "use client";
 
 import Pocketed from "@/components/meridian/Pocketed";
+import { Icon } from "@/components/meridian/Icon";
 import { averageScore } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
 import { STATUS_META } from "@/app/(shell)/leads/hooks/useLeads";
@@ -98,6 +99,7 @@ export default function PoolViewPocket({
                       inRun ? "border-accent bg-accent text-accent-ink" : "border-border text-text-muted hover:border-accent hover:text-accent"
                     }`}
                   >
+                    <Icon name="plus" size="sm" />
                     {runIdx != null ? <span className="font-mono">{runIdx}</span> : "+"}
                   </button>
                 )}

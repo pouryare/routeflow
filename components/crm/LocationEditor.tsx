@@ -94,7 +94,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
 
   return (
     <div ref={panel} tabIndex={-1} className={`location-edit${expanded ? " location-edit-expanded" : ""}`} role={expanded ? "dialog" : undefined} aria-modal={expanded || undefined} aria-label="ویرایش موقعیت">
-      <div className="location-edit-heading"><strong>ویرایش موقعیت</strong>{expandable && <button type="button" className="btn ghost" aria-label={expanded ? "بازگشت به ویرایش درون‌خطی" : "بزرگ‌نمایی ناحیهٔ ویرایش"} onClick={() => changeExpanded(!expanded)}><Icon name="maximize" size="sm" />{expanded ? "بازگشت" : "بزرگ‌نمایی"}</button>}</div>
+      <div className="location-edit-heading"><strong>ویرایش موقعیت</strong>{expandable && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" aria-label={expanded ? "بازگشت به ویرایش درون‌خطی" : "بزرگ‌نمایی ناحیهٔ ویرایش"} onClick={() => changeExpanded(!expanded)}><Icon name="maximize" size="sm" />{expanded ? "بازگشت" : "بزرگ‌نمایی"}</button>}</div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 8 }}>
         <input
           className="tf-input ltr"
@@ -106,8 +106,9 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
           aria-label="پیوند موقعیت"
           inputMode="url"
         />
-        <button type="button" className="btn ghost" style={TOUCH} disabled={!URL_RE.test(link.trim()) || resolving || saving}
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={!URL_RE.test(link.trim()) || resolving || saving}
           aria-label="خواندن پیوند موقعیت" onClick={() => void resolveLink(link.trim())}>
+          <Icon name="map-pin" size="md" />
           {resolving ? "…" : "خواندن"}
         </button>
       </div>
@@ -125,20 +126,24 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
           <button
             type="button"
             style={TOUCH}
-            className="map-expand"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] map-expand"
             disabled={saving}
             onClick={() => { request.current++; setResolving(false); setDraft({ lat: position.lat, lng: position.lng }); }}
           >
+            <Icon name="palette" size="md" />
             اینجا هستم
           </button>
         )}
       </div>
       <p className="map-caption">{draft ? <span dir="ltr">{draft.lat.toFixed(5)}, {draft.lng.toFixed(5)}</span> : "روی نقشه بزنید تا موقعیت تعیین شود"}</p>
       <div className="edit-actions">
-        <button type="button" className="btn solid" style={TOUCH} disabled={!draft || saving || resolving} onClick={() => void save()}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={!draft || saving || resolving} onClick={() => void save()}>
+          <Icon name="map-pin" size="md" />
           {saving ? "در حال ثبت…" : "ثبت موقعیت"}
         </button>
-        <button type="button" className="btn ghost" style={TOUCH} disabled={saving} onClick={() => { request.current++; onCancel(); }}>انصراف</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={saving} onClick={() => { request.current++; onCancel(); }}>
+        <Icon name="x" size="md" />
+        انصراف</button>
       </div>
     </div>
   );

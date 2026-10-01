@@ -8,6 +8,7 @@
  */
 
 import { useEffect, useState, useCallback, useSyncExternalStore } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { getSyncEngine } from "@/lib/offline/syncEngine";
 import { OFFLINE_OPS } from "@/lib/offline/safety";
 import { faNum } from "@/lib/format";
@@ -149,6 +150,7 @@ export default function SyncStatus() {
         onClick={() => setOpen((v) => !v)}
         className="flex items-center gap-2 rounded-full border border-[var(--border)] bg-[var(--surface)] px-3 py-1 shadow-sm"
       >
+        <Icon name="undo" size="md" />
         <span
           className="inline-block h-2 w-2 rounded-full"
           style={{ background: `var(--${badge.tone === "muted" ? "text-faint" : badge.tone})` }}
@@ -171,15 +173,18 @@ export default function SyncStatus() {
                 </span>
                 {r.status === "held" && (
                   <button type="button" onClick={() => void undo(r.id)} className="text-[var(--accent)]">
+                    <Icon name="x" size="md" />
                     لغو
                   </button>
                 )}
                 {(r.status === "failed" || r.status === "conflict") && (
                   <span className="flex gap-2">
                     <button type="button" onClick={() => void retry(r.id)} className="text-[var(--accent)]">
+                      <Icon name="undo" size="md" />
                       تلاش دوباره
                     </button>
                     <button type="button" onClick={() => void discard(r.id)} className="text-[var(--crit)]">
+                      <Icon name="trash" size="md" />
                       حذف
                     </button>
                   </span>

@@ -77,7 +77,7 @@ export default function ProcessingModal({
                   {order.customer_name} · {faNum(Number(order.order_no.split("-")[1] ?? 0))}#
                 </div>
               </div>
-              <button className="x" type="button" aria-label="بستن" onClick={onClose}>
+              <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن" onClick={onClose}>
                 <Icon name="x" size="sm" />
               </button>
             </div>
@@ -137,7 +137,8 @@ export default function ProcessingModal({
                 صفحهٔ سفارش
               </Link>
               {onConfirm && (
-                <button className="btn solid" type="button" onClick={onConfirm} disabled={busy}>
+                <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" type="button" onClick={onConfirm} disabled={busy}>
+                  <Icon name="check" size="md" />
                   {busy ? "…" : "تأیید و قیمت‌گذاری"}
                 </button>
               )}

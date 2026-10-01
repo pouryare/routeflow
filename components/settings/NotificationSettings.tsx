@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "@/components/ToastProvider";
 import { usePushSubscription } from "./usePushSubscription";
 
@@ -66,6 +67,7 @@ function Switch({
         on ? "border-accent bg-accent" : "border-border bg-surface"
       }`}
     >
+      <Icon name="bell" size="md" />
       <span
         className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)] motion-reduce:transition-none"
         style={{ right: on ? "calc(100% - 1.25rem)" : "0.125rem" }}
@@ -288,25 +290,28 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
                 ) : (
                   <button
                     type="button"
-                    className="btn ghost"
+                    className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost"
                     disabled={off || busy !== null || push.state === "busy"}
                     onClick={push.state === "on" ? disconnectPush : connectPush}
                   >
+                    <Icon name="link" size="md" />
                     {push.state === "on" ? "قطع اتصال این دستگاه" : "این دستگاه را متصل کن"}
                   </button>
                 )
               ) : (
                 <>
-                  <button type="button" className="btn ghost" disabled={off || busy !== null} onClick={connectTelegram}>
+                  <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={off || busy !== null} onClick={connectTelegram}>
+                    <Icon name="link" size="md" />
                     اتصال تلگرام
                   </button>
                   {s.connected && (
                     <button
                       type="button"
-                      className="btn ghost"
+                      className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost"
                       disabled={busy !== null}
                       onClick={disconnectTelegram}
                     >
+                      <Icon name="link" size="md" />
                       قطع اتصال
                     </button>
                   )}
@@ -314,10 +319,11 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
               )}
               <button
                 type="button"
-                className="btn ghost"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost"
                 disabled={off || !s.connected || busy !== null}
                 onClick={() => sendTest(ch)}
               >
+                <Icon name="check" size="md" />
                 ارسال پیام آزمایشی
               </button>
             </div>

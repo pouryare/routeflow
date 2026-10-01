@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
@@ -196,6 +197,7 @@ export default function AssignmentBoard({
                       drag?.order.id === o.id ? "order-card--lifted" : ""
                     }`}
                   >
+                    <Icon name="user" size="md" />
                     <span className="flex items-baseline justify-between gap-[var(--space-2)]">
                       <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
                         {o.customer_name}
@@ -356,14 +358,16 @@ export default function AssignmentBoard({
                 disabled={busy}
                 className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)] disabled:opacity-40"
               >
+                <Icon name="x" size="sm" />
                 لغو
               </button>
               <button
                 type="button"
                 onClick={assign}
                 disabled={busy || confirm.runId === null}
-                className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
               >
+                <Icon name="user" size="sm" />
                 {busy ? "…" : "افزودن"}
               </button>
             </div>

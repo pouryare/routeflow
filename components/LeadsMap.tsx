@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useLatest } from "@/lib/useLatest";
 import { useHydrated } from "@/lib/useHydrated";
 import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
@@ -255,6 +256,7 @@ export default function LeadsMap({
                         onClick={() => onAddToRun(l.id)}
                         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted"
                       >
+                        <Icon name="plus" size="sm" />
                         + افزودن به مسیر
                       </button>
                     ) : (
@@ -262,6 +264,7 @@ export default function LeadsMap({
                         onClick={() => onRemoveFromRun(l.id)}
                         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-crit"
                       >
+                        <Icon name="trash" size="sm" />
                         حذف از مسیر (مقصد {faNum(l.runIndex)})
                       </button>
                     )}

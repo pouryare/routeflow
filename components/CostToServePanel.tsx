@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useHydrated } from "@/lib/useHydrated";
 import { toCsv } from "@/lib/csv";
 import { useToast } from "./ToastProvider";
@@ -129,8 +130,9 @@ export default function CostToServePanel({
         {withRevenue > 0 && (
           <button
             onClick={exportCsv}
-            className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
           >
+            <Icon name="download" size="sm" />
             CSV
           </button>
         )}
@@ -181,6 +183,7 @@ export default function CostToServePanel({
                     sortBy === key ? "bg-accent font-medium text-accent-ink" : "text-text-muted hover:bg-white/5 hover:text-text"
                   }`}
                 >
+                  <Icon name="arrow-up" size="sm" />
                   {label}
                 </button>
               ))}

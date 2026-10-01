@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import FlowDone from "@/components/tapflow/FlowDone";
 import { useToast } from "@/components/ToastProvider";
@@ -100,8 +101,12 @@ export default function AddLeadFlow({
   const after = async (then: (id: number) => void) => { await flush(); if (created.current) then(created.current); };
   const actions = (
     <>
-      {phone ? <button type="button" className="btn solid" onClick={() => void after((id) => onCallNow(id, phone))}>تماس همین حالا</button> : null}
-      <button type="button" className="btn ghost" onClick={() => void after(onOpenBusiness)}>باز کردن پرونده</button>
+      {phone ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void after((id) => onCallNow(id, phone))}>
+      <Icon name="palette" size="md" />
+      تماس همین حالا</button> : null}
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => void after(onOpenBusiness)}>
+      <Icon name="external-link" size="md" />
+      باز کردن پرونده</button>
     </>
   );
   const here = position ? { lat: position.lat, lng: position.lng } : null;

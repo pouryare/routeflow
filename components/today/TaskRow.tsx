@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import OutcomeChips from "./OutcomeChips";
 import AfterCallFlow from "@/components/crm/AfterCallFlow";
@@ -45,7 +46,9 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
       </span>
       <div className="flex flex-wrap gap-[var(--space-1)]">
         {customerId ? (
-          <button type="button" className="btn solid" onClick={() => setFlow({ open: true })}>ثبت نتیجه</button>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setFlow({ open: true })}>
+          <Icon name="check" size="md" />
+          ثبت نتیجه</button>
         ) : (
           <OutcomeChips disabled={busy} onPick={(code) => void resolve(code)} />
         )}
@@ -55,6 +58,7 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
           onClick={() => void resolve(null)}
           className="rounded-full px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-faint)] hover:text-[var(--crit)] disabled:opacity-50"
         >
+          <Icon name="trash" size="sm" />
           حذف
         </button>
       </div>

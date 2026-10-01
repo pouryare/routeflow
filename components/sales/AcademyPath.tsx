@@ -81,7 +81,7 @@ export default function AcademyPath({ cards, modules, done }: { cards: Card[]; m
           <div className="acad__next">
             <span className="acad__muted">درس بعدی</span>
             <b>{next.title_fa}</b>
-            <button type="button" className="btn solid" disabled={busy === next.slug} onClick={() => void mark(next.slug)}>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" disabled={busy === next.slug} onClick={() => void mark(next.slug)}>
               <Icon name="check" size="sm" /> تمام کردم
             </button>
           </div>
@@ -110,7 +110,8 @@ export default function AcademyPath({ cards, modules, done }: { cards: Card[]; m
                 {isDone ? (
                   <span className="acad__muted">تمام شد</span>
                 ) : (
-                  <button type="button" className="btn ghost" disabled={busy === m.slug} onClick={() => void mark(m.slug)}>
+                  <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" disabled={busy === m.slug} onClick={() => void mark(m.slug)}>
+                    <Icon name="palette" size="md" />
                     تمام کردم
                   </button>
                 )}

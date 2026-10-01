@@ -62,7 +62,8 @@ export default function DriverRunView({
     return (
       <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
         <p className="text-[length:var(--text-sm)] text-crit">{error}</p>
-        <button type="button" className="btn ghost mt-2" onClick={() => void reload()}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost mt-2" onClick={() => void reload()}>
+          <Icon name="undo" size="md" />
           تلاش دوباره
         </button>
       </section>
@@ -106,7 +107,7 @@ export default function DriverRunView({
       <section className="rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
         <button
           type="button"
-          className="flex w-full items-center justify-between gap-2"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] flex w-full items-center justify-between gap-2"
           onClick={() => setShowAll((v) => !v)}
           aria-expanded={showAll}
         >
@@ -146,7 +147,7 @@ export default function DriverRunView({
                       <>
                         <button
                           type="button"
-                          className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)]"
+                          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)]"
                           onClick={() => void move(s.location_id, -1)}
                           aria-label="بالا"
                         >
@@ -154,7 +155,7 @@ export default function DriverRunView({
                         </button>
                         <button
                           type="button"
-                          className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)]"
+                          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)]"
                           onClick={() => void move(s.location_id, 1)}
                           aria-label="پایین"
                         >

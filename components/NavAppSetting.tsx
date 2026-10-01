@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import {
   DEFAULT_NAV_APP,
   NAV_APPS,
@@ -86,6 +87,7 @@ export default function NavAppSetting() {
                   aria-checked={active}
                   className="flex min-w-0 flex-1 items-center gap-2 text-right"
                 >
+                  <Icon name="check" size="md" />
                   <span
                     aria-hidden="true"
                     className={`h-3 w-3 shrink-0 rounded-full border ${

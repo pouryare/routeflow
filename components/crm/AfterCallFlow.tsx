@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import FlowDone from "@/components/tapflow/FlowDone";
@@ -108,9 +109,13 @@ export default function AfterCallFlow({
     o?.signal ? `دما: ${TEMPERATURE_LABEL[o.signal]}` : null,
   ].filter((x): x is string => !!x);
   const actions = acc.open_order ? (
-    <button type="button" className="btn solid" onClick={async () => { await flush(); router.push(`/sales/orders?customer=${customerId}`); }}>ثبت سفارش</button>
+    <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={async () => { await flush(); router.push(`/sales/orders?customer=${customerId}`); }}>
+    <Icon name="check" size="md" />
+    ثبت سفارش</button>
   ) : acc.spawn_lead ? (
-    <button type="button" className="btn solid" onClick={async () => { await flush(); onSpawnLead?.(data.business.phone_norm); }}>افزودن سرنخ با این شماره</button>
+    <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={async () => { await flush(); onSpawnLead?.(data.business.phone_norm); }}>
+    <Icon name="plus" size="md" />
+    افزودن سرنخ با این شماره</button>
   ) : undefined;
 
   return (

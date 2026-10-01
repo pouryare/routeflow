@@ -94,9 +94,10 @@ export default function NextStopBanner({
 
       <button
         type="button"
-        className="btn solid mt-3 w-full"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid mt-3 w-full"
         onClick={() => onRecord(stop.location_id)}
       >
+        <Icon name="check" size="md" />
         رسیدم — ثبت نتیجه
       </button>
     </section>

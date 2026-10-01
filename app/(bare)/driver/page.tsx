@@ -112,8 +112,9 @@ export default async function DriverPage() {
         <form action="/api/logout" method="post">
           <button
             type="submit"
-            className="cursor-pointer rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] cursor-pointer rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] hover:text-[var(--text)]"
           >
+            <Icon name="logout" size="sm" />
             خروج
           </button>
         </form>

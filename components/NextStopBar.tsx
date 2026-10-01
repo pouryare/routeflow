@@ -140,6 +140,7 @@ export default function NextStopBar({
           disabled={next.lat === null || next.lng === null}
           className="min-w-0 flex-1 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent disabled:hover:text-text"
         >
+          <Icon name="locate" size="md" />
           <span className="block truncate text-[length:var(--text-sm)] font-medium text-text">{next.label}</span>
           {/* Each fact in its own element rather than one string joined by "·". In an
               RTL line a bare separator between Persian text and a numeral gets reordered
@@ -181,7 +182,7 @@ export default function NextStopBar({
           disabled={saving}
           aria-label="انجام شد"
           title="انجام شد"
-          className="shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
         >
           <Icon name="check" size="sm" />
         </button>
@@ -189,7 +190,7 @@ export default function NextStopBar({
         <button
           onClick={onDismiss}
           aria-label="پنهان کردن نوار توقف بعدی"
-          className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
           <Icon name="x" size="sm" />
         </button>

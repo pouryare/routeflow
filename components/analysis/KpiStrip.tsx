@@ -112,11 +112,12 @@ export default function KpiStrip({
         {hero ? (
           <button
             type="button"
-            className="kpihero"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] kpihero"
             aria-expanded={open === hero.metric}
             aria-controls="kpi-detail"
             onClick={() => toggle(hero.metric)}
           >
+            <Icon name="chart" size="md" />
             <span className="kpihero__text">
               <span className="kpihero__k">{hero.title_fa}</span>
               <span className={`kpihero__v${hero.value !== null && !hero.on_track ? " kpibar__v--off" : ""}`}>
@@ -142,11 +143,12 @@ export default function KpiStrip({
             <button
               key={c.metric}
               type="button"
-              className="kpibar__seg"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] kpibar__seg"
               aria-expanded={open === c.metric}
               aria-controls="kpi-detail"
               onClick={() => toggle(c.metric)}
             >
+              <Icon name="target" size="md" />
               <span className="kpibar__k">{c.title_fa}</span>
               <span className={`kpibar__v${c.value !== null && !c.on_track ? " kpibar__v--off" : ""}`}>
                 {show(c.metric, c.value)}
@@ -176,7 +178,7 @@ export default function KpiStrip({
               {detail.definition_fa ? <p>{detail.definition_fa}</p> : null}
               {detail.action_fa ? <p className="kpibar__action">{detail.action_fa}</p> : null}
               {WHYABLE.has(detail.metric) ? (
-                <button type="button" className="btn ghost" onClick={() => loadWhy(detail.metric)}>
+                <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => loadWhy(detail.metric)}>
                   <Icon name="help" size="sm" /> چرا؟
                 </button>
               ) : null}

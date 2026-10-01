@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
@@ -124,6 +125,7 @@ export default function CommissionEditor({
         <div className="flex gap-[var(--space-2)]" role="group" aria-label="نرخ برای کدام گروه">
           {(["sales", "driver", "manager"] as Kind[]).map((k) => (
             <button key={k} type="button" className={SEG_BTN(rateKind === k)} onClick={() => switchRateKind(k)}>
+              <Icon name="wallet" size="md" />
               {KIND_LABEL[k]}
             </button>
           ))}
@@ -179,6 +181,7 @@ export default function CommissionEditor({
           <JalaliDatePicker id="rate-from" label="از تاریخ" value={rateFrom} onChange={setRateFrom} />
           <div className="flex items-end">
             <button className={BUTTON} disabled={busy || !rateValid} type="submit">
+              <Icon name="check" size="md" />
               ثبت نرخ
             </button>
           </div>
@@ -191,6 +194,7 @@ export default function CommissionEditor({
         <div className="flex gap-[var(--space-2)]" role="group" aria-label="پرداخت به کدام گروه">
           {(["sales", "driver", "manager"] as Kind[]).map((k) => (
             <button key={k} type="button" className={SEG_BTN(payKind === k)} onClick={() => switchPayKind(k)}>
+              <Icon name="wallet" size="md" />
               {KIND_LABEL[k]}
             </button>
           ))}
@@ -244,6 +248,7 @@ export default function CommissionEditor({
           <JalaliDatePicker id="pay-on" label="تاریخ پرداخت" value={payOn} onChange={setPayOn} />
           <div className="flex items-end">
             <button className={BUTTON} disabled={busy || parsedPay === null || paySeller === ""} type="submit">
+              <Icon name="check" size="md" />
               ثبت پرداخت
             </button>
           </div>

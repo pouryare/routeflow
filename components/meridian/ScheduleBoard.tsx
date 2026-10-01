@@ -88,6 +88,7 @@ export default function ScheduleBoard({
                 aria-current={d === today ? "date" : undefined}
                 aria-pressed={sel === d}
               >
+                <Icon name="calendar" size="md" />
                 <span>{faNum(d)}</span>
                 <span className="dots">
                   {(marks[d] ?? []).slice(0, 3).map((c, k) => (

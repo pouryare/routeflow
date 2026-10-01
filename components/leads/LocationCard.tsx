@@ -153,6 +153,7 @@ export default function LocationCard({
                 : "border-border text-text-muted hover:border-accent hover:text-accent"
               }`}
           >
+            <Icon name="map-pin" size="sm" />
             {runIdx != null ? faNum(runIdx) : "+"}
           </button>
         )}
@@ -174,7 +175,7 @@ export default function LocationCard({
         <button
           type="button"
           onClick={onPin}
-          className="rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors inline-flex items-center gap-1.5"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2.5 py-1.5 text-[length:var(--text-xs)] text-text-faint hover:border-accent hover:text-accent transition-colors inline-flex items-center gap-1.5"
         >
           <Icon name="map-pin" size="sm" /> ویرایش مکان
         </button>
@@ -198,7 +199,7 @@ export default function LocationCard({
           <button
             type="button"
             onClick={onAddToPlan}
-            className="rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink inline-flex items-center gap-1.5"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink inline-flex items-center gap-1.5"
           >
             <Icon name="calendar" size="sm" /> افزودن به برنامه
           </button>

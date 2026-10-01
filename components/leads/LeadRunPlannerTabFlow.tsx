@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import DriverPicker from "@/components/leads/assign/DriverPicker";
@@ -268,10 +269,11 @@ export default function LeadRunPlannerTabFlow({
           ) : null}
           <button
             type="button"
-            className="btn solid w-full px-4 py-2"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid w-full px-4 py-2"
             disabled={runDate === "" || driverId === ""}
             onClick={() => api.submit("next")}
           >
+            <Icon name="arrow-left" size="md" />
             ادامه
           </button>
         </div>
@@ -295,10 +297,11 @@ export default function LeadRunPlannerTabFlow({
           ) : null}
           <button
             type="button"
-            className="btn solid w-full px-4 py-2"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid w-full px-4 py-2"
             disabled={driverId === "" || runDate === "" || holding}
             onClick={beginHandover}
           >
+            <Icon name="route" size="md" />
             {override ? "جایگزینی و سپردن" : holding ? "در انتظار تأیید…" : "ثبت و سپردن"}
           </button>
           {/* The bar that used to drain across this button now belongs to the toast `لغو`

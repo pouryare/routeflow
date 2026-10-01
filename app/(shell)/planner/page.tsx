@@ -107,8 +107,9 @@ function RestockHint({
       <button
         onClick={onAdd}
         disabled={busy}
-        className="mr-auto rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] mr-auto rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
       >
+        <Icon name="plus" size="sm" />
         {busy ? "در حال افزودن…" : "افزودن توقف"}
       </button>
     </div>
@@ -743,6 +744,7 @@ type AddCandidate = CustomerRow | LeadLocation;
                   active ? "bg-accent font-medium text-accent-ink" : "text-text-muted hover:bg-white/5 hover:text-text"
                 }`}
               >
+                <Icon name="calendar" size="sm" />
                 <span>{dayLabel(d)}</span>
                 <span className="font-mono text-[length:var(--text-xs)] opacity-80">{dateLabel(d)}</span>
                 {count > 0 && (
@@ -815,7 +817,7 @@ type AddCandidate = CustomerRow | LeadLocation;
               <button
                 onClick={locate}
                 disabled={locating}
-                className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-50"
               >
                 {locating ? (
                   "در حال یافتن…"
@@ -901,6 +903,7 @@ type AddCandidate = CustomerRow | LeadLocation;
                       }}
                       className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
                     >
+                      <Icon name="locate" size="sm" />
                       {f.name}
                     </button>
                   ))}
@@ -912,6 +915,7 @@ type AddCandidate = CustomerRow | LeadLocation;
                     }}
                     className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent"
                   >
+                    <Icon name="locate" size="sm" />
                     موقعیت فعلی من (GPS)
                   </button>
                   {originOverrideId !== null && (
@@ -922,6 +926,7 @@ type AddCandidate = CustomerRow | LeadLocation;
                       }}
                       className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-faint hover:border-crit hover:text-crit"
                     >
+                      <Icon name="external-link" size="sm" />
                       بازگشت به مبدأ پیش‌فرض
                     </button>
                   )}
@@ -965,8 +970,9 @@ type AddCandidate = CustomerRow | LeadLocation;
                 <button
                   onClick={applyOptimalOrder}
                   disabled={optimising}
-                  className="w-fit rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
+                  className="inline-flex items-center justify-center gap-[var(--space-2)] w-fit rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:opacity-50"
                 >
+                  <Icon name="undo" size="sm" />
                   {optimising
                     ? "در حال اعمال…"
                     : `مرتب‌سازی خودکار — ${faFixed(optimisation.savedPct, 0)}٪ کوتاه‌تر (${formatDistanceKm(optimisation.savedKm)})`}

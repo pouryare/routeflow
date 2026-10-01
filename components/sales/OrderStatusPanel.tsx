@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import {
   legalOrderActions,
@@ -104,6 +105,7 @@ export default function OrderStatusPanel({
             onClick={() => void run(a)}
             className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text)] hover:bg-[var(--surface-2)] disabled:opacity-50"
           >
+            <Icon name="package" size="sm" />
             {ACTION_LABEL[a]}
           </button>
         ))}

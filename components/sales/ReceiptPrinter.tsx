@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { drawReceipt, type ReceiptData } from "@/lib/receiptLayout";
 import { DOTS_58MM, packRaster, receiptBytes, chunk } from "@/lib/escpos";
 import { receiptPdf } from "@/lib/receiptPdf";
@@ -309,6 +310,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
               (preferred ?? visible[0].key) === option.key ? primary : secondary
             }`}
           >
+            <Icon name="print" size="md" />
             {option.label}
           </button>
         ))}

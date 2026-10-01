@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useState } from "react";
 import GroupTerritoryEditor from "@/components/GroupTerritoryEditor";
 import type { DistrictProperties } from "@/lib/types";
@@ -125,17 +126,20 @@ export default function AdminGroupsPage() {
                 aria-label={c}
                 onClick={() => setColor(c)}
                 style={{ background: c }}
-                className={`size-7 rounded-full transition-transform ${
+                className={`grid place-items-center transition-transform ${
                   color === c ? "scale-110 ring-2 ring-text ring-offset-2 ring-offset-[var(--surface)]" : "opacity-70"
                 }`}
-              />
+              >
+                {color === c ? <Icon name="check" size="sm" className="text-[var(--surface)]" /> : null}
+              </button>
             ))}
           </div>
           <button
             type="submit"
             disabled={busy || !name.trim()}
-            className="cursor-pointer rounded-md border border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-[filter,opacity] hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] cursor-pointer rounded-md border border-accent bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-[filter,opacity] hover:enabled:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"
           >
+            <Icon name="plus" size="md" />
             ساخت گروه
           </button>
         </div>
@@ -171,8 +175,10 @@ export default function AdminGroupsPage() {
                       aria-label={`رنگ ${c} برای ${g.name}`}
                       onClick={() => recolor(g, c)}
                       style={{ background: c }}
-                      className={`size-5 rounded-full ${g.color === c ? "ring-2 ring-text" : "opacity-60"}`}
-                    />
+                      className={`grid size-5 place-items-center rounded-full ${g.color === c ? "ring-2 ring-text" : "opacity-60"}`}
+                    >
+                      {g.color === c ? <Icon name="check" size="sm" className="text-[var(--surface)]" /> : null}
+                    </button>
                   ))}
                 </div>
                 <button
@@ -180,6 +186,7 @@ export default function AdminGroupsPage() {
                   onClick={() => rename(g)}
                   className="cursor-pointer text-xs text-text-muted transition-colors hover:text-accent"
                 >
+                  <Icon name="edit" size="md" />
                   تغییر نام
                 </button>
                 <button
@@ -187,6 +194,7 @@ export default function AdminGroupsPage() {
                   onClick={() => remove(g)}
                   className="cursor-pointer text-xs text-text-muted transition-colors hover:text-crit"
                 >
+                  <Icon name="trash" size="md" />
                   حذف
                 </button>
               </li>

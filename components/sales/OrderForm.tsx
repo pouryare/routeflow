@@ -195,6 +195,7 @@ export default function OrderForm({
               }}
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)] hover:border-[var(--border-strong)]"
             >
+              <Icon name="edit" size="sm" />
               تغییر
             </button>
           </div>
@@ -216,6 +217,7 @@ export default function OrderForm({
                     onClick={() => setCustomerId(c.id)}
                     className="w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-2)] text-right text-[length:var(--text-sm)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"
                   >
+                    <Icon name="package" size="sm" />
                     {c.business_name}
                     <span className="ms-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
                       {c.customer_code}
@@ -353,8 +355,9 @@ export default function OrderForm({
             type="button"
             onClick={addLine}
             disabled={!packaging || packaging.price_toman === null}
-            className="rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
           >
+            <Icon name="plus" size="sm" />
             افزودن قلم
           </button>
         </div>
@@ -381,8 +384,9 @@ export default function OrderForm({
           type="button"
           onClick={submit}
           disabled={busy || !customer || lines.length === 0}
-          className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
         >
+          <Icon name="package" size="md" />
           {busy ? "در حال ثبت…" : "ثبت پیش‌نویس"}
         </button>
       </div>

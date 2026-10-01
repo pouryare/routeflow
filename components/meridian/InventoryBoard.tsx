@@ -119,18 +119,20 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
           <input type="text" placeholder="جست‌وجوی کالا…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="stchips" role="group" aria-label="فیلتر وضعیت">
-          <button type="button" className="stchip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stchip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
+            <Icon name="package" size="md" />
             همه · <b className="mono">{faNum(counts.all)}</b>
           </button>
           {(["crit", "low", "ok", "over"] as const).map((s) => (
             <button
               key={s}
               type="button"
-              className="stchip"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] stchip"
               data-tone={STATUS_TONE[s]}
               aria-pressed={filter === s}
               onClick={() => setFilter(s)}
             >
+              <Icon name="chart" size="md" />
               <i /> {STATUS_LABEL[s]} · <b className="mono">{faNum(counts[s])}</b>
             </button>
           ))}
@@ -305,7 +307,8 @@ function ThresholdField({
         placeholder="تنظیم‌نشده"
       />
       {dirty ? (
-        <button type="button" className="stmore__save" disabled={busy} onClick={save}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stmore__save" disabled={busy} onClick={save}>
+          <Icon name="check" size="md" />
           ثبت
         </button>
       ) : saved ? (

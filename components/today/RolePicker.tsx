@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import { ROLE_LABEL, type Role } from "@/lib/roles";
 
@@ -54,6 +55,7 @@ export default function RolePicker({ roles, active }: { roles: Role[]; active: R
                 : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)] hover:bg-[var(--surface-raised)]")
             }
           >
+            <Icon name="users" size="sm" />
             {ROLE_LABEL[r] ?? r}
           </button>
         );

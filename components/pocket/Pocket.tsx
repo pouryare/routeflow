@@ -115,8 +115,9 @@ export default function Pocket({
           </span>
           {c.recur ? <Icon name="repeat" size="sm" label="تکرارشونده" /> : null}
           {c.customer && c.status === "open" && c.kind !== "order" && c.kind !== "delivery_retry" ? (
-            <button type="button" className="btn solid" style={{ padding: "2px 10px", fontSize: 11 }}
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={{ padding: "2px 10px", fontSize: 11 }}
               onClick={() => setFlow({ customerId: c.customer!.id, taskId: c.id, open: true })}>
+              <Icon name="check" size="md" />
               ثبت نتیجه
             </button>
           ) : null}
@@ -133,6 +134,7 @@ export default function Pocket({
                 borderBottom: "1px dashed color-mix(in srgb, var(--accent) 45%, transparent)",
               }}
             >
+              <Icon name="package" size="md" />
               {c.customer.name}
             </button>
           ) : null}
@@ -181,19 +183,21 @@ export default function Pocket({
             onClick={() => pickScope(null)}
             style={scopeId === null ? { borderColor: "var(--accent)" } : undefined}
           >
+            <Icon name="user" size="md" />
             خودم
           </button>
           {team.map((m) => (
             <button
               key={m.id}
               type="button"
-              className="chip"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] chip"
               onClick={() => pickScope(m.id)}
               style={{
                 whiteSpace: "nowrap",
                 ...(scopeId === m.id ? { borderColor: "var(--accent)" } : {}),
               }}
             >
+              <Icon name="user" size="md" />
               {m.name} <span style={{ color: "var(--muted)" }}>{faNum(m.open)}</span>
             </button>
           ))}
@@ -201,10 +205,12 @@ export default function Pocket({
       ) : null}
 
       <div className="acts" style={{ margin: "14px 0 8px" }}>
-        <button type="button" className="btn ghost" onClick={() => setQuick("reminder")}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setQuick("reminder")}>
+          <Icon name="clock" size="md" />
           + یادآوری
         </button>
-        <button type="button" className="btn ghost" onClick={() => setQuick("note")}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setQuick("note")}>
+          <Icon name="plus" size="md" />
           + یادداشت
         </button>
         <Link className="btn ghost" href="/sales/orders/new">

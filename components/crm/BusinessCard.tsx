@@ -38,15 +38,17 @@ export default function BusinessCard({ row, mode, highlight, onCall, onOpen, onN
       {mode === "business" && row.next_title ? <div className="due">{nextLine}</div> : null}
       <div className="acts">
         {row.phone_norm ? (
-          <button type="button" className="btn solid" onClick={() => onCall(row)} aria-label={`تماس با ${formatPhone(row.phone_norm)}`}>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => onCall(row)} aria-label={`تماس با ${formatPhone(row.phone_norm)}`}>
             <Icon name="phone" size="sm" /> تماس
           </button>
         ) : (
-          <button type="button" className="btn solid" onClick={() => onNavigate(row)} disabled={row.lat === null}>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => onNavigate(row)} disabled={row.lat === null}>
             <Icon name="route" size="sm" /> مسیریابی
           </button>
         )}
-        <button type="button" className="btn ghost" onClick={() => onOpen(row)}>مشاهده و ویرایش</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => onOpen(row)}>
+        <Icon name="edit" size="md" />
+        مشاهده و ویرایش</button>
       </div>
     </article>
   );

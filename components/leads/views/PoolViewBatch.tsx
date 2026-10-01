@@ -66,6 +66,7 @@ export default function PoolViewBatch({
             }}
             className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-accent text-accent hover:bg-accent hover:text-accent-ink transition-colors"
           >
+            <Icon name="plus" size="sm" />
             افزودن به مسیر
           </button>
           <button
@@ -73,6 +74,7 @@ export default function PoolViewBatch({
             onClick={(e) => { e.stopPropagation(); setChecked(new Set()); setSelectAll(false); }}
             className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-faint hover:border-accent hover:text-accent transition-colors"
           >
+            <Icon name="trash" size="sm" />
             پاک کردن
           </button>
         </div>
@@ -80,7 +82,7 @@ export default function PoolViewBatch({
 
       <ul className="flex flex-col gap-1">
         <li className="flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2">
-          <button type="button" onClick={toggleAll} aria-label="انتخاب همه" aria-pressed={selectAll} className="h-5 w-5 shrink-0 rounded border border-border hover:border-accent text-[length:var(--text-xs)]">
+          <button type="button" onClick={toggleAll} aria-label="انتخاب همه" aria-pressed={selectAll} className="inline-flex items-center justify-center gap-[var(--space-2)] h-5 w-5 shrink-0 rounded border border-border hover:border-accent text-[length:var(--text-xs)]">
             {selectAll ? <Icon name="check" size="sm" /> : null}
           </button>
           <span className="text-[length:var(--text-xs)] text-text-muted">انتخاب همه</span>

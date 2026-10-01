@@ -52,7 +52,9 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
             {PRESETS.map((p) => chip(p.label, p.label, false, () => { setDays(p.days); setPhase("from"); }))}
             {chip("custom", "روزهای خاص…", false, () => { setDays([]); setPhase("custom"); })}
           </div>
-          {ranges.length === 0 ? <button type="button" className="tf-skip" onClick={() => api.submit("skip")}>نمی‌دانم</button> : null}
+          {ranges.length === 0 ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("skip")}>
+          <Icon name="help" size="md" />
+          نمی‌دانم</button> : null}
         </>
       )}
 
@@ -62,7 +64,9 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
           <div className="tf-grid three">
             {WEEKDAY_LABEL.map((d, i) => chip(i, d, days.includes(i), () => setDays((xs) => (xs.includes(i) ? xs.filter((x) => x !== i) : [...xs, i]))))}
           </div>
-          <button type="button" className="tf-go" disabled={days.length === 0} onClick={() => setPhase("from")}>ادامه</button>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={days.length === 0} onClick={() => setPhase("from")}>
+          <Icon name="arrow-left" size="md" />
+          ادامه</button>
         </>
       )}
 
@@ -92,7 +96,9 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
             {chip("again", "بازهٔ دیگر در همین روزها", false, () => setPhase("from"))}
             {chip("other", "روزهای دیگر، ساعت دیگر", false, () => setPhase("days"))}
           </div>
-          <button type="button" className="tf-go" onClick={() => api.submit("ok", JSON.stringify(ranges))}>تمام</button>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" onClick={() => api.submit("ok", JSON.stringify(ranges))}>
+          <Icon name="palette" size="md" />
+          تمام</button>
         </>
       )}
     </div>

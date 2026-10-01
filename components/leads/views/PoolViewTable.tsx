@@ -121,6 +121,7 @@ function DropdownMenu({ loc, inRun, runIdx, onToggleRun, onPin, onTogglePriority
               disabled={loc.lat === null || loc.lng === null}
               className="block w-full px-3 py-1.5 text-[length:var(--text-sm)] text-right text-text hover:bg-surface disabled:opacity-30"
             >
+              <Icon name="package" size="sm" />
               {inRun ? "حذف از مسیر" : "افزودن به مسیر"}
             </button>
             <button
@@ -128,6 +129,7 @@ function DropdownMenu({ loc, inRun, runIdx, onToggleRun, onPin, onTogglePriority
               onClick={(e) => { e.stopPropagation(); onPin(loc.id); setOpen(false); }}
               className="block w-full px-3 py-1.5 text-[length:var(--text-sm)] text-right text-text hover:bg-surface"
             >
+              <Icon name="edit" size="sm" />
               ویرایش موقعیت
             </button>
             <button
@@ -135,6 +137,7 @@ function DropdownMenu({ loc, inRun, runIdx, onToggleRun, onPin, onTogglePriority
               onClick={(e) => { e.stopPropagation(); onTogglePriority(loc.id); setOpen(false); }}
               className="block w-full px-3 py-1.5 text-[length:var(--text-sm)] text-right text-text hover:bg-surface"
             >
+              <Icon name="grip-vertical" size="sm" />
               {loc.priority ? "حذف اولویت" : "افزودن اولویت"}
             </button>
           </div>

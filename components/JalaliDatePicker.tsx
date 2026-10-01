@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import {
   jalaliMonthGrid,
   toJalali,
@@ -105,8 +106,9 @@ export default function JalaliDatePicker({
         onClick={toggle}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-right text-[length:var(--text-sm)] tabular-nums text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] focus:border-[var(--accent)] focus:outline-none"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-right text-[length:var(--text-sm)] tabular-nums text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--border-strong)] focus:border-[var(--accent)] focus:outline-none"
       >
+        <Icon name="calendar" size="sm" />
         {faJalaliDate(value)}
       </button>
 
@@ -123,6 +125,7 @@ export default function JalaliDatePicker({
               onClick={() => setView((v) => shiftMonth(v.jy, v.jm, -1))}
               className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"
             >
+              <Icon name="chevron-right" size="md" />
               ›
             </button>
             <span className="text-[length:var(--text-sm)] text-[var(--text)]">
@@ -134,6 +137,7 @@ export default function JalaliDatePicker({
               onClick={() => setView((v) => shiftMonth(v.jy, v.jm, 1))}
               className="rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-1)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"
             >
+              <Icon name="chevron-left" size="md" />
               ‹
             </button>
           </div>
@@ -186,6 +190,7 @@ export default function JalaliDatePicker({
             }}
             className="mt-[var(--space-2)] w-full rounded-[var(--radius-sm)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--accent)]"
           >
+            <Icon name="calendar" size="sm" />
             امروز
           </button>
         </div>

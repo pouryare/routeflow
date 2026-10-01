@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import type { RunDetail, RunStop } from "@/lib/delivery";
 import { faToman, faNum } from "@/lib/format";
@@ -123,6 +124,7 @@ export default function DriverRun({
               onClick={() => setReceipt(null)}
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
             >
+              <Icon name="x" size="sm" />
               بستن
             </button>
           </div>
@@ -246,8 +248,9 @@ function StopCard({
       <button
         type="button"
         onClick={onToggle}
-        className="flex w-full items-start justify-between gap-[var(--space-3)] p-[var(--space-4)] text-right"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] flex w-full items-start justify-between gap-[var(--space-3)] p-[var(--space-4)] text-right"
       >
+        <Icon name="check" size="md" />
         <span className="min-w-0">
           <span className="block truncate text-[length:var(--text-base)] text-[var(--text)]">
             {stop.customer_name}
@@ -350,8 +353,9 @@ function StopCard({
                 type="button"
                 onClick={record}
                 disabled={busy}
-                className="flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink disabled:opacity-50"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink disabled:opacity-50"
               >
+                <Icon name="check" size="md" />
                 {busy ? "…" : "ثبت تحویل و چاپ رسید"}
               </button>
             )}
@@ -360,6 +364,7 @@ function StopCard({
               onClick={() => onPrint(receiptFor(stop.collected_toman || total))}
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
             >
+              <Icon name="receipt" size="sm" />
               رسید
             </button>
           </div>

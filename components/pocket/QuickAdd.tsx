@@ -1,6 +1,7 @@
 "use client";
 
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import { useToast } from "@/components/ToastProvider";
 
@@ -83,13 +84,15 @@ export default function QuickAdd({
       <div style={{ display: "flex", gap: 8 }}>
         <button
           type="button"
-          className="btn solid"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid"
           disabled={saving || !text.trim() || (kind === "reminder" && !due)}
           onClick={() => void submit()}
         >
+          <Icon name="edit" size="md" />
           ذخیره
         </button>
-        <button type="button" className="btn ghost" onClick={onClose}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={onClose}>
+          <Icon name="x" size="md" />
           لغو
         </button>
       </div>

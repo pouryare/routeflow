@@ -220,6 +220,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           disabled={!product || parsedCost === null || !(parsedQty > 0)}
           className="rounded-[var(--radius-md)] border border-[var(--border-strong)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] transition-colors duration-[var(--dur-base)] hover:border-[var(--accent)] hover:text-[var(--accent)] disabled:opacity-40"
         >
+          <Icon name="plus" size="sm" />
           افزودن قلم
         </button>
       </div>
@@ -237,8 +238,9 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           type="button"
           onClick={submit}
           disabled={busy || lines.length === 0}
-          className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-40"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-40"
         >
+          <Icon name="package" size="sm" />
           {busy ? "در حال ثبت…" : "ثبت خرید"}
         </button>
       </div>

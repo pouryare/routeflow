@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
@@ -141,7 +142,8 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
           انقضا
           <JalaliDateInput value={form.expiry_date} onChange={(iso) => setForm((f) => ({ ...f, expiry_date: iso }))} aria-label="تاریخ انقضا" />
         </label>
-        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+          <Icon name="plus" size="md" />
           ثبت سری ساخت
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}
@@ -180,10 +182,12 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                           .filter((t) => MANUAL_MOVES.includes(t))
                           .map((t) => (
                             <button key={t} onClick={() => setStatus(b.id, t)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                              <Icon name="package" size="md" />
                               {BATCH_STATUS_LABEL[t]}
                             </button>
                           ))}
                         <button onClick={() => openTrace(b.id)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                          <Icon name="route" size="md" />
                           ردیابی
                         </button>
                       </div>

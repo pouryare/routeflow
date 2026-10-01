@@ -258,8 +258,9 @@ export default function FacilitiesPage() {
                         />
                         <button
                           type="submit"
-                          className="rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink"
+                          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink"
                         >
+                          <Icon name="edit" size="sm" />
                           ذخیره
                         </button>
                         <button
@@ -267,6 +268,7 @@ export default function FacilitiesPage() {
                           onClick={() => setRenamingId(null)}
                           className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
                         >
+                          <Icon name="x" size="sm" />
                           انصراف
                         </button>
                       </form>
@@ -280,6 +282,7 @@ export default function FacilitiesPage() {
                           title="تغییر نام"
                           className="text-right text-[length:var(--text-md)] font-medium text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
                         >
+                          <Icon name="edit" size="md" />
                           {f.name}
                         </button>
                         <span className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
@@ -336,6 +339,7 @@ export default function FacilitiesPage() {
                       disabled={isBusy}
                       className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-50"
                     >
+                      <Icon name="edit" size="sm" />
                       ویرایش موقعیت
                     </button>
                     {/* No confirmation step: the toast carries an undo instead, so the
@@ -346,6 +350,7 @@ export default function FacilitiesPage() {
                       disabled={isBusy}
                       className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-crit hover:text-crit disabled:opacity-50"
                     >
+                      <Icon name="trash" size="sm" />
                       {isBusy ? "در حال حذف…" : "حذف"}
                     </button>
                   </div>
@@ -394,6 +399,7 @@ export default function FacilitiesPage() {
               onClick={() => setPicker(picker?.mode === "create" ? null : { mode: "create" })}
               className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"
             >
+              <Icon name="map-pin" size="sm" />
               {picker?.mode === "create" ? "بستن نقشه" : "انتخاب موقعیت روی نقشه"}
             </button>
           </div>

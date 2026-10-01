@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
@@ -140,7 +141,8 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
           سررسید
           <JalaliDateInput value={form.due_date} onChange={(iso) => setForm((f) => ({ ...f, due_date: iso }))} aria-label="تاریخ سررسید" />
         </label>
-        <button type="submit" className="rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+          <Icon name="check" size="md" />
           ثبت چک
         </button>
         {error && <p className="col-span-full text-sm text-danger">{error}</p>}
@@ -171,6 +173,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                         onClick={() => advance(c.id, to)}
                         className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent"
                       >
+                        <Icon name="wallet" size="md" />
                         {CHEQUE_STATUS_LABEL[to]}
                       </button>
                     ))}

@@ -1,4 +1,5 @@
-export interface PocketDoc {
+
+import { Icon } from "@/components/meridian/Icon";export interface PocketDoc {
   /** The document's name — «رسید تحویل», «فاکتور», «برگهٔ مسیر». */
   label: string;
   /** The figure that document is actually about, already formatted. */
@@ -43,7 +44,8 @@ export default function PocketCard({
   docs: PocketDoc[];
 }) {
   return (
-    <button type="button" className="pocket" onClick={onOpen} aria-label={`${customer} — ${statusLabel}`}>
+    <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] pocket" onClick={onOpen} aria-label={`${customer} — ${statusLabel}`}>
+      <Icon name="receipt" size="md" />
       <div className="docs" aria-hidden>
         {docs.map((d) => (
           <div className="doc" key={d.label}>

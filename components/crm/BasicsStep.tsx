@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 import { useToast } from "@/components/ToastProvider";
 import { basicsOf, linkOf, pinOf } from "@/lib/crm/flows/addLead";
@@ -81,7 +82,9 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
         <div className="tf-card block">
           <b>بررسی تکراری‌بودن انجام نشد</b>
           <span>اتصال برقرار نشد؛ پیش از ذخیره دوباره بررسی کنید.</span>
-          <div className="acts"><button type="button" className="btn ghost" onClick={() => setCheckFailed(false)}>بررسی دوباره</button></div>
+          <div className="acts"><button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setCheckFailed(false)}>
+          <Icon name="undo" size="md" />
+          بررسی دوباره</button></div>
         </div>
       ) : null}
       {phoneHits.map((m, i) =>
@@ -93,9 +96,15 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
               <b>{m.kind === "phone" ? "این شماره" : "این صفحهٔ اینستاگرام"} مال «{m.name}» است</b>
               <span>{[m.area, m.owner_name && `مسئول: ${m.owner_name}`].filter(Boolean).join(" · ")}</span>
               <div className="acts">
-                <button type="button" className="btn solid" onClick={() => onOpenExisting(m.id!)}>باز کردن همان</button>
-                <button type="button" className="btn ghost" onClick={() => setBranchOf(m.id)}>شعبهٔ دیگری است</button>
-                <button type="button" className="btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>{m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
+                <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => onOpenExisting(m.id!)}>
+                <Icon name="external-link" size="md" />
+                باز کردن همان</button>
+                <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setBranchOf(m.id)}>
+                <Icon name="building" size="md" />
+                شعبهٔ دیگری است</button>
+                <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>
+                <Icon name="edit" size="md" />
+                {m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
               </div>
             </div>
           )
@@ -104,8 +113,12 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
             <b>این کسب‌وکار قبلاً ثبت شده</b>
             <span>{[m.owner_name && `مسئول: ${m.owner_name}`, m.area].filter(Boolean).join(" · ")}</span>
             <div className="acts">
-              {m.kind === "phone" && <button type="button" className="btn solid" onClick={() => void request()}>درخواست واگذاری</button>}
-              <button type="button" className="btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>{m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
+              {m.kind === "phone" && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void request()}>
+              <Icon name="handshake" size="md" />
+              درخواست واگذاری</button>}
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => { if (m.kind === "phone") setPhone(""); else setInstagram(""); setBranchOf(null); }}>
+              <Icon name="arrow-left" size="md" />
+              {m.kind === "phone" ? "شماره را اصلاح کنم" : "صفحه را اصلاح کنم"}</button>
             </div>
           </div>
         )
@@ -114,11 +127,14 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
         <div key={`n${i}`} className="tf-card warn">
           <b>نام مشابه: {m.name ?? "کسب‌وکار ثبت‌شده"}</b>
           <span>{m.distance_km !== null ? `${faDigits(String(Math.round(m.distance_km * 1000)))} متر دورتر · ` : ""}اگر همان نیست، ادامه دهید</span>
-          {m.reachable && m.id ? <div className="acts"><button type="button" className="btn ghost" onClick={() => onOpenExisting(m.id!)}>باز کن</button></div> : null}
+          {m.reachable && m.id ? <div className="acts"><button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => onOpenExisting(m.id!)}>
+          <Icon name="external-link" size="md" />
+          باز کن</button></div> : null}
         </div>
       ))}
-      <button type="button" className="tf-go" disabled={name.trim().length < 2 || blocked}
+      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={name.trim().length < 2 || blocked}
         onClick={() => api.submit("ok", JSON.stringify({ name: name.trim(), phone: phone.trim() || null, instagram: instagram.trim() || null, branch_of: branchOk ? branchOf : null }))}>
+        <Icon name="arrow-left" size="md" />
         ادامه
       </button>
     </>

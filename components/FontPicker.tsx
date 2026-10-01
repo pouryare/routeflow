@@ -14,6 +14,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import {
   FONT_CHANGE_EVENT,
   applyFont,
@@ -93,6 +94,7 @@ export default function FontPicker({
         title={`قلم: ${current.label}`}
         className={trigger}
       >
+        <Icon name="file" size="md" />
         {/* The glyph is set in the LIVE ui font, so the trigger already shows the choice. */}
         <span
           aria-hidden="true"
@@ -132,6 +134,7 @@ export default function FontPicker({
                     on ? "border-accent bg-accent-soft" : "border-border hover:border-accent"
                   }`}
                 >
+                  <Icon name="check" size="md" />
                   {/* «آ ب پ» in the option's own face -- three joined-then-not shapes read
                       the family at a glance without needing a full sentence. */}
                   <span

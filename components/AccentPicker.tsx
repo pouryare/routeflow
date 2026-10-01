@@ -13,6 +13,7 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { Icon } from "@/components/meridian/Icon";
 import {
   ACCENT_CHANGE_EVENT,
   applyAccent,
@@ -94,6 +95,7 @@ export default function AccentPicker({
         title={`رنگ ظاهر: ${current.label}`}
         className={trigger}
       >
+        <Icon name="palette" size="md" />
         {/* The swatch IS the icon: a colour picker whose trigger does not show the colour
             makes you open it to find out what you chose. */}
         <span
@@ -141,6 +143,7 @@ export default function AccentPicker({
                     on ? "border-accent" : "border-transparent hover:border-border"
                   }`}
                 >
+                  <Icon name="check" size="md" />
                   <span
                     aria-hidden="true"
                     className={`block h-6 w-6 rounded-full border border-black/15 ${

@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
@@ -180,8 +181,9 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         <button
           type="submit"
           disabled={busy}
-          className="rounded bg-accent px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white disabled:opacity-50"
         >
+          <Icon name="check" size="md" />
           ثبت دریافت
         </button>
       </form>
@@ -216,7 +218,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                     {p.voided_at ? (
                       <span className="text-xs text-text-faint">باطل شد</span>
                     ) : (
-                      <button className="text-xs text-danger" onClick={() => voidPayment(p.id)}>
+                      <button className="inline-flex items-center justify-center gap-[var(--space-2)] text-xs text-danger" onClick={() => voidPayment(p.id)}>
+                        <Icon name="x" size="md" />
                         ابطال
                       </button>
                     )}

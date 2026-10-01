@@ -1,6 +1,7 @@
 "use client";
 
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
 
@@ -68,6 +69,7 @@ export default function AddReminder({
           onClick={() => setOpen(true)}
           className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
         >
+          <Icon name="clock" size="sm" />
           + یادآوری بگذار
         </button>
       ) : (
@@ -83,14 +85,16 @@ export default function AddReminder({
             <button
               onClick={submit}
               disabled={saving || !dueDate || !message.trim()}
-              className="flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-xs)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-40"
             >
+              <Icon name="edit" size="sm" />
               ذخیره
             </button>
             <button
               onClick={() => setOpen(false)}
               className="rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
             >
+              <Icon name="x" size="sm" />
               لغو
             </button>
           </div>

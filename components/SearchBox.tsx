@@ -419,7 +419,7 @@ export default function SearchBox({
           onClick={expand}
           aria-label="جستجوی مشتری، منطقه یا آدرس"
           aria-expanded={false}
-          className="mapbtn"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] mapbtn"
         >
           <Icon name="search" size="md" />
         </button>
@@ -448,7 +448,7 @@ export default function SearchBox({
         <button
           onClick={collapse}
           aria-label="بستن جستجو"
-          className="absolute inset-y-0 right-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] absolute inset-y-0 right-2 flex items-center text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
           <Icon name="search" size="sm" />
         </button>
@@ -473,7 +473,7 @@ export default function SearchBox({
                     onClick={onPositionClear}
                     aria-label="پاک کردن موقعیت"
                     title="پاک کردن موقعیت"
-                    className="inline-flex items-center text-accent/60 hover:text-accent"
+                    className="inline-flex items-center justify-center gap-[var(--space-2)] inline-flex items-center text-accent/60 hover:text-accent"
                   >
                     <Icon name="x" size="sm" />
                   </button>
@@ -484,7 +484,7 @@ export default function SearchBox({
                 </button>
               )}
               {!sortAnchor && (
-                <button onClick={useMyLocation} className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent transition-colors" title="Show my location">
+                <button onClick={useMyLocation} className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent transition-colors" title="Show my location">
                   <Icon name="map-pin" size="sm" /> خودم
                 </button>
               )}
@@ -499,7 +499,9 @@ export default function SearchBox({
             <div className="border-b border-border px-3 py-2">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1 text-[length:var(--text-xs)] text-text-faint font-medium"><Icon name="clock" size="sm" /> Recent</span>
-                <button onClick={() => { clearAllRecent(); setRecentSearches([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">Clear all</button>
+                <button onClick={() => { clearAllRecent(); setRecentSearches([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">
+                <Icon name="x" size="sm" />
+                Clear all</button>
               </div>
               {recentSearches.map((r, i) => (
                 <button key={i} onClick={() => { changeQuery(r); setOpen(true); }} className="mapsearch__opt">
@@ -515,7 +517,9 @@ export default function SearchBox({
             <div className="border-b border-border px-3 py-2">
               <div className="flex items-center justify-between mb-1.5">
                 <span className="flex items-center gap-1 text-[length:var(--text-xs)] text-text-faint font-medium"><Icon name="star" size="sm" /> Favorites</span>
-                <button onClick={() => { localStorage.removeItem(FAV_KEY); setFavorites([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">Clear all</button>
+                <button onClick={() => { localStorage.removeItem(FAV_KEY); setFavorites([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">
+                <Icon name="x" size="sm" />
+                Clear all</button>
               </div>
               {favorites.map((f) => (
                 <button key={f.id} onClick={() => { changeQuery(f.label); setOpen(true); }} className="mapsearch__opt">
@@ -532,7 +536,7 @@ export default function SearchBox({
               <button
                 onClick={decodeLink}
                 disabled={linkLoading}
-                className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-60"
               >
                 {linkLoading ? "در حال شناسایی لینک…" : <><Icon name="link" size="sm" /> نمایش این لینک روی نقشه</>}
               </button>
@@ -545,7 +549,7 @@ export default function SearchBox({
             <div className="p-2">
               <button
                 onClick={goToCoords}
-                className="w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
               >
                 <Icon name="map-pin" size="sm" /> نمایش مختصات روی نقشه
                 <span className="block text-[length:var(--text-xs)] text-accent/60 font-mono">{coordMatch[1]}, {coordMatch[2]}</span>
@@ -601,7 +605,7 @@ export default function SearchBox({
               <button
                 onClick={runGeosearch}
                 disabled={geoLoading}
-                className="w-full rounded-[var(--radius-sm)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-60"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-sm)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-60"
               >
                 {geoLoading ? (
                   "در حال جستجو…"

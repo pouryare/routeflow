@@ -148,7 +148,7 @@ export default function JalaliDateInput({
         type="button"
         id={id}
         ref={field}
-        className="jdate__field"
+        className="inline-flex items-center justify-center gap-[var(--space-2)] jdate__field"
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-controls={open ? gridId : undefined}
@@ -169,13 +169,13 @@ export default function JalaliDateInput({
           style={open && at ? { top: at.top, insetInlineStart: at.insetStart, width: "17rem" } : undefined}
         >
           <div className="jdate__head">
-            <button type="button" className="jdate__nav" aria-label="ماه قبل" onClick={() => setView(shiftMonth(view.jy, view.jm, -1))}>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] jdate__nav" aria-label="ماه قبل" onClick={() => setView(shiftMonth(view.jy, view.jm, -1))}>
               <Icon name="chevron-right" size="sm" />
             </button>
             <span className="jdate__month">
               {grid.monthName} {faNum(view.jy).replace(/٬/g, "")}
             </span>
-            <button type="button" className="jdate__nav" aria-label="ماه بعد" onClick={() => setView(shiftMonth(view.jy, view.jm, 1))}>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] jdate__nav" aria-label="ماه بعد" onClick={() => setView(shiftMonth(view.jy, view.jm, 1))}>
               <Icon name="chevron-left" size="sm" />
             </button>
           </div>
@@ -201,17 +201,20 @@ export default function JalaliDateInput({
                   className={`jdate__day${d.iso === value ? " is-picked" : ""}${d.iso === today ? " is-today" : ""}${d.iso === cursor ? " is-cursor" : ""}${off ? " is-off" : ""}`}
                   onClick={() => !off && pick(d.iso)}
                 >
+                  <Icon name="calendar" size="md" />
                   {faNum(d.jd)}
                 </button>
               );
             })}
           </div>
           <div className="jdate__foot">
-            <button type="button" className="btn ghost" onClick={() => pick(today)}>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => pick(today)}>
+              <Icon name="calendar" size="md" />
               امروز
             </button>
             {!required && value ? (
-              <button type="button" className="btn ghost" onClick={() => pick("")}>
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => pick("")}>
+                <Icon name="trash" size="md" />
                 پاک کردن
               </button>
             ) : null}

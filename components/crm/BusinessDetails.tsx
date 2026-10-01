@@ -113,7 +113,9 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
             {(row.options ?? []).map(o => {
               const on = o === value;
               return <button key={o} type="button" role="radio" aria-checked={on} className={`chip${on ? " on" : ""}`} disabled={disabled || !!pending || sending}
-                onClick={() => { setError(null); setEdit({ row, value: o }); }}>{SELECT_LABEL[row.key]?.(o)}</button>;
+                onClick={() => { setError(null); setEdit({ row, value: o }); }}>
+                <Icon name="user" size="md" />
+                {SELECT_LABEL[row.key]?.(o)}</button>;
             })}
           </span>
         ) : (
@@ -124,8 +126,12 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
       </label>
       {error && <p role="alert">{error}</p>}
       <div className="edit-actions">
-        <button type="submit" className="btn solid" style={TOUCH} disabled={disabled || !!pending || sending}>ثبت تغییر</button>
-        <button type="button" className="btn ghost" style={TOUCH} disabled={disabled || !!pending || sending} onClick={() => { setEdit(null); setError(null); }}>انصراف</button>
+        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={disabled || !!pending || sending}>
+        <Icon name="check" size="md" />
+        ثبت تغییر</button>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={disabled || !!pending || sending} onClick={() => { setEdit(null); setError(null); }}>
+        <Icon name="x" size="md" />
+        انصراف</button>
       </div>
     </form>
   );
@@ -140,6 +146,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
       <button key={row.key} type="button" className={`field-row${v ? "" : " empty"}`} style={TOUCH} disabled={disabled || !!pending || sending}
         aria-label={`${v ? "ویرایش" : "افزودن"} ${row.label}`}
         onClick={() => { setError(null); setEdit({ row, value: row.kind === "select" ? String(business[row.key as keyof typeof business] ?? "") : valueOf(row.key) }); }}>
+        <Icon name="phone" size="md" />
         {inner}
       </button>
     );
@@ -148,7 +155,9 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
   return (
     <section className="tile crm-details">
       <h2>اطلاعات کسب‌وکار</h2>
-      {pending && <div className="pending-note" role="status"><span>{pending.row.label} ثبت می‌شود…</span><button type="button" style={TOUCH} onClick={undo}>لغو</button></div>}
+      {pending && <div className="pending-note" role="status"><span>{pending.row.label} ثبت می‌شود…</span><button type="button" style={TOUCH} onClick={undo}>
+      <Icon name="x" size="md" />
+      لغو</button></div>}
       <div className="details-grid">
         {GROUPS.map(g => (
           <section key={g.title} className={`bento-section${g.icon === "map-pin" ? " location-section wide" : ""}`} style={{ "--tint": g.tint } as CSSProperties}>
@@ -162,8 +171,9 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
               {g.icon === "map-pin" && <>
           <div className="field-list">
             {canWrite ? (
-              <button type="button" className="field-row" style={TOUCH} disabled={disabled || !!pending || sending}
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] field-row" style={TOUCH} disabled={disabled || !!pending || sending}
                 aria-label={hours.length ? "ویرایش ساعت کاری" : "افزودن ساعت کاری"} onClick={onHours}>
+                <Icon name="clock" size="md" />
                 <span><span className="k">ساعت کاری</span><span className={`v${hours.length ? "" : " empty"}`}>{formatHours(hours) || "ثبت نشده"}</span></span>
                 <span className="cue">{hours.length ? "ویرایش" : "افزودن"}</span>
               </button>

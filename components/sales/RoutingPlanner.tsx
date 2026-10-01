@@ -88,6 +88,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
           onClick={() => void build()}
           className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] hover:bg-[var(--surface-2)] disabled:opacity-50"
         >
+          <Icon name="plus" size="md" />
           ساخت پیشنهاد
         </button>
         {plan && (
@@ -97,6 +98,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
             onClick={() => void commit()}
             className="rounded-[var(--radius-md)] bg-[var(--accent)] px-[var(--space-3)] py-[var(--space-1)] text-white disabled:opacity-50"
           >
+            <Icon name="map" size="md" />
             تثبیت
           </button>
         )}
@@ -155,6 +157,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
                   onClick={() => void freeze(runIds[i])}
                   className="mt-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-2)] py-[var(--space-1)] text-[length:var(--text-xs)]"
                 >
+                  <Icon name="check" size="sm" />
                   قطعی‌کردن
                 </button>
               )}

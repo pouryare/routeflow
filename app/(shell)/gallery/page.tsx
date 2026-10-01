@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { Icon } from "@/components/meridian/Icon";
 import { useState, useCallback } from "react";
 import Link from "next/link";
 import { faNum } from "@/lib/format";
@@ -147,12 +148,14 @@ export default function GalleryPage() {
                   onClick={() => setLightbox(null)}
                   className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-1.5 text-[length:var(--text-sm)] text-text"
                 >
+                  <Icon name="x" size="sm" />
                   بستن
                 </button>
                 <button
                   onClick={() => remove(lightbox.id)}
                   className="rounded-[var(--radius-sm)] border border-crit px-3 py-1.5 text-[length:var(--text-sm)] text-crit"
                 >
+                  <Icon name="trash" size="sm" />
                   حذف عکس
                 </button>
               </div>

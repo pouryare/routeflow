@@ -112,6 +112,7 @@ export default function RouteSection({
         onClick={() => updateRun(day.stops.map((d) => d.id))}
         className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
       >
+        <Icon name="route" size="sm" />
         بردن به مسیر
       </button>
       <button
@@ -120,6 +121,7 @@ export default function RouteSection({
         title={day.stops.length === 0 ? "این روز مکانی ندارد" : undefined}
         className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-accent hover:text-accent disabled:opacity-50"
       >
+        <Icon name="edit" size="sm" />
         ذخیره به‌عنوان فهرست
       </button>
     </div>
@@ -185,6 +187,7 @@ export default function RouteSection({
                 onClick={() => proposeDays()}
                 className="rounded-[var(--radius-sm)] border border-accent px-2 py-1 text-[length:var(--text-xs)] text-accent hover:bg-accent hover:text-accent-ink"
               >
+                <Icon name="calendar" size="sm" />
                 پیشنهاد بده ({faNum(daysNeeded(routableLength, stopsPerDay))} روز)
               </button>
               {proposedDays && (
@@ -192,6 +195,7 @@ export default function RouteSection({
                   onClick={() => setProposedDays(null)}
                   className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
                 >
+                  <Icon name="x" size="sm" />
                   بستن پیشنهاد
                 </button>
               )}

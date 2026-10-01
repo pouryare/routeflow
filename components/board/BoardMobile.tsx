@@ -55,10 +55,11 @@ export default function BoardMobile({
         {c.customer ? (
           <button
             type="button"
-            className="more"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] more"
             style={{ border: 0, background: "none", padding: 0, cursor: "pointer" }}
             onClick={() => onCustomer(c.customer!.id)}
           >
+            <Icon name="package" size="md" />
             {c.customer.name}
           </button>
         ) : null}
@@ -92,6 +93,7 @@ export default function BoardMobile({
           className={`btn ${mode === "pager" ? "solid" : "ghost"}`}
           onClick={() => pickMode("pager")}
         >
+          <Icon name="grip-vertical" size="md" />
           پیمایش ستون‌ها
         </button>
         <button
@@ -99,6 +101,7 @@ export default function BoardMobile({
           className={`btn ${mode === "stack" ? "solid" : "ghost"}`}
           onClick={() => pickMode("stack")}
         >
+          <Icon name="panel-side" size="md" />
           ستون عمودی
         </button>
       </div>
@@ -138,6 +141,7 @@ export default function BoardMobile({
                   boxShadow: i === laneIx ? "var(--sh-1)" : "none",
                 }}
               >
+                <Icon name="package" size="md" />
                 {l.label} {faNum(l.total)}
               </button>
             ))}
@@ -178,6 +182,7 @@ export default function BoardMobile({
                   cursor: "pointer",
                 }}
               >
+                <Icon name="package" size="md" />
                 <span>{l.label}</span>
                 <span style={{ color: "var(--muted)", fontWeight: 500 }}>
                   {faNum(l.total)} {accOpen === i ? "–" : "+"}
@@ -290,6 +295,7 @@ function MoveSheet({
                 cursor: "pointer",
               }}
             >
+              <Icon name="grip-vertical" size="md" />
               {l.label}
             </button>
           ))}

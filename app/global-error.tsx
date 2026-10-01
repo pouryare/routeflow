@@ -1,6 +1,7 @@
 "use client";
 
 import "./globals.css";
+import { Icon } from "@/components/meridian/Icon";
 import StatePage from "@/components/meridian/StatePage";
 
 /** The root layout itself failed. This replaces the whole document, so it must bring its
@@ -27,7 +28,8 @@ export default function GlobalError({
             hint="یک بار دیگر امتحان کنید. اگر مشکل ادامه داشت، کد پیگیری پایین را برای پشتیبانی بفرستید."
             code={error.digest}
             actions={
-              <button type="button" className="btn solid" onClick={() => retry()}>
+              <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => retry()}>
+                <Icon name="undo" size="md" />
                 تلاش دوباره
               </button>
             }

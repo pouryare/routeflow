@@ -132,6 +132,7 @@ export default function LeadListsBar({
                       {/* The row is the load action on every screen, so a window resize never
                           changes what tapping a list does. */}
                       <button type="button" onClick={() => run(list.id, list.location_ids, list.name, "load")} className="flex min-w-0 flex-1 items-center gap-2 text-right">
+                        <Icon name="map-pin" size="md" />
                         <span className="truncate text-[length:var(--text-sm)] text-text">{list.name}</span>
                         <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">{faNum(count)} مکان</span>
                         {isActive ? (
@@ -165,9 +166,12 @@ export default function LeadListsBar({
                           }}
                           className="rounded bg-crit/15 px-1.5 py-0.5 text-crit"
                         >
+                          <Icon name="x" size="md" />
                           {confirming?.kind === "delete" ? "حذف کن" : "بله"}
                         </button>
-                        <button type="button" onClick={() => setConfirming(null)} className="rounded px-1.5 py-0.5 text-text-faint">لغو</button>
+                        <button type="button" onClick={() => setConfirming(null)} className="rounded px-1.5 py-0.5 text-text-faint">
+                        <Icon name="x" size="md" />
+                        لغو</button>
                       </p>
                     ) : null}
 
@@ -233,6 +237,7 @@ export default function LeadListsBar({
           disabled={busy || !newName.trim()}
           className="shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors hover:bg-accent hover:text-accent-ink disabled:opacity-50"
         >
+          <Icon name="plus" size="sm" />
           ساختن از مسیر فعلی
         </button>
       </div>
