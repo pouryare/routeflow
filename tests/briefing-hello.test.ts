@@ -1,4 +1,21 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+
+/* The DB preamble goes at the TOP, above every other import, because ROUTEFLOW_DB_PATH is
+ * read once at module load — the same shape as tests/commissionLedger.test.ts. */
+const testDbPath = path.join(
+  os.tmpdir(),
+  `briefing-hero-${Date.now()}-${Math.random().toString(36).slice(2)}.db`,
+);
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
+
+const { getDb } = await import("@/lib/db");
+const { todayFor } = await import("@/lib/repo/briefing");
+const { setTarget } = await import("@/lib/repo/targets");
+const { toJalali } = await import("@/lib/jalali");
+
 import { needsAttention, mostUrgent, cardFor } from "@/lib/repo/briefingCards";
 import type { BriefingPanel } from "@/lib/repo/briefing";
 
@@ -151,5 +168,108 @@ describe("what needs the reader's attention", () => {
       expect(card === null).toBe(needsAttention(panels) === 0);
       if (card) expect(card.count).toBe(needsAttention(panels));
     }
+  });
+});
+
+let org = 0;
+let manager = 0;
+let driver = 0;
+
+beforeAll(() => {
+  const db = getDb();
+  const now = new Date().toISOString();
+  org = Number(
+    db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES (?, ?, ?)")
+      .run("B", `b-${Date.now()}`, now).lastInsertRowid,
+  );
+  const group = Number(
+    db.prepare("INSERT INTO groups (name, slug, color, active, created_at) VALUES (?, ?, ?, 1, ?)")
+      .run("شرق", "east", "#0ff", now).lastInsertRowid,
+  );
+  const u = db.prepare(
+    "INSERT INTO users (username,password_hash,display_name,role,group_id,organization_id,created_at) VALUES (?,?,?,?,?,?,?)",
+  );
+  manager = Number(u.run(`m${Date.now()}`, "x", "مدیر", "group_manager", group, org, now).lastInsertRowid);
+  driver = Number(u.run(`d${Date.now()}`, "x", "راننده", "delivery_driver", group, org, now).lastInsertRowid);
+});
+
+afterAll(() => {
+  for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
+});
+
+const sessionFor = (userId: number, role: string) =>
+  ({
+    user: { id: userId, display_name: "x", avatar_url: null },
+    role,
+    organizationId: org,
+    groupId: null,
+    roles: [role],
+  }) as never;
+
+const thisPeriod = () => {
+  const j = toJalali(new Date().toISOString())!;
+  return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
+};
+
+describe("the briefing hero", () => {
+  it("carries the person's id, so the avatar stays the same person in any role", () => {
+    expect(todayFor(sessionFor(manager, "group_manager")).hero).toMatchObject({
+      userId: manager,
+    });
+  });
+
+  it("gives a MANAGER the monthly target, not just phone_sales", () => {
+    setTarget(org, {
+      user_id: manager,
+      period: thisPeriod(),
+      metric: "revenue_toman",
+      target_value: 5_000_000,
+    });
+    const b = todayFor(sessionFor(manager, "group_manager"));
+    expect(b.panels.some((p) => p.key === "target")).toBe(true);
+  });
+
+  it("a DRIVER with no run still gets a briefing, never a blank screen", () => {
+    expect(todayFor(sessionFor(driver, "delivery_driver")).panels.length).toBeGreaterThan(0);
+  });
+
+  it("the hero is present on the EMPTY-day path too, not only when panels exist", () => {
+    // The early return is the easiest path to forget when a payload grows, and a hero that
+    // vanishes on a quiet day is worse than one that is never there: the layout shifts under
+    // the reader exactly when they expect nothing to happen.
+    const fresh = todayFor(sessionFor(driver, "delivery_driver"));
+    expect(fresh.hero).toBeTruthy();
+    expect(fresh.hero.userId).toBe(driver);
+    expect(fresh.hero.displayName).toBeTruthy();
+  });
+
+  it("the hero carries the name and role, so the page does not re-derive identity", () => {
+    const h = todayFor(sessionFor(manager, "group_manager")).hero;
+    expect(h.role).toBe("group_manager");
+    expect(typeof h.displayName).toBe("string");
+  });
+
+  it("avatarUrl is null rather than undefined when nobody set a photo", () => {
+    // Both read as "no photo" to `Avatar`, but `undefined` is what a missing key produces
+    // and it means the field is absent rather than answered. `JSON.stringify` drops it.
+    const h = todayFor(sessionFor(manager, "group_manager")).hero;
+    expect(h.avatarUrl).toBeNull();
+    expect(JSON.parse(JSON.stringify(h))).toHaveProperty("avatarUrl", null);
+  });
+
+  it("a target with no value adds NO panel, rather than a 0% one", () => {
+    // Nobody has set a target for the driver. A "۰٪ از ۰" card is noise that reads as a
+    // failing goal, and the hero's number is already saying nothing needs attention.
+    const b = todayFor(sessionFor(driver, "delivery_driver"));
+    expect(b.panels.some((p) => p.key === "target")).toBe(false);
+  });
+
+  it("the target panel's tone is good only when the goal is actually met", () => {
+    const b = todayFor(sessionFor(manager, "group_manager"));
+    const t = b.panels.find((p) => p.key === "target");
+    expect(t).toBeDefined();
+    // No orders have been sold in this fixture, so the fraction is 0 and the tone must not
+    // be "good" — a green "done" against an unmet target is a lie on the hero screen.
+    expect(t!.items[0].tone).not.toBe("good");
   });
 });

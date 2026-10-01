@@ -23,9 +23,25 @@ export interface BriefingPanel {
   items: BriefingItem[];
   more?: number;
 }
+/** Who the reader is, so the page does not re-derive identity from the session.
+ *
+ *  Carries `userId` and NOT a rendered avatar, on purpose. The face belongs to the PERSON
+ *  and never changes with the active role: a rep holding two roles taps the role picker, the
+ *  role line under the name updates, and the photo stays put. A face that swaps on a role tap
+ *  reads as a bug, and the role is already spelled out in the text beneath the name. */
+export interface BriefingHero {
+  userId: number;
+  displayName: string;
+  /** Null when nobody has set a photo — Avatar's initials fallback is the honest answer, and
+   *  in a 96px hero circle it is also the weakest-looking. See plan B. */
+  avatarUrl: string | null;
+  role: string;
+}
+
 export interface Briefing {
   role: string;
   panels: BriefingPanel[];
+  hero: BriefingHero;
 }
 
 const CAP = 5;
@@ -87,25 +103,6 @@ export function todayFor(session: Session): Briefing {
       )
     );
 
-    const p = targetProgress(org, {
-      user_id: session.user.id,
-      period: currentPeriod(),
-      metric: "revenue_toman",
-    });
-    if (p.target > 0) {
-      panels.push({
-        key: "target",
-        title: "هدف این ماه",
-        items: [
-          {
-            label: `${Math.round(p.fraction * 100)}%`,
-            sub: `${p.actual.toLocaleString("fa-IR")} از ${p.target.toLocaleString("fa-IR")}`,
-            href: "/sales/commission",
-            tone: p.fraction >= 1 ? "good" : p.fraction >= 0.6 ? "info" : "warn",
-          },
-        ],
-      });
-    }
   }
 
   if (isVanRole(session.role)) {
@@ -280,18 +277,68 @@ export function todayFor(session: Session): Briefing {
     );
   }
 
+  /* The month's target, for EVERY role.
+   *
+   *  This used to live inside the `phone_sales` branch alone, so a manager staring at
+   *  "سفارش‌های امروز" had no month context at all — the single biggest gap on the screen.
+   *  `targets` already stores revenue_toman / kg / orders per Jalali period and
+   *  `targetProgress` already computes it, so this is wiring, not a new table.
+   *
+   *  A manager with no personal target falls back to the GROUP target, which is the number
+   *  they are actually accountable for. Placed here rather than in a branch so it applies to
+   *  every role, including a driver. */
+  const personal = targetProgress(org, {
+    user_id: session.user.id,
+    period: currentPeriod(),
+    metric: "revenue_toman",
+  });
+  const groupProgress =
+    session.groupId === null
+      ? null
+      : targetProgress(org, {
+          group_id: session.groupId,
+          period: currentPeriod(),
+          metric: "revenue_toman",
+        });
+  const goal = personal.target > 0 ? personal : groupProgress;
+  if (goal && goal.target > 0) {
+    panels.push({
+      key: "target",
+      title: "هدف این ماه",
+      items: [
+        {
+          label: `${Math.round(goal.fraction * 100)}٪`,
+          sub: `${goal.actual.toLocaleString("fa-IR")} از ${goal.target.toLocaleString("fa-IR")}`,
+          href: "/sales/commission",
+          tone: goal.fraction >= 1 ? "good" : goal.fraction >= 0.6 ? "info" : "warn",
+        },
+      ],
+    });
+  }
+
+  const hero: BriefingHero = {
+    userId: session.user.id,
+    displayName: session.user.display_name,
+    avatarUrl: session.user.avatar_url ?? null,
+    role: session.role,
+  };
+
   const kept = panels.filter((p): p is BriefingPanel => p !== null);
 
   /* A briefing with nothing in it is indistinguishable from a broken page — the person
      cannot tell "quiet day" from "signed in wrong", and neither can we.
      So an empty day still renders one panel saying so. The per-panel emptiness filter stays
-     exactly as it is: it is what keeps a screen from showing five empty headings. */
+     exactly as it is: it is what keeps a screen from showing five empty headings.
+     The hero is built BEFORE this branch and returned on BOTH paths: a hero that vanishes on
+     a quiet day is worse than one that never existed, because the layout shifts under the
+     reader exactly when they expect nothing to happen. */
   if (kept.length === 0) {
     return {
       role: session.role,
+      hero,
       panels: [{ key: "empty_day", title: "امروز", items: [{ label: "کاری برای امروز ثبت نشده است" }] }],
     };
   }
 
-  return { role: session.role, panels: kept };
+  return { role: session.role, hero, panels: kept };
 }
