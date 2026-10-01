@@ -66,10 +66,34 @@ export function monthConditions(rows: readonly ForecastRow[]): Record<string, Co
   return out;
 }
 
-/** The one glyph a cell shows for a day, or `null` when the day is clear. */
-export function dayIcon(conditions: readonly ConditionCode[]): IconName | null {
+/** Persian name for each condition, so the calendar cell can be READ, not just seen.
+ *
+ *  This exists because an icon alone is an unnamed signal: three conditions share the `fog`
+ *  glyph, so "fog" on a cell could mean rain, dust or actual fog. MASTER.md bans colour as
+ *  the only signal for the same reason — a glyph a screen reader cannot describe is no
+ *  better than a coloured dot. */
+export const CONDITION_LABEL: Record<ConditionCode, string> = {
+  heavy_rain: "باران شدید",
+  snow_ice: "یخ و برف",
+  extreme_heat: "گرمای شدید",
+  high_wind: "باد شدید",
+  dust_storm: "طوفان گرد و غبار",
+  fog: "مه",
+};
+
+/** The one condition that decides the cell's glyph, or null when the day is clear.
+ *
+ *  Same severity order as `dayIcon`; this is the one that also answers "which", so the
+ *  renderer can name it rather than shipping an unlabelled icon. */
+export function worstCondition(conditions: readonly ConditionCode[]): ConditionCode | null {
   for (const code of SEVERITY) {
-    if (conditions.includes(code)) return CONDITION_ICON[code];
+    if (conditions.includes(code)) return code;
   }
   return null;
+}
+
+/** The one glyph a cell shows for a day, or `null` when the day is clear. */
+export function dayIcon(conditions: readonly ConditionCode[]): IconName | null {
+  const worst = worstCondition(conditions);
+  return worst ? CONDITION_ICON[worst] : null;
 }

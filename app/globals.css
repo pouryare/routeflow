@@ -3202,6 +3202,33 @@ body {
 .meridian .day .dots { display: flex; gap: 3px; height: 5px; }
 .meridian .day .dots i { width: 5px; height: 5px; border-radius: 50%; display: block; }
 .meridian .day.today .dots i, .meridian .day.sel .dots i { background: rgba(255,255,255,.85) !important; }
+
+/* Weather and holiday marks inside a day cell.
+ *
+ * Deliberately NOT extra dots in `.dots`: that row is a colour list sliced to three, and a
+ * fifth dot is unreadable at phone size. A separate flag row keeps a holiday identifiable
+ * even when the weather glyph is absent, which matters because a day off is the one mark a
+ * dispatcher must never miss. */
+.meridian .day .calflags {
+  display: flex; align-items: center; gap: 3px; height: 10px; line-height: 0;
+}
+/* Fixed height whether or not anything is in it, so the day numbers stay on a common
+   baseline across the whole grid instead of stepping up and down row by row. */
+.meridian .day .calflags:empty { height: 0; }
+/* Official = the office closes. Commemorative = observed, office open. Two shapes, not two
+   colours: colour alone is banned as the only signal, and a filled vs hollow marker reads
+   correctly in greyscale and to a colour-blind driver. */
+.meridian .day .calflag { width: 6px; height: 6px; display: block; border-radius: 2px; }
+.meridian .day .calflag--official { background: var(--crit); }
+.meridian .day .calflag--commemorative {
+  background: transparent; border: 1.5px solid var(--muted);
+}
+/* The selected and today cells invert to a filled background, so an ink-coloured flag would
+   vanish into them. Same reason the dots get the !important override above. */
+.meridian .day.today .calflag,
+.meridian .day.sel .calflag { background: rgba(255,255,255,.9); }
+.meridian .day.today .calflag--commemorative,
+.meridian .day.sel .calflag--commemorative { background: transparent; border-color: rgba(255,255,255,.9); }
 .meridian .rail { padding: 6px 22px 22px; }
 .meridian .slot { display: grid; grid-template-columns: 52px 1fr; gap: 12px; align-items: start; min-height: 56px; }
 .meridian .slot .h { font-family: var(--en); font-size: 12px; color: var(--faint); padding-top: 9px; }

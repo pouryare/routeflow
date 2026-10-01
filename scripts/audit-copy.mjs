@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 const OUT = path.join(ROOT, "docs", "copy-audit", "catalogue.md");
@@ -62,7 +63,7 @@ function detectRawEnum(str) {
   for (const re of [/\bstage\b/, /\bband\b/, /\bseverity\b/, /\bcategory\b/]) { if (re.test(str)) return { status: "RAW-ENUM", note: "use a Persian label map" }; }
   return null;
 }
-function detectArabicChars(str) {
+export function detectArabicChars(str) {
   /* The four Arabic letters a Persian keyboard slips into — U+0649 ARABIC YEH, U+0643
    * ARABIC KAF, U+064A ARABIC YEH (dotless, the one that looks Persian), U+0629 TEH
    * MARBUTA — plus two ranges that arrive in real copy and were missing until 2026-10-01:
@@ -203,4 +204,9 @@ function main() {
   fs.writeFileSync(OUT, lines.join("\n"), "utf8");
   console.log(`Written ${allStrings.length} strings (${totalFlagged} flagged) to ${OUT}`);
 }
-main();
+/* Only run the audit when executed directly. tests/copy-audit-arabic.test.ts imports
+   detectArabicChars from here, and an unconditional main() would rewrite
+   docs/copy-audit/catalogue.md as a side effect of running that one test. */
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  main();
+}

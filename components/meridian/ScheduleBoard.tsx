@@ -5,6 +5,7 @@ import { faNum } from "@/lib/format";
 import { faJalaliDate, jalaliToIsoDate, JALALI_MONTHS } from "@/lib/jalali";
 import { tripPurpose } from "@/lib/tripPurpose";
 import { Icon } from "@/components/meridian/Icon";
+import type { IconName } from "@/components/meridian/icon-map";
 
 export interface ScheduleRun {
   id: number;
@@ -36,6 +37,8 @@ export default function ScheduleBoard({
   runs,
   visits,
   marks,
+  weather,
+  holidays,
 }: {
   jy: number;
   jm: number;
@@ -49,6 +52,12 @@ export default function ScheduleBoard({
   visits: ScheduleVisit[];
   /** Day-of-month → dot colours, precomputed once for the whole month. */
   marks: Record<number, string[]>;
+  /** Day-of-month → the one weather glyph plus its Persian name. Both, because three
+   *  conditions share the `fog` glyph and an unlabelled icon cannot say which. Absent for a
+   *  clear day — distinct from a present-but-empty one. */
+  weather: Record<number, { icon: IconName; label: string }>;
+  /** Day-of-month → the holiday, when that day is one. */
+  holidays: Map<number, { title_fa: string; kind: "official" | "commemorative" }>;
 }) {
   const [sel, setSel] = useState(today);
   const selIso = jalaliToIsoDate(jy, jm, sel);
@@ -90,6 +99,26 @@ export default function ScheduleBoard({
               >
                 <Icon name="calendar" size="md" />
                 <span>{faNum(d)}</span>
+                {/* Weather and holiday, in their own row rather than as more dots: `.dots`
+                    is a colour list sliced to three, and a weather glyph is a named thing,
+                    not a colour. The holiday marker carries an aria-label, because MASTER.md
+                    bans colour as the only signal. */}
+                <span className="calflags">
+                  {(() => {
+                    const h = holidays.get(d);
+                    if (!h) return null;
+                    return (
+                      <span
+                        className={`calflag calflag--${h.kind}`}
+                        title={h.title_fa}
+                        aria-label={`تعطیل: ${h.title_fa}`}
+                      />
+                    );
+                  })()}
+                  {weather[d] ? (
+                    <Icon name={weather[d].icon} size="sm" label={weather[d].label} />
+                  ) : null}
+                </span>
                 <span className="dots">
                   {(marks[d] ?? []).slice(0, 3).map((c, k) => (
                     <i key={k} style={{ background: c }} />

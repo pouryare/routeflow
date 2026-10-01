@@ -3,7 +3,12 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, orderFilter, type Session } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
-import { toJalali, jalaliToIsoDate, jalaliMonthGrid } from "@/lib/jalali";
+import { toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength } from "@/lib/jalali";
+import { monthConditions, worstCondition, CONDITION_LABEL } from "@/lib/weather/calendarForecast";
+import { snapshotsInRange } from "@/lib/repo/weather";
+import { listHolidaysForMonth } from "@/lib/repo/holidays";
+import { CONDITION_ICON } from "@/lib/weather/calendarForecast";
+import type { IconName } from "@/components/meridian/icon-map";
 import ScheduleBoard from "@/components/meridian/ScheduleBoard";
 import { TRIP_PURPOSES, tripPurpose } from "@/lib/tripPurpose";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -249,6 +254,35 @@ export default async function SchedulePage({
     (marks[j.jd] ??= []).push(tripPurpose(v.purpose)?.dot ?? "var(--muted)");
   }
 
+  /* Weather and holidays for the month grid.
+   *
+   *  Both are keyed by ISO date and projected to `Record<jd, …>` because the grid's unit is
+   *  the day-of-month, and neither may be able to break the page: a missing forecast yields
+   *  an empty map, and holidays are generated in-process with no I/O at all. The two are
+   *  independent — a holiday never touches routing, and the forecast never touches a plan. */
+  const weatherIso = monthConditions(
+    snapshotsInRange(
+      jalaliToIsoDate(today.jy, today.jm, 1).slice(0, 10),
+      jalaliToIsoDate(today.jy, today.jm, jalaliMonthLength(today.jy, today.jm)).slice(0, 10),
+    ),
+  );
+  /* Icon AND Persian name. Three conditions share the `fog` glyph, so an icon alone cannot
+     say whether a cell means rain, dust or fog — the same reason colour is never the only
+     signal in this app. */
+  const weatherMarks: Record<number, { icon: IconName; label: string }> = {};
+  for (let d = 1; d <= grid.days.length; d++) {
+    const worst = worstCondition(weatherIso[jalaliToIsoDate(today.jy, today.jm, d)] ?? []);
+    if (worst) weatherMarks[d] = { icon: CONDITION_ICON[worst], label: CONDITION_LABEL[worst] };
+  }
+
+  /* Keyed by day-of-month, and only for days the generator produced. A stored lunar row has
+     jd = 0 by design (nothing generated it), so keying on jd alone would collapse every such
+     row onto day 0 — a cell that does not exist. */
+  const holidaysByDay = new Map<number, { title_fa: string; kind: "official" | "commemorative" }>();
+  for (const h of listHolidaysForMonth(today.jy, today.jm)) {
+    if (h.jd >= 1 && h.jd <= grid.days.length) holidaysByDay.set(h.jd, h);
+  }
+
   return (
     <>
     <PageHeader route="/sales/schedule" />
@@ -274,6 +308,8 @@ export default async function SchedulePage({
         runs={runs}
         visits={visits}
         marks={marks}
+        weather={weatherMarks}
+        holidays={holidaysByDay}
       />
     </>    </>
   );

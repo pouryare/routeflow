@@ -3,35 +3,21 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 const root = path.resolve(__dirname, "..");
-const auditSrc = readFileSync(path.join(root, "scripts", "audit-copy.mjs"), "utf8");
 
-/** Run the script's real detector instead of re-implementing it.
+/** The script's REAL detector, imported — not re-implemented, and not read out of its
+ *  source text either.
  *
  *  The plan's test asserted only that the string "FE70" appears somewhere in the file,
- *  which a comment would satisfy. That is a test that cannot fail usefully: it proves a
- *  word was typed, not that the rule works. So the function is lifted out of the source
- *  and *executed* against the cases that matter — including the five clean Persian strings
- *  that must NOT match, which is the half a one-sided test never checks. */
-function loadDetectArabicChars(): (str: string) => { status: string; note: string } | null {
-  const start = auditSrc.indexOf("function detectArabicChars");
-  if (start === -1) throw new Error("detectArabicChars not found in scripts/audit-copy.mjs");
-  // Take the whole function body, whatever it is now — braces balanced by depth count.
-  let depth = 0;
-  let i = auditSrc.indexOf("{", start);
-  const open = i;
-  for (; i < auditSrc.length; i++) {
-    if (auditSrc[i] === "{") depth++;
-    else if (auditSrc[i] === "}") {
-      depth--;
-      if (depth === 0) break;
-    }
-  }
-  const src = auditSrc.slice(start, i + 1);
-  // eslint-disable-next-line no-new-func -- executing the script's own source on purpose
-  return new Function(`return (${src})`)() as (str: string) => { status: string; note: string } | null;
-}
-
-const detect = loadDetectArabicChars();
+ *  which a comment would satisfy: a test that cannot fail usefully. So the rule has to be
+ *  executed. My first attempt lifted the function out with `new Function`, which needed an
+ *  eslint-disable — and tests/no-lint-suppressions.test.ts bans those outright. That gate
+ *  is right and the suppression was the wrong answer, so audit-copy.mjs now EXPORTS the
+ *  detector instead. It also only runs main() when executed directly, so importing it here
+ *  cannot rewrite docs/copy-audit/catalogue.md as a side effect.
+ *
+ *  The half a one-sided test never checks also matters: five real Persian strings that must
+ *  NOT be flagged. */
+const { detectArabicChars: detect } = await import("../scripts/audit-copy.mjs");
 
 const ARABIC = (codePoint: number) => String.fromCodePoint(codePoint);
 

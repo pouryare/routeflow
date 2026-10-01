@@ -9,6 +9,7 @@ import {
   type WeatherAdjustment,
 } from "@/lib/weather/capacityAdjust";
 import type { WeatherReading } from "@/lib/weather/conditions";
+import type { ForecastRow } from "@/lib/weather/calendarForecast";
 import { resolvedCapacityFactorsFor } from "@/lib/repo/capacityLearning";
 
 export interface SnapshotRow extends WeatherSnapshotInput {
@@ -44,6 +45,28 @@ export function snapshotFor(lat: number, lng: number, date: string): SnapshotRow
       "SELECT * FROM weather_snapshots WHERE lat_r = ? AND lng_r = ? AND forecast_date = ?"
     )
     .get(round2(lat), round2(lng), date) as SnapshotRow | undefined;
+}
+
+/** Every snapshot inside an inclusive ISO date range, for one calendar month.
+ *
+ *  Deliberately NOT filtered by coordinates. The grid shows the weather where the work is,
+ *  and a month view that came back empty whenever the tenant's office sat more than a few
+ *  kilometres from a stored grid point would be worse than showing one city's forecast — a
+ *  driver reads "clear" the same way whoever measured it. Ranged dates are inclusive on
+ *  both ends so the caller cannot silently drop the last day of Esfand.
+ *
+ *  Raw SQL lives here rather than in the schedule page, which is grandfathered on the
+ *  allowlist; new SQL does not join it (tests/repo-boundary.test.ts). */
+export function snapshotsInRange(fromIso: string, toIso: string): ForecastRow[] {
+  return getDb()
+    .prepare(
+      `SELECT forecast_date, temp_min, temp_max, precip_prob, precip_mm, snow_mm,
+              wind_kmh, gust_kmh, visibility_m, weather_code
+         FROM weather_snapshots
+        WHERE forecast_date >= ? AND forecast_date <= ?
+        ORDER BY forecast_date`,
+    )
+    .all(fromIso, toIso) as unknown as ForecastRow[];
 }
 
 export function upsertSnapshot(row: WeatherSnapshotInput): void {
