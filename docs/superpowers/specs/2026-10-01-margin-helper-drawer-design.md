@@ -154,7 +154,6 @@ One table, mirroring `product_prices`, insert-only:
 ```sql
 CREATE TABLE IF NOT EXISTS product_costs (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  organization_id INTEGER NOT NULL REFERENCES organizations(id),
   product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE,
   packaging_id INTEGER REFERENCES packagings(id) ON DELETE CASCADE,
   method TEXT NOT NULL CHECK (method IN ('weighted_average', 'landed')),
@@ -164,13 +163,13 @@ CREATE TABLE IF NOT EXISTS product_costs (
   created_at TEXT NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_product_costs_lookup
-  ON product_costs(organization_id, product_id, packaging_id, valid_from);
+  ON product_costs(product_id, packaging_id, valid_from);
 ```
 
-`organization_id` is in the CREATE and **must also be added to `TENANT_TABLES`**
-in `lib/db.ts`. That list is not optional bookkeeping: `tests/tenancy-schema.test.ts`
-fails the build without it, and the failure mode it prevents is a table readable
-by every organisation that looks like nothing at all until a second tenant exists.
+**No `organization_id` column, and none added by the sweep.** It reaches a tenant through
+`products`, exactly as `product_prices` and `packagings` do — see the tenancy section above.
+It must be added to the **exempt** set in `tests/tenancy-schema.test.ts`, which fails the
+build for any table that is neither tenant-scoped nor exempt.
 
 No `PATCH` or `DELETE` route, for the same reason `app/api/sales/prices/route.ts`
 has none: a cost row that could be edited would take every order priced from it
@@ -205,6 +204,68 @@ hand-entered landed figure.
 Precedence mirrors `rateFor()` in `lib/commission.ts`, which already does exactly
 this shape — packaging-specific beats product-wide, each resolved by
 `effectiveAt()`, with the same "on a shared start date the higher id wins" rule.
+
+## Tenancy: `product_costs` is EXEMPT, not tenant-scoped
+
+`product_prices` carries **no** `organization_id` — `lib/pricing.ts` never mentions it,
+and `tests/tenancy-schema.test.ts` lists it under `exempt` with the reason
+`"through products"`, alongside `packagings` and `purchase_lines`.
+
+`product_costs` is the same shape: it is reached through `products`, exactly as a price is.
+So it must be added to the **exempt set in the test**, NOT to `TENANT_TABLES`.
+
+Adding it to `TENANT_TABLES` would `ALTER` a column the table does not declare and then
+stamp every row `organization_id = 1` — which is not a no-op, it is a *second* answer to
+"whose cost is this" that can disagree with the product's own tenant. A tenant-2 product's
+cost row stamped `1` is a cross-tenant leak that is invisible until two tenants exist.
+
+**This reverses the instruction in the first draft of this spec**, which said to add it to
+`TENANT_TABLES`. That was wrong, and the reason is worth recording: the `commission_tiers`
+precedent was the wrong precedent to copy. `commission_tiers` genuinely carries its own
+`organization_id` and its own `salesperson_user_id`, so it *is* tenant-scoped. A cost row
+has neither — it belongs to a product, and a product belongs to a tenant.
+
+Every read still filters by joining `products` and scoping on `products.organization_id`,
+which is what `readCatalogue()` already does at `lib/catalogue.ts:91`.
+
+## The drawer shows a MOVING cost, and must say so
+
+`avg_cost_toman` changes every time a purchase receipt lands. So the drawer's "your margin
+is 24%" is true *for today* and was different last month — not because the price moved, but
+because the cost did.
+
+The badge therefore carries its own age: the cost figure is stamped with the date it was
+read, and the breakdown labels the weighted-average case as *"میانگین متحرک — تا امروز"*.
+Without that, an owner comparing the drawer against last month's dashboard sees two
+different margins for the same product and concludes one of them is broken.
+
+## The badge is rounded; the arithmetic is not — do not let them feed each other
+
+`achieved_margin_pct` is a float. The badge displays it through `faFixed`. **Re-entering the
+displayed figure as the target does not return the same price.**
+
+Worked, with C = ۴۰٬۰۰۰, F = ۳٬۰۰۰, a = 7%:
+
+```
+target 25%            → price ۶۳٬۲۳۶   achieved 25.0008%
+re-enter 25.0008%     → price ۶۳٬۲۳۷   *** one Toman higher ***
+re-enter 25% (2dp)    → price ۶۳٬۲۳۶   stable
+re-enter 25.0% (1dp)  → price ۶۳٬۲۳۶   stable
+```
+
+The `Solve` result must therefore carry **both**:
+
+```ts
+{ ok: true, price_toman, achieved_margin_pct, achieved_margin_exact }
+```
+
+- `achieved_margin_pct` — full precision, used for assertions and for the copy button.
+- `achieved_margin_exact` — the *displayed* value, what `faFixed` would render.
+
+and the copy-to-target affordance writes `achieved_margin_exact`, never the raw float.
+A copy button that re-solves to a different price is the kind of bug that gets reported as
+"the app is random". The drift is bounded at 1 تومان because `Math.ceil` absorbs it, but
+bounded is not zero.
 
 ## The arithmetic
 
@@ -257,7 +318,14 @@ price loses money.
 
 ```ts
 export type Solve =
-  | { ok: true; price_toman: number; achieved_margin_pct: number }
+  | {
+      ok: true;
+      price_toman: number;
+      /** full precision, for assertions */
+      achieved_margin_pct: number;
+      /** what faFixed renders — feed THIS to the target field, see the fixed-point note */
+      achieved_margin_exact: number;
+    }
   | {
       ok: false;
       reason: "no_solution";
@@ -270,6 +338,14 @@ The drawer renders the Persian message naming both percentages. This is the same
 instinct as `tiers.ts`, whose comment records the bug where an open-ended tier
 paid `Infinity` Toman and "the whole ledger is nonsense". A refusal is more
 useful than a plausible wrong number.
+
+**The boundary is `1 − a − m ≤ 0`, refused.** At exactly `a + m == 1.0` the
+denominator is zero and the price is unbounded — no finite price achieves a 100%
+gross margin after a 0% deduction, so the honest answer is the refusal, not a
+very large number. Percentages summing past 100% are **not** clamped: clamping
+would silently invent a margin the owner did not ask for, which is the exact
+failure `validatePlan()` refuses when it catches a gap or an overlap between
+tiers.
 
 **Documented fallback:** if a future requirement makes percent-of-profit
 necessary, iteration to a fixed point is the escape hatch. It is not built now.
@@ -340,26 +416,32 @@ line with its basis named, so the number is auditable rather than magic.
 Following the codebase's own split:
 
 - **`solve.ts`** — pure boundary tests, no fixture: `C = 0` markup → `—`;
-  `a + m ≥ 1` → refusal not `Infinity`; ceil-then-achieved-margin agreement;
-  absent fields treated as 0; zero and negative prices; forward/reverse
-  round-trip; `m ≥ 100%` refused.
+  `a + m ≥ 1` → refusal not `Infinity`; **`a + m == 1.0` exactly → refusal**;
+  percentages summing past 100% → refusal, never clamped; `m ≥ 100%` refused;
+  ceil-then-achieved-margin agreement; absent fields treated as 0; zero and
+  negative prices; forward/reverse round-trip.
+- **Fixed-point round-trip** — the worked case in the spec, as a test: solve at
+  25%, assert `achieved_margin_exact` re-solves to the *same* `price_toman`, and
+  assert the raw float does **not** necessarily (documenting the drift rather than
+  pretending it away).
 - **`percent.ts`** — `toPercent("2.5") === 2.5` (**not** 3); Persian `٫` and
   Latin `.`; Persian digits `۲٫۵`; garbage → `null`; `toPercent("0") === 0`
   distinct from `toPercent("") === null`.
 - **`costBasis.ts`** — fixture proving the three fallback rows above; packaging
   precedence over product-wide; `effectiveAt()` tie-break on a shared date;
-  cost and price resolved on the same `onDate`.
+  cost and price resolved on the same `onDate`; **a read scoped through
+  `products.organization_id` returns nothing for another tenant's product.**
 - **`snapshotLine` integration** — **the test that proves the tool is honest.**
   Seed a `product_costs` landed row, create an order, assert
   `order_lines.unit_cost_toman` equals the landed figure and NOT `avg_cost_toman`.
   Then assert a backdated `product_costs` row does not change an order line that
   was already created. Proven non-vacuous by reverting `snapshotLine` to
   `packaging.avg_cost_toman` and watching it go red.
-- **`drawer`** — rendering test that an absent field shows `—` and not `۰`, and
-  that an unknown cost is marked unverified rather than shown as a confident ۲۵٪.
-- **Schema** — `tests/tenancy-schema.test.ts` already covers `organization_id`
-  membership; it will fail if `product_costs` is added without the `TENANT_TABLES`
-  entry, which is the point.
+- **`drawer`** — rendering test that an absent field shows `—` and not `۰`, that an
+  unknown cost is marked unverified rather than shown as a confident ۲۵٪, and that
+  the weighted-average figure is labelled as a moving average with its date.
+- **Schema** — `tests/tenancy-schema.test.ts` covers this: adding `product_costs`
+  to neither `TENANT_TABLES` nor the exempt set fails the build, which is the point.
 
 ## Conventions this must follow
 
