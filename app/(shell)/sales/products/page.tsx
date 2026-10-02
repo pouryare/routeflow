@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
 import { readCatalogue, costBasisFor } from "@/lib/catalogue";
+import { companyRatePerKg } from "@/lib/repo/commissionRates";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
@@ -30,6 +31,12 @@ export default async function ProductsPage() {
   const products = readCatalogue(db, session.organizationId, {
     includeInactive: session.role === "owner",
   });
+
+  /* ONE date for the whole page. The drawer resolves cost and commission against it, and
+     the drawer resolves the price against it too -- three separate effective-dated series
+     read on three different "today" values would be three answers to one question, and a
+     midnight rollover mid-render would make them disagree. */
+  const today = new Date().toISOString().slice(0, 10);
 
   const allPriceRows = db
     .prepare(
@@ -100,6 +107,7 @@ export default async function ProductsPage() {
 
       {session.role === "owner" && (
         <CatalogueEditor
+          companyRatePerKg={companyRatePerKg(db, session.organizationId, today)}
           products={products.map((p) => {
             /* The drawer's cost basis, resolved through the SAME `costBasisFor` the order
                line snapshots. Resolving it here rather than in the component is what keeps
@@ -111,12 +119,7 @@ export default async function ProductsPage() {
                forward solve would otherwise return a confident price built from overheads
                alone for a product whose real cost was never entered. */
             const packagingId = p.packagings[0]?.id ?? null;
-            const basis = costBasisFor(
-              db,
-              p.id,
-              packagingId,
-              new Date().toISOString().slice(0, 10)
-            );
+            const basis = costBasisFor(db, p.id, packagingId, today);
             return {
               id: p.id,
               name: p.name,

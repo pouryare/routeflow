@@ -34,7 +34,14 @@ const BUTTON =
  *  sitting, but prices change for years afterwards, and a price form buried at step
  *  three of a product wizard would be the wrong shape for the thing that happens most.
  */
-export default function CatalogueEditor({ products }: { products: ProductOption[] }) {
+export default function CatalogueEditor({
+  products,
+  companyRatePerKg,
+}: {
+  products: ProductOption[];
+  /** The company per-kg commission rate in force, so the drawer need not ask for it. */
+  companyRatePerKg: number | null;
+}) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
@@ -333,6 +340,7 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
         selectedProductId={rProduct}
         selectedPackagingId={rPackaging}
         price={rPrice}
+        companyRatePerKg={companyRatePerKg}
         onSelectProduct={(id) => {
           setRProduct(id);
           setRPackaging("");

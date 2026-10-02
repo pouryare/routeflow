@@ -61,6 +61,7 @@ export default function MarginHelperDrawer({
   selectedProductId,
   selectedPackagingId,
   price,
+  companyRatePerKg,
   onSelectProduct,
   onSelectPackaging,
 }: {
@@ -68,6 +69,10 @@ export default function MarginHelperDrawer({
   selectedProductId: string;
   selectedPackagingId: string;
   price: string;
+  /** The company per-kg commission rate in force, or null when none is recorded.
+   *  Prefills the rate box so the owner is not asked to type a figure the app holds --
+   *  but it stays an editable box, because the estimate is theirs to adjust. */
+  companyRatePerKg: number | null;
   onSelectProduct: (id: string) => void;
   onSelectPackaging: (id: string) => void;
 }) {
@@ -76,12 +81,63 @@ export default function MarginHelperDrawer({
   const [percent, setPercent] = useState("");
   const [tax, setTax] = useState("");
   const [target, setTarget] = useState("25");
+  /* null means "not filled in", which is NOT the same as 0: nobody has configured a rate
+     (unmeasured) versus this line genuinely pays no commission (measured as zero). The
+     rate arrives pre-filled from the company table and stays editable, because the estimate
+     is the owner's to adjust. */
   const [ratePerKg, setRatePerKg] = useState<string | null>(null);
+  const [rateTouched, setRateTouched] = useState(false);
+  /* The landed figure to SAVE, which is not the figure the drawer SHOWS: the display may
+     include commission and tax, and neither belongs in a cost row. */
+  const [costToSave, setCostToSave] = useState("");
+  const [saveState, setSaveState] = useState<{ kind: "ok" | "error"; text: string } | null>(
+    null
+  );
+  const [busy, setBusy] = useState(false);
 
   const product = products.find((p) => String(p.id) === selectedProductId) ?? null;
   const packagings = product?.packagings ?? [];
   const selectedPackaging =
     packagings.find((k) => String(k.id) === selectedPackagingId) ?? null;
+
+  /* Pre-filled from the server, but only while the owner has not typed their own. Writing
+     over a hand-entered rate on every render would make the box uneditable in practice. */
+  const effectiveRatePerKg = rateTouched
+    ? ratePerKg
+    : companyRatePerKg === null
+      ? null
+      : String(companyRatePerKg);
+
+  /* A cost row is the LANDED figure only. Commission is payroll and tax is the government's
+     share; folding either into `cost_toman` would double-count them at order time, because
+     `snapshotLine()` adds nothing -- it freezes exactly what it is handed. */
+  async function saveCost() {
+    const parsed = toToman(costToSave);
+    if (product === null || parsed === null) return;
+    setBusy(true);
+    setSaveState(null);
+    try {
+      const res = await fetch("/api/sales/costs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          product_id: product.id,
+          packaging_id: selectedPackaging?.id ?? null,
+          method: "landed",
+          cost_toman: parsed,
+          valid_from: new Date().toISOString().slice(0, 10),
+        }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      setSaveState(
+        res.ok
+          ? { kind: "ok", text: "بهای تمام‌شده ثبت شد" }
+          : { kind: "error", text: json.error ?? "ثبت نشد" }
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
 
   /* An absent optional is 0 to the ARITHMETIC and UNSET to the SCREEN. The two are
      separated deliberately -- see the UNSET note above. */
@@ -100,7 +156,7 @@ export default function MarginHelperDrawer({
      configured a rate (unmeasured) versus this line genuinely pays no commission. Only
      the arithmetic treats them alike, and only because there is nothing to add either
      way. */
-  const ratePerKgToman = ratePerKg === null ? null : toToman(ratePerKg);
+  const ratePerKgToman = effectiveRatePerKg === null ? null : toToman(effectiveRatePerKg);
   const commissionToman = commissionForUnit(
     product?.kg_per_base_unit ?? 0,
     ratePerKgToman
@@ -249,13 +305,16 @@ export default function MarginHelperDrawer({
               <input
                 id="mh-rate"
                 className={FIELD}
-                value={ratePerKg ?? ""}
-                onChange={(e) => setRatePerKg(e.target.value === "" ? null : e.target.value)}
+                value={effectiveRatePerKg ?? ""}
+                onChange={(e) => {
+                  setRateTouched(true);
+                  setRatePerKg(e.target.value === "" ? null : e.target.value);
+                }}
                 inputMode="numeric"
                 placeholder={UNSET}
               />
               <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                {ratePerKg === null
+                {ratePerKgToman === null
                   ? "نرخ ثبت نشده — پورسانت در محاسبه نیست"
                   : product && product.kg_per_base_unit > 0
                     ? `تخمین هر واحد: ${faNum(commissionToman)} تومان`
@@ -294,6 +353,51 @@ export default function MarginHelperDrawer({
               {selectedPackaging ? ` · ${selectedPackaging.name}` : ""}
             </p>
           )}
+
+          {/* The one thing this drawer WRITES -- and it is not a price.
+              `POST /api/sales/prices` stays the only way a price enters the system, so
+              there is one path to price history and the owner still submits through the
+              form above. A cost override has no such existing control, so this is where it
+              belongs: the number is shown, named as landed, and inserted rather than
+              edited -- the previous cost survives as history. */}
+          <div className="flex flex-col gap-[var(--space-2)] border-t border-[var(--border)] pt-[var(--space-3)]">
+            <div>
+              <label className={LABEL} htmlFor="mh-cost-save">
+                ثبت بهای تمام‌شده تازه (تومان)
+              </label>
+              <input
+                id="mh-cost-save"
+                className={FIELD}
+                value={costToSave}
+                onChange={(e) => setCostToSave(e.target.value)}
+                inputMode="numeric"
+                placeholder={product ? faNum(product.cost_toman) : UNSET}
+              />
+            </div>
+            <div className="flex flex-wrap items-center gap-[var(--space-3)]">
+              <button
+                type="button"
+                onClick={saveCost}
+                disabled={busy || product === null || toToman(costToSave) === null}
+                className="flex items-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-50"
+              >
+                <Icon name="check" size="md" />
+                ثبت بهای تمام‌شده
+              </button>
+              <span className="text-[length:var(--text-xs)] leading-5 text-[var(--text-faint)]">
+                قیمت‌های قبلی پاک نمی‌شوند؛ سفارش‌های گذشته با بهای خودشان می‌مانند.
+              </span>
+            </div>
+            {saveState && (
+              <p
+                className={`m-0 text-[length:var(--text-sm)] ${
+                  saveState.kind === "ok" ? "text-[var(--good)]" : "text-[var(--crit)]"
+                }`}
+              >
+                {saveState.text}
+              </p>
+            )}
+          </div>
         </div>
       )}
     </section>

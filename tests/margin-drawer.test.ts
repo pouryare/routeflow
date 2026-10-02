@@ -39,6 +39,7 @@ async function mount(props: Partial<React.ComponentProps<typeof MarginHelperDraw
         selectedProductId: "1",
         selectedPackagingId: "",
         price: "440000",
+        companyRatePerKg: null,
         onSelectProduct: () => {},
         onSelectPackaging: () => {},
         ...props,
@@ -55,6 +56,26 @@ async function mount(props: Partial<React.ComponentProps<typeof MarginHelperDraw
 }
 
 const text = (c: HTMLElement) => c.textContent ?? "";
+
+/** Types into the save box and presses the save button. The button is disabled while the
+ *  box is empty or unparseable -- a cost row is whole Toman, and sending a half-typed
+ *  figure would either be refused by the API or, worse, silently rounded. */
+async function saveCost(c: HTMLElement, value = "400000") {
+  const input = c.querySelector("#mh-cost-save") as HTMLInputElement;
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      window.HTMLInputElement.prototype,
+      "value"
+    )!.set!;
+    setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  const button = [...c.querySelectorAll("button")].find((b) =>
+    b.textContent?.includes("ثبت بهای تمام‌شده")
+  );
+  await act(async () => button!.dispatchEvent(new MouseEvent("click", { bubbles: true })));
+  return button;
+}
 
 describe("MarginHelperDrawer", () => {
   it("renders the summary and, opened, the full breakdown", async () => {
@@ -152,5 +173,71 @@ describe("MarginHelperDrawer", () => {
     const c = await mount();
     // The project rule: one library, reached one way. An emoji here fails the icon audit.
     expect(text(c)).not.toMatch(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/u);
+  });
+
+  it("prefills the commission box from the rate the system already knows", async () => {
+    // The owner should not be asked to type a figure the app holds. `readCompanyRatePerKg`
+    // already resolves it; all the drawer does is show it, still overridable.
+    const c = await mount({ companyRatePerKg: 200_000 });
+    const rate = c.querySelector("#mh-rate") as HTMLInputElement;
+    expect(rate.value).toBe("200000");
+    expect(text(c)).toContain("تخمین هر واحد");
+  });
+
+  it("says no rate is recorded rather than showing a zero when none exists", async () => {
+    const c = await mount({ companyRatePerKg: null });
+    const rate = c.querySelector("#mh-rate") as HTMLInputElement;
+    expect(rate.value).toBe("");
+    expect(text(c)).toContain("نرخ ثبت نشده");
+  });
+
+  it("saves a cost override through the API and says so", async () => {
+    const fetchMock = vi.fn(
+      async () => new Response(JSON.stringify({ ok: true, id: 7 }), { status: 201 })
+    );
+    vi.stubGlobal("fetch", fetchMock);
+    const c = await mount();
+    await saveCost(c);
+
+    const call = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
+    expect(call[0]).toBe("/api/sales/costs");
+    expect(call[1].method).toBe("POST");
+    const body = JSON.parse(String(call[1].body));
+    // A cost row, never a price: prices go through /api/sales/prices and nowhere else.
+    expect(body).toMatchObject({
+      product_id: 1,
+      packaging_id: null,
+      method: "landed",
+      cost_toman: 400_000,
+    });
+    expect(body).not.toHaveProperty("price_toman");
+    expect(text(c)).toContain("بهای تمام‌شده ثبت شد");
+    vi.unstubAllGlobals();
+  });
+
+  it("reports a refused save instead of pretending it worked", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ ok: false, error: "کالا پیدا نشد" }), { status: 404 })
+      )
+    );
+    const c = await mount();
+    await saveCost(c);
+    expect(text(c)).toContain("کالا پیدا نشد");
+    expect(text(c)).not.toContain("ثبت شد\n");
+    vi.unstubAllGlobals();
+  });
+
+  it("keeps the save button disabled until the box holds a whole number", async () => {
+    const c = await mount();
+    const find = () =>
+      [...c.querySelectorAll("button")].find((b) =>
+        b.textContent?.includes("ثبت بهای تمام‌شده")
+      ) as HTMLButtonElement;
+    expect(find().disabled).toBe(true);
+    await saveCost(c, "400000");
+    expect(find().disabled).toBe(false);
   });
 });
