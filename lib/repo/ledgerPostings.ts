@@ -2,6 +2,10 @@ import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
 import { postJournal, accountIdByCode, LedgerError } from "./ledger";
 
+/* Re-exported so a caller can tell a REFUSAL (show the user) from a bug, without also
+   importing the engine module. postExpense and postSupplierPayment both throw it. */
+export { LedgerError };
+
 function accountOrThrow(code: string): number {
   const id = accountIdByCode(code);
   if (!id) throw new LedgerError(`حساب ${code} یافت نشد`);
@@ -99,7 +103,108 @@ export function postReceiptReversal(
   });
 }
 
-/** The journal a payment's receipt produced, or undefined if it has none yet. */
+/** COGS is posted by delivery recognition, never by hand. */
+const COGS_CODE = "5101";
+
+export interface ExpenseCategory {
+  id: number;
+  code: string;
+  nameFa: string;
+  nameEn: string;
+}
+
+/** The manual expense categories: every postable, ACTIVE EXPENSE account EXCEPT COGS.
+ *
+ *  Populated from the chart, so adding a category is adding a row -- no code change, no
+ *  migration, and no reshaping of history. That is the deliberate lesson from
+ *  purchases.supplier, where free text made accounts payable impossible to build.
+ *
+ *  `is_postable = 1` drops the group headers (5000 هزینه‌ها is a total, not a category you
+ *  can spend against), and `active = 1` drops a category an owner has retired -- which is
+ *  how an account is withdrawn, since accounts_no_delete forbids removing it. */
+export function expenseCategories(): ExpenseCategory[] {
+  return getDb()
+    .prepare(
+      `SELECT id, code, name_fa AS nameFa, name_en AS nameEn
+         FROM accounts
+        WHERE type = 'EXPENSE' AND is_postable = 1 AND active = 1 AND code <> ?
+        ORDER BY code`
+    )
+    // `as unknown as` is the house idiom off node:sqlite's Record<string, SQLOutputValue>
+    // -- see listSuppliers. A direct cast is TS2352.
+    .all(COGS_CODE) as unknown as ExpenseCategory[];
+}
+
+/** An expense: Dr the category / Cr cash.
+ *
+ *  The category is an account id, not a string. Hand-posting to COGS is refused because
+ *  delivery recognition owns it, and a manual COGS line would double-count cost on the
+ *  income statement -- the one number an owner reads to decide whether the business works.
+ *
+ *  `cashAccountFor` refuses CREDIT_NOTE and OTHER, so an expense cannot be "paid" by a
+ *  method that is not money. */
+export function postExpense(
+  db: DatabaseSync,
+  input: {
+    organizationId: number;
+    accountId: number;
+    amountToman: number;
+    method: string;
+    incurredAt: string;
+    incurredBy: number;
+    memo?: string | null;
+  }
+): number {
+  const acct = db
+    .prepare("SELECT id, type, code, is_postable, active FROM accounts WHERE id = ?")
+    .get(input.accountId) as
+    | { id: number; type: string; code: string; is_postable: number; active: number }
+    | undefined;
+
+  if (!acct || acct.type !== "EXPENSE" || !acct.is_postable || !acct.active) {
+    throw new LedgerError("این حساب، حساب هزینه نیست");
+  }
+  if (acct.code === COGS_CODE) {
+    throw new LedgerError("بهای تمام‌شده با تحویل کالا ثبت می‌شود و دستی ثبت نمی‌شود");
+  }
+
+  return postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.incurredAt,
+    sourceType: "EXPENSE",
+    createdBy: input.incurredBy,
+    memo: input.memo ?? null,
+    legs: [
+      { accountId: input.accountId, side: "D", amountToman: input.amountToman },
+      { accountId: cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+    ],
+  });
+}
+
+/** Record an expense, opening its own transaction.
+ *
+ *  The wrapper exists so NO ROUTE ever runs `BEGIN IMMEDIATE`. `tests/repo-boundary.test.ts`
+ *  fails the build for raw SQL outside `lib/repo/`, and the plan's original route did
+ *  exactly that -- so the transaction moved here, mirroring recordPayment / recordPaymentTxn.
+ *  A route that opened its own transaction could also get the nesting wrong against a
+ *  caller already inside one, which is the crash Task 2 spent a mutation proving.
+ *
+ *  `postExpense` takes a db and opens nothing, and stays the only writer of a journal. */
+export function recordExpense(
+  input: Parameters<typeof postExpense>[1]
+): number {
+  const db = getDb();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const id = postExpense(db, input);
+    db.exec("COMMIT");
+    return id;
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 export function receiptJournalIdFor(paymentId: number): number | undefined {
   const row = getDb()
     .prepare(
