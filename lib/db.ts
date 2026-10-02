@@ -9,6 +9,10 @@ import { polygonCentroid } from "./simplify";
 import type { DistrictGeometry } from "./simplify";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { createCrmTables, migrateCrm } from "./repo/crm/migrate";
+/* ledger.ts imports getDb from THIS module. ESM resolves it because neither module calls
+   the other at evaluation time -- getDb and postJournal are both functions, so the cycle
+   is inert. A lazy require() would be the wrong fix and does not exist in ESM. */
+import { postJournal } from "./repo/ledger";
 
 // Re-exported so server modules that already import from db.ts keep one import site.
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
@@ -499,6 +503,122 @@ export function seedAccounts(db: DatabaseSync): void {
      ON CONFLICT(code) DO NOTHING`
   );
   for (const r of rows) ins.run(r[0], r[1], r[2], r[3], r[4], r[5]);
+}
+
+/** Turn existing payments into ledger postings.
+ *
+ *  There is deliberately NO app_meta marker here, and
+ *  tests/no-one-shot-data-migration.test.ts is why. A marker is the right tool when a
+ *  migration converts an old REPRESENTATION that stops existing afterwards -- the three
+ *  exemptions in that file are all of that kind, where `paid_toman` is dropped and a row
+ *  arriving later is already in the new shape.
+ *
+ *  This is not that. A `payments` row survives the backfill and is the screen's own
+ *  source of truth, so "have I posted it yet" is a fact about a ROW, not about time.
+ *  Guarded on a marker, every receipt taken after the first boot would be silently
+ *  unposted -- which is precisely the quiet divergence the ledger section exists to
+ *  prevent. My first draft had the marker and was caught by that test.
+ *
+ *  So the predicate is per-row and lives in the query: `NOT EXISTS` on
+ *  (source_type, source_id) is both the work list and the idempotency proof. Running on
+ *  every boot is cheap -- it is one indexed anti-join over payments -- and it is correct
+ *  by construction rather than correct-until-someone-adds-a-payment.
+ *
+ *  Voided payments are skipped: they have a reversal, not a receipt. Historical orders
+ *  are NOT recognised for revenue here, because product_costs is effective-dated and new
+ *  and today's average is not what the goods cost then -- a wrong number that looks
+ *  right is worse than an absent one. That P&L is labelled cost-incomplete.
+ *
+ *  The receipt is ONLY cash/bank vs receivables. It does not recognise revenue even when
+ *  the payment is allocated to orders: the cash arrived and the debt fell, which is a
+ *  different event from the goods moving. Recognition posts on delivery (Task 7). */
+export function backfillLedger(db: DatabaseSync): void {
+  const acct = (code: string) =>
+    db.prepare("SELECT id FROM accounts WHERE code = ?").get(code) as { id: number } | undefined;
+  const cash = acct("1101");
+  const bank = acct("1102");
+  const ar = acct("1201");
+  // The chart has not been seeded yet; leave the marker unset so a later boot does the work.
+  if (!cash || !bank || !ar) return;
+
+  const rows = db
+    .prepare(
+      `SELECT p.id, p.organization_id, p.customer_id, p.amount_toman, p.method,
+              p.received_at, p.received_by
+         FROM payments p
+        WHERE p.voided_at IS NULL
+          AND NOT EXISTS (
+            SELECT 1 FROM journals j
+             WHERE j.source_type = 'PAYMENT' AND j.source_id = p.id
+          )`
+    )
+    .all() as Array<{
+    id: number;
+    organization_id: number | null;
+    customer_id: number;
+    amount_toman: number;
+    method: string;
+    received_at: string;
+    received_by: number;
+  }>;
+
+  /* CREDIT_NOTE and OTHER are NOT silently treated as bank. A credit note is not money
+     received, and 'OTHER' says nothing about where the value went; posting either to
+     1102 invents a fact. They are recorded as UNMAPPED for a human instead -- see
+     unmappedBackfillPayments() -- and the reconciliation test asserts the count, so the
+     gap between payments and the ledger is visible rather than quiet. */
+  const mappable = rows.filter((p) => p.method !== "CREDIT_NOTE" && p.method !== "OTHER");
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const p of mappable) {
+      const cashAccount = p.method === "CASH" ? cash.id : bank.id;
+      postJournal(db, {
+        organizationId: p.organization_id ?? 1,
+        postedAt: p.received_at,
+        sourceType: "PAYMENT",
+        sourceId: p.id,
+        createdBy: p.received_by,
+        memo: "انتقال از سیستم قبلی",
+        legs: [
+          { accountId: cashAccount, side: "D", amountToman: p.amount_toman },
+          {
+            accountId: ar.id,
+            side: "C",
+            amountToman: p.amount_toman,
+            customerId: p.customer_id,
+          },
+        ],
+      });
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
+/** Payments the backfill deliberately did NOT post, because no account honestly holds
+ *  them. Returned rather than logged so the reconciliation gate can assert on the number
+ *  and a future report can offer a human a list to fix. */
+export function unmappedBackfillPayments(db: DatabaseSync): {
+  id: number;
+  amount_toman: number;
+  method: string;
+  received_at: string;
+}[] {
+  return db
+    .prepare(
+      `SELECT p.id, p.amount_toman, p.method, p.received_at
+         FROM payments p
+        WHERE p.voided_at IS NULL
+          AND p.method IN ('CREDIT_NOTE','OTHER')
+          AND NOT EXISTS (
+            SELECT 1 FROM journals j
+             WHERE j.source_type = 'PAYMENT' AND j.source_id = p.id
+          )`
+    )
+    .all() as { id: number; amount_toman: number; method: string; received_at: string }[];
 }
 
 export function backfillStockLedger(db: DatabaseSync): void {
@@ -3831,6 +3951,11 @@ export function getDb(): DatabaseSync {
   // on every boot is what guarantees a row added to the chart in a later release reaches
   // every database, including one that booted a hundred times before that release.
   seedAccounts(db);
+
+  // Turn existing payments into ledger postings. After seedAccounts (it needs account
+  // ids) and BEFORE any live payment path can write, so the cutover in Task 4 never races
+  // the history it is supposed to sit on top of.
+  backfillLedger(db);
 
   // Phase 2: convert legacy purchases + deliveries into the stock-movement ledger, once.
   backfillStockLedger(db);
