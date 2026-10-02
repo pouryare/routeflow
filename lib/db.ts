@@ -107,6 +107,9 @@ export const TENANT_TABLES = [
   "contacts",
   "activities",
   "customer_tags",
+  "fiscal_periods",
+  "journals",
+  "ledger_entries",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -440,6 +443,64 @@ export function backfillLegacyPayments(db: DatabaseSync): void {
  *  SUM(stock_movements.base_qty) for a product equals the old purchased minus delivered.
  *  Guarded on an app_meta marker and by per-row existence checks, so a re-run is a
  *  no-op. Pure SQL here rather than lib/repo to avoid a db.ts <-> repo import cycle. */
+export function seedAccounts(db: DatabaseSync): void {
+  /* The leading digit carries the statement, so a code can be read without opening the
+     row: 1xxx assets, 2xxx liabilities, 3xxx equity, 4xxx revenue, 5xxx expenses. The
+     first draft of the spec numbered equity 22xx and revenue 41xx while the group headers
+     claimed 3000 and 4000 -- each sitting inside the previous category's block, which is
+     exactly what a code exists to prevent. tests/ledger-schema.test.ts asserts the
+     invariant so it cannot drift back.
+
+     Idempotent by code, so it runs on every boot. is_system=1 marks these as the shared
+     taxonomy rather than a tenant's own additions: a user may ADD accounts, never edit
+     these, and retiring one is active=0, never a delete (see accounts_no_delete). */
+  const rows: ReadonlyArray<readonly [string, string, string, string, string, number]> = [
+    // code,   name_fa,               name_en,               type,        normal_balance, is_postable
+    ["1000", "دارایی‌ها", "Assets", "ASSET", "DEBIT", 0],
+    ["1101", "صندوق", "Cash on hand", "ASSET", "DEBIT", 1],
+    ["1102", "بانک", "Bank account", "ASSET", "DEBIT", 1],
+    ["1103", "تنخواه گردان", "Petty cash", "ASSET", "DEBIT", 1],
+    ["1201", "حساب‌های دریافتنی", "Accounts receivable", "ASSET", "DEBIT", 1],
+    ["1202", "چک‌های دریافتنی", "Cheques receivable", "ASSET", "DEBIT", 1],
+    ["1203", "موجودی کالا", "Inventory", "ASSET", "DEBIT", 1],
+    ["1301", "پیش‌پرداخت", "Prepayments", "ASSET", "DEBIT", 1],
+    ["2000", "بدهی‌ها", "Liabilities", "LIABILITY", "CREDIT", 0],
+    ["2101", "حساب‌های پرداختنی", "Accounts payable", "LIABILITY", "CREDIT", 1],
+    ["2102", "چک‌های پرداختنی", "Cheques payable", "LIABILITY", "CREDIT", 1],
+    /* 2103 exists because the commission subsystem already knows what a rep is owed.
+       Without a liability here, commission is invisible on the balance sheet: the app
+       knows the number and the books do not. */
+    ["2103", "تعهدات کمیسیون", "Commission payable", "LIABILITY", "CREDIT", 1],
+    /* 2104 is seeded and never written in this slice. It is the seam for the tax reporting
+       Q2 deferred: a VAT line can later map to an account that has existed since day one,
+       rather than a schema change on posted history. */
+    ["2104", "مالیات پرداختنی", "Taxes payable", "LIABILITY", "CREDIT", 1],
+    ["3000", "سرمایه", "Equity", "EQUITY", "CREDIT", 0],
+    ["3101", "سرمایه اولیه", "Capital", "EQUITY", "CREDIT", 1],
+    ["3102", "برداشت و اضافه‌برداشت", "Owner's drawings", "EQUITY", "DEBIT", 1],
+    ["3103", "سود انباشته", "Retained earnings", "EQUITY", "CREDIT", 1],
+    ["4000", "درآمدها", "Revenue", "REVENUE", "CREDIT", 0],
+    ["4101", "فروش", "Sales revenue", "REVENUE", "CREDIT", 1],
+    ["4102", "برگشت از فروش", "Sales returns", "REVENUE", "DEBIT", 1],
+    ["5000", "هزینه‌ها", "Expenses", "EXPENSE", "DEBIT", 0],
+    /* 5101 is COGS and is posted by delivery recognition, never entered by hand. It is
+       excluded from the expense dropdown: a manual expense against it would double-count
+       the cost of goods already recognised on the sale. */
+    ["5101", "بهای تمام‌شده", "Cost of goods sold", "EXPENSE", "DEBIT", 1],
+    ["5102", "اجاره", "Rent", "EXPENSE", "DEBIT", 1],
+    ["5103", "حقوق", "Salary", "EXPENSE", "DEBIT", 1],
+    ["5104", "سوخت و حمل", "Fuel and delivery", "EXPENSE", "DEBIT", 1],
+    ["5105", "تلفن و اینترنت", "Phone and internet", "EXPENSE", "DEBIT", 1],
+    ["5106", "سایر", "Other expenses", "EXPENSE", "DEBIT", 1],
+  ];
+  const ins = db.prepare(
+    `INSERT INTO accounts (code, name_fa, name_en, type, normal_balance, is_postable, is_system, active)
+     VALUES (?, ?, ?, ?, ?, ?, 1, 1)
+     ON CONFLICT(code) DO NOTHING`
+  );
+  for (const r of rows) ins.run(r[0], r[1], r[2], r[3], r[4], r[5]);
+}
+
 export function backfillStockLedger(db: DatabaseSync): void {
   const done = db
     .prepare("SELECT value FROM app_meta WHERE key = 'stock_ledger_backfill_done'")
@@ -1326,6 +1387,95 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_product_costs_lookup
       ON product_costs(product_id, packaging_id, valid_from);
+
+    /* ---- Ledger ---------------------------------------------------------------------
+       accounts is GLOBAL on purpose: the chart is the business's structure, the postings
+       are the tenant's. That is the product_costs argument (69a7e25) and the same one
+       districts makes -- a chart of accounts that drifts per tenant is two charts that
+       disagree. It is registered as exempt in tests/tenancy-schema.test.ts. */
+
+    CREATE TABLE IF NOT EXISTS accounts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      code TEXT NOT NULL UNIQUE,
+      name_fa TEXT NOT NULL,
+      name_en TEXT NOT NULL,
+      type TEXT NOT NULL CHECK (type IN ('ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE')),
+      parent_id INTEGER REFERENCES accounts(id),
+      is_postable INTEGER NOT NULL DEFAULT 1 CHECK (is_postable IN (0,1)),
+      normal_balance TEXT NOT NULL CHECK (normal_balance IN ('DEBIT','CREDIT')),
+      is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0,1)),
+      active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1))
+    );
+
+    CREATE TABLE IF NOT EXISTS fiscal_periods (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      period_key TEXT NOT NULL,
+      status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')),
+      closed_at TEXT,
+      closed_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL,
+      UNIQUE (organization_id, period_key)
+    );
+
+    CREATE TABLE IF NOT EXISTS journals (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      seq INTEGER NOT NULL,
+      posted_at TEXT NOT NULL,
+      period_key TEXT NOT NULL,
+      memo TEXT,
+      source_type TEXT NOT NULL CHECK (source_type IN
+        ('PAYMENT','CHEQUE','SALE','PURCHASE','SUPPLIER_PAYMENT','EXPENSE','OPENING','MANUAL','REVERSAL')),
+      source_id INTEGER,
+      reverses_journal_id INTEGER REFERENCES journals(id),
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    /* Gapless per tenant: a tax office rejects holes, and the nextSeq read-then-write
+       lives inside the posting transaction. */
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_journals_org_seq ON journals(organization_id, seq);
+    CREATE INDEX IF NOT EXISTS ix_journals_org_period ON journals(organization_id, period_key, id);
+
+    CREATE TABLE IF NOT EXISTS ledger_entries (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      journal_id INTEGER NOT NULL REFERENCES journals(id),
+      account_id INTEGER NOT NULL REFERENCES accounts(id),
+      side TEXT NOT NULL CHECK (side IN ('D','C')),
+      amount_toman INTEGER NOT NULL CHECK (amount_toman > 0),
+      customer_id INTEGER REFERENCES customers(id),
+      supplier_id INTEGER,
+      memo TEXT,
+      created_at TEXT NOT NULL
+    );
+    /* ix_ledger_entries_account is on (account_id, id), NOT (account_id, posted_at):
+       posted_at lives on journals and is not a column here, and an index naming a
+       missing column fails the whole exec. The account statement joins journals. */
+    CREATE INDEX IF NOT EXISTS ix_ledger_entries_journal ON ledger_entries(journal_id);
+    CREATE INDEX IF NOT EXISTS ix_ledger_entries_account ON ledger_entries(account_id, id);
+    CREATE INDEX IF NOT EXISTS ix_ledger_entries_customer ON ledger_entries(customer_id, id);
+    CREATE INDEX IF NOT EXISTS ix_ledger_entries_supplier ON ledger_entries(supplier_id, id);
+
+    /* Append-only, enforced by the DATABASE and not by convention. IF NOT EXISTS is
+       mandatory: these re-run on every boot and a bare CREATE TRIGGER throws. The pattern
+       is lib/repo/crm/migrate.ts's -- and payments has no trigger at all, so this is the
+       first thing in the money path to have one. No role can edit posted history; a
+       mistake is corrected by a REVERSAL journal that points at the original. */
+    CREATE TRIGGER IF NOT EXISTS journals_no_update BEFORE UPDATE ON journals
+      BEGIN SELECT RAISE(ABORT, 'journals is append-only'); END;
+    CREATE TRIGGER IF NOT EXISTS journals_no_delete BEFORE DELETE ON journals
+      BEGIN SELECT RAISE(ABORT, 'journals is append-only'); END;
+    CREATE TRIGGER IF NOT EXISTS ledger_entries_no_update BEFORE UPDATE ON ledger_entries
+      BEGIN SELECT RAISE(ABORT, 'ledger_entries is append-only'); END;
+    CREATE TRIGGER IF NOT EXISTS ledger_entries_no_delete BEFORE DELETE ON ledger_entries
+      BEGIN SELECT RAISE(ABORT, 'ledger_entries is append-only'); END;
+    /* An account a posted leg depends on is part of the history too. Deactivating is how
+       an account retires; deleting it would silently orphan every leg that used it. */
+    CREATE TRIGGER IF NOT EXISTS accounts_no_delete BEFORE DELETE ON accounts
+      BEGIN
+        SELECT RAISE(ABORT, 'accounts is append-only: deactivate an account, do not delete it');
+      END;
 
     /* ---- Orders ------------------------------------------------------------------
        The table that replaces the paper. Sales were never recorded in the workbook --
@@ -3675,6 +3825,12 @@ export function getDb(): DatabaseSync {
       continue;
     db.exec(`UPDATE ${table} SET organization_id = 1 WHERE organization_id IS NULL`);
   }
+
+  // Seed the chart of accounts before any ledger backfill can need an account id. Not
+  // guarded on an app_meta marker: seedAccounts is itself idempotent by code, so running it
+  // on every boot is what guarantees a row added to the chart in a later release reaches
+  // every database, including one that booted a hundred times before that release.
+  seedAccounts(db);
 
   // Phase 2: convert legacy purchases + deliveries into the stock-movement ledger, once.
   backfillStockLedger(db);

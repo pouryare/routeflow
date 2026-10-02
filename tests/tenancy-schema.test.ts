@@ -199,6 +199,12 @@ describe("organization_id backfill", () => {
                              // polygons drift apart until منطقه 14 means two different places.
                              // It carries no organization_id; territory scoping is group_id, and
                              // a boundary an owner draws is visible to the whole install.
+      "accounts",          // the chart of accounts, NOT tenant data. صندوق is صندوق in every
+                             // organisation on this server. A per-tenant copy of the same chart
+                             // drifts -- one tenant renames an account or deletes a code -- and
+                             // then two tenants' trial balances stop being comparable, which is
+                             // the one thing a shared chart exists to make possible. The postings
+                             // (journals, ledger_entries) ARE tenant-scoped.
     ]);
 
     const unaccounted = all.filter((t) => !exempt.has(t) && !(TENANT_TABLES as readonly string[]).includes(t));
