@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { clearLedger } from "./helpers/ledgerTeardown";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -62,9 +63,20 @@ function deliveredOrder(total: number, dateISO = "2026-01-01"): number {
 
 beforeEach(() => {
   const db = getDb();
+
+  /* FIRST, because everything below depends on it. The ledger is append-only by trigger,
+     so its rows cannot be deleted, and its AR leg holds a real FK to customers(id). Once
+     a previous test has posted a receipt, the `DELETE FROM customers` below raises
+     FOREIGN KEY constraint failed. Children before parents.
+
+     A fixture may reset state the application never can; what would not be acceptable is
+     dropping the FK or the triggers to make a fixture convenient. */
+  clearLedger(db);
+
   db.exec(
     "DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
   );
+
   const now = new Date().toISOString();
   userId = Number(
     db

@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { clearLedger } from "./helpers/ledgerTeardown";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -53,6 +54,13 @@ function deliveredOrder(total: number, dateISO = "2026-01-01"): number {
 
 beforeEach(() => {
   const db = getDb();
+  /* A cheque that settles an order goes through the payment path, which posts a
+     ledger receipt whose AR leg REFERENCES customers(id). The ledger is append-only by
+     trigger, so `DELETE FROM customers` below raises FOREIGN KEY constraint failed.
+     Children before parents -- see tests/helpers/ledgerTeardown.ts, including its scope
+     warning about never making this a global setupFiles hook. */
+  clearLedger(db);
+
   db.exec(
     "DELETE FROM reminders; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM cheques; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
   );

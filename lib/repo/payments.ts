@@ -4,6 +4,11 @@ import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import type { CustomerDebt } from "@/lib/types";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 import { tryEmitEvent } from "./events";
+/* The business meaning of a receipt lives in ledgerPostings, NOT here and NOT in the
+   engine. postJournal stays the only writer of journals; keeping the mapping in a
+   separate file makes "one function writes a journal" structural rather than a comment
+   a later editor can route around with a special case. */
+import { postReceipt, postReceiptReversal, receiptJournalIdFor } from "./ledgerPostings";
 
 export type { CustomerDebt };
 
@@ -321,6 +326,24 @@ export function recordPaymentTxn(
     db
   );
 
+  /* The receipt posts in the SAME transaction as the payments row. Two systems that
+     record the same money must agree or they will not: if this throws, the payment is
+     rolled back with it, and there is never a receipt in one system and not the other.
+
+     postReceipt takes `db` and opens NOTHING -- the caller's BEGIN IMMEDIATE is already
+     open here, and a nested BEGIN throws in SQLite. That is the whole reason
+     recordPayment/recordPaymentTxn exists as a pair. */
+  postReceipt(db, {
+    organizationId,
+    paymentId,
+    customerId: input.customer_id,
+    amountToman: input.amount_toman,
+    method: input.method,
+    receivedAt: input.received_at,
+    receivedBy: input.received_by,
+    memo: input.note ?? null,
+  });
+
   return paymentId;
 }
 
@@ -578,10 +601,28 @@ export function voidPaymentTxn(
   reason: string
 ): void {
   const payment = db
-    .prepare("SELECT id, voided_at FROM payments WHERE id = ? AND organization_id = ?")
-    .get(id, organizationId) as { id: number; voided_at: string | null } | undefined;
+    .prepare(
+      `SELECT id, customer_id, amount_toman, method, received_at, received_by, voided_at
+         FROM payments WHERE id = ? AND organization_id = ?`
+    )
+    .get(id, organizationId) as
+    | {
+        id: number;
+        customer_id: number;
+        amount_toman: number;
+        method: string;
+        received_at: string;
+        received_by: number;
+        voided_at: string | null;
+      }
+    | undefined;
   if (!payment) throw new PaymentError("دریافت پیدا نشد");
   if (payment.voided_at) throw new PaymentError("این دریافت قبلاً باطل شده است");
+
+  /* Read the ORIGINAL receipt journal BEFORE the UPDATE. The reversal points at it, and
+     after this function runs the voided payment is excluded from the backfill's work
+     list -- so a later attempt to find it would find nothing. Order is half the fix. */
+  const originalJournalId = receiptJournalIdFor(payment.id);
 
   const touched = (
     db
@@ -596,6 +637,24 @@ export function voidPaymentTxn(
     "UPDATE payments SET voided_at = ?, voided_by = ?, void_reason = ? WHERE id = ?"
   ).run(now, voidedBy, reason, id);
   db.prepare("DELETE FROM payment_allocations WHERE payment_id = ?").run(id);
+
+  /* A payment recorded before the ledger existed has no receipt journal. Voiding it must
+     not invent a reversal for money the ledger never saw -- that would post a credit with
+     no matching debit and break the trial balance. Skipping is the honest answer, and the
+     backfill leaves that payment unposted in both systems, consistently. */
+  if (originalJournalId !== undefined) {
+    postReceiptReversal(db, {
+      organizationId,
+      paymentId: payment.id,
+      customerId: payment.customer_id,
+      amountToman: payment.amount_toman,
+      method: payment.method,
+      originalJournalId,
+      reversedAt: now,
+      reversedBy: voidedBy,
+      reason,
+    });
+  }
 
   for (const orderId of touched) recomputeOrderPaymentTxn(db, organizationId, orderId);
 }

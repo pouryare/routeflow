@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import { clearLedger } from "./helpers/ledgerTeardown";
 
 const testDbPath = path.join(
   os.tmpdir(),
@@ -26,6 +27,14 @@ let packaging = 0;
 
 beforeEach(() => {
   const db = getDb();
+  /* The ledger is append-only by trigger and its AR leg REFERENCES customers(id), so
+     `DELETE FROM customers` below raises FOREIGN KEY constraint failed once any test in
+     this file has recorded a payment. Children before parents -- see
+     tests/helpers/ledgerTeardown.ts, and note the scope warning in it: many suites do not
+     set ROUTEFLOW_DB_PATH, so this must stay an explicit per-suite call and never a global
+     setupFiles hook, which would run against the real data/routeflow.db. */
+  clearLedger(db);
+
   db.exec(
     "PRAGMA foreign_keys=OFF; DELETE FROM order_events; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id>0; PRAGMA foreign_keys=ON;"
   );

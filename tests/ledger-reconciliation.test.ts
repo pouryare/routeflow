@@ -22,6 +22,23 @@ const debitOf = (code: string) =>
       "SELECT COALESCE(SUM(amount_toman),0) AS n FROM ledger_entries WHERE account_id = ? AND side = 'D'"
     )
     .get(accountIdByCode(code)!) as { n: number }).n;
+/* NET movement on an account: debits minus credits.
+
+   A void does not DELETE the receipt, it adds a REVERSAL whose cash leg is a CREDIT. So
+   summing only side='D' counts the original debit and never the credit that cancels it,
+   and the comparison below would read 1,000,000 against a payments total of 0. Net is
+   what "how much cash is in the box" actually means, and it is the same arithmetic
+   trialBalance uses. */
+const netOf = (code: string) =>
+  (getDb()
+    .prepare(
+      `SELECT COALESCE(SUM(CASE WHEN e.side='D' THEN e.amount_toman ELSE 0 END)
+                    - SUM(CASE WHEN e.side='C' THEN e.amount_toman ELSE 0 END), 0) AS n
+         FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
+        WHERE a.code = ?`
+    )
+    .get(code) as { n: number }).n;
+
 const paid = (clause: string) =>
   (getDb()
     .prepare(
@@ -70,17 +87,21 @@ beforeAll(() => {
     // Omitting the key is what means "on account" -- see validateAllocations in
     // lib/repo/payments.ts:177.
   });
-  /* A CREDIT_NOTE is deliberately NOT posted. It is not money received, and 'OTHER' says
-     nothing about where the value went; posting either to 1102 would invent a fact the
-     ledger then reports as truth. Without a payment of these two methods the rule is
-     untested -- mutation M10 (posting everything) passes when they are absent. */
-  recordPayment(ORG, {
-    customer_id: customerId,
-    amount_toman: 300_000,
-    method: "CREDIT_NOTE",
-    received_at: "2026-08-03T10:00:00.000Z",
-    received_by: 1,
-  });
+  /* A CREDIT_NOTE that predates the cutover, inserted DIRECTLY rather than through
+     recordPayment. Since Task 4 the live path REFUSES a CREDIT_NOTE outright -- there is
+     no honest account for it -- so this row can only exist as history, which is exactly
+     what the backfill has to cope with. Without a row of this method the rule is
+     untested: mutation M10 (posting everything) passes when they are absent.
+
+     The insert is verbatim payments' column list, because a hand-rolled INSERT that drifts
+     from the schema is its own silent lie. */
+  getDb()
+    .prepare(
+      `INSERT INTO payments
+         (organization_id, customer_id, amount_toman, method, received_at, received_by, created_at)
+       VALUES (?, ?, 300000, 'CREDIT_NOTE', '2026-08-03T10:00:00.000Z', 1, '2026-08-03T10:00:00.000Z')`
+    )
+    .run(ORG, customerId);
 
   backfillLedger(getDb());
 });
@@ -178,18 +199,16 @@ describe("the reconciliation gate", () => {
     expect(debitOf("1101")).toBe(paid("method = 'CASH'"));
   });
 
-  /* A void must leave the RECEIPT standing and add a REVERSAL beside it. Until the
-     payment path is cut over (Task 4) voidPayment only sets payments.voided_at, so the
-     ledger still carries the full original debit and this comparison goes red by exactly
-     the voided amount. Asserting it HERE would mean writing the cutover inside the
-     backfill task. tests/ledger-cutover.test.ts owns it; this one is the gate that will
-     close when that lands. See .cline/journal.md. */
-  it.skip("excludes VOIDED payments from the cash total, because they have a reversal", () => {
+  /* A void leaves the RECEIPT standing and adds a REVERSAL beside it. This was it.skip
+     until Task 4 wired voidPaymentTxn to post one; the cutover is what closes it. */
+  it("excludes VOIDED payments from the cash total, because they have a reversal", () => {
     const p = getDb().prepare("SELECT id FROM payments WHERE method = 'CASH'").get() as {
       id: number;
     };
     voidPayment(ORG, p.id, 1, "آزمون ابطال");
-    expect(debitOf("1101")).toBe(paid("method='CASH'"));
+    // NET cash now equals the non-voided cash receipts: the reversal has cancelled the
+    // original debit without either row being edited or deleted.
+    expect(netOf("1101")).toBe(paid("method='CASH'"));
     const tb = trialBalance(ORG);
     expect(tb.totalDebit).toBe(tb.totalCredit);
   });
