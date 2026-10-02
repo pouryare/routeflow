@@ -34,16 +34,29 @@ need backgrounding.
 
 ### Tests that flake under full-suite load — expected, not regressions
 
-With all ~383 files competing for this machine's cores, some tests exceed vitest's
-5-second default and fail with `Test timed out in 5000ms`:
+With all ~405 files competing for this machine's cores, some tests exceed vitest's
+5-second default and fail with `Test timed out in 5000ms`.
 
-- `tests/jalali.test.ts` → *"agrees with Intl for every day across 20 Jalali years"*
-- `tests/api/routing-route.test.ts` → *"plans, commits and freezes"*
-- `tests/routing-repo.test.ts` → *"builds a greedy plan ordered nearest-first from the depot"*
-  (observed 2026-10-01; passes alone in ~1s)
+**Every entry below was re-measured on 2026-10-01, alone, on an idle machine.** The
+timings are the idle figures against the 5000ms budget:
 
-**All pass when run alone** (19/19, 3/3, 4/4). They are pure CPU contention, and they have
-no relation to any dependency or code change. So:
+| Test | idle | vs budget | verdict |
+|---|---|---|---|
+| `tests/district-coverage.test.ts` → *"has no interior hole in the net"* | **3222ms** | 64% | genuine contention |
+| `tests/api/routing-route.test.ts` → *"plans, commits and freezes"* | **3704ms** | 74% | genuine contention |
+| `tests/routing-repo.test.ts` → *"builds a greedy plan ordered nearest-first from the depot"* | **1907ms** | 38% | genuine contention |
+
+**`tests/jalali.test.ts` is no longer on this list — it was never a flake.** It is fixed.
+See the note below, because it is the reason this list was rewritten rather than trusted.
+
+Note what "genuine contention" means here: these three do **real work** (a 9,576-cell
+point-in-polygon sweep against 22 district polygons; a full routing plan), so their cost
+is intrinsic rather than wasted setup. `district-coverage` is the closest to the line at
+64% of budget and **does** fail occasionally even on an idle machine — measured 1 failure
+in 3 runs — so treat it as the least trustworthy entry here.
+
+**All pass when run alone.** They are CPU contention, and they have no relation to any
+dependency or code change. So:
 
 - A run reporting **1–2 failed / rest passed** with those names is a **pass**.
 - Before reporting a failure, re-run the file alone: `npx vitest run tests/<file>`.
@@ -54,6 +67,34 @@ Note the shape of the trap: the total pass count and the file count both drift a
 lands, so match on the **test name**, never on the counts. A run reporting 1 failure whose
 name is NOT on this list is a real failure — that is exactly how
 `tests/repo-boundary.test.ts` was caught after the avatar routes.
+
+### A "flake" that fails alone is not a flake — measure before filing
+
+`tests/jalali.test.ts` sat on this list for months as *"passes alone (19/19)"*. That was
+never true. Measured on an idle machine, four consecutive runs gave **2 passed, 2 failed**
+at 5412ms and 5644ms against the 5000ms budget — a coin flip, which is exactly what made
+it look like contention.
+
+The cause was in the test, not the machine. Its oracle helper built a new
+`Intl.DateTimeFormat` **per call**, and it is called 7,672 times (once per day across 20
+Jalali years). Building a formatter loads ICU locale data at ~2.8ms; the loop therefore
+spent **~21 seconds constructing 7,672 identical objects** to perform ~0.3 seconds of
+formatting. Hoisting it to module scope: **5859ms → 343ms**, and the file's test time is
+now 489ms with the assertion unchanged.
+
+Grepping for the same pattern afterwards found two more instances in `lib/` — both fixed
+in the same sweep (`lib/jalali.ts` 10x, `lib/orderJourney.ts` 67x).
+
+Two rules follow, and both are cheap:
+
+1. **Before filing a test as a flake, run it ALONE more than once.** One run proves
+   nothing about a coin flip. "Passes alone" needs to be a repeatable observation.
+2. **A test that is borderline on its own is not contention — it is too slow.** Compare its
+   idle time against the 5000ms budget. Under ~50% it is contention. Near or over it is a
+   defect, and raising a timeout hides it rather than removing it.
+
+The tell is *how* a test is slow. Wasted setup (building the same object 7,672 times) is a
+bug. Intrinsic work (a 9,576-cell geometry sweep) is just a slow test, and is fine.
 
 **Do not** run `next build`, `next start`, or the Playwright smoke suite
 (`vitest.smoke.mts` — it boots a browser and a dev server). If a task seems to need a

@@ -75,10 +75,14 @@ needs an existing `.next` build to analyse — it cannot produce one for you.
 dev server. Background anything over ~30s (`setsid nohup … &`); the shell has a ~30s cap
 and a foreground "timeout" almost always means it is still running.
 
-**Two tests flake under full-suite load and both pass alone** — `tests/jalali.test.ts`
-("agrees with Intl for every day across 20 Jalali years") and
-`tests/api/routing-route.test.ts` ("plans, commits and freezes"). `2 failed / 2735 passed`
-with those two names **is a pass**. Re-run a file alone before believing a failure.
+**Three tests flake under full-suite load** — `tests/district-coverage.test.ts`
+("has no interior hole in the net"), `tests/api/routing-route.test.ts` ("plans, commits and
+freezes") and `tests/routing-repo.test.ts` ("builds a greedy plan ordered nearest-first from
+the depot"). A run reporting **1–2 failed / rest passed** with those names **is a pass**.
+Re-run a file alone before believing a failure — and **more than once**, since a borderline
+test gives a coin flip. (`tests/jalali.test.ts` was on this list until 2026-10-01 and was
+NOT a flake: it failed alone ~50% of the time, having built 7,672 identical
+`Intl.DateTimeFormat` objects to do 0.3 seconds of formatting. Fixed, now 489ms.)
 
 **`git` MCP is pinned to this repo** (`--repository /home/pourya/Desktop/routeflow`) and
 exposes `git_clear_working_dir`. It can discard uncommitted work. Prefer `git_status` and

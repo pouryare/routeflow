@@ -125,21 +125,32 @@ setsid nohup npx vitest run > /tmp/vitest.log 2>&1 &
 A foreground command that "timed out" has almost certainly **kept running**. Never
 report it as a failure without checking the log first.
 
-### The two flakes that are not failures
+### The three flakes that are not failures
 
-Under full-suite load these two exceed vitest's 5s default and fail with
-`Test timed out in 5000ms`:
+Under full-suite load these exceed vitest's 5s default and fail with
+`Test timed out in 5000ms`. Timings are **idle-machine** figures, measured 2026-10-01:
 
-- `tests/jalali.test.ts` — "agrees with Intl for every day across 20 Jalali years"
-- `tests/api/routing-route.test.ts` — "plans, commits and freezes"
+- `tests/district-coverage.test.ts` — "has no interior hole in the net" — **3222ms (64%)**
+  ⚠️ the closest to the line; it fails ~1 run in 3 even idle. Treat as the least reliable.
+- `tests/api/routing-route.test.ts` — "plans, commits and freezes" — **3704ms (74%)**
 - `tests/routing-repo.test.ts` — "builds a greedy plan ordered nearest-first from the depot"
-  (third flake, found 2026-10-01; all pass alone)
+  — **1907ms (38%)**
 
-**Both pass in isolation.** They are CPU contention, not regressions. A run reporting
-2 failed / 2735 passed with those two names **is a pass**.
+All three do **real work** (a 9,576-cell point-in-polygon sweep; a full routing plan), so
+their cost is intrinsic, not wasted setup. A run reporting 1–2 failed / rest passed with
+those names **is a pass**.
+
+**`tests/jalali.test.ts` was removed from this list on 2026-10-01 — it was never a flake.**
+It failed alone ~50% of the time (5412ms / 5644ms vs a 5000ms budget) because its oracle
+built a new `Intl.DateTimeFormat` per call across 7,672 days: ~21 seconds constructing
+identical objects to do 0.3 seconds of formatting. Fixed by hoisting it — now 489ms. The
+same pattern was then found and fixed in `lib/jalali.ts` (10x) and `lib/orderJourney.ts`
+(67x).
 
 Before recording any failure: `npx vitest run tests/<file>`. Only a failure that
-reproduces alone is real. Do **not** raise the global timeout to hide slowness.
+reproduces alone is real — and **run it more than once**, because a borderline test gives a
+coin flip. Do **not** raise the global timeout to hide slowness; if a test is borderline
+*on its own*, it is too slow and the timeout is hiding a defect.
 
 ## The Done archive
 
