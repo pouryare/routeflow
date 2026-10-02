@@ -1,4 +1,6 @@
 import { describe, it, expect } from "vitest";
+import { readFileSync } from "node:fs";
+import path from "node:path";
 import { ROLES, type Role } from "@/lib/roles";
 
 process.env.SESSION_SECRET = "test-secret";
@@ -116,6 +118,70 @@ describe("role prefixes", () => {
   });
 });
 
+/* platform_owner vs. the pin pool.
+ *
+ * The isPinPool gate listed its roles as literals:
+ *
+ *     claims.role !== "owner" && claims.role !== "group_manager" && ...
+ *
+ * which is correct for every role except ONE. `OWNER_ROLES` is
+ * ["platform_owner", "owner"] — platform_owner is a documented strict superset of
+ * owner (lib/roles.ts:68) — so the platform's own god key was sent from /leads to
+ * /crm by a gate that read exactly like the three around it. Written in 07b3f45,
+ * and the accounting section came to the same trap and avoided it, which is how
+ * this was noticed at all.
+ *
+ * Asserted BOTH ways: platform_owner must reach the pool, and the roles that
+ * genuinely may not must still be refused. A fix that simply widened the gate
+ * would pass the first assertion alone. */
+describe("the pin pool admits platform_owner", () => {
+  const reachable = (role: Role) => {
+    const res = proxy(req("/leads", role));
+    return res.status === 200;
+  };
+
+  it("lets platform_owner through", () => {
+    expect(reachable("platform_owner")).toBe(true);
+  });
+
+  it("still lets the owner-side roles through", () => {
+    expect(reachable("owner")).toBe(true);
+    expect(reachable("group_manager")).toBe(true);
+    expect(reachable("rep_manager")).toBe(true);
+  });
+
+  it("still refuses everyone it was written to refuse", () => {
+    for (const role of ["phone_sales", "field_rep", "delivery_driver"] as Role[]) {
+      expect(reachable(role), `${role} must not reach /leads`).toBe(false);
+    }
+  });
+
+  it("is written with OWNER_ROLES, not a literal — the bug cannot come back", () => {
+    const src = readFileSync(path.join(process.cwd(), "proxy.ts"), "utf8");
+    // Comments are stripped before the scan. This file's new comment QUOTES the old
+    // condition verbatim, so a raw grep flags the explanation of the bug as the bug. That
+    // is the same trap as M39 in the accounting screens: a test that greps for a string
+    // will happily match your comment about that string.
+    const code = src
+      .slice(src.indexOf("isPinPool"), src.indexOf("isAccounting"))
+      .replace(/\/\*[\s\S]*?\*\//g, "")
+      .replace(/\/\/[^\n]*/g, "");
+    expect(code).toMatch(/OWNER_ROLES\.includes\(claims\.role\)/);
+    expect(code).not.toMatch(/claims\.role\s*!==\s*["']owner["']/);
+  });
+
+  it("and the nav agrees — it was hiding the same tab from platform_owner", () => {
+    // The gate was only half the bug: `isRepLead` used the literal too, so the TAB was
+    // missing as well. One constant, two call sites, one edit -- that is the point of it.
+    const src = readFileSync(path.join(process.cwd(), "lib/appNav.ts"), "utf8").replace(
+      /\/\*[\s\S]*?\*\//g,
+      ""
+    );
+    expect(src).toMatch(/isRepLead = \(r: Role\) => OWNER_ROLES\.includes\(r\)/);
+    expect(src).toMatch(/isManager = \(r: Role\) => OWNER_ROLES\.includes\(r\)/);
+  });
+});
+
 /** The nav and the gate are written down in two files, so they drift. This is the test
  *  that makes the driver menu an assertion rather than a claim: every tab the menu marks
  *  ready is put in front of the middleware, and a redirect fails. Next prefetches every
@@ -151,7 +217,28 @@ describe("the menu and the gate agree, in BOTH directions", () => {
    * allowlist entry is gone, so a van role is sent to /driver, and a role that is not a
    * rep-lead is sent to /crm. The page is one audience now, so it can be on PATHS and the
    * both-directions assertion below is real for it. */
-  const PATHS = ["/crm", "/report", "/sales/orders", "/driver", "/sales/pocket", "/leads"];
+  /* Extended past the original six. Those six covered the paths the ORIGINAL gates
+     governed; the OWNER_ROLES sweep also touched /sales/reps, /sales/tasks, /sales/cheques
+     and /sales/forecast, and M53 proved none of them were watched -- breaking the cheques
+     gate so that it denied EVERYONE still passed, because /sales/cheques was not on this
+     list. A drift test that only watches the paths someone remembered is a list, not an
+     invariant.
+
+     A test cannot prove a list is complete. What it can do is cover every gate that has a
+     `ready:` in appNav, which is what these four are. If a fifth gate appears, the next
+     person to add it here inherits the trap; the failure mode is visible either way. */
+  const PATHS = [
+    "/crm",
+    "/report",
+    "/sales/orders",
+    "/driver",
+    "/sales/pocket",
+    "/leads",
+    "/sales/reps",
+    "/sales/tasks",
+    "/sales/cheques",
+    "/sales/forecast",
+  ];
 
   /* The ONE admitted-without-a-tab case, and it is deliberate (spec §4.3 / P9).
    *

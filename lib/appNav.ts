@@ -17,7 +17,7 @@
  *  to a route the role cannot reach 404s in the console before anyone clicks it.
  */
 import type { Role } from "./roles";
-import { isVanRole, isOwner } from "./roles";
+import { isVanRole, isOwner, OWNER_ROLES } from "./roles";
 
 export type AppGroupId =
   | "day"
@@ -48,8 +48,19 @@ export type AppTab = {
   ready: boolean;
 };
 
-const isManager = (r: Role) => r === "owner" || r === "group_manager";
-const isRepLead = (r: Role) => r === "owner" || r === "group_manager" || r === "rep_manager";
+/** Manager-and-above, INCLUDING the platform's god key.
+ *
+ *  Both of these used to read `r === "owner"` and were therefore correct for every role
+ *  except one. `OWNER_ROLES` is `["platform_owner", "owner"]` — platform_owner is a
+ *  documented strict superset of owner (lib/roles.ts:68) — so the platform account saw a
+ *  menu missing every owner tab, and proxy.ts sent it away from the pages behind them.
+ *
+ *  Found by the bidirectional drift test in tests/proxy.test.ts, which asserts the nav and
+ *  the gate tell the same story. Fixing only the gate would have made them disagree in the
+ *  other direction; fixing only the nav would have hidden a page the gate admits. The
+ *  constant is what makes one edit enough. */
+const isManager = (r: Role) => OWNER_ROLES.includes(r) || r === "group_manager";
+const isRepLead = (r: Role) => OWNER_ROLES.includes(r) || r === "group_manager" || r === "rep_manager";
 
 /** A driver's whole menu, and the whole truth.
  *

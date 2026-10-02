@@ -80,7 +80,7 @@ export function proxy(req: NextRequest) {
   const isReps = pathname.startsWith("/sales/reps") || pathname.startsWith("/api/sales/reps");
   if (
     isReps &&
-    claims.role !== "owner" &&
+    !OWNER_ROLES.includes(claims.role) &&
     claims.role !== "group_manager" &&
     claims.role !== "rep_manager"
   ) {
@@ -96,7 +96,7 @@ export function proxy(req: NextRequest) {
     pathname.startsWith("/api/task-recurrences");
   if (
     isTaskBoard &&
-    claims.role !== "owner" &&
+    !OWNER_ROLES.includes(claims.role) &&
     claims.role !== "group_manager" &&
     claims.role !== "rep_manager"
   ) {
@@ -108,7 +108,7 @@ export function proxy(req: NextRequest) {
      refuses anything that is not a genuine impersonation by the saved owner. */
   const isEndImpersonation = pathname === "/api/admin/impersonate" && req.method === "DELETE";
   if ((isAdmin || isSwitch) && !isEndImpersonation
-      && claims.role !== "owner" && claims.role !== "platform_owner"
+      && !OWNER_ROLES.includes(claims.role)
       && !(isRepAdmin && claims.role === "rep_manager")) {
     return deny("/sales");
   }
@@ -129,7 +129,7 @@ export function proxy(req: NextRequest) {
   // cheque as a payment via /sales/payments, but does not run the deposit/bounce
   // lifecycle. The API re-checks; this keeps the bundle and the tab off their screen.
   const isCheques = pathname.startsWith("/sales/cheques") || pathname.startsWith("/api/cheques");
-  if (isCheques && claims.role !== "owner" && claims.role !== "group_manager") {
+  if (isCheques && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
     return deny("/sales");
   }
 
@@ -164,7 +164,7 @@ export function proxy(req: NextRequest) {
     // Phase 10: prediction is a manager tool end to end.
     pathname.startsWith("/api/predict") ||
     pathname.startsWith("/sales/forecast");
-  if (isBatchAdmin && claims.role !== "owner" && claims.role !== "group_manager") {
+  if (isBatchAdmin && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
     /* Four of these paths are now REDIRECT pages rather than gated ones, and the gate must
        not pre-empt the redirect. It runs first, so a `platform_owner` asking for
        /sales/deliveries was answered 307 -> /sales by THIS line, and the page's own
@@ -244,9 +244,22 @@ export function proxy(req: NextRequest) {
      own day, which now holds both kinds of work) rather than /crm -- which would bounce
      them straight back, because the isCrm gate above 403s them first. */
   const isPinPool = pathname === "/leads" || pathname.startsWith("/leads/");
+  /* `OWNER_ROLES`, not the literal "owner". This gate read
+     `claims.role !== "owner" && claims.role !== "group_manager" && ...` and was correct
+     for every role except one: platform_owner is a documented strict superset of owner
+     (lib/roles.ts:68), so the platform's own god key was bounced from /leads to /crm by a
+     condition that looked identical to the three around it.
+
+     The point of the constant is that a role added to it in ONE place reaches every gate
+     that admits owners. A hand-written list has to be found and edited by hand, and the
+     one copy nobody remembers is the one that quietly excludes somebody.
+
+     The accounting gate further down, added with the ledger, uses the constant; this one
+     predates it by a long way and was never revisited. That is how the same trap got
+     avoided in new code and left standing in old. */
   if (
     isPinPool &&
-    claims.role !== "owner" &&
+    !OWNER_ROLES.includes(claims.role) &&
     claims.role !== "group_manager" &&
     claims.role !== "rep_manager"
   ) {

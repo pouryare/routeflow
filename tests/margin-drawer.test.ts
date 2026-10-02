@@ -13,6 +13,11 @@ afterEach(async () => {
   if (root) await act(() => root!.unmount());
   root = undefined;
   document.body.replaceChildren();
+  /* Globals are restored HERE, not at the end of each test body. In the body, a test that
+     throws before reaching `unstubAllGlobals` leaves its fetch stub installed, and the next
+     test then passes or fails against the previous test's mock -- silently. Cleanup that
+     only runs on the happy path is not cleanup. */
+  vi.unstubAllGlobals();
 });
 
 const product: DrawerProduct = {
@@ -158,7 +163,6 @@ describe("MarginHelperDrawer", () => {
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
     expect(fetchMock).not.toHaveBeenCalled();
-    vi.unstubAllGlobals();
   });
 
   it("every control has an accessible name", async () => {
@@ -212,7 +216,6 @@ describe("MarginHelperDrawer", () => {
     });
     expect(body).not.toHaveProperty("price_toman");
     expect(text(c)).toContain("بهای تمام‌شده ثبت شد");
-    vi.unstubAllGlobals();
   });
 
   it("reports a refused save instead of pretending it worked", async () => {
@@ -227,10 +230,14 @@ describe("MarginHelperDrawer", () => {
     await saveCost(c);
     expect(text(c)).toContain("کالا پیدا نشد");
     expect(text(c)).not.toContain("ثبت شد\n");
-    vi.unstubAllGlobals();
   });
 
   it("keeps the save button disabled until the box holds a whole number", async () => {
+    // Stubbed like every other test here. Unstubbed, this called the real fetch with a
+    // relative path; jsdom has no base URL, so it rejected with ERR_INVALID_URL and left
+    // an unhandled rejection behind -- which is what made the suite exit 1 while
+    // reporting 14/14 passed.
+    vi.stubGlobal("fetch", fetchStub());
     const c = await mount();
     const find = () =>
       [...c.querySelectorAll("button")].find((b) =>
