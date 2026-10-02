@@ -231,16 +231,20 @@ CREATE TRIGGER IF NOT EXISTS ledger_entries_no_delete BEFORE DELETE ON ledger_en
 | 2103 | تعهدات کمیسیون | Commission payable |
 | 2104 | مالیات پرداختنی | Taxes payable — seeded only |
 
-**سرمایه / EQUITY** — 2201 سرمایه Capital · 2202 برداشت/اضافه‌برداشت Owner's equity ·
-2203 سود انباشته Retained earnings
+**سرمایه / EQUITY** (CREDIT) — 3101 سرمایه Capital · 3102 برداشت/اضافه‌برداشت Owner's equity ·
+3103 سود انباشته Retained earnings
 
-**درآمد / REVENUE** (CREDIT) — 3101 فروش Sales revenue · 3102 برگشت از فروش Sales returns
+**درآمد / REVENUE** (CREDIT) — 4101 فروش Sales revenue · 4102 برگشت از فروش Sales returns
 
-**هزینه / EXPENSE** (DEBIT) — 4101 بهای تمام‌شده COGS · 4102 اجاره Rent · 4103 حقوق Salary ·
-4104 سوخت و حمل Fuel & delivery · 4105 تلفن و اینترنت Phone & internet · 4106 سایر Other
+**هزینه / EXPENSE** (DEBIT) — 5101 بهای تمام‌شده COGS · 5102 اجاره Rent · 5103 حقوق Salary ·
+5104 سوخت و حمل Fuel & delivery · 5105 تلفن و اینترنت Phone & internet · 5106 سایر Other
 
-Group headers `1000`/`2000`/`3000`/`4000` are seeded with `is_postable = 0`, so nothing can post
-to «دارایی‌ها» itself. All seeded rows carry `is_system = 1`: deactivatable, never deletable.
+**The numbering follows the conventional Iranian trading chart**, in which the leading digit
+carries the statement: `1xxx` دارایی · `2xxx` بدهی · `3xxx` سرمایه · `4xxx` درآمد · `5xxx` هزینه.
+So an account's type is readable from its code without a lookup, which is the point of a code.
+
+Group headers `1000`/`2000`/`3000`/`4000`/`5000` are seeded with `is_postable = 0`, so nothing can
+post to «دارایی‌ها» itself. All seeded rows carry `is_system = 1`: deactivatable, never deletable.
 
 **Two accounts that exist because THIS app needs them, not because a textbook says so:**
 
@@ -324,8 +328,8 @@ transaction. This is decision 2 applied to the one write path that exists today.
 ```
 On a successful (or partial) delivery, one journal:
   Dr 1201 حساب‌های دریافتنی    ← the delivered value, customer_id set
-     Cr 3101 فروش                                   (revenue)
-  Dr 4101 بهای تمام‌شده        ← cost of what actually went out
+     Cr 4101 فروش                                   (revenue)
+  Dr 5101 بهای تمام‌شده        ← cost of what actually went out
      Cr 1203 موجودی کالا
 ```
 
@@ -364,7 +368,7 @@ Modelled on `backfillLegacyPayments` (`lib/db.ts:376`), the correct precedent in
 There is no trustworthy historical cost. `product_costs` is effective-dated and new, so today's
 `avg_cost_toman` is **not** what the goods cost when they were delivered two years ago.
 
-Backfilled orders therefore post `Dr 1201 / Cr 3101` **with no cost leg**, and any period that
+Backfilled orders therefore post `Dr 1201 / Cr 4101` **with no cost leg**, and any period that
 predates the ledger is labelled **cost-incomplete** on the income statement and balance sheet.
 Inventing a COGS figure from a current average would put a wrong number on the income statement,
 and **a wrong number that looks right is worse than an absent one.** Opening balances
@@ -464,7 +468,7 @@ Dr 2101 حساب‌های پرداختنی       supplier_id on this leg
 ## Expenses — structured, never free text
 
 ```
-Dr 4102 اجاره   (or 4103 حقوق, 4104 سوخت, 4105 تلفن, 4106 سایر)
+Dr 5102 اجاره   (or 5103 حقوق, 5104 سوخت, 5105 تلفن, 5106 سایر)
    Cr 1101 صندوق  /  1102 بانک
 ```
 
@@ -473,7 +477,7 @@ Dr 4102 اجاره   (or 4103 حقوق, 4104 سوخت, 4105 تلفن, 4106 سا�
 — no code change, no migration, no reshaping of history. This is the deliberate lesson from
 `purchases.supplier`, where free text made accounts payable impossible.
 
-**4101 COGS is excluded from that dropdown.** It is posted by delivery recognition, never by hand;
+**5101 COGS is excluded from that dropdown.** It is posted by delivery recognition, never by hand;
 otherwise a cost of goods could be expensed manually and the income statement would double-count.
 
 ---
@@ -578,18 +582,25 @@ path, or people route around the ledger and the guarantee is worthless.
 
 ---
 
-## Open questions, stated rather than buried
+## Resolved questions
 
-1. **May a `group_manager` enter expenses?** Proposed yes — rent and fuel are real daily costs and
-   owners should not type every line. The risk is a manager inventing expenses to flatter their
-   group's P&L; the mitigation is that every journal records `created_by` and the expense report
-   shows who entered what. If owner-only is preferred, that is a one-line change and I would not
-   argue hard.
-2. **Is the seeded chart the one your accountant actually uses?** The codes above are the
-   conventional Iranian trading layout. If the business follows a different chart, this is the
-   **cheapest moment in the whole project** to change it — before a single posting exists.
-3. **Do `1103` petty cash and `2102` cheques payable earn their place now?** Both are seeded and
-   unwritten. They are cheap and make the taxonomy complete, but slice 1 does not require them.
+1. **May a `group_manager` enter expenses? YES** (user, 2026-10-02). Rent and fuel are real daily
+   costs and an owner should not type every line. The accountability control is that every journal
+   records `created_by` and the expense report shows who entered what — not a second set of books,
+   just attribution.
+2. **The chart of accounts was delegated to me.** I chose the conventional Iranian trading layout
+   above, and auditing it against its own group headers found a **real defect**: equity was numbered
+   `22xx`, revenue `31xx`, and expenses `41xx` — each sitting inside the *previous* category's block,
+   while the headers claimed `1000`=assets, `2000`=liabilities, `3000`=equity, `4000`=revenue.
+   An account's type must be readable from its code; that was the entire point of a code.
+   **Fixed:** equity `31xx`, revenue `41xx`, expenses `51xx`, plus a fifth group header `5000`. This
+   is exactly why the question was worth asking — nobody had looked at the codes as a set.
+3. **`1103` petty cash and `2102` cheques payable stay** (user, 2026-10-02). Both are seeded and
+   unwritten; they make the taxonomy complete, and a seeded account costs nothing while a missing
+   one forces a schema change on posted history later.
+
+**If the business's accountant uses a different chart, say so now.** It remains the cheapest moment
+in the whole project to change it — before a single posting exists.
 
 ---
 
