@@ -17,7 +17,7 @@
  *  to a route the role cannot reach 404s in the console before anyone clicks it.
  */
 import type { Role } from "./roles";
-import { isVanRole } from "./roles";
+import { isVanRole, isOwner } from "./roles";
 
 export type AppGroupId =
   | "day"
@@ -25,6 +25,7 @@ export type AppGroupId =
   | "sales"
   | "ops"
   | "reports"
+  | "accounts"
   | "team"
   | "org";
 
@@ -34,6 +35,7 @@ export const APP_GROUPS: { id: AppGroupId; label: string }[] = [
   { id: "sales", label: "فروش و دریافت" },
   { id: "ops", label: "تحویل و انبار" },
   { id: "reports", label: "گزارش‌ها" },
+  { id: "accounts", label: "حسابداری" },
   { id: "team", label: "تیم" },
   { id: "org", label: "تنظیمات سازمان" },
 ];
@@ -124,6 +126,18 @@ export function appTabs(session: { role: Role }): AppTab[] {
     /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report
        because it aggregates a whole group's revenue, debt and coverage. */
     { href: "/report", label: "گزارش پوشش", group: "reports", ready: r !== "phone_sales" },
+
+    // حسابداری — org-wide money, read from the ledger. Its own group rather than eight more
+    // tabs in «فروش و دریافت», which already holds five and is the group's job anyway.
+    // `ready` uses isOwner, never `r === "owner"`: platform_owner is a strict superset
+    // (lib/roles.ts:68) and a hand-written list would quietly lock them out of the books.
+    { href: "/accounting/trial-balance", label: "تراز آزمایشی", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/journal", label: "دفتر روزنامه", group: "accounts", ready: isOwner(r) || r === "group_manager" },
+    { href: "/accounting/balance-sheet", label: "ترازنامه", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/income-statement", label: "سود و زیان", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/payables", label: "بدهی تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
+    { href: "/accounting/expenses", label: "هزینه‌ها", group: "accounts", ready: isOwner(r) || r === "group_manager" },
+    { href: "/accounting/suppliers", label: "تأمین‌کنندگان", group: "accounts", ready: isOwner(r) },
 
     // تیم
     { href: "/sales/tasks", label: "کارتابل", group: "team", ready: isRepLead(r) },

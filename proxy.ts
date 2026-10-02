@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./lib/auth";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, OWNER_ROLES } from "@/lib/roles";
 
 // /sw.js, the manifest, and the offline fallback stay unauthenticated on purpose:
 // a service worker script must return the same bytes regardless of session state, or
@@ -251,6 +251,33 @@ export function proxy(req: NextRequest) {
     claims.role !== "rep_manager"
   ) {
     return deny("/crm");
+  }
+
+  /* The accounting reports are org-wide money: the whole ledger, every supplier, every
+     margin. Gate at the edge AND re-check inside each page, the same two-tier shape as
+     isCheques above — this keeps the bundle and the tab off a rep's screen; the page's own
+     check is the one that is authoritative.
+
+     OWNER_ROLES, never a literal: `platform_owner` is a documented strict superset of
+     owner, so a hand-written `claims.role !== "owner"` would lock the platform's own god
+     key out of the books while reading exactly like the surrounding code.
+
+     A group_manager may READ the journal and expenses — they can enter expenses, so hiding
+     those from them would be hiding their own work — but not the trial balance, the balance
+     sheet, the income statement, or what the org owes. */
+  const isAccounting =
+    pathname === "/accounting" || pathname.startsWith("/accounting/");
+  if (isAccounting && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
+    return deny("/sales");
+  }
+
+  // Period close and manual journals change the books, so they stay owner-only while a
+  // manager keeps read access to the reports above.
+  const isAccountingWrite =
+    pathname.startsWith("/api/accounting/periods") ||
+    pathname.startsWith("/api/accounting/journals");
+  if (isAccountingWrite && !OWNER_ROLES.includes(claims.role)) {
+    return deny("/sales");
   }
 
   return NextResponse.next();

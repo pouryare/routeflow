@@ -360,7 +360,25 @@ export function agedPayables(organizationId: number): AgedPayableRow[] {
     .all(organizationId) as unknown as AgedPayableRow[];
 }
 
-export function supplierStatement(organizationId: number, supplierId: number) {
+export interface SupplierStatementLine {
+  journalId: number;
+  seq: number;
+  periodKey: string;
+  postedAt: string;
+  sourceType: string;
+  memo: string | null;
+  code: string;
+  nameFa: string;
+  side: "D" | "C";
+  amountToman: number;
+}
+
+/** Every movement on one supplier's account — both legs, so a credit balance reads as
+ *  distinct from no balance at all rather than as an absence. */
+export function supplierStatement(
+  organizationId: number,
+  supplierId: number
+): SupplierStatementLine[] {
   return getDb()
     .prepare(
       `SELECT j.id AS journalId, j.seq, j.period_key AS periodKey, j.posted_at AS postedAt,
@@ -372,7 +390,7 @@ export function supplierStatement(organizationId: number, supplierId: number) {
         WHERE e.organization_id = ? AND e.supplier_id = ? AND a.code IN ('2101','1301')
         ORDER BY j.seq`
     )
-    .all(organizationId, supplierId);
+    .all(organizationId, supplierId) as unknown as SupplierStatementLine[];
 }
 
 /** Expenses by category, for the expenses report. */
@@ -412,6 +430,20 @@ export function expensesByEnterer(organizationId: number) {
         GROUP BY j.created_by ORDER BY amountToman DESC`
     )
     .all(organizationId);
+}
+
+/** One posting in an account's statement, plus the running balance after it. */
+export interface AccountLedgerLine {
+  journalId: number;
+  seq: number;
+  periodKey: string;
+  postedAt: string;
+  sourceType: string;
+  memo: string | null;
+  side: "D" | "C";
+  amountToman: number;
+  reversedByJournalId: number | null;
+  balanceToman: number;
 }
 
 /** One account's statement, with a running balance and a period-OPENING figure.
@@ -463,7 +495,7 @@ export function accountLedger(
     .all(...(args as never[]));
 
   let running = openingToman;
-  const lines = (rows as { side: "D" | "C"; amountToman: number }[]).map((r) => {
+  const lines = (rows as unknown as AccountLedgerLine[]).map((r) => {
     running += r.side === "D" ? r.amountToman : -r.amountToman;
     return { ...r, balanceToman: running };
   });

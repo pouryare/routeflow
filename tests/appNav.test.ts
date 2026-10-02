@@ -57,13 +57,14 @@ describe("the app nav, for every role", () => {
 });
 
 describe("the group list", () => {
-  it("is the seven documented groups, in order", () => {
+  it("is the eight documented groups, in order", () => {
     expect(APP_GROUPS.map((g) => g.id)).toEqual([
       "day",
       "customers",
       "sales",
       "ops",
       "reports",
+      "accounts",
       "team",
       "org",
     ]);

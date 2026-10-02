@@ -160,6 +160,48 @@ export const PAGE_META: Record<string, PageMeta> = {
   },
 
   // مالی
+  "/accounting/trial-balance": {
+    title: "تراز آزمایشی",
+    titleEn: "Trial balance",
+    overview:
+      "جمع بدهکار و بستانکار هر حساب. دو ستون باید همیشه برابر باشند؛ همین برابری، تعریف دفتر سالم است.",
+  },
+  "/accounting/journal": {
+    title: "دفتر روزنامه",
+    titleEn: "Journal",
+    overview:
+      "همهٔ اسناد به ترتیب، با فیلتر بر اساس دوره و نوع. سند باطل‌شده حذف نمی‌شود: خط‌خورده می‌ماند و به سند معکوسش وصل است.",
+  },
+  "/accounting/balance-sheet": {
+    title: "ترازنامه",
+    titleEn: "Balance sheet",
+    overview:
+      "دارایی در برابر بدهی و سرمایه، در یک تاریخ مشخص — نه نتیجهٔ یک ماه. دورهٔ پیش از دفتر، ناقص از نظر بهای تمام‌شده علامت می‌خورد.",
+  },
+  "/accounting/income-statement": {
+    title: "سود و زیان",
+    titleEn: "Income statement",
+    overview:
+      "درآمد منهای بهای تمام‌شده و هزینه‌ها، برای یک دوره. اگر بهای تمام‌شدهٔ بخشی از فروش‌ها معلوم نباشد، صفحه صریحاً اعلام می‌کند که سود نمایش‌داده‌شده بیش از واقع است.",
+  },
+  "/accounting/payables": {
+    title: "بدهی تأمین‌کنندگان",
+    titleEn: "Accounts payable",
+    overview:
+      "آنچه به هر تأمین‌کننده بدهیم، مستقیماً از دفتر استخراج می‌شود و عدد جداگانه‌ای ذخیره نمی‌شود.",
+  },
+  "/accounting/expenses": {
+    title: "هزینه‌ها",
+    titleEn: "Expenses",
+    overview:
+      "هزینه‌ها بر اساس حساب و بر اساس ثبت‌کننده. هر ردیف یک سند است، پس با «ابطال» اصلاح می‌شود، نه با ویرایش.",
+  },
+  "/accounting/suppliers": {
+    title: "تأمین‌کنندگان",
+    titleEn: "Suppliers",
+    overview:
+      "تأمین‌کنندگان و صورت‌حساب هرکدام از دفتر خوانده می‌شود؛ مانده همیشه با ترازنامه می‌خواند.",
+  },
   "/sales/payments": {
     title: "دریافت‌ها",
     titleEn: "Payments received",

@@ -68,6 +68,14 @@ export const MANAGE_ROLES: Role[] = ["platform_owner", "owner", "group_manager"]
  *  name says which is which, and `OWNER_ROLES` reads as owner-only at the call site. */
 export const OWNER_ROLES: Role[] = ["platform_owner", "owner"];
 
+/** Owner-only, INCLUDING the platform's god key.
+ *
+ *  Derived from `OWNER_ROLES` on purpose. Writing `r === "owner"` at a call site is the bug
+ *  this exists to prevent: it is correct for everything except `platform_owner`, who is a
+ *  strict superset and would be locked out of the accounting section by a gate that reads
+ *  right, tests green, and looks deliberate. */
+export const isOwner = (r: Role) => OWNER_ROLES.includes(r);
+
 export const ROLE_LABEL: Record<Role, string> = {
   platform_owner: "مدیر سامانه",
   owner: "مالک",
