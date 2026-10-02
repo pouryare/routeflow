@@ -418,6 +418,110 @@ export function allocationsOfPayment(
     .all(paymentId) as unknown as { order_id: number | null; amount_toman: number }[];
 }
 
+/** Replace a payment's allocations wholesale, inside one transaction.
+ *
+ *  This is the write behind the allocation UI. Allocation used to be FIFO and invisible:
+ *  a customer 40M on account could not see which orders it covered, let alone disagree.
+ *  The money was never wrong — the screen just refused to explain it.
+ *
+ *  Two things this deliberately does NOT do:
+ *
+ *  - It does not touch the payment's own row or its ledger journal. Re-allocating does not
+ *    move money; the receipt is still the receipt, still Dr cash / Cr AR. Only the
+ *    attribution between orders changes, so there is nothing new to post. (A future
+ *    "split a receipt into two" feature WOULD need a journal, and would not belong here.)
+ *  - It does not delete allocations and reinsert them in two steps. The old rows go and the
+ *    new ones land in ONE transaction, because a crash between them would leave a payment
+ *    whose rows sum to nothing at all — and every order's `paid_toman` cache quietly wrong,
+ *    with nothing to recompute it from.
+ *
+ *  Every order it TOUCHED is recomputed, not just the ones in the new list: moving money
+ *  OFF an order must reset that order, and it is no longer in the new list by definition. */
+export function replaceAllocations(
+  organizationId: number,
+  paymentId: number,
+  allocations: AllocationInput[]
+): void {
+  const db = paymentsRepo.db();
+  const payment = db
+    .prepare(
+      "SELECT customer_id, amount_toman, voided_at FROM payments WHERE id = ? AND organization_id = ?"
+    )
+    .get(paymentId, organizationId) as
+    | { customer_id: number; amount_toman: number; voided_at: string | null }
+    | undefined;
+  // Another org's payment reads as not found, and a voided one is immutable: voiding
+  // DROPPED its allocations, so there is nothing left to re-point at anything.
+  if (!payment) throw new PaymentError("دریافت پیدا نشد");
+  if (payment.voided_at) throw new PaymentError("دریافت باطل‌شده قابل ویرایش نیست");
+
+  const kept = allocations.filter((a) => a.amount_toman > 0);
+  const sum = kept.reduce((s, a) => {
+    if (!isWholeToman(a.amount_toman)) throw new PaymentError("مبلغ تخصیص باید عدد صحیح تومان باشد");
+    return s + a.amount_toman;
+  }, 0);
+  // The sum must equal the RECEIPT, not the remainder: allocation explains where the whole
+  // payment went, and an unexplained gap is exactly what this screen exists to remove.
+  if (sum !== payment.amount_toman) {
+    throw new PaymentError("جمع تخصیص‌ها با مبلغ دریافت برابر نیست");
+  }
+
+  // Which orders are fair game: this customer's delivered orders, each with what it is
+  // worth. An order outside that set is refused outright.
+  const open = new Map(
+    deliveredOrdersForCustomer(db, organizationId, payment.customer_id).map((o) => [
+      o.id,
+      o.total_toman,
+    ])
+  );
+
+  const touched = new Set<number>();
+  for (const a of kept) {
+    if (a.order_id === null) continue;
+    const total = open.get(a.order_id);
+    if (total === undefined) throw new PaymentError("سفارش متعلق به این مشتری نیست");
+    // This payment's OWN current holding is excluded, so re-sending the same split is not
+    // read as doubling it. Everything else already on the order is a hard ceiling.
+    const elsewhere = Number(
+      (
+        db
+          .prepare(
+            `SELECT COALESCE(SUM(a2.amount_toman), 0) AS amt
+               FROM payment_allocations a2 JOIN payments p2 ON p2.id = a2.payment_id
+              WHERE a2.order_id = ? AND p2.organization_id = ? AND p2.voided_at IS NULL AND p2.id <> ?`
+          )
+          .get(a.order_id, organizationId, paymentId) as { amt: number }
+      ).amt
+    );
+    if (elsewhere + a.amount_toman > total) {
+      throw new PaymentError("تخصیص بیش از مبلغ سفارش است");
+    }
+    touched.add(a.order_id);
+  }
+
+  // Everything the OLD allocations touched has to be reset too.
+  for (const row of db
+    .prepare("SELECT order_id FROM payment_allocations WHERE payment_id = ? AND order_id IS NOT NULL")
+    .all(paymentId) as unknown as { order_id: number }[]) {
+    touched.add(row.order_id);
+  }
+
+  const now = new Date().toISOString();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    db.prepare("DELETE FROM payment_allocations WHERE payment_id = ?").run(paymentId);
+    const ins = db.prepare(
+      "INSERT INTO payment_allocations (payment_id, order_id, amount_toman, created_at) VALUES (?, ?, ?, ?)"
+    );
+    for (const a of kept) ins.run(paymentId, a.order_id, a.amount_toman, now);
+    for (const orderId of touched) recomputeOrderPaymentTxn(db, organizationId, orderId);
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}
+
 /** Void a payment: mark it, drop its allocations, and reset every order it had
  *  touched. Reversible only by recording a fresh payment. */
 export function voidPayment(
