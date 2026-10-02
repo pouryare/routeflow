@@ -753,6 +753,223 @@ git commit -m "feat(margin): product_costs, effective-dated and exempt like prod
 
 ---
 
+### Task 4: `snapshotLine()` resolves cost through the same resolver
+
+**This is the task that makes the whole feature honest.** Committed as `3c9477b`.
+
+Without it the drawer is a tool that disagrees with the app it lives in: it would compute
+the margin at a landed cost of ۴۰۰٬۰۰۰ while `lib/orders.ts` booked the order at the
+moving average ۳۰۰٬۰۰۰, so `/sales/dashboard` would report a *better* margin than the
+tool that advised the price.
+
+- [ ] **Step 1: Write the failing test** — `tests/order-line-cost.test.ts`, four cases:
+  moving average when no override; landed cost when one is in force; a backdated row does
+  NOT restate an already-created line; packaging beats product-wide.
+
+  Seed `avg_cost_toman = 300000` and a landed row of `400000` — deliberately different, so
+  a test where they agree proves nothing. The backdating case needs its OWN product, since
+  these tests share one database and an override inserted by an earlier test would
+  otherwise be in force and quietly prove nothing.
+
+- [ ] **Step 2: Verify RED**
+
+  Run: `npx vitest run tests/order-line-cost.test.ts`
+  Expected: 3 failed, each `expected 300000 to be 400000`.
+
+- [ ] **Step 3: The one-line change** in `lib/orders.ts`:
+
+  ```ts
+  import { resolvePrice, costBasisFor } from "./catalogue";
+  // ...
+  const basis = costBasisFor(db, input.product_id, input.packaging_id, orderDate);
+  return {
+    unit_price_toman: price.price_toman,
+    unit_cost_toman: basis?.cost_toman ?? packaging.avg_cost_toman,
+    // ...
+  };
+  ```
+
+  A `null` basis (never purchased) falls back to the moving average rather than throwing:
+  refusing to record an order over an unknown *cost* would block sales the owner is trying
+  to make, and the drawer is where that gap belongs.
+
+- [ ] **Step 4: Prove it non-vacuous**
+
+  Revert the one line to `packaging.avg_cost_toman` and re-run: 3 of 4 must go red, naming
+  `300000` where `400000`, `999000` and `4400000` were expected.
+
+- [ ] **Step 5: Commit** — `3c9477b`
+
+---
+
+### Task 5: `lib/margin/commission.ts` — read the real rates, write nothing
+
+Committed as `bb93b9a`. Pure arithmetic plus two scoped readers.
+
+- [ ] **Step 1: Write the failing test** — `tests/margin-commission.test.ts`, 11 cases.
+  Two need fixtures rather than pure calls: a second organisation must be INSERTed before
+  any tenant-2 row, because `organization_id` is a foreign key and the database will not
+  let the test pretend. The role is `group_manager`, not `sales_manager`.
+
+- [ ] **Step 2: Verify RED** — `Cannot find package '@/lib/margin/commission'`
+
+- [ ] **Step 3: Implement**
+
+  ```ts
+  export function commissionForUnit(
+    kgPerBaseUnit: number,
+    ratePerKgToman: number | null
+  ): number {
+    if (ratePerKgToman === null || !Number.isFinite(kgPerBaseUnit)) return 0;
+    return roundToman(kgPerBaseUnit * ratePerKgToman);
+  }
+
+  export function readCompanyRatePerKg(
+    db: DatabaseSync, organizationId: number, onDate: string
+  ): number | null; // effectiveAt over salesperson_user_id IS NULL
+
+  export function readManagerOverridePct(
+    db: DatabaseSync, organizationId: number, managerUserId: number, onDate: string
+  ): number | null; // effectiveAt over manager_commission_overrides
+  ```
+
+  Commission here is paid per **kilogram delivered**, so a price carries no commission of
+  its own: turning ۲۰۰٬۰۰۰/kg into ۵۰٬۰۰۰/unit needs `products.kg_per_base_unit`. Without
+  the kilogram factor there is no honest number, which is why the drawer asks for it.
+
+  Null rate and 0 rate both return 0 Toman but mean different things to the caller —
+  *unmeasured* versus *measured as zero* — so the drawer consults `readCompanyRatePerKg`
+  for the null check and never renders an unconfigured rate as a commission of ۰.
+
+  The manager override is deliberately kept **out** of the margin figure: it is a share of
+  the whole group's accrual, so adding it to one product's unit cost would double-count it
+  across every product that manager oversees.
+
+- [ ] **Step 4: Verify GREEN** — 11/11
+- [ ] **Step 5: Commit** — `bb93b9a`
+
+
+### Task 6: `POST /api/sales/costs`
+
+Committed as `82ed33a`. POST only. No PATCH, no DELETE — and a test asserts the handlers
+are *absent*, because the absence is the feature.
+
+- [ ] **Step 1: Write the failing test** — `tests/api/product-costs-route.test.ts`,
+  11 cases. Harness is `NextRequest` + `createSessionToken`, copied from
+  `tests/api/admin-groups.test.ts`. Two `describe` blocks; keep them at top level, since
+  vitest refuses a `describe` nested inside an `it`.
+
+- [ ] **Step 2: Verify RED** — `Cannot find package '@/app/api/sales/costs/route'`
+
+- [ ] **Step 3: Implement** — mirror `app/api/sales/prices/route.ts` exactly:
+  `requireRole(req, OWNER_ROLES)`, `isToman()` guard, ISO-date guard, `setCost()`, 201.
+
+  Two additions over the prices route, both load-bearing:
+
+  ```ts
+  // 'lifo'/'fifo' refused rather than stored: batches carry real expiry dates and are
+  // consumed FEFO, so a costing method keyed on purchase order describes a system this
+  // one is not. Accepting it creates a row that reads as meaningful and means nothing.
+  if (method !== "weighted_average" && method !== "landed") { /* 400 */ }
+
+  // THE load-bearing line. product_costs has no organization_id, so this join is the
+  // ONLY thing stopping a cross-tenant write.
+  const product = db
+    .prepare("SELECT id FROM products WHERE id = ? AND organization_id = ?")
+    .get(productId, guard.session.organizationId);
+  ```
+
+- [ ] **Step 4: Prove the tenancy guard non-vacuous**
+
+  Drop the `AND organization_id = ?` and re-run: the cross-tenant case must go red with
+  `expected 201 to be 404` — tenant 1 writing tenant 2's product.
+
+- [ ] **Step 5: Verify GREEN** — 11/11
+- [ ] **Step 6: Commit** — `82ed33a`
+
+---
+
+### Task 7: `MarginHelperDrawer.tsx` + mount
+
+Committed as `a914701`. The visible part.
+
+- [ ] **Step 1: Write the failing test** — `tests/margin-drawer.test.ts`, 9 cases, jsdom +
+  `createRoot` + `act`, harness copied from `tests/fullscreen-control.test.ts`. The mount
+  helper clicks the fold open, because most of what the drawer has to say is inside it.
+
+- [ ] **Step 2: Verify RED** — component does not exist
+
+- [ ] **Step 3: Implement** the drawer, mount it in `CatalogueEditor.tsx` directly beneath
+  the price field, and resolve each product's cost in
+  `app/(shell)/sales/products/page.tsx` via the same `costBasisFor`. Resolving on the page
+  rather than in the component is what keeps one answer per product — a number computed
+  twice from two queries is two numbers that can drift apart.
+
+  Three rules the tests hold it to:
+
+  - **Absent is 0 to the arithmetic and `—` to the screen.** `toToman("")` returns null
+    because "a silent zero is how a free order gets recorded", so the maths may assume zero
+    while the screen may never assert one.
+  - **Cost unknown is not cost zero.** No ratio is rendered until the resolver has something
+    to say, because `P = (C+F)/(1-a-m)` returns a confident price from overheads alone for a
+    product nobody purchased.
+  - **A moving average is labelled as one**, with the note that it changes on every purchase
+    — otherwise the owner compares it to last month's dashboard, sees two margins for one
+    product, and concludes one is broken.
+
+  The badge shows **both** ratios by name: ۴۴۰٬۰۰۰ against ۳۰۰٬۰۰۰ is ۳۱٫۸٪ margin and
+  ۴۶٫۷٪ markup. They are different numbers, which is the whole reason both appear.
+
+  One test asserts `fetch` is **never** called: the drawer never writes a price.
+
+- [ ] **Step 4: Verify GREEN** — 9/9
+- [ ] **Step 5: Commit** — `a914701`
+
+---
+
+### Task 8: full-suite verification
+
+- [ ] **Step 1:** `npx tsc --noEmit` → **0 errors**. Background it — this machine takes
+  ~2 minutes and the shell caps at 30s:
+
+  ```bash
+  setsid nohup npx tsc --noEmit > /tmp/tsc.log 2>&1 &
+  ```
+
+  Confirm by checking the process has EXITED and the log is empty. A zero-byte log while
+  `tsc` is still running proves nothing.
+
+- [ ] **Step 2:** the full suite, also backgrounded (~14 min):
+
+  ```bash
+  setsid nohup npx vitest run > /tmp/vitest-final.log 2>&1 &
+  ```
+
+  Match the outcome on **test names**, never on counts — the totals drift as work lands.
+  1–2 failures naming `tests/jalali.test.ts`, `tests/api/routing-route.test.ts` or
+  `tests/routing-repo.test.ts` IS a pass; all three pass in isolation.
+
+---
+
+## Deviations from this plan, and why
+
+Recorded rather than quietly smoothed over.
+
+1. **Tasks 4–8 were executed before being written here.** They were implemented and
+   committed directly, and this section was written afterwards to match what shipped. The
+   code and its tests are the real record.
+2. **`achieved_margin_exact` is 2dp, not the 4dp first drafted in Task 2.** A sweep of 2.3M
+   cases found 4dp drifts on 18,060 of them; 2dp drifts zero times. The sweep is now a test.
+3. **The drawer's commission rate is typed, not read from the company rate.**
+   `readCompanyRatePerKg` exists and is tested, but the drawer takes a rate box instead of a
+   prop, because the products page does not currently load rates and adding that read is a
+   separate change. Wiring it is the obvious next task.
+4. **The drawer does not yet save a cost row.** `POST /api/sales/costs` exists and is
+   tested, but no control calls it yet — the drawer's save affordance is not built. Also
+   the obvious next task.
+
+---
+
 export function setCost(
   db: DatabaseSync,
   input: {
