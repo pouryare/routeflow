@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import { setCost } from "@/lib/catalogue";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
+import { packagingBelongsTo, productInOrganization } from "@/lib/repo/productCosts";
 
 /** Recording a cost override. POST only -- there is no PATCH and no DELETE, and that
  *  absence is the feature, exactly as on /api/sales/prices: a cost row that could be
@@ -66,10 +67,12 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  const product = db
-    .prepare("SELECT id FROM products WHERE id = ? AND organization_id = ?")
-    .get(productId, guard.session.organizationId);
-  if (!product) {
+  /* The tenancy join lives in lib/repo/productCosts.ts, not here: `product_costs` carries
+   * no organization_id of its own, so filtering on the session's organisation is the ONLY
+   * thing preventing a cross-tenant write, and one auditable place is better than one
+   * scattered across routes. New raw SQL belongs in lib/repo/ -- tests/repo-boundary
+   * .test.ts enforces it, and this route is a new file so it gets no grandfathering. */
+  if (!productInOrganization(db, productId, guard.session.organizationId)) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
@@ -77,13 +80,8 @@ export async function POST(req: NextRequest) {
     body?.packaging_id === undefined || body?.packaging_id === null
       ? null
       : Number(body.packaging_id);
-  if (packagingId !== null) {
-    const packaging = db
-      .prepare("SELECT id FROM packagings WHERE id = ? AND product_id = ?")
-      .get(packagingId, productId);
-    if (!packaging) {
-      return NextResponse.json({ ok: false, error: "بسته‌بندی پیدا نشد" }, { status: 404 });
-    }
+  if (packagingId !== null && !packagingBelongsTo(db, packagingId, productId)) {
+    return NextResponse.json({ ok: false, error: "بسته‌بندی پیدا نشد" }, { status: 404 });
   }
 
   const id = setCost(db, {

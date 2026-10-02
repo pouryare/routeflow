@@ -11,7 +11,8 @@
  */
 
 import type { DatabaseSync } from "node:sqlite";
-import { priceAt, effectiveAt, type PriceRow } from "./pricing";
+import { priceAt, type PriceRow } from "./pricing";
+import { avgCostFor, costRowsFor, effectiveCost } from "./repo/productCosts";
 import { isToman } from "./money";
 
 export interface ProductRow {
@@ -246,20 +247,11 @@ export function setCost(
   return (db.prepare("SELECT last_insert_rowid() AS id").get() as { id: number }).id;
 }
 
-function costsFor(db: DatabaseSync, productId: number): CostRow[] {
-  return db
-    .prepare(
-      `SELECT id, product_id, packaging_id, method, cost_toman, valid_from
-         FROM product_costs WHERE product_id = ?`
-    )
-    .all(productId) as unknown as CostRow[];
-}
-
 /** The cost of one unit on a date, or null when nothing is known.
  *
- *  Packaging-specific beats product-wide, exactly as `resolvePrice` does two functions
- *  above -- the same precedence, because a box of 24 and a single unit genuinely cost
- *  different amounts and picking the wrong one is a real margin error.
+ *  Packaging-specific beats product-wide, exactly as `resolvePrice` does -- the same
+ *  precedence, because a box of 24 and a single unit genuinely cost different amounts and
+ *  picking the wrong one is a real margin error.
  *
  *  THREE outcomes, and the third is the one that matters:
  *
@@ -274,6 +266,10 @@ function costsFor(db: DatabaseSync, productId: number): CostRow[] {
  *  P = (C + F) / (1 - a - m) will happily return a confident price built from overheads
  *  alone for a product nobody ever purchased. Same distinction order_lines draws when it
  *  says a null `packs_delivered` is not the same thing as a delivered zero.
+ *
+ *  The queries live in `lib/repo/productCosts.ts`: this file predates the raw-SQL rule and
+ *  is grandfathered, but the reads are new code and the rule is a ratchet, not a
+ *  grandfathering of everything anyone adds to an old file.
  */
 export function costBasisFor(
   db: DatabaseSync,
@@ -281,25 +277,14 @@ export function costBasisFor(
   packagingId: number | null,
   onDate: string
 ): CostBasis | null {
-  const rows = costsFor(db, productId);
-  const specific =
-    packagingId === null ? [] : rows.filter((r) => r.packaging_id === packagingId);
-  const hit =
-    effectiveAt(specific, onDate) ??
-    effectiveAt(
-      rows.filter((r) => r.packaging_id === null),
-      onDate
-    );
-
+  const hit = effectiveCost(costRowsFor(db, productId), packagingId, onDate);
   if (hit) {
     return { cost_toman: hit.cost_toman, method: hit.method, cost_id: hit.id };
   }
 
-  const row = db
-    .prepare("SELECT avg_cost_toman FROM products WHERE id = ?")
-    .get(productId) as { avg_cost_toman: number } | undefined;
-  if (!row || row.avg_cost_toman <= 0) return null;
-  return { cost_toman: row.avg_cost_toman, method: "weighted_average", cost_id: null };
+  const avg = avgCostFor(db, productId);
+  if (avg === null || avg <= 0) return null;
+  return { cost_toman: avg, method: "weighted_average", cost_id: null };
 }
 
 /** `costBasisFor` scoped to one organisation.
