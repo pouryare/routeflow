@@ -6,12 +6,19 @@ import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
 import { faToman } from "@/lib/format";
+import MarginHelperDrawer, { type DrawerProduct } from "./MarginHelperDrawer";
 
 interface ProductOption {
   id: number;
   name: string;
   base_unit: string;
-  packagings: { id: number; name: string }[];
+  kg_per_base_unit: number;
+  avg_cost_toman: number;
+  /** What the effective-dated resolver returned, or 0 when it returned null. */
+  cost_toman: number;
+  /** null means "no cost recorded", which is NOT the same as a cost of zero. */
+  cost_method: "weighted_average" | "landed" | null;
+  packagings: { id: number; name: string; price_toman: number | null }[];
 }
 
 const FIELD =
@@ -314,6 +321,24 @@ export default function CatalogueEditor({ products }: { products: ProductOption[
           </span>
         </div>
       </form>
+
+      {/* The margin helper, folded directly under the price field it explains.
+          It NEVER writes a price: `POST /api/sales/prices` stays the only way a price
+          enters the system, so there is one path to price history and the owner still
+          submits through the button above. What it READS is the same `product_costs`
+          the order line snapshots, so the margin it shows is the margin that gets
+          booked -- see `snapshotLine()` in lib/orders.ts. */}
+      <MarginHelperDrawer
+        products={products as DrawerProduct[]}
+        selectedProductId={rProduct}
+        selectedPackagingId={rPackaging}
+        price={rPrice}
+        onSelectProduct={(id) => {
+          setRProduct(id);
+          setRPackaging("");
+        }}
+        onSelectPackaging={setRPackaging}
+      />
     </section>
   );
 }

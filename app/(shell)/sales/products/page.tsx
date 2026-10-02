@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { getDb } from "@/lib/db";
-import { readCatalogue } from "@/lib/catalogue";
+import { readCatalogue, costBasisFor } from "@/lib/catalogue";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
@@ -100,12 +100,38 @@ export default async function ProductsPage() {
 
       {session.role === "owner" && (
         <CatalogueEditor
-          products={products.map((p) => ({
-            id: p.id,
-            name: p.name,
-            base_unit: p.base_unit,
-            packagings: p.packagings.map((k) => ({ id: k.id, name: k.name })),
-          }))}
+          products={products.map((p) => {
+            /* The drawer's cost basis, resolved through the SAME `costBasisFor` the order
+               line snapshots. Resolving it here rather than in the component is what keeps
+               one answer per product: a number computed twice, from two queries, is two
+               numbers that can drift apart.
+
+               `null` when nothing is known -- a product never purchased. That is passed
+               through as `cost_method: null` rather than as a cost of 0, because the
+               forward solve would otherwise return a confident price built from overheads
+               alone for a product whose real cost was never entered. */
+            const packagingId = p.packagings[0]?.id ?? null;
+            const basis = costBasisFor(
+              db,
+              p.id,
+              packagingId,
+              new Date().toISOString().slice(0, 10)
+            );
+            return {
+              id: p.id,
+              name: p.name,
+              base_unit: p.base_unit,
+              kg_per_base_unit: p.kg_per_base_unit,
+              avg_cost_toman: p.avg_cost_toman,
+              cost_toman: basis?.cost_toman ?? 0,
+              cost_method: basis?.method ?? null,
+              packagings: p.packagings.map((k) => ({
+                id: k.id,
+                name: k.name,
+                price_toman: k.price_toman,
+              })),
+            };
+          })}
         />
       )}
 
