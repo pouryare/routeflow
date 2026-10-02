@@ -16,6 +16,11 @@ import { isToman } from "./money";
 import { createBatchTxn } from "./repo/batches";
 import { recordMovementsTxn, defaultFacilityId } from "./repo/stock";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
+/* roundToman, never Math.round and never SQL ROUND(): purchase_lines.base_qty is REAL, so
+   the multiplication genuinely produces fractions, and Math.round(-0.5) returns -0 --
+   which lib/money.ts calls out as making a reversal 1 Toman off the sale it reverses. */
+import { roundToman, sumToman } from "./money";
+import { postPurchase } from "./repo/ledgerPostings";
 
 export class PurchaseError extends Error {}
 
@@ -33,6 +38,12 @@ export interface PurchaseLineInput {
 }
 
 export interface PurchaseInput {
+  /** The real supplier row. Optional only so a LEGACY caller still works: without it the
+   *  purchase records stock but posts no payable, which is exactly the hole accounts
+   *  payable exists to close, so new callers must pass it. */
+  supplier_id?: number | null;
+  /** Kept: the only record of what was originally typed when two suppliers normalise to
+   *  the same name after trimming. */
   supplier?: string | null;
   purchase_date: string;
   invoice_no?: string | null;
@@ -68,11 +79,12 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
     const purchaseId = Number(
       db
         .prepare(
-          `INSERT INTO purchases (supplier, purchase_date, invoice_no, notes, created_by, created_at, organization_id)
-           VALUES (?, ?, ?, ?, ?, ?, ?)`
+          `INSERT INTO purchases (supplier, supplier_id, purchase_date, invoice_no, notes, created_by, created_at, organization_id)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           input.supplier?.trim() || null,
+          input.supplier_id ?? null,
           input.purchase_date.slice(0, 10),
           input.invoice_no?.trim() || null,
           input.notes?.trim() || null,
@@ -146,6 +158,32 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
         now,
         line.product_id
       );
+    }
+
+    /* The money side of the purchase, in the SAME transaction. A purchase whose stock
+       landed but whose payable did not is the exact failure accounts payable was added to
+       stop, and nothing on the stock screen would look wrong.
+
+       postPurchase opens no transaction of its own -- this one is already open, and a
+       nested BEGIN throws in SQLite.
+
+       A purchase with NO supplier posts nothing rather than an unattributable payable. An
+       anonymous payable is a number nobody can settle or ask about, which is worse than an
+       absent one because it looks complete. */
+    if (input.supplier_id) {
+      // roundToman per LINE, then sumToman across them: base_qty is REAL, so rounding the
+      // total once would hide which line produced the fraction.
+      const total = sumToman(
+        input.lines.map((l) => roundToman(l.base_qty * l.unit_cost_toman))
+      );
+      postPurchase(db, {
+        organizationId: orgId,
+        purchaseId,
+        supplierId: input.supplier_id,
+        totalToman: total,
+        purchasedAt: input.purchase_date.slice(0, 10),
+        purchasedBy: input.created_by,
+      });
     }
 
     db.exec("COMMIT");

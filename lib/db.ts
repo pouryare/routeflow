@@ -114,6 +114,7 @@ export const TENANT_TABLES = [
   "fiscal_periods",
   "journals",
   "ledger_entries",
+  "suppliers",
 ] as const satisfies readonly string[];
 
 /** Rebuild a table so a globally-UNIQUE natural key becomes unique per tenant instead.
@@ -619,6 +620,65 @@ export function unmappedBackfillPayments(db: DatabaseSync): {
           )`
     )
     .all() as { id: number; amount_toman: number; method: string; received_at: string }[];
+}
+
+/** Fold the free-text purchases.supplier into real supplier rows and give purchases a
+ *  supplier_id.
+ *
+ *  Rebuild-and-copy, because SQLite cannot add a foreign key to an existing table --
+ *  the same reason payments.cheque_id has none. Idempotent two ways: the PRAGMA check
+ *  short-circuits a re-run, and INSERT OR IGNORE on the unique index is the guard that
+ *  keeps a re-run from creating duplicate suppliers.
+ *
+ *  The legacy `supplier` TEXT column is KEPT. It is the only record of the original
+ *  string when two suppliers normalise to the same name after trimming, and dropping it
+ *  buys tidiness at the price of irreversible data loss.
+ *
+ *  `organization_id` is carried through as-is: the boot backfill stamps it before this
+ *  runs, and COALESCE only covers a hand-seeded row. */
+export function migratePurchaseSuppliers(db: DatabaseSync): void {
+  const cols = db.prepare("PRAGMA table_info(purchases)").all() as { name: string }[];
+  if (cols.some((c) => c.name === "supplier_id")) return; // already migrated
+
+  const now = new Date().toISOString();
+  db.exec("PRAGMA foreign_keys = OFF");
+  try {
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS purchases_tn_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        supplier TEXT,
+        supplier_id INTEGER REFERENCES suppliers(id),
+        purchase_date TEXT NOT NULL,
+        invoice_no TEXT,
+        notes TEXT,
+        created_by INTEGER NOT NULL REFERENCES users(id),
+        created_at TEXT NOT NULL,
+        organization_id INTEGER
+      );
+      INSERT INTO purchases_tn_new
+        (id, supplier, purchase_date, invoice_no, notes, created_by, created_at, organization_id)
+      SELECT id, supplier, purchase_date, invoice_no, notes, created_by, created_at, organization_id
+        FROM purchases;
+      DROP TABLE purchases;
+      ALTER TABLE purchases_tn_new RENAME TO purchases;
+    `);
+    /* OR IGNORE against ux_suppliers_org_name, and the name is TRIM'd because two
+       spellings with stray whitespace are the same vendor far more often than not. */
+    db.prepare(
+      `INSERT OR IGNORE INTO suppliers (organization_id, name, created_at)
+       SELECT DISTINCT COALESCE(organization_id, 1), TRIM(supplier), ?
+         FROM purchases WHERE supplier IS NOT NULL AND TRIM(supplier) <> ''`
+    ).run(now);
+    db.prepare(
+      `UPDATE purchases SET supplier_id = (
+         SELECT s.id FROM suppliers s
+          WHERE s.name = TRIM(purchases.supplier)
+            AND s.organization_id = COALESCE(purchases.organization_id, 1))
+       WHERE supplier IS NOT NULL AND TRIM(supplier) <> ''`
+    ).run();
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
 }
 
 export function backfillStockLedger(db: DatabaseSync): void {
@@ -1576,6 +1636,25 @@ export function getDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_account ON ledger_entries(account_id, id);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_customer ON ledger_entries(customer_id, id);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_supplier ON ledger_entries(supplier_id, id);
+
+    /* Tenant-scoped, unlike accounts: a supplier is ONE business's relationship, not a
+       shared taxonomy. That is the same distinction the chart decision draws, and the
+       commission_rates comment reaches the same conclusion for the same reason. */
+    CREATE TABLE IF NOT EXISTS suppliers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      name TEXT NOT NULL,
+      phone TEXT,
+      notes TEXT,
+      active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)),
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    /* Unique on the RAW name, not TRIM(name). The migration folds legacy free text in with
+       TRIM, so "  ACME  " and "ACME" would otherwise collapse into one supplier and two
+       different vendors become one payable balance. Uniqueness is per tenant, because two
+       organisations may legitimately buy from a supplier of the same name. */
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_suppliers_org_name ON suppliers(organization_id, name);
 
     /* Append-only, enforced by the DATABASE and not by convention. IF NOT EXISTS is
        mandatory: these re-run on every boot and a bare CREATE TRIGGER throws. The pattern
@@ -3951,6 +4030,11 @@ export function getDb(): DatabaseSync {
   // on every boot is what guarantees a row added to the chart in a later release reaches
   // every database, including one that booted a hundred times before that release.
   seedAccounts(db);
+
+  // purchases gains supplier_id and the legacy free-text supplier becomes real rows. Must
+  // run AFTER the suppliers table exists (schema block above) and BEFORE any purchase is
+  // recorded, so a receipt recorded on a fresh database already has a supplier_id.
+  migratePurchaseSuppliers(db);
 
   // Turn existing payments into ledger postings. After seedAccounts (it needs account
   // ids) and BEFORE any live payment path can write, so the cutover in Task 4 never races

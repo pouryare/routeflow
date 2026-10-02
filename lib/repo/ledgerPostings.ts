@@ -108,3 +108,117 @@ export function receiptJournalIdFor(paymentId: number): number | undefined {
     .get(paymentId) as { id: number } | undefined;
   return row?.id;
 }
+
+/** Goods received: Dr inventory / Cr accounts payable, carrying the supplier.
+ *
+ *  This is where accounts payable comes from. Until it existed, a purchase recorded goods
+ *  and the money side simply vanished -- there was no answer to "what do we owe?", which
+ *  is the question the whole payables half of this section exists to answer.
+ *
+ *  The AP leg carries `supplierId`, and that is what makes a per-supplier statement and an
+ *  ageing report possible: `supplierBalanceToman` filters on it.
+ *
+ *  A ZERO-total purchase posts NOTHING. `lib/purchases.ts` validates `unit_cost_toman < 0`,
+ *  so a zero-cost purchase is legal today and the stock movement still happens; there is
+ *  simply no money side to record, and inventing a 1-Toman leg would be fabrication. */
+export function postPurchase(
+  db: DatabaseSync,
+  input: {
+    organizationId: number;
+    purchaseId: number;
+    supplierId: number;
+    totalToman: number;
+    purchasedAt: string;
+    purchasedBy: number;
+  }
+): number | null {
+  if (input.totalToman <= 0) return null; // nothing was paid for; nothing to owe
+  return postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.purchasedAt,
+    sourceType: "PURCHASE",
+    sourceId: input.purchaseId,
+    createdBy: input.purchasedBy,
+    memo: "ثبت خرید",
+    legs: [
+      { accountId: accountOrThrow("1203"), side: "D", amountToman: input.totalToman },
+      {
+        accountId: accountOrThrow("2101"),
+        side: "C",
+        amountToman: input.totalToman,
+        supplierId: input.supplierId,
+      },
+    ],
+  });
+}
+
+/** Paying a supplier: cash out, payable down.
+ *
+ *  An overpayment never produces a negative payable. `ledger_entries` has
+ *  `CHECK (amount_toman > 0)` and the sign lives in `side`, so the direction of a movement
+ *  is expressed by WHICH account is debited.
+ *
+ *  The SPLIT is the caller's to state, and it is stated rather than guessed:
+ *  `amountToman` is the cash that actually leaves, and `payableToman` is the part of it
+ *  that clears what is owed. Owe 600,000 and hand over 900,000, and the honest entry is
+ *
+ *      Dr 2101 accounts payable   600,000
+ *      Dr 1301 prepayments        300,000   <- the excess is an asset we hold
+ *         Cr 1101 cash                900,000
+ *
+ *  Note 1301 is DEBITED. I first wrote this crediting 1301 by the full amount, which is
+ *  the intuitive-looking mistake and does not balance at all: debits 900,000 against
+ *  credits 1,800,000. postJournal refused it, which is the engine earning its keep.
+ *  Computing the split here instead would mean this function silently reading a balance
+ *  the caller may already have decided differently. */
+export function postSupplierPayment(
+  db: DatabaseSync,
+  input: {
+    organizationId: number;
+    supplierId: number;
+    /** Cash actually handed over. */
+    amountToman: number;
+    /** The portion that clears the payable. Defaults to all of it. */
+    payableToman?: number;
+    method: string;
+    paidAt: string;
+    paidBy: number;
+    /** Kept for readability at the call site; the split is what does the work. */
+    overpayToPrepayment?: boolean;
+    memo?: string | null;
+  }
+): number {
+  const payable = input.payableToman ?? input.amountToman;
+  if (payable > input.amountToman) {
+    throw new LedgerError("مبلغ پرداختی نمی‌تواند از مبلغ پرداختنی بیشتر باشد");
+  }
+  const excess = input.amountToman - payable;
+
+  return postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.paidAt,
+    sourceType: "SUPPLIER_PAYMENT",
+    createdBy: input.paidBy,
+    memo: input.memo ?? "پرداخت به تأمین‌کننده",
+    legs: [
+      {
+        accountId: accountOrThrow("2101"),
+        side: "D",
+        amountToman: payable,
+        supplierId: input.supplierId,
+      },
+      ...(excess > 0
+        ? [
+            {
+              accountId: accountOrThrow("1301"),
+              side: "D" as const,
+              amountToman: excess,
+              supplierId: input.supplierId,
+            },
+          ]
+        : []),
+      { accountId: cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
+    ],
+  });
+}
+
