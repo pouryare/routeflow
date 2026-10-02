@@ -9,7 +9,15 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "./db";
-import { orderTotalToman, lineTotalToman, lineKg, type LineSnapshot } from "./orderMath";
+import {
+  orderTotalToman,
+  lineTotalToman,
+  lineCostToman,
+  lineKg,
+  type LineSnapshot,
+} from "./orderMath";
+import { postDeliveryRecognition } from "./repo/ledgerPostings";
+import { sumToman } from "./money";
 import { recordPaymentTxn, voidPaymentTxn, recomputeOrderPaymentTxn } from "./repo/payments";
 import { allocateFEFO, recordMovementsTxn, defaultFacilityId } from "./repo/stock";
 import { advanceOrder } from "./repo/orders";
@@ -454,6 +462,50 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
           insDlb.run(stockOrgId, stopId, line.line_id, a.batch_id, a.base_qty, now);
         }
       }
+    }
+
+    /* Revenue and cost, recognised when the goods MOVE -- not on the order, and not on the
+       payment (which posts its own Dr cash / Cr AR journal). The two are separate journals
+       because the cash arriving and the goods moving are separate events, and recognising
+       revenue on payment is wrong even when the numbers happen to agree.
+
+       Inside this transaction, using the caller's db. postJournal opens NOTHING of its own,
+       and a nested BEGIN throws in SQLite -- this is the crash Task 2 spent a mutation
+       proving, and this is the call site it would have hit first.
+
+       Revenue uses lineTotalToman / lineCostToman, which both read effectivePacks, so a
+       PARTIAL delivery recognises only the partial amount.
+
+       Cost is the FROZEN ol.unit_cost_toman, not a live lookup. lib/orders.ts:140-166 is
+       explicit that the cost lookup "happens once, at sale, and the ANSWER is frozen onto
+       the line so a deliberate correction later cannot rewrite what the books already hold"
+       -- and the plan for this task proposed re-resolving cost live via effectiveCost /
+       avgCostFor, which would let a purchase arriving today restate yesterday's cost of
+       goods. That is precisely the drift the codebase went out of its way to prevent.
+
+       unit_cost_toman DEFAULTs to 0, which is how "never purchased, so nothing is known" is
+       recorded. So one line at zero means the WHOLE cost is unknown, and revenue posts
+       alone -- a partial cost that silently excluded one line's real cost would be worse
+       than no cost at all. */
+    if (!nothingTaken) {
+      const orderLines = stopLines(db, stop.order_id);
+      let revenueToman = 0;
+      let costToman = 0;
+      let costKnown = true;
+      for (const line of orderLines) {
+        revenueToman += line.total_toman;
+        if (line.unit_cost_toman > 0) costToman += lineCostToman(line);
+        else costKnown = false;
+      }
+      postDeliveryRecognition(db, {
+        organizationId: stockOrgId,
+        deliveryStopId: stopId,
+        customerId: stop.customer_id,
+        deliveredAt: now,
+        deliveredBy: input.by,
+        revenueToman: sumToman([revenueToman]),
+        costToman: costKnown && costToman > 0 ? sumToman([costToman]) : null,
+      });
     }
 
     // Phase 3 (M6): keep the deliveries entity in step. Server owns actual_arrival /

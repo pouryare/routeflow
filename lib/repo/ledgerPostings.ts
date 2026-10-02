@@ -1,6 +1,6 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
-import { postJournal, accountIdByCode, LedgerError } from "./ledger";
+import { postJournal, accountIdByCode, LedgerError, type LedgerLeg } from "./ledger";
 
 /* Re-exported so a caller can tell a REFUSAL (show the user) from a bug, without also
    importing the engine module. postExpense and postSupplierPayment both throw it. */
@@ -178,6 +178,73 @@ export function postExpense(
       { accountId: input.accountId, side: "D", amountToman: input.amountToman },
       { accountId: cashAccountFor(input.method), side: "C", amountToman: input.amountToman },
     ],
+  });
+}
+
+/** Revenue and cost recognised on a delivery: Dr AR / Cr revenue, plus Dr COGS / Cr inventory.
+ *
+ *  This is where revenue is recognised -- NOT on the order and NOT on the payment. A receipt
+ *  posts Dr cash / Cr AR (Task 4); the goods moving is a different event, and recognising
+ *  revenue on payment is wrong even when the two numbers happen to agree.
+ *
+ *  `costToman` of null OR 0 means the cost is not known, and the revenue leg posts ALONE.
+ *  A fabricated cost would put a wrong number on the income statement, and a wrong number
+ *  that looks right is worse than an absent one. Zero is the real "unknown" signal here:
+ *  `order_lines.unit_cost_toman` DEFAULTs to 0, which is how "never purchased, so nothing is
+ *  known" is recorded (lib/orders.ts:166).
+ *
+ *  Returns null when there is nothing to post, or when this stop was ALREADY recognised for
+ *  this tenant -- the guard that makes a retried sync converge instead of stacking a second
+ *  revenue journal. The check is scoped by `organization_id` as well as `source_id`: a
+ *  delivery_stops id is unique per row, but an unscoped lookup would let one tenant's stop
+ *  suppress another's recognition, which is a silent revenue loss. */
+export function postDeliveryRecognition(
+  db: DatabaseSync,
+  input: {
+    organizationId: number;
+    deliveryStopId: number;
+    customerId: number;
+    deliveredAt: string;
+    deliveredBy: number;
+    revenueToman: number;
+    costToman: number | null;
+  }
+): number | null {
+  if (!(input.revenueToman > 0)) return null; // nothing went out
+
+  const already = db
+    .prepare(
+      "SELECT id FROM journals WHERE organization_id = ? AND source_type = 'SALE' AND source_id = ? LIMIT 1"
+    )
+    .get(input.organizationId, input.deliveryStopId);
+  if (already) return null;
+
+  const legs: LedgerLeg[] = [
+    {
+      accountId: accountOrThrow("1201"),
+      side: "D",
+      amountToman: input.revenueToman,
+      customerId: input.customerId,
+    },
+    { accountId: accountOrThrow("4101"), side: "C", amountToman: input.revenueToman },
+  ];
+
+  // Only when the cost is actually known AND positive.
+  if (input.costToman !== null && input.costToman > 0) {
+    legs.push(
+      { accountId: accountOrThrow("5101"), side: "D", amountToman: input.costToman },
+      { accountId: accountOrThrow("1203"), side: "C", amountToman: input.costToman }
+    );
+  }
+
+  return postJournal(db, {
+    organizationId: input.organizationId,
+    postedAt: input.deliveredAt,
+    sourceType: "SALE",
+    sourceId: input.deliveryStopId,
+    createdBy: input.deliveredBy,
+    memo: "تحویل کالا",
+    legs,
   });
 }
 

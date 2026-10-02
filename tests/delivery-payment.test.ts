@@ -104,6 +104,56 @@ describe("recordDelivery payment", () => {
     ).toMatchObject({ paid_toman: 25_000, payment_status: "partial" });
   });
 
+  it("recognises revenue AND cost in the ledger when the goods move", () => {
+    /* The end-to-end proof that the wiring actually fires. Every other recognition test
+       calls postDeliveryRecognition directly; without this one, deleting the whole call
+       from lib/delivery.ts would leave them all green and nothing would ever be
+       recognised in the running app. */
+    const db = getDb();
+    const { stopId, lineId } = stagedOrder();
+    recordDelivery(db, stopId, {
+      lines: [{ line_id: lineId, packs_delivered: 3 }],
+      collected_toman: 25_000,
+      by: driver,
+    });
+    const legs = db
+      .prepare(
+        `SELECT a.code, e.side, e.amount_toman AS amount FROM ledger_entries e
+           JOIN journals j ON j.id = e.journal_id
+           JOIN accounts a ON a.id = e.account_id
+          WHERE j.source_type = 'SALE' AND j.source_id = ?`
+      )
+      .all(stopId) as { code: string; side: string; amount: number }[];
+    // The order is 3 packs of 10,000 = 30,000. Revenue is the DELIVERED value.
+    expect(legs.find((l) => l.code === "4101")).toMatchObject({ side: "C", amount: 30_000 });
+    expect(legs.find((l) => l.code === "1201")).toMatchObject({ side: "D", amount: 30_000 });
+    // unit_cost_toman is 0 in this fixture (no purchase), so cost is UNKNOWN and revenue
+    // posts ALONE -- the "never invent a cost" rule, exercised end to end.
+    expect(legs.map((l) => l.code).sort()).toEqual(["1201", "4101"]);
+  });
+
+  it("recognises only the PARTIAL value when the driver delivers short", () => {
+    /* A mutation that swapped delivered-for-ordered PASSED against the full-delivery test
+       above, because there ordered == delivered. This is the case that tells them apart:
+       2 of 3 packs leaves the van, so 20,000 is earned and 10,000 is not. */
+    const db = getDb();
+    const { stopId, lineId } = stagedOrder();
+    recordDelivery(db, stopId, {
+      lines: [{ line_id: lineId, packs_delivered: 2 }],
+      collected_toman: 15_000,
+      by: driver,
+    });
+    const revenue = db
+      .prepare(
+        `SELECT e.amount_toman AS amount FROM ledger_entries e
+           JOIN journals j ON j.id = e.journal_id
+           JOIN accounts a ON a.id = e.account_id
+          WHERE j.source_type = 'SALE' AND j.source_id = ? AND a.code = '4101'`
+      )
+      .get(stopId) as { amount: number };
+    expect(revenue.amount).toBe(20_000); // NOT 30,000
+  });
+
   it("records nothing when collected_toman is 0", () => {
     const db = getDb();
     const { stopId, lineId } = stagedOrder();
