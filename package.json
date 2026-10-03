@@ -11,7 +11,11 @@
     "test:unit": "vitest run",
     "test:smoke": "vitest run -c vitest.smoke.mts",
     "check:contrast": "node scripts/check-contrast.mjs",
-    "audit-copy": "node scripts/audit-copy.mjs"
+    "audit-copy": "node scripts/audit-copy.mjs",
+    "seed:demo": "node --experimental-strip-types --no-warnings --import ./scripts/_ts-register.mjs scripts/seed-demo.ts",
+    "seed:demo:reset": "npm run seed:demo -- --force",
+    "dev:demo": "ROUTEFLOW_DB_PATH=./data/routeflow.demo.db next dev",
+    "test:demo": "vitest run tests/seed-demo-deep.test.ts"
   },
   "dependencies": {
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",
