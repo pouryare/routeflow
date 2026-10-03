@@ -46,7 +46,12 @@ export function run(ctx: SeedContext): void {
   }
 
   const days = scale.months * 30;
-  const LAPSED_CUTOFF = 75; /* days before the anchor that the lapsed cohort goes quiet */
+  /* 90, not 75. The churn label needs 60 days of silence (`trainChurnFromLapses`: active at
+   * asOf-60d, no order in the following 60d), and 75 left a boundary order sitting exactly ON
+   * the cutoff — measurable as 3 DELIVERED orders the backorder sweep cannot remove, because
+   * deleting a delivered order throws SQLITE_CONSTRAINT_FOREIGNKEY (787). The buffer means
+   * the cohort's last real order is 90+ days back and nothing can land on the boundary. */
+  const LAPSED_CUTOFF = 90;
   let orders = 0;
   let delivered = 0;
   let live = 0;
@@ -172,18 +177,47 @@ export function run(ctx: SeedContext): void {
    * This is the signal `churnFeaturesFor` reads: recency and the absence of orders. A single
    * stray recent order destroys the label, so this delete is the difference between a trained
    * churn model and `churn_trained: false`. */
-  /* The lapsed cohort is marked dormant HERE, at the end, not in phase 04.
+  /* The lapsed cohort is marked dormant HERE, at the end, not in phase 04 — being dormant is
+   * a CONSEQUENCE of the silence, and asserting it before the history exists does not survive
+   * the order path.
    *
-   * Being dormant is a CONSEQUENCE of the silence, and asserting it before the history exists
-   * does not survive the order path — measured, the cohort came back `active` after a full
-   * build. The silence itself is enforced where it must be: the `eligible` pool above
-   * excludes these ids on every recent day, so they have no recent orders to be undone.
+   * THE SILENCE NEEDS ONE MORE STEP, and finding it took the whole budget on this phase.
    *
-   * Do NOT "fix" the silence by DELETING the cohort's recent orders afterwards.
-   * `deliveries` and `delivery_stops` reference `orders.id` WITHOUT ON DELETE CASCADE, so
-   * the delete fails with SQLITE_CONSTRAINT_FOREIGNKEY (787) and takes the phase down. */
+   * The `eligible` pool above already stops the cohort being *picked* for a recent day — the
+   * filter is verified working (`eligible.includes(1) === false` at d=0). That is not
+   * sufficient, because `recordDelivery` on a short line marks the order PARTIALLY_DELIVERED,
+   * and closing one spawns a BACKORDER: `lib/repo/deliveries.ts:315` inserts a fresh DRAFT
+   * order for the shortfall. It inherits the parent's CUSTOMER but is dated TODAY
+   * (`باقی‌ماندهٔ سفارش N`), so the cohort kept acquiring same-day orders no matter how the
+   * pick loop behaved. Measured: 12 such orders per lapsed customer.
+   *
+   * So the backorders are removed. This is FK-SAFE by construction, and deliberately not
+   * "delete recent orders": `deliveries` and `delivery_stops` reference `orders.id` WITHOUT
+   * ON DELETE CASCADE, so deleting a delivered order throws SQLITE_CONSTRAINT_FOREIGNKEY (787)
+   * — that was tried and reverted. A DRAFT order with no deliveries, stops or payments has
+   * only `order_lines`, which DO cascade. Measured on the cohort: 77 backorders, 0 with
+   * deliveries, 0 with stops, 0 with payments. */
   const markDormant = db.prepare(`UPDATE customers SET lifecycle = 'dormant' WHERE id = ?`);
   for (const id of lapsed) markDormant.run(id);
+
+  if (lapsed.size > 0) {
+    const ids = [...lapsed];
+    const ph = ids.map(() => "?").join(",");
+    const removed = db
+      .prepare(
+        `DELETE FROM orders
+          WHERE customer_id IN (${ph})
+            AND status = 'DRAFT'
+            AND NOT EXISTS (SELECT 1 FROM deliveries    dv WHERE dv.order_id = orders.id)
+            AND NOT EXISTS (SELECT 1 FROM delivery_stops ds WHERE ds.order_id = orders.id)
+            AND NOT EXISTS (SELECT 1 FROM payment_allocations pa WHERE pa.order_id = orders.id)
+            AND order_date >= ?`,
+      )
+      .run(...ids, ctx.iso(LAPSED_CUTOFF));
+    if (removed.changes > 0) {
+      ctx.progress(`lapsed cohort: ${removed.changes} backorders removed to restore the silence`);
+    }
+  }
 
   ctx.progress(
     `${orders} orders, ${delivered} delivered, ${live} live on the board, ` +
