@@ -1,6 +1,66 @@
-/** PLACEHOLDER — replaced by the phase task. Keeps tsc green at every commit. */
+/** Tasks on the board, and the queues each role lands on.
+ *
+ *  `createTask(organizationId, input)` opens no transaction and derives `stage` from `kind`
+ *  when none is given. Kinds are the app's own vocabulary (lib/tasks/labels.ts), so the board
+ *  filters read correctly rather than showing an empty lane for an unknown kind.
+ */
+
+import { createTask } from "@/lib/repo/tasks";
 import type { SeedContext } from "../context";
 
-export function run(_ctx: SeedContext): void {
-  throw new Error("phase 08-workflow not implemented yet");
+const KINDS = ["collection", "complaint", "delivery", "sales", "admin"] as const;
+
+export function run(ctx: SeedContext): void {
+  const { db, rng } = ctx;
+  const owner = ctx.staff.owner;
+
+  const assignees = (db
+    .prepare(
+      `SELECT u.id FROM users u
+         JOIN user_roles ur ON ur.user_id = u.id
+        WHERE u.organization_id = ? AND u.active = 1 AND ur.role IN ('field_rep','sales_manager')
+        GROUP BY u.id`,
+    )
+    .all(ctx.orgId) as Array<{ id: number }>).map((r) => r.id);
+
+  /* Recent orders to hang tasks off, so a task links to a real entity rather than a dangling
+     id. Old orders are excluded — an overdue task on a 2-year-old order is noise. */
+  const recentOrders = db
+    .prepare(
+      `SELECT id, customer_id, status FROM orders
+        WHERE organization_id = ? AND order_date >= ?
+        ORDER BY order_date DESC LIMIT 200`,
+    )
+    .all(ctx.orgId, ctx.iso(45)) as Array<{ id: number; customer_id: number; status: string }>;
+
+  const customers = ctx.ids.customerIds ?? [];
+  const count = Math.max(12, Math.round(ctx.scale.customers * 0.4));
+  let made = 0;
+
+  for (let i = 0; i < count; i++) {
+    const kind = rng.pick(KINDS);
+    const useOrder = rng.chance(0.7) && recentOrders.length > 0;
+    const order = useOrder ? rng.pick(recentOrders) : null;
+    /* Both branches need an entity id, and `order` is nullable — so the fallback is computed
+       separately rather than through `order?.customer_id`, which TS narrows to `never` once
+       `order` has been proven null inside the else. */
+    const customerId = order ? order.customer_id : (customers.length > 0 ? rng.pick(customers) : 0);
+    try {
+      createTask(ctx.orgId, {
+        title: `${kind}: پیگیری سفارش`,
+        kind,
+        assignee_user_id: assignees.length > 0 ? rng.pick(assignees) : null,
+        /* Overdue on purpose for a slice of them — /board's overdue lens is otherwise empty. */
+        due_at: rng.chance(0.3) ? ctx.stamp(-rng.int(1, 14)) : ctx.stamp(rng.int(0, 10)),
+        entity_type: order ? "order" : "customer",
+        entity_id: order ? order.id : customerId,
+        created_by: owner,
+      });
+      made++;
+    } catch {
+      /* A refused task must not take the build down. */
+    }
+  }
+
+  ctx.progress(`${made} tasks across ${assignees.length} assignees`);
 }

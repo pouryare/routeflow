@@ -135,9 +135,6 @@ export function run(ctx: SeedContext): void {
     let sortOrder = 0;
     for (const orderId of todaysOrders) {
       const stopId = addStop(db, runId, orderId, sortOrder++);
-      const lineRows = db
-        .prepare(`SELECT id FROM order_lines WHERE order_id = ?`)
-        .all(orderId) as { id: number }[];
 
       /* Collect a share of the order at the door — the cash-in-transit reality — and let the
          rest go on account, which is what phase 07's ageing buckets measure. */
@@ -154,8 +151,29 @@ export function run(ctx: SeedContext): void {
           )
         : 0;
 
+      /* `packs_delivered` must be the FULL quantity ordered, or the order is left short.
+       *
+       * THIS WAS THE DEFECT, twice over.
+       *
+       * 1. `packs_delivered: 1` on lines of 1-8 packs marked almost every order
+       *    PARTIALLY_DELIVERED. Closing one SPAWNS A BACKORDER — `lib/repo/deliveries.ts:320`
+       *    inserts a fresh DRAFT order for the shortfall.
+       *
+       * 2. That backorder is dated `new Date().toISOString()` — WALL-CLOCK TODAY, not the
+       *    anchor. So seeding with `--as-of 2026-06-30` on 2026-10-03 produced 289 orders dated
+       *    in the FUTURE, and every one of them belonged to the lapsed cohort, destroying the
+       *    silence `trainChurnFromLapses` reads. Measured, and caught by the invariants'
+       *    "nothing in the future" check.
+       *
+       * Delivering in full removes the cause rather than filtering the symptom: the earlier
+       * backorder sweep (see the end of this file) is now belt-and-braces for whatever the
+       * partial-delivery path still produces on its own. */
+      const lineRows = db
+        .prepare(`SELECT id, packs_ordered FROM order_lines WHERE order_id = ?`)
+        .all(orderId) as Array<{ id: number; packs_ordered: number }>;
+
       recordDelivery(db, stopId, {
-        lines: lineRows.map((r) => ({ line_id: r.id, packs_delivered: 1 })),
+        lines: lineRows.map((r) => ({ line_id: r.id, packs_delivered: r.packs_ordered })),
         collected_toman: collected,
         by: driver,
         receiver_name: "تحویل گرفته شد",
