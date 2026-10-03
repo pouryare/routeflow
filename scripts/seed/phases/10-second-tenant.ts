@@ -106,6 +106,10 @@ export function run(ctx: SeedContext): void {
     insRole.run(userId, "owner");
     insRole.run(userId, "sales_manager");
 
+    /* Printed in the summary. Without this the tenant switcher offers an org nobody can log
+       into, which looks like a broken build rather than an unreported one. */
+    ctx.logins.push({ username, role: "owner (tenant 2)", password: "demo1234" });
+
     for (let c = 0; c < 6; c++) {
       insCustomer.run(
         orgId, `${t.slug.toUpperCase()}-C${c + 1}`, `مشتری ${t.name} ${c + 1}`,
