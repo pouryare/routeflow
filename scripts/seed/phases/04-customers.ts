@@ -104,11 +104,10 @@ export function run(ctx: SeedContext): void {
   }
   ctx.ids.customerIds = customerIds;
 
-  /* The lapsed. From the FRONT of the list, so it is the same 30 every run. */
-  const lapsed = customerIds.slice(0, ctx.scale.lapsedCustomers);
-  ctx.ids.lapsedCustomerIds = lapsed;
-  const markDormant = db.prepare(`UPDATE customers SET lifecycle = 'dormant' WHERE id = ?`);
-  for (const id of lapsed) markDormant.run(id);
+  /* The lapsed cohort. Phase 04 RECORDS the ids here; phase 05 marks them dormant AFTER it
+   * has generated their history — asserting it before the orders exist does not survive the
+   * order path, and being dormant is a consequence of the silence, not a precondition. */
+  ctx.ids.lapsedCustomerIds = customerIds.slice(0, ctx.scale.lapsedCustomers);
 
   /* Map pins. `maps_url` is UNIQUE (organization_id, maps_url), so it is part of the key —
      a per-index URL is both unique and stable, unlike a real Maps link which would encode a
@@ -182,7 +181,7 @@ export function run(ctx: SeedContext): void {
   }
 
   ctx.progress(
-    `${customerIds.length} customers (${lapsed.length} lapsed), ${pinIds.length} pins, ` +
+    `${customerIds.length} customers (${ctx.ids.lapsedCustomerIds.length} lapsed), ${pinIds.length} pins, ` +
       `${ctx.scale.leads} leads`,
   );
 }

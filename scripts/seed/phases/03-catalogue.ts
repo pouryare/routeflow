@@ -92,13 +92,18 @@ export function run(ctx: SeedContext): void {
     );
     const packId = Number(insPack.run(productId, p.pack, p.per, now).lastInsertRowid);
 
-    /* An older, cheaper price 14 months back, so the history has a curve. Rounded to the
-       nearest 1000 Toman because that is how prices are actually quoted. */
+    /* TWO price points spanning the whole order window. Phase 05 walks back
+       `scale.months * 30` days, so an older price dated a fixed 420 days would leave every
+       order before that with NO price — and `createOrder` refuses outright:
+       «کره حیوانی ۲۵۰ گرمی» در این تاریخ قیمت ندارد.
+       The first is dated one day before the window opens; the second halfway through it.
+       Rounded to the nearest 1000 Toman because that is how prices are actually quoted. */
+    const window = ctx.scale.months * 30;
     insPrice.run(
       productId, packId, Math.round((p.price * 0.88) / 1000) * 1000,
-      ctx.iso(420), owner, now,
+      ctx.iso(window + 1), owner, now,
     );
-    insPrice.run(productId, packId, p.price, ctx.iso(30), owner, now);
+    insPrice.run(productId, packId, p.price, ctx.iso(Math.round(window / 2)), owner, now);
 
     productIds.push(productId);
   }

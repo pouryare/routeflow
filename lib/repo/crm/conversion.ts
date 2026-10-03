@@ -5,7 +5,17 @@ import { findDuplicates, type DupMatch } from "./dedupe";
 import { recomputeState } from "./state";
 
 export class LeadPromotionError extends Error {
-  constructor(readonly status: number, message: string) { super(message); }
+  /* An explicit field, not a TypeScript parameter property (`constructor(readonly status:
+     number, …)`). A parameter property is not ERASABLE syntax — it needs real code
+     generation — so `node --experimental-strip-types` rejects it with
+     ERR_UNSUPPORTED_TYPESCRIPT_SYNTAX, and `lib/repo/orders.ts` imports this module, which
+     takes `createOrder` down with it. Same semantics, one line more. */
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
 }
 
 export interface Promotion {

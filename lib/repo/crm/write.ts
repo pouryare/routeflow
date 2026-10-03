@@ -22,8 +22,16 @@ import { findDuplicates } from "./dedupe";
 import { isVanRole } from "../../roles";
 
 export class CrmError extends Error {
-  constructor(public status: number, message: string, public extra?: Record<string, unknown>) {
+  /* Explicit fields rather than parameter properties — those are not erasable syntax, so
+   * `node --experimental-strip-types` refuses the file. See the identical note in
+   * lib/repo/crm/conversion.ts:8. */
+  status: number;
+  extra?: Record<string, unknown>;
+
+  constructor(status: number, message: string, extra?: Record<string, unknown>) {
     super(message);
+    this.status = status;
+    this.extra = extra;
   }
 }
 

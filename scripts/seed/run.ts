@@ -82,8 +82,18 @@ export async function runSeed(opts: {
     `seeding ${scale.name} demo -> ${path.relative(process.cwd(), opts.target)} (as of ${asOf})`
   );
 
-  /* IMMEDIATE, not deferred: every phase reads then writes. */
-  db.exec("BEGIN IMMEDIATE");
+  /* NO OUTER TRANSACTION, and this is deliberate — an earlier version of this file wrapped
+     every phase in `BEGIN IMMEDIATE` and it could not work.
+   *
+   * `createOrder` (lib/orders.ts:206) and `recordDelivery` (lib/delivery.ts:291) each open
+     their OWN `BEGIN IMMEDIATE`, and SQLite refuses to nest:
+       "cannot start a transaction within a transaction"
+   *
+   * So each writer is individually atomic, and the BUILD as a whole is atomic for a
+   * different reason: the catch block deletes the database file. A half-built demo therefore
+   * never survives a failure — there is nothing to clean up and nothing to misread as a real
+   * bug. That is the same guarantee the outer transaction was for, bought without fighting
+   * the app's own transaction management. */
   try {
     for (const [label, load] of PHASES) {
       const began = Date.now();
@@ -93,20 +103,13 @@ export async function runSeed(opts: {
       const took = Date.now() - began;
       if (took > 500) console.log(`  (${label} took ${(took / 1000).toFixed(1)}s)`);
     }
-    /* Assertions run INSIDE the transaction: a failed invariant rolls the whole build back
-       rather than committing a demo that is full of rows and wrong. */
+    /* Assertions run last, against committed state. A failure deletes the file, so a demo
+       that is full of rows and wrong is never left behind. */
     const { assertInvariants } = await import("./invariants");
     assertInvariants(ctx);
-    db.exec("COMMIT");
   } catch (err) {
-    try {
-      db.exec("ROLLBACK");
-    } catch {
-      /* A phase may already have rolled back. Swallowing this keeps the REAL error visible
-         instead of masking it with "cannot rollback - no transaction is active". */
-    }
     for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${opts.target}${suffix}`, { force: true });
-    console.error(`\nseed FAILED and was rolled back — nothing was written.\n${String(err)}`);
+    console.error(`\nseed FAILED and the database was deleted — nothing was left behind.\n${String(err)}`);
     throw err;
   }
 

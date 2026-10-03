@@ -187,7 +187,15 @@ export function assignedToAnotherDriver(
 }
 
 export class LeadRunError extends Error {
-  constructor(readonly status: number, message: string) { super(message); }
+  /* Explicit field rather than a parameter property — that is not erasable syntax, so
+   * `node --experimental-strip-types` refuses the file. See the identical note in
+   * lib/repo/crm/conversion.ts:8. */
+  readonly status: number;
+
+  constructor(status: number, message: string) {
+    super(message);
+    this.status = status;
+  }
 }
 
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
