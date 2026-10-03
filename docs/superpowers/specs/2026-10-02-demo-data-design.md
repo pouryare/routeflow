@@ -16,13 +16,20 @@ that? is 500 customers with another 100 leads with 2 years of data enough? i nee
 sections to have data so the test is thorough."*
 
 **The volume question is the wrong question, and the audit proves it.** `data/routeflow.db`
-holds 91 tables and roughly **60 of them are empty**: `products` 0, `orders` 0,
+holds **92 tables** and roughly **60 of them are empty**: `products` 0, `orders` 0,
 `order_lines` 0, `batches` 0, `payments` 0, `journals` 0, `ledger_entries` 0, `purchases` 0,
 `stock_movements` 0, `alerts` 0, `kpi_snapshots` 0, `holidays` 0, `route_templates` 0.
 
-Only `districts` (428), `lead_list_items` (76), `accounts` (27), `customers` (16),
-`seasonal_factors` (19), `rules` (18) and `kpi_definitions` (14) hold anything. **The demo
-seed has never been run against this database.**
+Only `districts` (428), `lead_list_items` (76), `lead_run_stops` (58), `accounts` (27),
+`seasonal_factors` (19), `rules` (18), `saved_locations` (25) and `kpi_definitions` (14) hold
+anything. **The demo seed has never been run against this database.**
+
+**The live database is also one schema migration behind.** It has 92 tables; a freshly
+created one has **93**. The difference is exactly **`suppliers`** — the table the accounting
+section added in `563b080`. The database has not booted since that commit, so its accounting
+state is pre-ledger. This *strengthens* the case for a throwaway demo database (which gets
+`suppliers` from the schema for free) and is a further reason not to treat the live database
+as a fixture for what the app looks like today.
 
 Adding 500 customers to that would still leave every chart, ledger and funnel empty. A
 "top 10 customers" table looks identical with 40 customers as with 5,000 — what a screen
@@ -62,13 +69,32 @@ stopping a script from calling them is that `node --experimental-strip-types` ca
 (`scripts/seed-districts.ts:12` documents this as the reason, citing
 `ERR_MODULE_NOT_FOUND on lib/repo/retiredWording`).
 
-**A 20-line resolver hook fixes it.** Probe-verified in `/tmp`:
+**A ~25-line resolver hook fixes it.** Probe-verified in `/tmp`:
 `import { trialBalance } from "@/lib/repo/ledger"` → `IMPORT OK: function`, and `getDb()`
 → 93 tables + 27 accounts. **That comment in `seed-districts.ts` is now out of date.**
+
+**And the hook is not optional sugar — two things it MUST also do.** Both found by
+probing, both of which a first attempt gets wrong:
+
+1. **Stub `next/*`.** `lib/repo/margin.ts:14` imports `orderFilter` — a *value*, not a
+   type — from `@/lib/session`, and `lib/session.ts:1` is
+   `import { NextRequest, NextResponse } from "next/server"`. Node cannot resolve that
+   outside Next's bundler, so phase 10 dies with
+   `ERR_MODULE_NOT_FOUND: Cannot find module '.../node_modules/next/server'`.
+   The hook must answer `next/*` with a tiny stub module. One line.
+2. **Use `module.registerHooks()`, not `module.register()`.** The latter emits
+   `[DEP0205] DeprecationWarning` on Node 26. Both exist; the undeprecated one is correct.
+
+With both, probe-verified on an **empty database**:
+`93 tables, 27 accounts, refreshAll → {period: "1405-07", written: 31},
+refreshPredictions → {forecasts: 6}, forecast_models: 2, kpi_snapshots: 28`.
 
 **3. The database is gitignored.** `data/routeflow.db*` is in `.gitignore` (line 44, plus
 `/data/*.db*` at line 56). Demo data can therefore never ship as a file. It has to be a
 script any developer can run to reach an identical state.
+---
+
+
 ## Decisions
 
 | # | Question | Decision |
@@ -107,8 +133,8 @@ up in a customer's ledger.
 
 | File | ~Lines | Purpose |
 |---|---|---|
-| `scripts/_ts-resolve.mjs` | 20 | Resolves `@/x` → `<root>/x`, and extensionless relative imports, trying `.ts` / `.tsx` / `/index.ts`. |
-| `scripts/_ts-register.mjs` | 3 | `register("./_ts-resolve.mjs", import.meta.url)`. |
+| `scripts/_ts-resolve.mjs` | ~25 | `registerHooks` resolve(): `@/x` → `<root>/x`; extensionless relatives → `.ts`/`.tsx`/`/index.ts`; **`next/*` → a stub module** (see fact 2 — without this, phase 10 cannot load). |
+| `scripts/_ts-register.mjs` | ~5 | `registerHooks({ resolve })`. **Not** `module.register()` — deprecated on Node 26. |
 | `scripts/seed-demo.ts` | 1,200-1,500 | Eleven phases. One transaction. One progress line per phase. |
 
 ### The eleven phases
@@ -126,7 +152,8 @@ One transaction. If any phase throws, the whole database is rolled back — neve
 | 7 | **Money — real writers** | ~4,000 payments, ~900 expenses | `recordPaymentTxn` + `autoAllocateFIFO` + `postReceipt` + `postExpense` + `postPurchase`. **This is why the books balance.** |
 | 8 | Commission ledgers | 4 kinds | Salesperson, driver, manager, rep — all four with computed history. |
 | 9 | Workflow | tasks, cheques, complaints, holidays | Recurrences, overdue cheques, holidays (a table nothing seeds today). |
-| 10 | Refresh + sweeps | snapshots | `refreshAll` (`lib/repo/analysisRefresh.ts:23`) → `refreshSnapshots` (`lib/repo/kpiSnapshots.ts:512`) → `materialiseMargin` (`lib/repo/margin.ts:114`) → rules sweep. **Without this, forecast/analytics/commission read as empty even with 15,000 orders.** |
+| 10 | Refresh + sweeps | snapshots | **Two separate entry points, and this is the phase's one real trap.** `refreshAll` (`lib/repo/analysisRefresh.ts:23`) covers ONLY `refreshSnapshots` + `materialiseMargin` + `materialiseHealth` — the KPI board and the margin roll-ups. It does **not** touch forecasts, churn or capacity. Those live behind `refreshPredictions` (`lib/repo/predictionRefresh.ts:19`), which must be called too. Then the rules sweep. **Without both, `/sales/forecast` and `/analytics` read as empty even with 15,000 orders present.** |
+| 10a | *Churn training needs lapses* | — | `trainChurnFromLapses` is a **no-op below `MIN_TRAIN_ROWS = 10`** labelled rows (`lib/repo/churn.ts:24`), and a label only exists if a customer active 60 days ago ordered *and then went quiet* for 60 days. So phase 4/5 must deliberately include ~30 such lapsed customers. A churn model that silently refuses to train is indistinguishable from one that did. |
 | 11 | Second tenant | ~40 customers, 8 months | «شرکت پخش پارس» — a startup beside a mature company, every statement keyed on its own `organization_id`. |
 
 **Two deliberate choices inside phase 5.** Orders are *derived* from each customer's own buying
@@ -154,6 +181,18 @@ alongside it — and would catch nothing.
 | No empty tables | Every table the seed claims to fill has rows |
 | Debt ageing | All four buckets non-zero (`d0_7`, `d8_30`, `over_30`) |
 | Monthly revenue | Delivered revenue > 0 in **every** one of the 36 months |
+| Models trained | `forecast_models` and `kpi_snapshots` non-empty, **and `refreshPredictions` returned `churn_trained: true`**. Note that `churn_models` non-empty is *not* a valid check — a NULL-org default row satisfies it without a single prediction ever being trained. |
+| **Gross margin band** | Org-wide `marginPct` (`lib/analysis/margin.ts:40`) between **12% and 35%** |
+| **Margin spread** | Top 10% of customers earn > 2× the median |
+| **Loss-makers exist** | ≥5 customers sold to at a loss |
+| **Debt is not trivial** | 15–35% of delivered revenue still unpaid |
+| **Expense ratio** | Total expenses 4–15% of revenue |
+| **Fill rate** | 88–98%, not 100% |
+
+The last six exist because a demo whose every customer pays instantly, whose margin is 90%,
+and whose board shows nothing but "delivered" makes the ageing buckets, the loss screens and
+the fill-rate metric decorative.
+
 ### Derived invariants — the "do two code paths agree" checks
 
 Different in kind, and independent of volume:
@@ -212,7 +251,9 @@ Different in kind, and independent of volume:
 3. Trial balance balances **per tenant**; `foreign_key_check` empty.
 4. Margin, fill rate, ageing and expense ratios all inside their asserted bands.
 5. `salesDashboard` revenue == `marginBy` revenue — the two-code-path cross-check.
-6. Forecast, churn and KPI models trained and non-empty.
+6. Forecast, churn and KPI models trained and non-empty — **`refreshAll` AND
+   `refreshPredictions` both called**, and `churn_trained: true` asserted (not merely
+   `churn_models` non-empty, which is satisfied by the shipped defaults).
 7. Cross-tenant isolation verified: no bleed, `platform_owner` sees 2 tenants, `owner` sees 1.
 8. `npx tsc --noEmit` clean; `npm run test:demo` green; default `npx vitest run` green.
 
@@ -237,6 +278,22 @@ hard way.
   and the gate agree.
 - **`seed-demo.mjs` hardcodes `organization_id = 1` in ~15 places.** Do not copy those literals
   into phase 11.
+- **`refreshAll` does NOT train predictions.** It is `refreshSnapshots` + `materialiseMargin`
+  + `materialiseHealth` and nothing else (`lib/repo/analysisRefresh.ts:23-35`). Forecast, churn
+  and capacity are behind a *separate* entry point, `refreshPredictions`
+  (`lib/repo/predictionRefresh.ts:19`), which is what `/api/predict/refresh` actually calls.
+  Calling only `refreshAll` leaves `/sales/forecast` and `/analytics` empty — and empty in a way
+  that looks like a bug rather than a missing step.
+- **Churn cannot train without lapsed customers.** `trainChurnFromLapses` returns
+  `{trained: false}` below `MIN_TRAIN_ROWS = 10` (`lib/repo/churn.ts:24`), and a label requires
+  a customer who was active at `asOf − 60d` and then placed no order in the next 60 days.
+  Phase 4/5 must create ~30 such customers deliberately.
+- **`lib/session.ts:1` imports `next/server` as a value**, and `lib/repo/margin.ts:14` imports
+  a value (`orderFilter`) from it — so `next/*` is a *runtime* dependency of the margin repo,
+  not a type-only one. Any script that imports `lib/repo/margin.ts` must stub `next/*` to
+  resolve. This is the exact failure that made the 20-line version of the hook insufficient.
+- **`customers.district_id` exists on both the live and a fresh database** (verified via
+  `PRAGMA table_info`), so phase 4's snapping has a column to write to.
 - **`field_rep` is untested grain.** No account with this role exists in the live database, so
   phase 2's `field_rep` login is the first time that role's shell is exercised with data
   behind it. `isVanRole()` puts it in the same allowlist as `delivery_driver`
