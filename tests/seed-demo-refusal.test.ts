@@ -1,5 +1,5 @@
 import { describe, it, expect, afterAll } from "vitest";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { DatabaseSync } from "node:sqlite";
 import fs from "node:fs";
 import os from "node:os";
@@ -39,6 +39,50 @@ function runSeed(args: string[]): { out: string; code: number | null } {
     { cwd: REPO, encoding: "utf8", env: { ...process.env, SESSION_SECRET: "x" } },
   );
   return { out: `${r.stdout ?? ""}${r.stderr ?? ""}`, code: r.status };
+}
+
+/** Spawn the seed and kill it the moment `needle` appears in its output.
+ *
+ *  `runSeed` prints its banner (scripts/seed/run.ts:81) BEFORE loading the first phase, so the
+ *  banner is observable without letting the build run. That is what makes the heavy default
+ *  assertable in seconds: a full heavy build is 78,474 orders and 12,260s for phase 05 alone,
+ *  measured — and all this test wants to know is WHICH SCALE was chosen, which the banner
+ *  states outright.
+ *
+ *  Reading it the other way — waiting for the build — would be a four-hour test to check one
+ *  word, and would have timed out rather than failed, hiding the real problem.
+ */
+function runSeedUntil(args: string[], needle: string, timeoutMs = 120_000): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const child = spawn(
+      process.execPath,
+      ["--experimental-strip-types", "--no-warnings",
+       "--import", path.join(REPO, "scripts/_ts-register.mjs"),
+       path.join(REPO, "scripts/seed-demo.ts"), ...args],
+      { cwd: REPO, env: { ...process.env, SESSION_SECRET: "x" } },
+    );
+    let out = "";
+    let settled = false;
+    const finish = (err?: Error) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer);
+      child.kill("SIGKILL");
+      err ? reject(err) : resolve(out);
+    };
+    const timer = setTimeout(
+      () => finish(new Error(`timed out waiting for "${needle}" in:\n${out}`)),
+      timeoutMs,
+    );
+    const onChunk = (b: Buffer) => {
+      out += b.toString();
+      if (out.includes(needle)) finish();
+    };
+    child.stdout?.on("data", onChunk);
+    child.stderr?.on("data", onChunk);
+    child.on("error", (e) => finish(e));
+    child.on("exit", () => finish(new Error(`exited before "${needle}" appeared in:\n${out}`)));
+  });
 }
 
 describe("the demo seed refuses the real database", () => {
@@ -118,12 +162,13 @@ describe("the seed reads its flags in both spellings", () => {
     expect(r.out).toContain("as of 2026-06-30");
   }, SEED_TIMEOUT);
 
-  /* The default is read from the banner runSeed prints before it deletes anything. There is no
-   * way to read it without starting the build, so this is the one test that goes heavy. */
-  it("defaults to heavy when no scale is given", () => {
-    const r = runSeed([`--db=${freshTarget()}`]);
-    expect(r.out).toContain("seeding heavy demo");
-  }, 6 * 60 * 60 * 1000);
+  /* Asserted from the banner, not from a finished build — see `runSeedUntil`. The child is
+   * killed the instant the banner prints, so this asserts the DEFAULT without paying for a
+   * 78,474-order heavy seed to do it. */
+  it("defaults to heavy when no scale is given", async () => {
+    const out = await runSeedUntil([`--db=${freshTarget()}`], "seeding heavy demo");
+    expect(out).toContain("seeding heavy demo");
+  }, SEED_TIMEOUT);
 
   it("rejects a malformed --as-of rather than silently using today", () => {
     const r = runSeed(["--as-of=30-06-2026", `--db=${freshTarget()}`]);
