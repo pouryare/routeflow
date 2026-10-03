@@ -17,27 +17,31 @@ const REAL_DB = path.join(ROOT, "data", "routeflow.db");
 const DEFAULT_DEMO = path.join(ROOT, "data", "routeflow.demo.db");
 
 const argv = process.argv.slice(2);
-const flag = (name: string): string | undefined => {
+
+/* Accept BOTH `--flag value` and `--flag=value`.
+ *
+ *  `flag()` alone only reads the two-token form, so `npm run seed:demo -- --scale=smoke`
+ *  silently dropped the scale and built a HEAVY database instead — the slowest possible
+ *  outcome, from the flag a person uses to ask for a fast one. An inline `--db=` scan was
+ *  already needed for the same reason, so both forms are handled in one place here. */
+function flag(name: string): string | undefined {
+  const eq = `--${name}=`;
+  const inline = argv.find((a) => a.startsWith(eq));
+  if (inline) return inline.slice(eq.length);
   const i = argv.indexOf(`--${name}`);
   return i !== -1 ? argv[i + 1] : undefined;
-};
+}
+
 const scaleName = flag("scale") ?? "heavy";
 const asOfArg = flag("as-of");
 const targetArg = flag("db");
 const force = argv.includes("--force");
 
-/* `--db=…` in one token is the ergonomic form; `--db …` is what the flag() parser reads. */
-const inlineDb = (() => {
-  const t = argv.find((a) => a.startsWith("--db="));
-  return t ? t.slice("--db=".length) : undefined;
-})();
-const targetArgFinal = targetArg ?? inlineDb;
-
 /* Resolve ABSOLUTELY before comparing. `data/../data/routeflow.db` is a different string from
    `data/routeflow.db` but the same file, and a string comparison would let it through and
    write demo rows into the real ledger. path.resolve collapses `.` and `..`; realpath would
    also resolve symlinks, but the file may not exist yet, so resolution is the right tool. */
-const target = path.resolve(ROOT, targetArgFinal ?? DEFAULT_DEMO);
+const target = path.resolve(ROOT, targetArg ?? DEFAULT_DEMO);
 
 if (target === REAL_DB) {
   console.error(

@@ -70,3 +70,34 @@ describe("the demo seed refuses the real database", () => {
     expect(demo.c).toBe(0);
   });
 });
+
+/* Regression: `flag()` originally read only the two-token form, so
+   `npm run seed:demo -- --scale=smoke` was SILENTLY DROPPED and built a HEAVY database —
+   the slowest possible outcome, from the flag a person uses to ask for a fast one. Nothing
+   failed; the run just took far longer than asked. These assert both spellings are read. */
+describe("the seed reads its flags in both spellings", () => {
+  it("accepts --scale=smoke", () => {
+    const r = runSeed(["--scale=smoke", "--db=/tmp/flagtest.db"]);
+    expect(r.out).toContain("seeding smoke demo");
+  });
+
+  it("accepts --scale smoke", () => {
+    const r = runSeed(["--scale", "smoke", "--db=/tmp/flagtest.db"]);
+    expect(r.out).toContain("seeding smoke demo");
+  });
+
+  it("accepts --as-of=YYYY-MM-DD", () => {
+    const r = runSeed(["--as-of=2026-06-30", "--db=/tmp/flagtest.db"]);
+    expect(r.out).toContain("as of 2026-06-30");
+  });
+
+  it("defaults to heavy when no scale is given", () => {
+    const r = runSeed(["--db=/tmp/flagtest.db"]);
+    expect(r.out).toContain("seeding heavy demo");
+  });
+
+  it("rejects a malformed --as-of rather than silently using today", () => {
+    const r = runSeed(["--as-of=30-06-2026", "--db=/tmp/flagtest.db"]);
+    expect(r.out).toMatch(/--as-of must be YYYY-MM-DD/);
+  });
+});
