@@ -343,6 +343,14 @@ not even haversine.
 
 ### Required work
 
+> **Superseded by spec 4.** Everything below is folded into
+> `2026-10-04-one-routing-core-design.md`, which widens the mandate from *one shared
+> distance module* to *one shared routing core* — because the duplication was never only
+> distance. Three audits found the same three layers each time: distance, day-splitting,
+> and stop ordering.
+>
+> The original requirements are preserved below for the record.
+
 - **One shared road-distance module, consumed by both pages.** A single entry point that
   `/leads` and `?view=runs` *both* call, so changing provider, chunk size, timeout or
   fallback is one edit rather than two that drift:
@@ -374,7 +382,31 @@ not even haversine.
   again — which is exactly how it got here.
 
 `lib/routeOrder.ts` (`sortByDistanceFrom`, `routeLengthWith`, `optimiseRemaining`,
-`isApproximate`) is already parameterised correctly and is the model to follow.
+`isApproximate`) is already parameterised correctly and was the model for this work — but
+**no production code calls any of it.** Spec 4 deletes it rather than keeping a correct
+module beside three wrong call sites.
+
+### 13.4 What this spec still requires of the runs page
+
+Spec 4 owns the routing; these are the page's own obligations.
+
+- It calls `splitIntoDays()` and `orderStops()` and **reimplements neither**. `DaySplitPanel`
+  contains **no sorting at all** today, so lanes are in database insertion order rather than
+  route order — while `/leads` has had an optimise button all along.
+- Its `origin` comes from `depot.ts`, never from `is_default_origin` directly.
+- **Facility stops count toward capacity.** A load and an unload are stops. Neither
+  `capacityLearning.ts:67` nor `dayCapacity` knows `run_facility_stops` exists, so without
+  this, predictions get *less* accurate the moment spec 3 lands. The five readers to update:
+  `briefing.ts:139`, `capacityLearning.ts:67`, `health.ts:260,282`, `delivery.ts:724`.
+- **Each run records its actual duration** when it ends. `capacityLearning` requires
+  `actual_duration_min IS NOT NULL`, and **nothing in the app writes it** — the only two
+  writers in the repository are `tests/capacity-learning-repo.test.ts:41` and
+  `tests/routing-schema.test.ts:46`. The query returns zero rows forever,
+  `learnCapacityFromRuns` returns `applied: 0` on every refresh, and
+  `resolvedCapacityFactorsFor` — read by `/sales/forecast` and the weather system — always
+  falls back to factory defaults. **The test passes by inserting the value by hand, proving
+  the function works on data the app cannot produce.** This page is where it becomes
+  available.
 
 ## 14. Data
 

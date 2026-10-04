@@ -60,6 +60,27 @@ The difference is the whole point, and it must survive into the data model rathe
 being flattened into one ordered list. If the unload were stop 3, every time the driver
 moved it every later number changed — and «مسیر» would claim an order that is not real.
 
+### 2.1 Routing is delegated
+
+**Governed by `2026-10-04-one-routing-core-design.md` (spec 4).** Two findings from this
+spec's own audit bear on the table choice in §3.1:
+
+- **A solver could model the load, but does not yet.** `vroom.ts:48` fixes
+  `location_index: 0` as the depot, so a VROOM request *has* a start point — but
+  `buildVroomJob` maps `deliveries.map(...)` only and emits **no pickup job**. So "reuse
+  `lead_run_stops`" (option C in conversation) is not free either: it would mean extending
+  tested solver glue to emit `pickup`/`delivery` pairs. Spec 4 scopes that out.
+  Facility visits therefore keep their own table — and the reason is not that a solver
+  cannot express it, it is that **a stock movement is not a job to solve**, and borrowing a
+  solve-shaped table would make "where you unload stock" look like "a prospect you called on."
+- **The unload has no position, so nothing may reorder it.** Verified: only
+  `delivery.ts:382` writes to `delivery_stops`, and it sets `status`, never `sort_order`. No
+  optimiser reorders stops in place, so spec 4's solver cannot clobber an unordered facility
+  stop.
+- **Load and unload count as stops** for capacity and duration. `capacityLearning.ts:67` and
+  `dayCapacity` count `delivery_stops` only, so this spec would otherwise make run-duration
+  predictions quietly worse.
+
 ## 3. Data
 
 ### 3.1 `run_facility_stops`
