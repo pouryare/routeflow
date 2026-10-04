@@ -417,3 +417,41 @@ Depends on Phase 2. Small, but without it "committed" is a word with no behaviou
 - [ ] **Step 3: Mixed freeze** — `freezeRun` moves every stop's order to `READY`; a pin stop has no order, so record its `sort_order` as fixed instead.
 
 - [ ] **Step 4: Verify and commit** — `fix(runs): a board-created run can actually commit`
+
+---
+
+## Outcome — what actually shipped
+
+All eight phases are implemented and verified. `npx tsc --noEmit` reports zero errors, and the
+full suite runs green apart from two long-standing failures that predate this work.
+
+| Phase | Commit | What landed |
+|---|---|---|
+| 1 — a day on an order | `c09f787`, `8211bdd` | `orders.requested_day`, «در اولین فرصت» as a NULL (not a flag), the order-form field |
+| 2 — the fold | `c8b1f38` | `lead_runs` folded into `delivery_runs`; guarded by a row-count and an orphan assertion before the DROP |
+| 3 — the split | `e306ea0`, `07c849d` | `lib/dayCapacity.ts` (19 tests) and the panel on `?view=runs`; three limits read from the existing `vehicles` columns |
+| 4 — ordering | `1164cd4` | `lib/routeOrder.ts` (16 tests); a finished stop never moves; the fallback is detected by identity so it cannot be forgotten |
+| 5 — the board | `6fc5fd5` | The shared count line (Q35), one read for both pages; the repo-boundary failure fixed by moving SQL, not allowlisting |
+| 6 — freeze | `3676171` | `LEFT JOIN` so a board-created run can commit at all; 17:00 Tehran default |
+| 7 — the driver | `f5b7abb` | Visits reach the phone (`syncPull`), and a driver sees their own field orders (`orderFilter`), plus `lib/runKinds.ts` |
+| 8 — van stock | `0ddc5d4` | A van is a facility; a van delivery no longer double-counts the warehouse |
+
+Cleanup owed from earlier work is also done: `app/(bare)/toast-demo/page.tsx` deleted, and
+`MASTER.md`'s claim that the Assignment board is superseded was corrected.
+
+### Four defects found by measuring rather than reading
+
+1. **Seeds do not pin.** Sweeping `clusterIntoDays` showed 106 of 1,575 seeded stops landing in a
+   day dominated by the other town. Promised orders are partitioned OUT of the clustered set.
+2. **Board runs never froze.** `runsNeedingFreeze` inner-joined on `route_template_id`, which
+   `createRun` leaves NULL. "Committed" had no behaviour behind it.
+3. **Drives were blind to visits.** `syncPull` read delivery tables only, so offline a driver saw
+   half the manifest, with no error.
+4. **Field sales were invisible.** A driver's own order appeared nowhere until a manager loaded it
+   onto a van — recorded as a known defect in the route's own comments and left there.
+
+### The lesson worth keeping
+
+Three of those four were **cited with a real file and line number in this plan, and were still
+wrong.** Accurate references make a claim more persuasive, not less — they read as already
+checked. Every one of them was found by opening the function and asking what it actually does.

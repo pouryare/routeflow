@@ -60,16 +60,30 @@ describe("orderFilter", () => {
     expect(f.params).toEqual([5, 1]);
   });
 
-  it("narrows a driver to the orders on their own runs", () => {
-    // Scoped through delivery_stops rather than by group or by date. Behaviour against
-    // real rows -- that another driver's stops stay hidden -- is covered in
-    // delivery.test.ts against an actual database. organization_id comes first in the
-    // params, matching the order the SQL fragment names it in.
+  it("narrows a driver to the orders on their own runs, OR the ones they wrote", () => {
+    /* Two ways to earn an order, and it is an OR rather than a replacement:
+     *
+     *  1. The orders on runs assigned to this driver — so a driver can still reprint yesterday's
+     *     receipt for work the office placed.
+     *  2. The orders this driver AUTHORED. Added in Phase 7 to fix a defect the route's own
+     *     comments had recorded: a driver writes a sale at the door and it then appears nowhere,
+     *     for them or the office, until a manager loads it onto a van.
+     *
+     *  Scoped through delivery_stops rather than by group or by date. Behaviour against REAL rows
+     *  — that another driver's work stays hidden, and that this driver's own work shows without a
+     *  run — is covered in tests/driver-own-orders.test.ts, because a fragment assertion cannot
+     *  tell a correct OR from one that is far too generous.
+     *
+     *  Four params: organization_id first, then the user id three times — once for the run, once
+     *  for created_by, once for salesperson_user_id. A version of this test expected two, and
+     *  would have passed had the authorship rule been forgotten entirely. */
     const f = orderFilter(session("delivery_driver", 9, 7));
     expect(f.sql).toContain("delivery_stops");
     expect(f.sql).toContain("driver_user_id = ?");
     expect(f.sql).toContain("organization_id = ?");
-    expect(f.params).toEqual([1, 9]);
+    expect(f.sql).toContain("created_by = ?");
+    expect(f.sql).toContain("salesperson_user_id = ?");
+    expect(f.params).toEqual([1, 9, 9, 9]);
   });
 
   it("does not let a driver see by group", () => {
