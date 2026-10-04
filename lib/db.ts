@@ -339,6 +339,13 @@ function rebuildDistrictsShared(db: DatabaseSync): void {
  *
  *  Guarded on `lead_runs` being absent, so it runs once — including on a database created
  *  fresh, where the table never existed.
+ *
+ *  Re-entering it safely is a SEPARATE property, and it did not hold before. Step 3 renames the
+ *  rebuilt table into place, and SQLite rewrites the stored CREATE quoting the new name
+ *  (`CREATE TABLE "lead_run_stops"`), so a later run can no longer recognise that table by its
+ *  text — while a table that survived for some other reason may still be standing there. So
+ *  step 3 asks `PRAGMA foreign_key_list` what `run_id` actually points at, and refuses only when
+ *  the key genuinely says `lead_runs` and could not be re-pointed.
  */
 function foldLeadRunsIntoDeliveryRuns(db: DatabaseSync): void {
   const has = db
@@ -453,14 +460,56 @@ function foldLeadRunsIntoDeliveryRuns(db: DatabaseSync): void {
       .get() as { sql: string } | undefined;
     if (!schema) throw new Error("foldLeadRuns: lead_run_stops is missing");
 
-    const newSql = schema.sql
-      .replace(/CREATE TABLE\s+lead_run_stops/i, "CREATE TABLE lead_run_stops_fold_new")
-      .replace("REFERENCES lead_runs(id)", "REFERENCES delivery_runs(id)");
-    if (newSql === schema.sql) {
+    /* What run_id ACTUALLY points at, asked of SQLite rather than read out of the CREATE text.
+
+       PRAGMA foreign_key_list is the authority on this. The SQL string is only spelling, and
+       this function changes that spelling under itself: step 3 ends in `ALTER TABLE
+       lead_run_stops_fold_new RENAME TO lead_run_stops`, and SQLite rewrites the stored name in
+       quotes — `CREATE TABLE "lead_run_stops"`. A regex over the text then no longer recognises
+       a table this function has already been through, which is how the fold ended up unable to
+       re-enter a database it had itself folded. */
+    const runIdFk = (
+      db.prepare("PRAGMA foreign_key_list('lead_run_stops')").all() as {
+        from: string;
+        table: string;
+      }[]
+    ).find((f) => f.from === "run_id");
+    if (!runIdFk) {
       throw new Error(
-        "foldLeadRuns: lead_run_stops no longer references lead_runs(id) — the rebuild below " +
-          "would copy rows unchanged and the DROP after it would cascade them away. Restore " +
-          "from backups/ before going further."
+        "foldLeadRuns: lead_run_stops.run_id carries no foreign key, so the rebuild below " +
+          "cannot know what it is supposed to point at. Restore from backups/ before going further."
+      );
+    }
+
+    /* The quote is optional in the name because step 3's own rename leaves it there. */
+    const renamed = schema.sql.replace(
+      /CREATE TABLE\s+"?lead_run_stops"?/i,
+      "CREATE TABLE lead_run_stops_fold_new"
+    );
+
+    /* Already re-pointed: this database has been through step 3 before, so the key is ALREADY
+       the correct one and is left exactly as it stands.
+
+       Continuing is safe precisely because of that. The copy below still remaps run_id through
+       _lead_run_map, so any run that has not moved yet is moved now, and the rebuilt table
+       keeps the correct key. Refusing here is what turned a half-finished fold into a
+       permanent outage: getDb() runs migrations, so the throw took down every request on
+       data/routeflow.demo.db — where both lead tables were already empty and there was nothing
+       to fold, restore or lose. */
+    const newSql =
+      runIdFk.table === "delivery_runs"
+        ? renamed
+        : renamed.replace("REFERENCES lead_runs(id)", "REFERENCES delivery_runs(id)");
+
+    /* The alarm, kept and aimed at the case it was written for: the key still says lead_runs and
+       the rebuild could not rewrite it, so the new table would carry the OLD key forward and the
+       DROP below would take every stop with it. Both replaces being no-ops is not that test —
+       the rename matching can mask a failed re-point — so this asks about the key directly. */
+    if (runIdFk.table === "lead_runs" && newSql === renamed) {
+      throw new Error(
+        "foldLeadRuns: lead_run_stops.run_id references lead_runs(id) and the rebuild could not " +
+          "re-point it — the DROP below would cascade every stop away. Restore from backups/ " +
+          "before going further."
       );
     }
     const cols = (db.prepare("PRAGMA table_info(lead_run_stops)").all() as { name: string }[])

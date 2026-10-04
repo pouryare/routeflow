@@ -17,12 +17,10 @@ import { Icon } from "@/components/meridian/Icon";
 import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
 import { oneOf, type SearchParams } from "@/lib/viewParam";
 import { isVanRole, VAN_ROLES } from "@/lib/roles";
-import { readOrders } from "@/lib/orders";
 import RunPlanner from "@/components/sales/RunPlanner";
-import AssignmentBoard from "@/components/sales/AssignmentBoard";
+import OrderRouteBoard from "@/components/sales/OrderRouteBoard";
 import DaySplitPanel from "@/components/sales/DaySplitPanel";
 import { readPlannableOrders, readPlannedDays } from "@/lib/repo/dayPlan";
-import { listDayLoads } from "@/lib/repo/deliveries";
 import RunTimeline, { type TimelineStop } from "@/components/sales/RunTimeline";
 import DriverStreaks from "@/components/sales/DriverStreaks";
 import { readDriverActivity } from "@/lib/repo/driverActivity";
@@ -145,6 +143,7 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
       .prepare(
         `SELECT ds.id, ds.run_id, ds.status, o.order_no,
                 COALESCE(c.business_name, '—') AS customer_name,
+                c.lat, c.lng,
                 COALESCE(SUM(ol.packs_ordered * ol.unit_price_toman), 0) AS total_toman
            FROM delivery_stops ds
            JOIN delivery_runs dr ON dr.id = ds.run_id
@@ -165,10 +164,11 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
     stopsByRun.get(run_id)!.push(stop);
   }
 
-  // Confirmed orders not already on a run -- the pool a manager is choosing from.
-  const unassigned = readOrders(db, orderFilter(session), { status: "CONFIRMED", limit: 200 }).filter(
-    (order) => db.prepare("SELECT 1 FROM delivery_stops WHERE order_id = ?").get(order.id) === undefined,
-  );
+  /* Confirmed orders that are not on any run — the pool the board draws and the split plans from.
+     Read ONCE and passed to both, so the map's pins and the lanes' cards cannot disagree: they
+     are literally the same array. The old board re-read this separately, which is how a card and
+     a pin for the same order could end up saying different things. */
+  const plannable = readPlannableOrders(db, orderFilter(session));
 
   /* Tehran, not UTC: this is yesterday for the last 3.5 hours of every evening, and it feeds
      both readDriverActivity and buildStreak — so driver streaks were being scored against
@@ -178,22 +178,40 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
       <RunPlanner drivers={drivers} />
-      <AssignmentBoard
-        runs={runs}
-        dayLoads={listDayLoads(db, session.organizationId, today, session.groupId)}
-        orders={unassigned.map((o) => ({
-          id: o.id,
-          order_no: o.order_no,
-          customer_name: o.customer_name,
-          total_toman: o.total_toman,
-          order_date: o.order_date,
-          group_id: o.group_id,
-        }))}
-      />
       <DaySplitPanel
         orders={readPlannableOrders(db, orderFilter(session))}
         plannedDays={readPlannedDays(db, runScope, tehranTodayIso(), { stops: 8 })}
         origin={null}
+        drivers={drivers.map((d) => ({ id: d.id, display_name: d.display_name }))}
+      />
+      <OrderRouteBoard
+        runs={runs
+          .filter((r) => r.status !== "done")
+          /* The lanes get their stops as LABELS, not order ids: the pool below is the query that
+             excludes anything already on a run, so looking a stop's order up in it would render
+             every existing lane empty — and an empty lane reads as an empty van. */
+          .map((r) => ({
+            ...r,
+            stops: (stopsByRun.get(r.id) ?? []).map((s) => ({
+              id: s.id,
+              order_no: s.order_no,
+              customer_name: s.customer_name,
+              lat: s.lat,
+              lng: s.lng,
+            })),
+          }))}
+        orders={plannable.map((o) => ({
+          id: o.orderId,
+          order_no: o.orderNo,
+          customer_name: o.customerName,
+          total_toman: 0,
+          order_date: o.requestedDay ?? "",
+          group_id: null,
+          lat: o.lat,
+          lng: o.lng,
+          requested_day: o.requestedDay ?? null,
+        }))}
+        navigateHref={() => "/map"}
       />
       <RunTimeline
         runs={runs.filter((r) => r.status !== "done").map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}

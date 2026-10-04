@@ -89,12 +89,21 @@ describe("the menu no longer offers the merged routes", () => {
       );
     }
   });
-  it("keeps the briefing's link pointing at a real host", () => {
+  it("keeps the briefing's links pointing at real hosts", () => {
     // lib/repo/briefing.ts is a server DATA file, not a page, so a page-by-page review
     // never sees it -- and it is the status row a manager taps all day.
+    //
+    // The invariant is that NO href lands on a route that now only redirects. This used to
+    // assert one exact string, `/sales/orders?view=board`, and went stale the moment the
+    // panel started linking each order to itself (7a3d161) -- a deliberate improvement that
+    // a hardcoded expectation could not survive. Checking the rule instead of the example is
+    // what lets the panel improve without a fight.
     const briefing = read("lib/repo/briefing.ts");
-    expect(briefing, "the briefing must not link at a route that is now a redirect")
-      .not.toContain('href: "/sales/board"');
-    expect(briefing).toContain('href: "/sales/orders?view=board"');
+    for (const href of ["/sales/board", "/sales/journey", "/sales/runs", "/sales/deliveries"]) {
+      expect(briefing, `${href} is a redirect; the briefing must not link at it`)
+        .not.toMatch(new RegExp(`href:\\s*"${href.replace("/", "\\/")}"`));
+    }
+    // And the panel still links somewhere: an empty href list is the failure this guards too.
+    expect(briefing, "the briefing must still link somewhere").toMatch(/href:\s*[`"]/);
   });
 });

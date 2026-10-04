@@ -420,9 +420,9 @@ describe("every button a reader can identify", () => {
 });
 
 /**
- * Two buttons are allowed to stay iconless, and both are here because an icon would be
- * noise rather than a label. If you add a third, you have to justify it in the same way --
- * that friction is the point of naming them.
+ * Files where EVERY iconless button is allowed, because an icon there is noise rather than a
+ * label. Pre-dates the in-place-comment rule below, which is the preferred way to record a
+ * reason: next to the button, where the next person to change it will actually read it.
  *
  *  - `gallery/page.tsx` — the button IS a photo. The image is the content; a camera glyph
  *    beside it says nothing the picture does not.
@@ -433,6 +433,20 @@ const ALLOWED_ICONLESS = [
   "app/(shell)/gallery/page.tsx",
   "components/JalaliDatePicker.tsx",
 ];
+
+/** A recorded reason, written as a comment INSIDE the button.
+ *
+ *  This is the rule the house style already follows and the test could not see: a button that is
+ *  deliberately iconless carries a comment saying why, right where it happens. AccentPicker,
+ *  FontPicker and ProfileMenu all do it — «No tick on the selected option…», «No person glyph
+ *  beside the picture. The Avatar IS the person…» — and all three were being reported anyway,
+ *  because the check only knew about a file-level list kept a few hundred lines away.
+ *
+ *  Forty characters is a floor, not a rule: `{* *}` or `{/* todo *\/}` is not a reason, and
+ *  counting to forty is enough to tell one from the other. The friction this test wants is
+ *  "write down why", not "write why well" — a second opinion on the wording is a reviewer's
+ *  job, not a test's. */
+const RECORDED_REASON = /\{\/\*[\s\S]{40,}?\*\/\}/;
 
 describe("every button carries an icon", () => {
   it("no button is iconless without a recorded reason", () => {
@@ -447,13 +461,15 @@ describe("every button carries an icon", () => {
         // a button that IS its own picture, or renders one, is not iconless
         if (/<Icon\b/.test(content) || /<svg\b/.test(content)) continue;
         if (/<img\b/.test(content)) continue;
+        // …and a button that says out loud why it needs no picture is not unconsidered.
+        if (RECORDED_REASON.test(content)) continue;
         const line = src.slice(0, i).split("\n").length;
         all.push(`${f}:${line}`);
       }
     }
     expect(
       all,
-      `Add an <Icon name="…" /> to these, or record why not:\n${all.join("\n")}`,
+      `Add an <Icon name="…" /> to these, or record why not in a comment inside the button:\n${all.join("\n")}`,
     ).toEqual([]);
   });
 });

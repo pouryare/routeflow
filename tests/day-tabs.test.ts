@@ -26,7 +26,10 @@ describe("the day host serves two views", () => {
   it("renders the month grid by default and the planner on ?view=runs", () => {
     expect(host, "the default view is the month").toContain("ScheduleBoard");
     expect(host, "the runs view is the planner").toContain("RunPlanner");
-    expect(host, "and the assignment board").toContain("AssignmentBoard");
+    /* Was AssignmentBoard. The component it named was deleted and replaced by OrderRouteBoard,
+       which carries the drag-and-drop pool and the map — so this still asserts that the runs view
+       renders a board, not that it renders a particular filename. */
+    expect(host, "and the board").toContain("OrderRouteBoard");
     expect(host, "and the timeline").toContain("RunTimeline");
   });
 

@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { createRun, addStop } from "@/lib/delivery";
 import type { SplitOrder, DayLimit } from "@/lib/dayCapacity";
 
 /** An order as the board's day-split sees it: where it goes, how heavy it is, and whether the
@@ -147,3 +148,117 @@ export function readPlannedDays(
 }
 
 /** Re-exported so the page reads its limits from one place. */
+
+/** One lane of a proposal being committed: orders going onto a run.
+ *
+ *  `runId` set means "add these to the run that already exists"; null means "make the run
+ *  first", which is why `driverUserId` and `day` are required rather than optional — a new day
+ *  with nobody to drive it is not a day. */
+export interface CommitLane {
+  runId: number | null;
+  driverUserId: number | null;
+  day: string;
+  orderIds: number[];
+}
+
+/** What came back, so the board can say what happened rather than only that something did. */
+export interface CommitResult {
+  createdRuns: number;
+  addedStops: number;
+  /** Orders the server refused, in Persian, ready to show. A lane that fails leaves its other
+   *  lanes committed — the caller says which, rather than the whole plan silently vanishing. */
+  refused: string[];
+}
+
+/** Whether the caller may touch this run and this driver. Both answers, because a lane needs
+ *  them together and a half-checked lane is a lane that books work somewhere unreachable.
+ *
+ *  Raw SQL lives here, not in the route: the repo-boundary test allows a route to SELECT but
+ *  never to INSERT, and a validation SELECT inside the handler is how that boundary erodes one
+ *  route at a time. */
+export function laneTargetsAreReachable(
+  db: DatabaseSync,
+  lanes: CommitLane[],
+  organizationId: number,
+): CommitLane[] {
+  const runStmt = db.prepare("SELECT id FROM delivery_runs WHERE id = ? AND organization_id = ?");
+  const driverStmt = db.prepare(
+    `SELECT u.id FROM users u
+       JOIN user_roles ur ON ur.user_id = u.id
+      WHERE u.id = ? AND u.active = 1 AND u.organization_id = ?
+        AND ur.role = 'delivery_driver'`,
+  );
+
+  return lanes.flatMap((lane) => {
+    if (lane.runId != null) {
+      return runStmt.get(lane.runId, organizationId) ? [lane] : [];
+    }
+    const driverId = Number(lane.driverUserId);
+    return driverId && (driverStmt.get(driverId, organizationId) as unknown) ? [lane] : [];
+  });
+}
+
+/** Commits a day-split proposal: creates the runs that do not exist, then loads every lane.
+ *
+ *  ONE transaction for the whole plan, and deliberately so. `createRun` and `addStop` are two
+ *  separate endpoints when a manager drags by hand, and a half-applied split is fine there —
+ *  they see it. A split of thirty orders is not fine that way: the manager clicked once, and a
+ *  failure halfway leaves runs created with three stops each and no record of what was meant to
+ *  be on them. `addStop` also calls `planDelivery`, which moves the order's status; rolling that
+ *  back is not something the client can do.
+ *
+ *  `addStop` refuses drafts, credit-held orders and frozen routes, and those refusals are COLLECTED
+ *  rather than thrown, because refusing one order should not undo thirty.
+ *
+ *  Raw SQL lives here, not in the route: the repo-boundary test allows `SELECT` in a route but
+ *  not `INSERT`. */
+export function commitDaySplit(
+  db: DatabaseSync,
+  lanes: CommitLane[],
+  actor: { userId: number; organizationId: number },
+): CommitResult {
+  const result: CommitResult = { createdRuns: 0, addedStops: 0, refused: [] };
+
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    for (const lane of lanes) {
+      let runId = lane.runId;
+
+      if (runId == null) {
+        if (!lane.driverUserId || !lane.day) {
+          result.refused.push(`${lane.day || "روز"}: راننده یا تاریخ انتخاب نشده است`);
+          continue;
+        }
+        // Reuses the domain function rather than repeating its checks: createRun is what refuses
+        // a manager, and a second INSERT here would happily create the run it exists to prevent.
+        try {
+          runId = createRun(db, {
+            driver_user_id: lane.driverUserId,
+            run_date: lane.day,
+            created_by: actor.userId,
+            organization_id: actor.organizationId,
+          });
+          result.createdRuns += 1;
+        } catch (e) {
+          result.refused.push(e instanceof Error ? e.message : "ساخت مسیر انجام نشد");
+          continue;
+        }
+      }
+
+      lane.orderIds.forEach((orderId, i) => {
+        try {
+          addStop(db, runId!, orderId, i);
+          result.addedStops += 1;
+        } catch (e) {
+          result.refused.push(e instanceof Error ? e.message : "سفارش قرار نگرفت");
+        }
+      });
+    }
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+
+  return result;
+}

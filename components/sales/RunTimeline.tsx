@@ -9,6 +9,10 @@ export interface TimelineStop {
   customer_name: string;
   status: "pending" | "delivered" | "refused" | "skipped";
   total_toman: number;
+  /** Where the stop is. Nullable because `customers.lat/lng` are, and the map on
+   *  sales/schedule?view=runs plots a stop only when it has a position. */
+  lat: number | null;
+  lng: number | null;
 }
 
 export interface TimelineRun {

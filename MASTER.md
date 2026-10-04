@@ -685,12 +685,17 @@ still applies and still has the same justification.
 Unchanged in structure; re-skinned. On phones it is the bottom sheet, which is now also
 the customer detail view opened by tapping a pocket card.
 
-### Assignment board `SHIPPED`
-Not superseded. It was described here as replaced by **Order pipeline**, which was wrong and
-misleading: both exist, on the same `sales/schedule?view=runs` surface, and the board is the
-place a manager builds a day. It now also carries the **day split** (per-day caps from
-`vehicles.max_stops` / `max_weight_kg` / `max_volume_m3`, an order promised to a day is never
-moved, and an order with no coordinates blocks the split rather than being dropped). See
+### Route board `SHIPPED` — `components/sales/OrderRouteBoard.tsx`
+It was described here as replaced by **Order pipeline**, which was wrong: both exist on the same
+`sales/schedule?view=runs` surface. It has since been rewritten rather than patched — the old
+`AssignmentBoard` is deleted and this replaces it, so there is one board instead of two.
+
+The drag is no longer hand-rolled: it calls `components/board/useCardDrag`, the engine
+`/leads` already uses, so the travel threshold and the mid-drag reflow handling are shared rather
+than duplicated. Lanes are driver-**day** pairs. `LeadsMap` supplies the map, fed the same array
+the cards render from, and `lib/repo/dayPlan.commitDaySplit` is what makes **«پیشنهاد بده»**
+write: it creates the runs a proposal needs and loads every lane in one transaction, so a
+30-order split cannot half-apply. See
 `docs/superpowers/specs/2026-10-03-mixed-route-day-planning-design.md`.
 
 ## Icons `SHIPPED` — one library, reached one way
