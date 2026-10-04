@@ -89,7 +89,10 @@ export default function ProfileMenu({
         title={`${name} · ${roleLabel}`}
         onClick={() => setOpen((v) => !v)}
       >
-        <Icon name="user" size="md" />
+        {/* No person glyph beside the picture. The Avatar IS the person, and a generic
+            silhouette next to an actual face says the same thing twice — worse, the trigger
+            is a GRID, so the icon took a whole row and the avatar was pushed underneath it,
+            stacking a symbol on top of the photograph it was meant to label. */}
         <Avatar userId={userId} name={name} size={34} />
       </button>
 

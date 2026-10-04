@@ -1,5 +1,7 @@
 
-import { Icon } from "@/components/meridian/Icon";"use client";
+"use client";
+
+import { Icon } from "@/components/meridian/Icon";
 
 export default function PrintButton() {
   return (

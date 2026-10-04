@@ -23,11 +23,14 @@ import PageHeaderCard from "@/components/meridian/PageHeaderCard";
  *  await, so an unwrapped one blocks every navigation into the route and silently
  *  disables loading.tsx. tests/shell-pages-have-tabs.test.ts holds both rules.
  */
-export default async function PageHeader({ route }: { route: string }) {
+export default async function PageHeader({ route, view }: { route: string; view?: string }) {
   /* Computed here on the server and passed down, so the client card cannot hydrate a
      different day. It used to sit under the wordmark the header no longer has. */
   const date = faJalaliLong(new Date().toISOString());
-  const meta = pageMetaFor(route);
+  /* `view` selects a view-qualified entry when one exists, so a `?view=` page can open with
+     copy about ITSELF rather than about its host. Everything below still keys off `route`
+     alone — the nav group and the sibling row are properties of the section, not the view. */
+  const meta = pageMetaFor(route, view);
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
 

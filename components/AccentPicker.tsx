@@ -13,7 +13,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "@/components/meridian/Icon";
 import {
   ACCENT_CHANGE_EVENT,
   applyAccent,
@@ -95,7 +94,10 @@ export default function AccentPicker({
         title={`رنگ ظاهر: ${current.label}`}
         className={trigger}
       >
-        <Icon name="palette" size="md" />
+        {/* No palette glyph. The comment below used to sit UNDERNEATH a <Icon name="palette"> and
+            contradict it: the swatch already IS the state, so the button showed a generic
+            "this opens colours" pictogram next to the actual colour — two icons, one of
+            which says nothing this trigger does not already show. */}
         {/* The swatch IS the icon: a colour picker whose trigger does not show the colour
             makes you open it to find out what you chose. */}
         <span
@@ -143,7 +145,10 @@ export default function AccentPicker({
                     on ? "border-accent" : "border-transparent hover:border-border"
                   }`}
                 >
-                  <Icon name="check" size="md" />
+                  {/* No tick on the selected option. The swatch below already grows a ring-2 when it is
+                      the live colour, the button already takes an accent border, and
+                      `aria-pressed` already states it to a screen reader — so the glyph was
+                      a fourth, and the tallest, signal for the same fact. */}
                   <span
                     aria-hidden="true"
                     className={`block h-6 w-6 rounded-full border border-black/15 ${

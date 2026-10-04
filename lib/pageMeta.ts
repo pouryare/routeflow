@@ -325,10 +325,27 @@ export const PAGE_META: Record<string, PageMeta> = {
  *  section's title rather than nothing. Falls back to a neutral pair rather than
  *  throwing: a missing overview should never be what takes a page down, and the test
  *  above is what actually keeps the table complete. */
-export function pageMetaFor(pathname: string): PageMeta {
+/** A `?view=` that used to be a page of its own, and which still owns that page's copy.
+ *
+ *  `/sales/runs` redirects to `/sales/schedule?view=runs`, so its title and overview describe
+ *  THIS view and nothing else — «سفرهای تحویل» over the runs table is exactly right, and
+ *  «برنامهٔ تحویل» is exactly wrong, because that is the month calendar.
+ *
+ *  Reusing the entry is why this needs no second PAGE_META key, which is deliberate:
+ *  tests/pageMeta.test.ts requires one entry per REAL route and no two routes sharing an
+ *  English title. A view is not a route, and inventing a key for one broke both rules at once.
+ *  The copy already existed; it was simply never wired to the view that inherited it. */
+const VIEW_META_ROUTE: Record<string, string> = {
+  "/sales/schedule?view=runs": "/sales/runs",
+};
+
+export function pageMetaFor(pathname: string, view?: string): PageMeta {
   const key = Object.keys(PAGE_META)
     .filter((k) => pathname === k || pathname.startsWith(`${k}/`))
     .sort((a, b) => b.length - a.length)[0];
+  // The inherited entry wins over the host section's, when there is one.
+  const inherited = view ? VIEW_META_ROUTE[`${pathname}?view=${view}`] : undefined;
+  if (inherited && PAGE_META[inherited]) return PAGE_META[inherited];
   // The fallback names the APP, not the missing page. An unmatched route is usually a stale
   // link, and showing the product name is the honest answer — the alternative is a Persian
   // title that claims to describe a screen nobody built.

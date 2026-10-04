@@ -129,3 +129,67 @@ describe("shell pages keep their sibling tabs", () => {
     expect(missing, `stale exemptions — delete these entries:\n${missing.join("\n")}`).toEqual([]);
   });
 });
+
+/* The rule above asks whether PageHeader is IMPORTED. That is not the same question as
+ * whether it is RENDERED, and on /sales/schedule the difference was the whole bug.
+ *
+ * That page imported PageHeader and rendered it — in its default view. Its `?view=runs`
+ * branch did `return <RunsView />` into a component with its own return, so half the page
+ * rendered with no overview card and no view strip, and there was no way back to «برنامه».
+ * Every assertion above still passed, because the import was right there in the file.
+ *
+ * A guard that checks presence rather than behaviour reports success precisely where it is
+ * needed. So: a view switch must not early-return past the page's own chrome, and the chrome
+ * must be written exactly ONCE, because a second copy is a second thing that can be skipped. */
+describe("a view switch cannot drop the page's chrome", () => {
+  /** `if (view === "x") return <` — and the loose form, where the condition reads as a
+   *  compared variable rather than the literal `view`. Both shapes mean the same thing: a
+   *  branch that returns without passing through the header. */
+  const EARLY_RETURN = /if\s*\([^)]*===\s*["'`]?[A-Za-z_][\w]*["'`]?\s*\)\s*(?:\{\s*)?return\s*[<(]/g;
+
+  /** How far past a view branch to look for the chrome it must render.
+   *
+   *  A window rather than a parse, because the thing being checked is "does this branch render
+   *  the header", and JSX inside an early return is not worth a parser to answer. 600 chars is
+   *  wider than any real chrome wrapper in this repo and far narrower than the distance to the
+   *  NEXT return — on the original defect the header sat 100 lines further down, so the window
+   *  does not accidentally rescue a branch that skips it. */
+  const CHROME_WINDOW = 600;
+
+  const pages = () => shellFiles("page.tsx");
+
+  it("no shell page early-returns on a view condition without the chrome", () => {
+    const offenders: string[] = [];
+    for (const p of pages()) {
+      if (p in EXEMPT) continue;
+      const src = stripComments(readFileSync(join(ROOT, p), "utf8"));
+      for (const m of src.matchAll(EARLY_RETURN)) {
+        const after = src.slice(m.index, m.index + CHROME_WINDOW);
+        if (after.includes("<PageHeader")) continue;
+        offenders.push(
+          `${p}:${src.slice(0, m.index).split("\n").length}  ${m[0].replace(/\s+/g, " ")}` +
+            ` — this view renders with no header card and no view strip`,
+        );
+      }
+    }
+    expect(
+      offenders,
+      `these branches skip the page chrome entirely:\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+
+  it("the view strip is written once, so it cannot be skipped by half the views", () => {
+    /* Two `<ViewTabs` in one file means two copies of the chrome. The second one is a second
+     * thing to forget. One copy, above the view dispatch, is the only shape that cannot rot. */
+    const offenders: string[] = [];
+    for (const p of pages()) {
+      const src = readFileSync(join(ROOT, p), "utf8");
+      const n = (src.match(/<ViewTabs/g) ?? []).length;
+      if (n > 1) offenders.push(`${p}  ${n}× <ViewTabs`);
+    }
+    expect(
+      offenders,
+      `render the view strip once, above the view dispatch:\n${offenders.join("\n")}`,
+    ).toEqual([]);
+  });
+});

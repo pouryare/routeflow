@@ -4,7 +4,7 @@ import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
 import RevealRoute from "@/components/meridian/RevealRoute";
 import RouteFade from "@/components/meridian/RouteFade";
 import SquircleFallback from "@/components/meridian/SquircleFallback";
-import SyncStatus from "@/components/SyncStatus";
+import SyncIsland from "@/components/meridian/SyncIsland";
 
 /** Everything every themed route wears: the header, the entrance choreography, and the
  *  sync indicator.
@@ -15,6 +15,11 @@ import SyncStatus from "@/components/SyncStatus";
  *  loading.tsx dead code. Suspending the header here means the shell paints instantly
  *  with HeaderSkeleton, the header fills in behind it, and each route's own loading.tsx
  *  runs underneath. See tests/shellLayout.test.ts for the citation from Next's docs.
+ *
+ * SyncIsland sits behind a boundary of its own for the same reason, and it is a component
+ * rather than an `if` because deciding whether to mount the sync client needs the session —
+ * which means cookies(), which this file must never await. It renders null for the vendor,
+ * who has no offline client, so the browser never asks a question the routes would refuse.
  *
  *  RevealRoute and RouteFade are unchanged: RouteFade fades the whole view in on
  *  navigation (a key={pathname} remount plus a CSS keyframe) and RevealRoute layers the
@@ -30,7 +35,10 @@ export default function AppShell({ children }: { children: ReactNode }) {
       <RevealRoute />
       <RouteFade>{children}</RouteFade>
 
-      <SyncStatus />
+      {/* Nothing at all for a role with no sync client — see SyncIsland. */}
+      <Suspense fallback={null}>
+        <SyncIsland />
+      </Suspense>
 
       {/* Renders null and costs nothing wherever the browser draws the corner itself. */}
       <SquircleFallback />

@@ -606,12 +606,61 @@ body {
   position: relative;
   overflow: hidden;
   border-radius: var(--radius-2xl);
-  background: var(--surface-raised);
-  box-shadow: var(--elev-3);
   contain: layout paint size;
   transition:
     width var(--dur-morph) var(--spring-pop),
     height var(--dur-morph) var(--spring-pop);
+}
+
+/* The painted pill: fill, shadow and the tone hairline, on ONE node. It never changes --
+   the toast keeps its surface for its whole life, which is the point of the drain being a
+   progress bar rather than a fade (see `.island__fill`). */
+.island__surface {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: var(--surface-raised);
+  box-shadow: var(--elev-3);
+  border: 1px solid color-mix(in srgb, var(--island-tone) 32%, transparent);
+  pointer-events: none;
+}
+
+/* The deadline, drawn as a progress bar: the tone floods the whole pill at the start and
+   is eaten away as the clock runs down, uncovering the plain surface beneath.
+
+   `--drained` is that wipe, written per frame from the toast's own clock (the same
+   `progressAt()` the old 3px bar used). 0% = full flood, 100% = plain pill.
+
+   It is a LAYER rather than a change to the pill's own background, and that is the whole
+   design: the surface stays put, so the message is never left stranded on the page
+   background with nothing behind it. Clipping the pill's own background instead -- the
+   first attempt -- produced exactly that, and it read as a rendering bug rather than a
+   countdown.
+
+   clip-path rather than `transform: scaleX`, for two reasons that both come from what
+   this layer is: it is a flat fill, so there are no Persian letterforms in it to distort
+   (the reason the island itself must never be scaled -- see Island.tsx), and `scaleX`
+   would squash `border-radius` 20px into a 10px-by-20px ellipse as it narrowed. A clip
+   leaves the radius a true pill at every width. It is paint-only too: no layout, no reflow.
+
+   Tinted rather than solid: at pill size a solid tone is loud enough to fight the
+   message for attention and to drop the text's contrast. The same color-mix idiom the
+   hairline uses, one step stronger so the drain still reads at a glance.
+
+   The inset is on the RIGHT in RTL, so the flood recedes from the leading edge and the
+   surviving colour sits against the closing ✕. Reversed from the start-anchored drain the
+   3px bar used: the reader's eye arrives at the glyph first, so the colour leaving from
+   under the glyph is the end of the sentence being read out loud. */
+.island__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--island-tone) 28%, transparent);
+  clip-path: inset(0 var(--drained, 0%) 0 0);
+  pointer-events: none;
+}
+[dir="ltr"] .island__fill {
+  clip-path: inset(0 0 0 var(--drained, 0%));
 }
 
 /* The constant. Anchored to the top so a two-line message grows downward past it rather
@@ -632,11 +681,23 @@ body {
 
 /* Fixed width, not a percentage of the island: the content has to report its natural size
    while the island is still 52px wide, or the first measurement comes back as the width of
-   the collapsed pill and the island never opens past it. */
+   the collapsed pill and the island never opens past it.
+
+   Vertically CENTRED, and that is the fix for text sitting high in the toast. `top: 0` put
+   the whole column flush to the top edge, so the slack between the content's natural height
+   and the island's height -- the 4px a one-line message does not fill against the 40px
+   collapsed floor (COLLAPSED_H, Island.tsx) -- all landed at the BOTTOM and pushed the text
+   2px above the icon's centreline. Measured in Chromium against these rules, the message row
+   sat 2px high on a one-line toast and 2.5px high once the action button made the row taller
+   than the text. Centring spends the slack evenly, and costs nothing on a two-line message:
+   there the content height equals the island height exactly, so -50% is a no-op and the text
+   keeps growing downward past the top-anchored icon, which is the behaviour `.island__icon`'s
+   own comment asks for. */
 .island__content {
   position: absolute;
   inset-inline-start: 52px;
-  top: 0;
+  top: 50%;
+  transform: translateY(-50%);
   width: 368px; /* MAX_W - icon column, mirrored in Island.tsx */
   opacity: 0;
   transition: opacity calc(var(--dur-morph) / 2) var(--ease-out);
@@ -659,48 +720,14 @@ body {
   text-align: center;
 }
 
-/* A 1px inner hairline in the tone, so the island reads as belonging to the status it
-   carries without the tone becoming the whole surface. */
-/* The undo deadline, drawn.
-   Not a progress animation: the width of this bar is how long the action behind the toast
-   is still free to reverse -- once it empties, the mutation has left the outbox and undo
-   costs a compensating write. See docs/crm-erp-plan.md 4.6.
-   scaleX rather than width, because width drives layout and MASTER.md bans animating it;
-   the fill is a composited transform on an element the island already contains. */
-.island__timer {
-  position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 3px;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity calc(var(--dur-morph) / 2) var(--ease-out);
-}
-.island--open .island__timer {
-  opacity: 1;
-  transition-delay: calc(var(--dur-morph) / 3);
-}
-.island__timer-fill {
-  width: 100%;
-  height: 100%;
-  background: var(--island-tone);
-  /* The remaining time stays anchored to the start of the reading direction, so the bar
-     drains the way the eye leaves the sentence. */
-  transform-origin: right;
-  will-change: transform;
-}
-[dir="ltr"] .island__timer-fill {
-  transform-origin: left;
-}
+/* The undo deadline is now the whole pill draining -- see `.island__surface` above.
+   The 3px `.island__timer` track it replaces is gone, along with the `.island::after`
+   hairline, which moved onto that layer so it drains with the fill instead of being
+   left behind outlining an absent toast. */
 
-.island::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  border: 1px solid color-mix(in srgb, var(--island-tone) 32%, transparent);
-  pointer-events: none;
-}
+/* The surface must never take a pointer event: the island's own box is what the toast
+   hovers, pauses on, and clicks. `pointer-events: none` on the drained layer keeps that
+   true even once the layer has been clipped down to a sliver. */
 
 @media (prefers-reduced-motion: reduce) {
   /* The global block already zeroes the duration. Stated again because a morph that
@@ -1273,14 +1300,16 @@ body {
    so everything below lands together. */
 .sidebar-stagger > *:nth-child(n + 9) { animation-delay: 480ms; }
 
-/* ---- Toasts: slide+fade in from the top, quick fade out on dismiss. ---- */
+/* ---- Toasts: slide+fade in from the top, slide up and out on dismiss. ---- */
 @keyframes toast-in {
   from { opacity: 0; transform: translateY(-8px) scale(0.98); }
   to { opacity: 1; transform: translateY(0) scale(1); }
 }
 @keyframes toast-out {
-  from { opacity: 1; transform: scale(1); }
-  to { opacity: 0; transform: scale(0.98); }
+  /* Up and out, mirroring toast-in's 8px so the exit retraces the entrance. Collapsed to
+     the icon pill first, this lifts the glyph away rather than dissolving it. */
+  from { opacity: 1; transform: translateY(0); }
+  to { opacity: 0; transform: translateY(-8px); }
 }
 .toast-enter {
   animation: toast-in var(--dur-base) var(--ease-out) backwards;
@@ -1985,7 +2014,9 @@ body {
 .meridian .pm { position: relative; }
 .meridian .pm__trigger {
   border: 0; background: transparent; padding: 2px; cursor: pointer;
-  border-radius: 999px; display: grid; place-items: center;
+  /* inline-flex, not grid: a grid places EACH child in its own row, which is how the person
+     glyph ended up ABOVE the photograph instead of being replaced by it. */
+  border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
   transition: transform var(--dur-base, 160ms) var(--ease);
 }
 .meridian .pm__trigger:hover { transform: scale(1.05); }
@@ -2001,7 +2032,11 @@ body {
 .meridian .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .meridian .pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }
 .meridian .pm__link {
-  display: block; padding: 9px 10px; border-radius: var(--r-sm);
+  /* inline-flex, not block: a row's glyph and its label are ONE item. As a block, the label
+     could not sit beside the svg — the icon took a line of its own and «ورود به‌عنوان»
+     dropped underneath it, on every one of these three links. */
+  display: inline-flex; align-items: center; gap: 9px;
+  padding: 9px 10px; border-radius: var(--r-sm);
   font-size: 13px; color: var(--ink-2); text-decoration: none;
   transition: background 160ms var(--ease);
 }
@@ -2851,7 +2886,11 @@ body {
    Item 7 / spec D5. The four side-by-side lanes read as a board and broke into a 2x2 grid
    below 1080px; a spine reads top to bottom at every width. Icons come from the icon
    library (OrderSpine.tsx); the current step is ringed in the accent. */
-.meridian .jmode { display: inline-flex; gap: 6px; }
+/* The view strip. The margin lives HERE, not per page: /sales/reps was the only caller that
+   remembered it (an inline `marginBottom: 14`), so /sales/orders and /sales/schedule — which
+   both render ViewTabs — pressed their first section straight up against the tabs. A shared
+   piece of chrome that one caller has to remember is chrome that half the pages are missing. */
+.meridian .jmode { display: inline-flex; gap: 6px; margin-bottom: 14px; }
 .meridian .spine { list-style: none; margin: 0; padding: 4px 0 8px; max-width: 46rem; }
 .meridian .spine__step {
   position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr);

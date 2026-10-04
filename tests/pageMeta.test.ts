@@ -132,6 +132,23 @@ describe("pageMeta", () => {
   it("falls back rather than throwing on an unknown path", () => {
     expect(pageMetaFor("/nowhere/at/all").title.length).toBeGreaterThan(0);
   });
+
+  it("a view that used to be a page inherits that page's copy", () => {
+    /* /sales/runs redirects to /sales/schedule?view=runs, and its entry already describes THIS
+       view: «سفرهای تحویل», with an overview that opens by naming the host it belongs to. The
+       host's own title describes the month calendar, which is the wrong screen — so reading
+       copy by route alone put «برنامهٔ تحویل» above the runs table. The entry existed; it was
+       simply never wired to the view that inherited it. */
+    expect(pageMetaFor("/sales/schedule", "runs").title).toBe(PAGE_META["/sales/runs"].title);
+    expect(pageMetaFor("/sales/schedule", "runs").title).not.toBe(
+      PAGE_META["/sales/schedule"].title,
+    );
+    // The host is untouched when no view is asked for, and an unknown view falls back to it.
+    expect(pageMetaFor("/sales/schedule").title).toBe(PAGE_META["/sales/schedule"].title);
+    expect(pageMetaFor("/sales/schedule", "nonexistent").title).toBe(
+      PAGE_META["/sales/schedule"].title,
+    );
+  });
 });
 
 /* "The card is actually on the page" now lives in tests/shell-pages-have-tabs.test.ts.

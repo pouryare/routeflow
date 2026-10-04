@@ -20,11 +20,17 @@ interface IslandProps {
   icon: ReactNode;
   /** Revealed only when open. Measured, so it may be any height. */
   children: ReactNode;
-  /** Pinned to the bottom edge, spanning the full width including under the icon.
-   *  A sibling of the content rather than part of it, because the content column is
-   *  inset past the icon and padded -- a bar rendered inside it would stop short at
-   *  both ends. */
-  footer?: ReactNode;
+  /** The layer a countdown drains, sitting between the painted surface and the content.
+   *
+   *  Deliberately NOT the surface itself. The toast floods this layer with its tone and
+   *  lets it recede like a progress bar, uncovering the pill's own background -- so the
+   *  message always has a surface behind it. Clipping the pill's background instead would
+   *  leave the text stranded on the page with nothing under it once the clip passed it.
+   *
+   *  A flat fill, so a clip costs nothing: no Persian letterforms in it to distort (the
+   *  reason the island itself must never be scaled -- see above), and its `border-radius`
+   *  stays a true pill at every width rather than an ellipse. */
+  fillRef?: React.Ref<HTMLDivElement>;
   className?: string;
 }
 
@@ -58,7 +64,7 @@ export default function Island({
   tone = "accent",
   icon,
   children,
-  footer,
+  fillRef,
   className = "",
 }: IslandProps) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -95,6 +101,12 @@ export default function Island({
         } as React.CSSProperties
       }
     >
+      {/* Paint order is the whole mechanism: the pill's own surface, then the tone flood the
+          toast drains, then the glyph and the message on top of both. Neither layer ever
+          moves, so the text cannot be left standing on the page background. */}
+      <div className="island__surface" />
+      <div className="island__fill" ref={fillRef} />
+
       <span className="island__icon" aria-hidden="true">
         {icon}
       </span>
@@ -107,8 +119,6 @@ export default function Island({
           {children}
         </div>
       </div>
-
-      {footer}
     </div>
   );
 }

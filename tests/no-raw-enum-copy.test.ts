@@ -52,7 +52,14 @@ function tsxFiles(): string[] {
 }
 
 /** Route handlers (the route.ts files under app/) too: the Excel export wrote its own
- *  lowercase status map into every spreadsheet, and a .tsx-only scan could not see it. */
+ *  lowercase status map into every spreadsheet, and a .tsx-only scan could not see it.
+ *
+ *  And `lib` + `scripts`, which is where the briefing actually builds its panels. The scan
+ *  used to stop at app/components, which is precisely why `lib/repo/briefing.ts` shipped
+ *  `label: s.status` — «CONFIRMED» under a Persian heading — for as long as it did: the
+ *  guard that exists to catch it had never opened the file. Widening it found exactly two
+ *  offenders, both the `?? raw` fallbacks at briefing.ts:250 and :272, both of which the
+ *  rule below already forbids. A guard nobody scoped is a guard nobody sized. */
 function sourceFiles(): string[] {
   const out: string[] = [];
   const walk = (rel: string) => {
@@ -64,6 +71,8 @@ function sourceFiles(): string[] {
   };
   walk("app");
   walk("components");
+  walk("lib");
+  walk("scripts");
   return out.sort();
 }
 

@@ -34,6 +34,9 @@ export interface ToastAction {
   label: string;
   /** Awaited so the toast can show a working state instead of vanishing mid-request. */
   onClick: () => void | Promise<void>;
+  /** The button's glyph. Defaults to a check, which is right for "go there" and wrong for
+   *  "undo this" — a tick on a button that reverses something reads as confirming it. */
+  icon?: IconName;
 }
 
 interface ToastItem {
@@ -76,9 +79,11 @@ export const ACTION_LIFETIME_MS = OUTBOX_HOLD_MS;
 
 // One pill-frame before widening, so the arrival reads as a single motion.
 const OPEN_DELAY_MS = 30;
-// Long enough for the collapse to finish before the node leaves. --dur-morph plus slack.
+// Long enough for the collapse to finish before the next beat. --dur-morph plus slack.
 const COLLAPSE_MS = 460;
-// Bands the bar snaps to under prefers-reduced-motion. Enough to read as draining,
+// The fade that follows it, matching `.toast-exit`'s 180ms in globals.css.
+const FADE_MS = 180;
+// Bands the fill snaps to under prefers-reduced-motion. Enough to read as draining,
 // few enough that nothing appears to move continuously.
 const REDUCED_STEPS = 8;
 
@@ -113,8 +118,10 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [srSeconds, setSrSeconds] = useState<number | null>(null);
+  // Set one COLLAPSE_MS after `open` goes false, so the fade lands on the collapsed pill.
+  const [fading, setFading] = useState(false);
 
-  const barRef = useRef<HTMLDivElement>(null);
+  const fillRef = useRef<HTMLDivElement>(null);
   const clock = useRef<Countdown | null>(null);
   const reduced = usePrefersReducedMotion();
 
@@ -125,10 +132,17 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
   const paused = hovered || focused || hidden || running;
 
   const exit = useCallback(() => {
-    // Collapse to a pill first, then leave. Vanishing at full width skips the half of
-    // the morph that makes the island read as one object rather than a box that blinked.
+    // Two beats. Collapse to a pill first, then leave. Vanishing at full width skips the
+    // half of the morph that makes the island read as one object rather than a box that
+    // blinked. The fade rides on the pill rather than replacing the collapse: the reader
+    // has just watched the message shrink into its glyph, and fading that glyph out is the
+    // natural end of the same gesture. `.toast-exit` already exists in globals.css for
+    // exactly this and nothing was using it.
     setOpen(false);
-    window.setTimeout(() => onDone(toast.id), COLLAPSE_MS);
+    window.setTimeout(() => {
+      setFading(true);
+      window.setTimeout(() => onDone(toast.id), FADE_MS);
+    }, COLLAPSE_MS);
   }, [onDone, toast.id]);
 
   useEffect(() => {
@@ -151,9 +165,9 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
       : resumeCountdown(clock.current, Date.now());
   }, [paused]);
 
-  // The bar is written straight to the node rather than through state: at 60fps a
+  // The pill is drained straight onto the node rather than through state: at 60fps a
   // setState per frame would re-render the message, the buttons and the island's
-  // ResizeObserver callback, to move one composited transform.
+  // ResizeObserver callback, to move one composited clip.
   useEffect(() => {
     let frame = 0;
     let lastDrawn = -1;
@@ -168,7 +182,12 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
       const next = reduced ? quantise(raw, REDUCED_STEPS) : raw;
       if (next !== lastDrawn) {
         lastDrawn = next;
-        if (barRef.current) barRef.current.style.transform = `scaleX(${next})`;
+        // progressAt is 1 at the start and 0 at the deadline, so the consumed fraction
+        // is its complement. Written as a custom property rather than a whole
+        // `clip-path` so the RTL/LTR edge stays the stylesheet's decision.
+        if (fillRef.current) {
+          fillRef.current.style.setProperty("--drained", `${((1 - next) * 100).toFixed(2)}%`);
+        }
       }
       // Only published while paused, so the accessible name is a stable "you have N
       // seconds" rather than a label that renames itself sixty times a second.
@@ -209,21 +228,24 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
       open={open}
       tone={TONE[toast.variant]}
       icon={<Icon name={ICON[toast.variant]} size="md" />}
-      className="pointer-events-auto"
-      footer={
-        // Only on toasts that carry an action. On a plain message the countdown is not
-        // something the reader can act on, so it would be chrome; on this one it is the
-        // deadline for the only undo there is.
-        toast.action ? (
-          <div className="island__timer" aria-hidden="true">
-            <div ref={barRef} className="island__timer-fill" />
-          </div>
-        ) : undefined
-      }
+      className={`pointer-events-auto${fading ? " toast-exit" : ""}`}
+      /* Every toast drains, not only the actionable ones. The deadline is real either way
+         -- LIFETIME_MS per variant -- and a toast whose surface recedes tells the reader it
+         is leaving, which a bar they cannot act on never did. The undo semantics are
+         unchanged: an actionable toast still lives ACTION_LIFETIME_MS, the same constant
+         as the outbox hold, so the surface is an honest display of how long the mutation
+         is still free to reverse. */
+      fillRef={fillRef}
     >
       <div
         role="status"
-        className="flex items-start gap-2"
+        /* items-CENTER, not items-start. `items-start` top-aligned every child of the row,
+           so the moment one child was taller than another the shorter ones rode up: with the
+           action button present the row is 25px (border + px-2/py-0.5) against the message's
+           20px line box, and the text measured 2.5px above the row's own centreline. Centring
+           the row's children against each other is what makes the message land on the island's
+           centreline in every case, and it is a no-op when they already agree. */
+        className="flex items-center gap-2"
         onPointerEnter={() => setHovered(true)}
         onPointerLeave={() => setHovered(false)}
         onFocusCapture={() => setFocused(true)}
@@ -238,7 +260,7 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
             aria-label={actionLabel}
             className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
           >
-            <Icon name="check" size="sm" />
+            <Icon name={toast.action.icon ?? "check"} size="sm" />
             {running ? "…" : toast.action.label}
           </button>
         )}

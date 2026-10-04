@@ -2,13 +2,39 @@
  *
  *  `createTask(organizationId, input)` opens no transaction and derives `stage` from `kind`
  *  when none is given. Kinds are the app's own vocabulary (lib/tasks/labels.ts), so the board
- *  filters read correctly rather than showing an empty lane for an unknown kind.
+ *  filters read correctly: an unknown kind gives no stage and no workflow pipeline, and the
+ *  workflow lens quietly falls back to status lanes (lib/tasks/lenses.ts:79).
  */
 
 import { createTask } from "@/lib/repo/tasks";
+import type { TaskKind } from "@/lib/tasks/labels";
 import type { SeedContext } from "../context";
 
-const KINDS = ["collection", "complaint", "delivery", "sales", "admin"] as const;
+/* Real kinds, from the app's own vocabulary.
+ *
+ * This list used to be ["collection","complaint","delivery","sales","admin"] — four of which
+ * are not kinds this app has. The header comment above promised "the app's own vocabulary
+ * (lib/tasks/labels.ts) so the board filters read correctly"; the code did the opposite, and
+ * every one of those titles printed its own raw identifier to a Persian reader
+ * («collection: پیگیری سفارش») while taskKindLabel fell through to the generic «کار».
+ *
+ * `satisfies` rather than a bare `as const`: a kind that does not exist is a COMPILE error
+ * here, which is the only remaining place this mistake can be made. */
+const KINDS = [
+  "call", "delivery_retry", "quote_followup", "sample_followup", "outreach", "visit", "reminder",
+] as const satisfies readonly TaskKind[];
+
+/** One title per kind. Deriving it from the kind label gave «پیگیری قیمت: پیگیری سفارش» —
+ *  the same word twice — because the old title was itself a fixed phrase. */
+const TITLE: Record<(typeof KINDS)[number], string> = {
+  call: "تماس برای پیگیری سفارش",
+  delivery_retry: "پیگیری تحویل انجام‌نشده",
+  quote_followup: "پیگیری قیمت",
+  sample_followup: "پیگیری نمونه",
+  outreach: "پیگیری مشتری",
+  visit: "بازدید مشتری",
+  reminder: "یادآوری پیگیری",
+};
 
 export function run(ctx: SeedContext): void {
   const { db, rng } = ctx;
@@ -47,7 +73,7 @@ export function run(ctx: SeedContext): void {
     const customerId = order ? order.customer_id : (customers.length > 0 ? rng.pick(customers) : 0);
     try {
       createTask(ctx.orgId, {
-        title: `${kind}: پیگیری سفارش`,
+        title: TITLE[kind],
         kind,
         assignee_user_id: assignees.length > 0 ? rng.pick(assignees) : null,
         /* Overdue on purpose for a slice of them — /board's overdue lens is otherwise empty. */

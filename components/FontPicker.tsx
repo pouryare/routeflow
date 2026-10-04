@@ -14,7 +14,6 @@
  */
 
 import { useEffect, useRef, useState } from "react";
-import { Icon } from "@/components/meridian/Icon";
 import {
   FONT_CHANGE_EVENT,
   applyFont,
@@ -94,7 +93,9 @@ export default function FontPicker({
         title={`قلم: ${current.label}`}
         className={trigger}
       >
-        <Icon name="file" size="md" />
+        {/* No document glyph. «آ» below is set in the LIVE ui font, so the trigger is already a
+            picture of the current choice — the file icon beside it said only "this opens
+            something", in a second glyph, inside a 36px circle that had room for one. */}
         {/* The glyph is set in the LIVE ui font, so the trigger already shows the choice. */}
         <span
           aria-hidden="true"
@@ -134,7 +135,11 @@ export default function FontPicker({
                     on ? "border-accent bg-accent-soft" : "border-border hover:border-accent"
                   }`}
                 >
-                  <Icon name="check" size="md" />
+                  {/* No tick on the selected option. It already carries three signals of its own —
+                      `border-accent bg-accent-soft`, the bolder label under
+                      `group-aria-pressed`, and `aria-pressed` itself — so the glyph was a
+                      fourth way of saying the same thing, in the one slot that made the row
+                      taller than its neighbours. */}
                   {/* «آ ب پ» in the option's own face -- three joined-then-not shapes read
                       the family at a glance without needing a full sentence. */}
                   <span

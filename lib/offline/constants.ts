@@ -1,9 +1,9 @@
 /** How long an offline mutation sits in the outbox as `held` before the sync engine may
- *  pick it up. This is the SAME number the undo bar in components/ToastProvider.tsx
- *  drains over (`ACTION_LIFETIME_MS`), by design: the shrinking bar is an honest display
- *  of how long the mutation is still yours to take back with a local delete rather than a
- *  compensating write. One constant so the visible bar and the invisible hold cannot
- *  drift apart -- see docs/crm-erp-plan.md 4.6.
+ *  pick it up. This is the SAME number the undo countdown in components/ToastProvider.tsx
+ *  drains over (`ACTION_LIFETIME_MS`), by design: the receding flood of colour is an honest
+ *  display of how long the mutation is still yours to take back with a local delete rather
+ *  than a compensating write. One constant so the visible drain and the invisible hold
+ *  cannot drift apart -- see docs/crm-erp-plan.md 4.6.
  *
  *  5 s, one undo window for the whole app (decided 2026-09-11, docs/tap-flow-principles.md §6.6).
  */

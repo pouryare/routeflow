@@ -44,7 +44,7 @@ export default async function RepsPage({
     <>
     <PageHeader route="/sales/reps" />
     {canDefine ? (
-      <nav className="jmode" aria-label="نمای نمایندگان" style={{ marginBottom: 14 }}>
+      <nav className="jmode" aria-label="نمای نمایندگان">
         <Link className={`btn ${mode === "perform" ? "solid" : "ghost"}`} aria-current={mode === "perform" ? "page" : undefined} href="/sales/reps">
           عملکرد
         </Link>

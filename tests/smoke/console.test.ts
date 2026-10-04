@@ -20,21 +20,24 @@ const ROUTES = [...new Set(appTabs({ role: "owner" }).filter((t) => t.ready).map
  *  every entry is a class of message this test has agreed to stop seeing. */
 const DEV_NOISE = [/Download the React DevTools/, /\[HMR\]/, /\[Fast Refresh\]/];
 
-/** ONE tolerated 403, and it is not the app misbehaving.
+/** NO tolerated messages.
  *
- *  The shell asks every page for /api/sync/pull. A platform_owner has no sync client —
- *  they are the vendor, not a field device — so the route answers 403 "این حساب همگام‌سازی
- *  ندارد" by design, and the browser logs every non-2xx response to the console.
+ * This used to carry ONE entry — a blanket 403 matcher — to excuse the shell asking
+ * /api/sync/pull on behalf of a platform_owner, which the route refuses by design. That
+ * excuse described a real defect rather than an acceptable state: AppShell mounted
+ * <SyncStatus /> for every role, mounting it starts the engine, and the engine's first act
+ * is the pull. So the founder's browser asked on every page and was refused every time.
  *
- *  This suite started seeing it when `pourya` became a platform_owner: session.ts picks the
- *  highest-privilege active user, and for the first time that was not a plain owner. The
- *  alternative — pinning the harness to a plain owner — would make this suite quietly stop
- *  testing the role the founder actually uses, which is the whole point of the current work.
+ * components/meridian/SyncIsland.tsx now mounts the client only for a role that has one
+ * (`hasSyncClient` in lib/roles.ts), so there is no request and no 403 to tolerate. The
+ * blanket is GONE rather than narrowed: a matcher left in place would hide the next 403,
+ * which is the opposite of what this file is for. If a future role change reintroduces one,
+ * this suite should say so.
  *
- *  Matched as a SUITE, not per-route: the point is "the founder's pages log nothing but
- *  this", and a blanket "ignore 403s" would hide every future one, which is the opposite of
- *  what this file is for. */
-const TOLERATED = [/403 \(Forbidden\)/];
+ * Not re-run as part of this change — the suite boots a browser and a dev server, which
+ * this machine cannot do (see .clinerules/report.md). The removal is safe in the meantime:
+ * an empty matcher cannot turn a pass into a fail, only make a failure visible again. */
+const TOLERATED: RegExp[] = [];
 
 let browser: Browser;
 let stop: () => Promise<void>;
