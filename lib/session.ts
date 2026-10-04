@@ -394,16 +394,38 @@ export function orderFilter(session: Session, alias = "o"): { sql: string; param
   }
 
   if (isVanRole(session.role)) {
-    // The orders on runs assigned to this driver, and nothing else. Scoped by run
-    // rather than by date: a driver needs yesterday's run to reprint a receipt or fix
-    // what they typed at the door, and a date clause would cut that off at midnight in
-    // the middle of a shift. The set is a few dozen orders either way.
+    /* Two ways to earn an order, and it is an OR rather than a replacement.
+     *
+     *  1. Orders on runs assigned to this driver. Scoped by run rather than by date: a driver
+     *     needs yesterday's run to reprint a receipt or fix what they typed at the door, and a
+     *     date clause would cut that off at midnight in the middle of a shift.
+     *  2. Orders this driver AUTHORED. Added in Phase 7, and it is the fix for a defect this
+     *     file's own callers had recorded rather than solved: a driver writes a sale at the
+     *     door, the write succeeds, and the order then appears NOWHERE — not to them, not to
+     *     the office — until a manager loads it onto a van. Users report that as "it didn't
+     *     save", on a row that saved perfectly.
+     *
+     *  Both van roles get both halves. A field rep who also drives is one person doing one
+     *  day's work, and the whole reason their orders vanish is that a sale belongs to the
+     *  person who made it before it belongs to any van.
+     *
+     *  Neither half can see another driver's work: rule 1 is keyed on the run's driver and
+     *  rule 2 on the order's author, and both are this session's user id. */
     return {
-      sql: ` AND ${alias}.organization_id = ? AND ${alias}.id IN (
-              SELECT ds.order_id FROM delivery_stops ds
-                JOIN delivery_runs dr ON dr.id = ds.run_id
-               WHERE dr.driver_user_id = ?)`,
-      params: [session.organizationId, session.user.id],
+      sql: ` AND ${alias}.organization_id = ? AND (
+              ${alias}.id IN (
+                SELECT ds.order_id FROM delivery_stops ds
+                  JOIN delivery_runs dr ON dr.id = ds.run_id
+                 WHERE dr.driver_user_id = ?)
+              OR ${alias}.created_by = ?
+              OR ${alias}.salesperson_user_id = ?
+            )`,
+      params: [
+        session.organizationId,
+        session.user.id,
+        session.user.id,
+        session.user.id,
+      ],
     };
   }
 

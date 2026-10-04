@@ -104,6 +104,44 @@ export function pullSince(session: Session, since: string | null): PullResult {
     );
     add("delivery_stops", stops, "created_at");
 
+    /* The driver's VISITS, which used not to be here at all.
+     *
+     *  Before Phase 2 a visit lived on its own `lead_run` with its own run row, and this function
+     *  read only `delivery_runs` / `delivery_stops`. So a driver offline in the field saw their
+     *  deliveries and no visits at all — half the manifest, absent with no error, because a
+     *  missing row looks exactly like a day with nothing to visit.
+     *
+     *  Phase 2 folded lead_runs into delivery_runs, so `runIds` above now covers visits too and
+     *  this is the same shape as the delivery stops. `lead_run_stops` has no `status` column: a
+     *  visit is driven or it is not, tracked by the visit's own outcome. */
+    const visitStops = plain(
+      db
+        .prepare(`SELECT * FROM lead_run_stops WHERE run_id IN (${runList}) AND created_at > ?`)
+        .all(from) as Record<string, unknown>[]
+    );
+    add("lead_run_stops", visitStops, "created_at");
+
+    /* The pins themselves must travel WITH the visits. A `lead_run_stops` row pointing at a
+     * saved_locations id the device has never seen renders as a blank card — the row arrives,
+     * the name does not, and the driver sees an unnamed stop with a coordinate and no idea. */
+    const locationIds = new Set<number>();
+    for (const s of visitStops) locationIds.add(Number((s as { location_id: number }).location_id));
+    for (const s of db
+      .prepare(`SELECT location_id FROM lead_run_stops WHERE run_id IN (${runList})`)
+      .all() as { location_id: number }[]) {
+      locationIds.add(s.location_id);
+    }
+    const locList = locationIds.size ? [...locationIds].join(",") : "NULL";
+    add(
+      "saved_locations",
+      plain(
+        db
+          .prepare(`SELECT * FROM saved_locations WHERE id IN (${locList}) AND created_at > ?`)
+          .all(from) as Record<string, unknown>[]
+      ),
+      "created_at"
+    );
+
     const orderIds = new Set<number>();
     for (const s of stops) orderIds.add(Number((s as { order_id: number }).order_id));
     // also orders on stops not changed since `from` but whose order did change

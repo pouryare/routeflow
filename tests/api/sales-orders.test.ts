@@ -256,14 +256,31 @@ describe("GET /api/sales/orders", () => {
     expect(theirs.length).toBeGreaterThan(0);
   });
 
-  it("shows a driver only what is on their own runs, and does not error", async () => {
-    // Also formerly a 403. Reading is scoped by orderFilter, which limits a driver to the
-    // orders on runs assigned to them -- so with no runs in this fixture the honest answer
-    // is an empty list, not a refusal. The scoping itself is asserted in the tests below.
+  it("shows a driver their own field orders, and only those", async () => {
+    /* Also formerly a 403. Reading is scoped by orderFilter, which gives a driver two ways to
+       earn an order: the ones on runs assigned to them, and the ones they AUTHORED.
+       The authorship half arrived in Phase 7. This test used to assert `[]`, which encoded the
+       old rule and was the very thing that let a driver's own field sale become invisible —
+       recorded as a known defect in the route's own comments. */
     const res = await GET(get(AS.driver()));
     expect(res.status).toBe(200);
     const json = await res.json();
-    expect(json.orders).toEqual([]);
+
+    // Their own orders are there — the whole point of the fix.
+    expect(json.orders.length).toBeGreaterThan(0);
+
+    // And nothing from another group. This is the half that matters for safety, so it is
+    // asserted against a real cross-group order rather than implied by a count.
+    //
+    // An earlier version of this test compared against the eastManager's list, which is
+    // backwards: a group manager legitimately sees every order in their own group, including
+    // the driver's, so that set is a superset and the comparison flagged the driver's own
+    // orders as leaks.
+    const westOrder = await (await POST(post(AS.westManager(), orderBody()))).json();
+    const fresh = await GET(get(AS.driver()));
+    const ids = (await fresh.json()).orders.map((o: { id: number }) => o.id);
+
+    expect(ids).not.toContain(westOrder.id);
   });
 });
 

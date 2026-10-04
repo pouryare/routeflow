@@ -81,7 +81,11 @@ function runFor(driver: number, cust: number): number {
   confirmOrder(db, o.id);
   const run = createRun(db, { driver_user_id: driver, run_date: "2026-01-02", created_by: ownerA, organization_id: 1, group_id: groupA });
   addStop(db, run, o.id);
-  return o.id;
+  // createRun returns the run id itself, not an object. A version of this helper returned
+  // `o.id` (the ORDER id), and a later test then inserted its visit onto that id — which is not
+  // an error, because lead_run_stops only checks that SOME run exists, so the visit silently
+  // landed on the wrong driver's run and the test failed for the wrong reason.
+  return run;
 }
 
 describe("pullSince", () => {
@@ -134,5 +138,60 @@ describe("pullSince", () => {
     const res = pullSince(sess(ownerA, "owner", 1, null), null);
     const orgs = new Set(res.rows.filter((r) => r.table === "orders").map((r) => r.row.organization_id));
     expect([...orgs]).toEqual([1]);
+  });
+
+  it("carries the driver's VISITS, not just their deliveries — the gap that motivated the merge", () => {
+    // THE REGRESSION. pullSince read delivery_runs and delivery_stops and NOTHING else, so a
+    // driver offline in the field saw their deliveries and zero visits. For a field rep or a van
+    // driver who does both jobs, half of the day's manifest was simply absent — with no error,
+    // because a missing row looks exactly like a day with no visits.
+    //
+    // Phase 2 folded lead_runs into delivery_runs, which is what made this fixable at all: a
+    // visit now hangs off the same run_id the driver already has.
+    const db = getDb();
+    const runId = runFor(driverA, custA);
+    const locId = Number(
+      db
+        .prepare(
+          "INSERT INTO saved_locations (name, maps_url, organization_id, created_at) VALUES (?, ?, 1, ?)"
+        )
+        .run(`SYNC-LOC-${Date.now()}`, `u${Date.now()}`, new Date().toISOString()).lastInsertRowid,
+    );
+    db.prepare(
+      "INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)"
+    ).run(runId, locId, new Date().toISOString());
+
+    const res = pullSince(sess(driverA, "delivery_driver", 1, null), null);
+
+    const visitTables = res.rows.filter((r) => r.table === "lead_run_stops").map((r) => r.row.location_id);
+    expect(visitTables, "a driver's visits never reached the device").toContain(locId);
+
+    // And the pin itself has to come with it — a visit row pointing at a location the device has
+    // never heard of is a stop that renders as a blank card.
+    const locs = res.rows.filter((r) => r.table === "saved_locations").map((r) => r.row.id);
+    expect(locs).toContain(locId);
+  });
+
+  it("does not leak another driver's visits", () => {
+    const db = getDb();
+    const runA = runFor(driverA, custA);
+    const runB = runFor(driverB, custA);
+    const locId = Number(
+      db
+        .prepare(
+          "INSERT INTO saved_locations (name, maps_url, organization_id, created_at) VALUES (?, ?, 1, ?)"
+        )
+        .run(`SYNC-LOC-B-${Date.now()}`, `ub${Date.now()}`, new Date().toISOString()).lastInsertRowid,
+    );
+    db.prepare(
+      "INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)"
+    ).run(runB, locId, new Date().toISOString());
+    expect(runA).not.toBe(runB);
+
+    const mine = pullSince(sess(driverA, "delivery_driver", 1, null), null);
+    const others = mine.rows
+      .filter((r) => r.table === "lead_run_stops")
+      .map((r) => r.row.location_id);
+    expect(others).not.toContain(locId);
   });
 });
