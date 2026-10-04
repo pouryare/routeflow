@@ -20,6 +20,8 @@ import { isVanRole, VAN_ROLES } from "@/lib/roles";
 import { readOrders } from "@/lib/orders";
 import RunPlanner from "@/components/sales/RunPlanner";
 import AssignmentBoard from "@/components/sales/AssignmentBoard";
+import DaySplitPanel from "@/components/sales/DaySplitPanel";
+import { readPlannableOrders, readPlannedDays } from "@/lib/repo/dayPlan";
 import RunTimeline, { type TimelineStop } from "@/components/sales/RunTimeline";
 import DriverStreaks from "@/components/sales/DriverStreaks";
 import { readDriverActivity } from "@/lib/repo/driverActivity";
@@ -185,6 +187,11 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
           order_date: o.order_date,
           group_id: o.group_id,
         }))}
+      />
+      <DaySplitPanel
+        orders={readPlannableOrders(db, orderFilter(session))}
+        plannedDays={readPlannedDays(db, runScope, tehranTodayIso(), { stops: 8 })}
+        origin={null}
       />
       <RunTimeline
         runs={runs.filter((r) => r.status !== "done").map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}
