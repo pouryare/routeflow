@@ -160,6 +160,91 @@ function rebuildForTenantUnique(
   }
 }
 
+/** Rebuild `facilities` so a facility can be a VAN.
+ *
+ *  Phase 8. `facilities.kind` carries a CHECK, and SQLite cannot alter one — so the table has to
+ *  be rebuilt to allow 'van'. Nothing else about it changes.
+ *
+ *  WHY THIS EXISTS RATHER THAN BEING FOLDED INTO rebuildForTenantUnique: that helper's guard is
+ *  the presence of `UNIQUE (organization_id, slug)`, and production ALREADY has that constraint.
+ *  So its migration is a no-op on a real database and its DDL — however correct — never runs.
+ *  The CHECK on kind is therefore frozen at whatever it was when the tenant migration landed, and
+ *  the only thing that can widen it is a rebuild guarded on something else. Hence the guard below
+ *  is the kind list itself.
+ *
+ *  Two lessons are baked in here, both learned the hard way:
+ *
+ *  - The copy list is derived from PRAGMA table_info and INTERSECTED with the columns the new
+ *    table declares, never hand-written. An earlier version listed columns by hand and omitted
+ *    `organization_id`, silently blanking the tenant on every facility.
+ *  - The new table declares `UNIQUE (organization_id, slug)`, so rebuildForTenantUnique's marker
+ *    is satisfied afterwards and it cannot fire a second time. Without that, two rebuilds run in
+ *    sequence and the second copies a table the first already replaced.
+ *
+ *  Row count is asserted on both sides. This is the only place getDb() can duplicate or drop a
+ *  populated facilities table, and it did exactly that once: 2 facilities became 4, silently.
+ */
+function rebuildFacilitiesForVan(db: DatabaseSync): void {
+  const schema = db
+    .prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'facilities'")
+    .get() as { sql: string } | undefined;
+  if (!schema || schema.sql.includes("'van'")) return;
+
+  const before = (db.prepare("SELECT COUNT(*) c FROM facilities").get() as { c: number }).c;
+
+  const declared = [
+    "id", "slug", "kind", "name", "address", "lat", "lng", "maps_url", "notes",
+    "is_default_origin", "owner_username", "organization_id", "group_id",
+    "created_at", "updated_at",
+  ];
+  const present = new Set(
+    (db.prepare("PRAGMA table_info(facilities)").all() as unknown as { name: string }[]).map((c) => c.name),
+  );
+  // Only columns the OLD table actually has AND the new one declares. A name in either list but
+  // not the other is a parse error at best and a silent data loss at worst.
+  const cols = declared.filter((c) => present.has(c)).map((c) => `"${c}"`).join(", ");
+
+  db.exec("PRAGMA foreign_keys = OFF;");
+  try {
+    db.exec(`
+      DROP TABLE IF EXISTS facilities_van_new;
+      CREATE TABLE facilities_van_new (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        slug TEXT NOT NULL,
+        kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other', 'van')),
+        name TEXT NOT NULL,
+        address TEXT,
+        lat REAL NOT NULL,
+        lng REAL NOT NULL,
+        maps_url TEXT,
+        notes TEXT,
+        is_default_origin INTEGER NOT NULL DEFAULT 0,
+        owner_username TEXT,
+        group_id INTEGER REFERENCES groups(id),
+        organization_id INTEGER REFERENCES organizations(id),
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL,
+        UNIQUE (organization_id, slug)
+      );
+      INSERT INTO facilities_van_new (${cols}) SELECT ${cols} FROM facilities;
+      DROP TABLE facilities;
+      ALTER TABLE facilities_van_new RENAME TO facilities;
+      CREATE INDEX IF NOT EXISTS idx_facilities_kind ON facilities(kind);
+    `);
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON;");
+  }
+
+  const after = (db.prepare("SELECT COUNT(*) c FROM facilities").get() as { c: number }).c;
+  if (after !== before) {
+    throw new Error(
+      `rebuildFacilitiesForVan changed the row count: ${before} before, ${after} after. ` +
+        `Restore from backups/ before going further — every warehouse, and every movement of ` +
+        `stock that names one, depends on this table.`
+    );
+  }
+}
+
 /** Rebuild `districts` back to shared reference data: no organization_id, plain natural key.
  *
  *  The mirror image of rebuildForTenantUnique, and it exists because that helper copies
@@ -1678,7 +1763,7 @@ export function getDb(): DatabaseSync {
     CREATE TABLE IF NOT EXISTS facilities (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT UNIQUE NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other')),
+      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other', 'van')),
       name TEXT NOT NULL,
       address TEXT,
       lat REAL NOT NULL,
@@ -1687,6 +1772,7 @@ export function getDb(): DatabaseSync {
       notes TEXT,
       is_default_origin INTEGER NOT NULL DEFAULT 0,
       owner_username TEXT,
+      organization_id INTEGER REFERENCES organizations(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
@@ -3493,6 +3579,9 @@ export function getDb(): DatabaseSync {
   // scoping rather than adding it. It has to run before the group_id and centroid ALTERs
   // below, which then re-add those columns to the fresh table.
   rebuildDistrictsShared(db);
+  /* Phase 8: widen facilities.kind to allow a van. Must run BEFORE the tenant-unique pass below
+     so that pass sees the UNIQUE marker this leaves behind and does not fire a second time. */
+  rebuildFacilitiesForVan(db);
 
   rebuildForTenantUnique(
     db,
@@ -3521,6 +3610,14 @@ export function getDb(): DatabaseSync {
     );`
   );
 
+  /* `facilities` — and its CHECK must name 'van', or this rebuild silently UNDOES the one above.
+   *
+   *  There are two places the facilities schema is written out, and they used to disagree about
+   *  the kind list. On a fresh database the schema block creates the table with the new list, this
+   *  helper then sees the missing UNIQUE and rebuilds from ITS OWN literal — so whichever list it
+   *  carries is the one that survives. Adding 'van' only to the CREATE was not enough, and the
+   *  symptom was a CHECK constraint failure on the first insert of a van, a long way from here.
+   *  Every migration that rewrites a table must update every writer of that table's DDL. */
   rebuildForTenantUnique(
     db,
     "facilities",
@@ -3528,7 +3625,7 @@ export function getDb(): DatabaseSync {
     `CREATE TABLE facilities_tn_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other')),
+      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other', 'van')),
       name TEXT NOT NULL,
       address TEXT,
       lat REAL NOT NULL,
@@ -4294,6 +4391,17 @@ export function getDb(): DatabaseSync {
   ];
   for (const [col, type] of drAdds) {
     if (!drCols.includes(col)) db.exec(`ALTER TABLE delivery_runs ADD COLUMN ${col} ${type}`);
+  }
+
+  /* Phase 8: a van holds stock, so a vehicle needs to point at the facility where its stock
+   * lives. Nullable on purpose — a vehicle with no facility simply has no stock of its own and
+   * everything it delivers comes off the depot, which is how the app behaved before this phase
+   * and has to keep working. */
+  const vehCols = (db.prepare("PRAGMA table_info(vehicles)").all() as { name: string }[]).map(
+    (c) => c.name
+  );
+  if (!vehCols.includes("facility_id")) {
+    db.exec("ALTER TABLE vehicles ADD COLUMN facility_id INTEGER REFERENCES facilities(id)");
   }
   // A 'ready' status between 'planned' and 'in_progress' -- the run is frozen but the
   // driver has not started. CHECK change -> a guarded rebuild.
