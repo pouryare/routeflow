@@ -62,7 +62,7 @@ beforeAll(() => {
   // insertLoc hardcodes the coordinates, so it takes only (name, url, group, created_at).
   locOnRun = Number(insertLoc.run("هتل روی مسیر", "https://maps.example/z", groupId, now).lastInsertRowid);
   const runId = Number(
-    db.prepare(`INSERT INTO lead_runs (driver_user_id, group_id, run_date, status, planned_by, organization_id, created_at, updated_at)
+    db.prepare(`INSERT INTO delivery_runs (driver_user_id, group_id, run_date, status, created_by, organization_id, created_at, updated_at)
                 VALUES (?, ?, ?, 'planned', ?, ?, ?, ?)`)
       .run(driverId, groupId, "2026-09-25", ownerId, 1, now, now).lastInsertRowid
   );

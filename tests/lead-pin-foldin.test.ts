@@ -19,7 +19,7 @@ let nextDay = 1;
 
 /* Seeds a pin that is BOTH in a lead list and on a lead run, and the run holding the
    stop. This is the shape that makes the fold dangerous.
-   Ids AND the run_date increment per call: lead_runs carries
+   Ids AND the run_date increment per call: delivery_runs carries
    UNIQUE(driver_user_id, run_date) — "two lead runs for one driver on one day is the bug
    that constraint exists to stop" (lib/repo/leadRuns.ts) — so a fixed date collides
    across two calls. Each test gets its own run, and neither depends on the other's rows. */
@@ -28,18 +28,18 @@ function seedPinOnRun() {
   const runId = nextRun++;
   const pinId = nextPin++;
   const runDate = `2026-01-${String(nextDay++).padStart(2, "0")}`;
-  /* lead_runs.driver_user_id REFERENCES users(id), so the driver has to exist. The first
+  /* delivery_runs.driver_user_id REFERENCES users(id), so the driver has to exist. The first
      test in this file already creates org 3 and a group, so those are present. */
   db.exec(`INSERT OR IGNORE INTO users (id, username, display_name, password_hash, role, active, created_at, organization_id)
            VALUES (1, 'd1', 'راننده', 'x', 'delivery_driver', 1, '2026-01-01', 3)`);
-  db.exec(`INSERT INTO lead_runs (id, driver_user_id, run_date, status, planned_by, organization_id, created_at, updated_at)
+  db.exec(`INSERT INTO delivery_runs (id, driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at)
            VALUES (${runId}, 1, '${runDate}', 'planned', 1, 3, '${runDate}', '${runDate}')`);
   db.exec(`INSERT INTO saved_locations (id, name, maps_url, resolution, group_id, created_at, updated_at, organization_id)
            VALUES (${pinId}, 'پین روی مسیر', 'https://maps.example/z-${pinId}', 'manual', 30, '2026-01-01', '2026-01-01', 3)`);
   db.exec(`INSERT INTO lead_list_items (list_id, location_id, sort_order, created_at) VALUES (40, ${pinId}, 0, '2026-01-01')`);
-  /* lead_run_stops has NO organization_id (lib/db.ts:1332-1339) -- it is reached through
-     lead_runs. Note line 1335: `location_id ... REFERENCES saved_locations(id) ON
-     DELETE CASCADE`. That clause is the entire hazard this test guards. */
+  /* lead_run_stops has NO organization_id -- it is reached through delivery_runs since Phase 2
+     folded lead_runs into it. Note the `location_id ... REFERENCES saved_locations(id) ON
+     DELETE CASCADE` clause. That is the entire hazard this test guards. */
   db.exec(`INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at)
            VALUES (${runId}, ${pinId}, 0, '2026-01-01')`);
   return { db, runId, pinId };
@@ -125,7 +125,7 @@ describe("lead-pin fold-in", () => {
     expect(db.prepare("SELECT 1 FROM saved_locations WHERE id=?").get(pinId)).toBeTruthy();
 
     // The driver finishes the day.
-    db.exec(`UPDATE lead_runs SET status='done' WHERE id=${runId}`);
+    db.exec(`UPDATE delivery_runs SET status='done' WHERE id=${runId}`);
 
     foldLeadPinsIntoCustomers(db);
 

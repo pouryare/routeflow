@@ -51,8 +51,16 @@ export interface LeadRun {
   stops: LeadRunStop[];
 }
 
+/** Phase 2: a lead run is a delivery run whose stops are pins, so every query here reads
+ *  `delivery_runs`. `kind = 'mixed'` is NOT filtered on — a mixed run is still a run a driver
+ *  works, and `readScopedLeadRuns` must show a manager the runs that carry visits even after
+ *  those runs have picked up deliveries too. Filtering would make the visits disappear the
+ *  moment the day also had an order on it, which is precisely the bug this fold removes.
+ *
+ *  `planned_by` has no column here; delivery_runs spells the same thing `created_by`, so it
+ *  is aliased back. The alias is what lets every caller below stay untouched. */
 const RUN_COLS = `r.id, r.driver_user_id, u.display_name AS driver_name, r.group_id, r.run_date,
-                  r.status, r.notes, r.planned_by`;
+                  r.status, r.notes, r.created_by AS planned_by`;
 
 /** Stops with everything the driver's card needs, derived rather than stored. */
 const STOPS_SQL = `
@@ -84,7 +92,7 @@ function hydrate(conn: DatabaseSync, row: Record<string, unknown>, orgId: number
  *  would confirm a row exists that the caller may not see. */
 export function readLeadRun(conn: DatabaseSync, id: number, orgId: number): LeadRun | null {
   const row = conn
-    .prepare(`SELECT ${RUN_COLS} FROM lead_runs r LEFT JOIN users u ON u.id = r.driver_user_id
+    .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.id = ? AND r.organization_id = ?`)
     .get(id, orgId) as Record<string, unknown> | undefined;
   return row ? hydrate(conn, row, orgId) : null;
@@ -93,7 +101,7 @@ export function readLeadRun(conn: DatabaseSync, id: number, orgId: number): Lead
 /** Every run a driver has, newest first. A driver's own list is this and nothing else. */
 export function readDriverLeadRuns(conn: DatabaseSync, driverUserId: number, orgId: number): LeadRun[] {
   const rows = conn
-    .prepare(`SELECT ${RUN_COLS} FROM lead_runs r LEFT JOIN users u ON u.id = r.driver_user_id
+    .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.driver_user_id = ? AND r.organization_id = ?
                ORDER BY r.run_date DESC`)
     .all(driverUserId, orgId) as unknown as Record<string, unknown>[];
@@ -105,7 +113,7 @@ export function readScopedLeadRuns(conn: DatabaseSync, session: Session): LeadRu
   const org = session.organizationId;
   const all = session.role === "owner";
   const rows = conn
-    .prepare(`SELECT ${RUN_COLS} FROM lead_runs r LEFT JOIN users u ON u.id = r.driver_user_id
+    .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.organization_id = ? ${all ? "" : "AND r.group_id = ?"}
                ORDER BY r.run_date DESC, r.id DESC`)
     .all(...(all ? [org] : [org, session.groupId ?? -1])) as unknown as Record<string, unknown>[];
@@ -144,7 +152,7 @@ export function readLeadRunAssignments(conn: DatabaseSync, session: Session): Le
   const rows = conn
     .prepare(`SELECT s.location_id, r.id AS run_id, r.run_date, u.display_name AS driver_name
                 FROM lead_run_stops s
-                JOIN lead_runs r ON r.id = s.run_id
+                JOIN delivery_runs r ON r.id = s.run_id
                 LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.organization_id = ? AND r.status != 'done'
                  ${all ? "" : "AND r.group_id = ?"}
@@ -173,7 +181,7 @@ export function assignedToAnotherDriver(
   const row = conn
     .prepare(`SELECT s.location_id, u.display_name AS driver_name
                 FROM lead_run_stops s
-                JOIN lead_runs r ON r.id = s.run_id
+                JOIN delivery_runs r ON r.id = s.run_id
                 LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE s.location_id IN (${placeholders})
                  AND r.organization_id = ?
@@ -261,7 +269,7 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
  *  who and what, lib/repo/ decides how. */
 export function isOnDriversRun(conn: DatabaseSync, driverUserId: number, orgId: number, locationId: number): boolean {
   const row = conn
-    .prepare(`SELECT 1 FROM lead_run_stops s JOIN lead_runs r ON r.id = s.run_id
+    .prepare(`SELECT 1 FROM lead_run_stops s JOIN delivery_runs r ON r.id = s.run_id
                WHERE s.location_id = ? AND r.driver_user_id = ? AND r.organization_id = ? LIMIT 1`)
     .get(locationId, driverUserId, orgId);
   return row !== undefined;
@@ -350,7 +358,7 @@ export function createOrReuseLeadRun(
   }
 
   const existing = conn
-    .prepare("SELECT id, status FROM lead_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?")
+    .prepare("SELECT id, status FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?")
     .get(driver.id, runDate, session.organizationId) as
     | { id: number; status: LeadRunStatus }
     | undefined;
@@ -368,8 +376,8 @@ export function createOrReuseLeadRun(
     conn.exec("BEGIN IMMEDIATE");
     try {
       conn
-        .prepare(`UPDATE lead_runs SET status = 'planned', started_at = NULL, finished_at = NULL,
-                                    notes = ?, updated_at = ? WHERE id = ?`)
+        .prepare(`UPDATE delivery_runs SET status = 'planned', started_at = NULL, finished_at = NULL,
+                                    notes = ?, updated_at = ?, kind = 'mixed' WHERE id = ?`)
         .run(input.notes ?? null, now, existing.id);
       setRunStops(conn, session.organizationId, existing.id, input.location_ids, now);
       conn.exec("COMMIT");
@@ -384,8 +392,8 @@ export function createOrReuseLeadRun(
   try {
     const runId = Number(
       conn
-        .prepare(`INSERT INTO lead_runs (driver_user_id, group_id, run_date, status, notes, planned_by, organization_id, created_at, updated_at)
-                  VALUES (?, ?, ?, 'planned', ?, ?, ?, ?, ?)`)
+        .prepare(`INSERT INTO delivery_runs (driver_user_id, group_id, run_date, status, notes, created_by, organization_id, created_at, updated_at, kind)
+                  VALUES (?, ?, ?, 'planned', ?, ?, ?, ?, ?, 'mixed')`)
         .run(driver.id, driver.group_id, runDate, input.notes ?? null, session.user.id,
              session.organizationId, now, now).lastInsertRowid
     );
@@ -420,14 +428,14 @@ export function updateLeadRun(
   // The UNIQUE index means a move onto an occupied day has to be reported rather than
   // silently merged with the other run.
   const clash = conn
-    .prepare("SELECT id FROM lead_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ? AND id != ?")
+    .prepare("SELECT id FROM delivery_runs WHERE driver_user_id = ? AND run_date = ? AND organization_id = ? AND id != ?")
     .get(driverId, runDate, session.organizationId, id) as { id: number } | undefined;
   if (clash) throw new LeadRunError(409, "برای این راننده در این تاریخ مسیر دیگری وجود دارد");
 
   conn.exec("BEGIN IMMEDIATE");
   try {
     conn
-      .prepare("UPDATE lead_runs SET driver_user_id = ?, group_id = ?, run_date = ?, status = ?, notes = ?, updated_at = ? WHERE id = ?")
+      .prepare("UPDATE delivery_runs SET driver_user_id = ?, group_id = ?, run_date = ?, status = ?, notes = ?, updated_at = ?, kind = 'mixed' WHERE id = ?")
       .run(driverId, driver.group_id, runDate, status, patch.notes === undefined ? current.notes : patch.notes, now, id);
     if (patch.location_ids) setRunStops(conn, session.organizationId, id, patch.location_ids, now);
     conn.exec("COMMIT");

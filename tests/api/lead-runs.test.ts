@@ -111,14 +111,14 @@ describe("a manager plans a route", () => {
     const res = await createRun(...MANAGER(), { driver_user_id: driverId, run_date: TOMORROW, location_ids: [pinC] });
     expect(res.status).toBe(409);
     const rows = getDb()
-      .prepare("SELECT COUNT(*) AS n FROM lead_runs WHERE driver_user_id = ? AND run_date = ?")
+      .prepare("SELECT COUNT(*) AS n FROM delivery_runs WHERE driver_user_id = ? AND run_date = ?")
       .get(driverId, TOMORROW) as { n: number };
     expect(rows.n).toBe(1);
   });
 
   it("leaves a planned day's stops untouched after a refused re-plan", async () => {
     const stops = getDb()
-      .prepare("SELECT location_id FROM lead_run_stops s JOIN lead_runs r ON r.id = s.run_id WHERE r.driver_user_id = ? ORDER BY s.sort_order")
+      .prepare("SELECT location_id FROM lead_run_stops s JOIN delivery_runs r ON r.id = s.run_id WHERE r.driver_user_id = ? ORDER BY s.sort_order")
       .all(driverId) as Array<{ location_id: number }>;
     expect(stops.map((s) => s.location_id)).toEqual([pinB, pinA]);
   });
@@ -158,7 +158,7 @@ describe("a manager plans a route", () => {
     // Remove it for the tests that follow. Two of them count every run in the fixture, and
     // a third resolves the driver's "current" run by recency, so a leftover here would
     // silently become their answer. Stops go with it (ON DELETE CASCADE).
-    getDb().prepare("DELETE FROM lead_runs WHERE driver_user_id = ? AND run_date = ?").run(driverId, LATER);
+    getDb().prepare("DELETE FROM delivery_runs WHERE driver_user_id = ? AND run_date = ?").run(driverId, LATER);
   });
 
   it("refuses a driver who is not a driver, or is deactivated", async () => {
@@ -201,7 +201,7 @@ describe("a driver sees their own day", () => {
     const theirs = (await (await listRuns(otherDriverId, "delivery_driver", groupId)).json()) as { run: { driver_user_id: number } | null };
     expect(theirs.run?.driver_user_id).toBe(otherDriverId);
     // Two runs now exist for tomorrow; each driver still resolves to exactly one.
-    const all = getDb().prepare("SELECT COUNT(*) AS n FROM lead_runs").get() as { n: number };
+    const all = getDb().prepare("SELECT COUNT(*) AS n FROM delivery_runs").get() as { n: number };
     expect(all.n).toBe(2);
   });
 

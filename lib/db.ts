@@ -65,7 +65,10 @@ export const TENANT_TABLES = [
   "orders",
   "purchases",
   "delivery_runs",
-  "lead_runs",
+  /* "lead_runs" is GONE — folded into delivery_runs by foldLeadRunsIntoDeliveryRuns. Its
+     stops live on in `lead_run_stops`, which has no organization_id of its own and is reached
+     through delivery_runs, so there is nothing here for the sweep below to stamp. Leaving the
+     name in the list would ALTER a column onto a table that no longer exists. */
   "lead_visit_activities",
   "commission_rates",
   "commission_tiers",
@@ -226,6 +229,219 @@ function rebuildDistrictsShared(db: DatabaseSync): void {
       `${after} rows and the copy list is wrong -- restore from backups/ before going further.`
     );
   }
+}
+
+/** Phase 2 (mixed-route planning): fold `lead_runs` into `delivery_runs`.
+ *
+ *  Two tables for one idea — a driver, a day, an ordered set of stops — each with its own
+ *  `UNIQUE (driver_user_id, run_date)`. Two constraints that never spoke to each other, so one
+ *  driver could hold a delivery run AND a lead run on the same date, and each page showed only
+ *  its own half of that day.
+ *
+ *  THE ORDER IS THE WHOLE FUNCTION, and it is the reverse of what is comfortable:
+ *
+ *    1. `kind` first, because every folded row needs it set and the default would be wrong.
+ *    2. move the runs, recording old→new so step 4 can be checked against it.
+ *    3. rebuild `lead_run_stops` — RE-POINTING ITS FOREIGN KEY, which SQLite cannot ALTER.
+ *    4. drop `lead_runs`, and only once step 3 has proved every stop moved.
+ *
+ *  Step 3 is not optional. `lead_run_stops.run_id` is
+ *  `REFERENCES lead_runs(id) ON DELETE CASCADE`, so the drop in step 4 with the key still
+ *  pointing at the old table takes every assigned shop with it. That is not hypothetical in
+ *  this repo: `tests/no-cascade-migration.test.ts` exists because a cascade once destroyed a
+ *  driver's assigned work "with no error and no entry in any log". The row-count assertion is
+ *  what stands between this function and that.
+ *
+ *  Guarded on `lead_runs` being absent, so it runs once — including on a database created
+ *  fresh, where the table never existed.
+ */
+function foldLeadRunsIntoDeliveryRuns(db: DatabaseSync): void {
+  const has = db
+    .prepare("SELECT 1 FROM sqlite_master WHERE type='table' AND name='lead_runs'")
+    .get();
+  if (!has) return;
+
+  const now = new Date().toISOString();
+  const before = (db.prepare("SELECT COUNT(*) AS n FROM lead_run_stops").get() as { n: number })
+    .n;
+
+  db.exec("PRAGMA foreign_keys = OFF");
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    /* 1. kind. The DEFAULT matters: every row that already exists is a delivery run, and every
+       row this function creates is marked 'mixed' explicitly. */
+    const drCols = (db.prepare("PRAGMA table_info(delivery_runs)").all() as { name: string }[]).map(
+      (c) => c.name
+    );
+    if (!drCols.includes("kind")) {
+      db.exec(
+        "ALTER TABLE delivery_runs ADD COLUMN kind TEXT NOT NULL DEFAULT 'delivery_only' " +
+          "CHECK (kind IN ('delivery_only', 'mixed'))"
+      );
+    }
+
+    /* 2. Move each run onto delivery_runs, keyed by (driver, date, org) — the same key the
+       UNIQUE index uses, so a lead run for a day that ALREADY has a delivery run joins it
+       rather than colliding with it. That merge is the bug this phase exists to fix, so it must
+       not throw. */
+    const leads = db
+      .prepare("SELECT * FROM lead_runs ORDER BY id")
+      .all() as unknown as Array<{
+      id: number;
+      driver_user_id: number;
+      group_id: number | null;
+      run_date: string;
+      status: string;
+      started_at: string | null;
+      finished_at: string | null;
+      notes: string | null;
+      planned_by: number;
+      organization_id: number;
+      created_at: string;
+      updated_at: string;
+    }>;
+
+    const findExisting = db.prepare(
+      `SELECT id FROM delivery_runs
+        WHERE driver_user_id = ? AND run_date = ? AND organization_id = ?`
+    );
+    const insertRun = db.prepare(
+      `INSERT INTO delivery_runs
+         (driver_user_id, group_id, run_date, status, started_at, finished_at, notes,
+          created_by, organization_id, created_at, updated_at, kind)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'mixed')`
+    );
+
+    /* old lead_runs.id -> new delivery_runs.id. Step 3 rewrites through this and step 4's
+       guard reads it. Without the map the rebuild would have to guess, and a guess here
+       silently re-points a stop at whatever run happens to share the number. */
+    db.exec(
+      "CREATE TEMP TABLE IF NOT EXISTS _lead_run_map (old_id INTEGER PRIMARY KEY, new_id INTEGER NOT NULL)"
+    );
+    db.exec("DELETE FROM _lead_run_map");
+
+    for (const lead of leads) {
+      const existing = findExisting.get(
+        lead.driver_user_id,
+        lead.run_date,
+        lead.organization_id
+      ) as { id: number } | undefined;
+
+      let newId: number;
+      if (existing) {
+        /* Merging into a day that already has a delivery run. The two statuses disagree by
+           nature, and `done` is terminal, so it wins: a finished day stays finished rather than
+           being reopened by a visit that was never driven. */
+        const cur = db.prepare("SELECT status FROM delivery_runs WHERE id = ?").get(existing.id) as {
+          status: string;
+        };
+        const status = cur.status === "done" || lead.status === "done" ? "done" : "in_progress";
+        db.prepare(
+          "UPDATE delivery_runs SET status = ?, kind = 'mixed', updated_at = ? WHERE id = ?"
+        ).run(status, now, existing.id);
+        newId = existing.id;
+      } else {
+        newId = Number(
+          insertRun.run(
+            lead.driver_user_id,
+            lead.group_id,
+            lead.run_date,
+            lead.status,
+            lead.started_at,
+            lead.finished_at,
+            lead.notes,
+            lead.planned_by,
+            lead.organization_id,
+            lead.created_at,
+            lead.updated_at
+          ).lastInsertRowid
+        );
+      }
+      db.prepare("INSERT INTO _lead_run_map (old_id, new_id) VALUES (?, ?)").run(lead.id, newId);
+    }
+/* 3. Rebuild lead_run_stops with run_id re-pointed at delivery_runs(id).
+       The live CREATE is read out of sqlite_master and ONLY that one reference is rewritten.
+       The copy-by-PRAGMA idiom is deliberately NOT applied to run_id: it would carry the old
+       ids across verbatim, and the re-pointing is the entire point of this step. */
+    const schema = db
+      .prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='lead_run_stops'")
+      .get() as { sql: string } | undefined;
+    if (!schema) throw new Error("foldLeadRuns: lead_run_stops is missing");
+
+    const newSql = schema.sql
+      .replace(/CREATE TABLE\s+lead_run_stops/i, "CREATE TABLE lead_run_stops_fold_new")
+      .replace("REFERENCES lead_runs(id)", "REFERENCES delivery_runs(id)");
+    if (newSql === schema.sql) {
+      throw new Error(
+        "foldLeadRuns: lead_run_stops no longer references lead_runs(id) — the rebuild below " +
+          "would copy rows unchanged and the DROP after it would cascade them away. Restore " +
+          "from backups/ before going further."
+      );
+    }
+    const cols = (db.prepare("PRAGMA table_info(lead_run_stops)").all() as { name: string }[])
+      .map((c) => `"${c.name}"`)
+      .join(", ");
+    /* Every column except run_id copies straight across, and `organization_id` is deliberately
+       NOT added — this table has never had one and is reached through its run. */
+    const copyCols = cols.replace(
+      '"run_id"',
+      `COALESCE(
+        (SELECT m.new_id FROM _lead_run_map m WHERE m.old_id = lead_run_stops.run_id),
+        lead_run_stops.run_id
+      )`
+    );
+
+    db.exec(`
+      ${newSql};
+      INSERT INTO lead_run_stops_fold_new (${cols})
+        SELECT ${copyCols} FROM lead_run_stops;
+      DROP TABLE lead_run_stops;
+      ALTER TABLE lead_run_stops_fold_new RENAME TO lead_run_stops;
+      CREATE INDEX IF NOT EXISTS idx_lead_run_stops_run ON lead_run_stops(run_id, sort_order);
+    `);
+
+    /* The two assertions that stand between this function and a silent cascade. */
+    const after = (db.prepare("SELECT COUNT(*) AS n FROM lead_run_stops").get() as { n: number })
+      .n;
+    if (after !== before) {
+      throw new Error(
+        `foldLeadRuns lost stops: ${before} before, ${after} after. lead_runs has NOT been ` +
+          `dropped — restore from backups/ before going further.`
+      );
+    }
+    const orphans = db
+      .prepare(
+        `SELECT COUNT(*) AS n FROM lead_run_stops s
+          WHERE NOT EXISTS (SELECT 1 FROM delivery_runs r WHERE r.id = s.run_id)`
+      )
+      .get() as { n: number };
+    if (orphans.n > 0) {
+      throw new Error(
+        `foldLeadRuns left ${orphans.n} stops pointing at no run. lead_runs has NOT been ` +
+          `dropped — restore from backups/ before going further.`
+      );
+    }
+
+    /* 4. The drop, reached only because both assertions passed.
+     *
+     *  NOT a redundant safety net, and deliberately NOT claimed as one: SQLite treats
+     *  `PRAGMA foreign_keys` as a NO-OP inside a transaction (verified against node:sqlite —
+     *  the pragma reads back as 1 with the transaction open), so re-enabling here would do
+     *  nothing at all. The guards that actually stand between this DROP and a silent cascade are
+     *  the row-count and orphan assertions above; this DROP runs only because they passed.
+     *  The `finally` block below restores enforcement for real, once the transaction is closed. */
+    db.exec("DROP TABLE lead_runs");
+    db.exec("DROP INDEX IF EXISTS idx_lead_runs_driver");
+    db.exec("DROP TABLE IF EXISTS _lead_run_map");
+
+    db.exec("COMMIT");
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  } finally {
+    db.exec("PRAGMA foreign_keys = ON");
+  }
+  console.info("[migrate] lead_runs folded into delivery_runs");
 }
 
 /** Phase 5: add 'ready' to delivery_runs.status. SQLite cannot ALTER a CHECK, and by the
@@ -992,7 +1208,7 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
          JOIN lead_list_items i ON i.location_id = s.id
         WHERE NOT EXISTS (
                 SELECT 1 FROM lead_run_stops st
-                  JOIN lead_runs r ON r.id = st.run_id
+                  JOIN delivery_runs r ON r.id = st.run_id
                  WHERE st.location_id = s.id AND r.status != 'done')
           AND NOT EXISTS (
                 SELECT 1 FROM lead_import_items ii WHERE ii.saved_location_id = s.id)`
@@ -1018,7 +1234,7 @@ export function foldLeadPinsIntoCustomers(db: DatabaseSync): LeadPinFoldResult {
            JOIN lead_list_items i ON i.location_id = s.id
           WHERE EXISTS (
                   SELECT 1 FROM lead_run_stops st
-                    JOIN lead_runs r ON r.id = st.run_id
+                    JOIN delivery_runs r ON r.id = st.run_id
                    WHERE st.location_id = s.id AND r.status != 'done')
              OR EXISTS (
                   SELECT 1 FROM lead_import_items ii WHERE ii.saved_location_id = s.id)`,
@@ -1804,45 +2020,38 @@ export function getDb(): DatabaseSync {
       created_by INTEGER NOT NULL REFERENCES users(id),
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL,
+      /* Phase 2: which kind of day this is. 'mixed' means it carries BOTH delivery stops
+         (delivery_stops) and visit stops (lead_run_stops) — the state a driver who delivers
+         and visits in one loop actually produces, and the reason the two tables were folded.
+         Stated here rather than only in a migration so a FRESH database has it too; the
+         default is correct for every row that is not a fold. */
+      kind TEXT NOT NULL DEFAULT 'delivery_only'
+        CHECK (kind IN ('delivery_only', 'mixed')),
       UNIQUE (driver_user_id, run_date)
     );
     CREATE INDEX IF NOT EXISTS idx_delivery_runs_driver ON delivery_runs(driver_user_id, run_date);
 
-    /* A lead run is the same idea as a delivery run with a pin at each stop instead of an
-       order, and it is modelled on the table above deliberately -- including the
-       UNIQUE(driver_user_id, run_date). Without it a manager can create two lead runs for
-       one driver on one day, and the driver then sees an arbitrary one of the two. That is
-       the same class of bug as a duplicate delivery run, so it gets the same constraint
-       rather than a bespoke rule.
+    /* A lead run is a delivery run with a pin at each stop, and it is modelled on the table above
+       deliberately. That is why it is no longer its own table: Phase 2 folds lead_runs into
+       delivery_runs, and delivery_runs.kind ('delivery_only' | 'mixed') records which it
+       is. Two tables for one idea meant two UNIQUE(driver_user_id, run_date) constraints that
+       never spoke to each other, so one driver could hold a delivery run AND a lead run on the
+       same date and each page would show only its own half of that day.
 
-       The stops are pins, not orders: a stop is a place to drive to, and what happened there
-       is already recorded against the pin itself (saved_locations.visit_outcome) by the
-       visit. Re-deriving it here would be a second copy of the truth to keep in step. */
-    CREATE TABLE IF NOT EXISTS lead_runs (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      driver_user_id INTEGER NOT NULL REFERENCES users(id),
-      group_id INTEGER REFERENCES groups(id),
-      run_date TEXT NOT NULL,
-      status TEXT NOT NULL DEFAULT 'planned'
-        CHECK (status IN ('planned', 'in_progress', 'done')),
-      started_at TEXT,
-      finished_at TEXT,
-      notes TEXT,
-      planned_by INTEGER NOT NULL REFERENCES users(id),
-      /* In the CREATE TABLE rather than added by the TENANT_TABLES loop the way
-         delivery_runs gets it: this table is new, so there is no existing database to
-         backfill, and every read of a run filters on it. A run that cannot say which
-         company it belongs to is a cross-tenant leak waiting for the first query. */
-      organization_id INTEGER NOT NULL REFERENCES organizations(id),
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL,
-      UNIQUE (driver_user_id, run_date)
-    );
-    CREATE INDEX IF NOT EXISTS idx_lead_runs_driver ON lead_runs(driver_user_id, run_date);
+       The stops are still pins, not orders: a stop is a place to drive to, and what happened
+       there is already recorded against the pin itself (saved_locations.visit_outcome) by the
+       visit. Re-deriving it here would be a second copy of the truth to keep in step.
+
+       There is deliberately NO CREATE TABLE for lead_runs any more — a fresh database must not
+       build the table it is about to retire. foldLeadRunsIntoDeliveryRuns drops it from any
+       database that still has one, and the stops below hang off delivery_runs directly.
+
+       No backticks above: this block is inside a db.exec template literal, so one would end
+       the string and the parser would read the rest of this comment as code. */
 
     CREATE TABLE IF NOT EXISTS lead_run_stops (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      run_id INTEGER NOT NULL REFERENCES lead_runs(id) ON DELETE CASCADE,
+      run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE,
       location_id INTEGER NOT NULL REFERENCES saved_locations(id) ON DELETE CASCADE,
       sort_order INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL,
@@ -3702,6 +3911,24 @@ export function getDb(): DatabaseSync {
    *
    * The old key is left in app_meta untouched — a marker nobody reads is harmless, and
    * deleting it would be a migration for no gain. */
+  /* Phase 2 (mixed-route planning): one run per driver-day, holding orders AND visits.
+   *
+   *  Runs IMMEDIATELY BEFORE the lead-pin fold below, and that is load-bearing rather than
+   *  tidy. That fold deletes a pin unless a live run stop protects it, and its query joins
+   *  lead_run_stops -> delivery_runs (Phase 2 changed the join target). On a database not yet
+   *  folded, lead_run_stops.run_id still holds lead_runs ids, so the join matches NOTHING,
+   *  every stop looks unprotected, and the fold deletes pins that are on a live route.
+   *
+   *  Measured on backups/routeflow-2026-09-30T19-12-20-846Z.db: 58 stops across 6 runs, and 0
+   *  id collisions between the two tables. With the join reading lead_runs the pin fold found
+   *  0 deletable pins; with it reading delivery_runs before this function ran, it found 31 —
+   *  then died on FOREIGN KEY constraint failed, so the whole migration could not boot.
+   *
+   *  The order is the difference between deleting a driver's assigned work and not.
+   *  `foldLeadRunsIntoDeliveryRuns` is a no-op once the table is gone, so calling it first
+   *  costs nothing on every boot after the first. */
+  foldLeadRunsIntoDeliveryRuns(db);
+
   foldLeadPinsIntoCustomers(db);
 
   // Phase 1: give every legacy paid_toman a payment row to stand on before the derived
@@ -4070,6 +4297,10 @@ export function getDb(): DatabaseSync {
   }
   // A 'ready' status between 'planned' and 'in_progress' -- the run is frozen but the
   // driver has not started. CHECK change -> a guarded rebuild.
+  //
+  // Runs AFTER foldLeadRunsIntoDeliveryRuns (called ~380 lines earlier, ahead of the pin
+  // fold): the fold inserts into delivery_runs, so this rebuild must not be about to replace
+  // the table those rows just landed in.
   rebuildDeliveryRunsStatus(db);
 
   // Phase 1 (mixed-route planning): the day a customer asked an order to be delivered on.
