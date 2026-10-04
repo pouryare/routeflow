@@ -54,7 +54,8 @@ export function isElapsed(c: Countdown, now: number): boolean {
   return remainingMsAt(c, now) <= 0;
 }
 
-/** 1 at the start, 0 at the end -- the scaleX the bar is drawn at. */
+/** 1 at the start, 0 at the end -- the fraction of the toast's tone flood still standing.
+ *  Drawn as the clip that eats the flood back toward the reading-start edge. */
 export function progressAt(c: Countdown, now: number): number {
   if (c.totalMs <= 0) return 0;
   return clamp(remainingMsAt(c, now) / c.totalMs, 0, 1);

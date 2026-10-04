@@ -19,7 +19,7 @@ const { createRun, addStop } = await import("@/lib/delivery");
 const { createTask } = await import("@/lib/repo/tasks");
 const { setTarget } = await import("@/lib/repo/targets");
 const { todayFor } = await import("@/lib/repo/briefing");
-const { toJalali } = await import("@/lib/jalali");
+const { toJalali, tehranTodayIso } = await import("@/lib/jalali");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -34,7 +34,11 @@ let custId = 0;
 let product = 0;
 let packaging = 0;
 
-const today = new Date().toISOString().slice(0, 10);
+/* tehranTodayIso, not toISOString().slice(0,10). The briefing now asks for Tehran's today,
+   so a UTC-based fixture would stop matching for the last 3.5 hours of every evening and
+   this file would fail only in the evening — the exact class of time-of-day flake the
+   repo keeps rediscovering. The fixture must use the SAME clock as the code under test. */
+const today = tehranTodayIso();
 const jNow = toJalali(new Date().toISOString())!;
 const PERIOD = `${jNow.jy}-${String(jNow.jm).padStart(2, "0")}`;
 
@@ -80,7 +84,7 @@ describe("todayFor", () => {
     addStop(db, run, o.id);
 
     // a failed order on yesterday's run
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const yesterday = tehranTodayIso(new Date(Date.now() - 86_400_000));
     const o2 = createOrder(db, { customer_id: custId, order_date: yesterday, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
     confirmOrder(db, o2.id);
     const run2 = createRun(db, { driver_user_id: driver, run_date: yesterday, created_by: owner, organization_id: 1 });
@@ -119,7 +123,13 @@ describe("todayFor", () => {
        reported the first; the second was found next to it.
 
        Asserted over every panel rather than the two that were wrong, because the next
-       panel added here will be built the same way. */
+       panel added here will be built the same way.
+
+       The order matters as much as the loop. This test used to seed an alert and a rep
+       but NO order — so `orders_by_state` matched nothing, `panel()` returned null, and the
+       assertion iterated over an empty set while the page went on printing «CONFIRMED».
+       A guard with no fixtures is not a guard. The summary is walked too, because a status
+       breakdown that reaches the header is still on screen. */
     const db = getDb();
     db.prepare(
       "INSERT INTO alerts (organization_id,severity,category,title,created_at) VALUES (1,'critical','credit','درخواست اعتبار در انتظار تصمیم',?)",
@@ -127,14 +137,55 @@ describe("todayFor", () => {
     db.prepare(
       "INSERT INTO representative_profiles (organization_id,customer_id,rep_code,stage,created_at,updated_at) VALUES (1,?,'R1','prospect',?,?)",
     ).run(custId, new Date().toISOString(), new Date().toISOString());
+    const o = createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 1 }] });
+    confirmOrder(db, o.id);
 
     const b = todayFor(sess(owner, "owner", null));
+    expect(b.panels.map((p) => p.key)).toContain("orders_by_state");
     for (const panel of b.panels) {
-      for (const item of panel.items) {
+      for (const item of [...(panel.summary ?? []), ...panel.items]) {
         expect(item.label ?? "", `panel ${panel.key}`).not.toMatch(/[A-Za-z]{3,}/);
         expect(item.sub ?? "", `panel ${panel.key}`).not.toMatch(/[A-Za-z]{3,}/);
       }
     }
+  });
+
+  it("«سفارش‌های امروز» names its orders instead of only counting them", () => {
+    /* One row per ORDER, not one row per status. The panel used to answer "there are five"
+       and nothing else — no order number, no customer, no money — and every row linked to
+       the same generic board, so a manager could not tell WHICH five. The status breakdown
+       survives as the panel's header, because that is a different statement from the list. */
+    const db = getDb();
+    const o = createOrder(db, { customer_id: custId, order_date: today, created_by: owner, organization_id: 1, lines: [{ product_id: product, packaging_id: packaging, packs: 2 }] });
+    confirmOrder(db, o.id);
+    const name = (db.prepare("SELECT business_name FROM customers WHERE id = ?").get(custId) as { business_name: string }).business_name;
+
+    const p = todayFor(sess(owner, "owner", null)).panels.find((x) => x.key === "orders_by_state");
+    expect(p).toBeDefined();
+
+    // The breakdown is Persian, and it is a header rather than another row of «تأییدشده».
+    expect(p!.summary?.map((s) => s.label)).toContain("تأییدشده");
+    expect(p!.summary?.map((s) => s.sub)).toContain("۱");
+
+    // Each order is named, priced, and opens ITSELF — the same contract credit_waiting has.
+    const row = p!.items.find((i) => i.href === `/sales/orders/${o.id}`);
+    expect(row, "the order does not link from its own panel").toBeDefined();
+    expect(row!.label).toMatch(/سفارش/);
+    expect(row!.sub).toContain(name);
+    expect(row!.sub).toContain("تومان");
+    expect(row!.sub).toMatch(/[۰-۹]/);
+  });
+
+  it("open_tasks never prints the raw priority enum", () => {
+    /* `sub: t.priority` put «HIGH» beside a Persian task title. Same leak as the order
+       status, two panels up — found while fixing that one, exactly as the alert severity
+       was. Asserted against a HIGH task specifically, because the demo seed writes NORMAL
+       for everything and a NORMAL-only fixture would not have proved the map is consulted. */
+    createTask(1, { title: "تماس با علی", kind: "call", assignee_user_id: seller, priority: "HIGH" });
+    const p = todayFor(sess(seller, "phone_sales", groupId)).panels.find((x) => x.key === "open_tasks");
+    expect(p).toBeDefined();
+    expect(p!.items.map((i) => i.sub)).toContain("زیاد");
+    expect(JSON.stringify(p)).not.toMatch(/CRITICAL|HIGH|NORMAL|LOW/);
   });
 
   it("omits a panel with nothing actionable", () => {

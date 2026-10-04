@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, orderFilter, type Session } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
-import { toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength } from "@/lib/jalali";
+import { toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength, tehranTodayIso } from "@/lib/jalali";
 import { monthConditions, worstCondition, CONDITION_LABEL } from "@/lib/weather/calendarForecast";
 import { snapshotsInRange } from "@/lib/repo/weather";
 import { listHolidaysForMonth } from "@/lib/repo/holidays";
@@ -25,6 +25,7 @@ import DriverStreaks from "@/components/sales/DriverStreaks";
 import { readDriverActivity } from "@/lib/repo/driverActivity";
 import { buildStreak } from "@/lib/streak";
 import type { DatabaseSync } from "node:sqlite";
+import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
 
@@ -47,6 +48,29 @@ const DAY_TABS: ViewTab[] = [
   { value: "", label: "برنامه", route: "/sales/schedule" },
   { value: "runs", label: "سفرها", route: "/sales/schedule" },
 ];
+
+/** The page's chrome — the overview card and the view strip — wrapped around EITHER view.
+ *
+ *  A wrapper rather than the same two tags repeated at two return sites, because two copies
+ *  are two things to forget. This page did exactly that: `if (view === "runs") return
+ *  <RunsView />` returned into a component with its own `return`, so the runs view rendered
+ *  with no title card, no overview, and no way back to «برنامه» — while the file still
+ *  imported and rendered PageHeader for the OTHER view, so every test that asked "does this
+ *  page have a header?" reported green.
+ *
+ *  Making the chrome the wrapper means a branch cannot return past it, because the branch is
+ *  the thing being wrapped. `view` is passed through so each view opens with copy about ITSELF
+ *  (see lib/pageMeta's "/sales/schedule?view=runs"), and so the correct tab is the selected one.
+ */
+function ScheduleChrome({ view, children }: { view: DayView; children: ReactNode }) {
+  return (
+    <>
+      <PageHeader route="/sales/schedule" view={view} />
+      <ViewTabs tabs={DAY_TABS} current={view} />
+      {children}
+    </>
+  );
+}
 
 /** برنامهٔ روز — the artifact's fifth screen.
  *
@@ -85,7 +109,8 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
   const runs = plain(
     db
       .prepare(
-        `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, u.display_name AS driver_name,
+        `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, dr.group_id,
+                u.display_name AS driver_name,
                 COUNT(ds.id) AS stop_count,
                 COALESCE(SUM(CASE WHEN ds.status = 'pending' THEN 1 ELSE 0 END), 0) AS remaining
            FROM delivery_runs dr
@@ -102,6 +127,7 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
     run_date: string;
     status: string;
     driver_user_id: number;
+    group_id: number | null;
     driver_name: string;
     stop_count: number;
     remaining: number;
@@ -141,7 +167,10 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
     (order) => db.prepare("SELECT 1 FROM delivery_stops WHERE order_id = ?").get(order.id) === undefined,
   );
 
-  const today = new Date().toISOString().slice(0, 10);
+  /* Tehran, not UTC: this is yesterday for the last 3.5 hours of every evening, and it feeds
+     both readDriverActivity and buildStreak — so driver streaks were being scored against
+     the wrong day exactly when the day was ending. See tehranTodayIso. */
+  const today = tehranTodayIso();
 
   return (
     <div className="flex flex-col gap-[var(--space-6)]">
@@ -154,6 +183,7 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
           customer_name: o.customer_name,
           total_toman: o.total_toman,
           order_date: o.order_date,
+          group_id: o.group_id,
         }))}
       />
       <RunTimeline
@@ -170,27 +200,15 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
   );
 }
 
-export default async function SchedulePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
-}) {
-  const jar = await cookies();
-  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
-  if (!session) redirect("/login");
-  if (isVanRole(session.role)) redirect("/driver");
-
-  const params = (await searchParams) as SearchParams;
-  const view: DayView = oneOf(params, DAY_VIEWS, "");
-
-  /* Carried over from /sales/runs, and load-bearing. proxy.ts's isBatchAdmin covers
-     /sales/runs and /sales/deliveries by PREFIX, so it no longer covers this page once
-     the planner moved here -- a phone_sales rep would otherwise be let in and shown the
-     delivery-run planner. The gate is now the page's own, and it must stay. */
-  if (view === "runs" && session.role === "phone_sales") redirect("/sales");
-
-  const db = getDb();
-  if (view === "runs") return <RunsView db={db} session={session} />;
+/** «برنامه» — the month grid. Its own component, so BOTH views can sit behind ONE return.
+ *
+ *  It used to be inline in the page, after an early `return <RunsView />`. That early return
+ *  is the whole defect: it handed the runs view to a component with no header card and no
+ *  view strip, while this file still imported and rendered PageHeader for the plan view, so
+ *  every test asking "does this page have a header?" reported green. Symmetry with RunsView
+ *  is the fix — two views, two components, one place that renders the chrome.
+ */
+function PlanView({ db, session }: { db: DatabaseSync; session: Session }) {
   // Qualified: the runs query joins delivery_runs to users, and for an owner this
   // fragment filters on organization_id -- a column both tables carry.
   const scope = groupFilter(session, "r.group_id");
@@ -292,9 +310,6 @@ export default async function SchedulePage({
 
   return (
     <>
-    <PageHeader route="/sales/schedule" />
-    <ViewTabs tabs={DAY_TABS} current={view} />
-    <>
       <div className="legend2">
         <span className="legend2__t">هدف سفر:</span>
         {TRIP_PURPOSES.map((p) => (
@@ -334,6 +349,44 @@ export default async function SchedulePage({
         holidays={holidaysByDay}
         air={Object.fromEntries(airByDay)}
       />
-    </>    </>
+    </>
+  );
+}
+
+export default async function SchedulePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const jar = await cookies();
+  const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
+  if (!session) redirect("/login");
+  if (isVanRole(session.role)) redirect("/driver");
+
+  const params = (await searchParams) as SearchParams;
+  const view: DayView = oneOf(params, DAY_VIEWS, "");
+
+  /* Carried over from /sales/runs, and load-bearing. proxy.ts's isBatchAdmin covers
+     /sales/runs and /sales/deliveries by PREFIX, so it no longer covers this page once
+     the planner moved here -- a phone_sales rep would otherwise be let in and shown the
+     delivery-run planner. The gate is now the page's own, and it must stay. */
+  if (view === "runs" && session.role === "phone_sales") redirect("/sales");
+
+  const db = getDb();
+
+  /* ONE return, and the chrome is ABOVE the choice of view.
+   *
+   *  This is the shape /sales/orders already uses for its three views, and it is the whole
+   *  fix: a view switch selects a BODY, never a page. Every view therefore gets the title
+   *  card, the overview and the view strip by construction, because there is no branch that
+   *  can reach the screen without passing through them. */
+  return (
+    <ScheduleChrome view={view}>
+      {view === "runs" ? (
+        <RunsView db={db} session={session} />
+      ) : (
+        <PlanView db={db} session={session} />
+      )}
+    </ScheduleChrome>
   );
 }

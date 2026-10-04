@@ -1,12 +1,15 @@
 import { getDb } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { scopeGroupIds } from "@/lib/session";
-import { toJalali } from "@/lib/jalali";
+import { toJalali, tehranTodayIso } from "@/lib/jalali";
 import { listTasks } from "./tasks";
 import { listAlerts } from "./alerts";
 import { targetProgress } from "./targets";
 import { SEVERITY_FA } from "@/lib/repo/actionCenter";
 import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
+import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/orderStateMachine";
+import { taskPriorityLabel } from "@/lib/tasks/labels";
+import { faNum, faToman } from "@/lib/format";
 import { customerHref } from "@/lib/deepLink";
 import { isVanRole } from "../roles";
 
@@ -20,6 +23,13 @@ export interface BriefingItem {
 export interface BriefingPanel {
   key: string;
   title: string;
+  /** Rendered in the panel's header, ABOVE the list — a breakdown of what the list contains.
+   *
+   *  Separate from `items` because "five confirmed orders" and "these five orders" are two
+   *  different statements, and stacking both as rows makes the panel say the same thing twice
+   *  (once as a count, once per order). Carries no `tone`, so it can never inflate the
+   *  "needs attention" count in briefingCards — a summary is not a demand. */
+  summary?: BriefingItem[];
   items: BriefingItem[];
   more?: number;
 }
@@ -48,9 +58,16 @@ const CAP = 5;
 const cap = (items: BriefingItem[]): { items: BriefingItem[]; more?: number } =>
   items.length > CAP ? { items: items.slice(0, CAP), more: items.length - CAP } : { items };
 
-function panel(key: string, title: string, items: BriefingItem[]): BriefingPanel | null {
+/** `summary` is optional so that every panel which has no breakdown to show keeps calling
+ *  this with three arguments — a panel is not obliged to have a header. */
+function panel(
+  key: string,
+  title: string,
+  items: BriefingItem[],
+  summary?: BriefingItem[]
+): BriefingPanel | null {
   if (items.length === 0) return null;
-  return { key, title, ...cap(items) };
+  return summary ? { key, title, summary, ...cap(items) } : { key, title, ...cap(items) };
 }
 
 function currentPeriod(): string {
@@ -61,7 +78,10 @@ function currentPeriod(): string {
 export function todayFor(session: Session): Briefing {
   const db = getDb();
   const org = session.organizationId;
-  const today = new Date().toISOString().slice(0, 10);
+  /* Tehran, not UTC. `toISOString().slice(0,10)` is yesterday for the last 3.5 hours of
+     every evening, which made this panel return nothing — or yesterday's orders — under a
+     heading that says «امروز». See tehranTodayIso. */
+  const today = tehranTodayIso();
   const panels: (BriefingPanel | null)[] = [];
 
   if (session.role === "phone_sales") {
@@ -74,7 +94,9 @@ export function todayFor(session: Session): Briefing {
         "کارهای باز",
         tasks.map((t) => ({
           label: t.title,
-          sub: t.priority,
+          /* taskPriorityLabel, never `t.priority`. The raw column is an UPPERCASE enum and
+             this panel put it straight under a Persian heading. */
+          sub: taskPriorityLabel(t.priority),
           action: t.entity_type === "customer" && t.entity_id
             ? { kind: "task_outcome", task_id: t.id, customer_id: t.entity_id }
             : { kind: "task_outcome", task_id: t.id },
@@ -145,7 +167,7 @@ export function todayFor(session: Session): Briefing {
         }
       }
     }
-    const yesterday = new Date(Date.now() - 86_400_000).toISOString().slice(0, 10);
+    const yesterday = tehranTodayIso(new Date(Date.now() - 86_400_000));
     const failed = db
       .prepare(
         `SELECT o.id, o.order_no FROM orders o
@@ -175,24 +197,62 @@ export function todayFor(session: Session): Briefing {
     const gids = scopeGroupIds(session);
     const inClause = gids === "all" || gids.length === 0 ? null : gids.join(",");
 
-    const byState = db
+    /* One row per ORDER, not one row per status.
+     *
+     * `SUM(ROUND(...))` and never `ROUND(SUM(...))`. orderTotalToman rounds EACH line and
+     * then adds (lib/orderMath.ts:66), so rounding the sum reorders the two operations and
+     * the two figures disagree on fractional packs — measured on a three-half-line order:
+     * 3 Toman the correct way, 2 the other. The briefing and the order page must print the
+     * same number, because they ARE the same number.
+     *
+     * The factors are the line's own FROZEN columns (qty_per_pack / kg_per_base_unit live on
+     * order_lines, lib/db.ts:1742), which is why this needs no join to products/packagings —
+     * the same reasoning readOrders uses at lib/orders.ts:519. */
+    const todays = db
       .prepare(
-        `SELECT status, COUNT(*) AS n FROM orders
-          WHERE organization_id = ? AND order_date = ?${inClause ? ` AND group_id IN (${inClause})` : ""}
-          GROUP BY status`
+        `SELECT o.id, o.order_no, o.status, c.business_name AS customer_name,
+                COALESCE(SUM(ROUND(COALESCE(ol.packs_delivered, ol.packs_ordered)
+                                    * ol.unit_price_toman)), 0) AS total_toman
+           FROM orders o
+           JOIN customers c ON c.id = o.customer_id
+           LEFT JOIN order_lines ol ON ol.order_id = o.id
+          WHERE o.organization_id = ? AND o.order_date = ?${inClause ? ` AND o.group_id IN (${inClause})` : ""}
+          GROUP BY o.id
+          ORDER BY o.id DESC`
       )
-      .all(org, today) as { status: string; n: number }[];
+      .all(org, today) as {
+      id: number;
+      order_no: string;
+      status: string;
+      customer_name: string;
+      total_toman: number;
+    }[];
+
+    /* The breakdown is the panel's HEADER, not its rows. Five identical «تأییدشده» rows
+       stacked under a heading that already says "today's orders" is the panel saying the
+       same thing five times instead of once plus the list. */
+    const byStatus = new Map<string, number>();
+    for (const o of todays) byStatus.set(o.status, (byStatus.get(o.status) ?? 0) + 1);
+
     panels.push(
       panel(
         "orders_by_state",
         "سفارش‌های امروز",
-        byState.map((s) => ({
-          label: s.status,
-          sub: String(s.n),
-          /* The board is a view of the orders page now, and the link carries the view --
-             without it a manager tapping today's order counts lands on the pocket list,
-             which answers a different question from the one they asked. */
-          href: "/sales/orders?view=board",
+        todays.map((o) => ({
+          label: `سفارش ${faNum(Number(o.order_no.split("-")[1] ?? 0))}#`,
+          sub: `${o.customer_name} · ${faToman(o.total_toman)}`,
+          /* Each order opens ITSELF. Every row used to link to the same generic board, so
+             the panel could tell a manager there were five orders and not which five. */
+          href: `/sales/orders/${o.id}`,
+        })),
+        [...byStatus].map(([status, n]) => ({
+          /* ORDER_STATUS_LABEL, never `status`. This is the THIRD leak of this exact kind in
+             this one function: `exceptions` and `reps_by_stage` were both fixed after the
+             user reported reading «critical» and «prospect», each comment saying "found while
+             fixing that one". `?? "نامشخص"` rather than `?? status`, because falling back to
+             the raw value is the defect itself (tests/no-raw-enum-copy.test.ts). */
+          label: ORDER_STATUS_LABEL[status as OrderStatus] ?? "نامشخص",
+          sub: faNum(n),
         }))
       )
     );
@@ -247,7 +307,7 @@ export function todayFor(session: Session): Briefing {
              («critical»/«warning»/«opportunity») and this panel put it straight on screen
              under a Persian heading -- the user reported reading «critical» in «هشدارها».
              The tone below already encodes the same thing in colour. */
-          sub: SEVERITY_FA[a.severity] ?? a.severity,
+          sub: SEVERITY_FA[a.severity] ?? "نامشخص",
           tone: a.severity === "critical" ? "crit" : "warn",
           href: "/sales",
         }))
@@ -269,7 +329,7 @@ export function todayFor(session: Session): Briefing {
            was rendering as-is beside a Persian heading. Same leak as the alert severity
            above; found while fixing that one. */
         byStage.map((s) => ({
-          label: REP_STAGE_LABEL[s.stage as RepStage] ?? s.stage,
+          label: REP_STAGE_LABEL[s.stage as RepStage] ?? "نامشخص",
           sub: String(s.n),
           href: "/sales/reps",
         }))

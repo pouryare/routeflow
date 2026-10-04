@@ -8,6 +8,13 @@
  *  free text in the schema, so this list is the union: tests/no-raw-enum-copy.test.ts
  *  checks every kind the codebase creates is here. */
 
+/* Type-only, so nothing is pulled in at runtime: lib/repo/tasks.ts is a heavy module and
+ * this one must stay a leaf. It is here because TASK_PRIORITY_LABEL below is typed off
+ * TaskRow's OWN union rather than re-spelled as a fresh literal list -- so a fifth priority
+ * added to the schema becomes a COMPILE error on that map instead of another silent leak on
+ * a Persian page. */
+import type { TaskRow } from "@/lib/repo/tasks";
+
 export const TASK_KINDS = [
   "outreach", "call", "order", "visit", "reminder", "note", "admin", "delivery_retry", "sample_followup",
   "verify_visit", "sample_delivery", "quote_followup",
@@ -53,6 +60,24 @@ export function taskKindLabel(kind: string): string {
 
 export function taskKindTone(kind: string): string {
   return (TASK_KIND_TONE as Record<string, string>)[kind] ?? "plum";
+}
+
+/** What a task's `priority` is called.
+ *
+ *  `tasks.priority` is UPPERCASE in the schema (lib/db.ts:2417) and the briefing's open_tasks
+ *  panel printed it raw — «HIGH» sitting beside a Persian task title, on the same screen that
+ *  was printing «CONFIRMED» as an order status. Same leak, third panel, same function. */
+export type TaskPriority = TaskRow["priority"];
+export const TASK_PRIORITY_LABEL: Record<TaskPriority, string> = {
+  CRITICAL: "بحرانی",
+  HIGH: "زیاد",
+  NORMAL: "عادی",
+  LOW: "کم",
+};
+
+/** A priority from the database, labelled. An unknown one reads «عادی», never the identifier. */
+export function taskPriorityLabel(priority: string): string {
+  return (TASK_PRIORITY_LABEL as Record<string, string>)[priority] ?? TASK_PRIORITY_LABEL.NORMAL;
 }
 
 /** A call's outcome, as the /today chips, the Board's drop flow and the academy's

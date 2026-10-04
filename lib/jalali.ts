@@ -221,6 +221,24 @@ export function jalaliToIsoDate(jy: number, jm: number, jd: number): string {
   return `${g.gy}-${String(g.gm).padStart(2, "0")}-${String(g.gd).padStart(2, "0")}`;
 }
 
+/** The Tehran civil date of an instant, as the `YYYY-MM-DD` the database stores.
+ *
+ *  NOT `new Date().toISOString().slice(0, 10)`. That is UTC, and Tehran is UTC+03:30, so
+ *  for the last three and a half hours of every evening the UTC date is YESTERDAY. An order
+ *  taken at 22:00 belongs to today in Tehran and to tomorrow's query in UTC, so a panel
+ *  asking SQL for `order_date = <utc today>` returns nothing exactly when the day is
+ *  busiest — and returns yesterday's orders under a heading that says «امروز».
+ *
+ *  Every "today" comparison against a stored date goes through here. Pass a `now` for
+ *  yesterday, or any other offset day: `tehranTodayIso(new Date(Date.now() - 86_400_000))`. */
+export function tehranTodayIso(now: Date = new Date()): string {
+  const c = tehranCivil(now.toISOString());
+  /* Unreachable for a real Date; thrown rather than defaulted because a wrong default here
+     silently returns the wrong DAY, which is the failure this function exists to prevent. */
+  if (!c) throw new Error("تاریخ نامعتبر");
+  return `${c.gy}-${String(c.gm).padStart(2, "0")}-${String(c.gd).padStart(2, "0")}`;
+}
+
 const LATIN_TO_FA = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
 const faDigits = (s: string) => s.replace(/[0-9]/g, (d) => LATIN_TO_FA[Number(d)]);
 

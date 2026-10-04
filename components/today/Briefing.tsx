@@ -67,6 +67,32 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
   );
 }
 
+/** The panel's header breakdown — «تأییدشده ۵ · تحویل‌شده ۲».
+ *
+ *  Deliberately NOT a list item. A summary row and a list row are identical in shape and mean
+ *  different things — one counts the other — and giving them the same treatment is precisely
+ *  how this panel ended up saying «تأییدشده» once per confirmed order instead of once, in the
+ *  header, above the list. */
+function Summary({ summary, variant }: { summary?: BriefingItem[]; variant: Variant }) {
+  if (!summary || summary.length === 0) return null;
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1">
+      {summary.map((s) => (
+        <span
+          key={s.label}
+          className={
+            variant === "meridian"
+              ? "text-[length:12.5px] text-[var(--muted)]"
+              : "text-[length:var(--text-xs)] text-[var(--text-muted)]"
+          }
+        >
+          {s.label}
+          <span className="text-[var(--ink-2)]"> {s.sub}</span>
+        </span>
+      ))}
+    </div>
+  );
+}
 /** The panels that are a FIGURE rather than a list. `target` and `credit_waiting` answer a
  *  reader's question with a number; the rest are worklists and stay panels. */
 const CARD_KEYS = ["target", "credit_waiting"] as const;
@@ -130,6 +156,7 @@ export default function Briefing({
             <div className="bhead">
               <div>
                 <h2>{p.title}</h2>
+                <Summary summary={p.summary} variant="meridian" />
                 {p.more ? <div className="n">+ {p.more} مورد بیشتر</div> : null}
               </div>
             </div>
@@ -153,6 +180,7 @@ export default function Briefing({
           <h3 className="sechead__title sechead__title--minor mb-[var(--space-1)]">
             {p.title}
           </h3>
+          <Summary summary={p.summary} variant="plain" />
           <ul className="m-0 list-none p-0">
             {p.items.map((it, i) => (
               <Item key={i} item={it} variant="plain" />
