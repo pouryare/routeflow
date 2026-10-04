@@ -1,13 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession } from "@/lib/session";
+import { hasSyncClient } from "@/lib/roles";
 import { applyMutations, type IncomingMutation } from "@/lib/repo/syncMutations";
 
 /** Drain the client outbox. Idempotent on client_uuid, so a retry after a dropped
- *  response is a no-op. `server_time` lets the client re-measure its clock skew. */
+ *  response is a no-op. `server_time` lets the client re-measure its clock skew.
+ *
+ *  Same gate as the pull, and for the same reason: a `platform_owner` is the vendor rather
+ *  than a device that goes offline. Stated once, in lib/roles.ts, so the two routes cannot
+ *  drift apart and behalf a third hand-written copy the shell used to imply. */
 export async function POST(req: NextRequest) {
   const session = getSession(req);
   if (!session) return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
-  if (session.role === "platform_owner") {
+  if (!hasSyncClient(session.role)) {
     return NextResponse.json({ ok: false, error: "این حساب همگام‌سازی ندارد" }, { status: 403 });
   }
 

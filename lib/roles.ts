@@ -131,6 +131,27 @@ export const ROLE_DESCRIPTION: Record<Role, string> = {
   delivery_driver: "فقط مسیر و تحویل‌های امروز خودش",
 };
 
+/** Whether this role's browser runs the offline sync client at all.
+ *
+ * `platform_owner` is the vendor, not a field device: they are the one account that spans
+ * every tenant, so there is no single organisation whose rows a pull could hand them. The
+ * answer is stated HERE rather than at each of the three places that need it — the two
+ * routes, and the shell that decides whether to mount the client — because a
+ * `role === "platform_owner"` written out a third time is a list that can drift, which is
+ * exactly the failure mode MANAGE_ROLES and OWNER_ROLES exist to prevent.
+ *
+ * NOT the same question as MANAGE_ROLES/OWNER_ROLES, so deliberately not derived from
+ * them: those ask "is this person in charge", this asks "does this person work from a
+ * device that goes offline". Deriving one from the other would silently enrol a role the
+ * moment it was promoted to management.
+ *
+ * The routes keep their own refusal even though the shell now declines to ask. The route is
+ * the authoritative, DB-backed check — this is a hint that spares the browser a request,
+ * not the thing standing between a cross-tenant pull and the wrong account. */
+export function hasSyncClient(role: Role): boolean {
+  return role !== "platform_owner";
+}
+
 /** Where a signed-in person lands. A van role never enters the sales shell; everyone else,
  *  the vendor's platform_owner included, starts on the day's briefing, which already
  *  scopes itself to "all" for them. */

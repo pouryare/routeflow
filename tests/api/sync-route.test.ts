@@ -26,6 +26,7 @@ afterAll(() => {
 
 let owner = 0;
 let driver = 0;
+let vendor = 0;
 let custId = 0;
 let product = 0;
 let packaging = 0;
@@ -45,6 +46,7 @@ beforeEach(() => {
   );
   owner = Number(u.run(`o${Date.now()}`, "x:y", "م", "owner", now).lastInsertRowid);
   driver = Number(u.run(`d${Date.now()}`, "x:y", "ر", "delivery_driver", now).lastInsertRowid);
+  vendor = Number(u.run(`v${Date.now()}`, "x:y", "و", "platform_owner", now).lastInsertRowid);
   custId = Number(
     db
       .prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('C1','x','active','2026-01-01',1)")
@@ -107,6 +109,46 @@ describe("sync routes", () => {
 
     const res2 = await PUSH(pushReq([m]));
     expect((await res2.json()).results["d-1"].status).toBe("duplicate");
+  });
+
+  it("refuses the vendor, and says why in Persian", async () => {
+    /* The refusal that produced `GET /api/sync/pull?since=now 403`. The route was right; the
+       client was asking on the vendor's behalf. See components/meridian/SyncIsland.tsx for
+       the other half, and hasSyncClient in lib/roles.ts for the rule both now share. */
+    const res = await PULL(
+      new NextRequest("http://localhost/api/sync/pull?since=now", {
+        headers: { cookie: cookie(vendor, "platform_owner") },
+      })
+    );
+    expect(res.status).toBe(403);
+    const j = await res.json();
+    expect(j.ok).toBe(false);
+    expect(j.error).toBe("این حساب همگام‌سازی ندارد");
+    /* A refusal, not a payload: nothing this account may not see rides out with it. */
+    expect(j.rows).toBeUndefined();
+  });
+
+  it("refuses the vendor on push as well", async () => {
+    const res = await PUSH(
+      new NextRequest("http://localhost/api/sync/push", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", cookie: cookie(vendor, "platform_owner") },
+        body: JSON.stringify({ device_id: "dev-1", mutations: [{ client_uuid: "v-1", op: "delivery.complete", payload: {}, occurred_at: "2026-01-02T09:00:00.000Z" }] }),
+      })
+    );
+    expect(res.status).toBe(403);
+  });
+
+  it("still serves every role that does have a sync client", async () => {
+    /* The point of routing through hasSyncClient rather than widening or narrowing: the fix
+       for the vendor must not have cost anybody else their offline client. */
+    for (const [uid, role] of [[owner, "owner"], [driver, "delivery_driver"]] as const) {
+      const res = await PULL(
+        new NextRequest("http://localhost/api/sync/pull", { headers: { cookie: cookie(uid, role) } })
+      );
+      expect(res.status, role).toBe(200);
+      expect((await res.json()).ok, role).toBe(true);
+    }
   });
 
   it("pull returns the run and reflects the completed delivery", async () => {
