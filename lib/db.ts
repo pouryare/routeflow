@@ -4072,6 +4072,33 @@ export function getDb(): DatabaseSync {
   // driver has not started. CHECK change -> a guarded rebuild.
   rebuildDeliveryRunsStatus(db);
 
+  // Phase 1 (mixed-route planning): the day a customer asked an order to be delivered on.
+  //
+  // NULL here is NOT "unset" and it is NOT a boolean -- it IS «در اولین فرصت», the state
+  // that says nobody has committed this order to a day yet. That is the whole reason there is
+  // no `is_asap` column: a second flag would have to be kept in step with this one forever,
+  // and the two would eventually disagree about which orders are urgent.
+  //
+  // The day-splitter's raw material is exactly the set where this is NULL, so an existing
+  // database needs no backfill: every order already in it is uncommitted, which is true.
+  //
+  // requested_kind records WHICH control the reader used, so «هفتهٔ بعد» still reads as a week
+  // after it has been resolved to a concrete date — a customer who said "next week" was not
+  // told 2026-10-10.
+  //
+  // Both plain ADD COLUMN, guarded per column. No rebuild: neither is NOT NULL and neither
+  // needs an index. The CHECK on requested_kind governs NEW rows only, which is correct --
+  // every existing row is NULL and passes.
+  const reqDayCols = db.prepare("PRAGMA table_info(orders)").all() as { name: string }[];
+  if (!reqDayCols.some((c) => c.name === "requested_day")) {
+    db.exec("ALTER TABLE orders ADD COLUMN requested_day TEXT");
+  }
+  if (!reqDayCols.some((c) => c.name === "requested_kind")) {
+    db.exec(
+      "ALTER TABLE orders ADD COLUMN requested_kind TEXT CHECK (requested_kind IN ('soonest', 'week_offset', 'exact_date'))"
+    );
+  }
+
   const prodVolCols = (db.prepare("PRAGMA table_info(products)").all() as { name: string }[]).map(
     (c) => c.name
   );

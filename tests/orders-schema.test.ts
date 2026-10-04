@@ -100,6 +100,14 @@ describe("orders", () => {
         "credit_override_by",
         // Phase 1 (Money): an order parked pending a credit_approvals decision.
         "credit_hold",
+        // Phase 1 (mixed-route planning): the day the customer ASKED for, which is NOT
+        // order_date — that is when the slip was typed. requested_day is nullable and its
+        // NULL is the state this app calls «در اولین فرصت»: nobody has committed the order
+        // to a day, and the day-splitter's raw material is exactly this set.
+        // requested_kind remembers WHICH control was used, so «هفتهٔ بعد» still reads as a week
+        // after it has been resolved to a concrete requested_day.
+        "requested_day",
+        "requested_kind",
         // Phase 4 (Offline-first): the client-generated idempotency key.
         "client_uuid",
         "notes",

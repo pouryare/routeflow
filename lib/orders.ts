@@ -9,6 +9,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "./db";
 import { resolvePrice, costBasisFor } from "./catalogue";
 import { toJalali } from "./jalali";
+import type { RequestedKind } from "./requestedDay";
 import { customerDebt } from "./repo/payments";
 import { requestApproval } from "./repo/creditApprovals";
 import { PRICED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
@@ -51,6 +52,16 @@ export interface CreateOrderInput {
   notes?: string | null;
   /** Phase 4: the client-generated idempotency key when this order was drafted offline. */
   client_uuid?: string | null;
+  /** Phase 1 (mixed-route planning): the day the customer asked this to be delivered.
+   *
+   *  Distinct from `order_date` on purpose and not a replacement for it: `order_date` is when
+   *  the slip was typed, this is when the goods should go out, and an order taken on the 30th
+   *  for the 3rd has both. `null` — or absent — means nobody has committed it to a day, which
+   *  is the state this app calls «در اولین فرصت». It is the day-splitter's raw material. */
+  requested_day?: string | null;
+  /** Which control the reader used, kept so «هفتهٔ بعد» still reads as a week after it has
+   *  been resolved to a concrete `requested_day`. */
+  requested_kind?: RequestedKind | null;
   lines: LineInput[];
 }
 
@@ -212,9 +223,9 @@ export function createOrder(
       db
         .prepare(
           `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, status,
-                               order_date, notes, credit_override_by, client_uuid, created_by,
-                               created_at, updated_at, organization_id)
-           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?)`
+                               order_date, requested_day, requested_kind, notes, credit_override_by,
+                               client_uuid, created_by, created_at, updated_at, organization_id)
+           VALUES (?, ?, ?, ?, 'DRAFT', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
         )
         .run(
           orderNo,
@@ -222,6 +233,10 @@ export function createOrder(
           customer.group_id,
           input.salesperson_user_id ?? null,
           input.order_date.slice(0, 10),
+          // Null, not a default date: an order nobody has committed to a day is the normal
+          // state, and writing today's date here would silently pin every order to today.
+          input.requested_day ?? null,
+          input.requested_kind ?? null,
           input.notes ?? null,
           input.credit_override_by ?? null,
           input.client_uuid ?? null,
@@ -476,6 +491,11 @@ export interface OrderSummary {
   salesperson_name: string | null;
   status: string;
   order_date: string;
+  /** Phase 1: the day asked for, or null = «در اولین فرصت». Carried on the summary rather than
+   *  joined per card, because the board sorts on it and a second lookup per row is how that
+   *  sort ends up dropping orders. */
+  requested_day: string | null;
+  requested_kind: RequestedKind | null;
   payment_status: string;
   paid_toman: number;
   total_toman: number;
@@ -507,6 +527,7 @@ export function readOrders(
   const orders = db
     .prepare(
       `SELECT o.id, o.order_no, o.status, o.order_date, o.payment_status, o.paid_toman,
+              o.requested_day, o.requested_kind,
               o.group_id, o.customer_id, c.business_name AS customer_name, u.display_name AS salesperson_name
          FROM orders o
          JOIN customers c ON c.id = o.customer_id

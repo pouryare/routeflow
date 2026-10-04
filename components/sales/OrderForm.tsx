@@ -7,6 +7,13 @@ import { matchesQuery } from "@/lib/persian";
 import { faToman, faNum } from "@/lib/format";
 import { roundToman } from "@/lib/money";
 import { Icon } from "@/components/meridian/Icon";
+import {
+  resolveRequestedDay,
+  requestedDayLabel,
+  UNCOMMITTED_LABEL,
+  type RequestedKind,
+} from "@/lib/requestedDay";
+import { tehranTodayIso } from "@/lib/jalali";
 
 interface Customer {
   id: number;
@@ -73,6 +80,17 @@ export default function OrderForm({
   const [query, setQuery] = useState("");
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
+  /* Phase 1 (mixed-route planning): the day the customer ASKED for, which is a different
+   * question from the day the slip was typed. Defaults to «soonest» — uncommitted — because
+   * that is the honest state for a slip nobody has yet agreed a delivery day with the
+   * customer, and it is what the day-splitter later picks up.
+   *
+   * `requestedDate` holds the concrete day; for a week offset it is derived by
+   * `resolveRequestedDay` at submit time, so the stored day is always a real date and the
+   * stored kind still remembers that the reader said "next week" rather than naming a day. */
+  const [requestedMode, setRequestedMode] = useState<RequestedKind>("soonest");
+  const [requestedDate, setRequestedDate] = useState("");
+  const [requestedWeeks, setRequestedWeeks] = useState("1");
   const [sellerId, setSellerId] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -132,6 +150,26 @@ export default function OrderForm({
     setPacks("1");
   }
 
+  /* The concrete day this form is asking for, or null for «در اولین فرصت».
+   *
+   * `soonest` never produces a date — not even today's. Returning today would read as a
+   * commitment nobody made and would make the order PINNED for the day-splitter, which is the
+   * opposite of what "at the first opportunity" means. The throw branches below are therefore
+   * unreachable by construction: a mode is only allowed to be what its control offers. They
+   * are handled rather than assumed, because an unhandled throw in a submit handler is a
+   * dead submit button and no error at all. */
+  const resolvedRequestedDay = useMemo(() => {
+    if (requestedMode === "soonest") return null;
+    if (requestedMode === "exact_date") return requestedDate || null;
+    const weeks = Number(requestedWeeks);
+    if (!Number.isInteger(weeks) || weeks < 0) return null;
+    try {
+      return resolveRequestedDay("week_offset", weeks, tehranTodayIso());
+    } catch {
+      return null;
+    }
+  }, [requestedMode, requestedDate, requestedWeeks]);
+
   async function submit() {
     if (!customer || lines.length === 0) return;
     setBusy(true);
@@ -143,6 +181,12 @@ export default function OrderForm({
         body: JSON.stringify({
           customer_id: customer.id,
           order_date: orderDate,
+          /* Resolved HERE rather than stored as a label: the row carries a concrete day, and
+           * the kind carries which control produced it. A week offset therefore becomes a real
+           * date the day-splitter can plan against, while the card can still read «هفتهٔ بعد»
+           * instead of a day the driver never named. */
+          requested_day: resolvedRequestedDay,
+          requested_kind: requestedMode,
           salesperson_user_id: sellerId === "" ? null : Number(sellerId),
           notes: notes || null,
           credit_override: overLimit,
@@ -237,6 +281,49 @@ export default function OrderForm({
 
       <section className="grid gap-[var(--space-3)] card p-[var(--space-4)] md:grid-cols-3">
         <JalaliDatePicker id="order-date" label="تاریخ سفارش" value={orderDate} onChange={setOrderDate} />
+        {/* Phase 1: the day asked for. A SECOND date beside the first, not a replacement —
+            «تاریخ سفارش» is when the slip was written and stays exactly that. */}
+        <div>
+          <span className={LABEL}>روز تحویل خواسته‌شده</span>
+          <div className="flex gap-[var(--space-2)]">
+            <select
+              id="requested-mode"
+              className={FIELD}
+              value={requestedMode}
+              onChange={(e) => setRequestedMode(e.target.value as RequestedKind)}
+              aria-label="روز تحویل خواسته‌شده"
+            >
+              <option value="soonest">{UNCOMMITTED_LABEL}</option>
+              <option value="exact_date">تاریخ مشخص</option>
+              <option value="week_offset">هفتهٔ بعد</option>
+            </select>
+            {requestedMode === "exact_date" && (
+              <JalaliDatePicker
+                id="requested-day"
+                label=""
+                value={requestedDate}
+                onChange={setRequestedDate}
+              />
+            )}
+            {requestedMode === "week_offset" && (
+              <input
+                id="requested-weeks"
+                type="number"
+                min={0}
+                max={52}
+                value={requestedWeeks}
+                onChange={(e) => setRequestedWeeks(e.target.value)}
+                aria-label="چند هفته بعد"
+                className={FIELD}
+              />
+            )}
+          </div>
+          {resolvedRequestedDay !== null && (
+            <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              {requestedDayLabel(resolvedRequestedDay)}
+            </p>
+          )}
+        </div>
         {sellers.length > 0 && (
           <div>
             <label className={LABEL} htmlFor="seller">

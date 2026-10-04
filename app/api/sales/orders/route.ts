@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
 import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
+import { isRequestedKind, type RequestedKind } from "@/lib/requestedDay";
 import {
   LeadPromotionError,
   promoteLeadToCustomer,
@@ -56,6 +57,8 @@ export async function POST(req: NextRequest) {
     customer_id?: unknown;
     lead_location_id?: unknown;
     order_date?: unknown;
+    requested_day?: unknown;
+    requested_kind?: unknown;
     salesperson_user_id?: unknown;
     notes?: unknown;
     credit_override?: unknown;
@@ -66,6 +69,28 @@ export async function POST(req: NextRequest) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(orderDate) || Number.isNaN(Date.parse(orderDate))) {
     return NextResponse.json({ ok: false, error: "تاریخ سفارش معتبر نیست" }, { status: 400 });
   }
+
+  /* Phase 1 (mixed-route planning): the day the customer asked for, which is NOT order_date —
+     one is when the slip was typed, the other is when the goods should go.
+     Absent or null is the NORMAL state, not an error: it means «در اولین فرصت», nobody has
+     committed this order to a day, and it is the day-splitter's raw material. So validation
+     is on SHAPE, and an unparseable string is refused rather than coerced to null — silently
+     turning "2026-13-45" into "uncommitted" would lose a commitment nobody could see. */
+  const requestedDay =
+    body?.requested_day == null ? null : String(body.requested_day);
+  if (requestedDay !== null) {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDay) || Number.isNaN(Date.parse(requestedDay))) {
+      return NextResponse.json({ ok: false, error: "تاریخ خواسته‌شده معتبر نیست" }, { status: 400 });
+    }
+  }
+  const requestedKind =
+    body?.requested_kind == null ? null : String(body.requested_kind);
+  if (!isRequestedKind(requestedKind)) {
+    return NextResponse.json({ ok: false, error: "نوع تاریخ معتبر نیست" }, { status: 400 });
+  }
+  /* A day with no kind is read as an exact date: the calendar was the control used, and it
+     names a day the reader picked rather than a week they described. */
+  const kind: RequestedKind = requestedKind ?? (requestedDay === null ? "soonest" : "exact_date");
 
   const lines = Array.isArray(body?.lines) ? (body.lines as LineInput[]) : [];
   if (lines.length === 0) {
@@ -124,6 +149,8 @@ export async function POST(req: NextRequest) {
     const order = createOrder(db, {
       customer_id: customer.id,
       order_date: orderDate,
+      requested_day: requestedDay,
+      requested_kind: kind,
       created_by: session.user.id,
       organization_id: session.user.organization_id,
       salesperson_user_id: salespersonId,
