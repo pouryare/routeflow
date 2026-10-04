@@ -211,7 +211,6 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
           lng: o.lng,
           requested_day: o.requestedDay ?? null,
         }))}
-        navigateHref={() => "/map"}
       />
       <RunTimeline
         runs={runs.filter((r) => r.status !== "done").map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}

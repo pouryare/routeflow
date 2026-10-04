@@ -51,7 +51,6 @@ export interface BoardRun {
 export interface OrderRouteBoardProps {
   runs: BoardRun[];
   orders: BoardOrder[];
-  navigateHref: (order: BoardOrder) => string;
 }
 
 /** Lane ids are strings because `useCardDrag` carries them off a DOM attribute, and the pool is
@@ -72,7 +71,7 @@ const runIdFromLane = (lane: string): number | null =>
  *  Lanes are driver-DAY pairs, not drivers. A driver's load is a property of one day; keying on
  *  the driver alone would show Tuesday's work on Wednesday's lane, which is worse than showing
  *  nothing because it looks authoritative. */
-export default function OrderRouteBoard({ runs, orders, navigateHref }: OrderRouteBoardProps) {
+export default function OrderRouteBoard({ runs, orders }: OrderRouteBoardProps) {
   const router = useRouter();
   const toast = useToast();
   const [busy, setBusy] = useState(false);
@@ -264,10 +263,7 @@ export default function OrderRouteBoard({ runs, orders, navigateHref }: OrderRou
                  appears to work and does nothing. */
               toast("برای برداشتن، سفارش را روی مسیر دیگری بکشید.", "error");
             }}
-            navigateHref={(point) => {
-              const order = ordersById.get(point.id);
-              return order ? navigateHref(order) : "/map";
-            }}
+            navigateHref={() => "/map"}
             selectedId={selectedId}
             onSelect={setSelectedId}
           />
