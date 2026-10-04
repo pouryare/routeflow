@@ -86,8 +86,8 @@ import {
 } from "@/lib/mapLayers";
 import LayersPanel, { LayerHint, LayersControl } from "./LayersPanel";
 import TrafficZoneLayer, { useTrafficZones } from "./TrafficZoneLayer";
-import { FACILITY_COLOR, FACILITY_LABEL, FacilityRow } from "@/lib/facilityTypes";
-import { FACILITY_ART, facilityIcon } from "./facilityIcon";
+import { FACILITY_COLOR, FACILITY_LABEL, isPlaced, pickOrigin, FacilityRow } from "@/lib/facilityTypes";
+import { facilityIcon, facilityMarkerHtml } from "./facilityIcon";
 import { useSwipeDismiss } from "./useSwipeDismiss";
 import DataFreshness from "./DataFreshness";
 import EmptyState from "./EmptyState";
@@ -367,11 +367,19 @@ function foundLocationIcon() {
 /** Straight-line distance from one site to the nearest other one -- the popup's
  *  "N km from the warehouse" line. Takes the list rather than closing over it, since
  *  the sites now arrive as a prop and can change while the map is open. */
-function otherFacilityDistance(f: FacilityRow, all: FacilityRow[]): { other: FacilityRow; km: number } | null {
-  const others = all.filter((x) => x.id !== f.id);
+function otherFacilityDistance(
+  f: FacilityRow,
+  all: FacilityRow[]
+): { other: FacilityRow; km: number } | null {
+  // Both ends need a position, so an unplaced facility is not a candidate to measure to.
+  // `self` is a const on purpose: TypeScript resets narrowing on a mutable binding inside a
+  // closure, so passing `f` directly to the callback below loses the isPlaced proof.
+  if (!isPlaced(f)) return null;
+  const self = f;
+  const others = all.filter(isPlaced).filter((x) => x.id !== self.id);
   if (others.length === 0) return null;
   return others
-    .map((other) => ({ other, km: distanceKm(f, other) }))
+    .map((other) => ({ other, km: distanceKm(self, other) }))
     .sort((a, b) => a.km - b.km)[0];
 }
 
@@ -1101,26 +1109,27 @@ export default function CoverageMap({
    *  site and never a live GPS fix (spec 1.2): letting position feed this would repaint
    *  the entire map as the user drives, and a customer's colour would describe where the
    *  phone is rather than what the customer costs to reach. */
-  const colourOrigin = useMemo(
-    () =>
-      initialFacilities.find((f) => f.is_default_origin === 1) ??
-      initialFacilities.find((f) => f.kind === "home_base") ??
-      initialFacilities[0] ??
-      null,
-    [initialFacilities]
-  );
+  const colourOrigin = useMemo(() => pickOrigin(initialFacilities), [initialFacilities]);
+
+  /* Everything that puts a facility ON the map works from this list, not from
+     initialFacilities. A place with no location has no pin to drop, no distance to
+     measure and nothing for the user to fly to -- and Leaflet given [null, null] does not
+     fail loudly, it puts the marker somewhere arbitrary. The sidebar below still lists
+     every facility, including the unplaced ones, because "this place exists but is not on
+     the map yet" is exactly what the user needs to see in order to fix it. */
+  const placedFacilities = useMemo(() => initialFacilities.filter(isPlaced), [initialFacilities]);
 
   const corridorEnds = useMemo(() => {
-    if (initialFacilities.length < 2) return null;
-    let best: { a: FacilityRow; b: FacilityRow; km: number } | null = null;
-    for (let i = 0; i < initialFacilities.length; i++) {
-      for (let j = i + 1; j < initialFacilities.length; j++) {
-        const km = distanceKm(initialFacilities[i], initialFacilities[j]);
-        if (!best || km > best.km) best = { a: initialFacilities[i], b: initialFacilities[j], km };
+    if (placedFacilities.length < 2) return null;
+    let best: { a: (typeof placedFacilities)[number]; b: (typeof placedFacilities)[number]; km: number } | null = null;
+    for (let i = 0; i < placedFacilities.length; i++) {
+      for (let j = i + 1; j < placedFacilities.length; j++) {
+        const km = distanceKm(placedFacilities[i], placedFacilities[j]);
+        if (!best || km > best.km) best = { a: placedFacilities[i], b: placedFacilities[j], km };
       }
     }
     return best;
-  }, [initialFacilities]);
+  }, [placedFacilities]);
 
   /* ---- The corridor follows the road, not the crow.
 
@@ -1258,7 +1267,7 @@ export default function CoverageMap({
     return customerLifecycleColor(c.lifecycle);
   }
 
-  function flyToFacility(f: FacilityRow) {
+  function flyToFacility(f: FacilityRow & { lat: number; lng: number }) {
     mapRef.current?.flyTo([f.lat, f.lng], 15, { duration: 1 });
   }
 
@@ -1722,7 +1731,7 @@ export default function CoverageMap({
               {initialFacilities.map((f) => (
                 <button
                   key={f.id}
-                  onClick={() => flyToFacility(f)}
+                  onClick={() => isPlaced(f) && flyToFacility(f)}
                   className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                 >
                   <Icon name="map-pin" size="md" />
@@ -1730,7 +1739,7 @@ export default function CoverageMap({
                     className="shrink-0"
                     aria-hidden="true"
                     dangerouslySetInnerHTML={{
-                      __html: `<span class="facility-marker${f.kind === "home_base" ? " facility-marker--home" : ""}">${FACILITY_ART[f.kind].html}</span>`,
+                      __html: facilityMarkerHtml(f.icon_key, f.kind),
                     }}
                   />
                   <span className="min-w-0">
@@ -1742,9 +1751,9 @@ export default function CoverageMap({
                 </button>
               ))}
             </div>
-            {initialFacilities.length === 2 && (
+            {placedFacilities.length === 2 && (
               <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-                {formatDistanceKm(distanceKm(initialFacilities[0], initialFacilities[1]))} فاصله مستقیم بین دو انبار
+                {formatDistanceKm(distanceKm(placedFacilities[0], placedFacilities[1]))} فاصله مستقیم بین دو انبار
               </p>
             )}
 
@@ -2299,13 +2308,13 @@ export default function CoverageMap({
           {/* Outside the cluster group and lifted above it: these two are landmarks the
               rest of the map is read against, so they must never be swallowed into a
               customer bubble or hidden behind a blip that happens to overlap them. */}
-          {layers.facilities && initialFacilities.map((f) => {
-            const rel = otherFacilityDistance(f, initialFacilities);
+          {layers.facilities && placedFacilities.map((f) => {
+            const rel = otherFacilityDistance(f, placedFacilities);
             return (
               <Marker
                 key={f.id}
                 position={[f.lat, f.lng]}
-                icon={facilityIcon(f.kind)}
+                icon={facilityIcon(f.kind, f.icon_key)}
                 zIndexOffset={1000}
               >
                 <Popup>

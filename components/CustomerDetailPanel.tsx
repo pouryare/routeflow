@@ -12,6 +12,7 @@ import {
 } from "@/lib/types";
 import { LIFECYCLE_TRANSITIONS } from "@/lib/customerLifecycle";
 import type { FacilityRow } from "@/lib/facilityTypes";
+import { isPlaced } from "@/lib/facilityTypes";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
@@ -96,6 +97,7 @@ export default function CustomerDetailPanel({
     customer.lat === null || customer.lng === null
       ? []
       : facilities
+          .filter(isPlaced)
           .map((f) => ({ name: f.name, km: distanceKm({ lat: customer.lat as number, lng: customer.lng as number }, f) }))
           .sort((a, b) => a.km - b.km);
 

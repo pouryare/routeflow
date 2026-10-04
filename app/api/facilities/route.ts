@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FACILITY_KINDS, FacilityKind, getDb } from "@/lib/db";
+import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind, getDb } from "@/lib/db";
 import { readFacilities } from "@/lib/facilities";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { isValidCoord } from "@/lib/geoLinks";
@@ -33,6 +33,7 @@ export async function GET(req: NextRequest) {
 interface NewFacilityInput {
   name?: string;
   kind?: string;
+  icon_key?: string | null;
   lat?: number;
   lng?: number;
   address?: string | null;
@@ -70,27 +71,38 @@ export async function POST(req: NextRequest) {
 
   const db = getDb();
 
-  // Seeded rows carry meaningful slugs ("home-pardis") because the seed has to find them
-  // again on every boot. A user-created site only needs a slug that is unique and stable,
-  // and that can never collide with a slug a future seed might introduce -- hence the
-  // reserved "site-" prefix rather than one derived from the name.
+  // A slug must be unique, stable, and can never collide with one a future row might
+  // introduce -- hence the reserved "site-" prefix rather than one derived from the name.
+  // (Deriving it from the name is also what made Persian names a problem: they slugify badly
+  // and nobody should be typing slugs.)
   const fresh = `site-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
   const restore = resolveRestore(db, body.restore);
   const slug = restore?.slug ?? fresh;
   const now = new Date().toISOString();
 
+  // Validated against the KIND's options rather than accepted as-is: the column names a
+  // silhouette, and a typo would otherwise store a key no renderer can resolve. An
+  // unrecognised key falls back to the kind's default rather than failing the add, because
+  // the place itself is the thing the user asked for -- the shape is decoration.
+  const kind = body.kind as FacilityKind;
+  const iconKey =
+    typeof body.icon_key === "string" && FACILITY_ICONS[kind]?.includes(body.icon_key)
+      ? body.icon_key
+      : defaultIconFor(kind);
+
   // A new site never takes the default origin. Moving it is an explicit choice the user
   // makes in the editor, not a side effect of adding a location.
   const result = db
     .prepare(
-      `INSERT INTO facilities (id, slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at, organization_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`
+      `INSERT INTO facilities (id, slug, kind, name, icon_key, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at, organization_id)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`
     )
     .run(
       restore?.id ?? null, // NULL on an INTEGER PRIMARY KEY still autoincrements
       slug,
-      body.kind as FacilityKind,
+      kind,
       name,
+      iconKey,
       body.address ?? null,
       body.lat,
       body.lng,

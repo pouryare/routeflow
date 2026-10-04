@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
+import { isPlaced, pickOrigin, pickPlaced } from "@/lib/facilityTypes";
 import {
   distanceKm,
   distanceToSegmentKm,
@@ -420,9 +421,12 @@ type AddCandidate = CustomerRow | LeadLocation;
 
   const origin = useMemo<Origin | null>(() => {
     const override = originOverrideId === null ? null : facilities.find((f) => f.id === originOverrideId);
-    if (override) return { lat: override.lat, lng: override.lng, label: override.name, source: "override" };
+    // An unplaced facility cannot be an origin -- there is no point to measure from. It
+    // stays in the list to be positioned; it just does not become the day's starting point.
+    if (override && isPlaced(override))
+      return { lat: override.lat, lng: override.lng, label: override.name, source: "override" };
     if (myPos) return { lat: myPos.lat, lng: myPos.lng, label: "موقعیت من", source: "gps" };
-    const def = facilities.find((f) => f.is_default_origin === 1) ?? facilities.find((f) => f.kind === "home_base");
+    const def = pickOrigin(facilities);
     if (def) return { lat: def.lat, lng: def.lng, label: def.name, source: "facility" };
     return null;
   }, [originOverrideId, facilities, myPos]);
@@ -484,7 +488,9 @@ type AddCandidate = CustomerRow | LeadLocation;
   // and the delta is the honest part.
   const warehouseDetour = useMemo(() => {
     if (!origin || orderedStops.length === 0) return null;
-    const warehouse = facilities.find((f) => f.kind === "warehouse");
+    // pickPlaced, not a combined predicate: an unplaced warehouse has no position to route
+    // from, and only a bare isPlaced filter narrows the element type.
+    const warehouse = pickPlaced(facilities, (f) => f.kind === "warehouse");
     if (!warehouse) return null;
     // Already starting there -- there is no detour to weigh up.
     if (distanceKm(origin, warehouse) < 0.05) return null;
@@ -560,7 +566,7 @@ type AddCandidate = CustomerRow | LeadLocation;
 
   const restockHint = useMemo(() => {
     if (!origin || orderedStops.length === 0) return null;
-    const warehouse = facilities.find((f) => f.kind === "warehouse");
+    const warehouse = pickPlaced(facilities, (f) => f.kind === "warehouse");
     if (!warehouse) return null;
     // Already on the route -- nothing to suggest.
     if (orderedStops.some((s) => s.entity_type === "facility" && s.entity_id === warehouse.id)) return null;

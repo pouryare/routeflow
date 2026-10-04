@@ -4,7 +4,15 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { FACILITY_KINDS, FACILITY_LABEL, FacilityKind, FacilityRow } from "@/lib/facilityTypes";
+import {
+  FACILITY_KINDS,
+  FACILITY_ICONS,
+  FACILITY_LABEL,
+  defaultIconFor,
+  isPlaced,
+  FacilityKind,
+  FacilityRow,
+} from "@/lib/facilityTypes";
 import { facilityMarkerHtml } from "@/components/facilityArt";
 import { distanceKm } from "@/lib/geo";
 import { useToast } from "@/components/ToastProvider";
@@ -20,9 +28,16 @@ const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker")
 
 const KIND_NAME: Record<FacilityKind, string> = {
   warehouse: "انبار",
-  home_base: "خانه / مبدأ",
+  factory: "کارخانه",
+  van: "ماشین",
+  home: "خانه / مبدأ",
+  office: "دفتر",
+  shop: "فروشگاه",
+  cold_storage: "سردخانه",
+  parking: "پارکینگ",
   other: "مکان دیگر",
 };
+
 
 /** The shareable address of one site. Absolute so it survives being pasted into a chat
  *  app, which will not resolve a bare path. */
@@ -42,6 +57,10 @@ export default function FacilitiesPage() {
   const [picker, setPicker] = useState<PickerTarget>(null);
   const [newName, setNewName] = useState("");
   const [newKind, setNewKind] = useState<FacilityKind>("warehouse");
+  // Seeded from the kind and re-seeded whenever it changes, so the radio group always shows
+  // a valid selection for the kind currently chosen -- including after the kind is edited
+  // on an existing place, where the stored icon may belong to the old kind's options.
+  const [newIconKey, setNewIconKey] = useState(defaultIconFor("warehouse"));
   const [renamingId, setRenamingId] = useState<number | null>(null);
   const [renameDraft, setRenameDraft] = useState("");
   const toast = useToast();
@@ -104,7 +123,7 @@ export default function FacilitiesPage() {
       const res = await fetch("/api/facilities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, kind: newKind, lat, lng }),
+        body: JSON.stringify({ name, kind: newKind, icon_key: newIconKey, lat, lng }),
       });
       const data = await res.json();
       if (!res.ok || !data.ok) throw new Error(data.error || "خطا در افزودن مکان");
@@ -215,10 +234,19 @@ export default function FacilitiesPage() {
 
           {facilities.map((f) => {
             const isBusy = busyId === f.id;
-            const nearest = facilities
-              .filter((x) => x.id !== f.id)
-              .map((other) => ({ other, km: distanceKm(f, other) }))
-              .sort((a, b) => a.km - b.km)[0];
+            // A facility with no location has no distance to anything, so it is not a
+            // candidate -- for itself or for its neighbour.
+            const nearest = !isPlaced(f)
+              ? undefined
+              : (() => {
+                  // const self: narrowing on a mutable binding is reset inside a closure.
+                  const self = f;
+                  return facilities
+                    .filter(isPlaced)
+                    .filter((x) => x.id !== self.id)
+                    .map((other) => ({ other, km: distanceKm(self, other) }))
+                    .sort((a, b) => a.km - b.km)[0];
+                })();
 
             return (
               <article
@@ -236,7 +264,7 @@ export default function FacilitiesPage() {
                   <span
                     className="mt-0.5 shrink-0"
                     aria-hidden="true"
-                    dangerouslySetInnerHTML={{ __html: facilityMarkerHtml(f.kind) }}
+                    dangerouslySetInnerHTML={{ __html: facilityMarkerHtml(f.icon_key, f.kind) }}
                   />
                   <div className="min-w-0 flex-1">
                     {renamingId === f.id ? (
@@ -296,7 +324,7 @@ export default function FacilitiesPage() {
                     )}
                     <p className="mt-1.5 flex items-center gap-2 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
                       <span dir="ltr">{coordText(f.lat, f.lng)}</span>
-                      <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />
+                      {isPlaced(f) && <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />}
                       <CopyButton value={() => siteLink(f.id)} what="کپی پیوند این مکان" />
                     </p>
                     {nearest && (
@@ -359,7 +387,7 @@ export default function FacilitiesPage() {
                 {picker?.mode === "edit" && picker.facility.id === f.id && (
                   <div className="mt-3">
                     <LocationPinPicker
-                      initial={{ lat: f.lat, lng: f.lng }}
+                      initial={isPlaced(f) ? { lat: f.lat, lng: f.lng } : null}
                       onCancel={() => setPicker(null)}
                       onConfirm={(lat, lng) => {
                         setPicker(null);
@@ -386,7 +414,11 @@ export default function FacilitiesPage() {
             />
             <select
               value={newKind}
-              onChange={(e) => setNewKind(e.target.value as FacilityKind)}
+              onChange={(e) => {
+                const k = e.target.value as FacilityKind;
+                setNewKind(k);
+                setNewIconKey(defaultIconFor(k));
+              }}
               className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
             >
               {FACILITY_KINDS.map((k) => (
@@ -395,6 +427,30 @@ export default function FacilitiesPage() {
                 </option>
               ))}
             </select>
+            {/* The icon is the person's choice, not the kind's. Two warehouses can look
+                different because they hold different things, and adding a kind later must
+                not change what every existing place of that kind looks like -- which is why
+                this picks from the kind's options rather than showing one fixed shape.
+                Changing the kind above resets the choice to that kind's first option. */}
+            <div className="flex items-center gap-1.5" role="radiogroup" aria-label="شکل مکان">
+              {FACILITY_ICONS[newKind].map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="radio"
+                  aria-checked={newIconKey === key}
+                  aria-label={key}
+                  title={key}
+                  onClick={() => setNewIconKey(key)}
+                  className={`rounded-[var(--radius-md)] border p-1 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                    newIconKey === key
+                      ? "border-accent bg-accent/10"
+                      : "border-border hover:border-text-faint"
+                  }`}
+                  dangerouslySetInnerHTML={{ __html: facilityMarkerHtml(key, newKind) }}
+                />
+              ))}
+            </div>
             <button
               onClick={() => setPicker(picker?.mode === "create" ? null : { mode: "create" })}
               className="rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 active:scale-[0.98]"

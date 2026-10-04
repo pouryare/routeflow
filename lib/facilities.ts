@@ -18,7 +18,17 @@ export { FACILITY_COLOR, FACILITY_LABEL, FACILITY_KINDS } from "./facilityTypes"
 
 // Home base first: it is the origin every delivery run starts from, so it leads the
 // sidebar list, the editor and the map legend. Warehouses next, everything else last.
-const KIND_ORDER: Record<FacilityKind, number> = { home_base: 0, warehouse: 1, other: 2 };
+const KIND_ORDER: Record<FacilityKind, number> = {
+  home: 0,
+  warehouse: 1,
+  factory: 2,
+  cold_storage: 3,
+  parking: 4,
+  office: 5,
+  shop: 6,
+  van: 7,
+  other: 8,
+};
 
 /** node:sqlite hands back rows with a null prototype. JSON.stringify doesn't care, so
  *  the API route never had to, but React refuses to pass one across the server/client
@@ -42,6 +52,7 @@ export function readFacilities(
       slug: r.slug,
       kind: r.kind,
       name: r.name,
+      icon_key: r.icon_key,
       address: r.address,
       lat: r.lat,
       lng: r.lng,
@@ -62,8 +73,34 @@ export function readFacility(db: DatabaseSync, id: number): FacilityRow | null {
   return readFacilities(db).find((f) => f.id === id) ?? null;
 }
 
+/** Defined in facilityTypes.ts, not here: CoverageMap is a Client Component and cannot
+ *  import a value from this module without dragging node:sqlite into its bundle. */
+export { isPlaced, pickOrigin } from "./facilityTypes";
+import { pickOrigin } from "./facilityTypes";
+
 export function homeBase(db: DatabaseSync = getDb()): FacilityRow | null {
-  return readFacilities(db).find((f) => f.kind === "home_base") ?? null;
+  return readFacilities(db).find((f) => f.kind === "home") ?? null;
+}
+
+/** One person's own home, if they have set one up.
+ *
+ *  `owner_username` has been on the table since the column was added and nothing has ever
+ *  read it. It exists so that giving each driver their own starting point would be a query
+ *  change rather than a migration against a table already holding real data -- which is
+ *  this function.
+ *
+ *  Null is the normal answer and not an error: most tenants never enter a house, because
+ *  their drivers all start at the depot. A business where the founder works from home is
+ *  the exception that needs it, not the rule. */
+export function homeOf(organizationId: number, username: string, db: DatabaseSync = getDb()): FacilityRow | null {
+  return (
+    (db
+      .prepare(
+        `SELECT * FROM facilities
+          WHERE organization_id = ? AND owner_username = ? AND kind = 'home'`
+      )
+      .get(organizationId, username) as FacilityRow | undefined) ?? null
+  );
 }
 
 export function mainWarehouse(db: DatabaseSync = getDb()): FacilityRow | null {
@@ -73,11 +110,10 @@ export function mainWarehouse(db: DatabaseSync = getDb()): FacilityRow | null {
 /** The point every distance in the app is measured from unless something more specific
  *  is in play (a GPS fix, or a per-day override on the planner).
  *
- *  Falls back through the home base to the first site rather than returning null when
- *  no row carries the flag: a database in that state -- a bad restore, a future bug --
- *  should still render distances from a sensible point instead of stranding every
- *  reading in the app. */
+ *  Falls back through the home base to the first placed site rather than returning null
+ *  when no row carries the flag: a database in that state -- a bad restore, a future bug --
+ *  should still render distances from a sensible point instead of stranding every reading
+ *  in the app. A site with no location is not a sensible point, so it is not a candidate. */
 export function defaultOrigin(db: DatabaseSync = getDb()): FacilityRow | null {
-  const all = readFacilities(db);
-  return all.find((f) => f.is_default_origin === 1) ?? all.find((f) => f.kind === "home_base") ?? all[0] ?? null;
+  return pickOrigin(readFacilities(db));
 }

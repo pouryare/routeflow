@@ -19,7 +19,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb, type Customer, type District, type CoverageStatus } from "@/lib/db";
 import { daysSinceLastPurchase } from "@/lib/types";
-import { readFacilities } from "@/lib/facilities";
+import { readFacilities, pickOrigin } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
 import { groupFilter, groupFilterWithShared, scopeGroupIds, type Session } from "@/lib/session";
 import type { CostToServeRow, MatchQuality } from "@/components/CostToServePanel";
@@ -101,11 +101,7 @@ export function coverageAnalytics(
      and surfaced in the panel rather than absorbed, because a total that is quietly
      missing rows is worse than one that says so. */
   const facilities = readFacilities(db, groupFilterWithShared(session));
-  const dispatchSite =
-    facilities.find((s) => s.is_default_origin === 1) ??
-    facilities.find((s) => s.kind === "home_base") ??
-    facilities[0] ??
-    null;
+  const dispatchSite = pickOrigin(facilities);
 
   /* `match` exists to count sales rows matching no customer at all — and a join drops
      the very rows it is there to measure, so counting them needs the UNSCOPED table.

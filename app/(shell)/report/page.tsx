@@ -1,9 +1,10 @@
 import Link from "next/link";
 import { getDb, District, Customer, CoverageStatus } from "@/lib/db";
 import { STATUS_LABEL, STATUS_COLOR, LIFECYCLE_LABEL } from "@/lib/types";
-import { readFacilities } from "@/lib/facilities";
+import { readFacilities, pickOrigin } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
 import type { FacilityRow } from "@/lib/facilityTypes";
+import { isPlaced } from "@/lib/facilityTypes";
 import PrintButton from "@/components/PrintButton";
 import CsvExportButton from "@/components/CsvExportButton";
 import { faFixed, faNum } from "@/lib/format";
@@ -37,6 +38,7 @@ function nearestSite(
     return { name: null, km: null };
   }
   const best = facilities
+    .filter(isPlaced)
     .map((f) => ({ name: f.name, km: distanceKm({ lat: point.lat as number, lng: point.lng as number }, f) }))
     .sort((a, b) => a.km - b.km)[0];
   return best;
@@ -71,7 +73,7 @@ export default async function ReportPage({
     debtByCustomer.get(id) ?? { total: 0, bucket_0_7: 0, bucket_8_30: 0, bucket_30_plus: 0 };
 
   const facilities = readFacilities(db, groupFilterWithShared(session));
-  const origin = facilities.find((f) => f.is_default_origin === 1) ?? facilities[0] ?? null;
+  const origin = pickOrigin(facilities);
 
   const districtCounts = countBy(districts.map((d) => d.coverage_status));
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FACILITY_KINDS, FacilityKind, getDb } from "@/lib/db";
+import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind, getDb } from "@/lib/db";
 import { readFacility } from "@/lib/facilities";
 import { isValidCoord } from "@/lib/geoLinks";
 import { canReachGroup, requireRole } from "@/lib/session";
@@ -8,6 +8,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 interface PatchInput {
   name?: string;
   kind?: string;
+  icon_key?: string | null;
   lat?: number;
   lng?: number;
   address?: string | null;
@@ -34,8 +35,11 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
   }
 
   const db = getDb();
-  const exists = db.prepare("SELECT id, group_id FROM facilities WHERE id = ?").get(idNum) as
-    | { id: number; group_id: number | null }
+  // kind is read here, not just for the 404 check, because an icon_key PATCH has to be
+  // validated against the kind the row will have AFTER this request -- which is the
+  // requested kind when the request carries one.
+  const exists = db.prepare("SELECT id, group_id, kind FROM facilities WHERE id = ?").get(idNum) as
+    | { id: number; group_id: number | null; kind: FacilityKind }
     | undefined;
   // 404 rather than 403 for another group's site, for the same reason as districts:
   // a 403 confirms it exists.
@@ -62,6 +66,20 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
     }
     sets.push("kind = ?");
     values.push(body.kind as FacilityKind);
+  }
+
+  if (body.icon_key !== undefined) {
+    // Validated against the kind's options, so a kind change that leaves the stored icon
+    // belonging to the old kind cannot strand the marker on a shape no renderer resolves.
+    // Checked AFTER the kind above so a request carrying both is judged against the new one.
+    const kind = (body.kind ?? exists.kind) as FacilityKind;
+    const wanted = body.icon_key;
+    const next =
+      typeof wanted === "string" && FACILITY_ICONS[kind]?.includes(wanted)
+        ? wanted
+        : defaultIconFor(kind);
+    sets.push("icon_key = ?");
+    values.push(next);
   }
 
   if (body.lat !== undefined || body.lng !== undefined) {
@@ -159,7 +177,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
     if (row.is_default_origin === 1) {
       db.prepare(
         `UPDATE facilities SET is_default_origin = 1, updated_at = ?
-         WHERE id = (SELECT id FROM facilities ORDER BY CASE kind WHEN 'home_base' THEN 0 ELSE 1 END, id LIMIT 1)`
+         WHERE id = (SELECT id FROM facilities ORDER BY CASE kind WHEN 'home' THEN 0 ELSE 1 END, id LIMIT 1)`
       ).run(now);
     }
     db.exec("COMMIT");

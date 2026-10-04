@@ -102,23 +102,14 @@ export function run(ctx: SeedContext): void {
     ctx.logins.push({ username: s.username, role: s.role, password: PASSWORD });
   }
 
-  /* Depot in north Tehran. lat/lng are NOT NULL on facilities.
+  /* GONE: this used to DELETE the two facilities getDb() seeded on every boot -- the real
+   * company's warehouse and its home base, written into lib/db.ts by address and pinned to
+   * organization_id = 1. It had to, because in a throwaway demo the first organisation IS
+   * the demo org, so real addresses appeared in a database whose entire purpose is
+   * believable-but-not-real data. One of them was a residential address.
    *
-   *  `getDb()` seeds TWO facilities of its own on every boot (`seedFacilities`,
-   *  lib/db.ts:3993 → FACILITY_SEED at 4453): the real company's warehouse and its home
-   *  base, hardcoded with real addresses and pinned to `organization_id = 1`. In a throwaway
-   *  demo the FIRST organisation is the demo org, so those two would be attributed to the
-   *  fake company and appear on /facilities beside the invented ones — real addresses in a
-   *  database whose entire purpose is believable-but-not-real data.
-   *
-   *  So they are removed and replaced with fictional sites. This is deliberate, not tidying:
-   *  one of them is a residential address. */
-  const purged = db
-    .prepare(`DELETE FROM facilities WHERE slug IN ('warehouse-bakeh', 'home-pardis')`)
-    .run();
-  if (purged.changes > 0) {
-    ctx.progress(`removed ${purged.changes} real-tenant facilities from the demo`);
-  }
+   * The seed is gone, so there is nothing to purge: every facility in a demo database is
+   * invented by the phases below. The "lat/lng are NOT NULL" note went with it. */
 
   const facilityId = Number(
     db.prepare(

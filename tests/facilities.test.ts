@@ -10,13 +10,29 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { readFacilities, homeBase, mainWarehouse, defaultOrigin, FACILITY_LABEL } = await import("@/lib/facilities");
 const { distanceKm } = await import("@/lib/geo");
+const { isPlaced } = await import("@/lib/facilityTypes");
+type LatLng = { lat: number; lng: number };
 
 afterAll(() => {
   for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
 });
 
 beforeAll(() => {
-  getDb();
+  const db = getDb();
+  // The app no longer seeds any facility -- every place is made by a person, through the
+  // app -- so this file creates its own. Two real coordinates rather than invented ones,
+  // because the point of most of these assertions is that an ORIGIN is chosen correctly,
+  // and that needs two points far enough apart to tell them apart.
+  const now = new Date().toISOString();
+  const add = (slug: string, kind: string, name: string, lat: number, lng: number, origin: number) =>
+    db
+      .prepare(
+        `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+      )
+      .run(slug, kind, name, lat, lng, origin, now, now);
+  add("wh-test", "warehouse", "انبار آزمایشی", 35.502669, 51.7546255, 0);
+  add("home-test", "home", "خانهٔ آزمایشی", 35.753263, 51.798381, 1);
 });
 
 describe("facilities", () => {
@@ -25,22 +41,20 @@ describe("facilities", () => {
     expect(mainWarehouse()?.kind).toBe("warehouse");
   });
 
-  // These coordinates came off the two Google Maps links the business shared and can't
-  // be re-derived from anything else in the repo -- a typo would silently move a depot
-  // kilometres away and nothing else would complain. Wide enough to survive a genuine
-  // relocation inside the province, tight enough to catch a transposed digit or a
-  // swapped lat/lng pair.
-  it("places every site inside Tehran province", () => {
+  // Coordinates now arrive from a pin somebody dropped, so the meaningful invariant is not
+  // a range but the absence of the fabricated 0,0 that this column used to be forced to
+  // carry: a place with no location is NULL, and NULL is a different thing from zero.
+  it("never stores a fabricated 0,0 for a place nobody has positioned", () => {
     for (const f of readFacilities()) {
-      expect(f.lat).toBeGreaterThan(35.0);
-      expect(f.lat).toBeLessThan(36.5);
-      expect(f.lng).toBeGreaterThan(50.5);
-      expect(f.lng).toBeLessThan(53.0);
+      expect(f.lat === 0 && f.lng === 0).toBe(false);
     }
   });
 
-  it("keeps the two sites the distance apart the links put them", () => {
-    const km = distanceKm(homeBase()!, mainWarehouse()!);
+  it("measures a distance between two placed sites", () => {
+    const home = homeBase()!;
+    const wh = mainWarehouse()!;
+    expect(isPlaced(home) && isPlaced(wh)).toBe(true);
+    const km = distanceKm(home as LatLng, wh as LatLng);
     expect(km).toBeGreaterThan(25);
     expect(km).toBeLessThan(32);
   });
@@ -55,8 +69,8 @@ describe("facilities", () => {
     expect(readFacilities()[0].kind).toBe("home_base");
   });
 
-  it("defaults the origin to the home base", () => {
-    expect(defaultOrigin()?.slug).toBe("home-pardis");
+  it("defaults the origin to the row carrying the flag", () => {
+    expect(defaultOrigin()?.slug).toBe("home-test");
   });
 
   // A database whose flag was cleared -- by a bad restore, or a future bug -- must
@@ -65,7 +79,45 @@ describe("facilities", () => {
     const db = getDb();
     db.prepare("UPDATE facilities SET is_default_origin = 0").run();
     expect(defaultOrigin()?.kind).toBe("home_base");
-    db.prepare("UPDATE facilities SET is_default_origin = 1 WHERE slug = 'home-pardis'").run();
+    db.prepare("UPDATE facilities SET is_default_origin = 1 WHERE slug = 'home-test'").run();
+  });
+
+  // The flag is the FIRST choice, not the only one. A warehouse flagged as the origin must
+  // beat the home base, because that is what the flag is for.
+  it("prefers the flagged site over the home base", () => {
+    const db = getDb();
+    db.prepare("UPDATE facilities SET is_default_origin = 0").run();
+    db.prepare("UPDATE facilities SET is_default_origin = 1 WHERE slug = 'wh-test'").run();
+    expect(defaultOrigin()?.kind).toBe("warehouse");
+    db.prepare("UPDATE facilities SET is_default_origin = 0").run();
+    db.prepare("UPDATE facilities SET is_default_origin = 1 WHERE slug = 'home-test'").run();
+  });
+
+  // An unplaced facility is not an origin. Ranking first and dropping an unplaced winner
+  // would return null precisely when the flagged site has no pin yet -- the one case where
+  // the fallback has to work -- so the filter runs before the ranking.
+  it("skips an unplaced facility rather than measuring from nothing", () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, created_at, updated_at)
+       VALUES ('wh-unplaced', 'warehouse', 'انبار بی‌موقعیت', NULL, NULL, 1, ?, ?)`
+    ).run(now, now);
+    expect(defaultOrigin()?.slug).toBe("home-test");
+    db.prepare("DELETE FROM facilities WHERE slug = 'wh-unplaced'").run();
+  });
+
+  // ...but it is still a facility. "Exists but is not on the map yet" is the state the user
+  // needs to see in order to fix it, so it must not vanish from the list.
+  it("still lists a facility that has no location", () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare(
+      `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, created_at, updated_at)
+       VALUES ('wh-unplaced2', 'warehouse', 'انبار بی‌موقعیت', NULL, NULL, 0, ?, ?)`
+    ).run(now, now);
+    expect(readFacilities().some((f) => f.slug === "wh-unplaced2")).toBe(true);
+    db.prepare("DELETE FROM facilities WHERE slug = 'wh-unplaced2'").run();
   });
 
   // The popup prints the site's name as its title on the line directly above this

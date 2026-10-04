@@ -56,7 +56,7 @@ describe("the facilities migration", () => {
     const db = getDb();
     const iso2 = iso();
     const seed = db.prepare(
-      "INSERT INTO facilities (slug, kind, name, lat, lng, organization_id, created_at, updated_at) VALUES (?, 'home_base', ?, 0, 0, ?, ?, ?)",
+      "INSERT INTO facilities (slug, kind, name, lat, lng, organization_id, created_at, updated_at) VALUES (?, 'home', ?, NULL, NULL, ?, ?, ?)",
     ).run(`mig-${process.pid}`, "خانه قدیمی", ctx.org, iso2, iso2).lastInsertRowid;
 
     type FacRow = { id: number; slug: string; kind: string; organization_id: number | null };

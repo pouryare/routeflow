@@ -52,6 +52,12 @@ function legacyCopy(text: string): boolean {
  *  pasted somewhere else, and nothing outside this app parses ۳۵٫۷. Six decimals is
  *  ~11 cm, which is more than the source data justifies but is the format those apps
  *  round-trip without complaint. */
-export function coordText(lat: number, lng: number): string {
+/** Six decimals, the precision a dropped pin carries.
+ *
+ *  Takes nulls because a facility may have no location yet -- that is a real state, not
+ *  a missing value. Callers show the result as-is, so the honest answer is a phrase
+ *  rather than "0.000000, 0.000000", which would name a point in the Gulf of Guinea. */
+export function coordText(lat: number | null, lng: number | null): string {
+  if (lat === null || lng === null) return "هنوز مکان مشخص نیست";
   return `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
 }

@@ -29,13 +29,19 @@ export function createVanFacility(organizationId: number, name: string, plate: s
     | undefined;
   if (existing) return existing.id;
 
+  /* lat/lng are NULL, not 0,0.
+   *
+   * A van has no location of its own. It is either parked somewhere a person chose, or it
+   * is somewhere its driver's phone says it is right now -- a live reading, not stored data.
+   * The 0,0 that used to be written here was Null Island: every van in the app sat in the
+   * Gulf of Guinea, and on a map it was a marker in open water. */
   const now = new Date().toISOString();
   return Number(
     db
       .prepare(
         `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, owner_username,
                                  organization_id, created_at, updated_at)
-         VALUES (?, 'van', ?, 0, 0, 0, ?, ?, ?, ?)`
+         VALUES (?, 'van', ?, NULL, NULL, 0, ?, ?, ?, ?)`
       )
       .run(slug, name, plate, organizationId, now, now).lastInsertRowid
   );

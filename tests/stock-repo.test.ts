@@ -117,13 +117,13 @@ describe("onHand", () => {
 });
 
 describe("defaultFacilityId", () => {
-  it("prefers a warehouse, then home_base, then lowest id", () => {
+  it("prefers a warehouse, then home, then lowest id", () => {
     const db = getDb();
     const now = new Date().toISOString();
     db.prepare(
       "INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES (?,?,?,35,51,?,1,?)"
-    ).run(`h${Date.now()}`, "home_base", "خانه", now, now);
-    expect(defaultFacilityId(1)).toBe(fac); // the warehouse, not the home_base
+    ).run(`h${Date.now()}`, "home", "خانه", now, now);
+    expect(defaultFacilityId(1)).toBe(fac); // the warehouse, not the home
   });
 });
 

@@ -372,19 +372,22 @@ export function defaultFacilityId(organizationId: number): number {
     .all(organizationId) as unknown as { id: number; kind: string }[];
   const chosen =
     rows.find((r) => r.kind === "warehouse")?.id ??
-    rows.find((r) => r.kind === "home_base")?.id ??
+    rows.find((r) => r.kind === "home")?.id ??
     rows[0]?.id;
   if (chosen !== undefined) return chosen;
 
-  const now = new Date().toISOString();
-  return Number(
-    db
-      .prepare(
-        `INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at)
-         VALUES (?, 'warehouse', 'انبار', 0, 0, ?, ?, ?)`
-      )
-      .run(`wh-org${organizationId}-${Date.now()}`, now, organizationId, now).lastInsertRowid
-  );
+  /* GONE: this used to INSERT a warehouse named «انبار» at lat 0, lng 0 and return its id.
+   *
+   * It did that because lat/lng were NOT NULL, so a stock movement had nowhere to point
+   * until a facility existed -- and inventing one was cheaper than asking. The cost was a
+   * warehouse at Null Island that the user never made, which then satisfied the "is there a
+   * warehouse?" question above and became the default stock location for the whole tenant.
+   *
+   * lat/lng are nullable now, so "no warehouse yet" is a state this database can hold.
+   * Throwing is the honest answer and it is the message the app already produced when no
+   * warehouse existed at all: the auto-create was hiding a real requirement, not meeting
+   * one. Whoever hits it needs to add their warehouse, which is a thing only they can do. */
+  throw new Error("انبار تعریف نشده است");
 }
 
 /** The recent ledger, newest first, optionally filtered. */

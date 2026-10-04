@@ -12,6 +12,7 @@ import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { facilityIcon } from "./facilityIcon";
 import type { FacilityRow } from "@/lib/facilityTypes";
+import { isPlaced } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
 import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
@@ -116,8 +117,8 @@ export default function PlannerRouteMap({
           {/* Below the route markers (zIndexOffset 900): a stop the user is reading off
               the list is more urgent than a landmark. Without these the origin is
               invisible on the very map that routes from it. */}
-          {facilities.map((f) => (
-            <Marker key={f.id} position={[f.lat, f.lng]} icon={facilityIcon(f.kind)} zIndexOffset={800}>
+          {facilities.filter(isPlaced).map((f) => (
+            <Marker key={f.id} position={[f.lat, f.lng]} icon={facilityIcon(f.kind, f.icon_key)} zIndexOffset={800}>
               <Tooltip>{f.name}</Tooltip>
             </Marker>
           ))}

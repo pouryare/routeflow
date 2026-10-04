@@ -102,6 +102,7 @@ describe("GET /api/facilities", () => {
   it("returns every site", async () => {
     const res = await GET(new NextRequest("http://localhost/api/facilities", { headers: { cookie: authCookie() } }));
     const body = await res.json();
+    // >= 2 because this file creates its own fixtures; nothing is seeded.
     expect(body.facilities.length).toBeGreaterThanOrEqual(2);
   });
 
@@ -158,9 +159,12 @@ describe("PATCH /api/facilities/[id]", () => {
       .all() as unknown as { id: number }[];
     expect(flagged).toHaveLength(1);
     expect(flagged[0].id).toBe(id);
-    // Put it back so later tests start from the seeded state.
-    const home = getDb().prepare("SELECT id FROM facilities WHERE slug = 'home-pardis'").get() as unknown as { id: number };
-    await PATCH(patchReq({ is_default_origin: true }), ctx(home.id));
+    // Put it back so later tests start from the state they expect. It used to restore the
+    // seeded home base by slug; nothing is seeded now, so it flags the next warehouse.
+    const other = getDb()
+      .prepare("SELECT id FROM facilities WHERE kind = 'warehouse' AND id != ? ORDER BY id LIMIT 1")
+      .get(id) as unknown as { id: number } | undefined;
+    if (other) await PATCH(patchReq({ is_default_origin: true }), ctx(other.id));
   });
 
   // Clearing the flag directly would leave the app with no origin at all. The flag

@@ -16,7 +16,7 @@ import { postJournal } from "./repo/ledger";
 
 // Re-exported so server modules that already import from db.ts keep one import site.
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
-export { FACILITY_KINDS } from "./facilityTypes";
+export { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor } from "./facilityTypes";
 
 const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 
@@ -211,11 +211,20 @@ function rebuildFacilitiesForVan(db: DatabaseSync): void {
       CREATE TABLE facilities_van_new (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         slug TEXT NOT NULL,
-        kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other', 'van')),
+        kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home',
+                                   'office', 'shop', 'cold_storage', 'parking', 'other')),
         name TEXT NOT NULL,
+        /* The icon is the person's choice, not the kind's. It used to be derived from the
+           kind, which meant a kind could only ever look like one thing, and adding a kind
+           retroactively changed what every existing place of that kind looked like. NULL
+           until chosen; the UI falls back to the kind's first option. */
+        icon_key TEXT,
         address TEXT,
-        lat REAL NOT NULL,
-        lng REAL NOT NULL,
+        /* Nullable: a place can be named before anyone has put it on the map. That is a
+         * real state, and NOT NULL forced two writers to invent a location -- see the
+         * comment on facilities.lat below. */
+        lat REAL,
+        lng REAL,
         maps_url TEXT,
         notes TEXT,
         is_default_origin INTEGER NOT NULL DEFAULT 0,
@@ -1812,11 +1821,25 @@ export function getDb(): DatabaseSync {
     CREATE TABLE IF NOT EXISTS facilities (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT UNIQUE NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other', 'van')),
+      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home',
+                                   'office', 'shop', 'cold_storage', 'parking', 'other')),
       name TEXT NOT NULL,
+      /* The icon is the person's choice, not the kind's. It used to be derived from the
+         kind, which meant a kind could only ever look like one thing, and adding a kind
+         retroactively changed what every existing place of that kind looked like. NULL
+         until chosen; the UI falls back to the kind's first option. */
+      icon_key TEXT,
       address TEXT,
-      lat REAL NOT NULL,
-      lng REAL NOT NULL,
+      /* Nullable, deliberately. Every place is made by a person through the app, so a
+       * place can exist before anyone has dropped a pin: a warehouse you have not
+       * located yet, a van nobody has parked, a home you have not entered. NOT NULL
+       * here did not prevent those rows existing -- it only forced the writers to lie
+       * about where they were, which is why a warehouse was auto-created at 0,0 and
+       * every van was inserted at 0,0. A null location is a fact; 0,0 is a fiction in
+       * the Gulf of Guinea. Readers must SKIP an unplaced facility, never substitute
+       * a default for it. */
+      lat REAL,
+      lng REAL,
       maps_url TEXT,
       notes TEXT,
       is_default_origin INTEGER NOT NULL DEFAULT 0,
@@ -3484,6 +3507,36 @@ export function getDb(): DatabaseSync {
   // TENANT_TABLES loop below, which ALTERs every table it lists.
   createCrmTables(db);
 
+  /* facilities: icon_key added, and 'home_base' renamed to 'home'.
+   *
+   * An ALTER, not a table rebuild. The CHECK constraint still names the old kind, and
+   * SQLite cannot alter a CHECK -- so the rebuild copies in `rebuildForTenantUnique` below
+   * is what actually installs the new one, and this step's job is only to (a) add the
+   * column and (b) rewrite the values so the copy does not violate the NEW check it is
+   * about to be written against.
+   *
+   * The rename is data, not schema: 'base' reads as a company camp, which is not what a
+   * driver's own house is, and the user writes this kind by hand when they add a home. */
+  {
+    const fCols = db.prepare("PRAGMA table_info(facilities)").all() as unknown as { name: string }[];
+    if (!fCols.some((c) => c.name === "icon_key")) {
+      db.exec("ALTER TABLE facilities ADD COLUMN icon_key TEXT");
+    }
+    // Only runs where the old CHECK is still the live one; on a fresh database there is
+    // nothing to rewrite and the value is simply already 'home' or never used.
+    const renamed = db
+      .prepare("UPDATE facilities SET kind = 'home' WHERE kind = 'home_base'")
+      .run();
+    if (renamed.changes > 0) {
+      // A database still holding the old value would fail the new CHECK on the rebuild
+      // below, and the resulting error names a constraint nobody remembers writing.
+      const left = db
+        .prepare("SELECT COUNT(*) n FROM facilities WHERE kind = 'home_base'")
+        .get() as { n: number };
+      if (left.n > 0) throw new Error("facilities: home_base could not be migrated to home");
+    }
+  }
+
   // ALTER each table now, up front, and backfill immediately -- both matter here, not
   // just the column. seedFacilities runs later in this same function and relies on
   // "INSERT OR IGNORE" recognising an existing (organization_id, slug) row to skip it;
@@ -3674,11 +3727,21 @@ export function getDb(): DatabaseSync {
     `CREATE TABLE facilities_tn_new (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       slug TEXT NOT NULL,
-      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'home_base', 'other', 'van')),
+      kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home',
+                                   'office', 'shop', 'cold_storage', 'parking', 'other')),
       name TEXT NOT NULL,
+      /* The icon is the person's choice, not the kind's. It used to be derived from the
+         kind, which meant a kind could only ever look like one thing, and adding a kind
+         retroactively changed what every existing place of that kind looked like. NULL
+         until chosen; the UI falls back to the kind's first option. */
+      icon_key TEXT,
       address TEXT,
-      lat REAL NOT NULL,
-      lng REAL NOT NULL,
+      /* Nullable, matching the other two facilities DDL copies -- see the long comment on
+       * facilities.lat. This rebuild is the one that bites: it re-creates the table on
+       * every tenant bootstrap, so a NOT NULL here puts the constraint straight back for
+       * anyone whose data survives the rebuild. */
+      lat REAL,
+      lng REAL,
       maps_url TEXT,
       notes TEXT,
       is_default_origin INTEGER NOT NULL DEFAULT 0,
@@ -4867,65 +4930,27 @@ export function logActivity(
 // neither duplicates a row nor reverts an edit. INSERT OR IGNORE, deliberately not
 // INSERT OR REPLACE: REPLACE would silently throw away a repositioned pin on the next
 // deploy, which is the exact failure this table exists to prevent.
-const FACILITY_SEED: Array<Omit<FacilityRow, "id" | "created_at" | "updated_at">> = [
-  {
-    slug: "warehouse-bakeh",
-    kind: "warehouse",
-    name: "انبار مرکزی",
-    address: "استان تهران، بکه، بلوار رسول اکرم، املاک طاها",
-    lat: 35.502669,
-    lng: 51.7546255,
-    maps_url: "https://maps.app.goo.gl/XYd819ZQiGJzHNKM9",
-    notes: "انبار اصلی — تأمین موجودی",
-    is_default_origin: 0,
-    owner_username: null,
-  },
-  {
-    slug: "home-pardis",
-    kind: "home_base",
-    name: "خانه (انبار کوچک)",
-    address: "تهران، پردیس، فاز ۲، خیابان فهمیده",
-    lat: 35.753263,
-    lng: 51.798381,
-    maps_url: "https://maps.app.goo.gl/ivx6yY69Zb9S9sKu6",
-    notes: "شروع مسیر توزیع روزانه از اینجاست",
-    // Deliveries start here, so this is the point every distance in the app measures
-    // from until the user picks another.
-    is_default_origin: 1,
-    owner_username: null,
-  },
-];
+/** GONE, deliberately: the two facilities this used to insert.
+ *
+ *  They were the one real company's warehouse and home base, written here by address, with
+ *  organization_id pinned to 1 because the app only had one company when they were added.
+ *  That is the whole problem in miniature -- a specific business's addresses compiled into
+ *  a schema bootstrap, so every tenant that ever ran this got them, and every distance in
+ *  the app was measured from a house in Pardis whether or not that was the reader's house.
+ *
+ *  Every place is now made by a person, through the app. A fresh database has no
+ *  facilities at all, which is the honest starting state: the first thing you are asked
+ *  is where your warehouse is. Nothing here is invented, so nothing here has to be
+ *  migrated when a second tenant arrives.
+ *
+ *  The remaining seeds in this file are a different category on purpose -- reason codes,
+ *  capacity factors, KPI definitions -- all of them system-wide defaults carrying
+ *  organization_id NULL, with a tenant free to override. A business's own address is not
+ *  a default; it is data. */
 
-export function seedFacilities(db: DatabaseSync): void {
-  const now = new Date().toISOString();
-  // organization_id pinned to 1: these are the one real company's warehouse and home
-  // base, hardcoded above by address. Since the UNIQUE that "OR IGNORE" relies on is
-  // now (organization_id, slug), leaving this column out would insert a fresh
-  // organization_id = NULL row on every boot -- NULL is distinct from NULL under
-  // SQLite's own uniqueness rules, so it would never match the row a previous boot
-  // already created, and "idempotent" would quietly stop being true.
-  const insert = db.prepare(`
-    INSERT OR IGNORE INTO facilities
-      (slug, kind, name, address, lat, lng, maps_url, notes, is_default_origin, owner_username, created_at, updated_at, organization_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `);
-  for (const f of FACILITY_SEED) {
-    insert.run(
-      f.slug,
-      f.kind,
-      f.name,
-      f.address,
-      f.lat,
-      f.lng,
-      f.maps_url,
-      f.notes,
-      f.is_default_origin,
-      f.owner_username,
-      now,
-      now,
-      1
-    );
-  }
+export function seedFacilities(_db: DatabaseSync): void {
+  // Kept as a named no-op so the call site at the bottom of this file, and any external
+  // caller of the export, stay valid. Delete it and every caller once they are gone.
 }
 
 /** Phase 3: the system-default reason codes every tenant sees (organization_id NULL).
