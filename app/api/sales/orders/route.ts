@@ -83,9 +83,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: false, error: "تاریخ خواسته‌شده معتبر نیست" }, { status: 400 });
     }
   }
-  const requestedKind =
-    body?.requested_kind == null ? null : String(body.requested_kind);
-  if (!isRequestedKind(requestedKind)) {
+  const requestedKindRaw = body?.requested_kind;
+  const requestedKind = requestedKindRaw == null ? null : String(requestedKindRaw);
+  /* Only a SENT kind is validated. Absent or null is the normal state and must pass —
+     refusing it would reject every caller written before this field existed, which is the
+     whole class of bug this repo calls a gate that fails OPEN or CLOSED on its own terms.
+     An unrecognised string IS refused: "tomorrow-ish" is not a delivery day and guessing
+     which kind it meant is how a commitment silently changes shape. */
+  if (requestedKind !== null && !isRequestedKind(requestedKind)) {
     return NextResponse.json({ ok: false, error: "نوع تاریخ معتبر نیست" }, { status: 400 });
   }
   /* A day with no kind is read as an exact date: the calendar was the control used, and it

@@ -133,6 +133,43 @@ describe("POST /api/sales/orders", () => {
     expect(json.order_no).toMatch(/^1405-\d{5}$/);
   });
 
+  it("treats an ABSENT requested_day and kind as «در اولین فرصت», not as a refusal", async () => {
+    /* Phase 1 added two optional fields, and the first version validated the kind with
+     * `isRequestedKind(body.requested_kind)` — which is false for `undefined`. Every caller
+     * that does not send the field therefore got a 400, and 14 tests here went red at once.
+     *
+     * The rule this pins: absent is the NORMAL state. An order nobody has committed to a day
+     * is not an error, it is the day-splitter's raw material — so a body carrying neither
+     * field must be accepted and must land with requested_day NULL rather than today's
+     * date, which would silently pin every order. */
+    const res = await POST(post(AS.driver(), orderBody()));
+    expect(res.status).toBe(201);
+    /* By customer + newest, because the response carries no row id — the order number is
+     * the handle, and asking for "the last one" would pass even if this POST wrote nothing
+     * as long as some earlier test in this file had. */
+    const row = getDb()
+      .prepare("SELECT requested_day, requested_kind FROM orders WHERE customer_id = ? ORDER BY id DESC LIMIT 1")
+      .get(ctx.eastCustomer) as { requested_day: string | null; requested_kind: string | null } | undefined;
+    expect(row?.requested_day).toBeNull();
+    /* The kind is NOT null — the route normalises an absent one to 'soonest' so the stored
+     * value says which control was used rather than leaving it to be inferred from the day.
+     * The DAY being null is what carries «در اولین فرصت». */
+    expect(row?.requested_kind).toBe("soonest");
+  });
+
+  it("refuses a requested_kind it does not recognise rather than guessing", async () => {
+    // "tomorrow-ish" is not a delivery day. Coercing it would change the SHAPE of a
+    // commitment nobody intended, which is worse than refusing it.
+    const res = await POST(post(AS.driver(), orderBody({ requested_kind: "tomorrow-ish" })));
+    expect(res.status).toBe(400);
+  });
+
+  it("refuses a requested_day that is not a date, rather than calling it uncommitted", async () => {
+    // Coercing "2026-13-45" to NULL would lose a commitment with nothing on screen saying so.
+    const res = await POST(post(AS.driver(), orderBody({ requested_day: "2026-13-45" })));
+    expect(res.status).toBe(400);
+  });
+
   it("hides another group's customer behind a 404, not a 403", async () => {
     // A 403 would confirm the customer exists. The rule everywhere else in this app.
     const res = await POST(post(AS.westManager(), orderBody()));
