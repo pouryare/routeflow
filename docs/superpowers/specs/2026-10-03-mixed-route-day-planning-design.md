@@ -81,22 +81,35 @@ Settled across six rounds of questions; each is load-bearing later.
 ALTER TABLE delivery_runs ADD COLUMN kind TEXT NOT NULL DEFAULT 'delivery_only'
   CHECK (kind IN ('delivery_only', 'mixed'));
 
--- lead_run_stops is re-pointed at delivery_runs; lead_runs is emptied then dropped
--- (order_id stays NOT NULL on delivery_stops — no rebuild, no integrity hole)
+-- lead_run_stops is REBUILT with run_id re-pointed at delivery_runs(id).
+-- This is not optional: SQLite cannot ALTER a foreign-key target.
+-- delivery_stops is untouched — order_id keeps NOT NULL.
 ```
 
 Why this and not one stop table:
 
-- **No existing reader changes.** Every query reading `delivery_stops` keeps working, because
-  a delivery stop is still exactly what it was. `delivery_stops` is INSERTed in exactly one
-  place (`lib/delivery.ts:147`), and `order_id` keeps its `NOT NULL`.
-- **No guarded rebuild.** Adding a nullable `location_id` to `delivery_stops` (the
-  one-stop-table alternative) would require dropping `order_id NOT NULL`, and SQLite cannot
-  `ALTER` a CHECK — it needs the rebuild-and-copy dance at `lib/db.ts:236-268`. Every reader
-  would then have to handle a stop with no order.
+- **No existing reader of `delivery_stops` changes.** Every query reading `delivery_stops`
+  keeps working, because a delivery stop is still exactly what it was. `delivery_stops` is
+  INSERTed in exactly one place (`lib/delivery.ts:147`), and `order_id` keeps its `NOT NULL`.
+- **One guarded rebuild, on the small table.** `lead_run_stops.run_id` is
+  `REFERENCES lead_runs(id) ON DELETE CASCADE` (`lib/db.ts:1845`). Re-pointing it at
+  `delivery_runs(id)` is a foreign-key change, which SQLite cannot `ALTER` — it needs the
+  guarded rebuild-and-copy pattern already used at `lib/db.ts:236-268` (read the live
+  `CREATE TABLE` out of `sqlite_master`, rewrite the one reference, copy every column listed
+  by `PRAGMA table_info`, verify the row count, recreate the index).
+- **The one-stop-table alternative needs that same rebuild, on the *expensive* table.**
+  Adding a nullable `location_id` to `delivery_stops` means dropping `order_id NOT NULL`,
+  which is a schema change requiring the identical dance — and then all 22 readers must handle
+  a stop with no order. Same mechanism, ten times the blast radius.
 - **It is honest about the two kinds of stop.** A delivery has an order and earns commission.
   A visit has a pin and a next-action. They share a *day and a driving order*, which is what
   is physically true, without pretending they are the same row.
+
+**So the rebuild is not avoided — it is moved onto the 3-reader table instead of the 22-reader
+one.** An earlier draft of this spec claimed B needed "no guarded rebuild" and used that to
+argue against A. That was wrong: B needs a rebuild too. The conclusion survives, because the
+rebuild lands on `lead_run_stops` rather than `delivery_stops`, but the stated reason was not
+true and a plan built on it would have discovered a required migration in week two.
 
 Rejected: **one stop table** (above), and **keep both tables + a union view** — which is
 cheapest but leaves the driver with two runs and no offline visits, i.e. it does not fix the
@@ -136,11 +149,41 @@ second query. Existing rows default to `delivery_only`, which is correct for all
 it is the **only** one. One driver, one day, one run — so a driver can no longer hold a
 delivery run and a lead run on the same date.
 
-Migration: for each `lead_runs` row, find-or-create the `delivery_runs` row for that
-`driver_user_id` + `run_date`, set its `kind` to `mixed`, and re-point its stops. Then
-`lead_run_stops.run_id` is rewritten to the delivery run's id and `lead_runs` is dropped.
-Reversible: the mapping is asserted by the migration test, and nothing is destroyed until the
-new path has been exercised.
+Migration, in this order, because the order matters:
+
+1. Add `delivery_runs.kind` (plain `ALTER`, defaulted to `delivery_only` — correct for every
+   existing row).
+2. For each `lead_runs` row: find-or-create the `delivery_runs` row for that
+   `driver_user_id` + `run_date` + `organization_id`, and set its `kind` to `mixed`. Record the
+   old→new id mapping in a temp table so step 4 can be checked.
+3. **Rebuild `lead_run_stops`** with `run_id` re-pointed at `delivery_runs(id)`, rewriting each
+   row's `run_id` through the mapping. Copy `id`, `run_id`, `location_id`, `sort_order`,
+   `created_at` explicitly, then assert `SELECT COUNT(*)` matches before and after.
+4. Drop `lead_runs`.
+
+**Step 4 is a cascade and must be treated as dangerous.** `lead_run_stops.run_id` is
+`ON DELETE CASCADE`, and this repo has a test written because a cascade once destroyed a
+driver's assigned work: *"A driver's assigned work, a promise the office made that morning,
+gone with no error and no entry in any log"* (`tests/no-cascade-migration.test.ts`). So step 3
+must be verified to have moved every row **before** the drop, and the drop must not be reached
+with any `lead_run_stops` row still pointing at a `lead_runs` id.
+
+**Three things must change alongside, or the suite fails for reasons unrelated to the work:**
+
+- `lead_runs` is in `TENANT_TABLES` (`lib/db.ts:68`). Remove it in the same change;
+  `tests/tenancy-schema.test.ts` iterates that list and asserts every entry has
+  `organization_id`.
+- `lead_run_stops` has **no** `organization_id` — deliberately, because it is reached through
+  its parent (noted at `tests/lead-pin-foldin.test.ts:40`). The rebuild must **not** add one;
+  tenancy stays on `delivery_runs`.
+- Six test files reference these tables and must be updated, not deleted:
+  `lead-pin-foldin`, `no-cascade-migration`, `tenancy-schema`, `api/lead-visit-routing`,
+  `api/lead-runs`, `role-queries`.
+
+**`assignedToAnotherDriver` moves with the table.** `lib/repo/leadRuns.ts:174-182` joins
+`lead_run_stops → lead_runs` to find which driver already holds a shop. That query is the
+*server half* of the double-assignment guard — the browser filter is convenience, and the
+server is the mechanism — so it is re-pointed at `delivery_runs`, not left behind.
 
 ### 3. `orders` grows a requested day
 
@@ -182,10 +225,33 @@ van instead of decrementing the warehouse a second time.
   and there is already a freeze mechanism for delivery runs (`runsNeedingFreeze` /
   `freezeRun`, `lib/repo/routing.ts:377,402`) with a per-weekday `cutoff_time` and a `'ready'`
   status.
-- **Freeze is now one rule for both kinds.** A frozen run locks orders and visits alike,
-  because the thing being promised is *the driver's day*, and a day cannot be half-promised.
-  `freezeRun` currently moves every stop's order to `READY`; a mixed run's pin stops have no
-  order to move, so the freeze pins their `sort_order` instead.
+- **Freeze is now one rule for both kinds — but it must be REACHED first.** `runsNeedingFreeze`
+  (`lib/repo/routing.ts:388`) inner-joins:
+  ```sql
+  JOIN route_schedules rs ON rs.route_template_id = dr.route_template_id
+  ```
+  Runs created by `createRun` (`lib/delivery.ts:97`) and `commitPlan` (`:333`) insert **no
+  `route_template_id`** — it is NULL — and an inner join drops NULLs. So today **a run created
+  by the board this spec is about never freezes at all.** Freeze only reaches runs built by
+  `/sales/routing` from a template.
+
+  This spec therefore has to decide, not assume. Two options, and the choice is explicit:
+
+  - **(a) Make freeze reachable for un-templated runs** — `LEFT JOIN` `route_schedules` and
+    fall back to an organisation-level default `cutoff_time`. This is a change to
+    `runsNeedingFreeze` and is in scope, because "the day is committed" is the promise the
+    «در اولین فرصت» label depends on.
+  - **(b) Do not promise commitment.** `requested_day` is a *plan* with no enforced deadline,
+    and the label means "nobody has decided yet", full stop.
+
+  **Chosen: (a).** Without it, "committed" is a word with no behaviour behind it, and the
+  manager has no signal that a day has closed. The `LEFT JOIN` is small and it makes an
+  existing mechanism apply to the page it was always meant to cover.
+
+  Once reachable, a frozen run locks orders and visits alike, because the thing being promised
+  is *the driver's day*, and a day cannot be half-promised. `freezeRun` moves every stop's
+  order to `READY`; a mixed run's pin stops have no order to move, so the freeze records their
+  `sort_order` as fixed instead.
 - **«در اولین فرصت» orders are the split's raw material.** Not a queue, not auto-assigned —
   they are simply the orders the manager has not yet committed to a day.
 
@@ -211,9 +277,43 @@ The proposal fills the **remaining** capacity of days that already have runs, an
 proposes a new day when every existing one is full. Splitting 30 unplaced orders therefore
 cannot pile more work onto a day that already has 20 — which the naive version would.
 
-Pinned orders are **frozen and seeds**: an order with a `requested_day` is not moved by the
-split, and it seeds the clustering so the rest fit around it. `clusterIntoDays` already takes
-`seeds` and a `distanceFn`, so this is a call-site change, not a rewrite.
+### Pinned orders — seeds are a HINT, not a pin
+
+An earlier draft said pinned orders are *"frozen and seeds"*, that `clusterIntoDays` *"already
+takes `seeds`"*, and therefore that pinning was *"a call-site change, not a rewrite"*. **The
+first and third claims are false, and the second is true in a way that does not mean what it
+sounds like.**
+
+What `seeds` actually does in `lib/clusterDays.ts:254`:
+
+- `seedFromSources` (line 87) uses the sources to place **initial centroids**, deduplicating
+  anything within ~100m and supplementing with farthest-point seeding.
+- Lines 288-297 then **sort** the resulting days so a day containing a seed is presented first.
+
+Then `assign()` (line 140) runs over **every** stop — seeds included — ranked by regret and
+subject to the `capacity` cap. `rebalanceToSizes` (line 174) can then move a stop between days
+to make the sizes exact.
+
+**So a seed influences where clustering starts; it does not stay where it was put.** A pinned
+order handed to `clusterIntoDays` as a seed will still be assigned to whichever centroid wins
+its regret ranking, and can then be relocated by the size rebalance. The guarantee the user was
+given — *a pinned order is not moved by the split* — **is not provided by this function.**
+
+The honest shape of the feature, which does deliver that guarantee:
+
+- **Pinned orders are partitioned out before clustering.** They are never passed through
+  `assign()` at all. Each one already belongs to a day, because the manager put it there.
+- **`seeds` is still used, for the thing it is genuinely good at**: the pinned orders' locations
+  become centroid sources for the days that *do* need splitting, so the unpinned work is fitted
+  around the work already promised. That is real value, and it is what the parameter is for.
+- **`rebalanceToSizes` must not move a pinned stop.** Since pinned stops are outside the arrays
+  it receives, this holds by construction rather than by a flag inside it.
+- The capacity arithmetic subtracts each day's pinned count from that day's remaining room, so
+  a pinned order consumes capacity rather than appearing free.
+
+This is a real change to `lib/clusterDays.ts`'s contract, not a call-site tweak — the partition
+happens in the caller (`lib/dayCapacity.ts`), which passes only unpinned stops plus the pinned
+set as `seeds`.
 
 **A no-coordinate order blocks the split.** `customers.lat/lng` can be null, and an order that
 cannot be placed is not a proposal — the split refuses and names the order, because silently
@@ -277,8 +377,25 @@ reused verbatim — with one run table, the two screens can no longer disagree a
 ### One list, interleaved
 
 `driverDaySections` already returns both. The change is to render them as **one ordered
-list**, not two sections, because a person thinks in one day. `sort_order` is the shared
-ordering; `lib/runKinds.ts` says what each row is and what tapping it does.
+list**, not two sections, because a person thinks in one day. `lib/runKinds.ts` says what each
+row is and what tapping it does.
+
+**The interleaving needs an explicit tiebreak, which an earlier draft omitted.** `sort_order`
+is a *per-table* integer — `delivery_stops.sort_order` and `lead_run_stops.sort_order` are
+independent columns, both `NOT NULL DEFAULT 0`, both read with `ORDER BY sort_order`
+(`lib/delivery.ts:277`, `lib/repo/leadRuns.ts:64`). Two tables' zeros do not interleave into
+anything; they collide. So `lib/repo/mixedRuns.ts` owns the rule:
+
+- Order within each table by `(sort_order, id)`, exactly as each table does today.
+- Merge by `sort_order` ascending, and break a tie by **`id`**, deterministically. A run where
+  every stop is `sort_order = 0` — which is the default state for every row inserted without an
+  explicit order — still produces one stable list rather than an arbitrary one.
+- The merge lives in `mixedRuns` only. Neither table's own query changes, so `driverCommissionLedger`
+  (`ORDER BY dr.run_date, ds.sort_order`) and `readRun` keep their existing behaviour.
+
+**A mixed run's stops share one numbering space.** When a manager or the optimiser writes an
+order, it writes `sort_order` values that are unique *across the whole run*, not per table.
+Otherwise "reorder the day" cannot express "visit 3 comes before delivery 2".
 
 **Tap once to complete any stop.** A delivery opens the amount collector, a revisit opens the
 outcome note, a new pin confirms its coordinates. One gesture, three destinations — which is
@@ -355,7 +472,9 @@ it against capacity. There is no state in which it is invisible.
 | No van facility linked to a vehicle | The run planner cannot claim van stock; falls back to warehouse availability |
 | Driver places an order over the credit limit | Created and flagged for approval, never refused — a sale lost to a missing authority is worse than one the office clears |
 | Optimise with every stop done | No-op with a message, not an empty reordering |
-| Stop already on another driver's live run | Refused — `assignedToAnotherDriver` already does this for pins and the rule now covers both kinds |
+| Stop already on another driver's live run | Refused. `assignedToAnotherDriver` (`lib/repo/leadRuns.ts:174-182`) already does this for pins, but its query joins `lead_runs` — it is **re-pointed at `delivery_runs`**, not left behind. This is the server half of the guard; the browser filter is convenience, so both move together |
+| `lead_run_stops` rebuild loses or orphans rows | Assert row count before and after; refuse to reach the `lead_runs` drop while any stop still points at it |
+| A run has stops with duplicate `sort_order` across the two tables | Not an error — `mixedRuns` breaks the tie by `id`, so the list is stable rather than arbitrary |
 
 ---
 
@@ -366,16 +485,28 @@ No component tests exist in this repo, so the assertions live in the pure module
 - **`lib/runKinds.ts`** — a stop's kind, its icon, whether tapping opens the collector or the
   note, and whether it earns commission. A table test over all three kinds.
 - **`lib/dayCapacity.ts`** — three limits; a stop that fits; **filling an existing run before
-  proposing a new day**; a pinned order acting as a seed and never moving; a no-coordinate
-  order blocking the split by id.
+  proposing a new day**; a pinned order **never moved** by the split (the regression test for
+  the seeds-are-hints defect above — it must fail against `clusterIntoDays`' current contract);
+  a pinned order's location still pulling its day first; a no-coordinate order blocking the
+  split by id.
 - **`lib/routeOrder.ts`** — ordering with an injected straight-line function: completed stops
   fixed, only the remainder reordered; total km reported; empty and single-stop cases.
+- **`lib/repo/mixedRuns.ts`** — the interleaving: two kinds of stop in one stable list; every
+  `sort_order = 0` still yields a deterministic order (the tie-break case); a run with only
+  one kind still reads correctly.
 - **`lib/vanStock.ts`** — a load is `TRANSFER_OUT` + `TRANSFER_IN`; per-van on-hand; a
   delivery from the van decrements **the van**, not the warehouse. The last one is the
   regression test for the double-count this spec exists to prevent.
 - **Migration, on real data** — the `lead_runs` → `delivery_runs` fold preserves every stop,
-  every driver and every date. Follows the existing `*-migration-realdata.test.ts` pattern.
+  every driver and every date, and the `lead_run_stops` rebuild preserves its row count. Follows
+  the existing `*-migration-realdata.test.ts` pattern.
+- **Cascade safety** — after the migration, a pin that is deleted no longer takes a run's stop
+  with it. `tests/no-cascade-migration.test.ts` already guards the shape of this; it must still
+  pass, and its `cascadePairs()` parser reads the *live* schema, so the re-pointed
+  `lead_run_stops` is what it will parse.
 - **Uniqueness** — one driver, one day, one run, proven by attempting the double insert.
+- **Freeze reach** — a run with **no** `route_template_id` freezes on the default cutoff. This
+  is the regression test for the inner-join gap.
 - **Van-order visibility** — a driver's own order is readable by them before it is on a run.
 - **Sync** — a mixed run reaches the offline client with **both** kinds of stop. This is the
   regression test for the gap in `syncPull`.
@@ -403,20 +534,29 @@ Deliberately **not** in this spec, and why:
 
 ### Phasing
 
-One spec, seven phases, each independently shippable:
+One spec, eight phases, each independently shippable:
 
 1. **`orders.requested_day` / `requested_kind`** + the order form field. Useful alone.
-2. **The `lead_runs` → `delivery_runs` fold** + uniqueness + mixed-run reads.
-3. **`lib/dayCapacity.ts`** + the split, filling existing runs.
+2. **The `lead_runs` → `delivery_runs` fold**: the `kind` column, the `lead_run_stops` rebuild,
+   `assignedToAnotherDriver` re-pointed, `TENANT_TABLES`, the six test files, then uniqueness
+   and `lib/repo/mixedRuns.ts`. This is the risky phase and it is one phase, because splitting it
+   leaves two run tables disagreeing with each other.
+3. **`lib/dayCapacity.ts`** + the split: partition pinned from unpinned, fill existing runs.
 4. **`lib/routeOrder.ts`** + OSRM with fallback + optimise.
 5. **`?view=runs` sections**, the day columns, the shared count line, `MASTER.md`.
-6. **The driver**: one interleaved list, my planned week, add-a-stop, place-an-order, and the
+6. **Freeze reachability** — the `LEFT JOIN` on `route_schedules` plus an org-level default
+   cutoff, so a board-created run can actually commit. Depends on phase 2.
+7. **The driver**: one interleaved list, my planned week, add-a-stop, place-an-order, and the
    van-order visibility fix.
-7. **Van stock**: the `facilities` rebuild, the `vehicles` link, the load movement, and the
+8. **Van stock**: the `facilities` rebuild, the `vehicles` link, the load movement, and the
    field-order fulfilment path.
 
 Phase 1 is worth landing on its own — it is small, it is independently useful, and it is what
 phases 3 and 4 plan against.
+
+**Phase 2 is the one to do carefully.** It is the only phase that destroys a table, and the
+cascade it relies on has a documented history of destroying a driver's assigned work in this
+repo. It should not be combined with any other phase.
 
 ---
 
@@ -424,7 +564,10 @@ phases 3 and 4 plan against.
 
 Recorded because they were mine to make, not the user's:
 
-- **Freeze is one rule for both kinds.** A day is promised whole or not at all.
+- **Freeze is one rule for both kinds, and freeze becomes reachable.** A day is promised whole
+  or not at all — which required fixing the inner join that currently prevents an un-templated
+  run from freezing at all (phase 6). Without that fix this decision would have been a promise
+  with no behaviour behind it.
 - **The driver day is one interleaved list**, not two sections. `driverDaySections` already
   returns both; the data was the only reason it looked like two.
 - **An over-limit field order is created and flagged**, never refused.
@@ -434,13 +577,23 @@ Recorded because they were mine to make, not the user's:
   kinds needed.
 - **A week offset and a specific date are both offered**, stored as one concrete day plus the
   choice that produced it.
+- **The `sort_order` tie-break is `id`.** Chosen because both tables default to `0`, so any
+  merge needs a deterministic fallback and `id` is the only column stable across both.
 
 ## Corrections made during design
 
-Two estimates in conversation were wrong and are corrected here rather than carried forward:
+Five claims in earlier drafts were wrong. Each was caught by reading the code the claim cited,
+and each is corrected in place above rather than quietly dropped.
 
-- "Rewrite the 22 files that read `delivery_runs`" — no. `delivery_stops` is INSERTed in
-  exactly one place (`lib/delivery.ts:147`), and Approach B leaves every reader untouched.
-- "Merge the tables and hope for the best" — the offline consequence was found only on
-  checking: `syncPull` carries no lead rows, so a separate `lead_runs` leaves the field
-  driver blind to visits. That finding is why the route merges at all.
+| Claim | Why it was wrong |
+|---|---|
+| "Rewrite the 22 files that read `delivery_runs`" | No. `delivery_stops` is INSERTed in exactly one place (`lib/delivery.ts:147`), and Approach B leaves every reader untouched |
+| "Merge the tables and hope for the best" | The offline consequence was found only on checking: `syncPull` carries no lead rows, so a separate `lead_runs` leaves the field driver blind to visits. That finding is why the route merges at all |
+| **"No guarded rebuild"** | **False.** `lead_run_stops.run_id` is `REFERENCES lead_runs(id)`, and SQLite cannot `ALTER` a foreign-key target. Approach B needs the rebuild too — on the 3-reader table rather than the 22-reader one. The A-vs-B conclusion survives; the stated reason did not |
+| **"Pinned orders are frozen and seeds… a call-site change"** | **False.** `seeds` places initial centroids and sorts days; `assign()` then ranks every stop including the seeds, and `rebalanceToSizes` can relocate one. A seed is a hint, not a pin. Pinning now partitions before clustering |
+| **"Freeze is one rule for both kinds"** | **Half false.** `runsNeedingFreeze` inner-joins `route_schedules` on `route_template_id`, which is NULL for board-created runs — so those runs never freeze, today or after. Reachability is now an explicit phase |
+
+**The lesson, recorded because it is the one that matters:** every one of these cited a real
+file and a real line number. Accurate citations make a false claim *more* persuasive, not
+less, because they read as though the claim had been checked. Three of these five were caught
+only by opening the referenced function and reading what it actually did.
