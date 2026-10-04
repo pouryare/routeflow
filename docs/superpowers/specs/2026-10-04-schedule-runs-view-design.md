@@ -343,18 +343,35 @@ not even haversine.
 
 ### Required work
 
-- **`distanceFn` becomes mandatory at every distance site** in `clusterDays.ts`. The
-  straight-line default stays available as the fallback, but no code path silently prefers
-  it.
+- **One shared road-distance module, consumed by both pages.** A single entry point that
+  `/leads` and `?view=runs` *both* call, so changing provider, chunk size, timeout or
+  fallback is one edit rather than two that drift:
+
+  ```
+  lib/routing/roadDistance.ts
+    roadDistanceMatrix(points): Promise<DistanceMatrix>   // chunked, bounded, cached
+    makeDistanceFn(matrix): DistanceFn                  // the (a,b) => number both pages pass
+    straightLineDistanceFn: DistanceFn                   // the labelled fallback
+    distanceSource(matrix): "osrm" | "straight-line"     // for honest labelling
+  ```
+
+  `useRouteMatrix` is then a thin React wrapper over `roadDistanceMatrix`, and the runs page
+  uses the same function rather than a second implementation. **Two pages must not each
+  assemble their own `distanceFn`.**
+- **`distanceFn` becomes mandatory at every distance site** in `clusterDays.ts` — no
+  default parameter that silently prefers the straight line. The straight-line function is
+  still available, but only by being passed deliberately, and the caller then knows it
+  because `distanceSource` says so.
 - **`byOrigin` is deleted** in favour of the shared measure.
 - **Chunking.** `fetchOsrmTable` refuses `points.length > 100` (osrmMatrix.ts:55) and the
-  pool is routinely 300+. The matrix must be fetched in chunks, or the whole thing degrades
-  to straight lines precisely at the scale where it matters.
+  pool is routinely 300+. `roadDistanceMatrix` chunks, caches, and never blocks the caller.
 - **Honest fallback labelling**, following the precedent at `routeOrder.ts:153
-  isApproximate()`, which detects fallback by identity against `distanceKm`.
+  isApproximate()`, which detects fallback by identity against `distanceKm`. `distanceSource`
+  generalises it.
 - **Tests must pin OSRM and straight-line to a *different* answer** on a fixture where the
-  two genuinely differ. A test that passes under both proves nothing, and would let this
-  regress silently again — which is exactly how it got here.
+  two genuinely differ, and assert that **both pages resolve through the same module**. A
+  test that passes under both measures proves nothing, and would let this regress silently
+  again — which is exactly how it got here.
 
 `lib/routeOrder.ts` (`sortByDistanceFrom`, `routeLengthWith`, `optimiseRemaining`,
 `isApproximate`) is already parameterised correctly and is the model to follow.
@@ -422,7 +439,10 @@ lives only inside a component is a rule nobody can assert. Everything assertable
 | `DriverStreaks` as a section | survives, inside the driver picker (§7.3) |
 
 `RunTimeline` survives as «بار مسیرها». `useCardDrag` survives and gains a tap adapter.
-`useRouteMatrix` and `osrmMatrix` survive and gain chunking.
+
+`lib/routing/osrmMatrix.ts` survives as the OSRM call itself, now wrapped by
+`lib/routing/roadDistance.ts` (§13), which is what **both** `/leads` and `?view=runs`
+consume. `useRouteMatrix` becomes a thin wrapper rather than a parallel implementation.
 
 ## 17. Scope
 
