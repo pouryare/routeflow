@@ -32,6 +32,21 @@ export interface BoardOrder {
   group_id: number | null;
 }
 
+/** How much of a driver-day is already spoken for, per driver+day. Read ONCE and shared.
+ *
+ *  Q35: the board must show the OTHER page's stops too, so a manager does not hand one driver
+ *  six deliveries on a day that already has eight visits. This comes from one read
+ *  (`listDayLoads` in lib/repo/deliveries.ts) rather than each page counting its own half — two
+ *  counters is exactly how those two numbers come to disagree, and a disagreement here looks
+ *  like a bug in whichever page you trust least. */
+export interface DayLoad {
+  day: string;
+  driver_user_id: number;
+  driver_name: string;
+  deliveries: number;
+  visits: number;
+}
+
 /** NO group filter on drops, deliberately absent rather than left as a stub.
  *
  *  `canDropOn()` used to compare `order.group_id` with `run.group_id`, mirroring a rule in the
@@ -58,11 +73,22 @@ interface DragState {
 export default function AssignmentBoard({
   runs,
   orders,
+  dayLoads = [],
 }: {
   runs: BoardRun[];
   orders: BoardOrder[];
+  /** The shared counts. Optional so a caller that does not have them still renders. */
+  dayLoads?: DayLoad[];
 }) {
   const router = useRouter();
+
+  /* Keyed by driver AND day, because a driver's load is a property of one day, not of the
+     driver. Keying on the driver alone would show Tuesday's eight visits on Wednesday's column,
+     which is worse than showing nothing: it looks authoritative. */
+  const loadsByDriverDay = new Map<string, DayLoad>(
+    dayLoads.map((l) => [`${l.driver_user_id}:${l.day}`, l]),
+  );
+  const loadFor = (r: BoardRun) => loadsByDriverDay.get(`${r.driver_user_id}:${r.run_date}`);
   const toast = useToast();
 
   const [drag, setDrag] = useState<DragState | null>(null);
@@ -343,6 +369,18 @@ export default function AssignmentBoard({
                       </span>
                       <span className="block font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
                         {faJalaliDate(r.run_date)}
+                        {/* The other page's work on this same driver-day. Without it a manager
+                            cannot tell a light day from a full one, and hands out a second van
+                            load on top of a day that already has eight visits on it. */}
+                        {(() => {
+                          const load = loadFor(r);
+                          if (!load || (load.deliveries === 0 && load.visits === 0)) return null;
+                          return (
+                            <span className="ms-2 text-[var(--text-faint)]">
+                              {faNum(load.deliveries)} تحویل · {faNum(load.visits)} بازدید
+                            </span>
+                          );
+                        })()}
                       </span>
                     </span>
                     {/* Only on OPEN routes, because only open routes are deletable — the API

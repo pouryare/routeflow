@@ -356,3 +356,76 @@ registerOrderEffectHandlers({
       .run(orgId, newOrderId, `backorder of ${orderId}`, now);
   },
 });
+
+/** The run row a manager needs in order to decide whether they may delete it.
+ *
+ *  Lives here rather than in the route handler so the DELETE endpoint holds no SQL. The repo
+ *  boundary test asserts that raw SQL appears only in `lib/repo/` (or on a grandfather list that
+ *  may only shrink), and this is the read that was sitting in `app/api/sales/runs/[id]/route.ts`
+ *  in violation of it. The fix is to MOVE the query, never to allowlist the file — the test has a
+ *  second case asserting the allowlist never grows, precisely to stop that being the easy way out.
+ *
+ *  It is scoped by organization_id as well as by id, so a row from another tenant is simply not
+ *  found here rather than being found and rejected later. */
+export function readDeletableRun(
+  db: DatabaseSync,
+  organizationId: number,
+  runId: number
+): { id: number; group_id: number | null; driver_user_id: number; run_date: string } | undefined {
+  return db
+    .prepare(
+      `SELECT id, group_id, driver_user_id, run_date
+         FROM delivery_runs
+        WHERE id = ? AND organization_id = ?`
+    )
+    .get(runId, organizationId) as
+    | { id: number; group_id: number | null; driver_user_id: number; run_date: string }
+    | undefined;
+}
+
+/** How much work one driver-day carries, counted from ONE query.
+ *
+ *  Q35: each page shows its own stops plus the other's COUNT, so a manager can see a driver is
+ *  already carrying 8 visits before piling 6 deliveries onto the same day. That only works if the
+ *  two numbers cannot disagree, and two pages each counting their own half is exactly how they
+ *  would. So both pages read these numbers from here.
+ *
+ *  `deliveries` and `visits` are counted with independent subqueries rather than one pass with a
+ *  CASE, because the two stop tables have no join between them and a single pass would either
+ *  fan out (multiplying the counts) or need a UNION that makes the per-row grouping awkward.
+ *
+ *  A finished run still counts. The question a manager is asking is "how much has this person
+ *  got", and a day that is done has been done — it is history, not future work. */
+export interface DayLoad {
+  day: string;
+  driver_user_id: number;
+  driver_name: string;
+  deliveries: number;
+  visits: number;
+}
+
+export function listDayLoads(
+  db: DatabaseSync,
+  organizationId: number,
+  fromDay: string,
+  groupId: number | null = null
+): DayLoad[] {
+  const scope = groupId === null ? "" : " AND dr.group_id = ?";
+  const params: (number | string)[] = groupId === null ? [organizationId, fromDay] : [organizationId, fromDay, groupId];
+
+  return db
+    .prepare(
+      `SELECT dr.run_date AS day,
+              dr.driver_user_id,
+              u.display_name AS driver_name,
+              (SELECT COUNT(*) FROM delivery_stops ds WHERE ds.run_id = dr.id) AS deliveries,
+              (SELECT COUNT(*) FROM lead_run_stops ls WHERE ls.run_id = dr.id) AS visits
+         FROM delivery_runs dr
+         JOIN users u ON u.id = dr.driver_user_id
+        WHERE dr.organization_id = ?
+          AND dr.run_date >= ?
+          AND dr.status != 'done'${scope}
+        ORDER BY dr.run_date ASC, u.display_name ASC`
+    )
+    .all(...params) as unknown as DayLoad[];
+}

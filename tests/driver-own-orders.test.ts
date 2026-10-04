@@ -11,6 +11,7 @@ process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
 const { orderFilter } = await import("@/lib/session");
 const { readOrders } = await import("@/lib/orders");
+const { listDayLoads } = await import("@/lib/repo/deliveries");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -66,6 +67,71 @@ beforeAll(() => {
     db.prepare("INSERT INTO packagings (product_id, name, qty_per_pack, created_at) VALUES (?, ?, 6, ?)")
       .run(ctx.product, "بسته", iso()).lastInsertRowid,
   );
+});
+
+describe("listDayLoads — the shared count line", () => {
+  it("counts BOTH kinds of stop on a mixed run, from one read", () => {
+    // Q35: each page shows its own stops plus the other's count, so a manager can see a driver
+    // already has 8 visits before adding 6 deliveries. Two pages counting their own half is
+    // exactly how those two numbers come to disagree, so both read this instead.
+    const db = getDb();
+    const day = "2026-03-03";
+    const runId = Number(
+      db.prepare(
+        "INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at) VALUES (?, ?, 'planned', ?, 1, ?, ?)",
+      ).run(ctx.driverA, day, ctx.driverA, iso(), iso()).lastInsertRowid,
+    );
+
+    const o1 = orderBy(ctx.driverA, "load-1");
+    const o2 = orderBy(ctx.driverA, "load-2");
+    for (const [i, oid] of [o1, o2].entries()) {
+      db.prepare("INSERT INTO delivery_stops (run_id, order_id, sort_order, status, created_at) VALUES (?, ?, ?, 'pending', ?)")
+        .run(runId, oid, i, iso());
+    }
+    const locId = Number(
+      db.prepare("INSERT INTO saved_locations (name, maps_url, organization_id, created_at) VALUES (?, ?, 1, ?)")
+        .run(`LOAD-LOC-${process.pid}`, `load-${process.pid}`, iso()).lastInsertRowid,
+    );
+    db.prepare("INSERT INTO lead_run_stops (run_id, location_id, sort_order, created_at) VALUES (?, ?, 0, ?)")
+      .run(runId, locId, iso());
+
+    const [load] = listDayLoads(db, 1, "2026-03-01").filter((l) => l.day === day);
+    expect(load.deliveries).toBe(2);
+    expect(load.visits).toBe(1);
+    expect(load.driver_name).toBeTruthy();
+  });
+
+  it("leaves out a finished run, because its work is history", () => {
+    const db = getDb();
+    const day = "2026-03-04";
+    const runId = Number(
+      db.prepare(
+        "INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at) VALUES (?, ?, 'done', ?, 1, ?, ?)",
+      ).run(ctx.driverA, day, ctx.driverA, iso(), iso()).lastInsertRowid,
+    );
+    db.prepare("INSERT INTO delivery_stops (run_id, order_id, sort_order, status, created_at) VALUES (?, ?, 0, 'delivered', ?)")
+      .run(runId, orderBy(ctx.driverA, "done-1"), iso());
+
+    expect(listDayLoads(db, 1, "2026-03-01").map((l) => l.day)).not.toContain(day);
+  });
+
+  it("does not count another organisation's runs", () => {
+    const db = getDb();
+    db.prepare("INSERT INTO organizations (name, slug, created_at) VALUES ('Other', ?, ?)")
+      .run(`other-${process.pid}`, iso());
+    // Parenthesised so Number() wraps the id, not the row object — `Number(row).id` throws
+    // "Cannot convert object to primitive value" rather than failing usefully.
+    const otherOrg = (db.prepare("SELECT id FROM organizations WHERE slug = ?").get(`other-${process.pid}`) as { id: number }).id;
+    const otherDriver = Number(
+      db.prepare("INSERT INTO users (username, password_hash, display_name, role, organization_id, created_at) VALUES (?, 'x', ?, 'delivery_driver', ?, ?)")
+        .run(`od-${process.pid}`, "راننده دیگر", otherOrg, iso()).lastInsertRowid,
+    );
+    db.prepare(
+      "INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at) VALUES (?, '2026-03-05', 'planned', ?, ?, ?, ?)",
+    ).run(otherDriver, otherDriver, otherOrg, iso(), iso());
+
+    expect(listDayLoads(db, 1, "2026-03-01").map((l) => l.day)).not.toContain("2026-03-05");
+  });
 });
 
 describe("a driver sees the orders they placed themselves", () => {

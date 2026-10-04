@@ -22,6 +22,7 @@ import RunPlanner from "@/components/sales/RunPlanner";
 import AssignmentBoard from "@/components/sales/AssignmentBoard";
 import DaySplitPanel from "@/components/sales/DaySplitPanel";
 import { readPlannableOrders, readPlannedDays } from "@/lib/repo/dayPlan";
+import { listDayLoads } from "@/lib/repo/deliveries";
 import RunTimeline, { type TimelineStop } from "@/components/sales/RunTimeline";
 import DriverStreaks from "@/components/sales/DriverStreaks";
 import { readDriverActivity } from "@/lib/repo/driverActivity";
@@ -179,6 +180,7 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
       <RunPlanner drivers={drivers} />
       <AssignmentBoard
         runs={runs}
+        dayLoads={listDayLoads(db, session.organizationId, today, session.groupId)}
         orders={unassigned.map((o) => ({
           id: o.id,
           order_no: o.order_no,

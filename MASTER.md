@@ -686,7 +686,12 @@ Unchanged in structure; re-skinned. On phones it is the bottom sheet, which is n
 the customer detail view opened by tapping a pocket card.
 
 ### Assignment board `SHIPPED`
-Superseded by **Order pipeline** above. Same endpoint, same authorisation surface.
+Not superseded. It was described here as replaced by **Order pipeline**, which was wrong and
+misleading: both exist, on the same `sales/schedule?view=runs` surface, and the board is the
+place a manager builds a day. It now also carries the **day split** (per-day caps from
+`vehicles.max_stops` / `max_weight_kg` / `max_volume_m3`, an order promised to a day is never
+moved, and an order with no coordinates blocks the split rather than being dropped). See
+`docs/superpowers/specs/2026-10-03-mixed-route-day-planning-design.md`.
 
 ## Icons `SHIPPED` — one library, reached one way
 
