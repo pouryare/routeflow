@@ -373,7 +373,23 @@ export function commitPlan(
   return { run_ids: runIds };
 }
 
-/** Planned runs whose today's schedule cutoff has passed and that are not yet frozen. */
+/** When a day's work is committed, for a run with no template of its own. 17:00 Tehran — late
+ *  enough that a working day can be planned, early enough that a driver setting out tomorrow is
+ *  not still being added to. */
+export const DEFAULT_CUTOFF_TIME = "17:00";
+
+/** Planned runs whose cutoff has passed and that are not yet frozen.
+ *
+ *  THE JOIN IS A LEFT JOIN, and that is the whole point of this function.
+ *
+ *  It used to be `JOIN route_schedules rs ON rs.route_template_id = dr.route_template_id`. An
+ *  INNER join on a NULL matches nothing — and `createRun` (lib/delivery.ts) and `commitPlan` both
+ *  insert runs with NO route_template_id, because they are not built from a template. So every
+ *  run the planning board creates was invisible here, always, on every day. "Committed" was a
+ *  word with no behaviour behind it: the freeze never fired for the runs the office actually makes.
+ *
+ *  A run WITH a template still freezes at that template's own cutoff, which is the original
+ *  behaviour and must survive. A run WITHOUT one falls back to the organisation default above. */
 export function runsNeedingFreeze(
   organizationId: number,
   asOfIso: string
@@ -383,14 +399,23 @@ export function runsNeedingFreeze(
   const hhmm = asOf.toISOString().slice(11, 16);
   return getDb()
     .prepare(
-      `SELECT dr.id, dr.run_date, rs.cutoff_time
+      `SELECT dr.id, dr.run_date,
+              COALESCE(rs.cutoff_time, ?) AS cutoff_time
          FROM delivery_runs dr
-         JOIN route_schedules rs ON rs.route_template_id = dr.route_template_id
+         LEFT JOIN route_schedules rs
+                ON rs.route_template_id = dr.route_template_id
+               AND rs.day_of_week = ?
+               -- Scoped like every other tenant read in this codebase. The ids are already
+               -- globally unique so this changes no result today; it means a schedule row can
+               -- never be read across tenants if that assumption is ever broken.
+               AND rs.organization_id = dr.organization_id
         WHERE dr.organization_id = ? AND dr.status = 'planned' AND dr.frozen_at IS NULL
-          AND rs.day_of_week = ? AND rs.cutoff_time IS NOT NULL AND rs.cutoff_time <= ?
+          AND COALESCE(rs.cutoff_time, ?) <= ?
           AND dr.run_date = ?`
     )
-    .all(organizationId, dow, hhmm, asOf.toISOString().slice(0, 10)) as unknown as {
+    // Placeholder order must match the SQL exactly: the SELECT's default, the join's weekday,
+    // the org, the WHERE's default again, then the clock and the date.
+    .all(DEFAULT_CUTOFF_TIME, dow, organizationId, DEFAULT_CUTOFF_TIME, hhmm, asOf.toISOString().slice(0, 10)) as unknown as {
     id: number;
     run_date: string;
     cutoff_time: string;
