@@ -163,6 +163,83 @@ export function addStop(
   return stopId;
 }
 
+/** Deletes a run, and with it everything that was only ever PLANNED for it.
+ *
+ *  The guards are the whole function. A run is deletable while it is still a PLAN — not
+ *  finished, no stop handed over, no delivery past PLANNED. Past that it stops being a plan
+ *  and becomes a record, and the ledger, the commission accrual and the customer's statement
+ *  all point at it.
+ *
+ *  The order of operations is not a style choice. `addStop` creates a `deliveries` row per
+ *  stop, and `deliveries.route_stop_id` has NO ON DELETE CASCADE — so deleting the run first
+ *  dies on the foreign key with an opaque 500. Stops are therefore released explicitly: the
+ *  planned delivery goes (its `delivery_lines` cascade with it), the order falls back to
+ *  CONFIRMED, and only then does the run go and take its stops with it — that FK *is* a
+ *  cascade, so the stops need no statement of their own.
+ */
+export function deleteRun(db: DatabaseSync, runId: number): { releasedOrderIds: number[] } {
+  const run = db.prepare("SELECT id, status FROM delivery_runs WHERE id = ?").get(runId) as
+    | { id: number; status: string }
+    | undefined;
+  if (!run) throw new DeliveryError("مسیر پیدا نشد");
+
+  if (run.status === "done") {
+    throw new DeliveryError("مسیر بسته‌شده حذف نمی‌شود");
+  }
+
+  const stops = db
+    .prepare("SELECT id, order_id, status FROM delivery_stops WHERE run_id = ?")
+    .all(runId) as { id: number; order_id: number; status: string }[];
+
+  const worked = stops.filter((s) => s.status !== "pending");
+  if (worked.length > 0) {
+    throw new DeliveryError(`${worked.length} توقف این مسیر تحویل شده و حذف نمی‌شود`);
+  }
+
+  /* A delivery past PLANNED is a fact about the world rather than a plan about it, and it is
+     checked separately from the stop status: a delivery can be recorded against a stop that
+     still says 'pending' if the writer updated one and not the other. */
+  const recorded = db
+    .prepare(
+      `SELECT COUNT(*) AS n FROM deliveries d
+         JOIN delivery_stops ds ON ds.id = d.route_stop_id
+        WHERE ds.run_id = ? AND d.status <> 'PLANNED'`
+    )
+    .get(runId) as { n: number };
+  if (recorded.n > 0) {
+    throw new DeliveryError("این مسیر سابقهٔ تحویل ثبت‌شده دارد و حذف نمی‌شود");
+  }
+
+  const dropDelivery = db.prepare("DELETE FROM deliveries WHERE route_stop_id = ?");
+  /* Back to CONFIRMED, and only from the states PLANNING can put an order into. A
+     write-through guard rather than an unconditional reset: this loop also runs over stops
+     whose order has since moved on, and undoing a run must not silently rewind that order
+     to a state its owner has already moved it past. */
+  const releaseOrder = db.prepare(
+    "UPDATE orders SET status = 'CONFIRMED', updated_at = ? WHERE id = ? AND status IN ('PLANNED', 'READY')"
+  );
+  const now = new Date().toISOString();
+  for (const s of stops) {
+    dropDelivery.run(s.id);
+    releaseOrder.run(now, s.order_id);
+  }
+
+  /* Captured BEFORE the delete, and from the rows already in hand — reading them back
+     afterwards would query a table whose rows this function has just removed, and return an
+     empty list that makes the undo button a lie. */
+  const releasedOrderIds = stops
+    .slice()
+    .sort((a, b) => a.id - b.id)
+    .map((s) => s.order_id);
+
+  db.prepare("DELETE FROM delivery_runs WHERE id = ?").run(runId);
+
+  /* The released orders, so the caller can put them back on a run of the same shape. A
+     delete that returned nothing would offer "برگرداندن" for a route whose stops have
+     silently scattered back to the pool. */
+  return { releasedOrderIds };
+}
+
 function stopLines(db: DatabaseSync, orderId: number): RunStopLine[] {
   const rows = db
     .prepare(

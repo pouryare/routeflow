@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
+import { useToast } from "@/components/ToastProvider";
 
 const FIELD =
   "w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none focus:border-[var(--accent)]";
@@ -22,14 +23,28 @@ export default function RunPlanner({
   drivers: { id: number; display_name: string }[];
 }) {
   const router = useRouter();
+  const toast = useToast();
   const [driverId, setDriverId] = useState("");
   const [runDate, setRunDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+
+  /* Removes the run this planner just created, and is the whole reason the toast carries an
+   * action. Creating a route is one click and one mistake: the wrong driver, or the same
+   * driver twice by an impatient second click. A message that only says «مسیر ساخته شد»
+   * leaves the reader with no way back except finding the column and deleting it by hand. */
+  async function undoCreate(runId: number) {
+    const res = await fetch(`/api/sales/runs/${runId}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(json.error ?? "برگرداندن انجام نشد", "error");
+      return;
+    }
+    toast("مسیر برداشته شد", "info");
+    router.refresh();
+  }
 
   async function call(url: string, body: unknown, okText: string) {
     setBusy(true);
-    setMessage(null);
     try {
       const res = await fetch(url, {
         method: "POST",
@@ -38,10 +53,17 @@ export default function RunPlanner({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ kind: "error", text: json.error ?? "انجام نشد" });
+        toast(json.error ?? "انجام نشد", "error");
         return null;
       }
-      setMessage({ kind: "ok", text: okText });
+      /* Undo only makes sense while the reader can still reach the thing. The action toast
+         lives for ACTION_LIFETIME_MS by design — it is the deadline for the only undo — so
+         the button disappears when the route can no longer be removed from here. */
+      toast(okText, "success", {
+        label: "برگرداندن",
+        icon: "undo",
+        onClick: () => undoCreate(Number(json.id)),
+      });
       router.refresh();
       return json;
     } finally {
@@ -51,16 +73,6 @@ export default function RunPlanner({
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">
-      {message && (
-        <p
-          className={`m-0 text-[length:var(--text-sm)] ${
-            message.kind === "ok" ? "text-[var(--good)]" : "text-[var(--crit)]"
-          }`}
-        >
-          {message.text}
-        </p>
-      )}
-
       <section className="card p-[var(--space-4)]">
         <h2 className="sechead__title mb-[var(--space-3)]">
           مسیر تازه
@@ -101,7 +113,7 @@ export default function RunPlanner({
                     "مسیر ساخته شد"
                   )
                 }
-                className="rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-40"
+                className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-40"
               >
                 <Icon name="plus" size="sm" />
                 ساخت مسیر

@@ -14,8 +14,13 @@ export interface BoardRun {
   run_date: string;
   status: string;
   driver_name: string;
+  /** Carried so an undo can rebuild the route exactly — same driver, same day. */
+  driver_user_id: number;
   stop_count: number;
   remaining: number;
+  /** The run's territory. The API refuses an order from another group, so the board has to
+   *  know it BEFORE the drop rather than answer with an error after one. */
+  group_id: number | null;
 }
 
 export interface BoardOrder {
@@ -24,7 +29,17 @@ export interface BoardOrder {
   customer_name: string;
   total_toman: number;
   order_date: string;
+  group_id: number | null;
 }
+
+/** NO group filter on drops, deliberately absent rather than left as a stub.
+ *
+ *  `canDropOn()` used to compare `order.group_id` with `run.group_id`, mirroring a rule in the
+ *  API that turned out to compare two unrelated axes: an order's SALES attribution against the
+ *  DRIVER's administrative group (in the demo seed, literally «رانندگان»). 20 of 29 confirmed
+ *  orders could not be put on any van at all, and the reader saw a refusal for rows that
+ *  plainly existed. A function that always returns true is not worth keeping, so there is no
+ *  function. If a real constraint comes back it belongs in `canDropOn`, with its reason. */
 
 /** Pixels of travel before a press becomes a drag. Below this it is a tap, and on a phone
  *  a finger never holds perfectly still -- without the threshold every tap on a card would
@@ -60,6 +75,11 @@ export default function AssignmentBoard({
   const pending = useRef<{ order: BoardOrder; x: number; y: number; rect: DOMRect } | null>(null);
   const dragging = useRef(false);
   const hoverRef = useRef<number | null>(null);
+  /* The pointermove listener is attached once and closed over the runs of that render. A ref
+     keeps the drop test reading the CURRENT runs without re-attaching the listener on every
+     prop change — which would drop a drag in progress. */
+  const runsRef = useRef(runs);
+  runsRef.current = runs;
 
   const openRuns = runs.filter((r) => r.status !== "done");
 
@@ -89,7 +109,11 @@ export default function AssignmentBoard({
       // ghost is pointer-events:none so it never occludes the target underneath it.
       const el = document.elementFromPoint(e.clientX, e.clientY);
       const col = el?.closest<HTMLElement>("[data-run-id]");
-      const id = col ? Number(col.dataset.runId) : null;
+      const hit = col ? Number(col.dataset.runId) : null;
+      /* Every open column is a valid target, so hover is just "is the pointer over one".
+         The filter that used to sit here (a group comparison that rejected most drops) is
+         gone with the API rule it mirrored. */
+      const id = hit !== null && runsRef.current.some((r) => r.id === hit) ? hit : null;
       if (id !== hoverRef.current) {
         hoverRef.current = id;
         setHoverRun(id);
@@ -160,6 +184,63 @@ export default function AssignmentBoard({
     }
   }
 
+  /* Deletes an open route and offers to put it back.
+   *
+   *  The undo is a RECREATE, not a hidden flag: create the same run for the same driver on
+   *  the same day, then re-attach each released order to it in order. That is possible only
+   *  because DELETE returns what it released — the server hands back the order ids it let
+   *  go, so the toast's promise is one the server can actually keep. */
+  async function removeRun(run: BoardRun) {
+    const res = await fetch(`/api/sales/runs/${run.id}`, { method: "DELETE" });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      toast(json.error ?? "حذف مسیر انجام نشد", "error");
+      return;
+    }
+    const released: number[] = Array.isArray(json.released_order_ids) ? json.released_order_ids : [];
+    toast(
+      released.length > 0
+        ? `مسیر حذف شد و ${faNum(released.length)} سفارش به فهرست برگشت`
+        : "مسیر حذف شد",
+      "success",
+      {
+        label: "برگرداندن",
+        icon: "undo",
+        onClick: async () => {
+          const created = await fetch("/api/sales/runs", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              driver_user_id: run.driver_user_id,
+              run_date: run.run_date,
+            }),
+          }).then((r) => r.json().catch(() => ({})));
+          if (!created?.ok) {
+            toast(created?.error ?? "برگرداندن مسیر انجام نشد", "error");
+            return;
+          }
+          /* Best effort, order by order. One refusal must not abandon the rest: the route is
+             back and the reader is told exactly which orders did not make it. */
+          let missed = 0;
+          for (const [i, orderId] of released.entries()) {
+            const r = await fetch(`/api/sales/runs/${created.id}/stops`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ order_id: orderId, sort_order: i }),
+            });
+            if (!r.ok) missed += 1;
+          }
+          toast(
+            missed > 0 ? `مسیر برگشت؛ ${faNum(missed)} سفارش برنگشت` : "مسیر برگشت",
+            missed > 0 ? "error" : "success",
+          );
+          router.refresh();
+        },
+      },
+    );
+    router.refresh();
+  }
+
   const target = confirm?.runId != null ? runs.find((r) => r.id === confirm.runId) : null;
 
   return (
@@ -197,10 +278,16 @@ export default function AssignmentBoard({
                       drag?.order.id === o.id ? "order-card--lifted" : ""
                     }`}
                   >
-                    <Icon name="user" size="md" />
-                    <span className="flex items-baseline justify-between gap-[var(--space-2)]">
-                      <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
-                        {o.customer_name}
+                    {/* The glyph goes INSIDE the row, not beside it. `.order-card` is display:block and the
+                        row below is display:flex, so an icon as a sibling was pushed onto its
+                        own line above the customer's name — a person symbol stacked on top of
+                        the person it labels. */}
+                    <span className="flex items-center justify-between gap-[var(--space-2)]">
+                      <span className="flex min-w-0 items-center gap-[var(--space-2)]">
+                        <Icon name="user" size="sm" className="text-[var(--text-faint)]" />
+                        <span className="truncate text-[length:var(--text-sm)] text-[var(--text)]">
+                          {o.customer_name}
+                        </span>
                       </span>
                       <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">
                         {o.order_no}
@@ -258,6 +345,23 @@ export default function AssignmentBoard({
                         {faJalaliDate(r.run_date)}
                       </span>
                     </span>
+                    {/* Only on OPEN routes, because only open routes are deletable — the API
+                        refuses a finished one, and a button that is always there and always
+                        wrong is worse than no button. The label carries what will happen:
+                        a route with stops gives them back to the pool. */}
+                    <button
+                      type="button"
+                      onClick={() => removeRun(r)}
+                      aria-label={`حذف مسیر ${r.driver_name} در ${faJalaliDate(r.run_date)}`}
+                      title={
+                        r.stop_count > 0
+                          ? `حذف مسیر و بازگرداندن ${faNum(r.stop_count)} سفارش به فهرست`
+                          : "حذف مسیر"
+                      }
+                      className="shrink-0 rounded-[var(--radius-sm)] border border-[var(--border)] p-1 text-[var(--text-muted)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-[var(--crit)] hover:text-[var(--crit)]"
+                    >
+                      <Icon name="trash" size="sm" />
+                    </button>
                   </header>
 
                   <p className="m-0 mt-[var(--space-3)] font-mono text-[length:var(--text-xs)] text-[var(--text-muted)]">

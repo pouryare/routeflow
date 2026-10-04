@@ -25,11 +25,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     | { id: number; group_id: number | null; status: string }
     | undefined;
 
-  // Two checks, both 404. The caller must be able to reach the order, and the order must
-  // belong to the same territory as the run -- loading another group's order onto this
-  // van would move goods across the boundary the whole scoping model exists to keep.
+  /* ONE check, and it is the one that means something: can the CALLER reach this order?
+   *
+   *  There used to be a second — `order.group_id !== run.group_id` — described as keeping
+   *  goods inside the territory the scoping model draws. It was comparing two unrelated
+   *  axes. `orders.group_id` is a SALES attribution: whose account, whose commission.
+   *  `delivery_runs.group_id` is copied straight off the DRIVER's user row, and drivers are
+   *  filed under an administrative bucket — in the demo seed literally «رانندگان». So the
+   *  test asked whether a north-region sale equalled a driver's admin group, which is false
+   *  for nearly every order: 20 of 29 confirmed orders could not go on ANY van, and the
+   *  refusal came back as 404 «پیدا نشد» for rows that plainly exist.
+   *
+   *  The driver app already disagreed with it — readDriverRuns filters by driver_user_id and
+   *  never mentions group, so a van carries whatever the manager hands it. The boundary that
+   *  genuinely matters is reachability, and the check above is it: a group_manager still
+   *  cannot assign another team's orders. */
   if (!order || !canReachGroup(guard.session, order.group_id)) return NOT_FOUND;
-  if (order.group_id !== run.group_id) return NOT_FOUND;
 
   try {
     const id = addStop(db, runId, order.id, Number(body && (body as { sort_order?: number }).sort_order) || 0);
