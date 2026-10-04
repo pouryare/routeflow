@@ -6,6 +6,12 @@
 the runs view. Spec 2 (`2026-10-04-facilities-and-the-place-picker-design.md`) makes
 facilities real and pickable. **This is spec 3, and it needs both.**
 
+**Audited after drafting.** A review against the source found six defects in the three specs,
+three of them load-bearing: a reconciliation formula that over-counted refused deliveries, a
+missing `DELIVERY_FAILED` path, and an order status (`RETURNED`) with no writer. The
+corrections are in §1.4, §3.3, §7.1, §7.2 and §9. Two claims this spec previously made about
+`syncPull` were **wrong** — `facilities` is not sent to drivers — and are corrected in place.
+
 ---
 
 ## 1. Why this exists
@@ -34,6 +40,12 @@ back into a building.** The return trip has no verb.
 and `SAMPLE_OUT` are in `MovementKind` (stock.ts:7-16) and permitted by the CHECK
 (db.ts:2551-2553). Nothing emits them for a van. The concept is half-designed; this spec
 finishes it.
+
+**4. `deliverFromVan` has no caller.** Defined at `vanStock.ts:91`, called from nowhere in
+`lib/` or `app/`. **The van's balance is not being maintained today** — goods loaded at Bākeh
+and delivered at noon are not tracked as having left the van. This is the reason §3.3 asks the
+ledger rather than computing a figure, and it is a prerequisite, not a detail: without it there
+is no correct number to reconcile against.
 
 ## 2. What a run carries
 
@@ -93,14 +105,34 @@ driver thinks in and stores the unit it can add up.
 
 ### 3.3 The rule that makes it safe
 
-> **The dispositions for a product must sum to what should come back for that product.**
+> **Should come back = `vanOnHand(van, product)`. The ledger is asked, not recomputed.**
 
-"Should come back" = loaded − delivered, from the ledger. If the driver declares less, the
-sheet says so **by name and by number**: «۲۴ کیلو باید برگردد، ۲۳ اعلام شد». It never
-silently accepts the difference, and it never quietly drops the missing goods.
+There is no arithmetic in this spec. No `loaded − delivered`, and no term for failed
+deliveries — because a failed delivery's goods never left the van, so they are already in
+the balance, and adding them again would double-count.
 
-This is the contract `commitDaySplit` already has — individual refusals collected and
-returned, never thrown.
+This is only true because of one wiring rule, and this spec's most important single
+requirement:
+
+> **`deliverFromVan` fires when goods physically leave the van. A refused or skipped
+> delivery does NOT call it.**
+
+**Today `deliverFromVan` has no caller at all** (defined at `vanStock.ts:91`, called from
+nowhere in `lib/` or `app/`). The van's balance is therefore not being maintained, which is
+why an earlier draft of this spec reached for `loaded − delivered` — it had nothing else to
+work with. That function, and the rule above, are **prerequisites**: wire them and the
+formula becomes unnecessary; leave them and every reconciliation is arithmetic against a
+number the ledger never agreed to.
+
+Asking the ledger rather than recomputing it means the answer **cannot drift**, and it is
+the **same answer mid-route and at the end of the day** — the balance does not care when you
+ask. A driver who unloads at noon and a driver who unloads at six are both told the truth by
+one function.
+
+**Refused goods need no special case.** They are part of what is on the van, and the driver
+declares them like any other goods: «برگشت به انبار», «خراب», whatever actually happened. The
+confirmed inventory is the destination the run was already given — a refused delivery returns
+to the same place as any other extra goods.
 
 ## 4. Where the manager sets it
 
@@ -197,6 +229,48 @@ The bill adjustment is stated here because it is a money decision, not a layout 
 customer must not be charged for goods that arrived expired.** If the customer kept the
 expired goods and paid for them, it is an ordinary delivery and no replacement is recorded.
 
+### 7.1 If the customer also refuses the replacement
+
+Then the customer takes nothing, the order delivers nothing, and **the stop is a refusal.**
+
+The goods the driver was going to hand over come back onto the van, and they join the §6
+reconciliation like any other extras — the driver declares them at unload. The order is
+**not** `DELIVERED`; nothing left the van at that door.
+
+**The customer's balance follows the goods, not the attempt.** An adjustment was raised for
+the expired line; a refusal cancels it. The customer owes nothing for goods they did not
+receive, so the reversal is a credit against the order rather than a fresh charge. This is
+`RETURNED`, the order status that **exists in `ORDER_STATUSES` and has no writer anywhere in
+the codebase** — verified by grep across `lib/` and `app/`.
+
+So this spec gives `RETURNED` its first writer, and gives it a precise meaning: **the customer
+refused the goods, so their liability for them ends.** The stock side is `RETURN_IN` (§7) and
+the order side is `RETURNED`; the two are written in the same transaction, because a half-
+written return leaves goods accounted for and a customer still charged.
+
+`RETURNED` is in `TERMINAL_ORDER_STATUSES`, so a refused replacement ends the order rather
+than looping it back into the pool. That is deliberate — retrying the same goods to the same
+customer who just refused them is not a plan.
+
+### 7.2 Failed orders return to the pool
+
+`DELIVERY_FAILED` («تحویل ناموفق») already transitions back to `PLANNED`
+(`orderStateMachine.ts:104`), which means a failed order **re-enters planning by itself**.
+Nothing needs building for it to come back.
+
+What is new is that **the runs view now shows it.** The pool in spec 1 must therefore:
+
+- **include** orders that are `PLANNED` again after a failure — they are ordinary plannable
+  orders and must not need a manual rescue;
+- **show the failure**, because a customer who refused yesterday is a fact the planner needs
+  today. The stop's `fail_reason_id` is the reason, and the card says what it was;
+- **not re-plan it into the run it just failed on**, unless the planner chooses to. A failed
+  order returning to the pool is automatic; putting it straight back on the same van is a
+  decision, not a default.
+
+Spec 1's pool is therefore not "orders with no run" but "orders that can be planned", and a
+failed order is in that set on the same terms as any other.
+
 ## 8. Samples
 
 A sample leaves the business permanently: it is given away, not stocked. **It earns a
@@ -235,11 +309,20 @@ should pay through an explicit allowance, not by accident through the weight of 
 
 Everything here must work with no signal, because the van is where the signal is worst.
 
-`syncPull` already pulls `SELECT *` from `orders`, `customers`, `delivery_runs` and
-`delivery_stops` (spec 2 §12), so a run's facility stops and its manifest arrive with the
-snapshot. The **two** new tables join `syncPull`'s reader the same way `lead_run_stops` does —
-reached through `delivery_runs`, which is in `TENANT_TABLES`, so neither needs an
-`organization_id` of its own.
+**`facilities` is not currently in `syncPull` — this spec has to put it there.** The reader
+pulls `orders`, `customers`, `delivery_runs`, `delivery_stops`, `lead_run_stops`,
+`saved_locations`, `deliveries` and `order_lines`, but **`facilities` is absent**. So today a
+driver's offline bundle has no address for any warehouse, van or home — and this feature's
+whole premise is that the driver **must know where he is going**. A card reading
+«بارگیری · انبار بکه» with no address and no pin fails the requirement outright.
+
+`saved_locations` is not a substitute: it is a different table, for geocoding scratch rows,
+and nothing keeps it in step with `facilities`. So the reader gains a `facilities` select
+alongside the two new tables — **three** additions, all scoped through `delivery_runs` and
+`organization_id` in the same way as the rest.
+
+What already works: a run's stops and its orders arrive with the snapshot, so the driver can
+see his manifest offline. What does not: the destination's address. That gap is the fix.
 
 A reconciliation is a **queued mutation**, not a lost one: the driver completes the sheet in
 a tunnel, and the lines land when there is signal. `delivery_stop_id` already gives the
@@ -255,23 +338,30 @@ server says so.
 
 | rule | assertion |
 |------|-----------|
+| **the van balance is maintained** | a successful delivery decrements the van; **a refused one does not** |
+| **the reconciliation balances** | declaring less than `vanOnHand` **refuses**, and the refusal names the gap |
+| **the same answer at noon and at six** | unloading mid-route and at end of day report the same balance |
 | a facility visit is not a stop | it does not appear in `delivery_stops`, and `UNIQUE (run_id, order_id)` is never weakened |
 | one load, one unload | `UNIQUE (run_id, role)` refuses a second |
-| the reconciliation balances | declaring less than should-return **refuses**, and the refusal names the gap |
 | the unload is unordered | it has no `sort_order` and reordering stops does not move it |
 | a sample pays nobody | a `sample` disposition creates no `deliveries` row and no commission |
 | samples leave stock | warehouse on-hand falls by the sampled amount and the samples facility rises |
-| replacement is not a delivery of the bad goods | the expired goods never appear as delivered |
-| offline converges | a re-pushed reconciliation does not double-write the van balance |
+| a refused replacement is `RETURNED` | the order ends, the customer owes nothing for the goods, and the stock is back on the van |
+| a failed order is plannable again | a `DELIVERY_FAILED` order appears in the pool without manual rescue |
+| **offline converges** | a re-pushed reconciliation does not double-write the van balance |
+| **the driver can find the place** | an offline bundle contains the facility's address, not just its name |
 
-The last one matters most: the whole feature is used in places with no signal, so a
-double-write would corrupt the one number everybody trusts.
+The first two are the ones that matter most, and they are the ones the current codebase would
+**fail**: `deliverFromVan` is never called today, so there is no test that could catch it. The
+offline test is next — the whole feature is used where there is no signal, so a double-write
+would corrupt the one number everybody trusts.
 
 ## 11. Scope
 
-**In:** `run_facility_stops` and `run_unload_lines`, the unload verb `vanStock` is missing,
-the six dispositions, the driver's two cards, the tap-flow, the door-side replacement, the
-samples facility, and the sync reader.
+**In:** `run_facility_stops` and `run_unload_lines`; **`deliverFromVan` wiring** (§3.3) and
+the unload verb `vanStock` does not have; the six dispositions; the driver's two cards; the
+tap-flow; the door-side replacement and its refusal path (§7.1); failed orders re-entering
+the pool (§7.2); the samples facility; `facilities` in `syncPull` (§9).
 
 **Out:** spec 1's runs view and spec 2's picker, both of which this consumes. The factory
 case from spec 2 §3 is *supported* — a factory is just a facility a run loads from — but no
@@ -279,9 +369,12 @@ production-specific behaviour is built here.
 
 ## 12. Risks
 
-- **A wrong reconciliation silently corrupts the van's balance.** Mitigated by the
-  must-sum rule and the single transaction, but it is the sharpest edge in this spec and the
-  first thing to test end to end.
+- **`deliverFromVan` has never been called.** The van's balance is not maintained today, so
+  this spec's central number does not exist yet. Everything in §3.3 depends on wiring it
+  first, and it is the single highest-value line in the implementation.
+- **A wrong reconciliation silently corrupts the van's balance.** Mitigated by comparing
+  against `vanOnHand` rather than a recomputed figure, and by the single transaction, but it
+  remains the sharpest edge in this spec.
 - **`WRITE_OFF` and `SAMPLE_OUT` have never been emitted by `vanStock`.** They exist in the
   type and the CHECK but in no code path, so there is no precedent for their side effects.
   The first implementation is the first test.
@@ -294,3 +387,6 @@ production-specific behaviour is built here.
   give the verb its first meaning. That is convenient and also worth stating plainly: a
   second flow adopting it later would be ambiguous. This spec's use should be recorded in the
   `MovementKind` comment, which currently explains only `PURCHASE_IN` and `DELIVERY_OUT`.
+- **`RETURNED` also has no writer**, and this spec gives it one (§7.1). Same obligation: its
+  meaning should be written down where the status is defined, or the next flow will invent a
+  second one.

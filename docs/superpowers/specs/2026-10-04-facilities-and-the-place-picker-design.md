@@ -80,6 +80,16 @@ The per-tenant rebuild in `lib/db.ts` owns the migration. It must rebuild `facil
 way it rebuilds `products` — the table has real rows with movements pointing at them, so
 `order_lines`-style re-pointing is not optional and `foreign_keys` cannot simply be off.
 
+**The DDL for `facilities` appears three times in `lib/db.ts` — at :223, :1824 and :3686 —
+and all three carry `lat REAL NOT NULL, lng REAL NOT NULL`.** Verified by reading each:
+these are a **migration chain**, not accidental duplication. The :223 copy is the
+`facilities_van_new` rebuild that added `kind`, and the :3686 copy is the current schema with
+`group_id` and `slug` restored after the rebuild. So a nullable migration must be added to
+**the chain, at its end** — writing only the newest copy leaves the rebuild paths still
+declaring `NOT NULL` and re-introducing the constraint on the next tenant bootstrap. This is
+cheap to get right now and expensive to discover mid-migration, when a fresh tenant already
+exists with the old shape.
+
 `FacilityRow.lat` becomes `number | null`. Every reader must handle it. The ones that
 matter: `lib/facilities.ts:66,70,82`, `lib/repo/coverageAnalytics.ts:106`,
 `components/CoverageMap.tsx:1107`. Customer locations already carry `lat: null`, so the
