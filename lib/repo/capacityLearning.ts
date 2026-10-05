@@ -10,6 +10,7 @@
 
 import { getDb } from "@/lib/db";
 import type { FactorRow } from "@/lib/weather/capacityAdjust";
+import { stopsForRuns } from "./runStops";
 import { observedFactor, ewmaUpdate } from "@/lib/predict/capacityLearning";
 
 export const MIN_LEARN_N = 5;
@@ -60,15 +61,13 @@ export function learnCapacityFromRuns(
         ? observedFactor(run.actual_duration_min, run.planned_duration_min)
         : null; // planned/actual: ran long → < 1 → slower
 
-    const actualStops = Number(
-      (
-        db
-          .prepare(
-            "SELECT COUNT(*) AS n FROM delivery_stops WHERE run_id = ? AND status = 'delivered'"
-          )
-          .get(run.id) as { n: number }
-      ).n
-    );
+    /* Facility visits are stops too, and this is the query that decides how long a day
+     * really takes. Counting only the doorsteps teaches the model that loading and unloading
+     * a van are free, which is precisely the cost most likely to make a day run long.
+     *
+     * `done` is the right filter to carry over from 'delivered': a load and an unload are
+     * finished when the driver says they are. */
+    const actualStops = stopsForRuns(db, [run.id]).filter((s) => s.status === "done").length;
     const stopObs = run.capacity_stops ? observedFactor(run.capacity_stops, actualStops) : null;
 
     for (const code of conditions) {

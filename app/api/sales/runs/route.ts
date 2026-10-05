@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, groupFilter, canReachGroup } from "@/lib/session";
+import { stopCountsByRun, remainingByRun } from "@/lib/repo/runStops";
 import { createRun, DeliveryError } from "@/lib/delivery";
 
 const PLANNERS = ["platform_owner", "owner", "group_manager"] as const;
@@ -10,12 +11,11 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const scope = groupFilter(guard.session, "dr.group_id");
-  const runs = getDb()
+  const db = getDb();
+  const rows = db
     .prepare(
       `SELECT dr.id, dr.run_date, dr.status, u.display_name AS driver_name,
-              COUNT(ds.id) AS stop_count,
-              SUM(CASE WHEN ds.status = 'pending' THEN 1 ELSE 0 END) AS remaining,
-              SUM(ds.collected_toman) AS collected_toman
+              COALESCE(SUM(ds.collected_toman), 0) AS collected_toman
          FROM delivery_runs dr
          JOIN users u ON u.id = dr.driver_user_id
          LEFT JOIN delivery_stops ds ON ds.run_id = dr.id
@@ -24,7 +24,19 @@ export async function GET(req: NextRequest) {
         ORDER BY dr.run_date DESC, dr.id DESC
         LIMIT 60`
     )
-    .all(...scope.params);
+    .all(...scope.params) as unknown as { id: number; collected_toman: number }[];
+
+  /* stop_count and remaining come from runStops rather than the join above, so the load and
+   * the unload are counted. They are stops: a driver told "4 stops" who then loads a van and
+   * unloads it has been misinformed, and this list is what somebody plans the day from. */
+  const ids = rows.map((r) => r.id);
+  const counts = stopCountsByRun(db, ids);
+  const remaining = remainingByRun(db, ids);
+  const runs = rows.map((r) => ({
+    ...r,
+    stop_count: counts.get(r.id) ?? 0,
+    remaining: remaining.get(r.id) ?? 0,
+  }));
 
   return NextResponse.json({ ok: true, runs });
 }

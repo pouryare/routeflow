@@ -121,6 +121,49 @@ export function pullSince(session: Session, since: string | null): PullResult {
     );
     add("lead_run_stops", visitStops, "created_at");
 
+    /* The places themselves must travel WITH the run.
+     *
+     * This is the same mistake the visits above were, one level up. `saved_locations` is a
+     * DIFFERENT table from `facilities` -- geocoding scratch rows for leads, not the
+     * businesses' own buildings -- and nothing kept the two in step. So an offline driver got
+     * a run card reading «بارگیری · انبار بکه» with no address and no pin.
+     *
+     * That is not a rendering nicety. The whole premise of a facility stop is that the driver
+     * MUST KNOW WHERE HE IS GOING, and this feature runs in a van with no signal. A missing
+     * row looks exactly like a place that has no location yet, which is how a real address
+     * becomes indistinguishable from an invented one. */
+    const runFacilityStops = plain(
+      db
+        .prepare(`SELECT * FROM run_facility_stops WHERE run_id IN (${runList}) AND created_at > ?`)
+        .all(from) as Record<string, unknown>[]
+    );
+    add("run_facility_stops", runFacilityStops, "created_at");
+
+    if (runFacilityStops.length > 0) {
+      const facilityIds = new Set<number>();
+      for (const s of runFacilityStops) {
+        facilityIds.add(Number((s as { facility_id: number }).facility_id));
+      }
+      const list = [...facilityIds].join(",");
+      const facilities = plain(
+        db
+          .prepare(
+            `SELECT * FROM facilities WHERE id IN (${list})
+               AND (organization_id = ? OR organization_id IS NULL)`
+          )
+          .all(org) as Record<string, unknown>[]
+      );
+      add("facilities", facilities, "updated_at");
+
+      // ...and the unload lines, which are how the day is closed.
+      const unloadLines = plain(
+        db
+          .prepare(`SELECT * FROM run_unload_lines WHERE run_id IN (${runList}) AND created_at > ?`)
+          .all(from) as Record<string, unknown>[]
+      );
+      add("run_unload_lines", unloadLines, "created_at");
+    }
+
     /* The pins themselves must travel WITH the visits. A `lead_run_stops` row pointing at a
      * saved_locations id the device has never seen renders as a blank card — the row arrives,
      * the name does not, and the driver sees an unnamed stop with a coordinate and no idea. */

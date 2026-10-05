@@ -12,6 +12,7 @@ import { taskPriorityLabel } from "@/lib/tasks/labels";
 import { faNum, faToman } from "@/lib/format";
 import { customerHref } from "@/lib/deepLink";
 import { isVanRole } from "../roles";
+import { stopCountsByRun, remainingByRun } from "./runStops";
 
 export interface BriefingItem {
   label: string;
@@ -134,20 +135,18 @@ export function todayFor(session: Session): Briefing {
       )
       .get(session.user.id, today, org) as { id: number; weather_json: string | null } | undefined;
     if (run) {
-      const agg = db
-        .prepare(
-          `SELECT COUNT(*) AS stops,
-                  SUM(CASE WHEN ds.status = 'pending' THEN 1 ELSE 0 END) AS remaining
-             FROM delivery_stops ds WHERE ds.run_id = ?`
-        )
-        .get(run.id) as { stops: number; remaining: number };
+      // Via runStops, so the load and the unload are counted. They are stops: unloading a
+      // van is not a doorstep, and a driver told "3 stops" who then loads and unloads has
+      // been told a lie by arithmetic rather than by anybody.
+      const stops = stopCountsByRun(db, [run.id]).get(run.id) ?? 0;
+      const remaining = remainingByRun(db, [run.id]).get(run.id) ?? 0;
       panels.push({
         key: "today_run",
         title: "مسیر امروز",
         items: [
           {
-            label: `${agg.stops} توقف`,
-            sub: `${agg.remaining} باقی‌مانده`,
+            label: `${stops} توقف`,
+            sub: `${remaining} باقی‌مانده`,
             href: "/driver",
           },
         ],
