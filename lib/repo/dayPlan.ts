@@ -21,6 +21,14 @@ export interface PlannableOrder extends SplitOrder {
    *  was simply forgotten. Going back to the pool is automatic; going back onto the SAME van
    *  is a decision, so the reason has to travel with the order. */
   lastFailedDeliveryId: number | null;
+  /* What the hover pane shows. All four are read in the SAME query as the weight rather than
+   * fetched per card on hover: a pane that fires a request is a pane that shows nothing on a
+   * phone with no signal, and this page is read on phones. */
+  paymentStatus: "unpaid" | "partial" | "paid";
+  paidToman: number;
+  totalToman: number;
+  notes: string | null;
+  phone: string | null;
 }
 
 /** A day that already has a run, with how much room is left on it. */
@@ -53,7 +61,14 @@ const PLANNABLE_SQL = `
             of just looking like work that was forgotten. */
          (SELECT fr.id FROM deliveries fr
            WHERE fr.order_id = o.id AND fr.status = 'FAILED'
-           ORDER BY fr.id DESC LIMIT 1) AS last_failed_delivery_id
+           ORDER BY fr.id DESC LIMIT 1) AS last_failed_delivery_id,
+         o.payment_status,
+         o.paid_toman,
+         /* There is NO total_toman column on orders -- the money is summed from the lines
+          * being grouped here anyway, so it costs nothing to carry it. */
+         COALESCE(SUM(ol.packs_ordered * ol.unit_price_toman), 0) AS total_toman,
+         o.notes,
+         c.phone
     FROM orders o
     JOIN customers c ON c.id = o.customer_id
     JOIN order_lines ol ON ol.order_id = o.id
@@ -121,6 +136,11 @@ export function readPlannableOrders(
     kg: number;
     volume_m3: number;
     last_failed_delivery_id: number | null;
+    payment_status: "unpaid" | "partial" | "paid";
+    paid_toman: number;
+    total_toman: number;
+    notes: string | null;
+    phone: string | null;
   }[];
 
   return rows.map((r) => ({
@@ -137,6 +157,11 @@ export function readPlannableOrders(
     kg: r.kg,
     volumeM3: r.volume_m3,
     lastFailedDeliveryId: r.last_failed_delivery_id,
+    paymentStatus: r.payment_status,
+    paidToman: r.paid_toman,
+    totalToman: r.total_toman,
+    notes: r.notes,
+    phone: r.phone,
     // The name planDaySplit reads. Duplicated rather than aliased so the pure module stays
     // ignorant of this table's vocabulary.
     weightKg: r.kg,

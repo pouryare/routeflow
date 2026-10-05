@@ -22,8 +22,9 @@
 //     thing you judge with and the thing you are judging must share a glance. Stacked, you
 //     scroll away from the lanes to use the map, and the two never inform each other.
 
-import { useCallback, useRef } from "react";
+import { useState, useCallback, useRef } from "react";
 import SectionHead from "@/components/meridian/SectionHead";
+import StopHoverPane, { type HoverOrder } from "@/components/sales/StopHoverPane";
 import { useCardDrag, type CardDrag } from "@/components/board/useCardDrag";
 import { Icon } from "@/components/meridian/Icon";
 import type { RunDraft } from "@/lib/repo/runDrafts";
@@ -33,6 +34,9 @@ export interface PoolOrder {
   label: string;
   sub?: string | null;
   kg?: number | null;
+  /** Everything the hover pane needs, when the caller has it. Absent = no pane, rather than
+   *  a pane full of dashes — a card that cannot say anything useful should say nothing. */
+  detail?: HoverOrder | null;
 }
 
 export interface RealRunLane {
@@ -309,6 +313,7 @@ function PoolCard({
   bind: CardDrag<PoolOrder>["bind"];
   suppressClick: () => boolean;
 }) {
+  const [hovered, setHovered] = useState(false);
   return (
     <div
       {...bind(order, from)}
@@ -317,9 +322,17 @@ function PoolCard({
         // also fire whatever it landed on.
         if (suppressClick()) return;
       }}
-      className="cursor-grab touch-none select-none rounded-[var(--radius-md)] border border-border bg-surface px-2 py-1.5 active:cursor-grabbing"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      className="relative cursor-grab touch-none select-none rounded-[var(--radius-md)] border border-border bg-surface px-2 py-1.5 active:cursor-grabbing"
     >
       <PoolCardBody order={order} />
+      {/* pointer-events-none so the pane can never intercept the drag or the click. */}
+      {hovered && order.detail && (
+        <div className="pointer-events-none absolute z-20 start-0 top-full mt-1">
+          <StopHoverPane order={order.detail} />
+        </div>
+      )}
     </div>
   );
 }

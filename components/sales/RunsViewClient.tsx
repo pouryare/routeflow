@@ -54,7 +54,29 @@ export default function RunsViewClient({
         // `o.id` is a STRING inherited from SplitOrder; `orderId` is the real orders.id.
         // The board works in numbers throughout, so it uses orderId and never `id` -- using
         // the string would silently key every draft stop by the wrong column.
-        .map((o) => ({ id: o.orderId, label: o.customerName, sub: o.orderNo, kg: o.kg })),
+        .map((o) => ({
+          id: o.orderId,
+          label: o.customerName,
+          sub: o.orderNo,
+          kg: o.kg,
+          // Everything the hover pane needs, mapped here rather than fetched per card: a
+          // pane that fires a request shows nothing on a phone with no signal.
+          detail: {
+            orderNo: o.orderNo,
+            customerName: o.customerName,
+            kg: o.kg,
+            totalToman: o.totalToman,
+            paidToman: o.paidToman,
+            paymentStatus: o.paymentStatus,
+            notes: o.notes,
+            phone: o.phone,
+            lat: o.lat,
+            lng: o.lng,
+            // null for a stop with no predecessor: the pool is not a route, so there is no
+            // "previous stop" to measure from and a 0 km would be a lie.
+            legKm: null,
+          },
+        })),
     [plannable, laneOf]
   );
 
