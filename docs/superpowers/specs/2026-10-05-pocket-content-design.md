@@ -68,13 +68,17 @@ These come from joining `delivery_stops` in `BoardView` (already has `onARun` se
 
 ## 3. Leads Pocket View — Pocket Content
 
-### 3.1 Paper Count by Lead Activity
+### 3.1 Paper Count by Lead Visit Activity
+
+**IMPORTANT:** The `activities` table is **customer**-scoped (`customer_id`, not `location_id`).
+There is no separate per-lead contact log — a driver's interaction with a lead is recorded as
+a *visit* in `lead_visit_activities`. Paper count is therefore driven entirely by visits.
 
 | Lead State | Papers | Tone | Slip 1 | Slip 2 |
 |------------|--------|------|--------|--------|
-| New lead (no contacts, no visits) | 0 | `info` | — | — |
-| Has contact history only | 1 | by `status` | Contact Log | — |
-| Has contact history + visits | 2 | by `status` | Contact Log | Visit Log |
+| New lead (no visits) | 0 | `info` | — | — |
+| Has 1 visit | 1 | by `status` | Lead Profile | — |
+| Has 2+ visits | 2 | by `status` | Lead Profile | Visit Log |
 
 **Tone mapping** (from `STATUS_TONE` in `PoolViewPocket.tsx`):
 - `contacted` → `good` (sage)
@@ -83,13 +87,14 @@ These come from joining `delivery_stops` in `BoardView` (already has `onARun` se
 - `declined` → `crit` (red)
 - `null` (no status) → `info` (sky)
 
-### 3.2 Slip 1 — Contact Log (shown when papers ≥ 1)
+### 3.2 Slip 1 — Lead Profile (shown when papers ≥ 1)
 
-**Static label:** «تماس‌ها»  
+**Static label:** «سرنخ»  
+
 **Dynamic fields:**
-- Contact count (number of call attempts from `activities`)
-- Last contact date (Jalali, e.g., `۱۴۰۴/۰۷/۱۲`)
-- Last contact outcome (icon + short label)
+- Lead name (`saved_locations.name`)
+- Status label (from `STATUS_META`, e.g., «تماس گرفته شد»)
+- Rating scores (rating_potential / rating_volume / rating_ease, e.g., `امتیاز: ۵/۴/۳`)
 
 **Visual:** Top border in lead's status tone
 
@@ -113,14 +118,11 @@ These come from joining `delivery_stops` in `BoardView` (already has `onARun` se
 ### 3.5 Data Requirements
 
 `PoolViewItem` needs enrichment with:
-- `contactCount: number`
-- `lastContactDate: string | null`
-- `lastContactOutcome: string | null`
 - `visitCount: number`
 - `lastVisitDate: string | null`
 - `lastVisitOutcome: string | null`
 
-These come from querying `activities` (filtered to lead-related) and `lead_visit_activities` tables.
+These come from querying `lead_visit_activities` (already used by `lib/repo/leadRuns.ts`).
 
 ---
 
@@ -155,8 +157,9 @@ Both views use the existing `Pocketed` component:
 - Create slip components in `OrderPipeline.tsx` or a new `OrderPocketSlips.tsx`
 
 ### 5.2 Leads Pocket
-- Modify `PoolViewWrapper.tsx` to enrich `PoolViewItem` with contact/visit counts
-- Update `PoolViewPocket.tsx` to compute dynamic `papers` count (0/1/2)
+- Modify `PoolViewWrapper.tsx` to enrich `PoolViewItem` with visit counts from `lead_visit_activities`
+- Update `PoolViewPocket.tsx` to compute dynamic `papers` count (0/1/2 based on visit count)
+- Update `PoolViewPocket.tsx` to use `slips` prop on `Pocketed` for custom slip content
 - Create slip components in `PoolViewPocket.tsx` or new `LeadPocketSlips.tsx`
 
 ### 5.3 Shared Slip Pattern
@@ -184,9 +187,9 @@ Each slip follows the same structure:
 
 ### Leads Pocket
 - [ ] New leads show plain card (0 papers)
-- [ ] Contacted leads (no visits) show 1 slip: Contact Log
-- [ ] Visited leads show 2 slips: Contact Log + Visit Log
-- [ ] Contact Log shows count, last date, last outcome
+- [ ] Leads with 1 visit show 1 slip: Lead Profile
+- [ ] Leads with 2+ visits show 2 slips: Lead Profile + Visit Log
+- [ ] Lead Profile shows name, status, rating scores
 - [ ] Visit Log shows count, last date, last outcome
 - [ ] Tone colors match lead status
 - [ ] Hover fan-out works on all slips
