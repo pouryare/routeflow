@@ -18,6 +18,7 @@
 // something that cannot be delivered. The alternative, hiding it, would make a warehouse
 // they just created appear to have vanished.
 
+import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import { FACILITY_LABEL, isPlaced, type FacilityRow } from "@/lib/facilityTypes";
 import { facilityMarkerHtml } from "@/components/facilityArt";
@@ -102,6 +103,8 @@ export default function PlacePicker({
               }}
               className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
             >
+              {/* The icon is here — <Art/> draws the facility's own chosen marker, which is
+                  exactly the icon that matters: it is the same shape the map will draw. */}
               <Art f={f} />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
@@ -148,7 +151,7 @@ export default function PlacePicker({
         disabled={!MapEditor}
         className="flex w-full items-center gap-2 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 disabled:cursor-not-allowed disabled:text-text-faint"
       >
-        اینجا نیست؟ روی نقشه مشخص کن
+        <Icon name="map-pin" size="sm" /> اینجا نیست؟ روی نقشه مشخص کن
       </button>
 
       <button
@@ -156,6 +159,7 @@ export default function PlacePicker({
         onClick={close}
         className="mt-0.5 w-full rounded-[var(--radius-sm)] px-1.5 py-1 text-[length:var(--text-xs)] text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
       >
+        <Icon name="x" size="sm" />
         انصراف
       </button>
     </div>
@@ -194,6 +198,7 @@ function Trigger({
         className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent"
       >
         <PinIcon />
+        <Icon name="map-pin" size="sm" />
         {label}
       </button>
       {onClear && (

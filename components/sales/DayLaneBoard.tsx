@@ -280,7 +280,10 @@ function DraftLane({
                 : "cursor-not-allowed rounded-[var(--radius-sm)] border border-border px-2.5 py-1 text-[length:var(--text-xs)] text-text-faint"
             }
           >
-            {commit.label}
+            {/* A check, because that is the whole verb: قطعی کن means "make it final". It also
+                carries the disabled state honestly — grey check, not a grey tick that looks
+                pressable. */}
+            <Icon name="check" size="sm" /> {commit.label}
           </button>
         </div>
       </div>

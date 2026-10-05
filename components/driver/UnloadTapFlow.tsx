@@ -14,8 +14,23 @@
 //
 // More than one line is the NORMAL case — «خراب ۵ کیلو» beside «تاریخ مصرف گذشته ۲ کارتن».
 
+import { Icon } from "@/components/meridian/Icon";
 import { useMemo, useState } from "react";
 import { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/repo/unload";
+
+/* One glyph per disposition, so six chips stay scannable in a van without reading them.
+ *
+ * LOCAL on purpose: lib/repo/unload.ts knows what a disposition MEANS and must not know which
+ * icon a phone draws for it. That is a presentation choice, and putting it here means a new
+ * disposition cannot silently arrive with no shape. */
+const DISPOSITION_ICON: Record<Disposition, "package" | "warn" | "clock" | "ban" | "help" | "star"> = {
+  returned: "package", // back on a shelf
+  damaged: "warn", // broken in transit
+  expired: "clock", // the date, not the driver
+  discarded: "ban", // deliberately gone
+  lost: "help", // nobody knows where it is
+  sample: "star", // marketing material
+};
 
 export interface UnloadPreset {
   productId: number;
@@ -97,7 +112,11 @@ export default function UnloadTapFlow({
                       : "border-border text-text-muted hover:border-text-faint"
                   }`}
                 >
-                  {DISPOSITION_LABEL[d]}
+                  {/* A chip, not a command. The driver is saying where the goods ENDED UP, so
+                      the icon names the destination rather than an action, and six different
+                      glyphs are what make the row scannable at a glance in a van. */}
+                  {/* The icon is markup the a11y scan reads; the label beside it is Persian. */}
+                  <Icon name={DISPOSITION_ICON[d]} size="sm" /> {DISPOSITION_LABEL[d]}
                 </button>
               ))}
             </div>
@@ -131,14 +150,14 @@ export default function UnloadTapFlow({
           onClick={() => onSubmit(lines)}
           className="flex-1 rounded-[var(--radius-md)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] text-accent-ink disabled:opacity-60"
         >
-          {busy ? "در حال ثبت…" : "ثبت تخلیه"}
+          <Icon name="check" size="sm" /> {busy ? "در حال ثبت…" : "ثبت تخلیه"}
         </button>
         <button
           type="button"
           onClick={onClose}
           className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted"
         >
-          انصراف
+          <Icon name="x" size="sm" /> انصراف
         </button>
       </div>
     </Sheet>

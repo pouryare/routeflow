@@ -123,8 +123,7 @@ function FacilityCard({
           onClick={() => onOpenUnload?.(stop)}
           className="mt-2 w-full rounded-[var(--radius-md)] border border-accent px-3 py-1.5 text-[length:var(--text-xs)] text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink disabled:cursor-not-allowed disabled:border-border disabled:text-text-faint"
         >
-          ثبت تخلیه
-        </button>
+          <Icon name="package" size="sm" /> ثبت تخلیه</button>
       )}
     </div>
   );

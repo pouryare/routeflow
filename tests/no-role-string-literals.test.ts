@@ -65,11 +65,20 @@ const PATTERNS = [
 ];
 
 /** Role names a query spells out, ignoring ARIA attributes. */
+/* `run_facility_stops.role` is a DIFFERENT vocabulary that happens to share a column name:
+ * `load` and `unload` are the two halves of a run (load first, unload whenever the driver
+ * chooses). They are not ROLES, they are not in the union, and they match nothing in
+ * user_roles — which is the whole point of this test. Without this the pattern cannot tell
+ * "a query naming a role that no longer exists" from "a query naming which end of a run it
+ * is", and the honest fix is to say so rather than to spell `load` wrongly. */
+const FACILITY_STOP_ROLES = new Set(["load", "unload"]);
+
 function spelled(src: string): { value: string; at: string }[] {
   const out: { value: string; at: string }[] = [];
   for (const p of PATTERNS) {
     for (const m of src.matchAll(p)) {
       if (ARIA_ROLES.has(m[1])) continue;
+      if (FACILITY_STOP_ROLES.has(m[1])) continue;
       out.push({ value: m[1], at: m[0] });
     }
   }

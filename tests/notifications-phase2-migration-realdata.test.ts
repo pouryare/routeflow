@@ -58,6 +58,8 @@ if (dbPath) {
 process.env.ROUTEFLOW_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-notif-p2-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb, seedNotificationTypes, loudByDefault, NOTIFICATION_TYPE_SEED } = await import("@/lib/db");
+const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
+ensureWarehouse(getDb());
 
 function columns(db: ReturnType<typeof getDb>, table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);

@@ -11,6 +11,8 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
+const { ensureWarehouse } = await import("../helpers/ensureWarehouse");
+ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { GET, POST } = await import("@/app/api/sales/orders/route");
 const { GET: GET_ONE, PATCH } = await import("@/app/api/sales/orders/[id]/route");

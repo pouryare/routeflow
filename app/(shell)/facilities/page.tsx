@@ -447,7 +447,13 @@ export default function FacilitiesPage() {
                       ? "border-accent bg-accent/10"
                       : "border-border hover:border-text-faint"
                   }`}
-                  dangerouslySetInnerHTML={{ __html: facilityMarkerHtml(key, newKind) }}
+                  dangerouslySetInnerHTML={{
+                    // No <Icon/>: this button's content IS the chosen shape, injected as raw SVG
+                    // so the picker previews the exact marker the map will draw. An <Icon/>
+                    // beside it would show a second, different symbol. The a11y scan reads JSX
+                    // and cannot see this one because it is not JSX.
+                    __html: facilityMarkerHtml(key, newKind),
+                  }}
                 />
               ))}
             </div>
