@@ -117,3 +117,38 @@ export function mainWarehouse(db: DatabaseSync = getDb()): FacilityRow | null {
 export function defaultOrigin(db: DatabaseSync = getDb()): FacilityRow | null {
   return pickOrigin(readFacilities(db));
 }
+
+/* --- the two queries `lib/routing/depot.ts` needs ------------------------------------
+ *
+ * They live here because SQL belongs under lib/repo/, and lib/routing may hold the LOGIC of
+ * where a day starts without holding the query that finds it. The boundary test exists so a
+ * route file cannot read its own tables; the same reasoning applies to a routing helper. */
+
+export function readFacilities(db: DatabaseSync, organizationId: number): FacilityRow[] {
+  return db
+    .prepare(
+      `SELECT * FROM facilities WHERE organization_id = ? ORDER BY is_default_origin DESC, id ASC`
+    )
+    .all(organizationId) as unknown as FacilityRow[];
+}
+
+/** The facility a driver last loaded from — the default for a new run.
+ *
+ *  Behaviour, not a setting: it cannot be forgotten to maintain, and it follows the business
+ *  when a second depot opens. Per-driver rather than per-company on purpose — Reza who always
+ *  works بکه should not be handed انبار غرب as "default" because somebody changed the org. */
+export function readLastLoadFacility(
+  db: DatabaseSync,
+  organizationId: number,
+  driverUserId: number
+): number | null {
+  const row = db
+    .prepare(
+      `SELECT rfs.facility_id FROM run_facility_stops rfs
+         JOIN delivery_runs dr ON dr.id = rfs.run_id
+        WHERE dr.organization_id = ? AND dr.driver_user_id = ? AND rfs.role = 'load'
+        ORDER BY dr.run_date DESC, rfs.id DESC LIMIT 1`
+    )
+    .get(organizationId, driverUserId) as { facility_id: number } | undefined;
+  return row?.facility_id ?? null;
+}

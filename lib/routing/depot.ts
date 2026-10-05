@@ -15,6 +15,7 @@
 import { getDb } from "@/lib/db";
 import type { LatLng } from "@/lib/geo";
 import { isPlaced, pickOrigin, type FacilityRow } from "@/lib/facilityTypes";
+import { readFacilities, readLastLoadFacility } from "@/lib/facilities";
 
 /** A facility that can be loaded from and driven out of. Must have a location -- a van
  *  cannot be dispatched from Null Island, which is where "no location" used to point. */
@@ -31,12 +32,7 @@ export type Depot = FacilityRow & { lat: number; lng: number };
  *  answer before it can do anything useful, and a null here becomes a null map pin or an
  *  unplaced stock movement three frames deeper. The message names the fix. */
 export function pickDepot(organizationId: number): Depot {
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT * FROM facilities WHERE organization_id = ? ORDER BY is_default_origin DESC, id ASC`
-    )
-    .all(organizationId) as unknown as FacilityRow[];
+  const rows = readFacilities(getDb(), organizationId);
   const found =
     rows.find((f) => f.is_default_origin === 1 && isPlaced(f)) ??
     rows.find((f) => f.kind === "warehouse" && isPlaced(f)) ??
@@ -92,18 +88,5 @@ export function lastLoadedFrom(
   organizationId: number,
   driverUserId: number
 ): number | null {
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT rfs.facility_id
-         FROM run_facility_stops rfs
-         JOIN delivery_runs dr ON dr.id = rfs.run_id
-        WHERE dr.organization_id = ?
-          AND dr.driver_user_id = ?
-          AND rfs.role = 'load'
-        ORDER BY dr.run_date DESC, dr.id DESC
-        LIMIT 1`
-    )
-    .get(organizationId, driverUserId) as { facility_id: number } | undefined;
-  return row?.facility_id ?? null;
+  return readLastLoadFacility(getDb(), organizationId, driverUserId);
 }

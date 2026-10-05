@@ -23,6 +23,7 @@
 //     scroll away from the lanes to use the map, and the two never inform each other.
 
 import { useCallback, useRef } from "react";
+import SectionHead from "@/components/meridian/SectionHead";
 import { useCardDrag, type CardDrag } from "@/components/board/useCardDrag";
 import { Icon } from "@/components/meridian/Icon";
 import type { RunDraft } from "@/lib/repo/runDrafts";
@@ -172,12 +173,11 @@ export default function DayLaneBoard({
             )}
 
             <div>
-              <div className="mb-1.5 flex items-center gap-2">
-                <h3 className="text-[length:var(--text-sm)] text-text-muted">استخر سفارش‌ها</h3>
-                <span className="font-mono text-[length:var(--text-xs)] text-text-faint">
-                  {pool.length.toLocaleString("fa-IR")} سفارش آزاد
-                </span>
-              </div>
+              <SectionHead
+                as="h3"
+                title="استخر سفارش‌ها"
+                sub={`${pool.length.toLocaleString("fa-IR")} سفارش آزاد`}
+              />
               <div
                 ref={(el) => setLane(laneEls, "pool", el)}
                 className={`flex flex-wrap gap-1.5 rounded-[var(--radius-lg)] border p-2 ${

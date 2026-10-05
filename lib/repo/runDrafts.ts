@@ -222,3 +222,61 @@ function assertOwned(draftId: number, organizationId: number, userId: number): v
     .get(draftId, organizationId, userId);
   if (!owned) throw new Error("پیش‌نویس پیدا نشد");
 }
+/* --- commit: a draft becomes a real run ------------------------------------------------
+ *
+ * In lib/repo/ rather than the API route, because this is the whole point of the feature --
+ * making something NEW is deliberate, and the transaction is what makes it all-or-nothing.
+ * A route file that could write a run could not be tested without a request, and could not be
+ * reused by a page or a sync.
+ *
+ * The run and the draft's deletion share ONE transaction. If the draft survived a failed
+ * commit, the orders would be in two lanes at once: on the new van and still in the plan. */
+
+export interface CommitInput {
+  draftId: number;
+  organizationId: number;
+  /** Whose plan this is. The delete is scoped by it too, so a commit can never take
+   *  somebody else's draft even if the id is guessed. */
+  userId: number;
+  driverUserId: number;
+  runDate: string;
+  orderIds: number[];
+}
+
+export function commitDraft(db: DatabaseSync, input: CommitInput): number {
+  const now = new Date().toISOString();
+  db.exec("BEGIN IMMEDIATE");
+  try {
+    const runId = Number(
+      db
+        .prepare(
+          `INSERT INTO delivery_runs (driver_user_id, group_id, run_date, created_by, created_at, updated_at, organization_id)
+           VALUES (?, NULL, ?, ?, ?, ?, ?)`
+        )
+        .run(input.driverUserId, input.runDate, input.userId, now, now, input.organizationId)
+        .lastInsertRowid
+    );
+
+    const addStop = db.prepare(
+      `INSERT INTO delivery_stops (run_id, order_id, sort_order, status, collected_toman, created_at)
+       VALUES (?, ?, ?, 'pending', 0, ?)`
+    );
+    input.orderIds.forEach((orderId, i) => {
+      // UNIQUE (run_id, order_id) will not catch a double-booking on ANOTHER run, so the
+      // change count is the check: an order already on a van must not silently join a second
+      // one, and the message names it.
+      const r = addStop.run(runId, orderId, i, now);
+      if (Number(r.changes) === 0) throw new Error("سفارش در مسیر دیگری ثبت شده است");
+    });
+
+    db.prepare(
+      "DELETE FROM run_drafts WHERE id = ? AND organization_id = ? AND user_id = ?"
+    ).run(input.draftId, input.organizationId, input.userId);
+
+    db.exec("COMMIT");
+    return runId;
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  }
+}

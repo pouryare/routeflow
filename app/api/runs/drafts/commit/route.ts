@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-import { readRunDrafts } from "@/lib/repo/runDrafts";
+import { readRunDrafts, commitDraft } from "@/lib/repo/runDrafts";
 import { commitState } from "@/components/sales/DayLaneBoard";
 
 /** Turns one draft into a real run. ONE lane, never all of them.
@@ -51,36 +51,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const now = new Date().toISOString();
-  db.exec("BEGIN IMMEDIATE");
   try {
-    const runId = Number(
-      db
-        .prepare(
-          `INSERT INTO delivery_runs (driver_user_id, group_id, run_date, created_by, created_at, updated_at, organization_id)
-           VALUES (?, NULL, ?, ?, ?, ?, ?)`
-        )
-        .run(draft.driver_user_id, draft.run_date, userId, now, now, orgId).lastInsertRowid
-    );
-
-    const addStop = db.prepare(
-      `INSERT INTO delivery_stops (run_id, order_id, sort_order, status, collected_toman, created_at)
-       VALUES (?, ?, ?, 'pending', 0, ?)`
-    );
-    draft.order_ids.forEach((orderId, i) => {
-      const r = addStop.run(runId, orderId, i, now);
-      if (Number(r.changes) === 0) throw new Error("سفارش در مسیر دیگری ثبت شده است");
+    // The run and the draft's removal share one transaction, inside lib/repo/. See commitDraft.
+    const runId = commitDraft(db, {
+      draftId: draft.id,
+      organizationId: orgId,
+      userId,
+      driverUserId: draft.driver_user_id,
+      runDate: draft.run_date,
+      orderIds: draft.order_ids,
     });
-
-    // The draft goes in the SAME transaction. See the note at the top.
-    db.prepare(
-      "DELETE FROM run_drafts WHERE id = ? AND organization_id = ? AND user_id = ?"
-    ).run(draft.id, orgId, userId);
-
-    db.exec("COMMIT");
     return NextResponse.json({ ok: true, runId });
   } catch (e) {
-    db.exec("ROLLBACK");
+    // commitDraft owns the transaction and has already rolled back; a second ROLLBACK here
+    // would throw OUTSIDE the transaction and mask the real error with a SQLite one.
     return NextResponse.json(
       { ok: false, error: e instanceof Error ? e.message : "خطا در ساخت سفر" },
       { status: 400 }

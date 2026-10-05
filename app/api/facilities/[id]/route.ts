@@ -72,7 +72,12 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
     // Validated against the kind's options, so a kind change that leaves the stored icon
     // belonging to the old kind cannot strand the marker on a shape no renderer resolves.
     // Checked AFTER the kind above so a request carrying both is judged against the new one.
-    const kind = (body.kind ?? exists.kind) as FacilityKind;
+    // FACILITY_KINDS.includes() narrows or it does not: a cast would let an unknown kind
+    // through and land in the map lookup below as a miss.
+    const requested = body.kind ?? exists.kind;
+    const kind = FACILITY_KINDS.includes(requested as FacilityKind)
+      ? (requested as FacilityKind)
+      : exists.kind;
     const wanted = body.icon_key;
     const next =
       typeof wanted === "string" && FACILITY_ICONS[kind]?.includes(wanted)

@@ -142,6 +142,22 @@ export const FACILITY_LABEL: Record<FacilityKind, string> = {
   other: "مکان دیگر",
 };
 
+/** The kind's own name, for where the ROLE above would be wrong (a picker, a filter).
+ *
+ *  One map, so nothing can print the raw identifier. `?? kind` looks defensive and is the
+ *  defect itself: the moment a lookup misses, a Persian reader gets «warehouse». */
+export const FACILITY_KIND_NAME: Record<FacilityKind, string> = {
+  warehouse: "انبار",
+  factory: "کارخانه",
+  van: "ماشین",
+  home: "خانه",
+  office: "دفتر",
+  shop: "فروشگاه",
+  cold_storage: "سردخانه",
+  parking: "پارکینگ",
+  other: "مکان دیگر",
+};
+
 /** The shapes each kind offers, and which one a place gets when nobody has chosen.
  *
  *  The icon is the person's choice, not the kind's. That reversal matters for one concrete

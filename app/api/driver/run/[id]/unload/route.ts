@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { reconcileUnload, DISPOSITIONS, type Disposition } from "@/lib/repo/unload";
+import { reconcileUnload, pendingUnload, runOwnedBy, DISPOSITIONS, type Disposition } from "@/lib/repo/unload";
 import { StockError } from "@/lib/repo/stock";
 import { vanFacilityFor } from "@/lib/repo/vanStock";
 
@@ -29,14 +29,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   // The run must belong to this driver. Checked here rather than trusting the id in the
   // URL, and answered as 404 so another driver's run is indistinguishable from one that
   // does not exist.
-  const owned = db
-    .prepare(
-      `SELECT id, driver_user_id, organization_id FROM delivery_runs
-        WHERE id = ? AND driver_user_id = ? AND organization_id = ?`
-    )
-    .get(runId, guard.session.user.id, orgId) as
-    | { id: number; driver_user_id: number; organization_id: number }
-    | undefined;
+  const owned = runOwnedBy(db, runId, guard.session.user.id, orgId);
   if (!owned) {
     return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   }
@@ -59,12 +52,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  const unload = db
-    .prepare(
-      `SELECT facility_id FROM run_facility_stops
-        WHERE run_id = ? AND role = 'unload' AND status = 'pending'`
-    )
-    .get(runId) as { facility_id: number } | undefined;
+  const unload = pendingUnload(db, runId);
   if (!unload) {
     return NextResponse.json(
       { ok: false, error: "تخلیه‌ای برای این مسیر ثبت نشده است" },

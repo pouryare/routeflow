@@ -258,3 +258,46 @@ export function vanBalance(
     .all(organizationId, vanFacilityId) as unknown as { product_id: number; qty: number }[];
   return rows.map((r) => ({ productId: r.product_id, qty: r.qty }));
 }
+
+/* --- the route's own reads, kept here rather than in the API route -------------------
+ *
+ * The boundary test requires SQL to live under lib/repo/, and that rule is right: a route
+ * that reads its own tables cannot be tested without a request, and cannot be reused by a
+ * page or a sync. `unload.ts` is already the one place that knows how a return leg works. */
+
+export interface UnloadStop {
+  facility_id: number;
+}
+
+/** The pending unload on a run, or null. */
+export function pendingUnload(db: DatabaseSync, runId: number): UnloadStop | null {
+  return (
+    (db
+      .prepare(
+        `SELECT facility_id FROM run_facility_stops
+          WHERE run_id = ? AND role = 'unload' AND status = 'pending'`
+      )
+      .get(runId) as UnloadStop | undefined) ?? null
+  );
+}
+
+export interface OwnedRun {
+  id: number;
+  driver_user_id: number;
+  organization_id: number;
+}
+
+/** The run, but only if THIS driver owns it in THIS tenant.
+ *
+ *  Answered as null rather than forbidden so another driver's run is indistinguishable from
+ *  one that does not exist -- a 403 here would confirm the id is real to anyone who guesses it. */
+export function runOwnedBy(db: DatabaseSync, runId: number, userId: number, orgId: number): OwnedRun | null {
+  return (
+    (db
+      .prepare(
+        `SELECT id, driver_user_id, organization_id FROM delivery_runs
+          WHERE id = ? AND driver_user_id = ? AND organization_id = ?`
+      )
+      .get(runId, userId, orgId) as OwnedRun | undefined) ?? null
+  );
+}
