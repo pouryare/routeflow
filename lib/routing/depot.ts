@@ -15,7 +15,7 @@
 import { getDb } from "@/lib/db";
 import type { LatLng } from "@/lib/geo";
 import { isPlaced, pickOrigin, type FacilityRow } from "@/lib/facilityTypes";
-import { readFacilities, readLastLoadFacility } from "@/lib/facilities";
+import { readOrgFacilities, readLastLoadFacility } from "@/lib/facilities";
 
 /** A facility that can be loaded from and driven out of. Must have a location -- a van
  *  cannot be dispatched from Null Island, which is where "no location" used to point. */
@@ -32,7 +32,7 @@ export type Depot = FacilityRow & { lat: number; lng: number };
  *  answer before it can do anything useful, and a null here becomes a null map pin or an
  *  unplaced stock movement three frames deeper. The message names the fix. */
 export function pickDepot(organizationId: number): Depot {
-  const rows = readFacilities(getDb(), organizationId);
+  const rows = readOrgFacilities(getDb(), organizationId);
   const found =
     rows.find((f) => f.is_default_origin === 1 && isPlaced(f)) ??
     rows.find((f) => f.kind === "warehouse" && isPlaced(f)) ??

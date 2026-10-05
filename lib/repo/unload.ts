@@ -16,6 +16,7 @@
 //      none: the van's balance would then be quietly wrong forever, and nobody would know.
 //   2. One transaction or none. Every line is validated BEFORE any is written.
 
+import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
 import { recordMovementsTxn, StockError, type MovementInput } from "@/lib/repo/stock";
 import { vanOnHand } from "@/lib/repo/vanStock";

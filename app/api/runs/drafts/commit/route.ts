@@ -36,7 +36,10 @@ export async function POST(req: NextRequest) {
 
   // The same rule the button uses, re-checked here: a client can post whatever it likes.
   const state = commitState(draft);
-  if (!state.enabled) {
+  if (!state.enabled || draft.driver_user_id == null || !draft.run_date) {
+    // Narrowing, not a cast. Both columns are NULLABLE BY DESIGN — a lane missing either one
+    // IS a draft — so a cast here would silently build a run with no driver or no date, which
+    // is the exact state the whole feature exists to prevent.
     return NextResponse.json(
       { ok: false, error: "برای قطعی کردن، اول راننده و تاریخ را انتخاب کنید" },
       { status: 409 }

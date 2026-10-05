@@ -118,13 +118,26 @@ export function defaultOrigin(db: DatabaseSync = getDb()): FacilityRow | null {
   return pickOrigin(readFacilities(db));
 }
 
-/* --- the two queries `lib/routing/depot.ts` needs ------------------------------------
+/* --- the query `lib/routing/depot.ts` needs ------------------------------------------
  *
- * They live here because SQL belongs under lib/repo/, and lib/routing may hold the LOGIC of
- * where a day starts without holding the query that finds it. The boundary test exists so a
- * route file cannot read its own tables; the same reasoning applies to a routing helper. */
+ * It lives here because SQL belongs out of lib/routing/, which may hold the LOGIC of where a
+ * day starts without holding the query that finds it. readFacilities() already existed
+ * above; only the last-load read was missing, and adding it as a second function of the same
+ * name is how you get a duplicate export nobody notices.
+ *
+ * Note the scope argument it takes: depot.ts must pass the UNSCOPED list, or a manager in one
+ * group gets a depot chosen out of another group's places. */
 
-export function readFacilities(db: DatabaseSync, organizationId: number): FacilityRow[] {
+
+/** The facility a driver last loaded from — the default for a new run.
+ *
+ *  Behaviour, not a setting: it cannot be forgotten to maintain, and it follows the business
+ *  when a second depot opens. Per-driver rather than per-company on purpose — Reza who always
+ *  works بکه should not be handed انبار غرب as "default" because somebody changed the org. */
+export function readOrgFacilities(
+  db: DatabaseSync,
+  organizationId: number
+): FacilityRow[] {
   return db
     .prepare(
       `SELECT * FROM facilities WHERE organization_id = ? ORDER BY is_default_origin DESC, id ASC`
@@ -132,11 +145,6 @@ export function readFacilities(db: DatabaseSync, organizationId: number): Facili
     .all(organizationId) as unknown as FacilityRow[];
 }
 
-/** The facility a driver last loaded from — the default for a new run.
- *
- *  Behaviour, not a setting: it cannot be forgotten to maintain, and it follows the business
- *  when a second depot opens. Per-driver rather than per-company on purpose — Reza who always
- *  works بکه should not be handed انبار غرب as "default" because somebody changed the org. */
 export function readLastLoadFacility(
   db: DatabaseSync,
   organizationId: number,
