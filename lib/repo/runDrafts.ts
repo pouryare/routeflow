@@ -30,6 +30,10 @@ export interface RunDraft {
   updated_at: string;
   /** Filled in by readRunDrafts; not a column. */
   order_ids: number[];
+  /** The driver's display name, joined in by readRunDrafts. Null while no driver is chosen
+   *  — which is the normal state of a draft, and the reason the board has to say
+   *  «بدون راننده» rather than showing a blank. */
+  driver_name?: string | null;
 }
 
 export interface DraftStop {
