@@ -25,12 +25,17 @@ describe("the day host serves two views", () => {
 
   it("renders the month grid by default and the planner on ?view=runs", () => {
     expect(host, "the default view is the month").toContain("ScheduleBoard");
-    expect(host, "the runs view is the planner").toContain("RunPlanner");
-    /* Was AssignmentBoard. The component it named was deleted and replaced by OrderRouteBoard,
-       which carries the drag-and-drop pool and the map — so this still asserts that the runs view
-       renders a board, not that it renders a particular filename. */
-    expect(host, "and the board").toContain("OrderRouteBoard");
-    expect(host, "and the timeline").toContain("RunTimeline");
+    /* Three names have come and gone here: AssignmentBoard, then OrderRouteBoard, now
+       RunsViewClient. The assertion is that the runs view renders A board and hands it to
+       RunsView — not that it renders a particular filename, which is what broke twice
+       before this test was written. */
+    expect(host, "the runs view is the planner").toContain("RunsViewClient");
+    /* The page no longer names the board: RunsViewClient owns draft mutations and renders
+       DayLaneBoard. So the chain is asserted, not a filename — which is what broke twice
+       before this test was written. */
+    expect(read("components/sales/RunsViewClient.tsx"), "and the board renders").toContain(
+      "DayLaneBoard"
+    );
   });
 
   it("carries the tab strip", () => {

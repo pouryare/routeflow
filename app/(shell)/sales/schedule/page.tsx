@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, groupFilter, orderFilter, type Session } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
-import { toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength, tehranTodayIso } from "@/lib/jalali";
+import { faJalaliDate, toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength, tehranTodayIso } from "@/lib/jalali";
 import { monthConditions, worstCondition, CONDITION_LABEL } from "@/lib/weather/calendarForecast";
 import { snapshotsInRange } from "@/lib/repo/weather";
 import { listHolidaysForMonth } from "@/lib/repo/holidays";
@@ -17,14 +17,9 @@ import { Icon } from "@/components/meridian/Icon";
 import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
 import { oneOf, type SearchParams } from "@/lib/viewParam";
 import { isVanRole, VAN_ROLES } from "@/lib/roles";
-import RunPlanner from "@/components/sales/RunPlanner";
-import OrderRouteBoard from "@/components/sales/OrderRouteBoard";
-import DaySplitPanel from "@/components/sales/DaySplitPanel";
+import RunsViewClient from "@/components/sales/RunsViewClient";
 import { readPlannableOrders, readPlannedDays } from "@/lib/repo/dayPlan";
-import RunTimeline, { type TimelineStop } from "@/components/sales/RunTimeline";
-import DriverStreaks from "@/components/sales/DriverStreaks";
-import { readDriverActivity } from "@/lib/repo/driverActivity";
-import { buildStreak } from "@/lib/streak";
+import { readRunDrafts } from "@/lib/repo/runDrafts";
 import type { DatabaseSync } from "node:sqlite";
 import type { ReactNode } from "react";
 
@@ -92,6 +87,28 @@ function ScheduleChrome({ view, children }: { view: DayView; children: ReactNode
  *
  *  Only confirmed orders are offered. A draft is a list somebody is still editing, and
  *  loading a van from one means the quantities can change after it has left the depot. */
+/** «مسیرها» — the runs view.
+ *
+ *  It reads three things and hands them to one client component, and nothing else. The five
+ *  panels that used to live here (RunPlanner, DaySplitPanel, OrderRouteBoard, RunTimeline,
+ *  DriverStreaks) are GONE, and each was removed for a stated reason rather than tidiness:
+ *
+ *    RunPlanner      the form for creating a run. The board's own commit button replaces it,
+ *                    because a lane IS the run form -- and the old pairing meant scrolling up
+ *                    to create and down to drop, with an empty-state message in between saying
+ *                    «اول باید یک مسیر باز بسازید».
+ *    DaySplitPanel   raw HTML5 `draggable`, so the same gesture behaved differently here than
+ *                    on /leads, which uses the shared useCardDrag.
+ *    OrderRouteBoard its own code says "single-stop removal has no endpoint".
+ *    RunTimeline     summed TOMAN -- money -- on the one graphic built to compare loads. It
+ *                    now reports kilograms, and it IS «بار مسیرها» rather than sitting
+ *                    beside it.
+ *    DriverStreaks   a report about the past, sitting where the decision about the future is
+ *                    made. It moved into the driver picker.
+ *
+ *  DRAFTS are read here and passed down rather than fetched in the browser, because a draft
+ *  is private to one user and that is a server-side fact — never something the client is
+ *  trusted to have filtered. */
 function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
   const userScope = groupFilter(session);
 
@@ -106,14 +123,15 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
       .all(...userScope.params),
   ) as unknown as { id: number; display_name: string }[];
 
+  // Real runs. stop_count comes from runStops on the client side so the load and the unload
+  // are counted; the query here only supplies what the lane header shows.
   const runScope = groupFilter(session, "dr.group_id");
   const runs = plain(
     db
       .prepare(
         `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, dr.group_id,
                 u.display_name AS driver_name,
-                COUNT(ds.id) AS stop_count,
-                COALESCE(SUM(CASE WHEN ds.status = 'pending' THEN 1 ELSE 0 END), 0) AS remaining
+                COALESCE(SUM(ds.collected_toman), 0) AS collected_toman
            FROM delivery_runs dr
            JOIN users u ON u.id = dr.driver_user_id
            LEFT JOIN delivery_stops ds ON ds.run_id = dr.id
@@ -130,99 +148,54 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
     driver_user_id: number;
     group_id: number | null;
     driver_name: string;
-    stop_count: number;
-    remaining: number;
+    collected_toman: number;
   }[];
 
-  /* Every stop on the runs above, in delivery order, with the order total each carries.
-     One query for all runs rather than one per run: at 30 runs the per-run version is
-     30 round trips to answer a question SQLite can answer once. */
-  const stopScope = groupFilter(session, "dr.group_id");
-  const stopRows = plain(
+  // Kilograms per run, from the frozen order_lines. A van fills by weight; the old timeline
+  // counted money, which is the number a manager reads when they should be reading load.
+  const kgRows = plain(
     db
       .prepare(
-        `SELECT ds.id, ds.run_id, ds.status, o.order_no,
-                COALESCE(c.business_name, '—') AS customer_name,
-                c.lat, c.lng,
-                COALESCE(SUM(ol.packs_ordered * ol.unit_price_toman), 0) AS total_toman
+        `SELECT ds.run_id,
+                COALESCE(SUM(ol.packs_ordered * (p.kg_per_base_unit * ol.qty_per_pack)), 0) AS kg
            FROM delivery_stops ds
            JOIN delivery_runs dr ON dr.id = ds.run_id
            JOIN orders o ON o.id = ds.order_id
-           LEFT JOIN customers c ON c.id = o.customer_id
-           LEFT JOIN order_lines ol ON ol.order_id = o.id
-          WHERE 1 = 1${stopScope.sql}
-          GROUP BY ds.id
-          ORDER BY ds.run_id, ds.sort_order, ds.id`,
+           JOIN order_lines ol ON ol.order_id = o.id
+           JOIN products p ON p.id = ol.product_id
+          WHERE 1 = 1${runScope.sql}
+          GROUP BY ds.run_id`,
       )
-      .all(...stopScope.params),
-  ) as unknown as (TimelineStop & { run_id: number })[];
+      .all(...runScope.params),
+  ) as unknown as { run_id: number; kg: number }[];
+  const kgByRun = new Map(kgRows.map((r) => [r.run_id, Number(r.kg)]));
 
-  const stopsByRun = new Map<number, TimelineStop[]>();
-  for (const row of stopRows) {
-    const { run_id, ...stop } = row;
-    if (!stopsByRun.has(run_id)) stopsByRun.set(run_id, []);
-    stopsByRun.get(run_id)!.push(stop);
-  }
-
-  /* Confirmed orders that are not on any run — the pool the board draws and the split plans from.
-     Read ONCE and passed to both, so the map's pins and the lanes' cards cannot disagree: they
-     are literally the same array. The old board re-read this separately, which is how a card and
-     a pin for the same order could end up saying different things. */
+  /* Confirmed orders that are not on any run — the pool the board draws.
+     Read ONCE and passed down, so the map's pins and the lanes' cards cannot disagree: they
+     are literally the same array. The old board re-read this separately, which is how a card
+     and a pin for the same order could end up saying different things. */
   const plannable = readPlannableOrders(db, orderFilter(session));
 
-  /* Tehran, not UTC: this is yesterday for the last 3.5 hours of every evening, and it feeds
-     both readDriverActivity and buildStreak — so driver streaks were being scored against
-     the wrong day exactly when the day was ending. See tehranTodayIso. */
-  const today = tehranTodayIso();
+  // Scoped to THIS user on the server. See the note above: privacy is a server fact.
+  const drafts = readRunDrafts(db, session.organizationId, session.user.id);
 
   return (
-    <div className="flex flex-col gap-[var(--space-6)]">
-      <RunPlanner drivers={drivers} />
-      <DaySplitPanel
-        orders={readPlannableOrders(db, orderFilter(session))}
-        plannedDays={readPlannedDays(db, runScope, tehranTodayIso(), { stops: 8 })}
-        origin={null}
-        drivers={drivers.map((d) => ({ id: d.id, display_name: d.display_name }))}
-      />
-      <OrderRouteBoard
-        runs={runs
-          .filter((r) => r.status !== "done")
-          /* The lanes get their stops as LABELS, not order ids: the pool below is the query that
-             excludes anything already on a run, so looking a stop's order up in it would render
-             every existing lane empty — and an empty lane reads as an empty van. */
-          .map((r) => ({
-            ...r,
-            stops: (stopsByRun.get(r.id) ?? []).map((s) => ({
-              id: s.id,
-              order_no: s.order_no,
-              customer_name: s.customer_name,
-              lat: s.lat,
-              lng: s.lng,
-            })),
-          }))}
-        orders={plannable.map((o) => ({
-          id: o.orderId,
-          order_no: o.orderNo,
-          customer_name: o.customerName,
-          total_toman: 0,
-          order_date: o.requestedDay ?? "",
-          group_id: null,
-          lat: o.lat,
-          lng: o.lng,
-          requested_day: o.requestedDay ?? null,
-        }))}
-      />
-      <RunTimeline
-        runs={runs.filter((r) => r.status !== "done").map((r) => ({ ...r, stops: stopsByRun.get(r.id) ?? [] }))}
-      />
-      <DriverStreaks
-        people={readDriverActivity(db, session, today).map((d) => ({
-          id: d.id,
-          name: d.name,
-          streak: buildStreak(d.dates, today, 12),
-        }))}
-      />
-    </div>
+    <RunsViewClient
+      drivers={drivers}
+      drafts={drafts}
+      runs={runs.map((r) => ({
+        id: r.id,
+        // faJalaliDate returns "" for an unparseable date, and the raw ISO string is a
+        // better answer than a blank -- so fall back to what we were given.
+        date: faJalaliDate(r.run_date) || r.run_date,
+        driverName: r.driver_name,
+        kg: kgByRun.get(r.id) ?? 0,
+        stops: 0,
+        status: r.status,
+      }))}
+      kgByRun={Object.fromEntries(kgByRun)}
+      plannable={plannable}
+    />
   );
 }
 
