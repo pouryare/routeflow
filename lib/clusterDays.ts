@@ -1,4 +1,5 @@
 import { LatLng, distanceKm, twoOptOrder } from "./geo";
+import { straightLine, type DistanceFn } from "./routing/distance";
 
 /** Splitting a long list of stops into days.
  *
@@ -89,9 +90,9 @@ function seedFromSources<T extends LatLng>(
   sources: T[],
   k: number,
   origin: LatLng | null,
-  distanceFn?: (a: LatLng, b: LatLng) => number
+  distanceFn?: DistanceFn
 ): Centroid[] {
-  const dist = distanceFn ?? distanceKm;
+  const dist = distanceFn ?? straightLine;
   const centroids: Centroid[] = [];
   for (const src of sources) {
     const isDuplicate = centroids.some(
@@ -255,7 +256,7 @@ export function clusterIntoDays<T extends LatLng>(
   stops: T[],
   dayCount: number,
   origin: LatLng | null,
-  distanceFn?: (a: LatLng, b: LatLng) => number,
+  distanceFn?: DistanceFn,
   seeds?: T[],
   maxPerDay?: number
 ): DayCluster<T>[] {

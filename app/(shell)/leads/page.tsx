@@ -7,6 +7,7 @@ import { useLeads } from "./hooks/useLeads";
 import { useRouteMatrix } from "./hooks/useRouteMatrix";
 import { distanceKm } from "@/lib/geo";
 import { fromMatrix } from "@/lib/routing/distance";
+import { splitIntoDays } from "@/lib/routing/splitIntoDays";
 import { faNum } from "@/lib/format";
 import { useNavApp } from "@/components/NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
@@ -32,7 +33,6 @@ import NavAppSetting from "@/components/NavAppSetting";
 import { STATUS_META } from "./hooks/useLeads";
 import { averageScore } from "@/lib/leadScore";
 import { removeHandedOver } from "@/lib/leadRunAssign";
-import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 
 export { STATUS_META };
 // Re-exported from the hook rather than declared here: `SavedLocation` is defined in
@@ -103,8 +103,6 @@ export default function LeadsPage() {
   const enhancedProposeDays = useMemo(() => {
     if (!matrix || !sortAnchor) return proposeDays;
     return () => {
-      const k = daysNeeded(available.length, stopsPerDay);
-      if (k === 0) { /* handled by proposeDays */ return; }
       // The index and the null-safe lookup now live in lib/routing/distance.ts. This was a
       // copy of that logic inline, and inline was one of the six places that could answer
       // "how far?" differently -- which is why the fallback had to be spelled out twice.
@@ -113,11 +111,16 @@ export default function LeadsPage() {
         matrix
       );
       const prioritySeeds = available.filter((l) => l.priority);
-      // `stopsPerDay` goes in as the cap, not just into `k` -- see the note in useLeads.
-      setProposedDays(
-        clusterIntoDays(available, k, sortAnchor, distanceFn, prioritySeeds.length > 0 ? prioritySeeds : undefined, stopsPerDay)
-          .map((d) => d.stops)
-      );
+      // splitIntoDays owns the distance default and reports which measure it used, so no
+      // caller can quietly pick a different KIND of distance. `stopsPerDay` goes in as the
+      // cap, not just into the day count -- see the note in useLeads.
+      const plan = splitIntoDays(available, {
+        stopsPerDay,
+        origin: sortAnchor,
+        distanceFn,
+        seeds: prioritySeeds.length > 0 ? prioritySeeds : undefined,
+      });
+      setProposedDays(plan.days.map((d) => d.stops));
     };
   }, [matrix, sortAnchor, available, proposeDays, setProposedDays, stopsPerDay]);
 

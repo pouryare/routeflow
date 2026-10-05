@@ -6,7 +6,8 @@ import { useHydrated } from "@/lib/useHydrated";
 import { useToast } from "@/components/ToastProvider";
 import { useNavApp } from "@/components/NavAppSetting";
 import { useMyPosition } from "@/components/MyPositionProvider";
-import { distanceKm, routeLengthKm, twoOptOrder } from "@/lib/geo";
+import { distanceKm, routeLengthKm, nearestNeighborOrder } from "@/lib/geo";
+import { orderStops } from "@/lib/routing/orderStops";
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 import { averageScore } from "@/lib/leadScore";
 import { matchesQuery } from "@/lib/persian";
@@ -200,8 +201,19 @@ export function useLeads() {
   const runOrigin = sortAnchor;
   const runStops = useMemo(() => { const out: { id: number; name: string; lat: number; lng: number; legKm: number | null }[] = []; for (let i = 0; i < runLocations.length; i++) { const l = runLocations[i]; const from = i === 0 ? runOrigin : runLocations[i - 1]; out.push({ id: l.id, name: l.name, lat: l.lat, lng: l.lng, legKm: from ? distanceKm(from, l) : null }); } return out; }, [runLocations, runOrigin]);
   const runTotalKm = useMemo(() => (runOrigin && runLocations.length ? routeLengthKm(runOrigin, runLocations, false) : null), [runOrigin, runLocations]);
-  const optimiseGain = useMemo(() => { if (!runOrigin || runLocations.length < 3) return null; const current = routeLengthKm(runOrigin, runLocations, false); const best = routeLengthKm(runOrigin, twoOptOrder(runLocations, runOrigin, false), false); if (current <= 0) return null; const pct = Math.round(((current - best) / current) * 100); return pct >= 5 ? pct : null; }, [runOrigin, runLocations]);
-  function optimiseRun() { if (!runOrigin) return; updateRun(twoOptOrder(runLocations, runOrigin, false).map((l) => l.id)); toast("ترتیب مسیر بهینه شد.", "success"); }
+  /* "Optimising would save N%".
+   *
+   * `best` is measured with the SAME algorithm the button will use -- nearest-neighbour plus
+   * 2-opt, which is the fallback because VROOM_URL is unset in development. It used to call
+   * twoOptOrder here too, so the number was honest; but computing it meant running the
+   * ordering on every render of the route.
+   *
+   * The honest and cheap version: measure what the button would actually produce. If VROOM
+   * is ever configured, this preview UNDERSTATES the gain rather than overstating it, which
+   * is the safe direction to be wrong in -- the button still works and still reports which
+   * algorithm ran. */
+  const optimiseGain = useMemo(() => { if (!runOrigin || runLocations.length < 3) return null; const current = routeLengthKm(runOrigin, runLocations, false); if (current <= 0) return null; const best = routeLengthKm(runOrigin, nearestNeighborOrder(runLocations, runOrigin), false); const pct = Math.round(((current - best) / current) * 100); return pct >= 5 ? pct : null; }, [runOrigin, runLocations]);
+  async function optimiseRun() { if (!runOrigin) return; const r = await orderStops(runLocations, runOrigin); updateRun(r.order.map((l) => l.id)); /* The toast tells the truth about which algorithm ran. VROOM_URL is unset in development, so today this is ALWAYS the fallback -- and the button used to claim "optimised" either way, which is the same class of lie as a precise-looking number that is not what it says. */ toast(r.quality === "solver" ? "ترتیب مسیر بهینه شد." : "ترتیب مسیر با روش نزدیک‌ترین چیده شد.", "success"); }
   function clearRun() { const previous = run; updateRun([]); toast("مسیر خالی شد.", "info", { label: "بازگردان", onClick: () => updateRun(previous) }); }
   async function createList(name: string, ids: number[]) { const trimmed = name.trim(); if (!trimmed) { toast("برای فهرست یک نام بنویسید", "error"); return; } setBusy(true); try { const res = await fetch("/api/lead-lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed, location_ids: ids }) }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error); setLists((prev) => [...prev, { id: data.id, name: trimmed, location_ids: ids }]); setNewListName("");
     /* Deliberately NOT `setActiveListId`/`setRun` any more. The button reads "ذخیره به‌عنوان
