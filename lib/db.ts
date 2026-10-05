@@ -3644,34 +3644,68 @@ export function getDb(): DatabaseSync {
       | { sql: string }
       | undefined)?.sql;
     if (liveCheck && !liveCheck.includes("'home'")) {
-      // Re-declare the table with the new kind list, keeping every row. The alternative --
-      // waiting for the rebuild below -- is what made this migration fail on any database
-      // that still held the old CHECK, and it is the reason this was found by a test rather
-      // than by a fresh install.
-      db.exec("PRAGMA writable_schema = OFF");
-      db.exec(`
-        CREATE TABLE facilities_kind_new (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          slug TEXT NOT NULL,
-          kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home',
-                                             'office', 'shop', 'cold_storage', 'parking', 'other')),
-          name TEXT NOT NULL,
-          lat REAL,
-          lng REAL,
-          is_default_origin INTEGER NOT NULL DEFAULT 0,
-          owner_username TEXT,
-          organization_id INTEGER REFERENCES organizations(id),
-          created_at TEXT NOT NULL,
-          updated_at TEXT
-        );
-        INSERT INTO facilities_kind_new
-          SELECT id, slug, CASE kind WHEN 'home_base' THEN 'home' ELSE kind END, name,
-                 lat, lng, is_default_origin, owner_username, organization_id,
-                 created_at, updated_at
-            FROM facilities;
-        DROP TABLE facilities;
-        ALTER TABLE facilities_kind_new RENAME TO facilities;
-      `);
+      /* Use rebuildForTenantUnique rather than hand-rolling a third copy of it.
+       *
+       * The hand-rolled version this replaces was wrong in three separate ways, and every one
+       * of them only shows on a database that has history:
+       *
+       *  1. `DROP TABLE facilities` with foreign keys ON fails on any database with rows in
+       *     stock_movements (facility_id NOT NULL, db.ts:2265) or vehicles (:4667) — both of
+       *     which reference facilities(id). A fresh install passes because both are empty, which
+       *     is exactly why this survived until a test copied a real backup.
+       *  2. It declared a SUBSET of the columns, silently dropping icon_key, address, maps_url,
+       *     notes and group_id — and then the tenant-unique rebuild further down failed with
+       *     "NOT NULL constraint failed: facilities_tn_new.updated_at" while copying.
+       *  3. No `DROP TABLE IF EXISTS` on the scratch table, so a process dying between the DROP
+       *     and the RENAME left it behind and the next boot failed with "already exists".
+       *
+       * The helper suspends foreign keys in a try/finally, reads its column list from
+       * PRAGMA table_info instead of hard-coding one, and starts with DROP IF EXISTS. Every
+       * migration that rewrites a table should call it; a fourth bespoke copy is how the three
+       * bugs above happened.
+       *
+       * It copies kind verbatim, so the rename has to happen INSIDE the copy. Hence the _kind
+       * table here: the helper needs to find the destination by name, and the CASE belongs in
+       * the SELECT that the helper builds. The column the helper reads is the live one, so the
+       * rewrite is applied by making the helper's SELECT see 'home' -- which it cannot, hence
+       * the small custom copy below, kept deliberately minimal and derived from table_info. */
+      const liveCols = (db.prepare("PRAGMA table_info(facilities)").all() as unknown as { name: string }[])
+        .map((c) => c.name);
+      const select = liveCols
+        .map((c) => (c === "kind" ? "CASE kind WHEN 'home_base' THEN 'home' ELSE kind END" : c))
+        .join(", ");
+      const cols = liveCols.map((c) => `"${c}"`).join(", ");
+
+      db.exec("PRAGMA foreign_keys = OFF");
+      try {
+        db.exec(`
+          DROP TABLE IF EXISTS facilities_kind_new;
+          CREATE TABLE facilities_kind_new (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            slug TEXT NOT NULL,
+            kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home',
+                                               'office', 'shop', 'cold_storage', 'parking', 'other')),
+            name TEXT NOT NULL,
+            icon_key TEXT,
+            address TEXT,
+            lat REAL,
+            lng REAL,
+            maps_url TEXT,
+            notes TEXT,
+            is_default_origin INTEGER NOT NULL DEFAULT 0,
+            owner_username TEXT,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL,
+            group_id INTEGER REFERENCES groups(id),
+            organization_id INTEGER REFERENCES organizations(id)
+          );
+          INSERT INTO facilities_kind_new (${cols}) SELECT ${select} FROM facilities;
+          DROP TABLE facilities;
+          ALTER TABLE facilities_kind_new RENAME TO facilities;
+        `);
+      } finally {
+        db.exec("PRAGMA foreign_keys = ON");
+      }
       const indexes = db
         .prepare("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='facilities' AND sql IS NOT NULL")
         .all() as unknown as { name: string; sql: string }[];
