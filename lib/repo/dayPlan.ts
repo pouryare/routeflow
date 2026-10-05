@@ -16,6 +16,11 @@ export interface PlannableOrder extends SplitOrder {
   kg: number;
   volumeM3: number;
   weightKg: number;
+  /** The most recent FAILED delivery for this order, or null if it has never failed.
+   *  Carried so a card can say WHY it needs re-planning instead of looking like work that
+   *  was simply forgotten. Going back to the pool is automatic; going back onto the SAME van
+   *  is a decision, so the reason has to travel with the order. */
+  lastFailedDeliveryId: number | null;
 }
 
 /** A day that already has a run, with how much room is left on it. */
@@ -42,13 +47,54 @@ const PLANNABLE_SQL = `
          c.lat,
          c.lng,
          COALESCE(SUM(ol.packs_ordered * ol.kg_per_base_unit * ol.qty_per_pack), 0) AS kg,
-         COALESCE(SUM(ol.packs_ordered * ol.qty_per_pack * p.volume_m3_per_base_unit), 0) AS volume_m3
+         COALESCE(SUM(ol.packs_ordered * ol.qty_per_pack * p.volume_m3_per_base_unit), 0) AS volume_m3,
+         /* NULL for an order that has never been attempted. For one that failed, the
+            reason_id and the stop, so the card can say WHY this needs re-planning instead
+            of just looking like work that was forgotten. */
+         (SELECT fr.id FROM deliveries fr
+           WHERE fr.order_id = o.id AND fr.status = 'FAILED'
+           ORDER BY fr.id DESC LIMIT 1) AS last_failed_delivery_id
     FROM orders o
     JOIN customers c ON c.id = o.customer_id
     JOIN order_lines ol ON ol.order_id = o.id
     LEFT JOIN products p ON p.id = ol.product_id
-   WHERE o.status = 'CONFIRMED'
-     AND NOT EXISTS (SELECT 1 FROM delivery_stops ds WHERE ds.order_id = o.id)
+   /* CONFIRMED, plus PLANNED -- and the second one is the fix.
+    *
+      retryDelivery puts a failed order back to PLANNED, which is the app saying "this needs
+      planning again". A pool that only reads CONFIRMED therefore cannot show it: the order
+      has been given back by the state machine and is simultaneously invisible to the one
+      screen whose job is to notice unassigned work. Nothing anywhere said why.
+    *
+      PLANNED is included ONLY here. An order sitting in PLANNED is by definition not on a
+      van, so it cannot double-book -- and the NOT EXISTS below still holds back one that a
+      driver is legitimately part-way through. */
+   WHERE o.status IN ('CONFIRMED', 'PLANNED')
+     /* A FAILED delivery does not disqualify an order from planning.
+      *
+        DELIVERY_FAILED transitions back to PLANNED, so the order is genuinely unassigned
+        again -- but its delivery_stops row still exists, and this NOT EXISTS was hiding it
+        from the one screen whose job is to notice unassigned work. A manager planning the
+        week never saw the failed order at all, and nothing anywhere said why.
+      *
+        Only a stop that is still PENDING means somebody owns it. 'refused' and 'skipped'
+        count as driven-to: the driver went, the customer said no, and the goods came back
+        on the van. Re-planning those is a separate decision the manager makes deliberately --
+        which is why the failure reason rides along on the row rather than being guessed. */
+     AND NOT EXISTS (
+       SELECT 1 FROM delivery_stops ds
+        WHERE ds.order_id = o.id
+          /* pending, UNLESS the order itself has been handed back.
+           *
+           * The stop alone cannot decide this. A failed delivery leaves the stop 'pending' --
+           * the driver never got an answer -- while retryDelivery puts the order back to
+           * PLANNED. So "a pending stop exists" does NOT mean "somebody owns this": an order
+           * the state machine has given back belongs to nobody until it is handed out again.
+           *
+           * Without the o.status test, the fix in the outer WHERE is inert: PLANNED would be
+           * read in, and this NOT EXISTS would throw it straight back out again. */
+          AND ds.status = 'pending'
+          AND o.status <> 'PLANNED'
+     )
    GROUP BY o.id
    ORDER BY o.id DESC
    LIMIT ?`;
@@ -74,6 +120,7 @@ export function readPlannableOrders(
     lng: number | null;
     kg: number;
     volume_m3: number;
+    last_failed_delivery_id: number | null;
   }[];
 
   return rows.map((r) => ({
@@ -89,6 +136,7 @@ export function readPlannableOrders(
     requestedDay: r.requested_day,
     kg: r.kg,
     volumeM3: r.volume_m3,
+    lastFailedDeliveryId: r.last_failed_delivery_id,
     // The name planDaySplit reads. Duplicated rather than aliased so the pure module stays
     // ignorant of this table's vocabulary.
     weightKg: r.kg,

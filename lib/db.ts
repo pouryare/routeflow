@@ -3632,14 +3632,55 @@ export function getDb(): DatabaseSync {
     if (!fCols.some((c) => c.name === "icon_key")) {
       db.exec("ALTER TABLE facilities ADD COLUMN icon_key TEXT");
     }
-    // Only runs where the old CHECK is still the live one; on a fresh database there is
-    // nothing to rewrite and the value is simply already 'home' or never used.
+    /* The CHECK is widened by the rebuild further down (facilities_tn_new), which runs LATER.
+     * So this UPDATE cannot run first: against a database still carrying the old CHECK it
+     * fails with "CHECK constraint failed: kind IN ('warehouse','home_base','other','van')"
+     * on the very write that is meant to remove the offending value.
+     *
+     * The two tables disagree about the kind list until the rebuild happens -- which is
+     * exactly what the comment on rebuildForTenantUnique's own facilities block warns about,
+     * one step later than it bites. So: widen the live table FIRST, then rename inside it. */
+    const liveCheck = (db.prepare("SELECT sql FROM sqlite_master WHERE type='table' AND name='facilities'").get() as
+      | { sql: string }
+      | undefined)?.sql;
+    if (liveCheck && !liveCheck.includes("'home'")) {
+      // Re-declare the table with the new kind list, keeping every row. The alternative --
+      // waiting for the rebuild below -- is what made this migration fail on any database
+      // that still held the old CHECK, and it is the reason this was found by a test rather
+      // than by a fresh install.
+      db.exec("PRAGMA writable_schema = OFF");
+      db.exec(`
+        CREATE TABLE facilities_kind_new (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          slug TEXT NOT NULL,
+          kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home',
+                                             'office', 'shop', 'cold_storage', 'parking', 'other')),
+          name TEXT NOT NULL,
+          lat REAL,
+          lng REAL,
+          is_default_origin INTEGER NOT NULL DEFAULT 0,
+          owner_username TEXT,
+          organization_id INTEGER REFERENCES organizations(id),
+          created_at TEXT NOT NULL,
+          updated_at TEXT
+        );
+        INSERT INTO facilities_kind_new
+          SELECT id, slug, CASE kind WHEN 'home_base' THEN 'home' ELSE kind END, name,
+                 lat, lng, is_default_origin, owner_username, organization_id,
+                 created_at, updated_at
+            FROM facilities;
+        DROP TABLE facilities;
+        ALTER TABLE facilities_kind_new RENAME TO facilities;
+      `);
+      const indexes = db
+        .prepare("SELECT name, sql FROM sqlite_master WHERE type='index' AND tbl_name='facilities' AND sql IS NOT NULL")
+        .all() as unknown as { name: string; sql: string }[];
+      for (const ix of indexes) db.exec(ix.sql);
+    }
     const renamed = db
       .prepare("UPDATE facilities SET kind = 'home' WHERE kind = 'home_base'")
       .run();
     if (renamed.changes > 0) {
-      // A database still holding the old value would fail the new CHECK on the rebuild
-      // below, and the resulting error names a constraint nobody remembers writing.
       const left = db
         .prepare("SELECT COUNT(*) n FROM facilities WHERE kind = 'home_base'")
         .get() as { n: number };

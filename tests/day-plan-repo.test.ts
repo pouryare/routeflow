@@ -118,6 +118,8 @@ describe("readPlannableOrders", () => {
     expect(readPlannableOrders(getDb(), SCOPE).map((r) => r.orderId)).not.toContain(ctx.orderIds[1]);
     db.prepare("UPDATE orders SET status = 'CONFIRMED' WHERE id = ?").run(ctx.orderIds[1]);
   });
+});
+
 describe("readPlannedDays", () => {
   it("returns a future run with its stop count and room left", () => {
     const db = getDb();
@@ -166,4 +168,71 @@ describe("readPlannedDays", () => {
     expect(days).not.toContain("2099-04-04"); // a finished day is not a plan
   });
 });
+describe("a failed delivery puts the order back in the pool", () => {
+  it("returns to PLANNED, but its stop still exists -- and that used to hide it", () => {
+    const db = getDb();
+    const iso = now();
+    const order = Number(
+      db.prepare(
+        `INSERT INTO orders (organization_id, customer_id, status, order_no, order_date, created_by, created_at, updated_at)
+         VALUES (1, ?, 'PLANNED', ?, '2026-11-05', ?, ?, ?)`
+      ).run(ctx.customer, `RD-F-${process.pid}`, ctx.user, iso, iso).lastInsertRowid
+    );
+    db.prepare(
+      `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered, packs_delivered,
+                                qty_per_pack, kg_per_base_unit, unit_price_toman, created_at)
+       VALUES (?, ?, ?, 2, 0, 1, 1, 500, ?)`
+    ).run(order, ctx.product, ctx.packaging, iso);
+
+    // First: put the order on a van as CONFIRMED, the ordinary case. A pending stop means
+    // somebody owns it, so it is NOT in the pool.
+    db.prepare("UPDATE orders SET status = 'CONFIRMED' WHERE id = ?").run(order);
+    const run = Number(
+      db.prepare("INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at) VALUES (?, '2026-11-05', 'planned', ?, 1, ?, ?)")
+        .run(ctx.user, ctx.user, iso, iso).lastInsertRowid
+    );
+    db.prepare("INSERT INTO delivery_stops (run_id, order_id, sort_order, status, created_at) VALUES (?, ?, 0, 'pending', ?)")
+      .run(run, order, iso);
+    expect(readPlannableOrders(db, SCOPE).map((r) => r.orderId)).not.toContain(order);
+
+    // Now the driver went and it FAILED: stop stays 'pending', order goes back to PLANNED.
+    db.prepare("UPDATE orders SET status = 'PLANNED' WHERE id = ?").run(order);
+
+    // The driver went and it failed. NOTE: delivery_stops.status has no 'failed' value --
+    // a failed delivery leaves the STOP 'pending' (the driver never got an answer) while
+    // the ORDER goes back to PLANNED via retryDelivery. Reading the DDL rather than guessing:
+    // I have guessed wrong on this codebase's enums three times now.
+    db.prepare(
+      // deliveries: completed_at, not occurred_at. org 1, and a `deliveries` row of its own.
+      `INSERT INTO deliveries (order_id, status, completed_at, organization_id, created_at)
+       VALUES (?, 'FAILED', ?, 1, ?)`
+    ).run(order, iso, iso);
+
+    const row = readPlannableOrders(db, SCOPE).find((r) => r.orderId === order);
+    expect(row, "a failed order must be plannable again, without manual rescue").toBeTruthy();
+    expect(row!.lastFailedDeliveryId, "so the card can say WHY it needs re-planning").toBeTruthy();
+  });
+
+  it("still hides an order somebody is currently on the road with", () => {
+    const db = getDb();
+    const iso = now();
+    const order = Number(
+      db.prepare(
+        `INSERT INTO orders (organization_id, customer_id, status, order_no, order_date, created_by, created_at, updated_at)
+         VALUES (1, ?, 'CONFIRMED', ?, '2026-11-05', ?, ?, ?)`
+      ).run(ctx.customer, `RD-P-${process.pid}`, ctx.user, iso, iso).lastInsertRowid
+    );
+    db.prepare(
+      `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered, packs_delivered,
+                                qty_per_pack, kg_per_base_unit, unit_price_toman, created_at)
+       VALUES (?, ?, ?, 1, 0, 1, 1, 500, ?)`
+    ).run(order, ctx.product, ctx.packaging, iso);
+    const run = Number(
+      db.prepare("INSERT INTO delivery_runs (driver_user_id, run_date, status, created_by, organization_id, created_at, updated_at) VALUES (?, '2026-11-06', 'planned', ?, 1, ?, ?)")
+        .run(ctx.user, ctx.user, iso, iso).lastInsertRowid
+    );
+    db.prepare("INSERT INTO delivery_stops (run_id, order_id, sort_order, status, created_at) VALUES (?, ?, 0, 'pending', ?)")
+      .run(run, order, iso);
+    expect(readPlannableOrders(db, SCOPE).map((r) => r.orderId)).not.toContain(order);
+  });
 });
