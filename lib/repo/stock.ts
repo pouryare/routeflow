@@ -415,7 +415,17 @@ export function listMovements(
 }
 
 /** Movement kinds a human may record by hand -- PURCHASE_IN and DELIVERY_OUT are
- *  written only by their own flows. */
+ *  written only by their own flows.
+ *
+ *  RETURN_IN, until now, had no meaning written down anywhere and no writer. It has ONE, and
+ *  it is narrow: **a replacement handed back at the door.** The customer took damaged or
+ *  expired goods, the driver offered fresh ones from the van, and those fresh goods also came
+ *  back. Stock moves customer -> van, and the order ends RETURNED so the customer owes nothing.
+ *
+ *  It is deliberately NOT a general "goods came back" movement. A customer refusing an
+ *  ordinary delivery is not a RETURN_IN -- those goods never left the van, so nothing moves,
+ *  and that is exactly why the old `loaded - delivered` reconciliation formula over-counted.
+ *  Written down here so the next flow does not invent a second, looser meaning. */
 export const MANUAL_MOVEMENT_KINDS: MovementKind[] = [
   "TRANSFER_OUT",
   "TRANSFER_IN",

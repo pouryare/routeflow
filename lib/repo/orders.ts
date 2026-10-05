@@ -153,6 +153,19 @@ function runEffect(
         )
         .run(new Date().toISOString(), orderId, orgId);
       return;
+    /* The goods came back, so the customer owes nothing for them.
+     *
+     * Without this, an order sitting in RETURNED still carried its full amount as owed --
+     * a terminal state with a live liability attached, which is the worst of both. The
+     * customer keeps whatever balance they had before this order; this order stops adding to
+     * it. */
+    case "stampReturned":
+      conn
+        .prepare(
+          "UPDATE orders SET total_toman = 0, paid_toman = 0, payment_status = 'unpaid' WHERE id = ? AND organization_id = ?"
+        )
+        .run(orderId, orgId);
+      return;
     case "createCreditApprovalTask":
       effectHandlers.createCreditApprovalTask?.(conn, orgId, orderId, actorId);
       return;

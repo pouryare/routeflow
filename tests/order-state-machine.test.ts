@@ -21,10 +21,35 @@ describe("ORDER_TRANSITIONS", () => {
     expect(orderTransition("DRAFT", "deliver")).toBeUndefined();
   });
 
-  it("gives a driver exactly the three door outcomes from OUT_FOR_DELIVERY", () => {
+  it("gives a driver exactly the four door outcomes from OUT_FOR_DELIVERY", () => {
+    /* FOUR, not three: returnOrder joins deliver / deliverPartial / failDelivery.
+     *
+     * It was previously a manager-only action reachable only from DELIVERED or
+     * PARTIALLY_DELIVERED -- states the driver never reaches. A driver who brings back goods
+     * the customer also refused had no move at all: no edge, no status, and the order stuck
+     * OUT_FOR_DELIVERY with goods physically on the van and nobody able to record it.
+     *
+     * "Exactly" is the part that matters. The list is closed on purpose, so an edge added
+     * without a decision shows up here rather than being discovered in the field. */
     expect(legalOrderActions("OUT_FOR_DELIVERY", "delivery_driver").sort()).toEqual(
-      ["deliver", "deliverPartial", "failDelivery"].sort()
+      ["deliver", "deliverPartial", "failDelivery", "returnOrder"].sort()
     );
+  });
+
+  it("returns the goods the customer took back, consuming the reservation", () => {
+    /* Consuming reservations is deliberate and counterintuitive: the goods were NOT handed
+     * over, but they DID move -- off the van, and back onto it. Reservations are consumed by
+     * movement, not by receipt. Omitting it would leave stock reserved against goods now
+     * sitting in a warehouse, which cannot be sold from this order. */
+    const t = orderTransition("OUT_FOR_DELIVERY", "returnOrder");
+    expect(t?.to).toBe("RETURNED");
+    expect(t?.effects).toContain("consumeReservations");
+    expect(t?.effects).toContain("stampReturned");
+  });
+
+  it("does not let a phone seller return goods from the road", () => {
+    expect(canAdvanceOrder("OUT_FOR_DELIVERY", "returnOrder", "phone_sales")).toBe(false);
+    expect(canAdvanceOrder("OUT_FOR_DELIVERY", "returnOrder", "delivery_driver")).toBe(true);
   });
 
   it("lets only a manager or owner approve a credit hold", () => {

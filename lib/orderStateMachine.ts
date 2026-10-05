@@ -62,7 +62,18 @@ export type OrderEffect =
   | "createCreditApprovalTask"
   | "clearCreditHold"
   | "spawnBackorder"
-  | "stampDelivered";
+  | "stampDelivered"
+  /** A customer who would not take the goods owes nothing for them.
+   *
+   *  `RETURNED` has been a status since the machine was drawn -- in ORDER_STATUSES, in
+   *  TERMINAL_ORDER_STATUSES, and treated as terminal by syncMutations -- with NO writer
+   *  anywhere. So an order could reach it by nothing at all.
+   *
+   *  What it means: the driver offered a replacement for damaged or expired goods and the
+   *  customer refused that too. The goods came back on the van, and the customer's liability
+   *  for the undelivered portion ends here. Without this effect the order sits in a terminal
+   *  state still carrying the full amount as owed. */
+  | "stampReturned";
 
 export interface OrderTransition {
   from: OrderStatus;
@@ -99,6 +110,20 @@ export const ORDER_TRANSITIONS: readonly OrderTransition[] = [
 
   { from: "OUT_FOR_DELIVERY", action: "deliver", to: "DELIVERED", roles: ["delivery_driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
   { from: "OUT_FOR_DELIVERY", action: "deliverPartial", to: "PARTIALLY_DELIVERED", roles: ["delivery_driver", "system"], effects: ["consumeReservations", "stampDelivered"] },
+  /* The door, twice refused. The driver offered fresh goods for damaged or expired ones and
+   * the customer would not take those either, so nothing of this order was handed over.
+   *
+   * Named `returnOrder` rather than a new action, because that action ALREADY exists and
+   * already leads to RETURNED from DELIVERED and PARTIALLY_DELIVERED for a manager. Two
+   * actions meaning "the goods came back" would be two vocabularies for one event -- the
+   * same mistake this whole plan exists to undo.
+   *
+   * `consumeReservations` because the goods DID physically move -- out of the van, back onto
+   * it -- and reservations are consumed by movement, not by receipt. Omitting it would leave
+   * stock reserved against goods now sitting in a warehouse.
+   *
+   * Terminal, so the same goods are never offered to the same customer again by retrying. */
+  { from: "OUT_FOR_DELIVERY", action: "returnOrder", to: "RETURNED", roles: ["delivery_driver", "system"], effects: ["consumeReservations", "stampReturned"] },
   { from: "OUT_FOR_DELIVERY", action: "failDelivery", to: "DELIVERY_FAILED", roles: ["delivery_driver", "system"], effects: ["releaseReservations"] },
 
   { from: "DELIVERY_FAILED", action: "retryDelivery", to: "PLANNED", roles: ["group_manager", "owner", "system"] },
