@@ -138,10 +138,17 @@ export function readOrgFacilities(
   db: DatabaseSync,
   organizationId: number
 ): FacilityRow[] {
+  /* Deliberately UNSORTED.
+   *
+   * Ranking these rows by the default-origin flag here would make this the second place that
+   * decides which place is the origin, which is the whole defect lib/routing/depot.ts exists to
+   * close -- two readers of this question already disagreed once. Returning rows and letting
+   * the ONE reader rank them means the rule can only be changed in one file.
+   *
+   * The organization_id filter, by contrast, is tenancy and belongs here: without it this
+   * returns every tenant's facilities and a caller picks another company's depot. */
   return db
-    .prepare(
-      `SELECT * FROM facilities WHERE organization_id = ? ORDER BY is_default_origin DESC, id ASC`
-    )
+    .prepare("SELECT * FROM facilities WHERE organization_id = ?")
     .all(organizationId) as unknown as FacilityRow[];
 }
 

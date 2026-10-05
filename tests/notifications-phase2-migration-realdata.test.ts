@@ -58,8 +58,10 @@ if (dbPath) {
 process.env.ROUTEFLOW_DB_PATH = dbPath || path.join(os.tmpdir(), `rf-notif-p2-empty-${Date.now()}.db`);
 process.env.SESSION_SECRET = "test-secret";
 const { getDb, seedNotificationTypes, loudByDefault, NOTIFICATION_TYPE_SEED } = await import("@/lib/db");
-const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
+/* No ensureWarehouse here, and deliberately. This file counts rows on a COPY of a real
+   database before and after getDb() migrates it; seeding a facility would put a row into
+   the very tables it is asserting nothing added to. The warehouse this test needs is the
+   one already in the real backup. */
 
 function columns(db: ReturnType<typeof getDb>, table: string): string[] {
   return (db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name);

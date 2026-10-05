@@ -32,6 +32,11 @@ export type Depot = FacilityRow & { lat: number; lng: number };
  *  answer before it can do anything useful, and a null here becomes a null map pin or an
  *  unplaced stock movement three frames deeper. The message names the fix. */
 export function pickDepot(organizationId: number): Depot {
+  /* Ranked HERE, in the one file that owns the question.
+   *
+   * The explicit find-chain below already decided priority, so the ORDER BY never changed the
+   * answer — but its presence made this a SECOND reader of "which place is the origin", and
+   * two readers is how the flag and the kind drifted apart in the first place. */
   const rows = readOrgFacilities(getDb(), organizationId);
   const found =
     rows.find((f) => f.is_default_origin === 1 && isPlaced(f)) ??
