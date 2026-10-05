@@ -161,6 +161,9 @@ describe("organization_id backfill", () => {
       "order_events",       // through orders (carries organization_id for cheap filtering)
       "purchase_lines",     // through purchases
       "delivery_stops",     // through delivery_runs
+      "run_facility_stops", // through delivery_runs — a facility visit is not a delivery,
+                            // but it still belongs to exactly one run
+      "run_unload_lines",   // through delivery_runs
       "route_schedules",    // through route_templates
       "weather_snapshots",  // a forecast for a lat/lng is not tenant data
       "delivery_lines",     // through deliveries

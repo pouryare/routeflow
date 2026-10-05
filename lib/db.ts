@@ -2236,6 +2236,67 @@ export function getDb(): DatabaseSync {
     CREATE INDEX IF NOT EXISTS idx_delivery_stops_run ON delivery_stops(run_id, sort_order);
     CREATE INDEX IF NOT EXISTS idx_delivery_stops_order ON delivery_stops(order_id);
 
+    /* A route can also START and END at a building.
+     *
+     * These are their own tables rather than extra rows in delivery_stops, and the reason is
+     * a SQLite trap: delivery_stops.order_id is NOT NULL and carries
+     * UNIQUE (run_id, order_id), which is what stops one order appearing twice on a run. Make
+     * order_id nullable to squeeze a facility in and that guard silently stops working --
+     * SQLite treats NULLs as DISTINCT from each other, so two rows with a NULL order_id
+     * sail past the constraint. No error, no warning, just a duplicated stop. So a facility
+     * visit, which is not a delivery, does not go in the deliveries table.
+     *
+     * NEITHER table carries organization_id. Both are reached through delivery_runs, which is
+     * in TENANT_TABLES, so the tenant sweep already stamps them. The same reasoning as
+     * lead_run_stops, and for the same reason: a redundant scope column is an invitation to
+     * write a filter against the wrong one.
+     *
+     * role 'load' is always the FIRST stop of the day and 'unload' has no position at all --
+     * the driver decides when to do it. A single table with a nullable sort_order would let
+     * both look sequenced, and then renumbering the whole day by dragging an "unordered" stop
+     * would be possible, which is the lie this design exists to prevent. */
+    CREATE TABLE IF NOT EXISTS run_facility_stops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE,
+      facility_id INTEGER NOT NULL REFERENCES facilities(id),
+      role TEXT NOT NULL CHECK (role IN ('load', 'unload')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'done')),
+      done_at TEXT,
+      done_by INTEGER REFERENCES users(id),
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      /* One load and one unload per run. Not an accident of the schema: a second unload
+         destination is a decision the manager has not been asked to make yet, and a second
+         load is a data-entry mistake. */
+      UNIQUE (run_id, role)
+    );
+    CREATE INDEX IF NOT EXISTS idx_run_facility_stops_run ON run_facility_stops(run_id, role);
+
+    /* What actually came back, per product, and where it went.
+     *
+     * A RECONCILIATION, not a number: the app knows what went out and what got delivered, so
+     * it pre-fills every line and the driver confirms or corrects. More than one line per
+     * unload is the normal case -- «خراب ۵ کیلو» beside «تاریخ مصرف گذشته ۲ کارتن» -- so this
+     * is one row per product per disposition.
+     *
+     * damaged and expired are SEPARATE values that write the same WRITE_OFF movement, because
+     * "we broke it" and "the supplier sent it expired" are different problems and a manager
+     * watching the rates needs to tell them apart. */
+    CREATE TABLE IF NOT EXISTS run_unload_lines (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE,
+      product_id INTEGER NOT NULL REFERENCES products(id),
+      disposition TEXT NOT NULL CHECK (disposition IN
+        ('returned', 'damaged', 'expired', 'discarded', 'lost', 'sample')),
+      qty_base INTEGER NOT NULL,
+      note TEXT,
+      occurred_at TEXT NOT NULL,
+      created_by INTEGER REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_run_unload_lines_run ON run_unload_lines(run_id);
+
     /* Phase 3 (M6): delivery as its own entity, between the order and the route stop.
        One stop may carry several deliveries (two orders for one customer, one visit);
        one order may have several deliveries (a retry after a failed attempt is seq 2).
