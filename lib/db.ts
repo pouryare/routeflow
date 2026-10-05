@@ -2297,6 +2297,51 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS idx_run_unload_lines_run ON run_unload_lines(run_id);
 
+    /* A PROPOSED day — the thing you drag orders into before it is real.
+     *
+     * This is the whole page's design in one table. A lane missing either a driver or a date
+     * is a DRAFT: it exists on your board and nowhere else, and it becomes a run when you
+     * press «سفر را قطعی کن» on that one lane. There is no global commit button, so there is
+     * nothing to forget and nowhere to navigate back to.
+     *
+     * It carries organization_id AND user_id, unlike run_facility_stops. A draft belongs to a
+     * RUN, which belongs to a company; a draft belongs to a PERSON first. Two managers in
+     * the same company must not see each other's half-formed plans -- that is the entire
+     * privacy promise, and it cannot be made by a query against a table that only knows the
+     * company.
+     *
+     * created_by_suggest + manual_edits are what make «پیشنهاد بده» decidable: a lane is
+     * empty iff the suggestion made it AND nobody has touched it. The first hand-drag sets
+     * manual_edits and NOTHING clears it, so the arrangement a person built is never silently
+     * overwritten by the next press of a button.
+     *
+     * driver_user_id and run_date are NULLABLE ON PURPOSE. A NOT NULL pair would mean a
+     * draft is already half a run, which is precisely what it is not. */
+    CREATE TABLE IF NOT EXISTS run_drafts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      driver_user_id INTEGER REFERENCES users(id),
+      run_date TEXT,
+      created_by_suggest INTEGER NOT NULL DEFAULT 0,
+      manual_edits INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_run_drafts_user ON run_drafts(organization_id, user_id);
+
+    CREATE TABLE IF NOT EXISTS run_draft_stops (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      draft_id INTEGER NOT NULL REFERENCES run_drafts(id) ON DELETE CASCADE,
+      order_id INTEGER NOT NULL REFERENCES orders(id),
+      seq INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL,
+      /* An order may be dragged into at most one lane on one board. Mirrors
+       * delivery_stops' own guard, for the same reason. */
+      UNIQUE (draft_id, order_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_run_draft_stops_draft ON run_draft_stops(draft_id, seq);
+
     /* Phase 3 (M6): delivery as its own entity, between the order and the route stop.
        One stop may carry several deliveries (two orders for one customer, one visit);
        one order may have several deliveries (a retry after a failed attempt is seq 2).
