@@ -365,7 +365,7 @@ export interface DeliveryInput {
 export function recordDelivery(db: DatabaseSync, stopId: number, input: DeliveryInput): void {
   const stop = db
     .prepare(
-      `SELECT s.id, s.order_id, s.status, o.customer_id, o.order_no, o.organization_id,
+      `SELECT s.id, s.run_id, s.order_id, s.status, o.customer_id, o.order_no, o.organization_id,
               c.business_name AS customer_name,
               dr.driver_user_id, dr.organization_id AS run_org
          FROM delivery_stops s
@@ -376,6 +376,8 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     )
     .get(stopId) as
     | {
+        id: number;
+        run_id: number;
         order_id: number;
         status: string;
         customer_id: number;
@@ -722,11 +724,68 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
       }
     }
 
+    closeRunIfFinished(db, stop.run_id, now);
+
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");
     throw e;
   }
+}
+
+/** The last stop of the day CLOSES the run — and records how long it took.
+ *
+ *  Nothing did this until now. `delivery_runs.status = 'done'` was written by nothing at all,
+ *  and `started_at` by nothing either, so `capacityLearning`'s WHERE clause —
+ *  `status = 'done' AND planned_duration_min IS NOT NULL AND actual_duration_min IS NOT NULL`
+ *  — could never be satisfied. It has been returning zero rows on every refresh since it
+ *  was written, which means `resolvedCapacityFactorsFor` (read by /sales/forecast and the
+ *  weather system) has been reading FACTORY DEFAULTS forever. Its test passes because it
+ *  inserts the value by hand.
+ *
+ *  Actual duration is from `started_at`, not from midnight. A day that begins at 8am is not
+ *  a 16-hour day, and measuring it as one would teach the model that vans are twice as slow
+ *  as they are.
+ *
+ *  Idempotent: `AND actual_duration_min IS NULL` means a retried sync converges rather than
+ *  overwriting a real measurement with a different one. */
+function closeRunIfFinished(db: DatabaseSync, runId: number, now: string): void {
+  const run = db
+    .prepare(
+      `SELECT r.id, r.started_at, r.finished_at, r.actual_duration_min,
+              (SELECT COUNT(*) FROM delivery_stops ds
+                WHERE ds.run_id = r.id AND ds.status = 'pending') AS pending_stops,
+              (SELECT COUNT(*) FROM run_facility_stops f
+                WHERE f.run_id = r.id AND f.status = 'pending') AS pending_facilities
+         FROM delivery_runs r WHERE r.id = ?`
+    )
+    .get(runId) as
+    | {
+        started_at: string | null;
+        finished_at: string | null;
+        actual_duration_min: number | null;
+        pending_stops: number;
+        pending_facilities: number;
+      }
+    | undefined;
+  if (!run) return;
+  if (run.finished_at !== null) return; // already closed
+  if (run.pending_stops > 0 || run.pending_facilities > 0) return; // more to do
+
+  // Started but never begun: no honest duration exists, so none is invented. `started_at` is
+  // NULL for a run assembled the night before, and a number derived from midnight would be
+  // wrong by twelve hours rather than merely missing.
+  const actual =
+    run.started_at === null
+      ? null
+      : Math.max(1, Math.round((Date.parse(now) - Date.parse(run.started_at)) / 60000));
+
+  db.prepare(
+    `UPDATE delivery_runs
+        SET status = 'done', finished_at = ?,
+            actual_duration_min = COALESCE(actual_duration_min, ?), updated_at = ?
+      WHERE id = ?`
+  ).run(now, actual, now, runId);
 }
 
 export interface CompleteDeliveryInput {
