@@ -6,10 +6,13 @@ import { useState, useMemo } from "react";
 import { useLeads } from "./hooks/useLeads";
 import { useRouteMatrix } from "./hooks/useRouteMatrix";
 import { distanceKm } from "@/lib/geo";
+import { fromMatrix } from "@/lib/routing/distance";
 import { faNum } from "@/lib/format";
 import { useNavApp } from "@/components/NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import LeadImportPanel from "@/components/LeadImportPanel";
+import PlacePicker from "@/components/facilities/PlacePicker";
+import { useFacilities } from "./hooks/useFacilities";
 import { SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import LocationTapFlow from "@/components/leads/LocationTapFlow";
@@ -42,7 +45,7 @@ export default function LeadsPage() {
     locations, lists, activeListId, run, loading, busy, query, sortMode,
     pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName,
     selectedMapId, setSelectedMapId, sessionLoading,
-    position, posStatus, posError, retryPosition, showManualPos, setShowManualPos,
+    position, posStatus, posError, retryPosition, toast,
     linkedId, linkedRef, sortAnchor, setSortAnchor,
     setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode,
     setNewListName, setProposedDays, setStopsPerDay,
@@ -57,6 +60,7 @@ export default function LeadsPage() {
   const { matrix } = useRouteMatrix(routable as { lat: number; lng: number }[]);
   const [navAppId] = useNavApp();
   const [activeView, setActiveView] = useState<LeadViewMode>(readViewMode());
+  const { facilities, loadFacilities } = useFacilities();
   const [leadRunPlannerOpen, setLeadRunPlannerOpen] = useState(false);
   /* What the assign sheet is handing over. `null` is not a third option -- it means "the
    * route", which is what the button inside the route card always meant. A set of ids means
@@ -101,12 +105,13 @@ export default function LeadsPage() {
     return () => {
       const k = daysNeeded(available.length, stopsPerDay);
       if (k === 0) { /* handled by proposeDays */ return; }
-      const idx = new Map(available.map((l, i) => [`${l.lat},${l.lng}`, i]));
-      const distanceFn = (a: { lat: number; lng: number }, b: { lat: number; lng: number }) => {
-        const ai = idx.get(`${a.lat},${a.lng}`); const bi = idx.get(`${b.lat},${b.lng}`);
-        if (ai === undefined || bi === undefined) return distanceKm(a, b);
-        return matrix[ai][bi] ?? distanceKm(a, b);
-      };
+      // The index and the null-safe lookup now live in lib/routing/distance.ts. This was a
+      // copy of that logic inline, and inline was one of the six places that could answer
+      // "how far?" differently -- which is why the fallback had to be spelled out twice.
+      const distanceFn = fromMatrix(
+        available.map((l) => ({ lat: l.lat as number, lng: l.lng as number })),
+        matrix
+      );
       const prioritySeeds = available.filter((l) => l.priority);
       // `stopsPerDay` goes in as the cap, not just into `k` -- see the note in useLeads.
       setProposedDays(
@@ -224,12 +229,28 @@ export default function LeadsPage() {
               {sortAnchor ? (
                 <span className="text-[length:var(--text-xs)] text-text-muted">نزدیک‌ترین</span>
               ) : (
-                <button
-                  onClick={() => setShowManualPos(true)}
-                  className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border text-text-muted hover:border-accent hover:text-accent transition-colors flex items-center gap-1"
-                >
-                  <Icon name="locate" size="sm" /> تعیین موقعیت
-                </button>
+                /* Was a dead button: it set `showManualPos`, which nothing ever read. It now
+                 * opens a real picker offering two paths -- a place the user already owns,
+                 * or a pin dropped on the map -- and the facilities are fetched only when it
+                 * is opened, because most sessions never open it and the list is not free. */
+                <PlacePicker
+                  facilities={facilities}
+                  MapEditor={LocationPinPicker}
+                  onOpen={loadFacilities}
+                  onPick={(f) => {
+                    setPinningId(f.id);
+                    savePin(f.id, f.lat as number, f.lng as number);
+                  }}
+                  onMapPick={(lat, lng) => {
+                    if (pinningId != null) savePin(pinningId, lat, lng);
+                    else toast("ابتدا یک سرنخ را انتخاب کنید", "error");
+                  }}
+                  onClear={
+                    pinningId != null
+                      ? () => savePin(pinningId, null, null)
+                      : undefined
+                  }
+                />
               )}
               <select
                 value={sortMode}

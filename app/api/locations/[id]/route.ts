@@ -7,8 +7,8 @@ import { MANAGE_ROLES } from "@/lib/roles";
 
 interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
   name?: string;
-  lat?: number;
-  lng?: number;
+  lat?: number | null;
+  lng?: number | null;
   status?: LocationStatus | null;
   notes?: string | null;
 }
@@ -43,11 +43,26 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
   const values: (string | number | null)[] = [];
 
   if (body.lat !== undefined || body.lng !== undefined) {
-    if (typeof body.lat !== "number" || typeof body.lng !== "number" || !isValidCoord(body.lat, body.lng)) {
-      return NextResponse.json({ ok: false, error: "مختصات نامعتبر است" }, { status: 400 });
+    /* Explicit null CLEARS the position, which is different from omitting the field.
+     *
+     * This is not a new capability -- SearchBox has always had a clear chip, and it used
+     * to send 0,0 to mean "no position". That put the pin in the Gulf of Guinea, and
+     * isValidCoord rejects it, so clearing was broken before this branch existed. NULL is
+     * the honest answer and every reader of saved_locations.lat already handles it, the
+     * same way isPlaced handles an unplaced facility. */
+    if (body.lat === null || body.lng === null) {
+      if (body.lat !== body.lng) {
+        return NextResponse.json({ ok: false, error: "مختصات نامعتبر است" }, { status: 400 });
+      }
+      sets.push("lat = ?", "lng = ?", "resolution = 'manual'");
+      values.push(null, null);
+    } else {
+      if (typeof body.lat !== "number" || typeof body.lng !== "number" || !isValidCoord(body.lat, body.lng)) {
+        return NextResponse.json({ ok: false, error: "مختصات نامعتبر است" }, { status: 400 });
+      }
+      sets.push("lat = ?", "lng = ?", "resolution = 'manual'");
+      values.push(body.lat, body.lng);
     }
-    sets.push("lat = ?", "lng = ?", "resolution = 'manual'");
-    values.push(body.lat, body.lng);
   }
 
   if (body.status !== undefined) {
