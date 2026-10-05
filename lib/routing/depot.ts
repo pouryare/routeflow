@@ -74,3 +74,36 @@ export function originFrom(facilities: readonly FacilityRow[]): Depot | null {
       pickOrigin(placed)) as Depot | null
   );
 }
+
+/** The facility this driver last loaded from — the default offered on a new run.
+ *
+ *  Behaviour, not a setting. A configured default is something to forget to maintain; this
+ *  is something that already happened, so it cannot be wrong in that way. It also follows
+ *  the business: the day a second depot opens, whoever drives from it next has that as their
+ *  default, and nobody has to change a setting.
+ *
+ *  Per driver, not per company, and that is the point — a depot chosen by the owner for
+ *  everyone is wrong for the driver who has not worked out of it. When a tenant genuinely
+ *  wants one company-wide default, `is_default_origin` is already that.
+ *
+ *  Returns null when they have never loaded anywhere. That is an ordinary state for a new
+ *  driver, and callers fall back to the company default. */
+export function lastLoadedFrom(
+  organizationId: number,
+  driverUserId: number
+): number | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT rfs.facility_id
+         FROM run_facility_stops rfs
+         JOIN delivery_runs dr ON dr.id = rfs.run_id
+        WHERE dr.organization_id = ?
+          AND dr.driver_user_id = ?
+          AND rfs.role = 'load'
+        ORDER BY dr.run_date DESC, dr.id DESC
+        LIMIT 1`
+    )
+    .get(organizationId, driverUserId) as { facility_id: number } | undefined;
+  return row?.facility_id ?? null;
+}
