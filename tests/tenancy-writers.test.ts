@@ -12,7 +12,6 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
 const { createProduct } = await import("@/lib/catalogue");
 const { recordPurchase } = await import("@/lib/purchases");
 const { createRun } = await import("@/lib/delivery");
@@ -52,6 +51,9 @@ beforeAll(() => {
       )
       .run("driver-two", "راننده دو", now, ORG2).lastInsertRowid
   );
+  // This file exercises TWO tenants, so org 2 needs its own warehouse. The old auto-create
+  // quietly made one per tenant at 0,0; ensureWarehouse makes a real one, per org.
+  ensureWarehouse(db, ORG2);
   ctx.product2 = createProduct(db, { name: "کالای دو", kg_per_base_unit: 1, organization_id: ORG2 });
 });
 

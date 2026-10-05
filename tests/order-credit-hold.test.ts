@@ -12,7 +12,6 @@ process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
 const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
-ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder, submitOrder, OrderError } = await import("@/lib/orders");
 const { createRun, addStop, DeliveryError } = await import("@/lib/delivery");
@@ -50,6 +49,7 @@ beforeEach(() => {
       )
       .run(`C${Date.now()}`, "x").lastInsertRowid
   );
+ensureWarehouse(getDb());
   product = createProduct(db, { name: "کره", kg_per_base_unit: 0.25, organization_id: 1 });
   packaging = createPackaging(db, { product_id: product, name: "جعبه", qty_per_pack: 100 });
   setPrice(db, { product_id: product, price_toman: 20_000, valid_from: "2026-01-01" });
