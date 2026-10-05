@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { RunFacilityStop } from "@/lib/delivery";
 
 /** A driver's own day, from /api/lead-runs.
  *
@@ -38,6 +39,10 @@ export interface DriverRun {
   driver_name: string | null;
   notes: string | null;
   stops: DriverStop[];
+  /** The load and the unload, addresses included. Separate from `stops` on purpose: they are
+   *  NOT numbered, because the unload has no position and numbering it would let a drag
+   *  renumber the delivery sequence below. */
+  facilities?: RunFacilityStop[];
 }
 
 /** A stop the driver still owns.

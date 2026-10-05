@@ -10,6 +10,10 @@ import { distanceKm } from "@/lib/geo";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
 import EmptyState from "@/components/EmptyState";
+import FacilityStopCards from "@/components/driver/FacilityStopCards";
+import UnloadTapFlow from "@/components/driver/UnloadTapFlow";
+import type { RunFacilityStop } from "@/lib/delivery";
+import type { Disposition } from "@/lib/repo/unload";
 import { SkeletonRows } from "@/components/Skeleton";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
@@ -46,6 +50,38 @@ export default function DriverRunView({
   const { run, stops, loading, error, reload, move } = useDriverRun(initialRun);
   const { position } = useMyPosition();
   const [showAll, setShowAll] = useState(false);
+  /* Which unload card is open, and the state of that sheet. `unloadError` holds the server's
+   * refusal VERBATIM — it names the gap by number, and paraphrasing it here would throw away
+   * the only part the driver needs. */
+  const [unloadFor, setUnloadFor] = useState<RunFacilityStop | null>(null);
+  const [unloadBusy, setUnloadBusy] = useState(false);
+  const [unloadError, setUnloadError] = useState<string | null>(null);
+
+  async function submitUnload(
+    lines: { productId: number; disposition: Disposition; qty: number }[]
+  ) {
+    if (!unloadFor || !run) return;
+    setUnloadBusy(true);
+    setUnloadError(null);
+    try {
+      const res = await fetch(`/api/driver/run/${run.id}/unload`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ lines }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || !data.ok) {
+        setUnloadError(data.error ?? "خطا در ثبت تخلیه");
+        return;
+      }
+      setUnloadFor(null);
+      await reload();
+    } catch {
+      setUnloadError("خطا در ثبت تخلیه");
+    } finally {
+      setUnloadBusy(false);
+    }
+  }
 
   const pending = useMemo(() => pendingStops(stops), [stops]);
   const next = pending[0] ?? null;
@@ -95,6 +131,30 @@ export default function DriverRunView({
 
   return (
     <div className="flex flex-col gap-5">
+      {/* The load and the unload, ABOVE the numbered stops and outside their sequence.
+          A divider below them says "these are not stops in an order" rather than just
+          "here is a section". */}
+      <FacilityStopCards
+        facilities={run.facilities ?? []}
+        navAppId={navAppId}
+        onOpenUnload={setUnloadFor}
+      />
+
+      {/* Pre-filled from the ledger. The driver taps a disposition and confirms; he never
+          computes. The sheet shows the server's refusal verbatim rather than paraphrasing
+          it, because the number in that message IS the answer. */}
+      <UnloadTapFlow
+        open={unloadFor !== null}
+        presets={[]}
+        busy={unloadBusy}
+        error={unloadError}
+        onSubmit={submitUnload}
+        onClose={() => {
+          setUnloadFor(null);
+          setUnloadError(null);
+        }}
+      />
+
       <NextStopBanner
         stop={next}
         index={next ? stops.indexOf(next) + 1 : stops.length}

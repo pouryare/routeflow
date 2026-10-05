@@ -61,9 +61,32 @@ export interface RunDetail {
   run_date: string;
   status: string;
   stops: RunStop[];
+  /** The load and the unload, addresses included. Never numbered: the unload has no
+   *  position at all, and giving it one would let a drag renumber the whole day. */
+  facilities: RunFacilityStop[];
   remaining: number;
   to_collect_toman: number;
   collected_toman: number;
+}
+
+/** A building the run visits — to load from, or to come back to.
+ *
+ *  `address`/`lat`/`lng` come from `facilities` and may be null, because a place can exist
+ *  before anyone has put it on the map. A card is still shown when they are; the driver just
+ *  sees «هنوز مکان مشخص نیست» instead of an address, which is the truth. */
+export interface RunFacilityStop {
+  id: number;
+  facility_id: number;
+  role: "load" | "unload";
+  status: "pending" | "done";
+  done_at: string | null;
+  notes: string | null;
+  name: string;
+  address: string | null;
+  lat: number | null;
+  lng: number | null;
+  kind: string;
+  icon_key: string | null;
 }
 
 export function createRun(
@@ -266,6 +289,23 @@ export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
     .get(runId) as unknown as RunDetail | undefined;
   if (!run) return null;
 
+  /* The load and the unload, WITH the facility's address and its coordinates.
+   *
+   * These join `facilities` rather than carrying only its id, for one specific reason: this
+   * screen renders in a van with no signal, and the driver's ability to answer «where am I
+   * going?» must not depend on a lookup that has not arrived. A card that says
+   * «بارگیری · انبار بکه» with nothing under it is not a degraded view, it is a dead end. */
+  const facilities = db
+    .prepare(
+      `SELECT rfs.id, rfs.facility_id, rfs.role, rfs.status, rfs.done_at, rfs.notes,
+              f.name, f.address, f.lat, f.lng, f.kind, f.icon_key
+         FROM run_facility_stops rfs
+         JOIN facilities f ON f.id = rfs.facility_id
+        WHERE rfs.run_id = ?
+        ORDER BY CASE rfs.role WHEN 'load' THEN 0 ELSE 1 END`
+    )
+    .all(runId) as unknown as RunFacilityStop[];
+
   const stopRows = db
     .prepare(
       `SELECT ds.id, ds.order_id, ds.status, ds.collected_toman, ds.sort_order, ds.notes,
@@ -287,7 +327,12 @@ export function readRun(db: DatabaseSync, runId: number): RunDetail | null {
   return {
     ...run,
     stops,
-    remaining: stops.filter((s) => s.status === "pending").length,
+    facilities,
+    // The load and the unload are work too, so "remaining" counts them. A driver told "0
+    // remaining" who still has to unload a van has been told a lie by arithmetic.
+    remaining:
+      stops.filter((s) => s.status === "pending").length +
+      facilities.filter((f) => f.status === "pending").length,
     to_collect_toman: stops
       .filter((s) => s.status === "pending")
       .reduce((sum, s) => sum + s.total_toman, 0),
