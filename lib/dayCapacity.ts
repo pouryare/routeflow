@@ -1,5 +1,6 @@
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 import type { LatLng } from "@/lib/geo";
+import { straightLine } from "@/lib/routing/distance";
 
 /** The three ways a day can run out of room. All nullable, because a manager may set one, two
  *  or none of them — `vehicles.max_stops` / `max_weight_kg` / `max_volume_m3` are all nullable
@@ -160,8 +161,25 @@ export function planDaySplit({
     orderIds: [] as string[],
   }));
 
-  // Nearest-to-origin first, so filling the closest day is what happens by default.
-  const ordered = [...candidates].sort((a, b) => byOrigin(a, b, origin));
+  /* Nearest-to-origin first, so filling the closest day is what happens by default.
+   *
+   * This used to call `byOrigin`, which computed `Math.hypot(dLat, dLng)` -- raw DEGREES,
+   * not kilometres, not even haversine -- and ignored the `distanceFn` it was sitting next
+   * to. So «پیشنهاد بده» laid out 314 real orders by a number that means nothing, and this
+   * ordering is what decides which day fills first.
+   *
+   * Two things that were wrong with it are fixed here rather than in the comparator:
+   *   - it measured, so the caller's distance function was decorative. It is used now.
+   *   - an order it could not measure scored 0, which sorted it TIED with everything and
+   *     let it win. An unlocatable order now sorts LAST. A missing location is not the
+   *     nearest one. */
+  const measure = distanceFn ?? straightLine;
+  const rank = (o: SplitOrder): number => {
+    if (!origin) return 0;
+    if (o.lat == null || o.lng == null) return Number.MAX_SAFE_INTEGER;
+    return measure(origin, { lat: o.lat, lng: o.lng });
+  };
+  const ordered = [...candidates].sort((a, b) => rank(a) - rank(b));
   for (const order of ordered) {
     // Oldest-with-room first: a stop goes wherever there is space, in the order days come.
     const target = days.find((d) => fits(order, d.usage, d.limit));
@@ -232,9 +250,7 @@ function groupByDay(pinned: SplitOrder[]): DayPlan[] {
     .map(([day, orderIds]) => ({ day, orderIds }));
 }
 
-function byOrigin(a: SplitOrder, b: SplitOrder, origin: LatLng | null): number {
-  if (!origin) return 0;
-  const d = (o: SplitOrder) =>
-    o.lat != null && o.lng != null ? Math.hypot(o.lat - origin.lat, o.lng - origin.lng) : 0;
-  return d(a) - d(b);
-}
+/* GONE: this was `Math.hypot(dLat, dLng)` -- raw degrees, and ignoring the distanceFn beside
+   it. It measured instead of using, and it scored an unmeasurable order 0 so that order
+   sorted tied with everything and could win. Both fixed at the call site above, which is
+   where the distance function is actually in scope. */

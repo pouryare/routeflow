@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { fits, headroom, planDaySplit, remainingCapacity, type SplitOrder } from "@/lib/dayCapacity";
 import { clusterIntoDays } from "@/lib/clusterDays";
+import { straightLine, isApproximate, type DistanceFn } from "@/lib/routing/distance";
 
 /** Three well-separated towns, five stops each — the same geography clusterDays already
  *  recovers correctly, reused so these tests are about CAPACITY and PINNING, not clustering. */
@@ -336,6 +337,71 @@ describe("planDaySplit — swept over many shapes", () => {
       const onDay = plan.fill.find((d) => d.day === "2026-10-05");
       expect((onDay?.orderIds.length ?? 0) + used, `trial ${trial}`).toBeLessThanOrEqual(cap);
     }
+  });
+});
+
+describe("planDaySplit — which distance it measures with", () => {
+  const DEPOT = { lat: 35.7, lng: 51.4 };
+
+  function order(id: string, lat: number | null, lng: number | null): SplitOrder {
+    return { id, lat, lng, weightKg: 10, volumeM3: 0.1 };
+  }
+
+  it("does not rank the pool by raw degrees", () => {
+    /* The two orders are a fraction of a degree apart, so under Math.hypot on degrees A beats
+       B by a hair. The road function below says the opposite -- it stands in for the only way
+       between them crossing a pass.
+       A test that passes under BOTH measures proves nothing, which is exactly how the degrees
+       bug survived two audits. This one cannot.
+
+       Matched on COORDINATES, not object identity: the sort hands the measure function freshly
+       built { lat, lng } literals, so `p === A` would never be true and the fixture would
+       quietly measure straight lines -- passing for the wrong reason. */
+    const A = order("A", 35.705, 51.405);
+    const B = order("B", 35.706, 51.406);
+    const isA = (p: { lat: number; lng: number }) => p.lat === A.lat && p.lng === A.lng;
+
+    const roads: DistanceFn = (p, q) => {
+      const straight = Math.hypot(p.lat - q.lat, p.lng - q.lng);
+      return isA(p) || isA(q) ? straight * 400 : straight * 100;
+    };
+
+    const plan = planDaySplit({
+      free: [A, B],
+      existingDays: [
+        { day: "2026-10-14", count: 0 },
+        { day: "2026-10-15", count: 0 },
+      ],
+      limit: { stops: 1 },
+      origin: DEPOT,
+      distanceFn: roads,
+    });
+
+    // Nearest-first is the whole point of this sort: the first day fills with the nearest
+    // order. Under byOrigin, A goes first no matter what function the caller supplied.
+    expect(plan.fill[0].orderIds).toEqual(["B"]);
+  });
+
+  it("refuses the whole plan when an order has no location, and names it", () => {
+    /* Not a sort problem after all. An unlocatable order BLOCKS the plan before any ordering
+       happens, because a partial plan is worse than none -- a missing order would look placed.
+       So the question is not "where does it sort" but "does the user learn which order is the
+       problem", and `blocked` is the answer.
+       (It also means byOrigin's 0-for-unmeasurable branch was unreachable: the guard above
+       already refused. The MAX_SAFE_INTEGER in `rank` is belt-and-braces, not the fix.) */
+    const plan = planDaySplit({
+      free: [order("Z", null, null), order("A", 35.71, 51.41)],
+      existingDays: [{ day: "2026-10-14", count: 0 }],
+      limit: { stops: 1 },
+      origin: DEPOT,
+      distanceFn: straightLine,
+    });
+    expect(plan.blocked).toEqual(["Z"]);
+    expect(plan.fill).toEqual([]);
+  });
+
+  it("labels the straight-line fallback as approximate", () => {
+    expect(isApproximate(straightLine)).toBe(true);
   });
 });
 });
