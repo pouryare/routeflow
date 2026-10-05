@@ -164,6 +164,9 @@ describe("organization_id backfill", () => {
       "run_facility_stops", // through delivery_runs — a facility visit is not a delivery,
                             // but it still belongs to exactly one run
       "run_unload_lines",   // through delivery_runs
+      "run_draft_stops",    // through run_drafts, which is itself a tenant table — it
+                            // carries organization_id AND user_id, because a draft
+                            // belongs to a PERSON before it belongs to a company
       "route_schedules",    // through route_templates
       "weather_snapshots",  // a forecast for a lat/lng is not tenant data
       "delivery_lines",     // through deliveries

@@ -70,6 +70,10 @@ export const TENANT_TABLES = [
      through delivery_runs, so there is nothing here for the sweep below to stamp. Leaving the
      name in the list would ALTER a column onto a table that no longer exists. */
   "lead_visit_activities",
+  /* A draft belongs to a PERSON first, so it carries organization_id AND user_id -- and is
+     therefore a tenant table in its own right rather than reaching a tenant through a run.
+     It is here because it genuinely needs stamping, not because every table reaches one. */
+  "run_drafts",
   "commission_rates",
   "commission_tiers",
   "commission_payments",
