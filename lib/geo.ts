@@ -99,50 +99,6 @@ export const RESORT_THRESHOLD_KM = 0.1;
  *  Optional `distanceFn` lets callers plug in a road-distance matrix (OSRM) instead of
  *  the default haversine straight-line. When supplied, the matrix must be symmetric
  *  with a zero diagonal and dimensions matching the combined `[origin, ...stops]` length. */
-const MAX_SWEEPS = 50;
-
-export function twoOptOrder<T extends LatLng>(stops: T[], origin: LatLng, returnToOrigin: boolean, distanceFn?: (a: LatLng, b: LatLng) => number): T[] {
-  if (stops.length < 2) return stops.slice();
-
-  // Use custom distance function (e.g., OSRM road distances) when provided,
-  // otherwise fall back to haversine straight-line.
-  const dist = distanceFn
-    ? (a: LatLng, b: LatLng) => distanceFn(a, b)
-    : distanceKm;
-
-  function routeLength(origin: LatLng, stops: T[], returnToOrigin: boolean): number {
-    if (stops.length === 0) return 0;
-    let total = dist(origin, stops[0]);
-    for (let i = 1; i < stops.length; i++) total += dist(stops[i - 1], stops[i]);
-    if (returnToOrigin) total += dist(stops[stops.length - 1], origin);
-    return total;
-  }
-
-  let best = stops.slice();
-  let bestLength = routeLength(origin, best, returnToOrigin);
-
-  for (let sweep = 0; sweep < MAX_SWEEPS; sweep++) {
-    let improvedThisSweep = false;
-
-    for (let i = 0; i < best.length - 1; i++) {
-      for (let k = i + 1; k < best.length; k++) {
-        const candidate = best.slice(0, i).concat(best.slice(i, k + 1).reverse(), best.slice(k + 1));
-        const candidateLength = routeLength(origin, candidate, returnToOrigin);
-        // Strictly shorter, by more than floating-point noise: an equal-length swap is
-        // churn, and accepting one lets the sweep loop oscillate forever.
-        if (candidateLength < bestLength - 1e-9) {
-          best = candidate;
-          bestLength = candidateLength;
-          improvedThisSweep = true;
-        }
-      }
-    }
-
-    if (!improvedThisSweep) break;
-  }
-
-  return best;
-}
 
 /** Shortest straight-line distance from a point to a *segment* (not the infinite line
  *  through it) in kilometres.

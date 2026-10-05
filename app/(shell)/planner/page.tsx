@@ -15,8 +15,8 @@ import {
   formatDistanceKm,
   nearestNeighborOrder,
   routeLengthKm,
-  twoOptOrder,
 } from "@/lib/geo";
+import { twoOptOrder } from "@/lib/routing/twoOpt";
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";

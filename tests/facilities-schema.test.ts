@@ -31,7 +31,7 @@ describe("facilities schema", () => {
 
   it("stores a facility whose location is unknown", () => {
     const db = getDb();
-    db.prepare("INSERT INTO organizations (id, name) VALUES (9001, 't')").run();
+    db.prepare("INSERT INTO organizations (id, slug, name, created_at) VALUES (9001, 'org-9001', 't', '2026-10-04')").run();
     const id = Number(
       db
         .prepare(
@@ -56,14 +56,19 @@ describe("facilities schema", () => {
   });
 
   it("still refuses a facility with no name", () => {
-    // Nullable lat must not have relaxed anything else.
+    // Nullable lat must not have relaxed anything else. This asserts the actual NOT NULL --
+    // a missing name -- and NOT that an empty one is rejected, because the schema never said
+    // that. Emptiness is the API's business (it trims and refuses), not the table's, and a
+    // test asserting it here would be asserting something the column does not promise.
     const db = getDb();
-    db.prepare("INSERT INTO organizations (id, name) VALUES (9004, 't')").run();
+    db.prepare(
+      "INSERT INTO organizations (id, slug, name, created_at) VALUES (9004, 'org-9004', 't', '2026-10-04')"
+    ).run();
     expect(() =>
       db
         .prepare(
           `INSERT INTO facilities (slug, kind, name, lat, lng, is_default_origin, organization_id, created_at, updated_at)
-           VALUES ('nameless', 'warehouse', '', NULL, NULL, 0, 9004, '2026-10-04', '2026-10-04')`
+           VALUES ('nameless', 'warehouse', NULL, NULL, NULL, 0, 9004, '2026-10-04', '2026-10-04')`
         )
         .run()
     ).toThrow();
@@ -71,7 +76,7 @@ describe("facilities schema", () => {
 
   it("accepts all nine kinds, including van", async () => {
     const db = getDb();
-    db.prepare("INSERT INTO organizations (id, name) VALUES (9005, 't')").run();
+    db.prepare("INSERT INTO organizations (id, slug, name, created_at) VALUES (9005, 'org-9005', 't', '2026-10-04')").run();
     const { FACILITY_KINDS } = await import("@/lib/facilityTypes");
     expect(FACILITY_KINDS).toHaveLength(9);
     for (const kind of FACILITY_KINDS) {
@@ -91,7 +96,7 @@ describe("facilities schema", () => {
     // Two warehouses can wear different shapes. That is the whole point of icon_key: the
     // kind narrows the field, the person picks within it.
     const db = getDb();
-    db.prepare("INSERT INTO organizations (id, name) VALUES (9006, 't')").run();
+    db.prepare("INSERT INTO organizations (id, slug, name, created_at) VALUES (9006, 'org-9006', 't', '2026-10-04')").run();
     db.prepare(
       `INSERT INTO facilities (slug, kind, name, icon_key, lat, lng, is_default_origin, organization_id, created_at, updated_at)
        VALUES ('wh-silo', 'warehouse', 'انبار سیلویی', 'silo', 35.5, 51.7, 0, 9006, '2026-10-04', '2026-10-04')`

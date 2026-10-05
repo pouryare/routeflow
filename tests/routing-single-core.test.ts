@@ -19,11 +19,14 @@ import path from "node:path";
 const ROOT = process.cwd();
 const ROUTING = path.join(ROOT, "lib/routing");
 
-/** Files allowed to declare one. Everything else must ask lib/routing for a distance. */
+/** Everything IN lib/routing may declare one -- that is the module's whole job. Everything
+ *  outside it must ask. Read from the directory rather than listed by hand, so adding a
+ *  routing module does not mean editing this file and forgetting. */
 const ALLOWED = new Set(
-  ["distance.ts", "orderStops.ts", "splitIntoDays.ts", "depot.ts"].map((f) =>
-    path.join(ROUTING, f)
-  )
+  fs
+    .readdirSync(ROUTING)
+    .filter((f) => f.endsWith(".ts"))
+    .map((f) => path.join(ROUTING, f))
 );
 
 function tsFiles(dir: string): string[] {
@@ -36,18 +39,44 @@ function tsFiles(dir: string): string[] {
     });
 }
 
-/** A declaration, not a use. `distanceFn(a, b)` is a caller and is fine; `distanceFn?: X` or
- *  `distanceFn: DistanceFn = ...` is someone taking the decision away from lib/routing. */
-const DECLARES = /(^|[^.\w])distanceFn\s*[?:=]/;
+/** The actual disease, stated precisely.
+ *
+ *  A module outside lib/routing may ACCEPT a distance, so long as it is typed `DistanceFn`
+ *  and forwarded untouched. That is a pass-through: the caller chose, and the module is not
+ *  claiming authority it does not have. clusterDays and dayCapacity do exactly this.
+ *
+ *  What it may not do is write the distance type out by hand -- `(a: LatLng, b: LatLng) =>
+ *  number` -- because that is a module declaring itself a second, structurally identical
+ *  source of distance truth. Nor may it supply a default of its own, which is how one of the
+ *  six sites came to measure in degrees while ignoring the function it was handed.
+ *
+ *  Three earlier versions of this regex each failed on a file nobody had touched, which is
+ *  how the rule got its current shape:
+ *    - `[?:=]` matched the first `?` of `distanceFn ?? straightLine`.
+ *    - a bare `:` matched `const distanceFn = fromMatrix(...)` -- a local binding, and
+ *      exactly what a caller is supposed to write.
+ *    - flagging every `distanceFn?:` flagged the pass-throughs too, i.e. the rule read as
+ *      "you may not forward a distance", which was not what was wrong. */
+const INLINE_FN_TYPE = /distanceFn\s*\??:\s*\(\s*a\s*:\s*LatLng/;
+const OWN_DEFAULT = /distanceFn\s*(?:\?\s*)?=\s*(?!straightLine\b)/;
+/** `const distanceFn = fromMatrix(...)` is a CALLER building one to hand to lib/routing --
+ *  the exact thing we want callers to do -- so a local binding of that name is not a
+ *  declaration of anything. */
+const LOCAL_BINDING = /\b(?:const|let)\s+distanceFn\b/;
 
 describe("one routing core", () => {
-  it("no routing function outside lib/routing declares a distanceFn", () => {
+  it("no module outside lib/routing declares its own distance", () => {
     const offenders: string[] = [];
     for (const root of ["lib", "app", "components"]) {
       for (const file of tsFiles(path.join(ROOT, root))) {
         if (ALLOWED.has(file)) continue;
         const src = fs.readFileSync(file, "utf8");
-        if (DECLARES.test(src)) offenders.push(path.relative(ROOT, file));
+        // Line-wise so a local binding can be excluded without letting one legitimate
+        // `const` elsewhere in the file excuse an inline function type on another line.
+        const declaresOwn = src
+          .split("\n")
+          .some((l) => !LOCAL_BINDING.test(l) && (INLINE_FN_TYPE.test(l) || OWN_DEFAULT.test(l)));
+        if (declaresOwn) offenders.push(path.relative(ROOT, file));
       }
     }
     expect(offenders).toEqual([]);
@@ -65,16 +94,26 @@ describe("one routing core", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("is_default_origin is read in one place", () => {
-    // The same class of bug. Eleven call sites each asking some form of "which place is the
-    // origin?" is how the facility change would have had to land eleven times.
+  it("only lib/routing and lib/db decide where the origin is", () => {
+    /* The same class of bug as the distance one. Two readers of this question already
+       disagreed -- distances fell through flag -> home base -> first, stock went
+       kind='warehouse' -> flag -> lowest id -- so a business whose depot was not typed
+       "warehouse" could never load a van.
+
+       Narrow on purpose, twice over. Naming the column is not deciding anything: the API
+       routes write it, the sites page renders a checkbox for it, every INSERT lists it, and
+       readFacilities projects it into the row shape. Only a SELECT that ORDERS or filters by
+       it is answering "which place is the origin".
+
+       The `[^;]*` stops the match running past the end of one statement into the next, which
+       is how a plain `SELECT *` came to look like a decision. */
+    const DECIDES = /SELECT[^;]*is_default_origin[^;]*(ORDER BY|AND|WHERE)|ORDER BY[^;]*is_default_origin/;
     const offenders: string[] = [];
     for (const root of ["lib", "app", "components"]) {
       for (const file of tsFiles(path.join(ROOT, root))) {
         if (file === path.join(ROUTING, "depot.ts")) continue;
         if (file === path.join(ROOT, "lib/db.ts")) continue; // the schema owns the column
-        const src = fs.readFileSync(file, "utf8");
-        if (src.includes("is_default_origin")) offenders.push(path.relative(ROOT, file));
+        if (DECIDES.test(fs.readFileSync(file, "utf8"))) offenders.push(path.relative(ROOT, file));
       }
     }
     expect(offenders).toEqual([]);

@@ -7,7 +7,8 @@
  *  services; it just proposes a rougher route and says so.
  */
 
-import { distanceKm, nearestNeighborOrder, twoOptOrder, type LatLng } from "@/lib/geo";
+import { distanceKm, nearestNeighborOrder, type LatLng } from "@/lib/geo";
+import { twoOptOrder } from "./twoOpt";
 import { vehicleFit } from "./capacity";
 
 export interface RoutableDelivery {

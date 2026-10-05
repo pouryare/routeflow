@@ -37,7 +37,7 @@ beforeAll(() => {
 
 describe("facilities", () => {
   it("has exactly one home base and one warehouse", () => {
-    expect(homeBase()?.kind).toBe("home_base");
+    expect(homeBase()?.kind).toBe("home");
     expect(mainWarehouse()?.kind).toBe("warehouse");
   });
 
@@ -66,7 +66,7 @@ describe("facilities", () => {
   });
 
   it("lists the home base first, since it is the origin runs start from", () => {
-    expect(readFacilities()[0].kind).toBe("home_base");
+    expect(readFacilities()[0].kind).toBe("home");
   });
 
   it("defaults the origin to the row carrying the flag", () => {
@@ -78,7 +78,7 @@ describe("facilities", () => {
   it("falls back to the home base when no row carries the default flag", () => {
     const db = getDb();
     db.prepare("UPDATE facilities SET is_default_origin = 0").run();
-    expect(defaultOrigin()?.kind).toBe("home_base");
+    expect(defaultOrigin()?.kind).toBe("home");
     db.prepare("UPDATE facilities SET is_default_origin = 1 WHERE slug = 'home-test'").run();
   });
 

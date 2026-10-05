@@ -100,10 +100,19 @@ describe("POST /api/facilities", () => {
 
 describe("GET /api/facilities", () => {
   it("returns every site", async () => {
-    const res = await GET(new NextRequest("http://localhost/api/facilities", { headers: { cookie: authCookie() } }));
+    // Its own two rows. This used to be satisfied by the seeded warehouse and home base,
+    // which no longer exist -- nothing is seeded now, so a test that leans on them is
+    // asserting that a database comes pre-populated with a specific business's addresses.
+    const before = await GET(
+      new NextRequest("http://localhost/api/facilities", { headers: { cookie: authCookie() } })
+    ).then((r) => r.json());
+    seedExtraFacility();
+    seedExtraFacility();
+    const res = await GET(
+      new NextRequest("http://localhost/api/facilities", { headers: { cookie: authCookie() } })
+    );
     const body = await res.json();
-    // >= 2 because this file creates its own fixtures; nothing is seeded.
-    expect(body.facilities.length).toBeGreaterThanOrEqual(2);
+    expect(body.facilities.length).toBe(before.facilities.length + 2);
   });
 
   // A pin move must invalidate the cache signature, or the client keeps rendering the

@@ -1,6 +1,6 @@
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 import type { LatLng } from "@/lib/geo";
-import { straightLine } from "@/lib/routing/distance";
+import { straightLine, type DistanceFn } from "@/lib/routing/distance";
 
 /** The three ways a day can run out of room. All nullable, because a manager may set one, two
  *  or none of them — `vehicles.max_stops` / `max_weight_kg` / `max_volume_m3` are all nullable
@@ -106,7 +106,7 @@ interface SplitArgs {
   existingDays?: ExistingDay[];
   limit?: DayLimit;
   origin?: LatLng | null;
-  distanceFn?: (a: LatLng, b: LatLng) => number;
+  distanceFn?: DistanceFn;
 }
 
 /** Suggests how to spread uncommitted orders across days, without moving anything.
@@ -212,7 +212,7 @@ function spreadAcrossNewDays(
   leftovers: SplitOrder[],
   limit: DayLimit,
   origin: LatLng | null,
-  distanceFn?: (a: LatLng, b: LatLng) => number
+  distanceFn?: DistanceFn
 ): DayPlan[] {
   if (leftovers.length === 0) return [];
 

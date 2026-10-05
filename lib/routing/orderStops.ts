@@ -11,7 +11,7 @@
 // this day be driven in". Using an assigner to order would mean inventing a vehicle per
 // stop and reading back the sequence, which is a wrapper around nothing.
 
-import { twoOptOrder } from "@/lib/geo";
+import { twoOptOrder } from "./twoOpt";
 import {
   straightLine,
   qualityOf,

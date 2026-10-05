@@ -7,8 +7,10 @@ import {
   formatDistanceKm,
   nearestNeighborOrder,
   routeLengthKm,
-  twoOptOrder,
 } from "@/lib/geo";
+// twoOptOrder moved to lib/routing/twoOpt.ts: lib/geo declares no distance of its own
+// any more, so that every measure comes from lib/routing/distance. Its tests moved with it.
+import { twoOptOrder } from "@/lib/routing/twoOpt";
 import type { LatLng } from "@/lib/geo";
 
 describe("distanceKm", () => {

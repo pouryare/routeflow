@@ -1,4 +1,5 @@
-import { LatLng, distanceKm, twoOptOrder } from "./geo";
+import { LatLng, distanceKm } from "./geo";
+import { twoOptOrder } from "./routing/twoOpt";
 import { straightLine, type DistanceFn } from "./routing/distance";
 
 /** Splitting a long list of stops into days.

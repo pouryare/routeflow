@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { pickDepot } from "@/lib/routing/depot";
 import { onHand, recordMovementsTxn, type MovementInput } from "@/lib/repo/stock";
 
 /** A van is a facility. Goods move warehouse -> van -> the customer's door, and every step of
@@ -127,20 +128,12 @@ export function vanOnHand(organizationId: number, facilityId: number, productId:
 
 /** The tenant's depot: the source a van is loaded from.
  *
- *  `is_default_origin` first, then the lowest-id warehouse. The flag matters: a tenant can have
- *  several facilities of kind 'warehouse' — the seed alone creates one — and "whichever was
- *  created first" is not the same as "the one this company dispatches from". Taking the lowest id
- *  silently loads from the wrong building whenever an org adds a second. */
+ *  Moved to lib/routing/depot.ts. This used to be `kind = 'warehouse'` first, then the
+ *  flag, then lowest id -- which meant a business whose depot is not typed "warehouse" could
+ *  never load a van at all, and a business with two warehouses silently loaded from whichever
+ *  came first. pickDepot asks the flag first and falls back to anything placed.
+ *
+ *  The throw is unchanged and still the right one: loading stock needs a real answer. */
 function warehouseFor(organizationId: number): number {
-  const db = getDb();
-  const row = db
-    .prepare(
-      `SELECT id FROM facilities
-        WHERE organization_id = ? AND kind = 'warehouse'
-        ORDER BY is_default_origin DESC, id ASC
-        LIMIT 1`
-    )
-    .get(organizationId) as { id: number } | undefined;
-  if (!row) throw new VanStockError("انبار تعریف نشده است");
-  return row.id;
+  return pickDepot(organizationId).id;
 }
