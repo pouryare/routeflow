@@ -17,6 +17,7 @@ import {
   type LineSnapshot,
 } from "./orderMath";
 import { postDeliveryRecognition } from "./repo/ledgerPostings";
+import { deliverFromVan, vanFacilityFor } from "./repo/vanStock";
 import { sumToman } from "./money";
 import { recordPaymentTxn, voidPaymentTxn, recomputeOrderPaymentTxn } from "./repo/payments";
 import { allocateFEFO, recordMovementsTxn, defaultFacilityId } from "./repo/stock";
@@ -320,10 +321,12 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
   const stop = db
     .prepare(
       `SELECT s.id, s.order_id, s.status, o.customer_id, o.order_no, o.organization_id,
-              c.business_name AS customer_name
+              c.business_name AS customer_name,
+              dr.driver_user_id, dr.organization_id AS run_org
          FROM delivery_stops s
          JOIN orders o ON o.id = s.order_id
          JOIN customers c ON c.id = o.customer_id
+         JOIN delivery_runs dr ON dr.id = s.run_id
         WHERE s.id = ?`
     )
     .get(stopId) as
@@ -334,6 +337,7 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
         order_no: string;
         organization_id: number;
         customer_name: string;
+        driver_user_id: number;
       }
     | undefined;
   if (!stop) throw new DeliveryError("توقف پیدا نشد");
@@ -376,6 +380,40 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     const nothingTaken = lines.every((l) => (l.packs_delivered ?? l.packs_ordered) === 0);
     const someShort =
       !nothingTaken && lines.some((l) => (l.packs_delivered ?? 0) < l.packs_ordered);
+
+    /* The van's balance leaves the van HERE, and only here.
+     *
+     * deliverFromVan was written for this and had no caller, so goods loaded in the morning
+     * and delivered at noon were never tracked as having left -- which is why the end-of-day
+     * reconciliation had nothing true to compare against.
+     *
+     * The condition is PER LINE and PER QUANTITY, not "the delivery succeeded". That is the
+     * whole point: a refused stop writes no deliveries row, its goods never left, and the
+     * `qty > 0` test is false for every line so nothing fires. A partial delivers 4 of 10 and
+     * only 4 leaves. Tying this to the stop's status instead would debit the van for goods
+     * that are still sitting on it.
+     *
+     * Skipped and pending stops never reach here at all.
+     *
+     * A driver with no van on file gets a null facility and no movement -- NOT a throw. Their
+     * delivery is real and must still be recorded; the missing van is a separate problem for
+     * somebody else to notice, and failing the door event over it would lose the delivery. */
+    const vanFacility = vanFacilityFor(stop.organization_id, stop.driver_user_id);
+    if (vanFacility !== null) {
+      for (const line of input.lines) {
+        const target = byId.get(line.line_id);
+        if (!target) continue; // already rejected above; unreachable
+        const packs = line.packs_delivered * target.qty_per_pack;
+        if (packs > 0) {
+          deliverFromVan(stop.organization_id, {
+            facilityId: vanFacility,
+            productId: target.product_id,
+            qty: packs,
+            actorId: input.by,
+          });
+        }
+      }
+    }
 
     const stopStatus = nothingTaken ? "refused" : "delivered";
     db.prepare(

@@ -171,3 +171,49 @@ describe("deliverFromVan", () => {
     ).toThrow();
   });
 });
+
+describe("vanFacilityFor", () => {
+  /* delivery_runs carries NO vehicle column, so a delivery knows its driver and nothing about
+   * which van the goods came off. `vehicles.driver_default_id` is the only link there is, and
+   * it is a DEFAULT -- recorded here so the limitation is visible rather than discovered the
+   * first time somebody swaps vans for a day. */
+
+  it("returns null for a driver with no van, rather than throwing", async () => {
+    const { vanFacilityFor } = await import("@/lib/repo/vanStock");
+    const db = getDb();
+    const stranger = Number(
+      db
+        .prepare(
+          "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, 'delivery_driver', NULL, 1, ?, ?)",
+        )
+        .run(`no-van-${process.pid}`, "بدون وانت", iso(), ctx.org).lastInsertRowid,
+    );
+    // A driver with no van is an ordinary state. The caller needs to be able to ASK without a
+    // try/catch, and a missing van must not fail somebody's delivery at the door.
+    expect(vanFacilityFor(ctx.org, stranger)).toBeNull();
+  });
+
+  it("resolves a driver's default van to a facility, idempotently", async () => {
+    const { vanFacilityFor } = await import("@/lib/repo/vanStock");
+    const db = getDb();
+    const driver = Number(
+      db
+        .prepare(
+          "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, 'delivery_driver', NULL, 1, ?, ?)",
+        )
+        .run(`has-van-${process.pid}`, "راننده", iso(), ctx.org).lastInsertRowid,
+    );
+    const plate = `پلاک-${process.pid}-r`;
+    db.prepare(
+      `INSERT INTO vehicles (organization_id, plate, name, driver_default_id, active, created_at, updated_at)
+       VALUES (?, ?, 'وانت راننده', ?, 1, ?, ?)`,
+    ).run(ctx.org, plate, driver, iso(), iso());
+
+    const first = vanFacilityFor(ctx.org, driver);
+    const second = vanFacilityFor(ctx.org, driver);
+    // Idempotent on the plate: two calls cannot split one van's stock across two facilities,
+    // which is exactly what createVanFacility's own comment warns about.
+    expect(first).not.toBeNull();
+    expect(second).toBe(first);
+  });
+});

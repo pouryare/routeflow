@@ -126,6 +126,39 @@ export function vanOnHand(organizationId: number, facilityId: number, productId:
   return onHand(organizationId, { product_id: productId, facility_id: facilityId });
 }
 
+/** The facility holding this driver's van, or null when they have no van on file.
+ *
+ *  This had to be invented rather than looked up, because there was nothing to look up:
+ *  `delivery_runs` carries no vehicle, so a delivery knows its driver and nothing about which
+ *  van it came off. `vehicles.driver_default_id` is the only link, and it is a DEFAULT -- a
+ *  driver who swaps vans for a day is, on this data, still credited to the same one.
+ *
+ *  Deliberately null rather than throwing. A driver with no van registered is an ordinary
+ *  state, not an error, and callers need to be able to ask "do I know a van for this?" without
+ *  wrapping the question in a try/catch. */
+export function vanFacilityFor(organizationId: number, driverUserId: number): number | null {
+  const db = getDb();
+  const row = db
+    .prepare(
+      `SELECT v.id, v.name, v.plate
+         FROM vehicles v
+        WHERE v.driver_default_id = ? AND v.organization_id = ? AND v.active = 1
+        ORDER BY v.id
+        LIMIT 1`
+    )
+    .get(driverUserId, organizationId) as
+    | { id: number; name: string; plate: string | null }
+    | undefined;
+  if (!row) return null;
+  // createVanFacility is idempotent on the plate, so this cannot split one van's stock across
+  // two facilities however many times it is called.
+  return createVanFacility(
+    organizationId,
+    row.name,
+    row.plate ?? `veh-${row.id}`
+  );
+}
+
 /** The tenant's depot: the source a van is loaded from.
  *
  *  Moved to lib/routing/depot.ts. This used to be `kind = 'warehouse'` first, then the
