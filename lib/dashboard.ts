@@ -19,7 +19,7 @@ import {
   PRICED_ORDER_STATUSES,
   sqlStatusList,
 } from "./orderStateMachine";
-import { toJalali, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
+import { jalaliMonthKey, JALALI_MONTHS, JALALI_WEEKDAYS } from "./jalali";
 
 export interface Series {
   key: string;
@@ -68,11 +68,7 @@ export interface SalesDashboard {
  *  month straddles two of them. 2026-08-20 and 2026-08-25 are the same Gregorian month
  *  and different Persian ones, which is exactly the case a report has to get right.
  */
-export function jalaliMonthKey(iso: string): string {
-  const j = toJalali(iso);
-  if (!j) return iso.slice(0, 7);
-  return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
-}
+export { jalaliMonthKey };
 
 function monthLabel(key: string): string {
   const [, month] = key.split("-");

@@ -1,3 +1,4 @@
+import { userInOrg } from "./organizations";
 import type { DatabaseSync } from "node:sqlite";
 
 /** The three reads and one write the avatar routes need.
@@ -17,12 +18,8 @@ export function readAvatarStem(db: DatabaseSync, userId: number): string | null 
   return row?.avatar_stem;
 }
 
-/** Does this user exist in this tenant? The upload route's only authorisation-relevant read. */
-export function userInOrg(db: DatabaseSync, userId: number, organizationId: number): boolean {
-  return !!db
-    .prepare("SELECT id FROM users WHERE id = ? AND organization_id = ?")
-    .get(userId, organizationId);
-}
+// The upload route's only authorisation-relevant read; the query itself lives with the tenants.
+export { userInOrg };
 
 /** Point a user at their freshly uploaded avatar.
  *

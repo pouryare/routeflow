@@ -1,3 +1,4 @@
+import { tehranTodayIso } from "@/lib/jalali";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
@@ -17,7 +18,7 @@ export async function GET(req: NextRequest) {
   const runs = readDriverRuns(db, guard.session.user.id);
   if (runs.length === 0) return NextResponse.json({ ok: true, run: null });
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
   const wanted =
     new URL(req.url).searchParams.get("run") ??
     String(runs.find((r) => r.run_date === today)?.id ?? runs[0].id);

@@ -1,17 +1,15 @@
 "use client";
 
+import type { SavedLocationRow } from "@/lib/db";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
-import { useHydrated } from "@/lib/useHydrated";
 import { useSession } from "@/lib/useSession";
-import { useEffect, useState, useMemo } from "react";
+import { useState, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { averageScore } from "@/lib/leadScore";
-import { distanceKm } from "@/lib/geo";
 import LeadConversionFunnel from "@/components/analytics/LeadConversionFunnel";
 import LeadScoreDistribution from "@/components/analytics/LeadScoreDistribution";
 import LeadStatusBreakdown from "@/components/analytics/LeadStatusBreakdown";
 import { SkeletonRows } from "@/components/Skeleton";
-import EmptyState from "@/components/EmptyState";
 import { useToast } from "@/components/ToastProvider";
 import { SkeletonBlock } from "@/components/Skeleton";
 
@@ -30,11 +28,10 @@ const LeadGeographicDensity = dynamic(
 );
 
 export default function AnalyticsPage() {
-  const [locations, setLocations] = useState<any[]>([]);
+  const [locations, setLocations] = useState<SavedLocationRow[]>([]);
   const [loading, setLoading] = useState(true);
   const toast = useToast();
-  const { isManager, loading: sessionLoading } = useSession();
-  const hydrated = useHydrated();
+  const { loading: sessionLoading } = useSession();
 
   async function load() {
     try {

@@ -8,6 +8,7 @@ import { useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { CustomerRow } from "@/lib/types";
+import type { SavedLocationRow } from "@/lib/db";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { isPlaced, pickOrigin, pickPlaced } from "@/lib/facilityTypes";
 import {
@@ -17,7 +18,8 @@ import {
   nearestNeighborOrder,
   routeLengthKm,
 } from "@/lib/geo";
-import { twoOptOrder } from "@/lib/routing/twoOpt";
+import { reorderGain } from "@/lib/routing/reorderGain";
+import { straightLine } from "@/lib/routing/distance";
 import type { RouteStop } from "@/components/PlannerRouteMap";
 import { useToast } from "@/components/ToastProvider";
 import { faFixed, faNum } from "@/lib/format";
@@ -33,6 +35,17 @@ import { Icon } from "@/components/meridian/Icon";
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
 const WEEKDAYS = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
+
+/** A saved lead as the "add to plan" search needs it. Coordinates stay nullable: a pasted
+ *  link that never resolved is still a lead worth planning a visit to. */
+type LeadLocation = Pick<SavedLocationRow, "id" | "name" | "lat" | "lng" | "address">;
+
+/** What the "add to plan" dropdown offers. Tagged rather than sniffed: a customer row has an
+ *  `address` too, so testing for one cannot tell the two apart -- and did not, which listed
+ *  every customer as a lead and added it to the plan as one. */
+type AddCandidate =
+  | { kind: "customer"; customer: CustomerRow }
+  | { kind: "lead"; lead: LeadLocation };
 
 interface PlanRow {
   id: number;
@@ -231,7 +244,7 @@ export default function PlannerPage() {
   useEffect(() => {
     fetch("/api/locations")
       .then((r) => r.json())
-      .then((d) => setLeads((d.locations ?? []).map((l: any) => ({
+      .then((d) => setLeads((d.locations ?? []).map((l: SavedLocationRow) => ({
         id: l.id,
         name: l.name,
         lat: l.lat,
@@ -269,25 +282,19 @@ export default function PlannerPage() {
 
   const dayPlans = (plansByDate[selectedDate] ?? []).slice().sort((a, b) => a.sort_order - b.sort_order);
 
-  interface LeadLocation {
-  id: number;
-  name: string;
-  lat: number;
-  lng: number;
-  address: string | null;
-}
-type AddCandidate = CustomerRow | LeadLocation;
-
   const addCandidates: AddCandidate[] = useMemo(() => {
     const q = addQuery.trim();
     if (!q) return [];
-    const already = new Set(dayPlans.map((p) => p.entity_id));
+    // Keyed by type as well as id: customer 5 and lead 5 are different rows.
+    const already = new Set(dayPlans.map((p) => `${p.entity_type}:${p.entity_id}`));
     const customerMatches = customers
-      .filter((c) => !already.has(c.id) && (c.business_name.includes(q) || c.customer_code.includes(q)))
-      .slice(0, 6);
+      .filter((c) => !already.has(`customer:${c.id}`) && (c.business_name.includes(q) || c.customer_code.includes(q)))
+      .slice(0, 6)
+      .map((customer): AddCandidate => ({ kind: "customer", customer }));
     const leadMatches = leads
-      .filter((l) => !already.has(l.id) && l.name.includes(q))
-      .slice(0, 6);
+      .filter((l) => !already.has(`lead_location:${l.id}`) && l.name.includes(q))
+      .slice(0, 6)
+      .map((lead): AddCandidate => ({ kind: "lead", lead }));
     return [...customerMatches, ...leadMatches];
   }, [addQuery, customers, leads, dayPlans]);
 
@@ -508,11 +515,7 @@ type AddCandidate = CustomerRow | LeadLocation;
   // it is an explicit action -- see applyOptimalOrder.
   const optimisation = useMemo(() => {
     if (!origin || orderedStops.length < 3) return null;
-    const current = routeLengthKm(origin, orderedStops, returnToOrigin);
-    const improved = twoOptOrder(orderedStops, origin, returnToOrigin);
-    const improvedLength = routeLengthKm(origin, improved, returnToOrigin);
-    const savedPct = current > 0 ? ((current - improvedLength) / current) * 100 : 0;
-    return { improved, savedPct, savedKm: current - improvedLength };
+    return reorderGain(origin, orderedStops, returnToOrigin, straightLine);
   }, [origin, orderedStops, returnToOrigin]);
 
   // Google's directions share-link accepts at most this many intermediate waypoints and
@@ -783,25 +786,21 @@ type AddCandidate = CustomerRow | LeadLocation;
               <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-[var(--radius-md)] border border-border bg-surface-raised elevate-accent">
                 {addCandidates.map((c) => (
                   <button
-                    key={c.id}
+                    key={c.kind === "lead" ? `lead-${c.lead.id}` : `customer-${c.customer.id}`}
                     onClick={() => {
-                      const isLead = (c as any).address !== undefined;
-                      if (isLead) {
-                        addLeadToPlan((c as any).id);
-                      } else {
-                        addToPlan((c as CustomerRow).id);
-                      }
+                      if (c.kind === "lead") addLeadToPlan(c.lead.id);
+                      else addToPlan(c.customer.id);
                     }}
                     className="flex w-full items-center justify-between gap-2 border-b border-border px-3 py-2 text-right text-[length:var(--text-sm)] text-text last:border-b-0 hover:bg-white/5"
                   >
                     <span className="truncate flex items-center gap-2">
-                      {(c as any).address !== undefined ? (
+                      {c.kind === "lead" ? (
                         <Icon name="map-pin" size="sm" className="text-accent" />
                       ) : null}
-                      {(c as any).address !== undefined ? (c as any).name : (c as CustomerRow).business_name}
+                      {c.kind === "lead" ? c.lead.name : c.customer.business_name}
                     </span>
                     <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">
-                      {(c as any).address !== undefined ? "سرنخ" : (c as CustomerRow).customer_code}
+                      {c.kind === "lead" ? "سرنخ" : c.customer.customer_code}
                     </span>
                   </button>
                 ))}

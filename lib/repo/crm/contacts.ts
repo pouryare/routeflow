@@ -1,11 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "@/lib/db";
-import { canWriteBusiness, type Session } from "@/lib/session";
+import { type Session } from "@/lib/session";
 import { normPhone } from "@/lib/crm/phone";
 import { CONTACT_ROLES, isDecider, isOneOf, type ContactRole } from "@/lib/crm/vocab";
-import { getBusiness } from "./businesses";
 import { findDuplicates } from "./dedupe";
-import { CrmError } from "./write";
+import { CrmError, writableBusiness } from "./write";
 
 export interface ContactInput {
   name?: string | null; role?: string; phone?: string | null; whatsapp?: string | null;
@@ -25,12 +24,6 @@ function validateInput(input: ContactInput): void {
   }
 }
 
-function writableBusiness(session: Session, customerId: number) {
-  const b = getBusiness(session, customerId);
-  if (!b) throw new CrmError(404, "کسب‌وکار پیدا نشد");
-  if (!canWriteBusiness(session, b)) throw new CrmError(403, "دسترسی لازم را ندارید");
-  return b;
-}
 
 /** undefined = not being changed; null = cleared; a string = the normalised 10 digits. */
 function phoneFor(session: Session, raw: string | null | undefined, customerId: number): string | null | undefined {

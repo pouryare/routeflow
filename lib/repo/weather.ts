@@ -1,3 +1,4 @@
+import { round2 } from "@/lib/math";
 import { getDb } from "@/lib/db";
 import { groupFilter, type Session } from "@/lib/session";
 import type { LatLng } from "@/lib/geo";
@@ -18,7 +19,6 @@ export interface SnapshotRow extends WeatherSnapshotInput {
   fetched_at: string;
 }
 
-const round2 = (v: number): number => Math.round(v * 100) / 100;
 
 /** The tenant's own capacity_factors unioned with the NULL-org defaults -- the tenant's
  *  row wins per condition_code. */

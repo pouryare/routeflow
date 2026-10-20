@@ -1,3 +1,4 @@
+import { withRunningBalance } from "@/lib/runningBalance";
 import { getDb } from "@/lib/db";
 
 /**
@@ -229,7 +230,7 @@ export function balanceSheet(
   /* Each type nets its own normal direction: an asset's balance is debits less credits, a
      liability's the reverse. Doing it in SQL rather than by summing signed amounts keeps a
      contra account (a credit balance inside an asset) from flipping the whole side. */
-  const side = (type: string, normal: "D" | "C") => {
+  const side = (type: string) => {
     const args: unknown[] = [organizationId, type];
     let dateClause = "";
     if (asAt.periodKey) {
@@ -257,9 +258,9 @@ export function balanceSheet(
       .all(...(args as never[])) as unknown as BalanceSheet["assets"];
   };
 
-  const assets = side("ASSET", "D");
-  const liabilities = side("LIABILITY", "C");
-  const equity = side("EQUITY", "C");
+  const assets = side("ASSET");
+  const liabilities = side("LIABILITY");
+  const equity = side("EQUITY");
 
   /* Current-period earnings belong in EQUITY.
    *
@@ -494,12 +495,8 @@ export function accountLedger(
     )
     .all(...(args as never[]));
 
-  let running = openingToman;
-  const lines = (rows as unknown as AccountLedgerLine[]).map((r) => {
-    running += r.side === "D" ? r.amountToman : -r.amountToman;
-    return { ...r, balanceToman: running };
-  });
-  return { openingToman, lines, closingToman: running };
+  const { lines, closingToman } = withRunningBalance(rows as unknown as AccountLedgerLine[], "D", openingToman);
+  return { openingToman, lines, closingToman };
 }
 
 export function accountById(accountId: number): {

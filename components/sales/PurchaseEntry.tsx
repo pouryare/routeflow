@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
@@ -37,7 +38,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
   const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   const [supplier, setSupplier] = useState("");
-  const [purchaseDate, setPurchaseDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [purchaseDate, setPurchaseDate] = useState(() => tehranTodayIso());
   const [invoiceNo, setInvoiceNo] = useState("");
 
   const [lines, setLines] = useState<DraftLine[]>([]);

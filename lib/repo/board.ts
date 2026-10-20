@@ -3,6 +3,7 @@ import { scopeGroupIds, type Session } from "@/lib/session";
 import { lanesFor, laneOf, type BoardView } from "@/lib/tasks/lenses";
 import {
   rowToCard,
+  compareTaskCards,
   TASK_CARD_SELECT,
   TASK_CARD_JOINS,
   type TaskCard,
@@ -22,8 +23,6 @@ export interface Board {
   lanes: BoardLane[];
   hiddenCount: number;
 }
-
-const PRIO_RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, NORMAL: 2, LOW: 3 };
 
 /** WHERE fragment (+ params) that narrows `tasks t` to what this session's Board shows.
  *  group_manager: their group's tasks, or tasks assigned to someone in it.
@@ -88,11 +87,7 @@ export function boardFor(
     cards = cards.filter((c) => c.kind === opts.kind);
   }
 
-  cards.sort(
-    (a, b) =>
-      (PRIO_RANK[a.priority] ?? 2) - (PRIO_RANK[b.priority] ?? 2) ||
-      (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999")
-  );
+  cards.sort(compareTaskCards);
 
   const lanes: BoardLane[] = lanesFor(opts.view, opts.kind).map((l) => {
     const inLane = cards.filter(

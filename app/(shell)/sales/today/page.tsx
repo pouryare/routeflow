@@ -10,7 +10,7 @@ import { cardFor } from "@/lib/repo/briefingCards";
 import RolePicker from "@/components/today/RolePicker";
 import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, roleLabel, type Role } from "@/lib/roles";
+import { isVanRole, roleLabel } from "@/lib/roles";
 
 export const dynamic = "force-dynamic";
 

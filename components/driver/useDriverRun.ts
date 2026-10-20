@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
+import { useCallback, useMemo, useState } from "react";
+import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import type { RunFacilityStop } from "@/lib/delivery";
 
 /** A driver's own day, from /api/lead-runs.
@@ -90,9 +91,9 @@ export function useDriverRun(initialRun?: DriverRun | null) {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useRunAfterMount(load);
 
-  const stops = run?.stops ?? [];
+  const stops = useMemo(() => run?.stops ?? [], [run]);
   const pending = useMemo(() => pendingStops(stops), [stops]);
   const next = useMemo(() => nextStop(stops), [stops]);
 

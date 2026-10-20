@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { useLatest } from "@/lib/useLatest";
@@ -1065,7 +1066,7 @@ export default function CoverageMap({
   const worklist = useMemo(
     () =>
       viewBounds
-        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, new Date().toISOString().slice(0, 10))
+        ? buildWorklist(customers, dueReminders, districtProps, viewBounds, tehranTodayIso())
         : null,
     [customers, dueReminders, districtProps, viewBounds],
   );

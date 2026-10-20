@@ -10,9 +10,10 @@ import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
 import AfterCallFlow from "@/components/crm/AfterCallFlow";
 import { Icon, type IconName } from "@/components/meridian/Icon";
+import { tehranTodayIso } from "@/lib/jalali";
 
 const KIND_TONE = TASK_KIND_TONE as Record<string, string>;
-const DUE_LABEL = (c: TaskCard, now = new Date().toISOString().slice(0, 10)) =>
+const DUE_LABEL = (c: TaskCard, now = tehranTodayIso()) =>
   c.status === "done"
     ? "انجام‌شده"
     : !c.due_at

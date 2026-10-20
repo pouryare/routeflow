@@ -1,9 +1,9 @@
 "use client";
 
+import { usePostAction } from "@/lib/usePostAction";
+import { tehranTodayIso } from "@/lib/jalali";
 import { useState } from "react";
-import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
-import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
 import { faToman } from "@/lib/format";
@@ -43,31 +43,7 @@ export default function CatalogueEditor({
   /** The company per-kg commission rate in force, so the drawer need not ask for it. */
   companyRatePerKg: number | null;
 }) {
-  const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
-
-  async function send(url: string, body: unknown, okText: string) {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage({ kind: "error", text: friendlyError(json.error, "تغییر کالا ثبت نشد؛ دوباره تلاش کنید") });
-        return false;
-      }
-      setMessage({ kind: "ok", text: okText });
-      router.refresh();
-      return true;
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { busy, message, send } = usePostAction("تغییر کالا ثبت نشد؛ دوباره تلاش کنید");
 
   // --- product ---
   const [pName, setPName] = useState("");
@@ -83,7 +59,7 @@ export default function CatalogueEditor({
   const [rProduct, setRProduct] = useState("");
   const [rPackaging, setRPackaging] = useState("");
   const [rPrice, setRPrice] = useState("");
-  const [rFrom, setRFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [rFrom, setRFrom] = useState(() => tehranTodayIso());
 
   const parsedPrice = toToman(rPrice);
   const packagingsOf = products.find((p) => String(p.id) === rProduct)?.packagings ?? [];

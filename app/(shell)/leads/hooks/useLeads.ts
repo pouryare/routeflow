@@ -6,8 +6,10 @@ import { useHydrated } from "@/lib/useHydrated";
 import { useToast } from "@/components/ToastProvider";
 import { useNavApp } from "@/components/NavAppSetting";
 import { useMyPosition } from "@/components/MyPositionProvider";
-import { distanceKm, routeLengthKm, nearestNeighborOrder } from "@/lib/geo";
+import { distanceKm, routeLengthKm } from "@/lib/geo";
 import { orderStops } from "@/lib/routing/orderStops";
+import { reorderGain } from "@/lib/routing/reorderGain";
+import { straightLine } from "@/lib/routing/distance";
 import { clusterIntoDays, daysNeeded } from "@/lib/clusterDays";
 import { averageScore } from "@/lib/leadScore";
 import { matchesQuery } from "@/lib/persian";
@@ -212,7 +214,11 @@ export function useLeads() {
    * is ever configured, this preview UNDERSTATES the gain rather than overstating it, which
    * is the safe direction to be wrong in -- the button still works and still reports which
    * algorithm ran. */
-  const optimiseGain = useMemo(() => { if (!runOrigin || runLocations.length < 3) return null; const current = routeLengthKm(runOrigin, runLocations, false); if (current <= 0) return null; const best = routeLengthKm(runOrigin, nearestNeighborOrder(runLocations, runOrigin), false); const pct = Math.round(((current - best) / current) * 100); return pct >= 5 ? pct : null; }, [runOrigin, runLocations]);
+  const optimiseGain = useMemo(() => {
+    if (!runOrigin || runLocations.length < 3) return null;
+    const pct = Math.round(reorderGain(runOrigin, runLocations, false, straightLine).savedPct);
+    return pct >= 5 ? pct : null;
+  }, [runOrigin, runLocations]);
   async function optimiseRun() { if (!runOrigin) return; const r = await orderStops(runLocations, runOrigin); updateRun(r.order.map((l) => l.id)); /* The toast tells the truth about which algorithm ran. VROOM_URL is unset in development, so today this is ALWAYS the fallback -- and the button used to claim "optimised" either way, which is the same class of lie as a precise-looking number that is not what it says. */ toast(r.quality === "solver" ? "ترتیب مسیر بهینه شد." : "ترتیب مسیر با روش نزدیک‌ترین چیده شد.", "success"); }
   function clearRun() { const previous = run; updateRun([]); toast("مسیر خالی شد.", "info", { label: "بازگردانی مسیر", onClick: () => updateRun(previous) }); }
   async function createList(name: string, ids: number[]) { const trimmed = name.trim(); if (!trimmed) { toast("برای فهرست یک نام بنویسید", "error"); return; } setBusy(true); try { const res = await fetch("/api/lead-lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed, location_ids: ids }) }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error); setLists((prev) => [...prev, { id: data.id, name: trimmed, location_ids: ids }]); setNewListName("");
@@ -246,7 +252,6 @@ export function useLeads() {
   const togglePriority = useCallback((locationId: number) => { setLocations((prev) => prev.map((loc) => loc.id === locationId ? { ...loc, priority: !loc.priority } : loc)); }, []);
   function addToDayGroup(dayIdx: number, location: DayStop) { setProposedDays((prev) => { if (!prev) return [[location]]; if (prev[dayIdx]?.some((l) => l.id === location.id)) return prev; return prev.map((d, i) => (i === dayIdx ? [...d, location] : d)); }); }
   function removeFromDayGroup(dayIdx: number, locationId: number) { setProposedDays((prev) => { if (!prev) return null; const next = prev.map((d, i) => (i === dayIdx ? d.filter((l) => l.id !== locationId) : d)).filter((d) => d.length > 0); return next.length > 0 ? next : null; }); }
-  const proposedDays = useMemo(() => proposedDaysRaw ? proposedDaysRaw.map((day, i) => ({ title: `روز ${i + 1}`, stops: day.map((d) => ({ id: d.id, name: d.name, lat: d.lat ?? 0, lng: d.lng ?? 0, legKm: null })), totalKm: null, completed: 0, total: day.length })) : null, [proposedDaysRaw]);
   const assignedIds = useMemo(() => new Set(proposedDaysRaw?.flat()?.map(l => l.id) ?? []), [proposedDaysRaw]);
   const unassignedLocations = useMemo(() => available.filter((l) => !assignedIds.has(l.id)), [available, assignedIds]);
   /** Proposes days. With a `scope`, only those leads are considered.

@@ -10,7 +10,7 @@
 // and it still accepts a distance because orderStops passes one.
 
 import { type LatLng } from "@/lib/geo";
-import { straightLine, type DistanceFn } from "./distance";
+import { routeLength, straightLine, type DistanceFn } from "./distance";
 
 const MAX_SWEEPS = 50;
 
@@ -23,16 +23,8 @@ export function twoOptOrder<T extends LatLng>(stops: T[], origin: LatLng, return
     ? (a: LatLng, b: LatLng) => distanceFn(a, b)
     : straightLine;
 
-  function routeLength(origin: LatLng, stops: T[], returnToOrigin: boolean): number {
-    if (stops.length === 0) return 0;
-    let total = dist(origin, stops[0]);
-    for (let i = 1; i < stops.length; i++) total += dist(stops[i - 1], stops[i]);
-    if (returnToOrigin) total += dist(stops[stops.length - 1], origin);
-    return total;
-  }
-
   let best = stops.slice();
-  let bestLength = routeLength(origin, best, returnToOrigin);
+  let bestLength = routeLength(dist, origin, best, returnToOrigin);
 
   for (let sweep = 0; sweep < MAX_SWEEPS; sweep++) {
     let improvedThisSweep = false;
@@ -40,7 +32,7 @@ export function twoOptOrder<T extends LatLng>(stops: T[], origin: LatLng, return
     for (let i = 0; i < best.length - 1; i++) {
       for (let k = i + 1; k < best.length; k++) {
         const candidate = best.slice(0, i).concat(best.slice(i, k + 1).reverse(), best.slice(k + 1));
-        const candidateLength = routeLength(origin, candidate, returnToOrigin);
+        const candidateLength = routeLength(dist, origin, candidate, returnToOrigin);
         // Strictly shorter, by more than floating-point noise: an equal-length swap is
         // churn, and accepting one lets the sweep loop oscillate forever.
         if (candidateLength < bestLength - 1e-9) {

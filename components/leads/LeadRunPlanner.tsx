@@ -1,7 +1,6 @@
 "use client";
 
 import { Icon } from "@/components/meridian/Icon";
-import type { LeadRun } from "@/lib/repo/leadRuns";
 
 /** Trigger button to open the LeadRunPlanner tab-flow modal.
  *

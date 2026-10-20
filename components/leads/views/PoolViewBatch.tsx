@@ -5,7 +5,6 @@ import { useState } from "react";
 import LocationCard from "@/components/leads/LocationCard";
 import type { PoolViewItem } from "./PoolViewWrapper";
 import { type NavAppId } from "@/lib/navApps";
-import { faNum } from "@/lib/format";
 
 interface PoolViewBatchProps {
   items: PoolViewItem[];
@@ -25,7 +24,7 @@ interface PoolViewBatchProps {
 }
 
 export default function PoolViewBatch({
-  items, navAppId, run, selectedMapId, onSelect, onToggleRun, onPin,
+  items, navAppId, onSelect, onToggleRun, onPin,
   onTogglePriority, onAddToPlan, onNotesChange, onNameChange, priorityHigh,
 }: PoolViewBatchProps) {
   const [checked, setChecked] = useState<Set<number>>(new Set());

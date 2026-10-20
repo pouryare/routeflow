@@ -1,3 +1,4 @@
+import { isRealIsoDate } from "@/lib/isoDate";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import {
@@ -65,9 +66,6 @@ function readPlan(raw: unknown): Plan | null {
   return { mode: p.mode as PlanMode, metric: p.metric as CommissionMetric, tiers };
 }
 
-const isIsoDate = (s: unknown): s is string =>
-  typeof s === "string" && /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s));
-
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
@@ -80,7 +78,7 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   const validFrom = body?.valid_from;
-  if (!isIsoDate(validFrom)) {
+  if (!isRealIsoDate(validFrom)) {
     return NextResponse.json({ ok: false, error: "تاریخ شروع نامعتبر است" }, { status: 400 });
   }
 
@@ -124,7 +122,7 @@ export async function DELETE(req: NextRequest) {
 
   const q = new URL(req.url).searchParams;
   const from = q.get("from");
-  if (!isIsoDate(from)) {
+  if (!isRealIsoDate(from)) {
     return NextResponse.json({ ok: false, error: "تاریخ شروع نامعتبر است" }, { status: 400 });
   }
   const rawId = q.get("salesperson_user_id");

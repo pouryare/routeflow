@@ -1,3 +1,4 @@
+import { clamp } from "@/lib/math";
 /** A countdown that can be stopped and started again without losing time.
  *
  *  The toast's lifetime used to be a bare `setTimeout`, which is fine for a message that
@@ -23,8 +24,6 @@ export interface Countdown {
   /** When the current run began, or null while paused. */
   readonly startedAt: number | null;
 }
-
-const clamp = (n: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, n));
 
 export function startCountdown(totalMs: number, now: number): Countdown {
   const total = Math.max(0, totalMs);

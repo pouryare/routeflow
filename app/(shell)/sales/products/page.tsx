@@ -1,3 +1,4 @@
+import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -6,7 +7,6 @@ import { getDb } from "@/lib/db";
 import { readCatalogue, costBasisFor } from "@/lib/catalogue";
 import { companyRatePerKg } from "@/lib/repo/commissionRates";
 import { faToman } from "@/lib/format";
-import { faJalaliDate } from "@/lib/jalali";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
 import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
@@ -36,7 +36,7 @@ export default async function ProductsPage() {
      the drawer resolves the price against it too -- three separate effective-dated series
      read on three different "today" values would be three answers to one question, and a
      midnight rollover mid-render would make them disagree. */
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
 
   const allPriceRows = db
     .prepare(

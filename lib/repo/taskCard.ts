@@ -72,3 +72,13 @@ export function rowToCard(r: TaskCardRow): TaskCard {
     recur: Boolean(r.recur),
   };
 }
+
+const PRIO_RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, NORMAL: 2, LOW: 3 };
+
+/** Sort order for both surfaces: most urgent priority first, then soonest due, undated last. */
+export function compareTaskCards(a: Pick<TaskCard, "priority" | "due_at">, b: Pick<TaskCard, "priority" | "due_at">): number {
+  return (
+    (PRIO_RANK[a.priority] ?? 2) - (PRIO_RANK[b.priority] ?? 2) ||
+    (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999")
+  );
+}

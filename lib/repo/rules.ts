@@ -6,7 +6,7 @@ import {
   isEscalatable,
   type RuleCondition,
 } from "@/lib/rules/engine";
-import { toJalali } from "@/lib/jalali";
+import { jalaliYmd } from "@/lib/jalali";
 import { ROLES, type Role } from "@/lib/roles";
 import { rruleMatches } from "@/lib/tasks/recurrence";
 import { listRecurrences } from "./taskRecurrences";
@@ -431,13 +431,6 @@ export async function flushAllNotifications(
   } catch (e) {
     console.warn("[rules] notification flush failed", e);
   }
-}
-
-/** Jalali civil date as YYYY-MM-DD (Tehran). */
-function jalaliYmd(iso: string): string {
-  const j = toJalali(iso);
-  if (!j) return iso.slice(0, 10);
-  return `${j.jy}-${String(j.jm).padStart(2, "0")}-${String(j.jd).padStart(2, "0")}`;
 }
 
 /** Spawn a task for every active recurrence whose rrule matches today and that has not

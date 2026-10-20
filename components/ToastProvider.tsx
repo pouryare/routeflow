@@ -21,6 +21,7 @@ import {
   startCountdown,
 } from "@/lib/countdown";
 import { OUTBOX_HOLD_MS } from "@/lib/offline/constants";
+import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
 type ToastVariant = "success" | "error" | "info";
 
@@ -86,18 +87,6 @@ const FADE_MS = 180;
 // Bands the fill snaps to under prefers-reduced-motion. Enough to read as draining,
 // few enough that nothing appears to move continuously.
 const REDUCED_STEPS = 8;
-
-function usePrefersReducedMotion(): boolean {
-  const [reduced, setReduced] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
-    const apply = () => setReduced(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-  return reduced;
-}
 
 interface ToastCardProps {
   toast: ToastItem;

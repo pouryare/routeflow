@@ -102,7 +102,7 @@ try {
 
 console.log(`${apply ? "set" : "would set"} district_id on ${set} row(s); ${unchanged} already correct`);
 if (unresolved.length) {
-  console.log(`\n${unresolved.length} row(s) left NULL, and why:`);
+  console.log(`\n${unresolved.length} row(s) left NULL (${noCoords} without coordinates, ${matchedNothing} matching no district), and why:`);
   for (const u of unresolved) console.log(`   ${u}`);
   console.log("\nA row with no location has no district. That is the honest answer -- guessing");
   console.log("one from a text address would be a guess wearing a foreign key.");

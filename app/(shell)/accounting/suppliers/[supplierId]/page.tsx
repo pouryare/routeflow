@@ -1,3 +1,4 @@
+import { withRunningBalance } from "@/lib/runningBalance";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -32,11 +33,7 @@ export default async function SupplierStatementPage({
 
   const rows = supplierStatement(organizationId, id);
 
-  let running = 0;
-  const lines = rows.map((r) => {
-    running += r.side === "C" ? r.amountToman : -r.amountToman;
-    return { ...r, balanceToman: running };
-  });
+  const { lines, closingToman: running } = withRunningBalance(rows, "C");
 
   return (
     <>

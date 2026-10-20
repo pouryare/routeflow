@@ -68,7 +68,8 @@ function runSeedUntil(args: string[], needle: string, timeoutMs = 120_000): Prom
       settled = true;
       clearTimeout(timer);
       child.kill("SIGKILL");
-      err ? reject(err) : resolve(out);
+      if (err) reject(err);
+      else resolve(out);
     };
     const timer = setTimeout(
       () => finish(new Error(`timed out waiting for "${needle}" in:\n${out}`)),
