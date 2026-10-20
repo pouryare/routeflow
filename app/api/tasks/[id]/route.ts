@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { completeTask, dismissTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
+import { canActOnTask, completeTask, dismissTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
 import { objectionCardFor } from "@/lib/repo/academy";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -9,7 +9,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]
   if (!guard.ok) return guard.response;
   const { id } = await ctx.params;
   const org = guard.session.organizationId;
-  if (!tasksRepo.get(org, Number(id))) {
+  const row = tasksRepo.get(org, Number(id));
+  // Another person's task answers as if it did not exist, like every other cross-scope row.
+  if (!row || !canActOnTask({ role: guard.session.role, userId: guard.session.user.id, groupId: guard.session.groupId }, row)) {
     return NextResponse.json({ ok: false, error: "کار پیدا نشد" }, { status: 404 });
   }
   const b = (await req.json().catch(() => null)) as {
@@ -17,6 +19,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]
     outcome_code?: string | null;
     outcome_note?: string | null;
   } | null;
+  if ((b?.outcome_note ?? "").length > 2000 || (b?.outcome_code ?? "").length > 60) {
+    return NextResponse.json({ ok: false, error: "یادداشت یا کد نتیجه بیش از حد بلند است" }, { status: 400 });
+  }
   try {
     if (b?.status === "dismissed") {
       dismissTask(org, Number(id));

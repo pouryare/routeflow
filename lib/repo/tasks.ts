@@ -188,6 +188,31 @@ export function listTasks(
 
 /** Complete a task with an optional outcome; resolves any rule_runs tied to the same
  *  entity so the rule can fire again later. */
+/** Whether this person may complete, dismiss or move this task.
+ *
+ *  The routes only checked the organisation, so any signed-in role (a driver included) could close
+ *  anyone's task. Owners, the platform key and the rep manager act on any task of the organisation;
+ *  a group manager on their group's and the company-wide ones; everyone else on the tasks assigned
+ *  to them, plus unassigned ones that carry no role hint or their own. */
+export function canActOnTask(
+  actor: { role: string; userId: number; groupId: number | null },
+  row: Pick<TaskRow, "assignee_user_id" | "group_id" | "role_hint">
+): boolean {
+  if (actor.role === "owner" || actor.role === "platform_owner" || actor.role === "rep_manager") return true;
+  if (actor.role === "group_manager") return row.group_id === null || row.group_id === actor.groupId;
+  if (row.assignee_user_id !== null) return row.assignee_user_id === actor.userId;
+  return row.role_hint === null || row.role_hint === actor.role;
+}
+
+/** Whether `userId` is an active user of the organisation. */
+export function assigneeInOrg(organizationId: number, userId: number): boolean {
+  if (!Number.isInteger(userId)) return false;
+  return !!tasksRepo
+    .db()
+    .prepare("SELECT 1 FROM users WHERE id = ? AND organization_id = ? AND active = 1")
+    .get(userId, organizationId);
+}
+
 export function completeTask(
   organizationId: number,
   id: number,

@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { listTasks, createTask, TaskError } from "@/lib/repo/tasks";
+import { listTasks, createTask, assigneeInOrg, TaskError } from "@/lib/repo/tasks";
+import { TASK_KINDS } from "@/lib/tasks/labels";
+import { boundedText, isTimestampWithin } from "@/lib/inputChecks";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
@@ -34,11 +36,23 @@ export async function POST(req: NextRequest) {
   const b = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b?.title || !b?.kind) return NextResponse.json({ ok: false, error: "عنوان و نوع لازم است" }, { status: 400 });
   const kind = String(b.kind);
+  if (!(TASK_KINDS as readonly string[]).includes(kind)) {
+    return NextResponse.json({ ok: false, error: "نوع کار نامعتبر است" }, { status: 400 });
+  }
+  const title = boundedText(b.title, 200);
+  if (!title) return NextResponse.json({ ok: false, error: "عنوان باید ۱ تا ۲۰۰ نویسه باشد" }, { status: 400 });
+  if (b.due_at != null && !isTimestampWithin(b.due_at, 366, 5 * 366)) {
+    return NextResponse.json({ ok: false, error: "تاریخ سررسید معتبر نیست" }, { status: 400 });
+  }
+  // The assignee must be an active person of THIS organisation; a user id from another tenant was accepted.
+  if (b.assignee_user_id != null && !assigneeInOrg(guard.session.organizationId, Number(b.assignee_user_id))) {
+    return NextResponse.json({ ok: false, error: "مسئول انتخاب‌شده معتبر نیست" }, { status: 400 });
+  }
   // A reminder / note the member adds for themselves lands in their own Pocket.
   const selfKinds = kind === "reminder" || kind === "note";
   try {
     const id = createTask(guard.session.organizationId, {
-      title: String(b.title),
+      title,
       kind,
       assignee_user_id:
         (b.assignee_user_id as number | null) ?? (selfKinds ? guard.session.user.id : null),
