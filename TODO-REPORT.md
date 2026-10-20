@@ -26,6 +26,7 @@
 - [x] Tasks board drag-and-drop works (PATCH move 200). Fixed: any role could complete, dismiss or move anyone's task (now own / group / org by role), and task creation accepted a 5,000-char title, unknown kind, garbage due date and an assignee from another tenant
 - [x] Routing plan/commit: fixed a plan for "zzzzzzzzzz" / 1900 / 2999 being accepted and committed (a run with that date, distance −5, duration 1e15 was created); date window and figures now checked
 - [x] Notifications: preferences, channels and test routes validate; fixed push subscriptions accepting any endpoint (server-side request to a URL of the user's choosing) — only browser-vendor push services, bounded keys
+- [x] PR #24 (all stacked commits: cheque/batch/stock validation, task access rules, routing validation, push-endpoint allow-list, batch rule) merged after CI went green
 
 ## Not done / gaps
 - [ ] Semgrep never ran (Python dependency conflict)
@@ -39,8 +40,7 @@
 - Audit item 16 correction: `/api/sync/*` refusing platform_owner is intentional (`hasSyncClient`), not a bug.
 
 ## Next steps
-1. Merge PR #24 (all stacked commits) when CI is green
-2. Nothing else queued; remaining gaps above need your call or real devices
+1. Nothing queued. Remaining gaps above need your call or real devices
 
 ---
 
