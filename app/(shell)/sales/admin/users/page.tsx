@@ -9,6 +9,7 @@ import Avatar from "@/components/meridian/Avatar";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
 
+import { confirmAction } from "@/lib/confirm";
 interface UserRow {
   id: number;
   username: string;
@@ -456,7 +457,10 @@ export default function AdminUsersPage() {
                         </button>
                         <button
                           type="button"
-                          onClick={() => send(`/api/admin/users/${u.id}`, "PATCH", { active: !u.active })}
+                          onClick={() => {
+                            if (u.active && !confirmAction(`حساب «${u.display_name}» غیرفعال شود؟ نشست‌های باز او همین الان بسته می‌شود.`)) return;
+                            void send(`/api/admin/users/${u.id}`, "PATCH", { active: !u.active });
+                          }}
                           className="cursor-pointer text-text-muted transition-colors hover:text-crit"
                         >
                           <Icon name="ban" size="md" />

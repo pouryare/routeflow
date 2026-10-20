@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
+import { confirmAction } from "@/lib/confirm";
 import {
   legalOrderActions,
   ORDER_STATUS_LABEL,
@@ -72,7 +73,17 @@ export default function OrderStatusPanel({
 
   const actions = legalOrderActions(status as OrderStatus, role).filter((a) => a !== "flagCredit");
 
+  /* The three actions that end or reverse an order. Everything else is the next step forward and
+     is recoverable from the status panel itself. */
+  const CONFIRM_TEXT: Partial<Record<OrderAction, string>> = {
+    cancel: "این سفارش لغو شود؟ موجودی رزروشده آزاد می‌شود.",
+    returnOrder: "این سفارش به‌عنوان مرجوعی ثبت شود؟",
+    rejectCredit: "اعتبار این سفارش رد شود؟ سفارش متوقف می‌شود.",
+  };
+
   async function run(action: OrderAction) {
+    const question = CONFIRM_TEXT[action];
+    if (question && !confirmAction(question)) return;
     setBusy(true);
     setError(null);
     try {

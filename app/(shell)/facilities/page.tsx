@@ -24,6 +24,7 @@ import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import { Icon } from "@/components/meridian/Icon";
 
+import { confirmAction } from "@/lib/confirm";
 // Leaflet touches window on import, so the picker can't be server-rendered.
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
 
@@ -180,6 +181,7 @@ export default function FacilitiesPage() {
   }
 
   async function remove(id: number) {
+    if (!confirmAction("این مکان حذف شود؟ مسیرهایی که از آن شروع می‌شوند ممکن است تحت تأثیر قرار بگیرند.")) return;
     setBusyId(id);
     try {
       const res = await fetch(`/api/facilities/${id}`, { method: "DELETE" });

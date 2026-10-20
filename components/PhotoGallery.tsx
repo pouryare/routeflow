@@ -9,6 +9,7 @@ import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
 import EmptyState from "./EmptyState";
 
+import { confirmAction } from "@/lib/confirm";
 interface PhotoItem {
   id: number;
   file_stem: string;
@@ -64,6 +65,7 @@ export default function PhotoGallery({
   }
 
   async function remove(id: number) {
+    if (!confirmAction("این عکس حذف شود؟")) return;
     try {
       const res = await fetch(`/api/photos/${id}`, { method: "DELETE" });
       if (!res.ok) throw new Error();
