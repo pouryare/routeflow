@@ -8,7 +8,7 @@
  */
 
 import { linesByOrder } from "./repo/orderLines";
-import { orderKgOf } from "./repo/orderKg";
+import { orderKgOf } from "./repo/orderFigures";
 import type { DatabaseSync } from "node:sqlite";
 import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";

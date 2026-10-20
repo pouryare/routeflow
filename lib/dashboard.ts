@@ -87,8 +87,10 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
 
   /* Everything the charts group by, aggregated in SQL in two passes instead of loading every
      delivered line (148k on a 78k-order ledger) into JS.
-     - `ot`: one row per delivered order -- its total, cost and weight. Customer, date and
-       salesperson are properties of the ORDER, so all of those breakdowns come from here.
+     - `ot`: one row per delivered order -- its total, cost and weight, read from the figures
+       stored on the order (lib/repo/orderFigures.ts) and summed from the lines only for an
+       order whose stored figure is empty. Customer, date and salesperson are properties of the
+       ORDER, so all of those breakdowns come from here. An order with no lines is not a sale.
      - the product rows need the line level, so they get their own grouped scan.
      Each line is rounded to whole Toman before it is added (round half away from zero, on the
      delivered packs when there are any), exactly as lineTotalToman/lineCostToman do, so the
@@ -106,15 +108,13 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     .prepare(
       `WITH ot AS MATERIALIZED (
          SELECT o.id AS oid, o.order_date AS od, o.customer_id AS cid, o.salesperson_user_id AS sid,
-                lt.t AS t, lt.cst AS cst, lt.kg AS kg
+                COALESCE(o.total_toman, (SELECT SUM(${LINE_TOTAL}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS t,
+                COALESCE(o.cost_toman, (SELECT SUM(${LINE_COST}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS cst,
+                COALESCE(o.kg_total, (SELECT SUM(${LINE_KG}) FROM order_lines ol JOIN products p ON p.id = ol.product_id WHERE ol.order_id = o.id)) AS kg
            FROM orders o
            JOIN customers c ON c.id = o.customer_id
-           JOIN (
-             SELECT ol.order_id AS order_id, SUM(${LINE_TOTAL}) AS t, SUM(${LINE_COST}) AS cst, SUM(${LINE_KG}) AS kg
-               FROM order_lines ol JOIN products p ON p.id = ol.product_id
-              GROUP BY ol.order_id
-           ) lt ON lt.order_id = o.id
           WHERE o.status IN (${fulfilled})${scope.sql}
+            AND EXISTS (SELECT 1 FROM order_lines ol WHERE ol.order_id = o.id)
        )
        SELECT 'tot' AS kind, NULL AS label, SUM(t) AS a, SUM(cst) AS b, SUM(kg) AS c, COUNT(*) AS n FROM ot
        UNION ALL

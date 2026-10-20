@@ -37,31 +37,29 @@
 
 ---
 
-# Performance pass (PR [#17](https://github.com/pouryare/routeflow/pull/17), branch `claude/inspiring-einstein-wqv8v2`)
+# Performance pass (PR [#17](https://github.com/pouryare/routeflow/pull/17) merged; follow-ups on branch `claude/inspiring-einstein-wqv8v2`)
 
 _Updated 2026-10-20. Details and measurements: `docs/perf/2026-10-20-baseline.md`._
 
 ## Done
 - [x] Startup hang fixed (missing boot-backfill indexes): `getDb()` on 78k orders never finished → 0.6 s
-- [x] More indexes (allocations, journal reversals, stock, trial balance); N+1s removed (health, CRM counts, journal, commission)
+- [x] More indexes; N+1s removed (health, CRM counts, journal, commission); journal/ledger paging; trial balance 244 → 45 ms
 - [x] Dashboard first content 4.6 s → ~1.0 s (SQL aggregation, per-render memo, streamed sections)
-- [x] Debt in SQL (equal to the original for all 700 customers); stored order weight `orders.kg_total` (payroll output byte-identical, 8.5 MB, re-verified after merging `main`)
-- [x] Journal/ledger paging, margin table capped, trial balance 244 → 45 ms
-- [x] Slow-SQL log, boot-index test, CI workflow, page-time budget; lint 31 → 0
-- [x] CI typecheck fixed (`next typegen` first; reproduced from a clean tree)
-- [x] Merged current `main` (Next 16.4, vitest 5); PR is conflict-free
-- [x] **CI green on GitHub** (run #3: typecheck, lint, 3,807 tests, production build, page-time budget on a real runner)
-- [x] Subscribed to PR #17; answered the six Graphify coupling comments in one PR comment (composition functions, left as is)
+- [x] Stored order weight and order total/cost (`kg_total`, `total_toman`, `cost_toman`), trigger-voided and backfilled; debts, dashboard, commission read them; payroll byte-identical; `/map` 876 → ~265 ms
+- [x] Slow-SQL log, boot-index test, CI workflow, page-time budget; lint 31 → 0; CI green
+- [x] **PR #17 merged into `main`**
+- [x] Intermittent test failure investigated: not reproducible in 11 full runs (closed as unexplained)
+- [x] Phone layout: page-header tabs no longer clipped; accounting tables scroll sideways instead of cramping
+- [x] Rep detail page checked on desktop and phone (HTTP 200, no console errors, no overflow)
+- [x] Graphify review on PR #22: backfill now takes the write lock before reading; balance-sheet tables no longer force sideways scroll on desktop
+- [x] Demo seed: delivery now dated to the order's day (was stamped with today → 552-day average lead time)
 
 ## Not done / gaps
-- [ ] PR #17 merge: this docs-only commit restarts CI; merging as soon as it is green (conflict-free, no failing check)
-- [ ] Six Graphify "fan-out" threads left open on purpose (a coupling metric on composition functions, check itself passed)
-- [ ] One unexplained intermittent unit-test failure, seen once
-- [ ] `/map` ~330 ms and owner dashboard ~2.7 s end to end (per-customer debt pass)
-- [ ] Journal table cramped and page-header tabs clipped at phone width; rep detail unchecked; demo seed shows a 552-day average delivery time
+- [ ] `tests/playwrightExtract.test.ts` fails in this container only (Playwright headless-shell binary missing; fails without my changes too)
+- [ ] `/map` ~265 ms and owner dashboard ~2.4 s end to end (line-level scans: product breakdown, cross-sell, fill rate, stock)
+- [ ] Six Graphify "fan-out" comments on merged PR #17 left as is (external bot; coupling metric on composition functions)
 
 ## Next steps
-1. Merge PR #17 into `main` once CI is green on the final commit
-2. Store each order's total (like `kg_total`) to speed the debt pass, map and dashboard
-3. Track down the intermittent test failure
-4. Decide whether the Graphify coupling check should block merges or be tuned for composition functions
+1. Decide whether the Graphify coupling check should block merges or be tuned (your call)
+2. (done) Re-seeded a smoke DB: average delivery time 0 days
+3. Cache line-level aggregates (product breakdown, fill rate) if the 2.4 s dashboard matters

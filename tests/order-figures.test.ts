@@ -15,8 +15,11 @@ const { createOrder, confirmOrder } = await import("@/lib/orders");
 const { createRun, addStop, readRun, recordDelivery } = await import("@/lib/delivery");
 const { setRate, statementFor } = await import("@/lib/commissionLedger");
 const { driverStatementFor, setDriverRate } = await import("@/lib/driverCommissionLedger");
-const { orderKgOf, refreshOrderKg, backfillOrderKg } = await import("@/lib/repo/orderKg");
-const { lineKg } = await import("@/lib/orderMath");
+const { orderKgOf, refreshOrderFigures, backfillOrderFigures } = await import("@/lib/repo/orderFigures");
+const { lineKg, lineTotalToman, lineCostToman } = await import("@/lib/orderMath");
+const { customerDebtsForOrg } = await import("@/lib/repo/payments");
+const { salesDashboard } = await import("@/lib/dashboard");
+const { legacyDebtsForOrg } = await import("./helpers/legacyDebts");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });
@@ -109,7 +112,7 @@ describe("orders.kg_total", () => {
     db.prepare("UPDATE order_lines SET packs_delivered = 2 WHERE order_id = ? AND id = (SELECT MIN(id) FROM order_lines WHERE order_id = ?)").run(id, id);
     expect(storedKg(id)).toBeNull();
 
-    refreshOrderKg(db, id);
+    refreshOrderFigures(db, id);
     expect(storedKg(id)).toBe(referenceKg(id));
 
     db.prepare(
@@ -118,7 +121,7 @@ describe("orders.kg_total", () => {
     ).run(id, ctx.product, ctx.packaging);
     expect(storedKg(id)).toBeNull();
 
-    refreshOrderKg(db, id);
+    refreshOrderFigures(db, id);
     db.prepare("DELETE FROM order_lines WHERE order_id = ? AND id = (SELECT MAX(id) FROM order_lines WHERE order_id = ?)").run(id, id);
     expect(storedKg(id)).toBeNull();
   });
@@ -135,7 +138,7 @@ describe("orders.kg_total", () => {
     const kept = sellAndDeliver("2026-03-06", [7, 3]);
     db.prepare("UPDATE orders SET kg_total = 12345.5 WHERE id = ?").run(kept); // sentinel: must not be recomputed
 
-    const filled = backfillOrderKg(db);
+    const filled = backfillOrderFigures(db);
     expect(filled).toBeGreaterThanOrEqual(2);
     expect(storedKg(a)).toBe(referenceKg(a));
     expect(storedKg(empty)).toBe(0);
@@ -164,8 +167,122 @@ describe("commission statements read the stored weight but never depend on it", 
     expect(JSON.stringify(statementFor(db, ctx.seller, period))).toBe(sellerWith);
     expect(JSON.stringify(driverStatementFor(db, ctx.driver, period))).toBe(driverWith);
 
-    backfillOrderKg(db);
+    backfillOrderFigures(db);
     expect(JSON.stringify(statementFor(db, ctx.seller, period))).toBe(sellerWith);
     expect(JSON.stringify(driverStatementFor(db, ctx.driver, period))).toBe(driverWith);
+  });
+});
+
+type Figures = { kg_total: number | null; total_toman: number | null; cost_toman: number | null };
+const storedFigures = (orderId: number) =>
+  getDb().prepare("SELECT kg_total, total_toman, cost_toman FROM orders WHERE id = ?").get(orderId) as Figures;
+const referenceTotals = (orderId: number) => {
+  const lines = getDb()
+    .prepare(
+      `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman, qty_per_pack, kg_per_base_unit
+         FROM order_lines WHERE order_id = ? ORDER BY id`
+    )
+    .all(orderId) as unknown as LineRow[];
+  return {
+    total: lines.reduce((t, l) => t + lineTotalToman(l), 0),
+    cost: lines.reduce((t, l) => t + lineCostToman(l), 0),
+  };
+};
+
+describe("orders.total_toman and cost_toman", () => {
+  it("are stored when an order is created, and are the sums of the rounded line figures", () => {
+    const db = getDb();
+    const o = createOrder(db, {
+      customer_id: ctx.customer, order_date: "2026-05-01", created_by: ctx.owner, organization_id: 1,
+      lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 7 }, { product_id: ctx.product2, packaging_id: ctx.packaging2, packs: 3 }],
+    });
+    const ref = referenceTotals(o.id);
+    expect(storedFigures(o.id)).toEqual({ kg_total: referenceKg(o.id), total_toman: ref.total, cost_toman: ref.cost });
+    expect(ref.total).toBeGreaterThan(0);
+  });
+
+  it("follow a real delivery to the delivered quantity", () => {
+    const id = sellAndDeliver("2026-05-02", [5, 1]);
+    const ref = referenceTotals(id);
+    expect(storedFigures(id)).toEqual({ kg_total: referenceKg(id), total_toman: ref.total, cost_toman: ref.cost });
+    const full = referenceTotals(sellAndDeliver("2026-05-03", [7, 3]));
+    expect(ref.total).toBeLessThan(full.total);
+  });
+
+  it("are all voided together by a change to a line", () => {
+    const id = sellAndDeliver("2026-05-04", [7, 3]);
+    const db = getDb();
+    expect(storedFigures(id).total_toman).not.toBeNull();
+    db.prepare("UPDATE order_lines SET packs_delivered = 1 WHERE order_id = ? AND id = (SELECT MIN(id) FROM order_lines WHERE order_id = ?)").run(id, id);
+    expect(storedFigures(id)).toEqual({ kg_total: null, total_toman: null, cost_toman: null });
+    refreshOrderFigures(db, id);
+    expect(storedFigures(id).total_toman).toBe(referenceTotals(id).total);
+  });
+
+  it("backfill fills an order missing any one of the three, and leaves complete ones alone", () => {
+    const db = getDb();
+    const a = sellAndDeliver("2026-05-05", [4, 2]);
+    const b = sellAndDeliver("2026-05-06", [7, 3]);
+    db.prepare("UPDATE orders SET cost_toman = NULL WHERE id = ?").run(a); // only one of the three is missing
+    db.prepare("UPDATE orders SET total_toman = 777 WHERE id = ?").run(b); // sentinel on a complete order
+    expect(backfillOrderFigures(db)).toBeGreaterThanOrEqual(1);
+    expect(storedFigures(a).cost_toman).toBe(referenceTotals(a).cost);
+    expect(storedFigures(b).total_toman).toBe(777);
+    db.prepare("UPDATE orders SET total_toman = ? WHERE id = ?").run(referenceTotals(b).total, b);
+  });
+});
+
+const approxEqual = (a: unknown, b: unknown, path = ""): string[] => {
+  if (typeof a === "number" && typeof b === "number") {
+    if (a === b) return [];
+    return Number.isInteger(a) && Number.isInteger(b) ? [`${path}: ${a} != ${b}`] : Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(a)) ? [] : [`${path}: ${a} != ${b}`];
+  }
+  if (Array.isArray(a) && Array.isArray(b)) return a.length !== b.length ? [`${path}: length`] : a.flatMap((x, i) => approxEqual(x, b[i], `${path}[${i}]`));
+  if (a && b && typeof a === "object") return [...new Set([...Object.keys(a), ...Object.keys(b as object)])].flatMap((k) => approxEqual((a as never)[k], (b as never)[k], `${path}.${k}`));
+  return a === b ? [] : [`${path}: ${JSON.stringify(a)} != ${JSON.stringify(b)}`];
+};
+
+describe("readers give the same answer whether the figures are cached or empty", () => {
+  const ownerSession = () => {
+    const user = getDb().prepare("SELECT * FROM users WHERE id = ?").get(ctx.owner) as never;
+    return { user, role: "owner", roles: ["owner"], groupId: null, organizationId: 1, hasRole: (r: string) => r === "owner" } as never;
+  };
+
+  it("customer debts match the original row-by-row version in both states", () => {
+    for (const [d, delivered] of [["2026-06-01", [7, 3]], ["2026-06-02", [6, 1]], ["2026-06-03", [2, 0]], ["2026-06-04", [5, 2]]] as const) {
+      sellAndDeliver(d, [delivered[0], delivered[1]]);
+    }
+    const db = getDb();
+    const asOf = "2026-07-01T00:00:00.000Z";
+    const want = legacyDebtsForOrg(db, 1, asOf);
+
+    backfillOrderFigures(db); // cached path
+    for (const [id, debt] of want) expect({ id, ...customerDebtsForOrg(1, asOf).get(id)! }, `cached ${id}`).toEqual({ id, ...debt });
+
+    db.prepare("UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL").run(); // fallback path
+    for (const [id, debt] of want) expect({ id, ...customerDebtsForOrg(1, asOf).get(id)! }, `fallback ${id}`).toEqual({ id, ...debt });
+    backfillOrderFigures(db);
+  });
+
+  it("the dashboard matches itself in both states (money exactly, kilograms to float noise)", () => {
+    const db = getDb();
+    backfillOrderFigures(db);
+    const cached = salesDashboard(db, ownerSession());
+    expect(cached.order_count).toBeGreaterThan(5);
+    db.prepare("UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL").run();
+    const fallback = salesDashboard(db, ownerSession());
+    expect(approxEqual(cached, fallback)).toEqual([]);
+    backfillOrderFigures(db);
+  });
+
+  it("a lineless order is not counted as a delivered order by the dashboard", () => {
+    const db = getDb();
+    backfillOrderFigures(db);
+    const before = salesDashboard(db, ownerSession()).order_count;
+    db.prepare(
+      "INSERT INTO orders (order_no, customer_id, status, order_date, delivered_at, created_by, created_at, updated_at, organization_id) VALUES ('NOLINES-1', ?, 'DELIVERED', '2026-06-05', '2026-06-05', ?, 'x', 'x', 1)"
+    ).run(ctx.customer, ctx.owner);
+    backfillOrderFigures(db); // a lineless order is stored as zero, which must not make it a sale
+    expect(salesDashboard(db, ownerSession()).order_count).toBe(before);
   });
 });

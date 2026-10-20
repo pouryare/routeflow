@@ -25,8 +25,11 @@ const NOTCH_HEIGHT = 56;
 /** Breathing room either side of the tab row inside the bay. */
 const NOTCH_PAD = 34;
 /** Below this the bay stops reading as a step and the card is a plain rectangle, with
- *  the tabs above the title instead. Matches carvedCardPath's own floor. */
-const MIN_CARVE_WIDTH = 360;
+ *  the tabs above the title at the card's full width instead. It is deliberately above
+ *  carvedCardPath's own 360 floor: on a phone-width card (about 330-400px) the bay leaves the
+ *  tab row roughly 250px, so the tabs scrolled sideways inside it with no scrollbar and just
+ *  looked cut off. Flat, they have the whole row. */
+const MIN_CARVE_WIDTH = 520;
 
 export default function PageHeaderCard({
   title,

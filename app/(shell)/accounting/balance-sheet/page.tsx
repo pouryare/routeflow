@@ -51,6 +51,7 @@ export default async function BalanceSheetPage({
         <section>
           <SectionHead title={"دارایی"} as="h3" />
           <AcctTable
+            compact
             head={["کد", "نام", "مانده"]}
             foot={
               <tr className="bg-surface">
@@ -67,6 +68,7 @@ export default async function BalanceSheetPage({
         <section>
           <SectionHead title={"بدهی"} as="h3" />
           <AcctTable
+            compact
             head={["کد", "نام", "مانده"]}
             foot={
               <tr className="bg-surface">
@@ -83,6 +85,7 @@ export default async function BalanceSheetPage({
         <section>
           <SectionHead title={"سرمایه"} as="h3" />
           <AcctTable
+            compact
             head={["کد", "نام", "مانده"]}
             foot={
               <tr className="bg-surface">
@@ -100,6 +103,7 @@ export default async function BalanceSheetPage({
       {/* The identity, in full, in the open. */}
       <SectionHead title="بررسی تراز" as="h3" className="mt-6" />
       <AcctTable
+            compact
         head={["شرح", "مبلغ"]}
         foot={
           <tr className="bg-surface">
