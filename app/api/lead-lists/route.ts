@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, readLeadLists, setLeadListItems } from "@/lib/db";
 import { requireRole, scopeGroupIds } from "@/lib/session";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { PIN_POOL_ROLES } from "@/lib/roles";
 
 const MAX_NAME = 60;
 
 // lead_lists is option 1: a list is compiled by one group and belongs to it outright.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   return NextResponse.json({ ok: true, lists: readLeadLists(getDb(), scopeGroupIds(guard.session)) });
@@ -21,7 +21,7 @@ interface NewListInput {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as NewListInput | null;

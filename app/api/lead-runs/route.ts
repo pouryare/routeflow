@@ -9,8 +9,7 @@ import {
   readLeadRunAssignments,
   readTodaysLeadRun,
 } from "@/lib/repo/leadRuns";
-import { isVanRole } from "@/lib/roles";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 import { tehranTodayIso } from "@/lib/jalali";
 
 /** A driver's day, or a manager's roster of them.
@@ -24,7 +23,7 @@ import { tehranTodayIso } from "@/lib/jalali";
  *  on. It is only needed where a whole array of raw rows goes out, which is the roster below. */
 
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const db = getDb();
   const session = guard.session;
@@ -48,7 +47,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = (await req.json().catch(() => null)) as {

@@ -3,7 +3,7 @@ import { parsePastedChat } from "@/lib/pasteImport";
 import { requireRole } from "@/lib/session";
 import * as importRepo from "@/lib/repo/leadImport";
 import { startJob } from "@/lib/leadImport/runner";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { PIN_POOL_ROLES } from "@/lib/roles";
 
 /** POST: turn a pasted chat export or list of maps links into a decode job.
  *
@@ -14,7 +14,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
  *  inline and hand back one array at the end, which is what timed out on a large paste.
  */
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);

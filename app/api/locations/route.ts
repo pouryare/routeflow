@@ -2,12 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, LocationResolution, SavedLocationRow } from "@/lib/db";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { groupFilter, requireRole, scopeGroupIds } from "@/lib/session";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { PIN_POOL_ROLES } from "@/lib/roles";
 
 // saved_locations is option 1 (spec §2.3 / Task 8): a pin belongs outright to the group
 // that dropped it, so the table carries its own group_id, stamped on insert.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
   const filter = groupFilter(guard.session);
   const scope = scopeGroupIds(guard.session);
@@ -47,7 +47,7 @@ interface NewLocationInput {
 }
 
 export async function POST(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const body = await req.json().catch(() => null);
