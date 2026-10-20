@@ -4,7 +4,6 @@ import { useCallback, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 
 import { Icon } from "@/components/meridian/Icon";
-import PageHeader from "@/components/meridian/PageHeader";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { faJalaliDate } from "@/lib/jalali";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
@@ -90,7 +89,6 @@ export default function AdminHolidaysPage() {
 
   return (
     <>
-      <PageHeader route="/sales/admin/holidays" />
       <div className="flex flex-col gap-[var(--space-4)]">
         {error && (
           <p role="alert" className="rounded-md border border-crit/40 bg-crit/10 px-3 py-2 text-sm text-crit">
