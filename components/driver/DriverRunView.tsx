@@ -14,7 +14,7 @@ import EmptyState from "@/components/EmptyState";
 import FacilityStopCards from "@/components/driver/FacilityStopCards";
 import UnloadTapFlow from "@/components/driver/UnloadTapFlow";
 import type { RunFacilityStop } from "@/lib/delivery";
-import type { Disposition } from "@/lib/repo/unload";
+import type { Disposition } from "@/lib/unloadDispositions";
 import { SkeletonRows } from "@/components/Skeleton";
 
 const LeadsMap = dynamic(() => import("@/components/LeadsMap"), { ssr: false });
