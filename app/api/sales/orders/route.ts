@@ -150,6 +150,25 @@ export async function POST(req: NextRequest) {
         ? null
         : Number(body.salesperson_user_id);
 
+  // The commission for this order is paid to this person, so they must be someone in THIS
+  // organisation who can actually sell. Before, any user id was accepted -- including one from
+  // another tenant -- which attached the order's commission to a stranger.
+  if (salespersonId !== null) {
+    const seller = Number.isInteger(salespersonId)
+      ? db
+          .prepare(
+            `SELECT 1 FROM users u JOIN user_roles r ON r.user_id = u.id
+              WHERE u.id = ? AND u.organization_id = ? AND u.active = 1
+                AND r.role IN (${CAN_SELL.map(() => "?").join(", ")})`
+          )
+          .get(salespersonId, session.organizationId, ...CAN_SELL)
+      : undefined;
+    if (!seller) {
+      if (promotion) unpromoteLead(session.organizationId, promotion);
+      return NextResponse.json({ ok: false, error: "فروشندهٔ انتخاب‌شده معتبر نیست" }, { status: 400 });
+    }
+  }
+
   try {
     const order = createOrder(db, {
       customer_id: customer.id,

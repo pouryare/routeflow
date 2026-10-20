@@ -7,6 +7,7 @@ import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { matchesQuery } from "@/lib/persian";
 import { faToman, faNum } from "@/lib/format";
 import { roundToman } from "@/lib/money";
+import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
 import {
   resolveRequestedDay,
@@ -142,8 +143,13 @@ export default function OrderForm({
 
   function addLine() {
     if (!product || !packaging) return;
-    const n = Number(packs);
-    if (!Number.isFinite(n) || n === 0) return;
+    // parsePacks reads Persian digits too; Number("۵") is NaN and used to drop the line without a word.
+    const n = parsePacks(packs);
+    if (n === null) {
+      setError(`تعداد بسته باید عددی مثبت (حداکثر سه رقم اعشار) و حداکثر ${faNum(MAX_PACKS_PER_LINE)} باشد`);
+      return;
+    }
+    setError(null);
     setLines((current) => [
       ...current,
       { key: Date.now(), product_id: product.id, packaging_id: packaging.id, packs: n },

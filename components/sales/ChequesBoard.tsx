@@ -1,5 +1,6 @@
 "use client";
 
+import { isToman, toToman } from "@/lib/money";
 import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
@@ -57,8 +58,16 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
   async function record(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const amt = Number(form.amount_toman.replace(/[^\d]/g, ""));
-    if (!form.customer_id || !Number.isInteger(amt) || amt <= 0 || !form.cheque_no) {
+    const amt = toToman(form.amount_toman);
+    if (/[.٫]/.test(form.amount_toman)) {
+      setError("مبلغ را به تومان و بدون اعشار وارد کنید");
+      return;
+    }
+    if (amt !== null && !isToman(amt)) {
+      setError("مبلغ بیش از حد مجاز است");
+      return;
+    }
+    if (!form.customer_id || amt === null || amt <= 0 || !form.cheque_no) {
       setError("مشتری، مبلغ و شمارهٔ چک لازم است");
       return;
     }

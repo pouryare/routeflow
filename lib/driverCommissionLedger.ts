@@ -12,6 +12,7 @@ import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
 import { lineKg, type LineSnapshot } from "./orderMath";
 import { isToman } from "./money";
+import { orgOfUser } from "./repo/userOrg";
 import type { Period } from "./commissionLedger";
 
 export interface DriverStop {
@@ -49,15 +50,17 @@ export function setDriverRate(
   return Number(
     db
       .prepare(
-        `INSERT INTO driver_commission_rates (driver_user_id, rate_per_kg_toman, valid_from, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO driver_commission_rates (driver_user_id, rate_per_kg_toman, valid_from, created_by, created_at,
+                                              organization_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.driver_user_id ?? null,
         input.rate_per_kg_toman,
         input.valid_from.slice(0, 10),
         input.created_by ?? null,
-        new Date().toISOString()
+        new Date().toISOString(),
+        orgOfUser(db, input.driver_user_id, input.created_by)
       ).lastInsertRowid
   );
 }
@@ -81,8 +84,9 @@ export function recordDriverPayment(
     db
       .prepare(
         `INSERT INTO driver_commission_payments (driver_user_id, amount_toman, paid_on,
-                                                  period_from, period_to, notes, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                                                  period_from, period_to, notes, created_by, created_at,
+                                                  organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.driver_user_id,
@@ -92,7 +96,8 @@ export function recordDriverPayment(
         input.period_to?.slice(0, 10) ?? null,
         input.notes ?? null,
         input.created_by ?? null,
-        new Date().toISOString()
+        new Date().toISOString(),
+        orgOfUser(db, input.driver_user_id, input.created_by)
       ).lastInsertRowid
   );
 }

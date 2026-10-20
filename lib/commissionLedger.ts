@@ -18,6 +18,7 @@ import { rateFor, accrualToman, type RateRow } from "./commission";
 import { lineKg, type LineSnapshot } from "./orderMath";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman, roundToman } from "./money";
+import { orgOfUser } from "./repo/userOrg";
 import { commissionFor, effectiveRate, type PlanMode } from "./commission/tiers";
 import { measureFor, type MeasurableOrder } from "./commission/measure";
 import { planFor } from "./repo/commissionTiers";
@@ -70,8 +71,9 @@ export function setRate(
     db
       .prepare(
         `INSERT INTO commission_rates (salesperson_user_id, rate_per_kg_toman,
-                                       urgent_rate_per_kg_toman, valid_from, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?)`
+                                       urgent_rate_per_kg_toman, valid_from, created_by, created_at,
+                                       organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.salesperson_user_id ?? null,
@@ -79,7 +81,8 @@ export function setRate(
         input.urgent_rate_per_kg_toman ?? null,
         input.valid_from.slice(0, 10),
         input.created_by ?? null,
-        new Date().toISOString()
+        new Date().toISOString(),
+        orgOfUser(db, input.salesperson_user_id, input.created_by)
       ).lastInsertRowid
   );
 }
@@ -103,8 +106,9 @@ export function recordPayment(
     db
       .prepare(
         `INSERT INTO commission_payments (salesperson_user_id, amount_toman, paid_on,
-                                          period_from, period_to, notes, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                                          period_from, period_to, notes, created_by, created_at,
+                                          organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.salesperson_user_id,
@@ -114,7 +118,8 @@ export function recordPayment(
         input.period_to?.slice(0, 10) ?? null,
         input.notes ?? null,
         input.created_by ?? null,
-        new Date().toISOString()
+        new Date().toISOString(),
+        orgOfUser(db, input.salesperson_user_id, input.created_by)
       ).lastInsertRowid
   );
 }

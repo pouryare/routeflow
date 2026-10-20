@@ -92,6 +92,10 @@ export default function ComplaintsPanel({
   async function file(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+    if (!form.description.trim()) {
+      setError("شرح شکایت را بنویسید");
+      return;
+    }
     const res = await fetch("/api/sales/complaints", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
