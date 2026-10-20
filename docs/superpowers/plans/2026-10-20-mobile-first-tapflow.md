@@ -8,6 +8,8 @@
 
 **Tech Stack:** Next.js 16 App Router (read `node_modules/next/dist/docs/` before touching routing/caching, per `AGENTS.md`), React 19, TypeScript, Tailwind + CSS variables, `node:sqlite`, vitest.
 
+**Companion plan:** everything that is *not* "record what just happened" (filters, keypad, smart pickers, day chips, swipe rows, decision decks, map select, phone shell, report cards, admin presets) is in `2026-10-20-mobile-first-interaction-patterns.md`, which also ends with the mobile-first design-rules document. Parked ideas (camera/OCR, voice, paste-to-parse) are in `docs/future-features.md`.
+
 **Standing rules (from `.zoocode/plan.md`, still in force):**
 - NEVER run `next build` / `npm run build` / `vitest.smoke.mts` (browser).
 - `npx tsc --noEmit` for types; `npx vitest run <file>` for tests; `npm run lint` before each commit.
