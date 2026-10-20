@@ -13,6 +13,7 @@
  *  back afterwards.
  */
 
+import { linesByOrder } from "./orderLinesBatch";
 import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
 import { lineKg, type LineSnapshot } from "./orderMath";
@@ -163,14 +164,9 @@ function accrualsFor(
     customer_name: string;
   }[];
 
-  const linesOf = db.prepare(
-    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
-            qty_per_pack, kg_per_base_unit
-       FROM order_lines WHERE order_id = ?`
-  );
-
+  const lineMap = linesByOrder(db, orders.map((o) => o.order_id));
   const measured = orders.map((order) => {
-    const lines = linesOf.all(order.order_id) as unknown as LineSnapshot[];
+    const lines = lineMap.get(order.order_id) ?? [];
     return { order, lines, kg: lines.reduce((total, line) => total + lineKg(line), 0) };
   });
 

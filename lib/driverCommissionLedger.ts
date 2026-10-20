@@ -7,6 +7,7 @@
  *  the driver who ran it, rather than an order's own salesperson_user_id.
  */
 
+import { linesByOrder } from "./orderLinesBatch";
 import type { DatabaseSync } from "node:sqlite";
 import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
@@ -150,14 +151,10 @@ function stopsFor(
     run_date: string;
   }[];
 
-  const linesOf = db.prepare(
-    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
-            qty_per_pack, kg_per_base_unit
-       FROM order_lines WHERE order_id = ?`
-  );
+  const lineMap = linesByOrder(db, stops.map((s) => s.order_id));
 
   return stops.map((stop) => {
-    const lines = linesOf.all(stop.order_id) as unknown as LineSnapshot[];
+    const lines = lineMap.get(stop.order_id) ?? [];
     const kg = lines.reduce((total, line) => total + lineKg(line), 0);
     // The rate in force on the day the ROUND ran, not when the order was taken -- a
     // driver is paid for the day they drove, the same way a فروشنده is paid for the
