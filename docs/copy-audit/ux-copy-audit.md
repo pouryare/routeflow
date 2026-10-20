@@ -37,7 +37,11 @@ approve them before they ship.
 
 **Decision recorded — مکان vs موقعیت.** Both stay, with fixed meanings: **مکان** is a place the business keeps a record of (a customer, lead or depot, as in «مکان‌های ما»); **موقعیت** is a position on the map (a GPS fix or a pin: «موقعیت من», «ثبت موقعیت»). Neither is renamed.
 
-**Also fixed**
+**Also fixed (found by running the smoke suite)**
+- Bottom sheets (customer sheet, tap-flow sheet) opened at the bottom of the *card* they were opened from, about 6 800 px down a long orders list, because a `position: fixed` element is placed against its nearest transformed ancestor and the scroll-reveal leaves a `transform` on every card. They now draw into the `.meridian` root (`components/meridian/useSheetHost.ts`).
+- Income statement: a missing React `key` on the expense rows.
+- Smoke harness: waited on scroll-driven animations that never finish, listed redirect pages as routes, and slept a fixed time for the sheet slide-in; all corrected.
+
 - Visible labels on every data-entry field that only had a placeholder (users, groups, places, login, reminders, quick-add, purchases, cheques, complaints, batches, payment void). Search boxes keep their placeholder, and tap-flow fields are labelled by the question above them.
 - The next-stop bar's dismiss button now reads «پنهان کردن نوار», and the bar wraps on phones.
 - `/report` threw «no such column: organization_id» for every owner: it applied the tenant filter to `districts`, which is shared reference data with no such column. Regression test added in `tests/tenancy-scoping.test.ts`.
@@ -45,7 +49,7 @@ approve them before they ship.
 - Cheques form: the date field overlapped the submit button on phones.
 
 **Open**
-- The geometry smoke suite (`tests/smoke/geometry.test.ts`) did not finish in this environment, so it is unconfirmed here.
+- Smoke suite (`npm run test:smoke`), run here against a freshly seeded demo database: 164 passed, 1 failed. The failure is the `/leads` console check, caused by a blocked request to the public OSRM demo server (this environment has no internet). Run it once in a networked environment.
 - Flagged rows in `catalogue-wide.md` are review candidates, not all defects (e.g. file names ending in `.csv`, search keywords).
 
 ---
