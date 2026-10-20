@@ -153,7 +153,7 @@ export default async function StockPage() {
 
       {stock.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          هنوز کالایی ثبت نشده است.
+          هنوز کالایی ثبت نشده است. کالاها را از صفحهٔ «کالاها و قیمت‌ها» اضافه کنید.
         </p>
       ) : (
         <InventoryBoard rows={rows} canEdit={session.role === "owner"} />

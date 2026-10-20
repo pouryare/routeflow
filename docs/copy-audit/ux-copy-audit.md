@@ -30,13 +30,14 @@ approve them before they ship.
 - Bare-verb labels (P1 #3): replaced across the app; `CopyButton` now always shows text; undo is «بازگردانی …» everywhere (`docs/tap-flow-principles.md` updated).
 - Glossary: جستجو, لینک, گوگل‌مپ, تأیید, سرنخ, «سفارش تازه» (UI), no «لوکیشن». Guards: `tests/no-bare-verb-labels.test.ts`, extra entries in `tests/vocabulary.test.ts`, `tests/userMessage.test.ts`.
 - `window.confirm` in `admin/groups` replaced with an inline, explicitly worded confirmation.
+- Empty states now say what to do next (or why the list is empty); double negatives rewritten. 24 placeholder-only inputs got accessible names. Ellipses unified to «…». The driver's nav tab «روز من» (same name as its group) is now «مسیر امروز».
 
 **Open — needs a decision or a visual check**
 - `components/meridian/SearchOverlay.tsx`: the "view as another user" flow still uses the native `window.confirm`. It is a security-sensitive action, so the change was not made without sign-off. Proposed: an in-app panel with «دیدن برنامه به‌جای «X»» / «انصراف از ورود به‌جای کاربر».
 - Corner "X" close buttons now have noun-bearing accessible names («بستن رسید», «بستن نقشهٔ بزرگ» …) but remain icon-only on screen; rule 2 would add visible text, which needs a layout check.
 - New visible text in dense rows (planner row actions, next-stop bar, copy buttons) has not been checked on a phone-width screen.
 - Smoke tests (`npm run test:smoke`) were updated for the renamed labels but could not run here (Playwright browser unavailable); run them before merging.
-- Not done: empty states (P2 #8), placeholder-as-label fields (P3), ellipsis style (P3), the «جدید» Kanban column key (`PoolViewKanban.tsx`), seeded «سفارش جدید» in `lib/db.ts`, the مکان/موقعیت glossary decision, «ثبت و سپردن» wording, and extending `scripts/audit-copy.mjs` to `components/` and `app/api/`.
+- Not done: the «جدید» Kanban column key (`PoolViewKanban.tsx`), seeded «سفارش جدید» in `lib/db.ts`, the مکان/موقعیت glossary decision, «ثبت و سپردن» wording, visible (not just accessible) labels on placeholder-only inputs, and extending `scripts/audit-copy.mjs` to `components/` and `app/api/`.
 
 ---
 

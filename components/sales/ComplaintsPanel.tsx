@@ -164,7 +164,7 @@ export default function ComplaintsPanel({
             </option>
           ))}
         </select>
-        <input className="col-span-2 rounded border border-border bg-bg p-2 text-sm md:col-span-1" placeholder="توضیح" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+        <input className="col-span-2 rounded border border-border bg-bg p-2 text-sm md:col-span-1" placeholder="توضیح" aria-label="توضیح" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
         <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
           <Icon name="check" size="md" />
           ثبت شکایت

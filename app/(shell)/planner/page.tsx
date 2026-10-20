@@ -776,7 +776,7 @@ type AddCandidate = CustomerRow | LeadLocation;
             <input
               value={addQuery}
               onChange={(e) => setAddQuery(e.target.value)}
-              placeholder="نام مشتری یا سرنخ…"
+              placeholder="نام مشتری یا سرنخ…" aria-label="نام مشتری یا سرنخ"
               className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
             />
             {addCandidates.length > 0 && (

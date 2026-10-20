@@ -182,7 +182,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
             aria-expanded={flat.length > 0}
             aria-controls="sov-list"
             aria-activedescendant={active >= 0 ? optionId(active) : undefined}
-            placeholder="جستجوی صفحه، مشتری یا سفارش…"
+            placeholder="جستجوی صفحه، مشتری یا سفارش…" aria-label="جستجوی صفحه، مشتری یا سفارش"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />

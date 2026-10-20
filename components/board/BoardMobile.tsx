@@ -149,7 +149,7 @@ export default function BoardMobile({
           <div style={{ marginTop: 12 }}>
             {(lanes[laneIx]?.cards ?? []).map((c) => card(c, lanes[laneIx].id))}
             {(lanes[laneIx]?.cards.length ?? 0) === 0 ? (
-              <p style={{ fontSize: 12, color: "var(--muted)" }}>موردی نیست</p>
+              <p style={{ fontSize: 12, color: "var(--muted)" }}>در این ستون کاری نیست.</p>
             ) : null}
           </div>
         </>

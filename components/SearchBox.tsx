@@ -438,7 +438,7 @@ export default function SearchBox({
         }}
         onFocus={() => setOpen(true)}
         onKeyDown={onKeyDown}
-        placeholder="جستجوی مشتری، منطقه، آدرس یا لینک نقشه…"
+        placeholder="جستجوی مشتری، منطقه، آدرس یا لینک نقشه…" aria-label="جستجوی مشتری، منطقه، آدرس یا لینک نقشه"
         className={`mapsearch__input ${
           isNarrow ? "ps-9" : "ps-3"
         }`}

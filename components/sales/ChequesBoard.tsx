@@ -121,20 +121,20 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
         </select>
         <input
           className="rounded border border-border bg-bg p-2 text-left font-mono text-sm"
-          placeholder="مبلغ (تومان)"
+          placeholder="مبلغ (تومان)" aria-label="مبلغ (تومان)"
           inputMode="numeric"
           value={form.amount_toman}
           onChange={(e) => setForm((f) => ({ ...f, amount_toman: e.target.value }))}
         />
         <input
           className="rounded border border-border bg-bg p-2 text-sm"
-          placeholder="شمارهٔ چک"
+          placeholder="شمارهٔ چک" aria-label="شمارهٔ چک"
           value={form.cheque_no}
           onChange={(e) => setForm((f) => ({ ...f, cheque_no: e.target.value }))}
         />
         <input
           className="rounded border border-border bg-bg p-2 text-sm"
-          placeholder="بانک"
+          placeholder="بانک" aria-label="بانک"
           value={form.bank_name}
           onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))}
         />

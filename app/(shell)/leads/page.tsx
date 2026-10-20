@@ -194,7 +194,7 @@ export default function LeadsPage() {
                   type="text"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
-                  placeholder="جستجوی نام مکان..."
+                  placeholder="جستجوی نام مکان…"
                   className="w-48 rounded-[var(--radius-sm)] border border-border bg-bg px-3 py-1.5 pl-7 text-[length:var(--text-xs)] text-text placeholder:text-text-faint outline-none transition-colors focus:border-accent"
                   aria-label="جستجوی مکان"
                 />

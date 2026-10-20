@@ -113,7 +113,7 @@ export default function AdminGroupsPage() {
           <input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="نام گروه"
+            placeholder="نام گروه" aria-label="نام گروه"
             className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
           />
           {/* Fixed palette, not a colour picker: these tints share the map with the
@@ -153,7 +153,7 @@ export default function AdminGroupsPage() {
         {groups === null ? (
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : groups.length === 0 ? (
-          <p className="text-sm text-text-muted">هنوز گروهی ساخته نشده است.</p>
+          <p className="text-sm text-text-muted">هنوز گروهی نساخته‌اید. نام گروه را بنویسید و «ساخت گروه» را بزنید.</p>
         ) : (
           <ul className="flex flex-col gap-2">
             {groups.map((g) => (

@@ -88,7 +88,7 @@ export default function PlacePicker({
 
       {placed.length === 0 && unplaced.length === 0 && (
         <p className="px-1 py-2 text-[length:var(--text-xs)] text-text-muted">
-          هنوز مکانی ثبت نشده است.
+          هنوز مکانی ثبت نشده است. مکان‌ها را از صفحهٔ «مکان‌های ما» اضافه کنید.
         </p>
       )}
 

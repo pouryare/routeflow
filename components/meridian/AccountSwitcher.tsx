@@ -84,7 +84,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
       <input
         value={q}
         onChange={(e) => setQ(e.target.value)}
-        placeholder="جستجوی نام یا سازمان…"
+        placeholder="جستجوی نام یا سازمان…" aria-label="جستجوی نام یا سازمان"
         className="mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none focus:border-[var(--accent)]"
       />
       {byOrg.length === 0 && (

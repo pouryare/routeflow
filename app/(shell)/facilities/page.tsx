@@ -410,7 +410,7 @@ export default function FacilitiesPage() {
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="نام مکان"
+              placeholder="نام مکان" aria-label="نام مکان"
               className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent"
             />
             <select

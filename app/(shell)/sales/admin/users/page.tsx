@@ -268,20 +268,20 @@ export default function AdminUsersPage() {
           <input
             value={form.display_name}
             onChange={(e) => setForm({ ...form, display_name: e.target.value })}
-            placeholder="نام نمایشی"
+            placeholder="نام نمایشی" aria-label="نام نمایشی"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
           />
           <input
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder="نام کاربری"
+            placeholder="نام کاربری" aria-label="نام کاربری"
             dir="ltr"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
           />
           <input
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="رمز عبور (حداقل ۸ نویسه)"
+            placeholder="رمز عبور (حداقل ۸ نویسه)" aria-label="رمز عبور (حداقل ۸ نویسه)"
             type="password"
             dir="ltr"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
@@ -309,7 +309,7 @@ export default function AdminUsersPage() {
           <input
             value={form.staff_code}
             onChange={(e) => setForm({ ...form, staff_code: e.target.value })}
-            placeholder="شناسه همکار"
+            placeholder="شناسه همکار" aria-label="شناسه همکار"
             dir="ltr"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
           />
