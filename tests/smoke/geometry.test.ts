@@ -665,10 +665,17 @@ describe("the customer sheet opens and closes for real", () => {
     await page.locator(".pockets > *").first().click();
     const x = page.locator('.sheet.on button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
-    await page.waitForTimeout(600);
+    // Poll for the slide-in instead of sleeping a fixed time: on a long page under load the
+    // transition starts late. A sheet that never reaches the screen (the bug this test exists
+    // for: a fixed sheet captured by a transformed card) still fails, after the timeout.
+    await expect
+      .poll(async () => (await offscreen(page))?.top ?? Infinity, { timeout: 8_000, message: "the open sheet is not on screen" })
+      .toBeLessThan(800);
     const opened = await offscreen(page);
     await x.click();
-    await page.waitForTimeout(800); // the slide out
+    await expect
+      .poll(async () => (await offscreen(page))?.top ?? 0, { timeout: 8_000, message: "after ✕ the sheet is still on the page" })
+      .toBeGreaterThanOrEqual(800);
     const closed = await offscreen(page);
     await close();
     expect(opened!.top, "the open sheet is not on screen").toBeLessThan(opened!.vh);
