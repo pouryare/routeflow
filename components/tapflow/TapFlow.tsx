@@ -3,6 +3,8 @@
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import { createPortal } from "react-dom";
+import { useSheetHost } from "@/components/meridian/useSheetHost";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useSwipeDismiss } from "@/components/useSwipeDismiss";
 import { answerStep, backStep, SKIP, viewStep } from "@/lib/crm/flows/machine";
@@ -59,7 +61,8 @@ export default function TapFlow(p: TapFlowProps) {
     p.onNavigate?.(url);
   };
 
-  return (
+  const host = useSheetHost();
+  return host ? createPortal(
     <>
       <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
       <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tf-title" aria-hidden={!open}>
@@ -110,8 +113,9 @@ export default function TapFlow(p: TapFlowProps) {
               )}
         </div>
       </div>
-    </>
-  );
+    </>,
+    host,
+  ) : null;
 }
 
 function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string }) {

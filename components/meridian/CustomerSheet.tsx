@@ -4,6 +4,8 @@ import { useEscapeKey } from "@/lib/useEscapeKey";
 import Link from "next/link";
 import CustomerBento, { useCustomerSummary } from "./CustomerBento";
 import { Icon } from "@/components/meridian/Icon";
+import { createPortal } from "react-dom";
+import { useSheetHost } from "@/components/meridian/useSheetHost";
 import { faDigits } from "@/lib/format";
 
 /** پنجرهٔ مشتری — the artifact's bottom bento sheet.
@@ -34,7 +36,8 @@ export default function CustomerSheet({
 
   const open = customerId !== null;
 
-  return (
+  const host = useSheetHost();
+  return host ? createPortal(
     <>
       <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
       <div
@@ -88,6 +91,7 @@ export default function CustomerSheet({
           </div>
         )}
       </div>
-    </>
-  );
+    </>,
+    host,
+  ) : null;
 }

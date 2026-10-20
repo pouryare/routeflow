@@ -29,10 +29,11 @@ let stop: () => Promise<void>;
 const ROUTES = [
   "/sales/dashboard",
   "/sales/products",
-  "/sales/deliveries",
+  // /sales/deliveries and /sales/journey are redirects now (to /sales/orders); a redirect page
+  // has no layout of its own, so the page they land on is the one that is measured.
+  "/sales/orders",
   "/sales/reps",
   "/sales/pocket",
-  "/sales/journey",
   "/sales/academy",
 ];
 
@@ -73,7 +74,8 @@ async function open(
      every assertion below would pass while testing none of the routes named above. This
      is the difference between a green suite and a working one. */
   const landed = new URL(page.url()).pathname;
-  if (landed !== route) {
+  // A route may carry a query («/sales/schedule?view=runs»); only the path is compared.
+  if (landed !== route.split("?")[0]) {
     await context.close();
     throw new Error(`${route} redirected to ${landed} — the smoke session was not accepted`);
   }
@@ -291,7 +293,7 @@ describe("runs", () => {
      the whole point of the form is that stop N sits in the same column in every lane. If a
      lane drifts off the axis, the chart silently lies about which van is further along. */
   it("every lane's stops sit on the shared stop axis, on one row", async () => {
-    const { page, close } = await open("/sales/runs", { width: 1440, height: 900 });
+    const { page, close } = await open("/sales/schedule?view=runs", { width: 1440, height: 900 });
     const report = await page.evaluate(() => {
       const ticks = Array.from(document.querySelectorAll<HTMLElement>(".mlanes__ticks > li")).map((t) => {
         const r = t.getBoundingClientRect();
@@ -320,7 +322,7 @@ describe("runs", () => {
   }, 90_000);
 
   it("the driver streak grid is seven days tall in every week", async () => {
-    const { page, close } = await open("/sales/runs", { width: 1440, height: 900 });
+    const { page, close } = await open("/sales/schedule?view=runs", { width: 1440, height: 900 });
     const bad = await page.evaluate(() =>
       Array.from(document.querySelectorAll<HTMLElement>(".streak__week"))
         .map((w) => w.querySelectorAll(".streak__cell").length)
@@ -530,8 +532,10 @@ describe("panels and controls stay where they belong", () => {
     expect(box.x + box.width, "the panel ends right of the screen").toBeLessThanOrEqual(viewport.width);
   }, 90_000);
 
-  it("the customer window's close icon sits in the middle of its circle", async () => {
+  it("the customer window's close button keeps its icon and label centred", async () => {
     // The orders grid opens پنجرهٔ مشتری from every pocket; the snapshot always has orders.
+    // The button reads «بستن مشخصات» beside its icon, so it is the icon and the label TOGETHER
+    // that must sit in the middle of the button (an icon-only circle is the one-child case).
     const { page, close } = await open("/sales/orders", { width: 1280, height: 800 });
     const opener = page.locator(".pockets > *").first();
     await opener.waitFor({ state: "visible", timeout: 10_000 });
@@ -541,12 +545,21 @@ describe("panels and controls stay where they belong", () => {
     await page.waitForTimeout(600); // the sheet slides in
     const off = await x.evaluate((b) => {
       const r = b.getBoundingClientRect();
-      const i = b.querySelector("svg")!.getBoundingClientRect();
-      return { dx: Math.abs(r.x + r.width / 2 - (i.x + i.width / 2)), dy: Math.abs(r.y + r.height / 2 - (i.y + i.height / 2)) };
+      const kids = Array.from(b.children).map((c) => c.getBoundingClientRect());
+      const left = Math.min(...kids.map((k) => k.x));
+      const right = Math.max(...kids.map((k) => k.x + k.width));
+      const top = Math.min(...kids.map((k) => k.y));
+      const bottom = Math.max(...kids.map((k) => k.y + k.height));
+      return {
+        dx: Math.abs(r.x + r.width / 2 - (left + right) / 2),
+        dy: Math.abs(r.y + r.height / 2 - (top + bottom) / 2),
+        hasLabel: (b.textContent ?? "").trim().length > 0,
+      };
     });
     await close();
-    expect(off.dx, "icon off-centre horizontally").toBeLessThanOrEqual(1);
-    expect(off.dy, "icon off-centre vertically").toBeLessThanOrEqual(1);
+    expect(off.hasLabel, "the close button says what it closes").toBe(true);
+    expect(off.dx, "content off-centre horizontally").toBeLessThanOrEqual(1);
+    expect(off.dy, "content off-centre vertically").toBeLessThanOrEqual(1);
   }, 90_000);
 
   it.each(ROUTES)("every icon-only button on %s centres its icon", async (route) => {
