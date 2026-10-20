@@ -1,5 +1,5 @@
 import type { DueSpec } from "../due";
-import type { FlowItem } from "../flows/item";
+import type { FlowItem } from "../../flows/item";
 import type { SizeBand, SupplyChannel, VisitWindow } from "../intel";
 import type { OutcomeCode } from "../outcomes";
 import type {
