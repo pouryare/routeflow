@@ -97,8 +97,8 @@ export default function NextStopBar({
         body: JSON.stringify({ status: "done" }),
       });
       if (!res.ok) throw new Error();
-      toast(`«${next.label}» انجام شد.`, "success", {
-        label: "بازگردان",
+      toast(`${next.entity_type === "facility" ? "حضور در" : "بازدید از"} «${next.label}» ثبت شد.`, "success", {
+        label: "بازگردانی ثبت",
         onClick: async () => {
           await fetch(`/api/visit-plans/${next.id}`, {
             method: "PATCH",
@@ -110,7 +110,7 @@ export default function NextStopBar({
       });
       await load();
     } catch {
-      toast("خطا در ثبت وضعیت", "error");
+      toast("ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
     } finally {
       setSaving(false);
     }
@@ -132,7 +132,7 @@ export default function NextStopBar({
     >
       <div className="pointer-events-auto flex w-full items-center gap-2 rounded-[var(--radius-lg)] border border-border-strong bg-surface-raised/95 px-3 py-2 backdrop-blur elevate-accent">
         <span className="shrink-0 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
-          بعدی
+          توقف بعدی
         </span>
 
         <button
@@ -173,18 +173,17 @@ export default function NextStopBar({
             aria-label="مسیریابی به این توقف"
             className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-2 text-[length:var(--text-sm)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-accent hover:text-accent-ink"
           >
-            نقشه
+            مسیریابی توقف
           </a>
         )}
 
         <button
           onClick={markDone}
           disabled={saving}
-          aria-label="انجام شد"
-          title="انجام شد"
-          className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] border border-border px-2 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
+          className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 whitespace-nowrap rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-xs)] text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-good disabled:opacity-50"
         >
           <Icon name="check" size="sm" />
+          {saving ? "در حال ثبت…" : next.entity_type === "facility" ? "ثبت حضور" : "ثبت بازدید"}
         </button>
 
         <button

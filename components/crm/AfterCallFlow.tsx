@@ -86,11 +86,11 @@ export default function AfterCallFlow({
         body: JSON.stringify({ answers: st.answers, entry, task_id: taskId, client_uuid: clientUuid }),
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || !j.ok) { toast(j.error ?? "ذخیره نشد؛ دوباره امتحان کنید", "error"); return; }
+      if (!res.ok || !j.ok) { toast(j.error ?? `نتیجهٔ تماس با «${data.business.business_name}» ثبت نشد؛ دوباره تلاش کنید`, "error"); return; }
       onFinished(customerId);
     });
-    toast(`ثبت شد · ${nextLabelFor(data, st) ?? ""}`, "success", {
-      label: "لغو",
+    toast(`نتیجهٔ تماس با «${data.business.business_name}» ثبت شد · ${nextLabelFor(data, st) ?? ""}`, "success", {
+      label: "بازگردانی ثبت",
       onClick: () => {
         if (cancel()) { setState(backStep(afterCallFlow, data.ctx, st)); onReopen(); }
       },

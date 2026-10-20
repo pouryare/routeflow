@@ -143,7 +143,7 @@ export default function GeofenceWatcher({
         });
         toast(`بازدید از «${customer.business_name}» ثبت شد.`, "success");
       } else {
-        toast("خطا در ثبت بازدید", "error");
+        toast("بازدید ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
       }
       snoozedRef.current.set(`customer:${customer.id}`, Date.now());
     } finally {
@@ -174,7 +174,7 @@ export default function GeofenceWatcher({
       if (data.ok) {
         toast(`حضور در «${facility.name}» ثبت شد.`, "success");
       } else {
-        toast("خطا در ثبت حضور", "error");
+        toast("حضور ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
       }
       snoozedRef.current.set(`facility:${facility.id}`, Date.now());
     } finally {
@@ -197,7 +197,7 @@ export default function GeofenceWatcher({
       if (data.ok) {
         toast(`بازدید از «${lead.name}» ثبت شد.`, "success");
       } else {
-        toast("خطا در ثبت بازدید", "error");
+        toast("بازدید ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
       }
       snoozedRef.current.set(`lead:${lead.id}`, Date.now());
     } finally {
@@ -237,7 +237,7 @@ export default function GeofenceWatcher({
           className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
         >
           <Icon name="check" size="sm" />
-          {saving ? "..." : "بله، ثبت شد"}
+          {saving ? (prompt.kind === "facility_arrive" ? "در حال ثبت حضور…" : "در حال ثبت بازدید…") : prompt.kind === "facility_arrive" ? "ثبت حضور" : "ثبت بازدید"}
         </button>
         <button
           onClick={dismiss}
@@ -245,9 +245,12 @@ export default function GeofenceWatcher({
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text disabled:opacity-50"
         >
           <Icon name="arrow-left" size="sm" />
-          بعداً
+          فعلاً نه
         </button>
       </div>
+      <p className="mt-1.5 text-[length:var(--text-xs)] text-text-muted">
+        {prompt.kind === "facility_arrive" ? "۶ ساعت دیگر دوباره می‌پرسیم." : "۳۰ دقیقهٔ دیگر دوباره می‌پرسیم."}
+      </p>
     </div>
   );
 }

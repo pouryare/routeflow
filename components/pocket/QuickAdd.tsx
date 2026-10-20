@@ -36,13 +36,14 @@ export default function QuickAdd({
         }),
       });
       if (!res.ok) throw new Error();
-      toast(kind === "reminder" ? "یادآوری ثبت شد." : "یادداشت ثبت شد.", "success");
+      const preview = text.trim().length > 30 ? `${text.trim().slice(0, 30)}…` : text.trim();
+      toast(`${kind === "reminder" ? "یادآوری" : "یادداشت"} «${preview}» ثبت شد.`, "success");
       setText("");
       setDue("");
       onAdded();
       onClose();
     } catch {
-      toast("خطا در ثبت", "error");
+      toast(`${kind === "reminder" ? "یادآوری" : "یادداشت"} ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.`, "error");
     } finally {
       setSaving(false);
     }
@@ -62,7 +63,7 @@ export default function QuickAdd({
       }}
     >
       <div style={{ fontSize: 12, fontWeight: 600 }}>
-        {kind === "reminder" ? "+ یادآوری بگذار" : "+ یادداشت"}
+        {kind === "reminder" ? "ثبت یادآوری تازه" : "ثبت یادداشت تازه"}
       </div>
       {kind === "reminder" ? (
         <JalaliDateInput value={due} onChange={setDue} aria-label="تاریخ یادآوری" />
@@ -89,11 +90,11 @@ export default function QuickAdd({
           onClick={() => void submit()}
         >
           <Icon name="edit" size="md" />
-          ذخیره
+          {saving ? "در حال ذخیره…" : kind === "reminder" ? "ذخیرهٔ یادآوری" : "ذخیرهٔ یادداشت"}
         </button>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={onClose}>
           <Icon name="x" size="md" />
-          لغو
+          {kind === "reminder" ? "انصراف از یادآوری" : "انصراف از یادداشت"}
         </button>
       </div>
     </div>

@@ -207,17 +207,17 @@ export default function Pocket({
       <div className="acts" style={{ margin: "14px 0 8px" }}>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setQuick("reminder")}>
           <Icon name="clock" size="md" />
-          + یادآوری
+          + ثبت یادآوری
         </button>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setQuick("note")}>
           <Icon name="plus" size="md" />
-          + یادداشت
+          + ثبت یادداشت
         </button>
         <Link className="btn ghost" href="/sales/orders/new">
-          + سفارش
+          + ثبت سفارش تازه
         </Link>
         <Link className="btn ghost" href="/planner">
-          + بازدید
+          + برنامه‌ریزی بازدید
         </Link>
       </div>
 
@@ -253,7 +253,7 @@ export default function Pocket({
           {group("انجام‌شده", data.done)}
           {data.today.length + data.week.length + data.done.length === 0 ? (
             <p style={{ fontSize: 12, color: "var(--muted)", padding: "14px 0" }}>
-              کاری برای نمایش نیست.
+              هنوز کاری ندارید. با «ثبت یادآوری» یا «ثبت یادداشت» شروع کنید.
             </p>
           ) : null}
         </div>
