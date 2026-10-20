@@ -2,6 +2,7 @@
 
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { toToman } from "@/lib/money";
@@ -91,7 +92,7 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ kind: "error", text: json.error ?? "ثبت نشد" });
+        setMessage({ kind: "error", text: friendlyError(json.error, "خرید ثبت نشد؛ دوباره تلاش کنید") });
         return;
       }
       setMessage({ kind: "ok", text: "خرید ثبت شد و میانگین قیمت به‌روز شد" });

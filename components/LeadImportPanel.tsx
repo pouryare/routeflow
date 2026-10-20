@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
@@ -44,7 +45,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
       });
       const data = await res.json();
       if (!data.ok) {
-        toast(data.error || "خطا در تجزیه متن", "error");
+        toast(friendlyError(data.error, "متن خوانده نشد؛ متن را بررسی کنید و دوباره تلاش کنید"), "error");
         return;
       }
       // The job exists now. Adopt it immediately rather than waiting for the next poll:
@@ -72,7 +73,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
         etaSeconds: 0,
       });
     } catch {
-      toast("خطا در ارتباط با سرور", "error");
+      toast("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
     } finally {
       setBusy(false);
     }
@@ -164,12 +165,12 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
           <textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="لینک یا نتیجه جستجوی گوگل‌مپس، نشان، بلد یا ویز را اینجا پیست کنید…"
+            placeholder="لینک یا نتیجه جستجوی گوگل‌مپ، نشان، بلد یا ویز را اینجا پیست کنید…"
             className="w-full h-24 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent focus:ring-1 focus:ring-accent resize-none"
           />
           <div className="mt-2 flex items-center justify-between">
             <p className="text-[length:var(--text-xs)] text-text-faint">
-              گوگل‌مپس، نشان، بلد و ویز پشتیبانی می‌شوند.
+              گوگل‌مپ، نشان، بلد و ویز پشتیبانی می‌شوند.
             </p>
             <button
               onClick={parse}

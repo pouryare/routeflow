@@ -2,6 +2,7 @@
 
 import { tehranTodayIso, faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
@@ -84,7 +85,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(body?.error ?? "ثبت نشد");
+      setError(friendlyError(body?.error, "سری ساخت ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
     setForm((f) => ({ ...f, batch_code: "", supplier_batch_ref: "", qty_received_base: "" }));
@@ -98,7 +99,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
       body: JSON.stringify({ action: "status", to }),
     });
     if (res.ok) void load();
-    else setError((await res.json().catch(() => null))?.error ?? "انجام نشد");
+    else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت سری ساخت انجام نشد؛ دوباره تلاش کنید"));
   }
 
   async function openTrace(id: number) {

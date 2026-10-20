@@ -119,7 +119,7 @@ export function autoAllocateFIFO(
   amount_toman: number
 ): AllocationInput[] {
   if (!isWholeToman(amount_toman) || amount_toman <= 0) {
-    throw new PaymentError("مبلغ باید عدد صحیح تومان و بزرگ‌تر از صفر باشد");
+    throw new PaymentError("مبلغ را به تومان، بدون اعشار و بیشتر از صفر وارد کنید");
   }
   const db = paymentsRepo.db();
   const orders = deliveredOrdersForCustomer(db, organizationId, customerId);
@@ -188,7 +188,7 @@ function validateAllocations(
 
   const sum = allocs.reduce((s, a) => {
     if (!isWholeToman(a.amount_toman)) {
-      throw new PaymentError("مبلغ تخصیص باید عدد صحیح تومان باشد");
+      throw new PaymentError("مبلغ تخصیص را به تومان و بدون اعشار وارد کنید");
     }
     return s + a.amount_toman;
   }, 0);
@@ -256,7 +256,7 @@ export function recordPaymentTxn(
   input: RecordPaymentInput
 ): number {
   if (!isWholeToman(input.amount_toman) || input.amount_toman <= 0) {
-    throw new PaymentError("مبلغ باید عدد صحیح تومان و بزرگ‌تر از صفر باشد");
+    throw new PaymentError("مبلغ را به تومان، بدون اعشار و بیشتر از صفر وارد کنید");
   }
   const customer = db
     .prepare("SELECT organization_id FROM customers WHERE id = ?")
@@ -457,7 +457,7 @@ export function replaceAllocations(
 
   const kept = allocations.filter((a) => a.amount_toman > 0);
   const sum = kept.reduce((s, a) => {
-    if (!isWholeToman(a.amount_toman)) throw new PaymentError("مبلغ تخصیص باید عدد صحیح تومان باشد");
+    if (!isWholeToman(a.amount_toman)) throw new PaymentError("مبلغ تخصیص را به تومان و بدون اعشار وارد کنید");
     return s + a.amount_toman;
   }, 0);
   // The sum must equal the RECEIPT, not the remainder: allocation explains where the whole

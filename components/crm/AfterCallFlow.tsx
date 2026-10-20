@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
@@ -63,11 +64,11 @@ export default function AfterCallFlow({
           setData({ business: j.business, ctx: j.ctx });
           setState(startFlow(afterCallFlow, j.ctx));
         } else {
-          toastRef.current(j.error ?? "این کسب‌وکار خوانده نشد", "error");
+          toastRef.current(friendlyError(j.error, "اطلاعات این کسب‌وکار بارگذاری نشد؛ دوباره تلاش کنید"), "error");
           hideRef.current();
         }
       })
-      .catch(() => { if (alive) toastRef.current("اتصال برقرار نشد", "error"); });
+      .catch(() => { if (alive) toastRef.current("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error"); });
     return () => { alive = false; };
   }, [customerId, entry]);
 
@@ -86,11 +87,11 @@ export default function AfterCallFlow({
         body: JSON.stringify({ answers: st.answers, entry, task_id: taskId, client_uuid: clientUuid }),
       });
       const j = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
-      if (!res.ok || !j.ok) { toast(j.error ?? "ذخیره نشد؛ دوباره امتحان کنید", "error"); return; }
+      if (!res.ok || !j.ok) { toast(friendlyError(j.error, `نتیجهٔ تماس با «${data.business.business_name}» ثبت نشد؛ دوباره تلاش کنید`), "error"); return; }
       onFinished(customerId);
     });
-    toast(`ثبت شد · ${nextLabelFor(data, st) ?? ""}`, "success", {
-      label: "لغو",
+    toast(`نتیجهٔ تماس با «${data.business.business_name}» ثبت شد · ${nextLabelFor(data, st) ?? ""}`, "success", {
+      label: "بازگردانی ثبت",
       onClick: () => {
         if (cancel()) { setState(backStep(afterCallFlow, data.ctx, st)); onReopen(); }
       },

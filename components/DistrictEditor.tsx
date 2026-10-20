@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { DistrictFeature, CoverageStatus, STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
@@ -53,8 +54,8 @@ export default function DistrictEditor({
     const data = await res.json();
     setSaving(false);
     if (!data.ok) {
-      setError(data.error || "خطا در ذخیره");
-      toast(data.error || "خطا در ذخیره", "error");
+      setError(friendlyError(data.error, "تغییرات منطقه ذخیره نشد؛ دوباره تلاش کنید"));
+      toast(friendlyError(data.error, "تغییرات منطقه ذخیره نشد؛ دوباره تلاش کنید"), "error");
       return;
     }
     toast("تغییرات منطقه ذخیره شد.", "success");
@@ -77,7 +78,7 @@ export default function DistrictEditor({
           <h2 className="text-[length:var(--text-lg)] font-bold text-text">{district.properties.name}</h2>
           <button
             onClick={handleClose}
-            aria-label="بستن"
+            aria-label="بستن ویرایش منطقه"
             className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
           >
             <Icon name="x" size="sm" />

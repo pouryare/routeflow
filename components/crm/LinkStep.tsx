@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import type { CustomStepApi } from "@/components/tapflow/TapFlow";
 
@@ -16,10 +17,10 @@ export default function LinkStep({ api }: { api: CustomStepApi }) {
     try {
       const res = await fetch("/api/crm/resolve-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: u }) });
       const j = (await res.json()) as { ok: boolean; link?: unknown; error?: string };
-      if (!j.ok) { setErr(j.error ?? "لینک خوانده نشد"); return; }
+      if (!j.ok) { setErr(friendlyError(j.error, "لینک خوانده نشد؛ لینک را بررسی کنید و دوباره تلاش کنید")); return; }
       api.submit("ok", JSON.stringify(j.link));
     } catch {
-      setErr("اتصال برقرار نشد");
+      setErr("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       setBusy(false);
     }
@@ -46,7 +47,7 @@ export default function LinkStep({ api }: { api: CustomStepApi }) {
       {err ? <div className="tf-card warn">{err}</div> : null}
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={!url.trim() || busy} onClick={() => void resolve(url.trim())}>
       <Icon name="link" size="md" />
-      {busy ? "در حال خواندن…" : "ادامه"}</button>
+      {busy ? "در حال خواندن لینک…" : "خواندن لینک و ادامه"}</button>
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => api.submit("nolink")}>
       <Icon name="link" size="md" />
       لینک ندارم</button>

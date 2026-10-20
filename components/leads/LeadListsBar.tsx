@@ -43,8 +43,8 @@ const ACTIONS: Array<{ id: ActionId; label: string; icon: "route" | "list" | "fo
   { id: "append", label: "افزودن به مسیر", icon: "list" },
   { id: "split", label: "تقسیم به روزها", icon: "folders" },
   { id: "send", label: "سپردن به راننده", icon: "truck" },
-  { id: "rename", label: "تغییر نام", icon: "edit" },
-  { id: "delete", label: "حذف", icon: "trash", destructive: true },
+  { id: "rename", label: "تغییر نام فهرست", icon: "edit" },
+  { id: "delete", label: "حذف فهرست", icon: "trash", destructive: true },
 ];
 
 export default function LeadListsBar({
@@ -167,11 +167,11 @@ export default function LeadListsBar({
                           className="rounded bg-crit/15 px-1.5 py-0.5 text-crit"
                         >
                           <Icon name="x" size="md" />
-                          {confirming?.kind === "delete" ? "حذف کن" : "بله"}
+                          {confirming?.kind === "delete" ? "حذف فهرست" : "جایگزینی مسیر"}
                         </button>
                         <button type="button" onClick={() => setConfirming(null)} className="rounded px-1.5 py-0.5 text-text-faint">
                         <Icon name="x" size="md" />
-                        لغو</button>
+                        {confirming?.kind === "delete" ? "انصراف از حذف" : "انصراف از جایگزینی"}</button>
                       </p>
                     ) : null}
 

@@ -67,13 +67,13 @@ it("acknowledges choices before advancing and saves exactly one range after a do
 it("keeps custom weekdays selected, supports deselection, and disables empty continuation", async () => {
   await click("روزهای خاص…");
   await beat();
-  expect(button("ادامه").disabled).toBe(true);
+  expect(button("ادامه به مرحلهٔ بعد").disabled).toBe(true);
   await click("شنبه");
   expect(button("شنبه").querySelector(".tick svg")).not.toBeNull();
   await beat();
   expect(button("شنبه").getAttribute("aria-pressed")).toBe("true");
-  expect(button("ادامه").disabled).toBe(false);
+  expect(button("ادامه به مرحلهٔ بعد").disabled).toBe(false);
   await click("شنبه");
   expect(button("شنبه").getAttribute("aria-pressed")).toBe("false");
-  expect(button("ادامه").disabled).toBe(true);
+  expect(button("ادامه به مرحلهٔ بعد").disabled).toBe(true);
 });

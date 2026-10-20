@@ -157,7 +157,7 @@ export default function UnloadTapFlow({
           onClick={onClose}
           className="rounded-[var(--radius-md)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted"
         >
-          <Icon name="x" size="sm" /> انصراف
+          <Icon name="x" size="sm" /> انصراف از تخلیه
         </button>
       </div>
     </Sheet>

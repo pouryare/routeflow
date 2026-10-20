@@ -533,7 +533,7 @@ describe("panels and controls stay where they belong", () => {
     const opener = page.locator(".pockets > *").first();
     await opener.waitFor({ state: "visible", timeout: 10_000 });
     await opener.click();
-    const x = page.locator('.sheet.on button[aria-label="بستن"]');
+    const x = page.locator('.sheet.on button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
     await page.waitForTimeout(600); // the sheet slides in
     const off = await x.evaluate((b) => {
@@ -647,7 +647,7 @@ describe("the customer sheet opens and closes for real", () => {
   it("the close button on /sales/orders really closes the sheet", async () => {
     const { page, close } = await open("/sales/orders", { width: 1280, height: 800 });
     await page.locator(".pockets > *").first().click();
-    const x = page.locator('.sheet.on button[aria-label="بستن"]');
+    const x = page.locator('.sheet.on button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
     await page.waitForTimeout(600);
     const opened = await offscreen(page);

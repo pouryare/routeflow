@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, scope, rows: customersHealthOverview(guard.session) });
   }
   if (!id) {
-    return NextResponse.json({ ok: false, error: "برای این محدوده id لازم است" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "محدوده مشخص نشده است" }, { status: 400 });
   }
   if (scope === "phone_sales") {
     return NextResponse.json({ ok: true, scope, id, health: salespersonScoreFor(org, id, period) });

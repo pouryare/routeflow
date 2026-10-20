@@ -71,7 +71,7 @@ export default function PoolViewCluster({
   const clusters = useMemo(() => clusterLocations(items), [items]);
 
   if (clusters.length === 0) {
-    return <p className="py-4 text-center text-[length:var(--text-xs)] text-text-faint">لوکیشن‌هایی برای نمایش وجود ندارد</p>;
+    return <p className="py-4 text-center text-[length:var(--text-xs)] text-text-faint">مکانی برای نمایش وجود ندارد</p>;
   }
 
   return (

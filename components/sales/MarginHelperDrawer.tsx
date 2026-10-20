@@ -1,7 +1,8 @@
 "use client";
 
+import { friendlyError } from "@/lib/userMessage";
 import { tehranTodayIso } from "@/lib/jalali";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faFixed, faNum } from "@/lib/format";
 import { toToman } from "@/lib/money";
@@ -133,7 +134,7 @@ export default function MarginHelperDrawer({
       setSaveState(
         res.ok
           ? { kind: "ok", text: "بهای تمام‌شده ثبت شد" }
-          : { kind: "error", text: json.error ?? "ثبت نشد" }
+          : { kind: "error", text: friendlyError(json.error, "بهای تمام‌شده ثبت نشد؛ دوباره تلاش کنید") }
       );
     } finally {
       setBusy(false);

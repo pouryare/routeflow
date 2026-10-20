@@ -93,7 +93,7 @@ export default function CommissionEditor({
   managers: { id: number; display_name: string }[];
 }) {
   const router = useRouter();
-  const { busy, message, send } = usePostAction();
+  const { busy, message, send } = usePostAction("تنظیمات پورسانت ثبت نشد؛ دوباره تلاش کنید");
   const [rateKind, setRateKind] = useState<Kind>("sales");
   const [payKind, setPayKind] = useState<Kind>("sales");
 
@@ -468,7 +468,7 @@ export default function CommissionEditor({
                     aria-label={`حذف پله ${i + 1}`}
                   >
                     <Icon name="trash" size="sm" />
-                    حذف
+                    حذف این پله
                   </button>
                 )}
               </div>

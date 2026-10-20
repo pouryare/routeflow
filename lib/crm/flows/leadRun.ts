@@ -34,7 +34,7 @@ export const leadRunFlow: FlowConfig = {
     submit: {
       id: "submit",
       kind: "choice",
-      q: "تایید و ثبت",
+      q: "تأیید و ثبت",
       sub: "اطلاعات را بررسی و ثبت کنید",
       // `save`, not `next`: it is what ends the flow and shows the `done` panel, so the
       // result -- saved or failed -- stays on screen instead of the sheet closing blind.

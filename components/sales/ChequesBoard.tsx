@@ -2,6 +2,7 @@
 
 import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
@@ -75,7 +76,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(body?.error ?? "ثبت نشد");
+      setError(friendlyError(body?.error, "چک ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
     setForm((f) => ({ ...f, amount_toman: "", cheque_no: "", bank_name: "" }));
@@ -96,7 +97,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
       body: JSON.stringify({ action: "advance", to, replacement }),
     });
     if (res.ok) void load();
-    else setError((await res.json().catch(() => null))?.error ?? "انجام نشد");
+    else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید"));
   }
 
   const byStatus = (s: ChequeStatus) => (cheques ?? []).filter((c) => c.status === s);

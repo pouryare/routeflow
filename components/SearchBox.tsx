@@ -1,5 +1,6 @@
 "use client";
 
+import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
 import { matchesQuery } from "@/lib/persian";
@@ -345,14 +346,14 @@ export default function SearchBox({
       const res = await fetch(`/api/geo/decode-link?url=${encodeURIComponent(trimmed)}`);
       const data = await res.json();
       if (!data.ok) {
-        setLinkError(data.error || "لینک قابل تشخیص نبود");
+        setLinkError(friendlyError(data.error, "لینک شناسایی نشد؛ لینک گوگل‌مپ، نشان، بلد یا ویز را بچسبانید"));
         return;
       }
       onLocationFound?.(data.lat, data.lng, "لینک نقشه");
       if (trimmed) pushRecent(trimmed);
       reset();
     } catch {
-      setLinkError("خطا در ارتباط با سرور");
+      setLinkError("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       setLinkLoading(false);
     }
@@ -554,7 +555,7 @@ export default function SearchBox({
               </button>
               {linkError && <p className="mt-2 px-1 text-[length:var(--text-xs)] text-crit">{linkError}</p>}
               <p className="mt-2 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                گوگل‌مپس، نشان، بلد و ویز پشتیبانی می‌شوند
+                گوگل‌مپ، نشان، بلد و ویز پشتیبانی می‌شوند
               </p>
             </div>
           ) : inputType === "coord" && coordMatch ? (

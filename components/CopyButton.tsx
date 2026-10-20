@@ -23,7 +23,7 @@ export default function CopyButton({
    *  that during render makes the server and the client disagree about what the button
    *  holds; resolving it on click sidesteps the question entirely. */
   value: string | (() => string);
-  /** Visible text. Omit for the bare icon, which is what the tight rows use. */
+  /** Visible text. Defaults to `what` ("کپی آدرس"): an icon alone does not say what will be copied. */
   label?: string;
   /** Names the thing in the failure message and to screen readers: "کپی آدرس". */
   what: string;
@@ -65,7 +65,7 @@ export default function CopyButton({
       } ${className}`}
     >
       <Icon name={copied ? "check" : "file"} size="sm" />
-      {label && <span>{copied ? "کپی شد" : label}</span>}
+      <span>{copied ? "کپی شد" : label ?? what}</span>
     </button>
   );
 }

@@ -174,7 +174,7 @@ export function reconcileUnload(input: UnloadInput): void {
   }
   for (const line of input.lines) {
     if (!Number.isInteger(line.qty) || line.qty <= 0) {
-      throw new StockError("مقدار هر قلم باید عدد صحیح بزرگ‌تر از صفر باشد");
+      throw new StockError("مقدار هر قلم را بدون اعشار و بیشتر از صفر وارد کنید");
     }
     if (!DISPOSITIONS.includes(line.disposition)) {
       throw new StockError(`نوع تخلیه نامعتبر است: ${line.disposition}`);

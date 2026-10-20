@@ -69,7 +69,7 @@ export default function TapFlow(p: TapFlowProps) {
             <h2 id="tf-title">{p.title}</h2>
             {p.subtitle ? <div className="s">{p.subtitle}</div> : null}
           </div>
-          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن" onClick={onClose}>
+          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن این فرم" onClick={onClose}>
             <Icon name="x" size="sm" />
           </button>
         </div>
@@ -81,7 +81,7 @@ export default function TapFlow(p: TapFlowProps) {
                   <div className="tf-nav">
                     {p.state.answers.length > 0 ? (
                       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-back" onClick={() => p.onState(backStep(p.config, p.ctx, p.state))}>
-                        <Icon name="chevron-right" size="sm" /> قبلی
+                        <Icon name="chevron-right" size="sm" /> سؤال قبلی
                       </button>
                     ) : <span />}
                     <div className="tf-steps" aria-hidden>

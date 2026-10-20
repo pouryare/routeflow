@@ -116,7 +116,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
       <div className="sttoolbar">
         <label className="stsearch">
           <Icon name="search" size="sm" />
-          <input type="text" placeholder="جست‌وجوی کالا…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="text" placeholder="جستجوی کالا…" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="stchips" role="group" aria-label="فیلتر وضعیت">
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stchip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
@@ -146,7 +146,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
 
       {visible.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          کالایی با این جست‌وجو یا فیلتر پیدا نشد.
+          کالایی با این جستجو یا فیلتر پیدا نشد.
         </p>
       ) : (
         <div className="stgrid">
@@ -309,7 +309,7 @@ function ThresholdField({
       {dirty ? (
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stmore__save" disabled={busy} onClick={save}>
           <Icon name="check" size="md" />
-          ثبت
+          ثبت آستانه
         </button>
       ) : saved ? (
         <span className="stmore__saved">ثبت شد</span>

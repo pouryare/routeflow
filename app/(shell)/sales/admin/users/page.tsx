@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useRef, useState } from "react";
 
@@ -219,7 +220,7 @@ export default function AdminUsersPage() {
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok || !data.ok) {
-      setError(data.error || "انجام نشد");
+      setError(friendlyError(data.error, "کاربر ذخیره نشد؛ دوباره تلاش کنید"));
       return false;
     }
     setError(null);

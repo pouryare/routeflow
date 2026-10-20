@@ -211,7 +211,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
       remember("bluetooth");
       setStatus("چاپ شد");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "چاپ ناموفق بود");
+      setStatus(e instanceof Error ? e.message : "رسید چاپ نشد؛ اتصال پرینتر را بررسی کنید و دوباره تلاش کنید");
     } finally {
       setBusy(false);
     }
@@ -243,7 +243,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
       // A cancelled share sheet throws AbortError. That is the user saying no, not a
       // failure to report at them.
       if (!(e instanceof DOMException && e.name === "AbortError")) {
-        setStatus(e instanceof Error ? e.message : "اشتراک‌گذاری ناموفق بود");
+        setStatus(e instanceof Error ? e.message : "رسید ارسال نشد؛ دوباره تلاش کنید");
       }
     } finally {
       setBusy(false);
@@ -270,7 +270,7 @@ export default function ReceiptPrinter({ data }: { data: ReceiptData }) {
       download(new Blob([pdf as BlobPart], { type: "application/pdf" }), `receipt-${data.orderNo}.pdf`);
       remember("pdf");
     } catch (e) {
-      setStatus(e instanceof Error ? e.message : "ساخت PDF ناموفق بود");
+      setStatus(e instanceof Error ? e.message : "فایل PDF رسید ساخته نشد؛ دوباره تلاش کنید");
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
@@ -134,7 +135,7 @@ export default function LeadRunPlannerTabFlow({
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error ?? "ثبت مسیر انجام نشد");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data?.error, "مسیر ثبت نشد؛ دوباره تلاش کنید"));
       setMessage({
         tone: "ok",
         text: data.reused
@@ -151,7 +152,7 @@ export default function LeadRunPlannerTabFlow({
         setRuns(fresh.runs);
       } catch { /* keep what we have */ }
     } catch (e) {
-      setMessage({ tone: "bad", text: e instanceof Error ? e.message : "خطا" });
+      setMessage({ tone: "bad", text: e instanceof Error ? e.message : "مسیر ثبت نشد؛ دوباره تلاش کنید" });
     } finally {
       setSaving(false);
     }
@@ -220,7 +221,7 @@ export default function LeadRunPlannerTabFlow({
       `تا ${faNum(OUTBOX_HOLD_MS / 1000)} ثانیه دیگر مسیر به راننده سپرده می‌شود.`,
       "info",
       {
-        label: "لغو",
+        label: "لغو سپردن مسیر",
         // No second toast: `ToastProvider` dismisses the one that owned this action, and
         // the confirm button reverting from "در انتظار تأیید…" is itself the confirmation
         // that the cancel landed. A second toast would only be noise.
@@ -273,7 +274,7 @@ export default function LeadRunPlannerTabFlow({
             onClick={() => api.submit("next")}
           >
             <Icon name="arrow-left" size="md" />
-            ادامه
+            ادامه به مرحلهٔ بعد
           </button>
         </div>
       );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import {
@@ -13,11 +14,11 @@ import {
 
 const ACTION_LABEL: Record<OrderAction, string> = {
   submit: "ارسال برای بررسی",
-  passReview: "تأیید",
+  passReview: "تأیید سفارش",
   flagCredit: "—",
   approveCredit: "تأیید اعتبار",
   rejectCredit: "رد اعتبار",
-  releaseHold: "رفع توقف",
+  releaseHold: "رفع توقف سفارش",
   plan: "برنامه‌ریزی",
   unplan: "بازگشت به تأییدشده",
   freeze: "قطعی‌کردن مسیر",
@@ -82,7 +83,7 @@ export default function OrderStatusPanel({
       });
       const j = await res.json();
       if (!res.ok) {
-        setError(j.error ?? "انجام نشد");
+        setError(friendlyError(j.error, "وضعیت سفارش تغییر نکرد؛ دوباره تلاش کنید"));
         return;
       }
       router.refresh();

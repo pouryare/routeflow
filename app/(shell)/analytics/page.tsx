@@ -39,7 +39,7 @@ export default function AnalyticsPage() {
       const data = await res.json();
       setLocations(data.locations ?? []);
     } catch {
-      toast("خطا در بارگذاری آمار", "error");
+      toast("آمار بارگذاری نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setLoading(false);
     }

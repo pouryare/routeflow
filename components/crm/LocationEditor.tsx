@@ -63,7 +63,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
     const version = ++request.current;
     setResolving(true); setError(null);
     try {
-      if (!isAllowedLinkHost(new URL(u).hostname)) throw new Error("فقط پیوند گوگل‌مپ، نشان، بلد یا ویز پشتیبانی می‌شود");
+      if (!isAllowedLinkHost(new URL(u).hostname)) throw new Error("فقط لینک گوگل‌مپ، نشان، بلد یا ویز پشتیبانی می‌شود");
       const direct = extractLatLng(u);
       const j = direct ? { ok: true, link: direct, error: undefined } : await (await fetch("/api/crm/resolve-link", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ url: u }) })).json();
       if (version !== request.current) return;
@@ -71,7 +71,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
       if (!j.ok || typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error(j.error ?? "مختصات از این لینک قابل استخراج نبود؛ روی نقشه انتخاب کنید");
       setDraft({ lat, lng, link: u });
     } catch (e) {
-      if (version === request.current) setError(e instanceof Error ? e.message : "اتصال برقرار نشد");
+      if (version === request.current) setError(e instanceof Error ? e.message : "اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       if (version === request.current) setResolving(false);
     }
@@ -85,7 +85,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
     try {
       await onConfirm(draft.lat, draft.lng, draft.link);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ذخیره نشد");
+      setError(e instanceof Error ? e.message : "موقعیت ذخیره نشد؛ دوباره تلاش کنید");
     } finally {
       lock.current = false;
       setSaving(false);
@@ -102,12 +102,12 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
           disabled={saving}
           onChange={(e) => { request.current++; setResolving(false); setLink(e.target.value); }}
           onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); if (URL_RE.test(link.trim()) && !resolving) void resolveLink(link.trim()); } }}
-          placeholder="پیوند گوگل‌مپ، نشان، بلد یا ویز"
-          aria-label="پیوند موقعیت"
+          placeholder="لینک گوگل‌مپ، نشان، بلد یا ویز"
+          aria-label="لینک موقعیت"
           inputMode="url"
         />
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={!URL_RE.test(link.trim()) || resolving || saving}
-          aria-label="خواندن پیوند موقعیت" onClick={() => void resolveLink(link.trim())}>
+          aria-label="خواندن لینک موقعیت" onClick={() => void resolveLink(link.trim())}>
           <Icon name="map-pin" size="md" />
           {resolving ? "…" : "خواندن"}
         </button>
@@ -143,7 +143,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
         </button>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={saving} onClick={() => { request.current++; onCancel(); }}>
         <Icon name="x" size="md" />
-        انصراف</button>
+        انصراف از ثبت موقعیت</button>
       </div>
     </div>
   );

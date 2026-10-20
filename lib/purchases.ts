@@ -66,7 +66,7 @@ export function recordPurchase(db: DatabaseSync, input: PurchaseInput): number {
 
   for (const line of input.lines) {
     if (!isToman(line.unit_cost_toman) || line.unit_cost_toman < 0) {
-      throw new TypeError(`قیمت خرید باید عدد صحیح تومان باشد: ${line.unit_cost_toman}`);
+      throw new TypeError("قیمت خرید را به تومان و بدون اعشار وارد کنید");
     }
     if (!Number.isFinite(line.base_qty) || line.base_qty <= 0) {
       throw new PurchaseError("تعداد خرید باید بزرگ‌تر از صفر باشد");

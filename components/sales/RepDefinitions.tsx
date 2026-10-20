@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
@@ -108,7 +109,7 @@ export default function RepDefinitions() {
       setRepCode("");
       await load();
     } else {
-      setError((await res.json().catch(() => null))?.error ?? "ثبت نماینده انجام نشد");
+      setError(friendlyError((await res.json().catch(() => null))?.error, "نماینده ثبت نشد؛ دوباره تلاش کنید"));
     }
   }
 
@@ -119,7 +120,7 @@ export default function RepDefinitions() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setError((await res.json().catch(() => null))?.error ?? "انجام نشد");
+      setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر نماینده انجام نشد؛ دوباره تلاش کنید"));
       return;
     }
     setError(null);
@@ -174,7 +175,7 @@ export default function RepDefinitions() {
                 <th className="px-3 py-2">کد</th>
                 <th className="px-3 py-2">کسب‌وکار</th>
                 <th className="px-3 py-2">مرحله</th>
-                <th className="px-3 py-2">ایجاد</th>
+                <th className="px-3 py-2">تاریخ ایجاد</th>
                 <th className="px-3 py-2">
                   <span className="sr-only">اقدام</span>
                 </th>
@@ -212,7 +213,7 @@ export default function RepDefinitions() {
           <SectionHead
             title={`${openRep.business_name} — ${REP_STAGE_LABEL[openRep.stage] ?? "نامشخص"}`}
             actions={
-              <button onClick={() => setOpenId(null)} className="btn ghost" aria-label="بستن">
+              <button onClick={() => setOpenId(null)} className="btn ghost" aria-label="بستن جزئیات نماینده">
                 <Icon name="x" size="sm" />
               </button>
             }
@@ -254,7 +255,7 @@ export default function RepDefinitions() {
                     className="mr-auto text-[length:var(--text-xs)] text-accent hover:underline"
                   >
                     <Icon name="check" size="sm" />
-                    تکمیل
+                    تکمیل این مرحله
                   </button>
                 )}
                 {s.completed_at && (

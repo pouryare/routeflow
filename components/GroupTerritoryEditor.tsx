@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
@@ -69,13 +70,13 @@ export default function GroupTerritoryEditor({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "ذخیره نشد");
+        setError(friendlyError(data.error, "محدودهٔ گروه ذخیره نشد؛ دوباره تلاش کنید"));
         return;
       }
       setSelected(new Set());
       onSaved();
     } catch {
-      setError("خطا در ارتباط با سرور");
+      setError("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       setSaving(false);
     }
@@ -89,7 +90,7 @@ export default function GroupTerritoryEditor({
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="جست‌وجوی منطقه یا محله"
+          placeholder="جستجوی منطقه یا محله"
           className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
         />
         <select

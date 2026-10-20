@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useMemo, useState } from "react";
 import { faJalaliDateTime } from "@/lib/jalali";
@@ -104,7 +105,7 @@ export default function ComplaintsPanel({
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(body?.error ?? "ثبت نشد");
+      setError(friendlyError(body?.error, "شکایت ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
     setForm((f) => ({ ...f, description: "" }));
@@ -118,7 +119,7 @@ export default function ComplaintsPanel({
       body: JSON.stringify({ status }),
     });
     if (res.ok) void load();
-    else setError((await res.json().catch(() => null))?.error ?? "انجام نشد");
+    else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت شکایت انجام نشد؛ دوباره تلاش کنید"));
   }
 
   return (

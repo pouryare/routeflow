@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import type { RunDetail, RunStop } from "@/lib/delivery";
@@ -125,7 +126,7 @@ export default function DriverRun({
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]"
             >
               <Icon name="x" size="sm" />
-              بستن
+              بستن رسید
             </button>
           </div>
           <ReceiptPrinter data={receipt} />
@@ -230,7 +231,7 @@ function StopCard({
       } else if (res.status >= 400 && res.status < 500) {
         dequeue(stop.id);
         const json = await res.json().catch(() => ({}));
-        setError(json.error ?? "ثبت نشد");
+        setError(friendlyError(json.error, "تحویل ثبت نشد. اطلاعات را بررسی کنید و دوباره تلاش کنید."));
         return;
       }
     } catch {
@@ -356,7 +357,7 @@ function StopCard({
                 className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink disabled:opacity-50"
               >
                 <Icon name="check" size="md" />
-                {busy ? "…" : "ثبت تحویل و چاپ رسید"}
+                {busy ? "در حال ثبت تحویل…" : "ثبت تحویل و چاپ رسید"}
               </button>
             )}
             <button
@@ -365,7 +366,7 @@ function StopCard({
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
             >
               <Icon name="receipt" size="sm" />
-              رسید
+              نمایش رسید
             </button>
           </div>
         </div>

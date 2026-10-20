@@ -16,6 +16,9 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
   const [busy, setBusy] = useState(false);
   const [card, setCard] = useState<ObjectionCard | null>(null);
   const [flow, setFlow] = useState<{ open: boolean } | null>(null);
+  // Deleting a task cannot be undone, so it takes a second, explicitly worded tap. Frequent
+  // actions in this row (recording a result) stay one tap with no confirmation.
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function resolve(code: string | null) {
     setBusy(true);
@@ -48,19 +51,42 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
         {customerId ? (
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => setFlow({ open: true })}>
           <Icon name="check" size="md" />
-          ثبت نتیجه</button>
+          ثبت نتیجهٔ این کار</button>
         ) : (
           <OutcomeChips disabled={busy} onPick={(code) => void resolve(code)} />
         )}
-        <button
-          type="button"
-          disabled={busy}
-          onClick={() => void resolve(null)}
-          className="rounded-full px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-faint)] hover:text-[var(--crit)] disabled:opacity-50"
-        >
-          <Icon name="trash" size="sm" />
-          حذف
-        </button>
+        {confirmingDelete ? (
+          <>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => void resolve(null)}
+              className="rounded-full border border-[var(--crit)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--crit)] disabled:opacity-50"
+            >
+              <Icon name="trash" size="sm" />
+              حذف همیشگی این کار
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => setConfirmingDelete(false)}
+              className="rounded-full px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)] disabled:opacity-50"
+            >
+              <Icon name="x" size="sm" />
+              انصراف از حذف
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setConfirmingDelete(true)}
+            className="rounded-full px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-faint)] hover:text-[var(--crit)] disabled:opacity-50"
+          >
+            <Icon name="trash" size="sm" />
+            حذف این کار
+          </button>
+        )}
       </div>
       {card && (
         <div className="mt-[var(--space-1)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--surface-2)] p-[var(--space-2)] text-[length:var(--text-xs)]">

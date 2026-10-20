@@ -27,7 +27,7 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   await page.goto(`${BASE}/crm/${id}`);
   await page.getByRole("button", { name: "افزودن برچسب‌ها" }).or(page.getByRole("button", { name: "ویرایش برچسب‌ها" })).click();
   await page.getByRole("textbox", { name: "برچسب‌ها", exact: true }).fill("ویژه، بازدید");
-  await page.getByRole("button", { name: "ذخیره", exact: true }).click();
+  await page.getByRole("button", { name: "ذخیرهٔ تغییر", exact: true }).click();
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   await page.getByRole("button", { name: /اینستاگرام/ }).click();
   await page.getByRole("textbox", { name: "اینستاگرام", exact: true }).fill("@smoke.intel");
@@ -37,11 +37,11 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   await page.getByRole("button", { name: "ثبت شناخت", exact: true }).click();
   await page.getByRole("button", { name: "متوسط", exact: true }).click();
   await page.getByRole("button", { name: "پخش‌کننده", exact: true }).click();
-  await page.getByRole("button", { name: "ادامه", exact: true }).click();
+  await page.getByRole("button", { name: "ادامه به مرحلهٔ بعد", exact: true }).click();
   await page.getByRole("button", { name: "بعدازظهر · ۱۵ تا ۱۸", exact: true }).click();
   await page.getByPlaceholder("سراغ چه کسی برویم؟").fill("سراغ مدیر");
   const saved = page.waitForResponse(r => r.url().endsWith(`/businesses/${id}/intel`) && r.request().method() === "POST");
-  await page.getByRole("button", { name: "ثبت", exact: true }).click();
+  await page.getByRole("button", { name: "ثبت ساعت کاری", exact: true }).click();
   expect((await saved).status()).toBe(200);
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   await page.reload();
@@ -51,7 +51,7 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   /* The saved pin renders as a real Leaflet map, expandable into the large dialog. */
   await page.locator(".customer-map .leaflet-marker-icon").waitFor({ timeout: 20000 });
   await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
-  await page.getByRole("button", { name: "بستن", exact: true }).click();
+  await page.getByRole("button", { name: "بستن نقشهٔ بزرگ", exact: true }).click();
   await page.screenshot({ path: "/tmp/rf-crm-profile-desktop.png", fullPage: true });
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);

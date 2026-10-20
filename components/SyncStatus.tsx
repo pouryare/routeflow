@@ -174,18 +174,18 @@ export default function SyncStatus() {
                 {r.status === "held" && (
                   <button type="button" onClick={() => void undo(r.id)} className="text-[var(--accent)]">
                     <Icon name="x" size="md" />
-                    لغو
+                    بازگردانی ثبت
                   </button>
                 )}
                 {(r.status === "failed" || r.status === "conflict") && (
                   <span className="flex gap-2">
                     <button type="button" onClick={() => void retry(r.id)} className="text-[var(--accent)]">
                       <Icon name="undo" size="md" />
-                      تلاش دوباره
+                      ارسال دوباره
                     </button>
                     <button type="button" onClick={() => void discard(r.id)} className="text-[var(--crit)]">
                       <Icon name="trash" size="md" />
-                      حذف
+                      حذف این ثبت
                     </button>
                   </span>
                 )}

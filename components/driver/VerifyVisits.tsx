@@ -45,12 +45,12 @@ export default function VerifyVisits() {
         method: "POST", keepalive: true, headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ answers: st.answers, pos, client_uuid: uuid }),
       });
-      if (!res.ok) { toast("بازدید ذخیره نشد؛ دوباره امتحان کنید", "error"); return; }
+      if (!res.ok) { toast(`بازدید از «${visit.business_name}» ثبت نشد؛ دوباره تلاش کنید`, "error"); return; }
       setFlow(null);
       void load();
     });
-    toast("بازدید ثبت شد", "success", {
-      label: "لغو",
+    toast(`بازدید از «${visit.business_name}» ثبت شد`, "success", {
+      label: "بازگردانی ثبت",
       onClick: () => { if (cancel()) setFlow((f) => (f ? { ...f, state: backStep(driverVisitFlow, ctx, st), open: true } : f)); },
     });
   };

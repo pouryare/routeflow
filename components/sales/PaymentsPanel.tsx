@@ -2,6 +2,7 @@
 
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
@@ -173,7 +174,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
     const res = await fetch(`/api/payments/${paymentId}`);
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setAllocError(body?.error ?? "تخصیص‌ها خوانده نشد");
+      setAllocError(friendlyError(body?.error, "تخصیص‌ها بارگذاری نشد؛ دوباره تلاش کنید"));
       return;
     }
     setOpenOrders(body.openOrders ?? []);
@@ -191,7 +192,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setAllocError(body?.error ?? "تخصیص ذخیره نشد");
+      setAllocError(friendlyError(body?.error, "تخصیص ذخیره نشد؛ دوباره تلاش کنید"));
       return;
     }
     setEditing(null);
@@ -230,7 +231,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
     setBusy(false);
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      setError(body?.error ?? "ثبت نشد");
+      setError(friendlyError(body?.error, "دریافت ثبت نشد؛ دوباره تلاش کنید"));
       return;
     }
     setAmount("");
@@ -496,7 +497,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                   onClick={() => setPage(safePage - 1)}
                 >
                   <Icon name="chevron-right" size="sm" />
-                  قبلی
+                  صفحهٔ قبل
                 </button>
                 <span className="tnum">
                   {safePage + 1} / {pageCount}
@@ -507,7 +508,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                   disabled={safePage >= pageCount - 1}
                   onClick={() => setPage(safePage + 1)}
                 >
-                  بعدی
+                  صفحهٔ بعد
                   <Icon name="chevron-left" size="sm" />
                 </button>
               </div>
@@ -602,7 +603,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                 className="rounded border border-border px-3 py-1 text-xs"
               >
                 <Icon name="x" size="sm" />
-                انصراف
+                انصراف از ویرایش تخصیص
               </button>
             </div>
           </div>

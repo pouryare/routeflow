@@ -43,7 +43,7 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
         <div className="sheet on map-sheet" role="dialog" aria-modal="true" aria-label={`نقشهٔ موقعیت ${name}`}>
           <div className="sheethead">
             <h2>موقعیت {name}</h2>
-            <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن" onClick={() => setOpen(false)}><Icon name="x" size="sm" /></button>
+            <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن نقشهٔ بزرگ" onClick={() => setOpen(false)}><Icon name="x" size="sm" /></button>
           </div>
           <div className="map-frame tall">
             <Suspense fallback={<div className="map-loading">…</div>}>

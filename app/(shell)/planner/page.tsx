@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
 import { useSearchParams } from "next/navigation";
@@ -307,7 +308,7 @@ export default function PlannerPage() {
       if (!res.ok) throw new Error();
       toast("به برنامه اضافه شد.", "success");
     } catch {
-      toast("خطا در افزودن به برنامه", "error");
+      toast("به برنامه اضافه نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setAddQuery("");
       loadWeek();
@@ -324,7 +325,7 @@ export default function PlannerPage() {
       if (!res.ok) throw new Error();
       toast("مکان پیشنهادی به برنامه اضافه شد.", "success");
     } catch {
-      toast("خطا در افزودن مکان به برنامه", "error");
+      toast("مکان به برنامه اضافه نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setAddQuery("");
       loadWeek();
@@ -343,7 +344,7 @@ export default function PlannerPage() {
       if (!res.ok) throw new Error();
       toast(`وضعیت به «${STATUS_TOAST[status]}» تغییر کرد.`, "success");
     } catch {
-      toast("خطا در تغییر وضعیت", "error");
+      toast("وضعیت توقف تغییر نکرد؛ دوباره تلاش کنید", "error");
     } finally {
       loadWeek();
     }
@@ -369,7 +370,7 @@ export default function PlannerPage() {
       if (!res.ok) throw new Error();
       toast(`«${p.label}» به برنامه بازگشت.`, "success");
     } catch {
-      toast("خطا در بازگردانی", "error");
+      toast("توقف به برنامه برنگشت؛ دوباره تلاش کنید", "error");
     } finally {
       loadWeek();
     }
@@ -385,10 +386,10 @@ export default function PlannerPage() {
       toast(
         removed ? `«${removed.label}» از برنامه حذف شد.` : "از برنامه حذف شد.",
         "info",
-        removed ? { label: "بازگردان", onClick: () => restorePlan(removed) } : undefined
+        removed ? { label: "بازگردانی حذف", onClick: () => restorePlan(removed) } : undefined
       );
     } catch {
-      toast("خطا در حذف", "error");
+      toast("توقف از برنامه حذف نشد؛ دوباره تلاش کنید", "error");
     } finally {
       loadWeek();
     }
@@ -600,7 +601,7 @@ export default function PlannerPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در افزودن توقف");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data.error, "توقف به برنامه اضافه نشد؛ دوباره تلاش کنید"));
 
       // afterIndex counts the origin as position 0, so it is already the index the new
       // stop should occupy among the stops themselves.
@@ -707,7 +708,7 @@ export default function PlannerPage() {
       toast(`ترتیب بهینه اعمال شد — ${faFixed(optimisation.savedPct, 0)}٪ کوتاه‌تر`, "success");
       await loadWeek();
     } catch {
-      toast("خطا در اعمال ترتیب بهینه", "error");
+      toast("ترتیب بهینه اعمال نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setOptimising(false);
     }
@@ -778,7 +779,7 @@ export default function PlannerPage() {
             <input
               value={addQuery}
               onChange={(e) => setAddQuery(e.target.value)}
-              placeholder="نام مشتری یا لید…"
+              placeholder="نام مشتری یا سرنخ…"
               className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
             />
             {addCandidates.length > 0 && (
@@ -799,7 +800,7 @@ export default function PlannerPage() {
                       {c.kind === "lead" ? c.lead.name : c.customer.business_name}
                     </span>
                     <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">
-                      {c.kind === "lead" ? "لید" : c.customer.customer_code}
+                      {c.kind === "lead" ? "سرنخ" : c.customer.customer_code}
                     </span>
                   </button>
                 ))}
@@ -817,7 +818,7 @@ export default function PlannerPage() {
               <PrintButton />
               <CopyButton
                 value={() => `${window.location.origin}/planner?date=${selectedDate}`}
-                what="کپی پیوند این روز"
+                what="کپی لینک این روز"
               />
               <button
                 onClick={locate}
@@ -958,7 +959,7 @@ export default function PlannerPage() {
               {googleRoute?.singleLeg && (
                 <p className="text-[length:var(--text-xs)] leading-5 text-warn">
                   {navApp(navAppId).label} فقط یک مقصد را می‌پذیرد؛ توقف‌های بعدی را از همین فهرست باز کنید.
-                  برای باز کردن کل مسیر در یک لینک، از گوگل‌مپس، نشان، بلد یا ویز استفاده کنید.
+                  برای باز کردن کل مسیر در یک لینک، از گوگل‌مپ، نشان، بلد یا ویز استفاده کنید.
                 </p>
               )}
 
@@ -995,7 +996,7 @@ export default function PlannerPage() {
             <EmptyState
               icon="calendar"
               title="برای این روز هنوز چیزی برنامه‌ریزی نشده"
-              hint="از کادر «افزودن به برنامه» بالای همین صفحه، یک مشتری یا لید پیشنهادی اضافه کنید."
+              hint="از کادر «افزودن به برنامه» بالای همین صفحه، یک مشتری یا سرنخ پیشنهادی اضافه کنید."
             />
           ) : (
             <>
@@ -1057,7 +1058,7 @@ export default function PlannerPage() {
                   >
                     {STATUS_META[p.status].label}
                   </span>
-                  <div className="no-print flex shrink-0 gap-1">
+                  <div className="no-print flex shrink-0 flex-wrap justify-end gap-1">
                     {p.lat !== null && p.lng !== null && (
                       <a
                         href={navigateUrl(navAppId, { lat: p.lat, lng: p.lng }, p.label)}
@@ -1067,28 +1068,29 @@ export default function PlannerPage() {
                         className="rounded-[var(--radius-sm)] px-1.5 py-1 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                       >
                         <Icon name="external-link" size="sm" />
+                        <span className="ms-1 text-[length:var(--text-xs)]">مسیریابی</span>
                       </a>
                     )}
                     <button
                       onClick={() => setStatus(p.id, "done")}
-                      aria-label="انجام شد"
                       className="rounded-[var(--radius-sm)] px-1.5 py-1 text-good transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                     >
                       <Icon name="check" size="sm" />
+                      <span className="ms-1 text-[length:var(--text-xs)]">ثبت انجام توقف</span>
                     </button>
                     <button
                       onClick={() => setStatus(p.id, "skipped")}
-                      aria-label="رد شد"
                       className="rounded-[var(--radius-sm)] px-1.5 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                     >
                       <Icon name="x" size="sm" />
+                      <span className="ms-1 text-[length:var(--text-xs)]">رد کردن توقف</span>
                     </button>
                     <button
                       onClick={() => removePlan(p.id)}
-                      aria-label="حذف"
                       className="rounded-[var(--radius-sm)] px-1.5 py-1 text-crit transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
                     >
                       <Icon name="trash" size="sm" />
+                      <span className="ms-1 text-[length:var(--text-xs)]">حذف از برنامه</span>
                     </button>
                   </div>
                 </div>

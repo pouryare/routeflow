@@ -17,7 +17,7 @@ export async function PATCH(req: NextRequest) {
     active?: boolean;
     cooldown_min?: number;
   } | null;
-  if (!b?.code) return NextResponse.json({ ok: false, error: "code لازم است" }, { status: 400 });
+  if (!b?.code) return NextResponse.json({ ok: false, error: "قانون مشخص نشده است" }, { status: 400 });
   try {
     setTenantRuleOverride(guard.session.organizationId, {
       code: b.code,

@@ -43,7 +43,7 @@ export default function CatalogueEditor({
   /** The company per-kg commission rate in force, so the drawer need not ask for it. */
   companyRatePerKg: number | null;
 }) {
-  const { busy, message, send } = usePostAction();
+  const { busy, message, send } = usePostAction("تغییر کالا ثبت نشد؛ دوباره تلاش کنید");
 
   // --- product ---
   const [pName, setPName] = useState("");

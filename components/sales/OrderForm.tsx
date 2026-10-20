@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
 import { matchesQuery } from "@/lib/persian";
@@ -199,7 +200,7 @@ export default function OrderForm({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error ?? "ثبت سفارش ممکن نشد");
+        setError(friendlyError(json.error, "سفارش ثبت نشد؛ دوباره تلاش کنید"));
         return;
       }
       router.push(`/sales/orders/${json.id}`);

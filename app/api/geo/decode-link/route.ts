@@ -31,7 +31,7 @@ export async function GET(req: NextRequest) {
   }
   if (!isAllowedLinkHost(current.hostname)) {
     return NextResponse.json(
-      { ok: false, error: "این دامنه پشتیبانی نمی‌شود (گوگل‌مپس، نشان، بلد و ویز)" },
+      { ok: false, error: "این دامنه پشتیبانی نمی‌شود (گوگل‌مپ، نشان، بلد و ویز)" },
       { status: 400 }
     );
   }
