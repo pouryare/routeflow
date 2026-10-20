@@ -1,4 +1,4 @@
-import { refreshOrderKg } from "./orderKg";
+import { refreshOrderFigures } from "./orderFigures";
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
 import { advanceOrder, registerOrderEffectHandlers } from "./orders";
@@ -349,7 +349,7 @@ registerOrderEffectHandlers({
         now
       );
     }
-    refreshOrderKg(conn, newOrderId);
+    refreshOrderFigures(conn, newOrderId);
     conn
       .prepare(
         `INSERT INTO order_events (organization_id, order_id, from_status, to_status, action, actor_user_id, note, created_at)

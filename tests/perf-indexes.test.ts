@@ -101,4 +101,14 @@ describe("hot reads use an index", () => {
     expect(p.join("\n")).toMatch(/COVERING INDEX/);
     expect(p.filter((l) => /^SCAN e\b(?! USING COVERING)/.test(l)), p.join("\n")).toEqual([]);
   });
+
+  it("customer order dates come back ordered from an index, without a sort", () => {
+    const p = plan(
+      `SELECT customer_id, order_date FROM orders
+        WHERE organization_id = ? AND status IN ('CONFIRMED', 'DELIVERED') ORDER BY customer_id, order_date`,
+      1
+    );
+    expect(p.join("\n")).not.toMatch(/TEMP B-TREE FOR ORDER BY/);
+    expect(p.join("\n")).toMatch(/COVERING INDEX/);
+  });
 });

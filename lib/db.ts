@@ -1,5 +1,5 @@
 import { instrumentSlowSql, slowSqlThresholdMs } from "./slowSql";
-import { backfillOrderKg } from "./repo/orderKg";
+import { backfillOrderFigures } from "./repo/orderFigures";
 import { refreshRetiredWording } from "./repo/retiredWording";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
@@ -4829,29 +4829,44 @@ export function getDb(): DatabaseSync {
   backfillReminderTasks(db);
   migrateCrm(db);
 
-  /* An order's weight in kilograms, stored so the commission ledgers do not have to re-add every
-     line of every order a person ever sold on each request (see lib/repo/orderKg.ts).
+  /* Per-order figures (weight, total, cost), stored so the commission ledgers, the debt pass and
+     the dashboard do not have to re-add every line of every order on each request (see
+     lib/repo/orderFigures.ts).
 
-     The value is a CACHE of something derivable from order_lines, so it must never be trusted
-     when it could be stale. These triggers void it on any insert, update or delete of a line;
+     They are a CACHE of something derivable from order_lines, so they must never be trusted when
+     they could be stale. These triggers void all three on any insert, update or delete of a line;
      the writers that know better (creating an order, recording a delivery, splitting a
-     back-order) refill it straight away, and everything else is refilled by the backfill just
-     below. A reader that finds it empty adds the lines up itself.
+     back-order) refill them straight away, and everything else is refilled by the backfill just
+     below. A reader that finds one empty works it out from the lines itself.
+
+     The first version of this cached only the weight, under order_lines_void_kg_*. Those are
+     dropped by name because CREATE TRIGGER IF NOT EXISTS would leave a database that already has
+     them voiding only one of the three columns.
 
      If a future migration rebuilds `orders` or `order_lines`, drop these triggers first and let
      this block recreate them: SQLite refuses a RENAME while a trigger names a missing table. */
-  if (!(db.prepare("PRAGMA table_info(orders)").all() as { name: string }[]).some((c) => c.name === "kg_total")) {
-    db.exec("ALTER TABLE orders ADD COLUMN kg_total REAL");
-  }
+  const figureCols = (db.prepare("PRAGMA table_info(orders)").all() as { name: string }[]).map((c) => c.name);
+  if (!figureCols.includes("kg_total")) db.exec("ALTER TABLE orders ADD COLUMN kg_total REAL");
+  if (!figureCols.includes("total_toman")) db.exec("ALTER TABLE orders ADD COLUMN total_toman INTEGER");
+  if (!figureCols.includes("cost_toman")) db.exec("ALTER TABLE orders ADD COLUMN cost_toman INTEGER");
   db.exec(`
-    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_insert AFTER INSERT ON order_lines
-    BEGIN UPDATE orders SET kg_total = NULL WHERE id = NEW.order_id; END;
-    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_update AFTER UPDATE ON order_lines
-    BEGIN UPDATE orders SET kg_total = NULL WHERE id IN (OLD.order_id, NEW.order_id); END;
-    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_delete AFTER DELETE ON order_lines
-    BEGIN UPDATE orders SET kg_total = NULL WHERE id = OLD.order_id; END;
+    DROP TRIGGER IF EXISTS order_lines_void_kg_insert;
+    DROP TRIGGER IF EXISTS order_lines_void_kg_update;
+    DROP TRIGGER IF EXISTS order_lines_void_kg_delete;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_figures_insert AFTER INSERT ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL WHERE id = NEW.order_id; END;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_figures_update AFTER UPDATE ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL WHERE id IN (OLD.order_id, NEW.order_id); END;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_figures_delete AFTER DELETE ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL WHERE id = OLD.order_id; END;
   `);
-  backfillOrderKg(db);
+  /* Per-customer order history in date order (customer health, first order): the status rides along so
+     the whole read is answered from the index, already sorted. Created here, not beside the other
+     orders indexes, because organization_id is added to orders by a later migration. */
+  db.exec(
+    "CREATE INDEX IF NOT EXISTS ix_orders_org_customer_date ON orders(organization_id, customer_id, order_date, status)"
+  );
+  backfillOrderFigures(db);
 
   _db = db;
   return db;

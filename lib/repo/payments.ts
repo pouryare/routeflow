@@ -722,19 +722,27 @@ export function customerDebtsForOrg(
      original row-by-row version. */
   /* One pass: the per-order totals are materialised once, then read two ways -- a row per
      customer (their delivered total) and a row per order that still owes something (for the
-     ageing buckets). kind 0 / kind 1 tells the two apart. */
+     ageing buckets). kind 0 / kind 1 tells the two apart.
+
+     An order's total is read from orders.total_toman (lib/repo/orderFigures.ts). When that is
+     empty -- an order whose lines were changed by something that did not refill it -- it is summed
+     from the lines instead, each line rounded to whole Toman BEFORE it is added (round half away
+     from zero, on the delivered packs when there are any), exactly as lineTotalToman does. The
+     COALESCE only evaluates that subquery for the rows that need it. Either way the number is the
+     same integer; tests/debts-aggregate.test.ts and tests/order-figures.test.ts hold both paths
+     equal to the original row-by-row version. */
   const rows = db
     .prepare(
       `WITH ot AS MATERIALIZED (
          SELECT o.customer_id AS customer_id, o.order_date AS order_date, o.delivered_at AS delivered_at,
-                o.paid_toman AS paid_toman, COALESCE(lt.total, 0) AS total
+                o.paid_toman AS paid_toman,
+                COALESCE(
+                  o.total_toman,
+                  (SELECT COALESCE(SUM(CAST(ROUND(COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman) AS INTEGER)), 0)
+                     FROM order_lines l WHERE l.order_id = o.id)
+                ) AS total
            FROM orders o
            JOIN customers c ON c.id = o.customer_id
-           LEFT JOIN (
-             SELECT order_id,
-                    SUM(CAST(ROUND(COALESCE(packs_delivered, packs_ordered) * unit_price_toman) AS INTEGER)) AS total
-               FROM order_lines GROUP BY order_id
-           ) lt ON lt.order_id = o.id
           WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
        )
        SELECT 0 AS kind, customer_id, SUM(total) AS amount, NULL AS order_date, NULL AS delivered_at

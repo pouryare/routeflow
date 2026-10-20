@@ -16,7 +16,7 @@
 import { cache } from "react";
 import { getDb } from "./db";
 import { linesByOrder } from "./repo/orderLines";
-import { orderKgOf } from "./repo/orderKg";
+import { orderKgOf } from "./repo/orderFigures";
 import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
