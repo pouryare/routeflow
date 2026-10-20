@@ -152,7 +152,7 @@ Standing rule: do not run `next build` in the agent environment. This task is th
 `scripts/perf/timing.mjs`:
 
 ```js
-// Usage: SESSION_COOKIE='rf_session=...' node scripts/perf/timing.mjs http://localhost:3000
+// Usage: SESSION_COOKIE='coverage_session_v2=<value>' node scripts/perf/timing.mjs http://localhost:3000
 // Runs against `next start`, not `next dev`. Prints TTFB and total for each route,
 // cold (first hit) and warm (median of 5).
 const base = process.argv[2] ?? "http://localhost:3000";
@@ -199,13 +199,13 @@ git commit -m "docs: production-mode timing script and baseline"
 
 ---
 
-### Task 3: SQLite pragmas (item 3)
+### Task 3: SQLite read pragmas (item 3)
 
 **Files:**
 - Modify: `lib/db.ts` in `getDb()`, directly after `db.exec("PRAGMA foreign_keys = ON;");` (~line 1440)
 - Create: `tests/db-pragmas.test.ts`
 
-Safety note for the reviewer: with WAL, `synchronous=NORMAL` cannot corrupt the database; the only cost is that the last few commits can be lost on an OS crash or power loss (not on an app crash). For an app with a service-worker offline queue that replays unsynced writes, that trade is acceptable, but the user must confirm it. Do **not** set `synchronous=OFF`.
+Decision (user agreed): do **not** change `synchronous`. The offline outbox lives in the browser and drops a fact once the server acknowledges it, so a commit lost after an ack is never re-sent. Nightly backups only cap the loss at a day. This task is read-side tuning only.
 
 - [ ] **Step 1: Write the failing test.**
 
@@ -236,8 +236,8 @@ describe("getDb pragmas", () => {
     expect(pragma("foreign_keys")).toBe(1);
   });
 
-  it("uses synchronous=NORMAL (1), safe under WAL", () => {
-    expect(pragma("synchronous")).toBe(1);
+  it("leaves synchronous at the default (FULL, 2): durability is not traded away", () => {
+    expect(pragma("synchronous")).toBe(2);
   });
 
   it("keeps temp structures in memory and enlarges the page cache", () => {
@@ -259,12 +259,11 @@ Expected: FAIL on `synchronous` (default 2), `temp_store` (0), `cache_size`, `bu
 - [ ] **Step 3: Implement.** In `lib/db.ts`, after `db.exec("PRAGMA foreign_keys = ON;");`:
 
 ```ts
-  /* Read/write tuning. synchronous=NORMAL is safe under WAL (no corruption; at worst the
-     last commits are lost on an OS crash). cache_size is negative = KiB, so -65536 is
-     64 MiB. mmap_size lets large reads skip a copy. busy_timeout makes a second writer
-     wait rather than throw SQLITE_BUSY -- the lead-import runner and the request path
-     share this file. */
-  db.exec("PRAGMA synchronous = NORMAL;");
+  /* Read tuning. synchronous is deliberately left at FULL: the offline outbox drops a
+     fact once the server acknowledges it, so a commit lost after an ack would never be
+     re-sent. cache_size is negative = KiB, so -65536 is 64 MiB. mmap_size lets large
+     reads skip a copy. busy_timeout makes a second writer wait rather than throw
+     SQLITE_BUSY -- the lead-import runner and the request path share this file. */
   db.exec("PRAGMA temp_store = MEMORY;");
   db.exec("PRAGMA cache_size = -65536;");
   db.exec("PRAGMA mmap_size = 268435456;");
@@ -282,7 +281,7 @@ Expected: all PASS. (`npm run test:unit` is the same as `npx vitest run`; do not
 
 ```bash
 git add lib/db.ts tests/db-pragmas.test.ts
-git commit -m "perf(db): tune sqlite pragmas (synchronous=NORMAL, memory temp, larger cache, busy timeout)"
+git commit -m "perf(db): sqlite read tuning (memory temp, larger cache, mmap, busy timeout)"
 ```
 
 ---
@@ -424,8 +423,8 @@ Before starting, check `PoolViewTable` (`components/leads/views/PoolViewTable.ts
 **Coverage:** items 1-8 each map to one task. Item 7 is deliberately a verify-first task with an expected "no change" outcome.
 
 **Open questions for the user (answer before Task 3 and Task 2):**
-1. Is losing the last few commits on an OS crash/power loss acceptable (`synchronous=NORMAL`)? The offline queue in `public/sw.js` likely replays them, but I did not verify that path.
-2. Who runs the production-mode timing (Task 2), since the repo forbids `next build` in the agent environment?
+1. ~~`synchronous=NORMAL`~~ Decided: no. Task 3 keeps the default.
+2. ~~Who runs the production timing~~ Decided: the agent, in the cloud container (4 cores, 16 GB; the "never build" rule was about the user's own machine). Done for the smoke dataset; see `docs/perf/2026-10-20-baseline.md`.
 
 **Placeholder scan:** Tasks 4a, 4b and 6 contain "read X first" steps instead of final SQL. That is deliberate: the exact aggregation arithmetic lives in code I only skimmed (`salesDashboard` lines 140-290, `viewSql`), and writing the SQL from memory risks silently changing money figures. Those tasks are guarded by an equality test captured from the current implementation, so the implementer cannot drift. Everything else has complete code.
 
