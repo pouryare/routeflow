@@ -7,8 +7,7 @@ import {
   updateLeadRun,
   type LeadRunStatus,
 } from "@/lib/repo/leadRuns";
-import { isVanRole } from "@/lib/roles";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 
 /** One run: read it, or change who it belongs to / when / what is on it.
  *
@@ -20,7 +19,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 const STATUSES: LeadRunStatus[] = ["planned", "in_progress", "done"];
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[id]">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
@@ -36,7 +35,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[i
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[id]">) {
-  const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
+  const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });

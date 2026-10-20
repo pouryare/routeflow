@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getDb, setLeadListItems } from "@/lib/db";
 import { sanitiseIds } from "../route";
 import { canReachGroup, groupFilter, requireRole } from "@/lib/session";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { PIN_POOL_ROLES } from "@/lib/roles";
 
 interface PatchInput {
   name?: string;
@@ -13,7 +13,7 @@ interface PatchInput {
 const MAX_NAME = 60;
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;
@@ -78,7 +78,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-lists
 }
 
 export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/lead-lists/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

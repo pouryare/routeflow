@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import * as importRepo from "@/lib/repo/leadImport";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { PIN_POOL_ROLES } from "@/lib/roles";
 
 /** POST: take back the rows one import auto-added.
  *
@@ -13,7 +13,7 @@ export async function POST(
   req: NextRequest,
   ctx: RouteContext<"/api/locations/parse/[jobId]/undo">
 ) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).jobId);

@@ -4,7 +4,7 @@ import * as importRepo from "@/lib/repo/leadImport";
 import { plain } from "@/lib/db";
 import { remainingByTier, currentMethod } from "@/lib/leadImport/scheduler";
 import { estimateEtaSeconds } from "@/lib/leadImport/eta";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { PIN_POOL_ROLES } from "@/lib/roles";
 
 /** GET: the caller's most recent decode job, running or not.
  *
@@ -13,7 +13,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
  *  while work continues unseen. The decoding is server-side, so the browser tab was only
  *  ever watching -- losing it costs nothing but the watching. */
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
   const org = guard.session.organizationId;
