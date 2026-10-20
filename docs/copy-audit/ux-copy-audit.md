@@ -8,6 +8,17 @@ string in `app/`, `components/` and `lib/` — 4,270 source lines, ~400 distinct
 screenshots. **Caveat:** rewrites are proposals from a non-native reviewer — have a native Persian editor
 approve them before they ship.
 
+## Rules this audit applies (set by the product owner)
+
+1. **Every action label is self-explanatory.** It names the action *and its object*: «بستن پنل», not «بستن» or «لغو».
+   The reader is a novice with no technical literacy; the label alone must say what will happen.
+2. **No bare verbs, anywhere** — including toast actions, dialog buttons and icon buttons. A visible text label is required;
+   an icon with only an `aria-label` does not count, because sighted novices never see it.
+3. **Labels name actions, not states.** Present-tense action or noun form («ثبت بازدید»), never past tense on a button («بله، ثبت شد»).
+4. **Built for repetition.** Some flows run up to ~200× a day (delivery stops, calls, visits, order entry). In those flows
+   wording and position never change between repetitions, a wrong tap must be cheap to reverse, and the destructive action
+   must never look like the frequent one (see "High-frequency workflows" below).
+
 **Why the existing audit missed this:** `scripts/audit-copy.mjs` reads only `app/(shell)/**/page.tsx`
 (296 strings). It never opens `components/` or `app/api/`, where the buttons, toasts and error messages live.
 
@@ -62,18 +73,57 @@ Worst offenders:
 **Recommendation:** one pattern — «‹کار› نشد. ‹دلیل، اگر معلوم است›؛ ‹کار بعدی›.» Retry wording is also split
 (`تلاش دوباره` 9, `دوباره تلاش کنید` 5, `دوباره امتحان کنید` 4, `امتحان کنید` 5) — standardize on «دوباره تلاش کنید».
 
-### 3. «لغو» and «انصراف» mean different things but are used loosely
+### 3. Bare-verb labels (rules 1–2): 77 occurrences
 
-`لغو` 24×, `انصراف` 8×, `بستن` 24×. «لغو» labels both "dismiss this form" (`AddReminder.tsx:97`) and domain cancellation
-(order cancel, toast undo). A user can't tell a harmless dismiss from a destructive cancel.
-**Recommendation:** «انصراف» = leave without saving, «بستن» = close a panel, «لغو سفارش» / «لغو چک» = the domain action,
-always with its noun.
+Labels that never say what they act on. «لغو» also carries three meanings at once: dismiss a form (`AddReminder.tsx:97`),
+cancel a domain object (order, cheque), and undo (toast action, `VerifyVisits.tsx:53`, `AfterCallFlow.tsx:93`) — while other
+toasts say «بازگردان» for undo (`NextStopBar.tsx:101`, `useLeads.ts:217`). A novice cannot tell a harmless dismiss from a destructive cancel.
+
+| Bare label | Count (example) | Replace with |
+|---|---|---|
+| بستن | 12 (`gallery/page.tsx:151`, `DriverRun.tsx:128`) | بستن عکس · بستن رسید · بستن پنل … |
+| لغو | 9 (`AddReminder.tsx:97`, `QuickAdd.tsx:96`) | انصراف از یادآوری · انصراف از یادداشت · لغو سفارش |
+| انصراف | 8 (`facilities/page.tsx:299`, `UnloadTapFlow.tsx:160`) | انصراف از افزودن مکان · انصراف از تخلیه |
+| حذف | 8 (`holidays/page.tsx:185`, `TaskRow.tsx:62`) | حذف این تعطیلی · حذف این کار |
+| ذخیره | 5 (`facilities/page.tsx:291`, `QuickAdd.tsx:92`) | ذخیره مکان · ذخیرهٔ یادداشت |
+| ادامه | 4 (`LinkStep.tsx:49`) | ادامه و خواندن لینک (say what the next step is) |
+| ویرایش | 4 (`BusinessProfile.tsx:127`) | ویرایش مشخصات · ویرایش مخاطب |
+| جدید | 4 (`PoolViewKanban.tsx:80`) | سرنخ‌های تازه (if it is a column title) |
+| افزودن | 3 (`BusinessDetails.tsx:142`) | افزودن مخاطب · افزودن ساعت کاری |
+| ثبت | 3 (`holidays/page.tsx:139`) | ثبت تعطیلی |
+| نقشه | 3 (`not-found.tsx:21`, `NextStopBar.tsx:176`) | نمایش روی نقشه |
+| بعدی / قبلی | 4 (`PaymentsPanel.tsx:498`) | صفحهٔ بعد · صفحهٔ قبل |
+| تأیید · تکمیل · ایجاد · بله · بعداً · بازگشت | 1–2 each | name the object, e.g. «تأیید سفارش», «حذف فهرست» instead of «بله» |
+
+Undo needs one name everywhere. Proposal: toast action «بازگردانی ثبت» (with the 5 s countdown), and keep «لغو»/«انصراف»
+only in the noun-bearing forms above. Note `docs/tap-flow-principles.md` currently specifies bare «لغو» for undo and would need the same update.
+
+### 4. High-frequency workflows (rule 4)
+
+Screens used all day: driver run (`NextStopBar`, `DriverRun`, `UnloadTapFlow`, `VerifyVisits`), calls (`AfterCallFlow`),
+tasks (`TaskRow`), geofence prompts, quick notes (`QuickAdd`), order entry. At ~200 repetitions a day, small wording
+problems become daily mistakes. Findings from those files:
+
+| # | Problem | Where | Fix |
+|---|---|---|---|
+| a | **Question and answer disagree in tense.** The prompt asks «بازدید ثبت شود؟» ("should the visit be recorded?") but the confirm button says «بله، ثبت شد» ("yes, it was recorded"). The dismiss button «بعداً» ("later") doesn't say whether the prompt will return. | `GeofenceWatcher.tsx:225,240,248` | «ثبت بازدید» / «الان نه» — or «ثبت بازدید» / «ثبت نکن»; decide whether "not now" re-prompts and say so |
+| b | **Icon-only "done" button** for the most-repeated action. The label «انجام شد» exists only as `aria-label`/`title`, so a novice sees a bare checkmark; and «انجام شد» doesn't say *what* was done (delivered? visited?). | `NextStopBar.tsx:183-184` | Visible text: «ثبت تحویل این توقف» (or «ثبت بازدید این توقف» by stop type) |
+| c | **Destructive action sits beside the primary one, looks like a caption.** A small faint «حذف» with a trash icon is next to «ثبت نتیجه»; it resolves the task with one tap. Verify an undo exists. | `TaskRow.tsx:51-62` | «حذف این کار», visually separated, with the 5 s undo toast naming the task |
+| d | **Loading state erases the label.** The button becomes «…» or «...» so the user can't tell *what* is being submitted or whether to tap again. | `DriverRun.tsx:359`, `GeofenceWatcher.tsx:240` | Keep the noun: «در حال ثبت تحویل…», disabled |
+| e | **Same action, different words each time.** Record-visit is «ثبت بازدید» (button, `VerifyVisits.tsx:74`), «بازدید ثبت شد» (toast), «بله، ثبت شد» (geofence); `+ بازدید` and `+ سفارش` (`Pocket.tsx:216,219`) are bare plus-signs. | multiple | One label per action, reused in button, toast and undo: «ثبت بازدید» → «بازدید از «X» ثبت شد» → «بازگردانی ثبت بازدید» |
+| f | **Toasts that don't say which record.** Good: «بازدید از «X» ثبت شد.» (`GeofenceWatcher.tsx:144`). Weak: «یادداشت ثبت شد.» (`QuickAdd.tsx:39`), «ثبت شد» (`BusinessProfile.tsx:60,72`), «ذخیره شد» (`LocationTapFlow.tsx:55`). Naming the record is what lets a tired user catch a wrong-record tap. | listed | Always include the name or number |
+| g | **Limits are checked after the tap.** E.g. «تعداد تحویل‌شده از تعداد سفارش بیشتر است» comes from the server (`lib/delivery.ts:414`). Verify the delivery form also stops it inline. | `DriverRun.tsx:305-336` | Inline hint under the field before the user can submit: «بیش از سفارش (۱۲ بسته) نمی‌شود» |
+| h | **Confirm vs undo.** Don't add «آیا مطمئنید؟» to frequent, reversible actions — at 200×/day people stop reading it. The 5 s undo already used in tap flows is the right pattern; reserve a confirm dialog for irreversible actions and give *that* button a distinct, explicit label («حذف دائمی فهرست»). | app-wide | Keep undo for frequent actions; confirm only for irreversible ones |
+| i | **Register.** Most copy is polite («کنید»), but some actions are informal imperatives: «+ یادآوری بگذار» (`QuickAdd.tsx:65`), «بازگردان», «همین حالا برگرد». | listed | Use noun form («ثبت یادآوری», «بازگردانی ثبت») — also fixes consistency |
+
+**Length check:** explicit labels are longer in Persian. Keep them to a verb-noun pair of ≤ 3 words, let buttons wrap, and keep the
+tap target ≥ 52 px (the tap-flow rule) so the label never gets shortened to fit.
 
 ---
 
 ## P2 — fix next
 
-### 4. «ثبت» is carrying too much (287 uses)
+### 5. «ثبت» is carrying too much (287 uses)
 
 It means save, submit, record, register, and create. Bare or vague uses:
 - Bare button «ثبت» — `admin/holidays/page.tsx:139`; bare «تکمیل» — `RepDefinitions.tsx:256`; bare «ایجاد» — `RepDefinitions.tsx:177`.
@@ -83,7 +133,7 @@ It means save, submit, record, register, and create. Bare or vague uses:
 **Rule:** «ذخیره تغییرات» = editing an existing record; «افزودن X» = adding a row; «ثبت X» = recording an event with its noun
 («ثبت دریافت», «ثبت تحویل»). Never a bare verb. Also pick one of ساخت (59) / ایجاد (1) / افزودن (40) per context.
 
-### 5. Confirmation dialogs
+### 6. Confirmation dialogs
 
 - Two native `window.confirm()` calls (`admin/groups/page.tsx:87`, `meridian/SearchOverlay.tsx:119`). The browser draws
   the buttons (OK / Cancel in the browser's language), so they can't say «حذف گروه» / «نگه‌داشتن». The impersonation warning
@@ -91,7 +141,7 @@ It means save, submit, record, register, and create. Bare or vague uses:
 - Inline confirms answer with «بله» (`LeadListsBar.tsx:170`) or «بله، …» (`BusinessProfile.tsx:26,195,201`). Label the button with the
   action («حذف فهرست»), and say whether it can be undone («این فهرست حذف شود؟» → «فهرست «X» حذف شود؟ این کار قابل بازگشت نیست.»).
 
-### 6. Terminology drift (one word per thing)
+### 7. Terminology drift (one word per thing)
 
 | Concept | Variants in code | Proposed |
 |---|---|---|
@@ -106,7 +156,7 @@ It means save, submit, record, register, and create. Bare or vague uses:
 
 Add the unambiguous pairs to `tests/vocabulary.test.ts` (`جست‌وجو`, `لوکیشن`, `تایید`) so they stay fixed.
 
-### 7. Empty states state a fact but offer no next step
+### 8. Empty states state a fact but offer no next step
 
 ~25 strings follow «هنوز X ثبت نشده است» with no way forward, e.g. «هنوز فهرستی ساخته نشده است.» (`LeadListsBar.tsx:106`),
 «هنوز مکانی ثبت نشده است.» (`PlacePicker.tsx:90`), «هنوز فروشنده‌ای ثبت نشده است.» (`commission/page.tsx:115`).
@@ -137,13 +187,16 @@ Vague or negative-phrased ones:
 | سفارش تازه | سفارش جدید |
 | سرنخ | لید |
 | تأیید | تایید |
-| انصراف (leave form) · بستن (close panel) · لغو ‹noun› (domain cancel) | bare «لغو» |
-| ذخیره تغییرات · افزودن ‹noun› · ثبت ‹noun› | bare «ثبت» / «تکمیل» / «ایجاد» |
+| Every action = verb + object: «بستن پنل», «انصراف از تخلیه», «لغو سفارش», «حذف این کار», «ذخیرهٔ یادداشت» | any bare «بستن» / «لغو» / «انصراف» / «حذف» / «ذخیره» / «ثبت» / «ادامه» / «بله» |
+| «ثبت ‹noun›» for recording events · «افزودن ‹noun›» for adding a row · «ذخیره ‹noun›» for editing | bare «تکمیل» / «ایجاد»; past tense on buttons («بله، ثبت شد») |
+| Undo = «بازگردانی ثبت» (one name, everywhere) | «لغو» or «بازگردان» as undo |
+| Visible text on every button, including the most frequent one | icon-only buttons with only `aria-label` |
 | «‹کار› نشد. ‹دلیل›؛ دوباره تلاش کنید.» | خطا در… / انجام نشد / ناموفق بود / ممکن نشد |
 
 ## Proposed order of work
 
-1. Error layer: map API errors to friendly messages and rewrite the failure toasts (P1 #1–2). Highest user impact.
-2. Glossary renames plus new guards in `tests/vocabulary.test.ts` (P2 #6, P1 #3).
-3. Button labels, confirmation dialogs, empty states (P2 #4, #5, #7).
-4. Extend `scripts/audit-copy.mjs` to scan `components/` and `app/api/` so these checks run automatically.
+1. High-frequency flows first (P1 #4, #3): driver run, geofence prompt, task row, quick-add, after-call. Highest daily error exposure.
+2. Error layer: map API errors to friendly messages and rewrite the failure toasts (P1 #1–2).
+3. Remaining bare-verb labels across the app, glossary renames, dialogs, empty states (P2).
+4. Guards so it stays fixed: extend `tests/vocabulary.test.ts` with the retired variants, and add a test that fails on any
+   bare-verb button label from the table in P1 #3. Extend `scripts/audit-copy.mjs` to scan `components/` and `app/api/`.
