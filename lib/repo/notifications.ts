@@ -2,7 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { faNum } from "@/lib/format";
-import { faJalaliDate, toJalali } from "@/lib/jalali";
+import { faJalaliDate, jalaliYmd } from "@/lib/jalali";
 import { configureWebPush, webpush } from "@/lib/push";
 import { editTelegram, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
@@ -60,13 +60,6 @@ export interface FanoutContext {
   entity_id: number | null;
   occurred_at: string;
   meta: Record<string, unknown>;
-}
-
-/** Jalali civil date YYYY-MM-DD (Tehran), matching lib/repo/rules.ts jalaliYmd. */
-function jalaliYmd(iso: string): string {
-  const j = toJalali(iso);
-  if (!j) return iso.slice(0, 10);
-  return `${j.jy}-${String(j.jm).padStart(2, "0")}-${String(j.jd).padStart(2, "0")}`;
 }
 
 export function groupKeyFor(

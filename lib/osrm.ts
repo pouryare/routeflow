@@ -1,12 +1,9 @@
 import type { LatLng } from "./geo";
+import { OSRM_BASE, fetchOsrmJson } from "./routing/osrmFetch";
 
 /** The same public OSRM instance the planner and leads maps route against, so there is
  *  one host to allow in the CSP and one service to be down at a time. */
-const ROUTE_URL = "https://router.project-osrm.org/route/v1/driving";
-
-/** Give up rather than leave the corridor spinning. The band has a usable fallback --
- *  the straight line it always drew -- so a slow answer is worth less than a fast "no". */
-const TIMEOUT_MS = 8000;
+const ROUTE_URL = `${OSRM_BASE}/route/v1/driving`;
 
 export interface DrivingRoute {
   /** The road, in the order driven. */
@@ -31,18 +28,9 @@ export async function fetchDrivingRoute(a: LatLng, b: LatLng, signal?: AbortSign
   const coords = `${a.lng},${a.lat};${b.lng},${b.lat}`;
   const url = `${ROUTE_URL}/${coords}?overview=simplified&geometries=geojson`;
 
-  const timeout = AbortSignal.timeout(TIMEOUT_MS);
-  // Either the caller giving up or the clock running out ends the request.
-  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-
-  try {
-    const res = await fetch(url, { signal: combined });
-    if (!res.ok) return null;
-    const data = await res.json();
-    return parseRoute(data);
-  } catch {
-    return null;
-  }
+  // The band has a usable fallback -- the straight line it always drew -- so a slow answer
+  // is worth less than a fast "no"; the shared fetch gives up rather than leave it spinning.
+  return parseRoute(await fetchOsrmJson(url, signal));
 }
 
 /** Pulled out of the fetch so the shape-checking is testable without a network. OSRM

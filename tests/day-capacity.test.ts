@@ -8,7 +8,6 @@ import { straightLine, isApproximate, type DistanceFn } from "@/lib/routing/dist
 const PARDIS = { lat: 35.74, lng: 51.82 };
 const KARAJ = { lat: 35.84, lng: 50.94 };
 const VARAMIN = { lat: 35.32, lng: 51.65 };
-const HOME = { lat: 35.7, lng: 51.4 };
 
 function around(centre: { lat: number; lng: number }, n: number, tag: string): SplitOrder[] {
   return Array.from({ length: n }, (_, i) => ({

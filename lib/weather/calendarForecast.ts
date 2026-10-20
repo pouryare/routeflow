@@ -1,3 +1,4 @@
+import { isRealIsoDate } from "@/lib/isoDate";
 import { conditionsFor, type ConditionCode, type WeatherReading } from "./conditions";
 import type { IconName } from "@/components/meridian/icon-map";
 
@@ -42,25 +43,12 @@ export const CONDITION_ICON: Record<ConditionCode, IconName> = {
   fog: "fog",
 };
 
-/** A calendar-usable `YYYY-MM-DD`.
- *
- *  A regex alone is not enough. `/^\d{4}-\d{2}-\d{2}$/` happily accepts 2026-13-45, which is
- *  a well-formed string and not a date — it would become a key no calendar cell ever looks
- *  up, so the day would silently render as "no forecast" while looking like a fetched day.
- *  Round-tripping through Date is the cheap honest check: 2026-02-30 rolls over and is
- *  rejected too. */
-function isIsoDate(s: unknown): s is string {
-  if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-}
-
 /** `Record<isoDate, ConditionCode[]>` for a whole month. A row without a usable
  *  `forecast_date` is skipped rather than written under an `undefined` key. */
 export function monthConditions(rows: readonly ForecastRow[]): Record<string, ConditionCode[]> {
   const out: Record<string, ConditionCode[]> = {};
   for (const r of rows) {
-    if (!isIsoDate(r.forecast_date)) continue;
+    if (!isRealIsoDate(r.forecast_date)) continue;
     out[r.forecast_date] = conditionsFor(r);
   }
   return out;

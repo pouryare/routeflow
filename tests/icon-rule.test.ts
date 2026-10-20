@@ -33,12 +33,6 @@ const SANCTIONED = new Set([
 const EMOJI =
   /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}\u{2190}-\u{21FF}\u{2B00}-\u{2BFF}]/gu;
 
-/** Comments are stripped before the emoji scan: a comment explaining WHY emoji are banned
- *  must be able to name one. */
-function stripComments(line: string): string {
-  return line.replace(/\/\*.*?\*\//g, "").replace(/^\s*\/\/.*$/, "");
-}
-
 /** Blank out a whole block comment WITHOUT removing its lines.
  *
  *  Blanking rather than deleting is what keeps every reported line number true to the file

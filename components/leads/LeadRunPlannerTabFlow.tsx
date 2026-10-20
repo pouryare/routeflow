@@ -21,6 +21,7 @@ import {
   type RunRef,
 } from "@/lib/leadRunAssign";
 import { EMPTY_CONTEXT, type FlowContext, type FlowState } from "@/lib/crm/flows/types";
+import { tehranTodayIso } from "@/lib/jalali";
 
 /** The part of the created run this sheet hands back. The manager's pool is a `number[]` of
  *  location ids, and it was being handed the whole run object -- which turned the pool into
@@ -42,10 +43,6 @@ export interface LeadRunPlannerTabFlowProps {
 
 const CTX: FlowContext = { ...EMPTY_CONTEXT, entry: "add_lead", isManager: true };
 
-/** Today, as the ISO the API wants. A route is nearly always handed over for a day that is
- *  about to happen, and the choice is shown in the summary rather than made blind. */
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
 export default function LeadRunPlannerTabFlow({
   open,
   locationIds,
@@ -58,7 +55,9 @@ export default function LeadRunPlannerTabFlow({
   /* Defaults to today, set once per opening rather than in an effect: the host remounts
    * this component on every open (the `key` in the leads page), so a fresh mount is what
    * re-seeds it -- and clearing the date afterwards is not undone underneath the user. */
-  const [runDate, setRunDate] = useState(todayIso);
+  /* Today, as the ISO the API wants. A route is nearly always handed over for a day that is
+     about to happen, and the choice is shown in the summary rather than made blind. */
+  const [runDate, setRunDate] = useState(() => tehranTodayIso());
   const [saving, setSaving] = useState(false);
   const toast = useToast();
   const [message, setMessage] = useState<{ tone: "ok" | "bad"; text: string } | null>(null);

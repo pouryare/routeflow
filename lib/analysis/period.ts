@@ -8,7 +8,7 @@
  *  margin / snapshot / why repos share one definition of "this month".
  */
 
-import { jalaliToIsoDate, jalaliMonthLength, toJalali } from "../jalali";
+import { jalaliToIsoDate, jalaliMonthLength, jalaliMonthKey } from "../jalali";
 
 export interface PeriodRange {
   /** inclusive, `YYYY-MM-DD` */
@@ -33,9 +33,7 @@ export function periodRange(period: string): PeriodRange {
 
 /** The Jalali «YYYY-MM» an ISO date falls in. */
 export function periodOf(iso: string): string {
-  const j = toJalali(iso);
-  if (!j) return iso.slice(0, 7);
-  return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
+  return jalaliMonthKey(iso);
 }
 
 /** The Jalali «YYYY-MM» `n` months before `period` (n may be negative for the future). */

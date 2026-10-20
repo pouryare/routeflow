@@ -1,7 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/meridian/Icon";
-import { LEAD_VIEWS, readViewMode, saveViewMode, type LeadViewMode } from "@/lib/leadViews";
+import { LEAD_VIEWS, saveViewMode, type LeadViewMode } from "@/lib/leadViews";
 
 interface PoolViewToggleProps {
   activeView: LeadViewMode;
@@ -27,7 +27,7 @@ export default function PoolViewToggle({ activeView, onChange }: PoolViewToggleP
                 : "border-border text-text-muted hover:border-accent hover:text-accent"
             }`}
           >
-            <Icon name={view.icon as any} size="sm" />
+            <Icon name={view.icon} size="sm" />
             {view.label}
           </button>
         );

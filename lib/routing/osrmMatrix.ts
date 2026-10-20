@@ -4,10 +4,9 @@
  */
 
 import type { LatLng } from "@/lib/geo";
+import { OSRM_BASE, fetchOsrmJson } from "./osrmFetch";
 
-const TABLE_URL =
-  process.env.OSRM_TABLE_URL ?? "https://router.project-osrm.org/table/v1/driving";
-const TIMEOUT_MS = 8000;
+const TABLE_URL = process.env.OSRM_TABLE_URL ?? `${OSRM_BASE}/table/v1/driving`;
 
 export interface OsrmTable {
   distances_km: number[][];
@@ -55,13 +54,5 @@ export async function fetchOsrmTable(
   if (points.length < 2 || points.length > 100) return null;
   const coords = points.map((p) => `${p.lng},${p.lat}`).join(";");
   const url = `${TABLE_URL}/${coords}?annotations=duration,distance`;
-  const timeout = AbortSignal.timeout(TIMEOUT_MS);
-  const combined = signal ? AbortSignal.any([signal, timeout]) : timeout;
-  try {
-    const res = await fetch(url, { signal: combined });
-    if (!res.ok) return null;
-    return parseOsrmTable(await res.json());
-  } catch {
-    return null;
-  }
+  return parseOsrmTable(await fetchOsrmJson(url, signal));
 }

@@ -70,7 +70,6 @@ describe("product_costs", () => {
 
   it("reports no cost at all when the product was never purchased", () => {
     const db = getDb();
-    const now = new Date().toISOString();
     const bare = createProduct(db, {
       name: "کالای خام",
       kg_per_base_unit: 1,
@@ -130,7 +129,6 @@ describe("product_costs", () => {
 
   it("reads nothing for a product owned by another organisation", () => {
     const db = getDb();
-    const now = new Date().toISOString();
     const theirs = createProduct(db, {
       name: "کالای آن‌ها",
       kg_per_base_unit: 1,

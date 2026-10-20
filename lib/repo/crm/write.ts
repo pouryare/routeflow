@@ -11,7 +11,7 @@ import { nextOpenAt, parseHours } from "@/lib/crm/hours";
 import { normPhone } from "@/lib/crm/phone";
 import { normInstagram } from "@/lib/crm/social";
 import { customerTypeFor, isDecider, isInvalid, type Verification } from "@/lib/crm/vocab";
-import { FlowError, interpolate, replayAnswers, viewStep } from "@/lib/crm/flows/machine";
+import { FlowError, interpolate, replayAnswers } from "@/lib/crm/flows/machine";
 import type { FlowAnswer, FlowConfig, FlowContext, FlowSet, FlowState } from "@/lib/crm/flows/types";
 import { afterCallFlow } from "@/lib/crm/flows/afterCall";
 import { addLeadFlow, basicsOf, hoursOf, linkOf, pinOf, type PinValue } from "@/lib/crm/flows/addLead";
@@ -33,6 +33,16 @@ export class CrmError extends Error {
     this.status = status;
     this.extra = extra;
   }
+}
+
+/** The business `id` as `session` may WRITE to it: 404 when it cannot see it at all (so a
+ *  row outside the caller's scope does not announce that it exists), 403 when it can see but
+ *  not write. The one guard every CRM mutation starts with. */
+export function writableBusiness(session: Session, id: number) {
+  const b = getBusiness(session, id);
+  if (!b) throw new CrmError(404, "کسب‌وکار پیدا نشد");
+  if (!canWriteBusiness(session, b)) throw new CrmError(403, "دسترسی لازم را ندارید");
+  return b;
 }
 
 export interface FlowWriteInput {

@@ -24,8 +24,8 @@ interface PoolViewCompactProps {
 }
 
 export default function PoolViewCompact({
-  items, linkedId, linkedRef, navAppId, run, selectedMapId, onSelect, onToggleRun, onPin,
-  onTogglePriority, onAddToPlan, onNotesChange, onNameChange, sortAnchor, sortMode, priorityHigh,
+  items, linkedId, linkedRef, navAppId, onSelect, onToggleRun, onPin,
+  onTogglePriority, onAddToPlan, onNotesChange, onNameChange, priorityHigh,
 }: PoolViewCompactProps) {
   return (
     <ul className="flex flex-col gap-1">

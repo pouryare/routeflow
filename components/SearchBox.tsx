@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
 import { matchesQuery } from "@/lib/persian";
 import { Icon } from "@/components/meridian/Icon";
@@ -275,11 +275,32 @@ export default function SearchBox({
     return [...customerResults, ...districtResults].slice(0, 8);
   }, [trimmed, customers, districts, isUrl, inputType]);
 
+  /** Geocode `query` and show the top few results. `stale` lets a caller that has since moved
+   *  on (the user kept typing) discard the answer: responses do not arrive in the order the
+   *  requests left, so without it a slow reply for "ته" could overwrite the results for
+   *  "تهران". */
+  const geosearch = useCallback(async (query: string, stale: () => boolean) => {
+    setGeoLoading(true);
+    try {
+      const provider = await getGeoProvider();
+      const res = await provider.search({ query });
+      if (!stale()) setGeoResults(res.slice(0, 5));
+    } catch {
+      if (!stale()) setGeoResults([]);
+    } finally {
+      if (!stale()) setGeoLoading(false);
+    }
+  }, []);
+
   // For address input, skip local search and go straight to geo on every keystroke.
   useEffect(() => {
     if (inputType !== "address" || trimmed.length < 2) return;
-    runGeosearch();
-  }, [trimmed, inputType]);
+    let cancelled = false;
+    void Promise.resolve().then(() => geosearch(trimmed, () => cancelled));
+    return () => {
+      cancelled = true;
+    };
+  }, [trimmed, inputType, geosearch]);
 
   const visibleSortOptions = useMemo(() => {
     if (activeView === "kanban") return SORT_OPTIONS.filter((o) => o.value !== "status");
@@ -338,17 +359,8 @@ export default function SearchBox({
     }
   }
 
-  async function runGeosearch() {
-    setGeoLoading(true);
-    try {
-      const provider = await getGeoProvider();
-      const res = await provider.search({ query: trimmed });
-      setGeoResults(res.slice(0, 5));
-    } catch {
-      setGeoResults([]);
-    } finally {
-      setGeoLoading(false);
-    }
+  function runGeosearch() {
+    return geosearch(trimmed, () => false);
   }
 
   function selectGeoResult(r: GeoResult) {

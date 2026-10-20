@@ -1,3 +1,4 @@
+import { clamp } from "@/lib/math";
 /** Churn scoring — a pure module, no `db` import.
  *
  *  A small logistic model over five features. It ships with hand-set, recency-dominated
@@ -29,8 +30,6 @@ export const DEFAULT_CHURN_WEIGHTS: ChurnWeights = {
   complaints_90d: 0.5,
   overdue_ratio: 0.7,
 };
-
-const clamp = (n: number, lo: number, hi: number): number => Math.max(lo, Math.min(hi, n));
 
 /** Clamp + scale the raw features into the vector the linear combination sees.
  *  `trend` is centred at 1 (a flat customer contributes 0); `tenure_months` is scaled

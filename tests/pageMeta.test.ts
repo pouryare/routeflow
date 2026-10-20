@@ -73,7 +73,7 @@ describe("pageMeta", () => {
      * What IS a defect is a title that is the RAW PATH, slashes and all, or the segment with
      * hyphens left in: "/sales/orders" as "Sales orders" is a string nobody would utter. */
     const mechanical = Object.entries(PAGE_META)
-      .filter(([route, m]) => {
+      .filter(([, m]) => {
         const en = (m.titleEn ?? "").toLowerCase();
         return en.includes("/") || en.includes("-");
       })

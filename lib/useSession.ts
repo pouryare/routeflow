@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
+import { useRunAfterMount } from "./useRunAfterMount";
 
 interface MePayload {
   ok: boolean;
@@ -49,9 +50,7 @@ export function useSession(): SessionState {
     }
   }, []);
 
-  useEffect(() => {
-    void fetchMe();
-  }, [fetchMe]);
+  useRunAfterMount(fetchMe);
 
   return state;
 }

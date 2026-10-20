@@ -112,7 +112,7 @@ export function findDuplicate(
     if (candidate.id === 0) continue;
 
     let score = 0;
-    let reasons: string[] = [];
+    const reasons: string[] = [];
 
     const candidateNorm = normalizeName(candidate.name);
     const nameSim = normalizedName && candidateNorm

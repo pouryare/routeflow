@@ -1,5 +1,4 @@
 import type { DatabaseSync } from "node:sqlite";
-import { getDb } from "@/lib/db";
 import { canReachGroup, type Session } from "@/lib/session";
 import { nextActionFor, visitOutcomeLabel } from "@/lib/crm/leadDesire";
 

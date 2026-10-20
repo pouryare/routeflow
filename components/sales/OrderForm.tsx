@@ -80,7 +80,7 @@ export default function OrderForm({
 
   const [query, setQuery] = useState("");
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
-  const [orderDate, setOrderDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [orderDate, setOrderDate] = useState(() => tehranTodayIso());
   /* Phase 1 (mixed-route planning): the day the customer ASKED for, which is a different
    * question from the day the slip was typed. Defaults to «soonest» — uncommitted — because
    * that is the honest state for a slip nobody has yet agreed a delivery day with the

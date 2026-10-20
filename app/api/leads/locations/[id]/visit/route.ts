@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { canReachGroup, requireRole, type Session } from "@/lib/session";
+import { canReachGroup, requireRole } from "@/lib/session";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import { applyLeadVisit } from "@/lib/repo/crm/write";
 import { isOnDriversRun } from "@/lib/repo/leadRuns";
 import { readLeadLocation } from "@/lib/repo/leads";
 import { CrmError } from "@/lib/repo/crm/write";
-import { startFlow, viewStep, type FlowState } from "@/lib/crm/flows/machine";
+import { startFlow, viewStep } from "@/lib/crm/flows/machine";
 import type { FlowContext } from "@/lib/crm/flows/types";
 import { isVanRole } from "@/lib/roles";
 import { MANAGE_ROLES } from "@/lib/roles";

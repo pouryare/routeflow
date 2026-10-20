@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import Avatar from "@/components/meridian/Avatar";
-import { roleLabel, type Role } from "@/lib/roles";
+import { roleLabel } from "@/lib/roles";
 import SectionHead from "@/components/meridian/SectionHead";
 
 type Row = {

@@ -163,7 +163,9 @@ describe("the tiered plan admin API", () => {
 
   it("a bad valid_from is a 400", async () => {
     const { POST } = await import("@/app/api/sales/commission/tiers/route");
-    for (const bad of ["", "2026", "01-01-2026", "2026-13-01", "نامعتبر"]) {
+    // 2026-02-30 and 2026-04-31 are well-shaped and `Date.parse` accepts them (rolling over into
+    // the next month), so only a real calendar check keeps them out of the table.
+    for (const bad of ["", "2026", "01-01-2026", "2026-13-01", "2026-02-30", "2026-04-31", "نامعتبر"]) {
       const res = await POST(post(tokenFor(owner, "owner"), {
         salesperson_user_id: seller, plan: GOOD, valid_from: bad,
       }));
@@ -176,6 +178,7 @@ describe("the tiered plan admin API", () => {
     const t = tokenFor(owner, "owner");
     expect((await DELETE(del(t, "2026-03-01"))).status).toBeLessThan(300);
     expect((await DELETE(del(t, "not-a-date"))).status).toBe(400);
+    expect((await DELETE(del(t, "2026-02-30"))).status).toBe(400);
   });
 
   it("DELETE is owner-only", async () => {

@@ -7,7 +7,7 @@ import { salesDashboard } from "@/lib/dashboard";
 import { orderKg, orderTotalToman, type LineSnapshot } from "@/lib/orderMath";
 import { faToman, faNum } from "@/lib/format";
 import CountUp from "@/components/meridian/CountUp";
-import { faJalaliDate } from "@/lib/jalali";
+import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
 import GradientStat from "@/components/meridian/GradientStat";
 import SalesSpark, { type SparkPoint } from "@/components/meridian/SalesSpark";
 import CarvedCard from "@/components/meridian/CarvedCard";
@@ -37,9 +37,9 @@ export default async function SalesHomePage() {
   /* Both dates from ONE clock read. Two separate reads can straddle midnight and make
      "yesterday" the same day as "today". */
   const now = new Date();
-  const todayIso = now.toISOString().slice(0, 10);
+  const todayIso = tehranTodayIso(now);
   const today = d.revenue_by_day.find((p) => p.key === todayIso)?.value ?? 0;
-  const yesterdayIso = new Date(now.getTime() - 86_400_000).toISOString().slice(0, 10);
+  const yesterdayIso = tehranTodayIso(new Date(now.getTime() - 86_400_000));
   const yesterday = d.revenue_by_day.find((p) => p.key === yesterdayIso)?.value ?? 0;
   const delta = yesterday > 0 ? Math.round(((today - yesterday) / yesterday) * 100) : null;
 

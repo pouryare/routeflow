@@ -4,6 +4,7 @@
  *  `parseOpenMeteo` (the daily -> row mapping) is the pure, tested seam.
  */
 
+import { round2 } from "@/lib/math";
 import type { LatLng } from "@/lib/geo";
 
 const URL_BASE = process.env.OPEN_METEO_URL ?? "https://api.open-meteo.com/v1/forecast";
@@ -25,7 +26,6 @@ export interface WeatherSnapshotInput {
   raw_json: string;
 }
 
-const round2 = (v: number): number => Math.round(v * 100) / 100;
 const num = (v: unknown): number | null =>
   typeof v === "number" && Number.isFinite(v) ? v : null;
 

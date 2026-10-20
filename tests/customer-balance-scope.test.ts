@@ -34,7 +34,7 @@ function session(role: "delivery_driver" | "owner", uid: number, gid: number | n
 let driverA = 0, driverB = 0, otherOrgDriver = 0;
 let aCustomer = 0, bCustomer = 0;
 const groups = { a: 0, b: 0 };
-let xOrderOnA = 0, xOrderOnB = 0, bCustomerOrder = 0, xOrderOtherOrg = 0;
+let xOrderOnA = 0, xOrderOtherOrg = 0;
 
 beforeAll(() => {
   const db = getDb();
@@ -76,28 +76,8 @@ beforeAll(() => {
   aCustomer = a.customerId;
   bCustomer = b.customerId;
   xOrderOnA = a.orderId;
-  bCustomerOrder = b.orderId;
-  xOrderOnB = b.orderId;
   xOrderOtherOrg = b.orderId;
 });
-
-/** The balance query the hover pane runs: how many of this customer's orders are UNSETTLED,
- *  within the session's scope.
- *
- *  Counted in ORDERS rather than money on purpose: `orders` has no total_toman — the money is
- *  summed from order_lines — and a fixture that guessed the column would have tested nothing.
- *  The scope fragment is what this file is about, and it is asserted directly rather than
- *  through a route. */
-function balanceFor(who: Session, customerId: number): number {
-  const f = orderFilter(who, "o");
-  const row = getDb()
-    .prepare(
-      `SELECT COUNT(*) AS owing FROM orders o
-        WHERE o.customer_id = ? AND o.payment_status != 'paid'${f.sql}`
-    )
-    .get(customerId, ...f.params) as { owing: number };
-  return Number(row.owing);
-}
 
 describe("the outstanding balance a driver is shown", () => {
   it("never widens when the role has no rule of its own", () => {

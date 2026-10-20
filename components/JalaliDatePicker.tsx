@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { faDigits } from "@/lib/format";
+import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
+import { useState, useRef, useCallback } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import {
   jalaliMonthGrid,
@@ -16,9 +18,6 @@ import {
 /** Roughly the popover's rendered height: header, weekday row, six day rows and the
  *  «امروز» button. Only used to decide which way to open, so an approximation is fine. */
 const POPOVER_HEIGHT = 300;
-
-const faDigits = (s: string | number) =>
-  String(s).replace(/[0-9]/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
 
 /** A Shamsi date picker over an ISO value.
  *
@@ -71,19 +70,8 @@ export default function JalaliDatePicker({
     setOpen(true);
   }
 
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onEsc = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
-    document.addEventListener("mousedown", onDocClick);
-    document.addEventListener("keydown", onEsc);
-    return () => {
-      document.removeEventListener("mousedown", onDocClick);
-      document.removeEventListener("keydown", onEsc);
-    };
-  }, [open]);
+  const dismiss = useCallback(() => setOpen(false), []);
+  useDismissOnOutside(open, dismiss, boxRef);
 
   const grid = jalaliMonthGrid(view.jy, view.jm);
   const today = todayJalali();
@@ -129,7 +117,7 @@ export default function JalaliDatePicker({
               ›
             </button>
             <span className="text-[length:var(--text-sm)] text-[var(--text)]">
-              {JALALI_MONTHS[view.jm - 1]} {faDigits(view.jy)}
+              {JALALI_MONTHS[view.jm - 1]} {faDigits(String(view.jy))}
             </span>
             <button
               type="button"
@@ -176,7 +164,7 @@ export default function JalaliDatePicker({
                         : "text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"
                   }`}
                 >
-                  {faDigits(day.jd)}
+                  {faDigits(String(day.jd))}
                 </button>
               );
             })}

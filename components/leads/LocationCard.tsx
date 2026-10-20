@@ -8,7 +8,6 @@ import { averageScore } from "@/lib/leadScore";
 import { faNum } from "@/lib/format";
 import { navigateUrl } from "@/lib/navApps";
 import type { NavAppId } from "@/lib/navApps";
-import { useState } from "react";
 
 const STATUS_META: Record<string, string> = {
   contacted: "تماس گرفته شد",
@@ -68,7 +67,6 @@ export default function LocationCard({
   runIdx,
   onToggleRun,
   priorityHigh,
-  km,
   onTogglePriority,
   onAddToPlan,
   notes,
@@ -128,7 +126,7 @@ export default function LocationCard({
             <p className="truncate text-[length:var(--text-xs)] text-text-faint mt-0.5">{location.address}</p>
           )}
           <div className="mt-1 flex items-center gap-3">
-            <StarRating value={avg} onChange={(v: number | null) => {}} label="امتیاز" disabled />
+            <StarRating value={avg} onChange={() => {}} label="امتیاز" disabled />
             <span className="text-[length:var(--text-xs)] text-text-faint">{statusLabel}</span>
             {avg !== null && (
               <span className="font-mono text-[length:var(--text-xs)] text-warn">

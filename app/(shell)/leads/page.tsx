@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useLeads } from "./hooks/useLeads";
 import { useRouteMatrix } from "./hooks/useRouteMatrix";
-import { distanceKm } from "@/lib/geo";
 import { fromMatrix } from "@/lib/routing/distance";
 import { splitIntoDays } from "@/lib/routing/splitIntoDays";
 import { faNum } from "@/lib/format";
@@ -31,7 +30,6 @@ const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker")
 import CollapsibleSection from "@/components/CollapsibleSection";
 import NavAppSetting from "@/components/NavAppSetting";
 import { STATUS_META } from "./hooks/useLeads";
-import { averageScore } from "@/lib/leadScore";
 import { removeHandedOver } from "@/lib/leadRunAssign";
 
 export { STATUS_META };
@@ -42,19 +40,16 @@ export type { SavedLocation } from "./hooks/useLeads";
 
 export default function LeadsPage() {
   const {
-    locations, lists, activeListId, run, loading, busy, query, sortMode,
-    pinningId, setPinningId, converting, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName,
-    selectedMapId, setSelectedMapId, sessionLoading,
-    position, posStatus, posError, retryPosition, toast,
-    linkedId, linkedRef, sortAnchor, setSortAnchor,
-    setLocations, setLists, setActiveListId, setRun, setQuery, setSortMode,
+    lists, activeListId, run, loading, busy, query, sortMode,
+    pinningId, setPinningId, tapFlowId, setTapFlowId, stopsPerDay, proposedDaysRaw, newListName,
+    selectedMapId, setSelectedMapId, position, posStatus, posError, retryPosition, toast,
+    linkedId, linkedRef, sortAnchor, setQuery, setSortMode,
     setNewListName, setProposedDays, setStopsPerDay,
     load, createList, renameList, deleteList, openList, updateRun, addToRun,
     removeFromRun, moveInRun, optimiseRun, clearRun, proposeDays, togglePriority,
-    addToDayGroup, removeFromDayGroup, remove, savePin, updateLocationName, convertToCustomer,
-    runLocations, runStops, runTotalKm, optimiseGain,
+    addToDayGroup, removeFromDayGroup, savePin, updateLocationName, runLocations, runStops, runTotalKm, optimiseGain,
     routable, unassignedLocations, visible, mapLeads, runPoints, runHref, activeList, byId,
-    lastAssigned, recordAssigned, available, hiddenCount, assignedBy, appendToRun, showAssigned, setShowAssigned, assignmentsError, refuseAssigned,
+    lastAssigned, recordAssigned, available, hiddenCount, appendToRun, showAssigned, setShowAssigned, assignmentsError, refuseAssigned,
   } = useLeads();
 
   const { matrix } = useRouteMatrix(routable as { lat: number; lng: number }[]);
@@ -83,13 +78,6 @@ export default function LeadsPage() {
     setLeadRunPlannerOpen(true);
   };
 
-  const handleSelectAll = () => {
-    const ids = visible.map(({ loc }) => loc.id);
-    const newIds = ids.filter((id) => !run.includes(id));
-    if (newIds.length === 0) return;
-    updateRun([...run, ...newIds]);
-  };
-
   // Build DayGroup[] for RouteSection from proposedDaysRaw
   const dayGroups: DayGroup[] | null = useMemo(() =>
     proposedDaysRaw ? proposedDaysRaw.map((day, i) => ({
@@ -106,8 +94,11 @@ export default function LeadsPage() {
       // The index and the null-safe lookup now live in lib/routing/distance.ts. This was a
       // copy of that logic inline, and inline was one of the six places that could answer
       // "how far?" differently -- which is why the fallback had to be spelled out twice.
+      // The table was fetched for `routable`, in that order -- so it is indexed with `routable`,
+      // not `available`. `available` is a different subset in a different order, and indexing
+      // by it read the distances of the wrong stops.
       const distanceFn = fromMatrix(
-        available.map((l) => ({ lat: l.lat as number, lng: l.lng as number })),
+        routable.map((l) => ({ lat: l.lat as number, lng: l.lng as number })),
         matrix
       );
       const prioritySeeds = available.filter((l) => l.priority);
@@ -122,7 +113,7 @@ export default function LeadsPage() {
       });
       setProposedDays(plan.days.map((d) => d.stops));
     };
-  }, [matrix, sortAnchor, available, proposeDays, setProposedDays, stopsPerDay]);
+  }, [matrix, sortAnchor, available, routable, proposeDays, setProposedDays, stopsPerDay]);
 
   return (
     <>

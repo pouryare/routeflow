@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { startFlow, answerStep, backStep } from "@/lib/crm/flows/machine";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
-import type { FlowContext, FlowState } from "@/lib/crm/flows/types";
+import type { FlowContext } from "@/lib/crm/flows/types";
 import { EMPTY_CONTEXT } from "@/lib/crm/flows/types";
 
 function makeCtx(overrides = {}): FlowContext {

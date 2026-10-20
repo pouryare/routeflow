@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -7,7 +8,6 @@ import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
-import { faJalaliDateTime } from "@/lib/jalali";
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: "نقد",
@@ -59,7 +59,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
   });
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState("CASH");
-  const [receivedAt, setReceivedAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [receivedAt, setReceivedAt] = useState(() => tehranTodayIso());
   const [reference, setReference] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -108,8 +108,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
      figure on a card and a row in the table can never disagree. */
   const totals = useMemo(() => {
     const now = new Date();
-    const todayISO = now.toISOString().slice(0, 10);
-    const weekAgo = new Date(now.getTime() - 7 * 864e5).toISOString().slice(0, 10);
+    const todayISO = tehranTodayIso(now);
+    const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
     const monthStart = todayISO.slice(0, 8) + "01";
     const window = (from: string) => live.filter((p) => p.received_at.slice(0, 10) >= from);
     const today = live.filter((p) => p.received_at.slice(0, 10) === todayISO);

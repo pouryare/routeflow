@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useCallback, useEffect, useState } from "react";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
@@ -19,12 +20,6 @@ interface PlanRow {
   label: string;
   lat: number | null;
   lng: number | null;
-}
-
-function todayStr(): string {
-  const d = new Date();
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
 /** The next unfinished stop on today's plan, pinned to the bottom of the map.
@@ -57,7 +52,7 @@ export default function NextStopBar({
 
   const load = useCallback(async () => {
     try {
-      const res = await fetch(`/api/visit-plans?date=${todayStr()}`);
+      const res = await fetch(`/api/visit-plans?date=${tehranTodayIso()}`);
       const data = await res.json();
       setPlans(data.plans ?? []);
     } catch {

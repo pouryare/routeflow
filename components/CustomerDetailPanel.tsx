@@ -1,5 +1,6 @@
 "use client";
 
+import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useHydrated } from "@/lib/useHydrated";
@@ -153,13 +154,7 @@ export default function CustomerDetailPanel({
   // the ✕.
   useSwipeDismiss(panelRef, isSheet ? "down" : "left", handleClose);
 
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") handleClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [handleClose]);
+  useEscapeKey(handleClose);
 
   // An optimistic override for the moment between the PATCH and the parent's refetch.
   // null means "show whatever the customer prop says".
