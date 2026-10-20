@@ -54,6 +54,14 @@ function jreq(url: string, opts: { method?: string; body?: string; uid?: number;
 
 describe("/api/sales/stock/movements", () => {
   it("records a manual ADJUSTMENT", async () => {
+    // Stock has to exist before it can be written off: a manual movement may not go below zero.
+    const seed = await POST(
+      jreq("/api/sales/stock/movements", {
+        method: "POST",
+        body: JSON.stringify({ product_id: prod, base_qty: 10, kind: "ADJUSTMENT", notes: "موجودی اولیه" }),
+      })
+    );
+    expect(seed.status).toBe(201);
     const res = await POST(
       jreq("/api/sales/stock/movements", {
         method: "POST",
@@ -62,7 +70,20 @@ describe("/api/sales/stock/movements", () => {
     );
     expect(res.status).toBe(201);
     const list = await GET(jreq("/api/sales/stock/movements"));
-    expect((await list.json()).movements).toHaveLength(1);
+    expect((await list.json()).movements).toHaveLength(2);
+  });
+
+  it("409s a manual movement that would take stock below zero, and leaves the ledger alone", async () => {
+    const before = (await (await GET(jreq("/api/sales/stock/movements"))).json()).movements.length;
+    const res = await POST(
+      jreq("/api/sales/stock/movements", {
+        method: "POST",
+        body: JSON.stringify({ product_id: prod, base_qty: -500, kind: "ADJUSTMENT" }),
+      })
+    );
+    expect(res.status).toBe(409);
+    const after = (await (await GET(jreq("/api/sales/stock/movements"))).json()).movements.length;
+    expect(after).toBe(before);
   });
 
   it("400s a DELIVERY_OUT (written only by its own flow)", async () => {
