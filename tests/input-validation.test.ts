@@ -108,3 +108,16 @@ describe("shape checks", () => {
     expect(boundedText(5, 5)).toBeNull();
   });
 });
+
+describe("routing routes validate the plan they are given", () => {
+  const src = (f: string) => fs.readFileSync(f, "utf8");
+  it("the plan route refuses a date outside the planning window", () => {
+    expect(src("app/api/sales/routing/plan/route.ts")).toMatch(/isDayWithin\(b\.date, 30, 120\)/);
+  });
+  it("the commit route checks the date and every figure before committing", () => {
+    const s = src("app/api/sales/routing/commit/route.ts");
+    expect(s).toMatch(/isDayWithin\(b\.plan\.date, 30, 120\)/);
+    expect(s.indexOf("sane(a.distance_km")).toBeGreaterThan(-1);
+    expect(s.indexOf("sane(a.distance_km")).toBeLessThan(s.indexOf("commitPlan("));
+  });
+});
