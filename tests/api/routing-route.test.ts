@@ -3,6 +3,9 @@ import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
 
+/* Relative, not a fixed date: the routes only plan a day near today, so a hard-coded date goes stale. */
+const TODAY = new Date().toISOString().slice(0, 10);
+
 const testDbPath = path.join(
   os.tmpdir(),
   `rf-routing-route-${Date.now()}-${Math.random().toString(36).slice(2)}.db`
@@ -72,7 +75,7 @@ function seedOrder(lat: number, lng: number) {
   );
   const o = createOrder(db, {
     customer_id: cust,
-    order_date: "2026-03-01",
+    order_date: TODAY,
     created_by: owner,
     organization_id: 1,
     lines: [{ product_id: product, packaging_id: packaging, packs: 1 }],
@@ -99,7 +102,7 @@ describe("routing routes", () => {
     seedOrder(35.73, 51.43);
     await V_POST(jreq("/api/sales/vehicles", { name: "وانت", driver_default_id: driver }));
 
-    const planRes = await PLAN(jreq("/api/sales/routing/plan", { date: "2026-03-01" }));
+    const planRes = await PLAN(jreq("/api/sales/routing/plan", { date: TODAY }));
     const { plan } = await planRes.json();
     expect(planRes.status).toBe(200);
     expect(plan.assignments.length).toBeGreaterThan(0);
