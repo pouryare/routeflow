@@ -62,6 +62,10 @@ export async function runSeed(opts: {
   const asOfMs = Date.parse(`${asOf}T12:00:00.000Z`);
 
   const db = getDb();
+  /* The target is a disposable demo file (seed-demo refuses the real one): if the machine dies
+     mid-build the answer is to build again, so there is nothing for an fsync per commit to
+     protect. Thousands of order/delivery/payment transactions make that the main cost. */
+  db.exec("PRAGMA synchronous = OFF;");
   const ctx: SeedContext = {
     db,
     rng: makeRng(seedFromDate(`${asOf}:${scale.name}`)),
