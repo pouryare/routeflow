@@ -38,11 +38,14 @@ Everything from the "where else can we use tap flow" review, in priority order.
 | 11 | Visit plan quick-add | search+add in `/planner` | `visitPlanFlow` | 7 |
 | 12 | Create a place | inline row in `/facilities` | `placeFlow` | 7 |
 | M | Mobile layout pass (not TapFlow) | desk layouts, small tap targets, modals | card tables, bottom sheets, 44/52 px targets | 8 |
-| E | Expense entry (optional) | API exists, no UI | `expenseFlow` | 9 |
+| E | Expense entry (confirmed) | API exists, no UI | `expenseFlow` | 9 |
 
 **Explicitly not flows** (doc §1: reference data typed at a desk): login, admin users/groups/holidays, commission rates, product catalogue, notification settings, rep definitions. They only get the Phase 8 responsive pass.
 
-**Spec note:** `brainstorming.md` asks for a spec doc first. The design decisions are inside this plan (Phase 0 + per-flow step trees). If you want a separate spec per flow before implementation, split Phases 1–7 into their own `docs/superpowers/specs/` entries; nothing here blocks that.
+**Decisions (2026-10-20, owner):**
+1. **No separate specs.** The design lives in this plan (Phase 0 + per-flow step trees); implementation starts from the plan.
+2. **Expense entry is in scope** (Phase 9 is no longer optional).
+3. **Sequencing is delegated** to the order under "Suggested order and sizing"; one PR per phase, Phase 8 on a parallel branch.
 
 ---
 
@@ -683,9 +686,9 @@ Do this in the order below; each task is independently shippable and verified at
 
 ---
 
-## Phase 9 — Expense entry (optional; needs your decision)
+## Phase 9 — Expense entry (confirmed)
 
-`app/api/accounting/expenses/route.ts` has a POST but no UI. If you want entry on mobile: `category (chips) → amount (amount) → supplier (pick, optional) → photo (optional) [ثبت → SAVE]`, budget `common: 3`. **Decision needed:** do you want in-app expense entry at all? If yes, add `lib/flows/expense.ts` + `components/flows/ExpenseFlow.tsx` and a «+ هزینه» button on `/accounting/expenses`, following the Task 2.1/2.2 pattern.
+`app/api/accounting/expenses/route.ts` has a POST but no UI. If you want entry on mobile: `category (chips) → amount (amount) → supplier (pick, optional) → photo (optional) [ثبت → SAVE]`, budget `common: 3`. **Confirmed in scope.** Add `lib/flows/expense.ts` + `components/flows/ExpenseFlow.tsx` and a «+ هزینه» button on `/accounting/expenses`, following the Task 2.1/2.2 pattern.
 
 ---
 
@@ -711,7 +714,7 @@ Do this in the order below; each task is independently shippable and verified at
 | 10 Customer lifecycle | 7.1 |
 | 11 Visit plan quick-add | 7.2 |
 | 12 Create a place | 7.3 |
-| Expense entry (optional) | 9 |
+| Expense entry | 9 |
 | Wide pages, accounting tables, planner, dashboard, schedule, orders | 8.2–8.4 |
 | Modals/sheets, touch targets | 8.1, 8.5 |
 
@@ -724,4 +727,4 @@ Do this in the order below; each task is independently shippable and verified at
 3. Phase 4, then 8.1 (touch targets) — cheap, broad mobile win.
 4. Phase 5–7 — as capacity allows.
 5. Phase 8.2–8.5 — can run in parallel with 5–7 on a separate branch (different files).
-6. Phase 9 — only if you confirm.
+6. Phase 9 — expense entry, after Phase 2 (reuses its amount/pick steps).
