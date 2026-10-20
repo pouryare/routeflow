@@ -178,7 +178,7 @@ export function setPrice(
   }
 ): number {
   if (!isToman(input.price_toman)) {
-    throw new TypeError(`قیمت باید عدد صحیح تومان باشد: ${input.price_toman}`);
+    throw new TypeError("قیمت را به تومان و بدون اعشار وارد کنید");
   }
   db.prepare(
     `INSERT INTO product_prices (product_id, packaging_id, price_toman, valid_from, created_by, created_at)
@@ -230,7 +230,7 @@ export function setCost(
   }
 ): number {
   if (!isToman(input.cost_toman)) {
-    throw new TypeError(`بهای تمام‌شده باید عدد صحیح تومان باشد: ${input.cost_toman}`);
+    throw new TypeError("بهای تمام‌شده را به تومان و بدون اعشار وارد کنید");
   }
   db.prepare(
     `INSERT INTO product_costs (product_id, packaging_id, method, cost_toman, valid_from, created_by, created_at)

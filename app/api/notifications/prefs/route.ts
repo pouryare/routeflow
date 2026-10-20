@@ -40,7 +40,7 @@ export async function PUT(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "کانال نامعتبر است" }, { status: 400 });
   }
   if (typeof enabled !== "boolean") {
-    return NextResponse.json({ ok: false, error: "مقدار enabled نامعتبر است" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "وضعیت روشن یا خاموش اعلان نامعتبر است" }, { status: 400 });
   }
 
   try {

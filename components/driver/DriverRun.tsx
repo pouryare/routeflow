@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import type { RunDetail, RunStop } from "@/lib/delivery";
@@ -230,7 +231,7 @@ function StopCard({
       } else if (res.status >= 400 && res.status < 500) {
         dequeue(stop.id);
         const json = await res.json().catch(() => ({}));
-        setError(json.error ?? "تحویل ثبت نشد. اطلاعات را بررسی کنید و دوباره تلاش کنید.");
+        setError(friendlyError(json.error, "تحویل ثبت نشد. اطلاعات را بررسی کنید و دوباره تلاش کنید."));
         return;
       }
     } catch {

@@ -64,7 +64,7 @@ export function setRate(
   }
 ): number {
   if (!isToman(input.rate_per_kg_toman)) {
-    throw new TypeError(`نرخ پورسانت باید عدد صحیح تومان باشد: ${input.rate_per_kg_toman}`);
+    throw new TypeError("نرخ پورسانت را به تومان و بدون اعشار وارد کنید");
   }
   return Number(
     db
@@ -97,7 +97,7 @@ export function recordPayment(
   }
 ): number {
   if (!isToman(input.amount_toman)) {
-    throw new TypeError(`مبلغ پرداخت باید عدد صحیح تومان باشد: ${input.amount_toman}`);
+    throw new TypeError("مبلغ پرداخت را به تومان و بدون اعشار وارد کنید");
   }
   return Number(
     db

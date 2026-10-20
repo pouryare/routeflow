@@ -71,7 +71,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
       if (!j.ok || typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new Error(j.error ?? "مختصات از این لینک قابل استخراج نبود؛ روی نقشه انتخاب کنید");
       setDraft({ lat, lng, link: u });
     } catch (e) {
-      if (version === request.current) setError(e instanceof Error ? e.message : "اتصال برقرار نشد");
+      if (version === request.current) setError(e instanceof Error ? e.message : "اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       if (version === request.current) setResolving(false);
     }
@@ -85,7 +85,7 @@ export default function LocationEditor({ initial, onConfirm, onCancel, expandabl
     try {
       await onConfirm(draft.lat, draft.lng, draft.link);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "ذخیره نشد");
+      setError(e instanceof Error ? e.message : "موقعیت ذخیره نشد؛ دوباره تلاش کنید");
     } finally {
       lock.current = false;
       setSaving(false);

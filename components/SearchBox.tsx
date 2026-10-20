@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
 import { matchesQuery } from "@/lib/persian";
 import { Icon } from "@/components/meridian/Icon";
@@ -324,14 +325,14 @@ export default function SearchBox({
       const res = await fetch(`/api/geo/decode-link?url=${encodeURIComponent(trimmed)}`);
       const data = await res.json();
       if (!data.ok) {
-        setLinkError(data.error || "لینک قابل تشخیص نبود");
+        setLinkError(friendlyError(data.error, "لینک شناسایی نشد؛ لینک گوگل‌مپ، نشان، بلد یا ویز را بچسبانید"));
         return;
       }
       onLocationFound?.(data.lat, data.lng, "لینک نقشه");
       if (trimmed) pushRecent(trimmed);
       reset();
     } catch {
-      setLinkError("خطا در ارتباط با سرور");
+      setLinkError("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       setLinkLoading(false);
     }

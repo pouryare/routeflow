@@ -56,7 +56,7 @@ function recordChequePaymentTxn(
   input: RecordChequeInput
 ): { cheque_id: number; payment_id: number } {
   if (!Number.isInteger(input.amount_toman) || input.amount_toman <= 0) {
-    throw new ChequeError("مبلغ چک باید عدد صحیح تومان و بزرگ‌تر از صفر باشد");
+    throw new ChequeError("مبلغ چک را به تومان، بدون اعشار و بیشتر از صفر وارد کنید");
   }
   const now = new Date().toISOString();
 

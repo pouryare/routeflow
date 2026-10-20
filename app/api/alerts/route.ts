@@ -20,7 +20,7 @@ export async function PATCH(req: NextRequest) {
   const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return guard.response;
   const b = (await req.json().catch(() => null)) as { id?: number; resolve?: boolean } | null;
-  if (!b?.id || !b.resolve) return NextResponse.json({ ok: false, error: "id لازم است" }, { status: 400 });
+  if (!b?.id || !b.resolve) return NextResponse.json({ ok: false, error: "هشدار مشخص نشده است" }, { status: 400 });
   try {
     resolveAlert(guard.session.organizationId, Number(b.id), guard.session.user.id);
     return NextResponse.json({ ok: true });

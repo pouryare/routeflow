@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import {
@@ -82,7 +83,7 @@ export default function OrderStatusPanel({
       });
       const j = await res.json();
       if (!res.ok) {
-        setError(j.error ?? "انجام نشد");
+        setError(friendlyError(j.error, "وضعیت سفارش تغییر نکرد؛ دوباره تلاش کنید"));
         return;
       }
       router.refresh();

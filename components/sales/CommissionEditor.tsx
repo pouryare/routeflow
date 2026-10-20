@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
@@ -96,7 +97,7 @@ export default function CommissionEditor({
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setMessage({ kind: "error", text: json.error ?? "ثبت نشد" });
+        setMessage({ kind: "error", text: friendlyError(json.error, "تنظیمات پورسانت ثبت نشد؛ دوباره تلاش کنید") });
         return false;
       }
       setMessage({ kind: "ok", text: okText });

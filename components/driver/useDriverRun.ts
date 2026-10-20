@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import type { RunFacilityStop } from "@/lib/delivery";
 
 /** A driver's own day, from /api/lead-runs.
@@ -79,11 +80,11 @@ export function useDriverRun(initialRun?: DriverRun | null) {
     try {
       const res = await fetch("/api/lead-runs");
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error ?? "خطا در بارگذاری مسیر");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data?.error, "مسیر امروز بارگذاری نشد؛ دوباره تلاش کنید"));
       setRun((data.run as DriverRun) ?? null);
       setError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "خطا در بارگذاری مسیر");
+      setError(e instanceof Error ? e.message : "مسیر امروز بارگذاری نشد؛ دوباره تلاش کنید");
     } finally {
       setLoading(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { Icon } from "@/components/meridian/Icon";
+import { friendlyError } from "@/lib/userMessage";
 import { useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -106,7 +107,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        toast(json.error ?? "تأیید سفارش انجام نشد", "error");
+        toast(friendlyError(json.error, "سفارش تأیید نشد؛ دوباره تلاش کنید"), "error");
         return;
       }
       toast(`سفارش ${order.order_no} تأیید شد`, "success");

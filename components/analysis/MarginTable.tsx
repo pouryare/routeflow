@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 
 import { Icon } from "@/components/meridian/Icon";
 interface MarginRow {
@@ -46,10 +47,10 @@ export default function MarginTable({ period }: { period: string }) {
           dim,
           period,
           rows: j.ok ? (j.rows as MarginRow[]) : null,
-          err: j.ok ? null : (j.error ?? "خطا"),
+          err: j.ok ? null : (friendlyError(j.error, "داده‌ها بارگذاری نشد؛ دوباره تلاش کنید")),
         });
       })
-      .catch(() => live && setLoaded({ dim, period, rows: null, err: "خطا در دریافت" }));
+      .catch(() => live && setLoaded({ dim, period, rows: null, err: "داده‌ها بارگذاری نشد؛ دوباره تلاش کنید" }));
     return () => {
       live = false;
     };

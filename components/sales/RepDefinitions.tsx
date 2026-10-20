@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
@@ -108,7 +109,7 @@ export default function RepDefinitions() {
       setRepCode("");
       await load();
     } else {
-      setError((await res.json().catch(() => null))?.error ?? "ثبت نماینده انجام نشد");
+      setError(friendlyError((await res.json().catch(() => null))?.error, "نماینده ثبت نشد؛ دوباره تلاش کنید"));
     }
   }
 
@@ -119,7 +120,7 @@ export default function RepDefinitions() {
       body: JSON.stringify(body),
     });
     if (!res.ok) {
-      setError((await res.json().catch(() => null))?.error ?? "انجام نشد");
+      setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر نماینده انجام نشد؛ دوباره تلاش کنید"));
       return;
     }
     setError(null);

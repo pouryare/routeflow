@@ -125,7 +125,7 @@ describe("product_costs", () => {
         valid_from: "2026-01-01",
         created_by: null,
       })
-    ).toThrow(/عدد صحیح/);
+    ).toThrow(/بدون اعشار/);
   });
 
   it("reads nothing for a product owned by another organisation", () => {

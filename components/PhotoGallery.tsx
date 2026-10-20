@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRef, useState, useCallback } from "react";
 import { useToast } from "./ToastProvider";
@@ -50,12 +51,12 @@ export default function PhotoGallery({
       const res = await fetch("/api/photos", { method: "POST", body: fd });
       if (!res.ok) {
         const data = await res.json().catch(() => null);
-        throw new Error(data?.error || "خطا در آپلود عکس");
+        throw new Error(friendlyError(data?.error, "عکس بارگذاری نشد؛ دوباره تلاش کنید"));
       }
       toast("عکس اضافه شد.", "success");
       load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "خطا در آپلود عکس", "error");
+      toast(e instanceof Error ? e.message : "عکس بارگذاری نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setUploading(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -70,7 +71,7 @@ export default function PhotoGallery({
       setLightbox(null);
       load();
     } catch {
-      toast("خطا در حذف عکس", "error");
+      toast("عکس حذف نشد؛ دوباره تلاش کنید", "error");
     }
   }
 

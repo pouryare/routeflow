@@ -636,7 +636,7 @@ export default function CoverageMap({
         setError(null);
       })
       .catch(() => {
-        if (!cancelled) setError("خطا در بارگذاری مرز مناطق");
+        if (!cancelled) setError("مرز منطقه‌ها بارگذاری نشد؛ دوباره تلاش کنید");
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -769,7 +769,7 @@ export default function CoverageMap({
       toast("یادآوری انجام‌شده علامت خورد.", "success");
       loadReminders();
     } catch {
-      toast("خطا در ثبت یادآوری", "error");
+      toast("یادآوری ثبت نشد؛ دوباره تلاش کنید", "error");
     }
   }
 
@@ -988,7 +988,7 @@ export default function CoverageMap({
         "success"
       );
     } catch {
-      toast("خطا در به‌روزرسانی گروهی مناطق", "error");
+      toast("منطقه‌ها به‌روز نشدند؛ دوباره تلاش کنید", "error");
     } finally {
       setBulkSaving(false);
       setBulkSelectedIds(new Set());

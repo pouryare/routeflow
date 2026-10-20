@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import {
@@ -123,7 +124,7 @@ export default function CustomerDetailPanel({
       });
     } catch {
       setPlanState("idle");
-      toast("خطا در افزودن به برنامه", "error");
+      toast("به برنامهٔ امروز اضافه نشد؛ دوباره تلاش کنید", "error");
     }
   }
 
@@ -182,7 +183,7 @@ export default function CustomerDetailPanel({
       } else {
         setPendingLifecycle(null);
         const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast(body?.error ?? "تغییر وضعیت انجام نشد", "error");
+        toast(friendlyError(body?.error, "وضعیت مشتری تغییر نکرد؛ دوباره تلاش کنید"), "error");
       }
     },
     [customer.id, lifecycle, lifecycleBusy, onUpdated, toast]

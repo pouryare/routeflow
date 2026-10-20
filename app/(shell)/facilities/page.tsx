@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import Link from "next/link";
@@ -86,7 +87,7 @@ export default function FacilitiesPage() {
       const data = await res.json();
       setFacilities(data.facilities ?? []);
     } catch {
-      toast("خطا در بارگذاری مکان‌ها", "error");
+      toast("مکان‌ها بارگذاری نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setLoading(false);
     }
@@ -103,11 +104,11 @@ export default function FacilitiesPage() {
         body: JSON.stringify(body),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در به‌روزرسانی");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data.error, "مکان به‌روز نشد؛ دوباره تلاش کنید"));
       toast(successMsg, "success");
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "خطا در به‌روزرسانی", "error");
+      toast(e instanceof Error ? e.message : "مکان به‌روز نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setBusyId(null);
     }
@@ -126,13 +127,13 @@ export default function FacilitiesPage() {
         body: JSON.stringify({ name, kind: newKind, icon_key: newIconKey, lat, lng }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در افزودن مکان");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data.error, "مکان اضافه نشد؛ دوباره تلاش کنید"));
       toast("مکان اضافه شد", "success");
       setNewName("");
       setPicker(null);
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "خطا در افزودن مکان", "error");
+      toast(e instanceof Error ? e.message : "مکان اضافه نشد؛ دوباره تلاش کنید", "error");
     }
   }
 
@@ -156,7 +157,7 @@ export default function FacilitiesPage() {
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در بازگردانی");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data.error, "مکان بازگردانده نشد؛ دوباره تلاش کنید"));
 
       if (deleted.is_default_origin === 1) {
         await fetch(`/api/facilities/${data.id}`, {
@@ -174,7 +175,7 @@ export default function FacilitiesPage() {
       );
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "خطا در بازگردانی", "error");
+      toast(e instanceof Error ? e.message : "مکان بازگردانده نشد؛ دوباره تلاش کنید", "error");
     }
   }
 
@@ -183,7 +184,7 @@ export default function FacilitiesPage() {
     try {
       const res = await fetch(`/api/facilities/${id}`, { method: "DELETE" });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در حذف مکان");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data.error, "مکان حذف نشد؛ دوباره تلاش کنید"));
       // The undo is offered rather than the deletion being confirmed up front: the
       // common case is that the delete was intended, and the rare mistake is repaired in
       // one tap instead of every correct delete costing a dialog.
@@ -194,7 +195,7 @@ export default function FacilitiesPage() {
       );
       await load();
     } catch (e) {
-      toast(e instanceof Error ? e.message : "خطا در حذف مکان", "error");
+      toast(e instanceof Error ? e.message : "مکان حذف نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setBusyId(null);
     }

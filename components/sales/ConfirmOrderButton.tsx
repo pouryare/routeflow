@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 
@@ -27,7 +28,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
       });
       const json = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setError(json.error ?? "تأیید نشد");
+        setError(friendlyError(json.error, "سفارش تأیید نشد؛ دوباره تلاش کنید"));
         return;
       }
       setAsking(false);

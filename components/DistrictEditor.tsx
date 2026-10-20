@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { DistrictFeature, CoverageStatus, STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
 import StatusPill from "./StatusPill";
 import HistoryTimeline from "./HistoryTimeline";
@@ -53,8 +54,8 @@ export default function DistrictEditor({
     const data = await res.json();
     setSaving(false);
     if (!data.ok) {
-      setError(data.error || "خطا در ذخیره");
-      toast(data.error || "خطا در ذخیره", "error");
+      setError(friendlyError(data.error, "تغییرات منطقه ذخیره نشد؛ دوباره تلاش کنید"));
+      toast(friendlyError(data.error, "تغییرات منطقه ذخیره نشد؛ دوباره تلاش کنید"), "error");
       return;
     }
     toast("تغییرات منطقه ذخیره شد.", "success");

@@ -76,7 +76,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
     void (async () => {
       try { await onPatch(body); setPending(null); }
       catch (e) {
-        setPending(null); setError(e instanceof Error ? e.message : "اتصال برقرار نشد");
+        setPending(null); setError(e instanceof Error ? e.message : "اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
         setEdit({ row, value: String(body[row.key] ?? "") });
       } finally { setSending(false); }
     })();

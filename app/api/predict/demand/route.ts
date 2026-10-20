@@ -25,11 +25,11 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: true, board: demandBoard(guard.session.organizationId) });
   }
   if (!ENTITY_TYPES.includes(entity)) {
-    return NextResponse.json({ ok: false, error: "entity نامعتبر" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "نوع پیش‌بینی نامعتبر است" }, { status: 400 });
   }
   const metric = (sp.get("metric") ?? "demand_toman") as ForecastMetric;
   if (!METRICS.includes(metric)) {
-    return NextResponse.json({ ok: false, error: "metric نامعتبر" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "معیار پیش‌بینی نامعتبر است" }, { status: 400 });
   }
   const id = entity === "org" ? 0 : Number(sp.get("id") ?? 0);
   const horizon = Math.max(1, Math.min(12, Number(sp.get("horizon") ?? 3)));

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, Suspense } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Icon } from "@/components/meridian/Icon";
 
@@ -45,14 +46,14 @@ function LoginForm() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "ورود ناموفق بود");
+        setError(friendlyError(data.error, "ورود انجام نشد؛ دوباره تلاش کنید"));
         setLoading(false);
         return;
       }
       router.push(nextPathRef.current || "/");
       router.refresh();
     } catch {
-      setError("خطا در ارتباط با سرور");
+      setError("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
       setLoading(false);
     }
   }

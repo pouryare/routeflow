@@ -1,6 +1,7 @@
 "use client";
 
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import { friendlyError } from "@/lib/userMessage";
 import { useState } from "react";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
@@ -44,7 +45,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
         body: JSON.stringify({ date }),
       });
       const j = await res.json();
-      if (!res.ok) setMsg(j.error ?? "ساخت پیشنهاد ناموفق بود");
+      if (!res.ok) setMsg(friendlyError(j.error, "پیشنهاد مسیر ساخته نشد؛ دوباره تلاش کنید"));
       else setPlan(j.plan);
     } finally {
       setBusy(false);
@@ -62,7 +63,7 @@ export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<
       });
       const j = await res.json();
       if (res.ok) setRunIds(j.run_ids);
-      else setMsg(j.error ?? "تثبیت ناموفق بود");
+      else setMsg(friendlyError(j.error, "مسیرها قطعی نشدند؛ دوباره تلاش کنید"));
     } finally {
       setBusy(false);
     }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "@/components/ToastProvider";
 import { usePushSubscription } from "./usePushSubscription";
@@ -96,12 +97,12 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
         });
         const json = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
         if (!res.ok || !json?.ok) {
-          toast(json?.error ?? "ذخیره نشد", "error");
+          toast(friendlyError(json?.error, "تنظیمات اعلان ذخیره نشد؛ دوباره تلاش کنید"), "error");
           return false;
         }
         return true;
       } catch {
-        toast("ارتباط با سرور برقرار نشد", "error");
+        toast("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
         return false;
       }
     },
@@ -133,7 +134,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
       const res = await fetch("/api/notifications/telegram-link", { method: "POST" });
       const json = (await res.json().catch(() => null)) as { ok?: boolean; url?: string; error?: string } | null;
       if (!res.ok || !json?.ok || !json.url) {
-        toast(json?.error ?? "لینک اتصال ساخته نشد", "error");
+        toast(friendlyError(json?.error, "لینک اتصال تلگرام ساخته نشد؛ دوباره تلاش کنید"), "error");
         return;
       }
       // A new tab, not a redirect: the user comes back to a screen that still holds their
@@ -164,7 +165,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
     } else if (push.state === "denied") {
       toast("دسترسی اعلان مسدود شده — از تنظیمات مرورگر فعال کنید", "error");
     } else {
-      toast("اتصال این دستگاه انجام نشد", "error");
+      toast("این دستگاه متصل نشد؛ دوباره تلاش کنید", "error");
     }
     setBusy(null);
   }
@@ -176,7 +177,7 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
       setChannels((c) => ({ ...c, push: { ...c.push, connected: false } }));
       toast("اتصال این دستگاه قطع شد", "info");
     } else {
-      toast("قطع اتصال انجام نشد", "error");
+      toast("اتصال این دستگاه قطع نشد؛ دوباره تلاش کنید", "error");
     }
     setBusy(null);
   }
@@ -195,14 +196,14 @@ export default function NotificationSettings({ initial }: { initial: PrefsMatrix
         result?: { status?: string };
       } | null;
       if (!res.ok || !json?.ok) {
-        toast(json?.error ?? "ارسال انجام نشد", "error");
+        toast(friendlyError(json?.error, "پیام آزمایشی ارسال نشد؛ دوباره تلاش کنید"), "error");
         return;
       }
       // `result` is the caller's OWN row, read back off its flush stamp — never the
       // org-wide counters, which would let a coworker's delivery read as a success here.
       if (json.result?.status === "sent") toast("پیام آزمایشی ارسال شد", "success");
       else if (json.result?.status === "held") toast("در ساعات سکوت نگه داشته شد", "info");
-      else toast("ارسال ناموفق بود", "error");
+      else toast("پیام آزمایشی ارسال نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setBusy(null);
     }

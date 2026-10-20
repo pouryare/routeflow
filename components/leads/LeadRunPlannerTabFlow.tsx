@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
@@ -135,7 +136,7 @@ export default function LeadRunPlannerTabFlow({
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data?.error ?? "ثبت مسیر انجام نشد");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data?.error, "مسیر ثبت نشد؛ دوباره تلاش کنید"));
       setMessage({
         tone: "ok",
         text: data.reused
@@ -152,7 +153,7 @@ export default function LeadRunPlannerTabFlow({
         setRuns(fresh.runs);
       } catch { /* keep what we have */ }
     } catch (e) {
-      setMessage({ tone: "bad", text: e instanceof Error ? e.message : "خطا" });
+      setMessage({ tone: "bad", text: e instanceof Error ? e.message : "مسیر ثبت نشد؛ دوباره تلاش کنید" });
     } finally {
       setSaving(false);
     }

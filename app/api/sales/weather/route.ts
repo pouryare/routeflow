@@ -12,7 +12,7 @@ export async function GET(req: NextRequest) {
   const lng = Number(sp.get("lng"));
   const date = sp.get("date");
   if (!Number.isFinite(lat) || !Number.isFinite(lng) || !date) {
-    return NextResponse.json({ ok: false, error: "lat, lng و date لازم است" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "موقعیت و تاریخ لازم است" }, { status: 400 });
   }
   return NextResponse.json({
     ok: true,

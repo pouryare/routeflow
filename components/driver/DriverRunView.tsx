@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import dynamic from "next/dynamic";
 import NextStopBanner from "@/components/driver/NextStopBanner";
 import { useDriverRun, pendingStops, type DriverRun, type DriverStop } from "@/components/driver/useDriverRun";
@@ -71,13 +72,13 @@ export default function DriverRunView({
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
-        setUnloadError(data.error ?? "خطا در ثبت تخلیه");
+        setUnloadError(friendlyError(data.error, "تخلیه ثبت نشد؛ دوباره تلاش کنید"));
         return;
       }
       setUnloadFor(null);
       await reload();
     } catch {
-      setUnloadError("خطا در ثبت تخلیه");
+      setUnloadError("تخلیه ثبت نشد؛ دوباره تلاش کنید");
     } finally {
       setUnloadBusy(false);
     }

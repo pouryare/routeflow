@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useToast } from "./ToastProvider";
 import { faNum } from "@/lib/format";
@@ -44,7 +45,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
       });
       const data = await res.json();
       if (!data.ok) {
-        toast(data.error || "خطا در تجزیه متن", "error");
+        toast(friendlyError(data.error, "متن خوانده نشد؛ متن را بررسی کنید و دوباره تلاش کنید"), "error");
         return;
       }
       // The job exists now. Adopt it immediately rather than waiting for the next poll:
@@ -72,7 +73,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
         etaSeconds: 0,
       });
     } catch {
-      toast("خطا در ارتباط با سرور", "error");
+      toast("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error");
     } finally {
       setBusy(false);
     }

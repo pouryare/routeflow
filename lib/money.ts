@@ -75,7 +75,7 @@ export function sumToman(values: number[]): number {
   let total = 0;
   for (const v of values) {
     if (!isToman(v)) {
-      throw new TypeError(`مبلغ تومان باید عدد صحیح باشد: ${v}`);
+      throw new TypeError("مبلغ را به تومان و بدون اعشار وارد کنید");
     }
     total += v;
   }

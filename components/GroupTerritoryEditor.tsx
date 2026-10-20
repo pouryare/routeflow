@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import type { DistrictProperties } from "@/lib/types";
 import { faNum } from "@/lib/format";
@@ -69,13 +70,13 @@ export default function GroupTerritoryEditor({
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "ذخیره نشد");
+        setError(friendlyError(data.error, "محدودهٔ گروه ذخیره نشد؛ دوباره تلاش کنید"));
         return;
       }
       setSelected(new Set());
       onSaved();
     } catch {
-      setError("خطا در ارتباط با سرور");
+      setError("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.");
     } finally {
       setSaving(false);
     }

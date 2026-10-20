@@ -1,5 +1,6 @@
 "use client";
 import { useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import Link from "next/link";
 import type { Profile, ContactRow } from "@/lib/repo/crm/profile";
@@ -56,9 +57,9 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
     try {
       const r = await fetch(base + path, { method, headers: { "Content-Type": "application/json" }, body: body === undefined ? undefined : JSON.stringify(body) });
       const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j.error ?? "ذخیره نشد");
+      if (!r.ok || !j.ok) throw new Error(friendlyError(j.error, "تغییر ثبت نشد؛ دوباره تلاش کنید"));
       setEdit(null); toast("ثبت شد", "success"); await reload();
-    } catch (e) { setError(e instanceof Error ? e.message : "اتصال برقرار نشد"); }
+    } catch (e) { setError(e instanceof Error ? e.message : "اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید."); }
     finally { lock.current = false; setBusy(false); }
   }
   async function patch(body: Record<string, unknown>) {
@@ -67,7 +68,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
     try {
       const r = await fetch(base, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json();
-      if (!r.ok || !j.ok) throw new Error(j.error ?? "ذخیره نشد");
+      if (!r.ok || !j.ok) throw new Error(friendlyError(j.error, "تغییر ثبت نشد؛ دوباره تلاش کنید"));
       try { await reload(); } catch { setError("تغییر ثبت شد، اما اطلاعات تازه خوانده نشد؛ بارگذاری دوباره را بزنید"); }
       toast("ثبت شد", "success");
     } finally { lock.current = false; setBusy(false); }
@@ -146,9 +147,9 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
           try {
             const r = await fetch(`${base}/intel`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ answers: st.answers, client_uuid: crypto.randomUUID() }) });
             const j = await r.json();
-            if (!r.ok || !j.ok) throw new Error(j.error ?? "ذخیره نشد");
+            if (!r.ok || !j.ok) throw new Error(friendlyError(j.error, "تغییر ثبت نشد؛ دوباره تلاش کنید"));
             toast("شناخت ثبت شد", "success"); setIntel(null); await reload();
-          } catch (e) { setError(e instanceof Error ? e.message : "اتصال برقرار نشد"); setIntel(null); }
+          } catch (e) { setError(e instanceof Error ? e.message : "اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید."); setIntel(null); }
         })();
       }} />}
     {hours && <TapFlow open title="ویرایش ساعت کاری" subtitle={profile.business.business_name} config={hoursFlowConfig} ctx={hours.ctx} state={hours.st}
@@ -162,7 +163,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
             if (raw && !isWorkingHours(parsed)) throw new Error("ساعت کاری نامعتبر است");
             await patch({ working_hours: parsed });
             setHours(null); toast("ساعت کاری ثبت شد", "success");
-          } catch (e) { setError(e instanceof Error ? e.message : "اتصال برقرار نشد"); setHours(null); }
+          } catch (e) { setError(e instanceof Error ? e.message : "اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید."); setHours(null); }
         })();
       }} />}
   </main>;

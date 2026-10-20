@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import TapFlow, { type CustomStepApi } from "@/components/tapflow/TapFlow";
 import FlowDone from "@/components/tapflow/FlowDone";
@@ -53,7 +54,7 @@ export default function AddLeadFlow({
       .then((j: { ok: boolean; ctx?: FlowContext }) => {
         if (alive && j.ok && j.ctx) { setCtx(j.ctx); setState(startFlow(addLeadFlow, j.ctx)); }
       })
-      .catch(() => { if (alive) toastRef.current("اتصال برقرار نشد", "error"); });
+      .catch(() => { if (alive) toastRef.current("اتصال برقرار نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.", "error"); });
     return () => { alive = false; };
   }, []);
 
@@ -63,7 +64,7 @@ export default function AddLeadFlow({
       body: JSON.stringify({ answers: st.answers, client_uuid: clientUuid }),
     });
     const j = (await res.json().catch(() => ({}))) as { ok?: boolean; id?: number; error?: string };
-    if (!res.ok || !j.ok || !j.id) { toast(j.error ?? "سرنخ ذخیره نشد", "error"); return null; }
+    if (!res.ok || !j.ok || !j.id) { toast(friendlyError(j.error, "سرنخ ذخیره نشد؛ دوباره تلاش کنید"), "error"); return null; }
     created.current = j.id;
     return j.id;
   }, [toast]);

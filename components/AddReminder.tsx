@@ -56,7 +56,7 @@ export default function AddReminder({
       setOpen(false);
       onAdded?.();
     } catch {
-      toast("خطا در ثبت یادآوری", "error");
+      toast("یادآوری ثبت نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setSaving(false);
     }

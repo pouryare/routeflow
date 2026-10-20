@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useHydrated } from "@/lib/useHydrated";
 import { useSearchParams } from "next/navigation";
@@ -300,7 +301,7 @@ type AddCandidate = CustomerRow | LeadLocation;
       if (!res.ok) throw new Error();
       toast("به برنامه اضافه شد.", "success");
     } catch {
-      toast("خطا در افزودن به برنامه", "error");
+      toast("به برنامه اضافه نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setAddQuery("");
       loadWeek();
@@ -317,7 +318,7 @@ type AddCandidate = CustomerRow | LeadLocation;
       if (!res.ok) throw new Error();
       toast("مکان پیشنهادی به برنامه اضافه شد.", "success");
     } catch {
-      toast("خطا در افزودن مکان به برنامه", "error");
+      toast("مکان به برنامه اضافه نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setAddQuery("");
       loadWeek();
@@ -336,7 +337,7 @@ type AddCandidate = CustomerRow | LeadLocation;
       if (!res.ok) throw new Error();
       toast(`وضعیت به «${STATUS_TOAST[status]}» تغییر کرد.`, "success");
     } catch {
-      toast("خطا در تغییر وضعیت", "error");
+      toast("وضعیت توقف تغییر نکرد؛ دوباره تلاش کنید", "error");
     } finally {
       loadWeek();
     }
@@ -362,7 +363,7 @@ type AddCandidate = CustomerRow | LeadLocation;
       if (!res.ok) throw new Error();
       toast(`«${p.label}» به برنامه بازگشت.`, "success");
     } catch {
-      toast("خطا در بازگردانی", "error");
+      toast("توقف به برنامه برنگشت؛ دوباره تلاش کنید", "error");
     } finally {
       loadWeek();
     }
@@ -381,7 +382,7 @@ type AddCandidate = CustomerRow | LeadLocation;
         removed ? { label: "بازگردان", onClick: () => restorePlan(removed) } : undefined
       );
     } catch {
-      toast("خطا در حذف", "error");
+      toast("توقف از برنامه حذف نشد؛ دوباره تلاش کنید", "error");
     } finally {
       loadWeek();
     }
@@ -597,7 +598,7 @@ type AddCandidate = CustomerRow | LeadLocation;
         }),
       });
       const data = await res.json();
-      if (!res.ok || !data.ok) throw new Error(data.error || "خطا در افزودن توقف");
+      if (!res.ok || !data.ok) throw new Error(friendlyError(data.error, "توقف به برنامه اضافه نشد؛ دوباره تلاش کنید"));
 
       // afterIndex counts the origin as position 0, so it is already the index the new
       // stop should occupy among the stops themselves.
@@ -704,7 +705,7 @@ type AddCandidate = CustomerRow | LeadLocation;
       toast(`ترتیب بهینه اعمال شد — ${faFixed(optimisation.savedPct, 0)}٪ کوتاه‌تر`, "success");
       await loadWeek();
     } catch {
-      toast("خطا در اعمال ترتیب بهینه", "error");
+      toast("ترتیب بهینه اعمال نشد؛ دوباره تلاش کنید", "error");
     } finally {
       setOptimising(false);
     }

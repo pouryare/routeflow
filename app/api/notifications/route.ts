@@ -26,7 +26,7 @@ export async function PATCH(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { read?: unknown } | null;
   const read = body?.read;
   const ok = read === "all" || (Array.isArray(read) && read.every((x) => typeof x === "string"));
-  if (!ok) return NextResponse.json({ ok: false, error: "پارامتر read نامعتبر است" }, { status: 400 });
+  if (!ok) return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
   // Cap the array so a pathological payload can't blow SQLite's bound-variable limit
   // inside the `group_key IN (...)` clause.
   const keys = read === "all" ? "all" : (read as string[]).slice(0, 200);

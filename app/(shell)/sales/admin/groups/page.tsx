@@ -1,6 +1,7 @@
 "use client";
 
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
+import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useState } from "react";
 import GroupTerritoryEditor from "@/components/GroupTerritoryEditor";
@@ -51,7 +52,7 @@ export default function AdminGroupsPage() {
       });
       const data = await res.json();
       if (!res.ok || !data.ok) {
-        setError(data.error || "ساخته نشد");
+        setError(friendlyError(data.error, "گروه ساخته نشد؛ دوباره تلاش کنید"));
         return;
       }
       setName("");
@@ -70,7 +71,7 @@ export default function AdminGroupsPage() {
       body: JSON.stringify({ name: next.trim() }),
     });
     const data = await res.json();
-    if (!res.ok || !data.ok) setError(data.error || "تغییر نام ناموفق بود");
+    if (!res.ok || !data.ok) setError(friendlyError(data.error, "نام گروه تغییر نکرد؛ دوباره تلاش کنید"));
     else await load();
   }
 
@@ -87,7 +88,7 @@ export default function AdminGroupsPage() {
     if (!window.confirm(`گروه «${g.name}» حذف شود؟ محدوده‌هایش بدون گروه می‌شوند.`)) return;
     const res = await fetch(`/api/admin/groups/${g.id}`, { method: "DELETE" });
     const data = await res.json();
-    if (!res.ok || !data.ok) setError(data.error || "حذف ناموفق بود");
+    if (!res.ok || !data.ok) setError(friendlyError(data.error, "گروه حذف نشد؛ دوباره تلاش کنید"));
     else {
       setError(null);
       await load();

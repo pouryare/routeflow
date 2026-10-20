@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useState } from "react";
+import { friendlyError } from "@/lib/userMessage";
 
 import { Icon } from "@/components/meridian/Icon";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -40,7 +41,7 @@ export default function AdminHolidaysPage() {
       setRows(data.holidays ?? []);
       setError(null);
     } else {
-      setError(data.error || "انجام نشد");
+      setError(friendlyError(data.error, "فهرست تعطیلی‌ها بارگذاری نشد؛ دوباره تلاش کنید"));
     }
   }, []);
 
@@ -57,7 +58,7 @@ export default function AdminHolidaysPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
-        setError(data.error || "انجام نشد");
+        setError(friendlyError(data.error, "تعطیلی ثبت نشد؛ دوباره تلاش کنید"));
         return;
       }
       setError(null);
@@ -77,7 +78,7 @@ export default function AdminHolidaysPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || !data.ok) {
-        setError(data.error || "انجام نشد");
+        setError(friendlyError(data.error, "تعطیلی حذف نشد؛ دوباره تلاش کنید"));
         return;
       }
       setError(null);
