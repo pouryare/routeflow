@@ -89,6 +89,13 @@ describe("role prefixes", () => {
   it("403s a non-driver hitting a driver API route", () => {
     expect(proxy(req("/api/driver/run", "group_manager")).status).toBe(403);
   });
+  it("lets a van role sign out and read its own session", () => {
+    for (const role of ["delivery_driver", "field_rep"] as const) {
+      for (const p of ["/api/logout", "/api/me", "/api/prefs"]) {
+        expect(proxy(req(p, role)).status, `${role} ${p}`).toBe(200);
+      }
+    }
+  });
   it("lets a driver into /driver", () => {
     expect(proxy(req("/driver", "delivery_driver")).status).toBe(200);
   });

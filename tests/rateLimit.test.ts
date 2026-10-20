@@ -36,3 +36,18 @@ describe("rateLimit", () => {
     expect(rateLimit(key, 1, 20).allowed).toBe(true);
   });
 });
+
+describe("clientKey", () => {
+  const key = async (h: Record<string, string>) => {
+    const { clientKey } = await import("@/lib/rateLimit");
+    return clientKey({ headers: new Headers(h) });
+  };
+  it("uses the address the trusted proxy appended, not the first client-supplied value", async () => {
+    expect(await key({ "x-forwarded-for": "6.6.6.6, 1.2.3.4" })).toBe("1.2.3.4");
+    expect(await key({ "x-forwarded-for": "1.2.3.4" })).toBe("1.2.3.4");
+  });
+  it("falls back to x-real-ip, then to a shared key", async () => {
+    expect(await key({ "x-real-ip": "9.9.9.9" })).toBe("9.9.9.9");
+    expect(await key({})).toBe("unknown");
+  });
+});
