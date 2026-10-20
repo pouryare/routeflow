@@ -11,16 +11,17 @@
 - [x] 41 findings listed in `AUDIT-2026-10-20.md`
 - [x] Always-on rule added to `CLAUDE.md`: this report is rewritten after every prompt
 
+- [x] Step 1: fixed build breakers (holidays page moved header into a layout; driver bundle no longer imports the database); `next build` passes
+
 ## Not done / gaps
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Full CRM add-lead flow and tasks-board drag-and-drop not exercised
 - [ ] Stock movements, cheque lifecycle, batches, routing commit, notification delivery tested only by page load and API status
 
 ## Next steps
-1. Fix the two build breakers (holidays page, driver bundle importing the database)
-2. Validate order, payment and commission input (bounds, integers, dates, tenant of salesperson)
-3. Fix the open redirect, the login rate-limit header trust, and driver logout
-4. Fix the `/report` and runs-view crashes, and the platform_owner role checks
-5. Add confirmations to cancel, delete and deactivate actions
-6. Fix contrast and unlabelled controls, update dependencies
-7. Optionally finish the remaining test gaps
+1. Validate order, payment and commission input (bounds, integers, dates, tenant of salesperson)
+2. Fix the open redirect, the login rate-limit header trust, and driver logout
+3. Fix the `/report` and runs-view crashes, and the platform_owner role checks
+4. Add confirmations to cancel, delete and deactivate actions
+5. Fix contrast and unlabelled controls, update dependencies
+6. Optionally finish the remaining test gaps
