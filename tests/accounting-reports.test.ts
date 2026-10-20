@@ -271,3 +271,53 @@ describe("accounting reports", () => {
     expect(R.balanceSheet(1).difference).toBe(0);
   });
 });
+
+describe("journal and ledger paging", () => {
+  const PERIOD = "1405-06";
+  beforeAll(() => {
+    for (let i = 1; i <= 7; i++) sale(1_000 * i, i % 2 ? 400 * i : null, `2026-09-${String(10 + i).padStart(2, "0")}T10:00:00.000Z`);
+  });
+
+  it("journal legs are the same ones a per-journal query returns, in the same order", () => {
+    const db = getDb();
+    const report = R.journalReport(ORG, { limit: 1000 });
+    expect(report.rows.length).toBeGreaterThan(7);
+    for (const row of report.rows) {
+      const expected = db
+        .prepare(
+          `SELECT a.code, a.name_fa AS nameFa, e.side, e.amount_toman AS amountToman
+             FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
+            WHERE e.journal_id = ? ORDER BY a.code`
+        )
+        .all(row.journalId);
+      expect(row.legs, `journal ${row.journalId}`).toEqual(expected);
+    }
+  });
+
+  it("a journal page is a faithful slice of the newest-first list and reports the true total", () => {
+    const all = R.journalReport(ORG, { limit: 1000 });
+    const page = R.journalReport(ORG, { limit: 3, offset: 2 });
+    expect(page.rows.map((r) => r.journalId)).toEqual(all.rows.slice(2, 5).map((r) => r.journalId));
+    expect(page.total).toBe(all.rows.length);
+    expect(all.total).toBe(all.rows.length);
+  });
+
+  it("the total counts past the old 500-row cut-off, and respects the filters", () => {
+    expect(R.journalReport(ORG, { periodKey: PERIOD, limit: 2 }).total).toBe(R.journalReport(ORG, { periodKey: PERIOD, limit: 1000 }).rows.length);
+    expect(R.journalReport(ORG, { sourceType: "NO_SUCH_SOURCE" }).total).toBe(0);
+  });
+
+  it("a ledger page carries the same running balances and the same closing figure", () => {
+    const ar = accountIdByCode("1201")!;
+    const full = R.accountLedger(ORG, ar, { periodKey: PERIOD });
+    expect(full.lines.length).toBeGreaterThanOrEqual(7);
+    const page = R.accountLedger(ORG, ar, { periodKey: PERIOD, limit: 3, offset: 2 });
+    expect(page.lines).toEqual(full.lines.slice(2, 5));
+    expect(page.openingToman).toBe(full.openingToman);
+    expect(page.closingToman).toBe(full.closingToman);
+    expect(page.totalLines).toBe(full.lines.length);
+    // asking without a limit still returns everything (print/export paths)
+    expect(R.accountLedger(ORG, ar, { periodKey: PERIOD }).lines).toEqual(full.lines);
+    expect(full.totalLines).toBe(full.lines.length);
+  });
+});
