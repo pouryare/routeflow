@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ سررسید معتبر نیست" }, { status: 400 });
   }
   if (!taskEntityValid(guard.session.organizationId, b.entity_type ?? null, b.entity_id ?? null)) {
-    return NextResponse.json({ ok: false, error: "پیوند کار به مشتری یا سفارش معتبر نیست" }, { status: 400 });
+    return NextResponse.json({ ok: false, error: "لینک کار به مشتری یا سفارش معتبر نیست" }, { status: 400 });
   }
   // The assignee must be an active person of THIS organisation; a user id from another tenant was accepted.
   if (b.assignee_user_id != null && !assigneeInOrg(guard.session.organizationId, Number(b.assignee_user_id))) {
