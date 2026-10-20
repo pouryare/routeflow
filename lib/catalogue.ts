@@ -10,6 +10,7 @@
  *  month's revenue, silently, which is exactly the thing a spreadsheet cannot avoid.
  */
 
+import { tehranTodayIso } from "@/lib/jalali";
 import type { DatabaseSync } from "node:sqlite";
 import { priceAt, type PriceRow } from "./pricing";
 import { avgCostFor, costRowsFor, effectiveCost } from "./repo/productCosts";
@@ -85,7 +86,7 @@ export function readCatalogue(
   organizationId: number,
   opts: { includeInactive?: boolean; onDate?: string } = {}
 ): CatalogueProduct[] {
-  const onDate = opts.onDate ?? new Date().toISOString().slice(0, 10);
+  const onDate = opts.onDate ?? tehranTodayIso();
 
   const products = db
     .prepare(

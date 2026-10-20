@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faFixed, faNum } from "@/lib/format";
@@ -125,7 +126,7 @@ export default function MarginHelperDrawer({
           packaging_id: selectedPackaging?.id ?? null,
           method: "landed",
           cost_toman: parsed,
-          valid_from: new Date().toISOString().slice(0, 10),
+          valid_from: tehranTodayIso(),
         }),
       });
       const json = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };

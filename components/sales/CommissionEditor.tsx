@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
@@ -107,7 +108,7 @@ export default function CommissionEditor({
     }
   }
 
-  const today = () => new Date().toISOString().slice(0, 10);
+  const today = () => tehranTodayIso();
   const peopleFor = (k: Kind) => (k === "sales" ? sellers : k === "driver" ? drivers : managers);
   const idFieldFor = (k: Kind) => (k === "sales" ? "salesperson_user_id" : k === "driver" ? "driver_user_id" : "manager_user_id");
 

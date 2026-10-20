@@ -1,12 +1,12 @@
 "use client";
 
+import { tehranTodayIso, faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
-import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 
 interface Product {
   id: number;
@@ -60,7 +60,7 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
 
   useRunAfterMount(load);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
 
   async function create(e: React.FormEvent) {
     e.preventDefault();

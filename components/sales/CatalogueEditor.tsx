@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
@@ -82,7 +83,7 @@ export default function CatalogueEditor({
   const [rProduct, setRProduct] = useState("");
   const [rPackaging, setRPackaging] = useState("");
   const [rPrice, setRPrice] = useState("");
-  const [rFrom, setRFrom] = useState(() => new Date().toISOString().slice(0, 10));
+  const [rFrom, setRFrom] = useState(() => tehranTodayIso());
 
   const parsedPrice = toToman(rPrice);
   const packagingsOf = products.find((p) => String(p.id) === rProduct)?.packagings ?? [];

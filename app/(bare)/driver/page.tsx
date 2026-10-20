@@ -1,3 +1,4 @@
+import { tehranTodayIso, faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -7,7 +8,6 @@ import { readRun, readDriverRuns } from "@/lib/delivery";
 import { readTodaysLeadRun } from "@/lib/repo/leadRuns";
 import { driverStatementFor } from "@/lib/driverCommissionLedger";
 import { driverDaySections } from "@/lib/driverDay";
-import { faJalaliLong, faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { faToman, faNum } from "@/lib/format";
 import DriverRun from "@/components/driver/DriverRun";
 import DriverDaySection from "@/components/driver/DriverDaySection";
@@ -70,7 +70,7 @@ export default async function DriverPage() {
 
   const sections = driverDaySections(session.role);
   const db = getDb();
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
 
   /* Deliveries. Falls back to the most recent run rather than showing an empty screen --
      a driver opening this at 00:30 after a late round is finishing yesterday's work, not

@@ -1,12 +1,8 @@
+import { tehranTodayIso } from "@/lib/jalali";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, Reminder, EntityType } from "@/lib/db";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 function enrich(db: ReturnType<typeof getDb>, rows: Reminder[]) {
   const customerIds = rows.filter((r) => r.entity_type === "customer").map((r) => r.entity_id);
@@ -50,7 +46,7 @@ export async function GET(req: NextRequest) {
       .prepare(
         `SELECT r.* FROM reminders r${f.joins} WHERE r.resolved = 0 AND r.due_date <= ?${f.sql} ORDER BY r.due_date`
       )
-      .all(todayStr(), ...f.params) as unknown as Reminder[];
+      .all(tehranTodayIso(), ...f.params) as unknown as Reminder[];
   } else if (due === "week") {
     const weekLater = new Date();
     weekLater.setDate(weekLater.getDate() + 7);

@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { CustomerRow } from "@/lib/types";
@@ -20,11 +21,6 @@ type Prompt =
   | { kind: "customer"; customer: CustomerRow }
   | { kind: "facility_arrive"; facility: FacilityRow }
   | { kind: "lead"; lead: { id: number; name: string; lat: number; lng: number } };
-
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 export default function GeofenceWatcher({
   enabled,
@@ -132,7 +128,7 @@ export default function GeofenceWatcher({
       const res = await fetch("/api/visit-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity_type: "customer", entity_id: customer.id, planned_date: todayStr() }),
+        body: JSON.stringify({ entity_type: "customer", entity_id: customer.id, planned_date: tehranTodayIso() }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -191,7 +187,7 @@ export default function GeofenceWatcher({
       const res = await fetch("/api/visit-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity_type: "lead", entity_id: lead.id, planned_date: todayStr() }),
+        body: JSON.stringify({ entity_type: "lead", entity_id: lead.id, planned_date: tehranTodayIso() }),
       });
       const data = await res.json();
       if (data.ok) {
