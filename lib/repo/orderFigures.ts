@@ -53,25 +53,27 @@ export function refreshOrderFigures(db: DatabaseSync, orderId: number): void {
  *  stored as zero. Safe to run on every boot (a pass that finds nothing to do) and returns how many
  *  orders it filled. */
 export function backfillOrderFigures(db: DatabaseSync): number {
-  const rows = db
-    .prepare(
-      `SELECT ol.order_id AS order_id, ${LINE_COLUMNS.split(", ").map((c) => `ol.${c}`).join(", ")}
-         FROM order_lines ol JOIN orders o ON o.id = ol.order_id
-        WHERE o.kg_total IS NULL OR o.total_toman IS NULL OR o.cost_toman IS NULL
-        ORDER BY ol.order_id, ol.id`
-    )
-    .all() as unknown as (LineSnapshot & { order_id: number })[];
-
-  const byOrder = new Map<number, LineSnapshot[]>();
-  for (const { order_id, ...line } of rows) {
-    const list = byOrder.get(order_id);
-    if (list) list.push(line);
-    else byOrder.set(order_id, [line]);
-  }
-
-  const set = db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?");
-  db.exec("BEGIN");
+  // The write lock is taken BEFORE the read: lines read first and written later could
+  // overwrite a figure a concurrent writer refilled in between with a stale one.
+  db.exec("BEGIN IMMEDIATE");
   try {
+    const rows = db
+      .prepare(
+        `SELECT ol.order_id AS order_id, ${LINE_COLUMNS.split(", ").map((c) => `ol.${c}`).join(", ")}
+           FROM order_lines ol JOIN orders o ON o.id = ol.order_id
+          WHERE o.kg_total IS NULL OR o.total_toman IS NULL OR o.cost_toman IS NULL
+          ORDER BY ol.order_id, ol.id`
+      )
+      .all() as unknown as (LineSnapshot & { order_id: number })[];
+
+    const byOrder = new Map<number, LineSnapshot[]>();
+    for (const { order_id, ...line } of rows) {
+      const list = byOrder.get(order_id);
+      if (list) list.push(line);
+      else byOrder.set(order_id, [line]);
+    }
+
+    const set = db.prepare("UPDATE orders SET kg_total = ?, total_toman = ?, cost_toman = ? WHERE id = ?");
     for (const [orderId, lines] of byOrder) {
       const f = orderFiguresOf(lines);
       set.run(f.kg_total, f.total_toman, f.cost_toman, orderId);
@@ -81,9 +83,9 @@ export function backfillOrderFigures(db: DatabaseSync): number {
       "UPDATE orders SET kg_total = COALESCE(kg_total, 0), total_toman = COALESCE(total_toman, 0), cost_toman = COALESCE(cost_toman, 0) WHERE kg_total IS NULL OR total_toman IS NULL OR cost_toman IS NULL"
     );
     db.exec("COMMIT");
+    return byOrder.size;
   } catch (e) {
     db.exec("ROLLBACK");
     throw e;
   }
-  return byOrder.size;
 }

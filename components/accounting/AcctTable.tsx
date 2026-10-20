@@ -10,14 +10,18 @@ export default function AcctTable({
   head,
   children,
   foot,
+  compact = false,
 }: {
   head: ReactNode[];
   children: ReactNode;
   foot?: ReactNode;
+  /** Few narrow columns (the balance sheet's three side-by-side tables): no minimum width,
+   *  so they do not force sideways scrolling on a desktop grid. */
+  compact?: boolean;
 }) {
   return (
     <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-      <table className="w-full min-w-[40rem] border-collapse text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap">
+      <table className={`w-full ${compact ? "" : "min-w-[40rem]"} border-collapse text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap`}>
         <thead>
           <tr className="border-b border-border bg-surface text-right text-text-muted">
             {head.map((h, i) => (

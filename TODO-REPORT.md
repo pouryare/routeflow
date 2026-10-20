@@ -51,15 +51,15 @@ _Updated 2026-10-20. Details and measurements: `docs/perf/2026-10-20-baseline.md
 - [x] Intermittent test failure investigated: not reproducible in 11 full runs (closed as unexplained)
 - [x] Phone layout: page-header tabs no longer clipped; accounting tables scroll sideways instead of cramping
 - [x] Rep detail page checked on desktop and phone (HTTP 200, no console errors, no overflow)
+- [x] Graphify review on PR #22: backfill now takes the write lock before reading; balance-sheet tables no longer force sideways scroll on desktop
 - [x] Demo seed: delivery now dated to the order's day (was stamped with today → 552-day average lead time)
 
 ## Not done / gaps
 - [ ] `tests/playwrightExtract.test.ts` fails in this container only (Playwright headless-shell binary missing; fails without my changes too)
-- [ ] Seed fix not re-run on the 78k-order heavy DB (dashboard lead time unchecked after reseed)
 - [ ] `/map` ~265 ms and owner dashboard ~2.4 s end to end (line-level scans: product breakdown, cross-sell, fill rate, stock)
 - [ ] Six Graphify "fan-out" comments on merged PR #17 left as is (external bot; coupling metric on composition functions)
 
 ## Next steps
 1. Decide whether the Graphify coupling check should block merges or be tuned (your call)
-2. Re-seed the demo DB and confirm the average delivery time reads a few days
+2. (done) Re-seeded a smoke DB: average delivery time 0 days
 3. Cache line-level aggregates (product breakdown, fill rate) if the 2.4 s dashboard matters
