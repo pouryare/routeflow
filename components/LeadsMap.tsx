@@ -17,6 +17,7 @@ import { faFixed, faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
 import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
+import { guardedOsrmRouter } from "@/lib/guardedRouter";
 
 export interface LeadPoint {
   id: number;
@@ -80,7 +81,9 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
       onSummaryRef.current(null);
       return;
     }
+    const guarded = guardedOsrmRouter(L as unknown as WithRouting);
     const control = (L as unknown as WithRouting).Routing.control({
+      router: guarded.router,
       waypoints: pts.map(([lat, lng]) => L.latLng(lat, lng)),
       routeWhileDragging: false,
       addWaypoints: false,
@@ -101,6 +104,7 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
     control.on("routingerror", () => onSummaryRef.current(null));
     control.addTo(map);
     return () => {
+      guarded.dispose();
       control.remove();
     };
   }, [map, key, pointsRef, onSummaryRef]);

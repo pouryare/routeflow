@@ -58,11 +58,14 @@ export default async function ReportPage({
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
   const f = groupFilter(session);
+  // Districts are the same rows for every organisation and have no organization_id column, so
+  // an owner's tenant guard must not be applied to them (it threw «no such column»).
+  const fd = groupFilter(session, "group_id", { shared: true });
 
   const db = getDb();
   const districts = db
-    .prepare(`SELECT * FROM districts WHERE 1 = 1${f.sql}`)
-    .all(...f.params) as unknown as District[];
+    .prepare(`SELECT * FROM districts WHERE 1 = 1${fd.sql}`)
+    .all(...fd.params) as unknown as District[];
   const customers = db
     .prepare(`SELECT * FROM customers WHERE 1 = 1${f.sql} ORDER BY business_name`)
     .all(...f.params) as unknown as Customer[];

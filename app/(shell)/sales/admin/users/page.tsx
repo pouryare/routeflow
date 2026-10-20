@@ -275,54 +275,54 @@ export default function AdminUsersPage() {
       <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
         <h2 className="sechead__title mb-3">حساب تازه</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام نمایشی<input
             value={form.display_name}
             onChange={(e) => setForm({ ...form, display_name: e.target.value })}
-            placeholder="نام نمایشی" aria-label="نام نمایشی"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
-          <input
+           
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<input
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder="نام کاربری" aria-label="نام کاربری"
+           
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
-          <input
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">رمز عبور<input
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="رمز عبور (حداقل ۸ نویسه)" aria-label="رمز عبور (حداقل ۸ نویسه)"
+            placeholder="حداقل ۸ نویسه"
             type="password"
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
-          <select
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نقش<select
             value={form.role}
             onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABEL[r]}</option>
             ))}
-          </select>
-          <select
+          </select></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">گروه<select
             value={form.group_id}
             onChange={(e) => setForm({ ...form, group_id: e.target.value })}
             disabled={form.role === "owner"}
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent disabled:opacity-40"
+            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent disabled:opacity-40"
           >
             <option value="">{form.role === "owner" ? "بدون گروه (مالک)" : "گروه را انتخاب کنید"}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
-          </select>
-          <input
+          </select></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">شناسه همکار<input
             value={form.staff_code}
             onChange={(e) => setForm({ ...form, staff_code: e.target.value })}
-            placeholder="شناسه همکار" aria-label="شناسه همکار"
+           
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
         </div>
         <button
           type="submit"

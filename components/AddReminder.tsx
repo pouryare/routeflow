@@ -75,12 +75,12 @@ export default function AddReminder({
       ) : (
         <div className="flex flex-col gap-2">
           <JalaliDateInput value={dueDate} onChange={setDueDate} aria-label="تاریخ یادآوری" />
-          <input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">متن یادآوری<input
             value={message}
             onChange={(e) => setMessage(e.target.value)}
-            placeholder="متن یادآوری…" aria-label="متن یادآوری"
-            className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
-          />
+           
+            className="rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
           <div className="flex gap-2">
             <button
               onClick={submit}

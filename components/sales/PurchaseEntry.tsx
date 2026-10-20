@@ -208,14 +208,14 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
           inputMode="decimal"
           placeholder={product ? `تعداد (${product.base_unit})` : "تعداد"}
         />
-        <input
-          aria-label="قیمت واحد"
+        <label className="flex flex-col gap-1 text-xs text-text-muted">قیمت واحد<input
+         
           className={FIELD}
           value={cost}
           onChange={(e) => setCost(e.target.value)}
           inputMode="numeric"
           placeholder="قیمت هر واحد"
-        />
+        /></label>
         <button
           type="button"
           onClick={addLine}

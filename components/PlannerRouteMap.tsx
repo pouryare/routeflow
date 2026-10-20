@@ -16,6 +16,7 @@ import { isPlaced } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
 import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
+import { guardedOsrmRouter } from "@/lib/guardedRouter";
 
 export interface RouteStop {
   lat: number;
@@ -51,7 +52,9 @@ function RoutingLayer({
       onSummaryRef.current(null);
       return;
     }
+    const guarded = guardedOsrmRouter(L as unknown as WithRouting);
     const control = (L as unknown as WithRouting).Routing.control({
+      router: guarded.router,
       waypoints: route.map((s) => L.latLng(s.lat, s.lng)),
       routeWhileDragging: false,
       addWaypoints: false,
@@ -84,6 +87,7 @@ function RoutingLayer({
     control.on("routingerror", () => onSummaryRef.current(null));
     control.addTo(map);
     return () => {
+      guarded.dispose();
       control.remove();
     };
   }, [map, key, stopsRef, onSummaryRef]);

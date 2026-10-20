@@ -488,12 +488,12 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                               <p className="m-0 text-xs text-text-muted">
                                 این کار دریافت را حذف نمی‌کند: یک سند معکوس در دفتر ثبت می‌شود و ردیف اصلی خط‌خورده باقی می‌ماند.
                               </p>
-                              <input
-                                className="rounded border border-border bg-bg p-2 text-sm"
-                                placeholder="دلیل ابطال را بنویسید" aria-label="دلیل ابطال دریافت"
+                              <label className="flex flex-col gap-1 text-xs text-text-muted">دلیل ابطال دریافت<input
+                                className="rounded border border-border bg-bg p-2 text-sm w-full"
+                                placeholder="دلیل ابطال را بنویسید"
                                 value={voiding.reason}
                                 onChange={(e) => setVoiding({ ...voiding, reason: e.target.value })}
-                              />
+                              /></label>
                               <div className="flex flex-wrap gap-2">
                                 <button
                                   type="button"

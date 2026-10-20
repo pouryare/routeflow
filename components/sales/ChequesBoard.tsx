@@ -123,30 +123,30 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             </option>
           ))}
         </select>
-        <input
-          className="rounded border border-border bg-bg p-2 text-left font-mono text-sm"
-          placeholder="مبلغ (تومان)" aria-label="مبلغ (تومان)"
+        <label className="flex flex-col gap-1 text-xs text-text-muted">مبلغ (تومان)<input
+          className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
+         
           inputMode="numeric"
           value={form.amount_toman}
           onChange={(e) => setForm((f) => ({ ...f, amount_toman: e.target.value }))}
-        />
-        <input
-          className="rounded border border-border bg-bg p-2 text-sm"
-          placeholder="شمارهٔ چک" aria-label="شمارهٔ چک"
+        /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک<input
+          className="rounded border border-border bg-bg p-2 text-sm w-full"
+         
           value={form.cheque_no}
           onChange={(e) => setForm((f) => ({ ...f, cheque_no: e.target.value }))}
-        />
-        <input
-          className="rounded border border-border bg-bg p-2 text-sm"
-          placeholder="بانک" aria-label="بانک"
+        /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">بانک<input
+          className="rounded border border-border bg-bg p-2 text-sm w-full"
+         
           value={form.bank_name}
           onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))}
-        />
-        <label className="flex items-center gap-2 text-xs text-text-muted">
+        /></label>
+        <label className="col-span-2 flex items-center gap-2 text-xs text-text-muted md:col-span-1">
           سررسید
           <JalaliDateInput value={form.due_date} onChange={(iso) => setForm((f) => ({ ...f, due_date: iso }))} aria-label="تاریخ سررسید" />
         </label>
-        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="col-span-2 inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white md:col-span-1">
           <Icon name="check" size="md" />
           ثبت چک
         </button>
@@ -185,12 +185,12 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                   </div>
                   {replacing?.id === c.id && (
                     <div className="mt-2 flex flex-col gap-2 rounded border border-border p-2">
-                      <input
-                        className="rounded border border-border bg-bg p-2 text-left font-mono text-sm"
-                        placeholder="شمارهٔ چک جایگزین" aria-label="شمارهٔ چک جایگزین"
+                      <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک جایگزین<input
+                        className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
+                       
                         value={replacing.cheque_no}
                         onChange={(e) => setReplacing({ ...replacing, cheque_no: e.target.value })}
-                      />
+                      /></label>
                       <label className="flex items-center gap-1 text-xs text-text-muted">
                         سررسید چک جایگزین
                         <JalaliDateInput

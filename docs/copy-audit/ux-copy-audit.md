@@ -37,9 +37,15 @@ approve them before they ship.
 
 **Decision recorded — مکان vs موقعیت.** Both stay, with fixed meanings: **مکان** is a place the business keeps a record of (a customer, lead or depot, as in «مکان‌های ما»); **موقعیت** is a position on the map (a GPS fix or a pin: «موقعیت من», «ثبت موقعیت»). Neither is renamed.
 
+**Also fixed**
+- Visible labels on every data-entry field that only had a placeholder (users, groups, places, login, reminders, quick-add, purchases, cheques, complaints, batches, payment void). Search boxes keep their placeholder, and tap-flow fields are labelled by the question above them.
+- The next-stop bar's dismiss button now reads «پنهان کردن نوار», and the bar wraps on phones.
+- `/report` threw «no such column: organization_id» for every owner: it applied the tenant filter to `districts`, which is shared reference data with no such column. Regression test added in `tests/tenancy-scoping.test.ts`.
+- The planner and leads maps logged «Cannot read properties of null (reading 'removeLayer')»: a routing answer arriving after the control was removed. Late answers are now ignored (`lib/guardedRouter.ts`).
+- Cheques form: the date field overlapped the submit button on phones.
+
 **Open**
-- Placeholder-only inputs have accessible names but no visible labels; adding them changes layouts and needs a design pass.
-- The next-stop bar's own dismiss button (hide the bar) is still an icon with an accessible name only.
+- The geometry smoke suite (`tests/smoke/geometry.test.ts`) did not finish in this environment, so it is unconfirmed here.
 - Flagged rows in `catalogue-wide.md` are review candidates, not all defects (e.g. file names ending in `.csv`, search keywords).
 
 ---

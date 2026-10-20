@@ -85,25 +85,25 @@ function LoginForm() {
           )}
 
           <form onSubmit={onSubmit}>
-            <input
+            <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<input
               type="text"
               autoFocus
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="نام کاربری" aria-label="نام کاربری"
+             
               dir="rtl"
               className="mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
-            />
-            <input
+            /></label>
+            <label className="flex flex-col gap-1 text-xs text-text-muted">رمز عبور<input
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="رمز عبور" aria-label="رمز عبور"
+             
               dir="rtl"
               className="mb-[var(--space-4)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
-            />
+            /></label>
             {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
             <button
               type="submit"

@@ -114,12 +114,12 @@ export default function AdminGroupsPage() {
       <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
         <h2 className="sechead__title mb-3">گروه تازه</h2>
         <div className="flex flex-wrap items-center gap-2">
-          <input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام گروه<input
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="نام گروه" aria-label="نام گروه"
-            className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
+           
+            className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
           {/* Fixed palette, not a colour picker: these tints share the map with the
               coverage-status colours, and a free-form choice could land on the exact red
               that already means "not allowed" there. */}
