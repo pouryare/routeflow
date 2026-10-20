@@ -5,7 +5,9 @@ import { deleteRun, DeliveryError } from "@/lib/delivery";
 import { readDeletableRun } from "@/lib/repo/deliveries";
 import { MANAGE_ROLES } from "@/lib/roles";
 
-const NOT_FOUND = NextResponse.json({ ok: false, error: "پیدا نشد" }, { status: 404 });
+/* A function, not a module-level response: a Response body can be read once, so the second request
+   to reach this answer got an empty body. */
+const notFound = () => NextResponse.json({ ok: false, error: "پیدا نشد" }, { status: 404 });
 
 /** Removes an open route.
  *
@@ -28,7 +30,7 @@ export async function DELETE(req: NextRequest, ctx: { params: Promise<{ id: stri
      test asserts raw SQL appears only under lib/repo/, and that test has a second case proving
      the grandfather allowlist may only shrink — so moving the query is the fix, never the list. */
   const run = readDeletableRun(db, guard.session.organizationId, runId);
-  if (!run || !canReachGroup(guard.session, run.group_id)) return NOT_FOUND;
+  if (!run || !canReachGroup(guard.session, run.group_id)) return notFound();
 
   try {
     const { releasedOrderIds } = deleteRun(db, runId);

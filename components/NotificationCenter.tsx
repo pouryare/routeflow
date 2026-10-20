@@ -76,13 +76,13 @@ export default function NotificationCenter({ onUnread }: { onUnread: (n: number)
 
   if (loading)
     return (
-      <p className="p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+      <p className="w-[min(92vw,22rem)] p-[var(--space-3)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
         در حال بارگذاری…
       </p>
     );
   if (groups.length === 0)
     return (
-      <p className="p-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
+      <p className="w-[min(92vw,22rem)] p-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
         اعلان تازه‌ای ندارید.
       </p>
     );

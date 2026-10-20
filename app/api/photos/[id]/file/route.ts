@@ -8,7 +8,7 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // The image bytes themselves, so this needs the same check as the metadata route --
 // otherwise another group's photo is one guessed id away.
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/file">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

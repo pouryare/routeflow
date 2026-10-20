@@ -72,8 +72,9 @@ function enrich(db: ReturnType<typeof getDb>, plans: VisitPlan[]): PlanWithLabel
 }
 
 // visit_plans is option 2: a stop is *at* a customer, district or facility.
+// Reading is scoped by entityGroupFilter below, so the map's salesperson may read; writes stay with managers.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "v");
 
