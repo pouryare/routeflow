@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { listTasks, createTask, assigneeInOrg, TaskError } from "@/lib/repo/tasks";
+import { listTasks, createTask, assigneeInOrg, taskEntityValid, TaskError } from "@/lib/repo/tasks";
 import { TASK_KINDS } from "@/lib/tasks/labels";
 import { boundedText, isTimestampWithin } from "@/lib/inputChecks";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -43,6 +43,9 @@ export async function POST(req: NextRequest) {
   if (!title) return NextResponse.json({ ok: false, error: "عنوان باید ۱ تا ۲۰۰ نویسه باشد" }, { status: 400 });
   if (b.due_at != null && !isTimestampWithin(b.due_at, 366, 5 * 366)) {
     return NextResponse.json({ ok: false, error: "تاریخ سررسید معتبر نیست" }, { status: 400 });
+  }
+  if (!taskEntityValid(guard.session.organizationId, b.entity_type ?? null, b.entity_id ?? null)) {
+    return NextResponse.json({ ok: false, error: "پیوند کار به مشتری یا سفارش معتبر نیست" }, { status: 400 });
   }
   // The assignee must be an active person of THIS organisation; a user id from another tenant was accepted.
   if (b.assignee_user_id != null && !assigneeInOrg(guard.session.organizationId, Number(b.assignee_user_id))) {
