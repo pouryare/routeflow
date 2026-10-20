@@ -62,9 +62,6 @@ export default async function ReportPage({
   // load for every owner); customers carry the column and keep the full guard.
   const fd = groupFilter(session, "group_id", { shared: true });
   const f = groupFilter(session);
-  // Districts are the same rows for every organisation and have no organization_id column, so
-  // an owner's tenant guard must not be applied to them (it threw «no such column»).
-  const fd = groupFilter(session, "group_id", { shared: true });
 
   const db = getDb();
   const districts = db
