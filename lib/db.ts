@@ -2002,6 +2002,10 @@ export function getDb(): DatabaseSync {
        lives inside the posting transaction. */
     CREATE UNIQUE INDEX IF NOT EXISTS ux_journals_org_seq ON journals(organization_id, seq);
     CREATE INDEX IF NOT EXISTS ix_journals_org_period ON journals(organization_id, period_key, id);
+    /* "Is this payment/sale already posted?" is asked before every posting and, at every boot, for
+       every payment by the backfill. Without this each ask scanned the whole journal table, which
+       made startup and every write grow with the size of the ledger. */
+    CREATE INDEX IF NOT EXISTS ix_journals_source ON journals(source_type, source_id);
 
     CREATE TABLE IF NOT EXISTS ledger_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2678,6 +2682,7 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, product_id, batch_code)
     );
     CREATE INDEX IF NOT EXISTS ix_batches_product ON batches(organization_id, product_id, expiry_date);
+    CREATE INDEX IF NOT EXISTS ix_batches_purchase_line ON batches(purchase_line_id);
 
     /* Signed, append-only stock ledger. On-hand is SUM(base_qty) over this table --
        still derived, never a stored counter, but now per batch and per facility. A
@@ -2704,6 +2709,8 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS ix_stock_mv ON stock_movements
       (organization_id, product_id, batch_id, facility_id, occurred_at);
+    /* Boot backfills ask "has this order line / purchase line already moved stock?" for every row. */
+    CREATE INDEX IF NOT EXISTS ix_stock_ref ON stock_movements(ref_type, ref_id, kind);
 
     /* Phase 3: a confirmed order CLAIMS stock without moving it. on_hand stays
        SUM(stock_movements.base_qty); "available to promise" is on_hand minus the sum of
@@ -2739,6 +2746,7 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_dlb_batch ON delivery_line_batches(batch_id);
+    CREATE INDEX IF NOT EXISTS ix_dlb_line ON delivery_line_batches(order_line_id);
     CREATE INDEX IF NOT EXISTS ix_dlb_stop ON delivery_line_batches(delivery_stop_id);
 
     /* A quality complaint tied to a customer, order, product and batch. Clustering on a

@@ -33,4 +33,38 @@ describe("hot reads use an index", () => {
     );
     expect(p.filter((l) => /SCAN a\b/.test(l)), p.join("\n")).toEqual([]);
   });
+
+  it("journals are found by their source, not by scanning the ledger", () => {
+    const one = plan("SELECT id FROM journals WHERE source_type = 'PAYMENT' AND source_id = ? ORDER BY id LIMIT 1", 1);
+    expect(one.join("\n")).not.toMatch(/SCAN\b/);
+    const sale = plan(
+      "SELECT id FROM journals WHERE organization_id = ? AND source_type = 'SALE' AND source_id = ? LIMIT 1",
+      1,
+      1
+    );
+    expect(sale.join("\n")).toMatch(/ix_journals_source/);
+  });
+
+  it("the startup backfill for unposted payments does not scan journals once per payment", () => {
+    const p = plan(
+      `SELECT p.id FROM payments p
+        WHERE p.voided_at IS NULL
+          AND NOT EXISTS (SELECT 1 FROM journals j WHERE j.source_type = 'PAYMENT' AND j.source_id = p.id)`
+    );
+    expect(p.filter((l) => /SCAN j\b|SCAN journals/.test(l)), p.join("\n")).toEqual([]);
+  });
+
+  it("the stock backfills look up their anti-join rows by index", () => {
+    const delivered = plan(
+      `SELECT ol.id FROM order_lines ol
+        WHERE NOT EXISTS (SELECT 1 FROM delivery_line_batches d WHERE d.order_line_id = ol.id)
+          AND NOT EXISTS (SELECT 1 FROM stock_movements m
+                           WHERE m.ref_type = 'order_line' AND m.ref_id = ol.id AND m.kind = 'DELIVERY_OUT')`
+    );
+    expect(delivered.filter((l) => /SCAN (d|m)\b|SCAN (delivery_line_batches|stock_movements)/.test(l)), delivered.join("\n")).toEqual([]);
+    const batches = plan(
+      "SELECT pl.id FROM purchase_lines pl WHERE NOT EXISTS (SELECT 1 FROM batches b WHERE b.purchase_line_id = pl.id)"
+    );
+    expect(batches.filter((l) => /SCAN (b|batches)\b/.test(l)), batches.join("\n")).toEqual([]);
+  });
 });
