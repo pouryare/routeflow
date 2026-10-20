@@ -174,7 +174,7 @@ git commit -m "feat(tapflow): generic put/items and amount/pick/stepper step kin
 - Create: `components/tapflow/AmountStep.tsx`, `PickStep.tsx`, `StepperStep.tsx`
 - Modify: `components/tapflow/TapFlow.tsx` (the `StepBody` dispatch, near line 160 where `view.kind === "choice"` is handled), `app/globals.css`
 
-Answer convention (so `checkFlow` and `replayAnswers` keep working): every body calls `submit(optionId, value)` with a string. `amount` → digits only; `pick` → the chosen choice id; `stepper` → `JSON.stringify({ [itemId]: n })`.
+Answer convention (so `checkFlow` and `replayAnswers` keep working): every body calls `submit(optionId, value)` with a string. `amount` → digits only, **prefilled from `ctx.vars[input.field]` and stored in `state.values[input.field]`** (the step id when there is no `input`); `pick` → the chosen choice id; `stepper` → `JSON.stringify({ [itemId]: n })`.
 
 - [ ] **Step 1: `AmountStep.tsx`**
 ```tsx
@@ -416,7 +416,7 @@ const ctx: FlowContext = {
 
 describe("delivery flow", () => {
   it("meets its tap budget with no dead ends", () => {
-    assertFlowBudget(deliveryFlow, [{ ctx, values: { amount: "500000" } }]);
+    assertFlowBudget(deliveryFlow, [{ ctx, values: { collected_amount: "500000" } }]);
     assertNoRawEnumLabels(deliveryFlow);
   });
   it("all delivered + full cash = the 2-tap path", () => {
@@ -435,7 +435,7 @@ describe("delivery flow", () => {
     st = answerStep(deliveryFlow, ctx, st, "ok", JSON.stringify({ 11: 10, 12: 4 }));
     st = answerStep(deliveryFlow, ctx, st, "stock");
     st = answerStep(deliveryFlow, ctx, st, "other");
-    st = answerStep(deliveryFlow, ctx, st, "ok", "500000");
+    st = answerStep(deliveryFlow, ctx, st, "ok", "500000"); // stored under values.collected_amount
     expect(deliveryPayload(ctx, st)).toEqual({
       lines: [{ line_id: 11, packs_delivered: 10 }, { line_id: 12, packs_delivered: 4 }],
       collected_toman: 500000, notes: "موجودی کم بود",
@@ -487,7 +487,7 @@ export const deliveryFlow: FlowConfig = {
       ],
     },
     amount: {
-      id: "amount", kind: "amount", q: "چقدر گرفتید؟", input: { field: "total_toman", placeholder: "مبلغ به تومان", ltr: true },
+      id: "amount", kind: "amount", q: "چقدر گرفتید؟", input: { field: "collected_amount", placeholder: "مبلغ به تومان", ltr: true },
       options: [{ id: "ok", label: "ثبت", tone: "rec", save: true }],
     },
   },
@@ -503,7 +503,7 @@ export function deliveryPayload(ctx: FlowContext, st: FlowState) {
   }));
   const total = Number(ctx.vars.total_toman ?? 0);
   const collected =
-    st.values.amount !== undefined ? Number(st.values.amount)
+    st.values.collected_amount !== undefined ? Number(st.values.collected_amount)
     : st.values.collected === "total" ? total
     : Number(st.values.collected ?? 0);
   return { lines, collected_toman: collected, notes: st.values.reason ?? null };

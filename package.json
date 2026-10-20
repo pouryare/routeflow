@@ -15,7 +15,9 @@
     "seed:demo": "node --experimental-strip-types --no-warnings --import ./scripts/_ts-register.mjs scripts/seed-demo.ts",
     "seed:demo:reset": "npm run seed:demo -- --force",
     "dev:demo": "ROUTEFLOW_DB_PATH=./data/routeflow.demo.db next dev",
-    "test:demo": "vitest run tests/seed-demo-deep.test.ts"
+    "test:demo": "vitest run tests/seed-demo-deep.test.ts",
+    "audit:mobile": "node scripts/mobile-audit.mjs",
+    "check:mobile": "node scripts/mobile-audit.mjs --check"
   },
   "dependencies": {
     "@maplibre/maplibre-gl-leaflet": "^0.1.4",
