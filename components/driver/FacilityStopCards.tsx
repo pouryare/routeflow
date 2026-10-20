@@ -65,7 +65,6 @@ function FacilityCard({
 }) {
   const done = stop.status === "done";
   const placed = stop.lat !== null && stop.lng !== null;
-  const interactive = stop.role === "unload" && !done && onOpenUnload;
 
   return (
     <div

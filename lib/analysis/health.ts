@@ -1,3 +1,4 @@
+import { clamp } from "@/lib/math";
 /** Health composites — a pure module, no `db` import.
  *
  *  Source §6 Tier 3: Customer Health Score, Salesperson Score, Driver Score. Each is a
@@ -19,13 +20,13 @@ export function band(score: number): Band {
   return "risk";
 }
 
-const clamp = (n: number, lo = 0, hi = 100): number => Math.max(lo, Math.min(hi, n));
+const clampScore = (n: number): number => clamp(n, 0, 100);
 
 /** Linear map: `x` at or below `x0` → 0, at or above `x1` → 100, between → proportional.
  *  `x1 < x0` inverts it (more `x` is worse). */
 function ramp(x: number, x0: number, x1: number): number {
   if (x1 === x0) return x >= x1 ? 100 : 0;
-  return clamp(((x - x0) / (x1 - x0)) * 100);
+  return clampScore(((x - x0) / (x1 - x0)) * 100);
 }
 
 /** Order-trend factor: below 0.5× → 0, 1.0× → 50, at/above 1.1× → 100, linear between. */
@@ -102,7 +103,7 @@ export function customerHealth(i: CustomerHealthInput): { score: number; band: B
   const payment = i.overdue_toman <= 0 ? 100 : ramp(i.overdue_toman, limit, 0);
 
   // complaints: −25 each
-  const complaints = clamp(100 - i.complaints_90d * 25);
+  const complaints = clampScore(100 - i.complaints_90d * 25);
 
   // margin: 0% → 0, ≥25% → 100
   const margin = ramp(i.margin_pct, 0, 0.25);
@@ -137,7 +138,7 @@ export function salespersonScore(i: SalespersonScoreInput): { score: number; ban
     i.assigned_customers > 0 ? ramp(i.active_customers / i.assigned_customers, 0, 0.8) : 50;
   const sample = ramp(i.sample_conversion, 0, 0.35);
   const overdue = ramp(i.overdue_ratio, 0.4, 0); // inverted: 0 → 100, ≥0.4 → 0
-  const tasks = clamp(i.on_time_task_ratio * 100);
+  const tasks = clampScore(i.on_time_task_ratio * 100);
 
   return combine([
     { score: target, weight: 0.35, reason: "از هدف فروش ماه عقب است" },
@@ -162,8 +163,8 @@ export interface DriverScoreInput {
 }
 
 export function driverScore(i: DriverScoreInput): { score: number; band: Band; reasons: string[] } {
-  const onTime = clamp(i.on_time_delivery * 100);
-  const fill = clamp(i.fill_rate * 100);
+  const onTime = clampScore(i.on_time_delivery * 100);
+  const fill = clampScore(i.fill_rate * 100);
   const failed = ramp(i.failed_ratio, 0.15, 0); // inverted
   const pace = i.stops_per_hour === null ? 0 : ramp(i.stops_per_hour, 1, 4);
 

@@ -22,8 +22,8 @@ interface PoolViewGridProps {
 }
 
 export default function PoolViewGrid({
-  items, navAppId, run, selectedMapId, onSelect, onToggleRun, onPin,
-  onTogglePriority, onAddToPlan, onNotesChange, onNameChange, sortAnchor, sortMode, priorityHigh,
+  items, navAppId, onSelect, onToggleRun, onPin,
+  onTogglePriority, onAddToPlan, onNotesChange, onNameChange, priorityHigh,
 }: PoolViewGridProps) {
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">

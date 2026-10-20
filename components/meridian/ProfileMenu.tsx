@@ -1,5 +1,6 @@
 "use client";
 
+import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
 import SyncRow from "@/components/meridian/SyncRow";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -51,21 +52,8 @@ export default function ProfileMenu({
 
   useEffect(() => cancelClose, [cancelClose]);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const dismiss = useCallback(() => setOpen(false), []);
+  useDismissOnOutside(open, dismiss, root);
 
   return (
     <div

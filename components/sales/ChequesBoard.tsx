@@ -1,12 +1,12 @@
 "use client";
 
+import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
-import { faJalaliDate } from "@/lib/jalali";
 
 interface Customer {
   id: number;
@@ -34,8 +34,8 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     amount_toman: "",
     cheque_no: "",
     bank_name: "",
-    due_date: new Date().toISOString().slice(0, 10),
-    received_at: new Date().toISOString().slice(0, 10),
+    due_date: tehranTodayIso(),
+    received_at: tehranTodayIso(),
   });
 
   const customerName = useMemo(() => {
@@ -51,7 +51,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
 
   useRunAfterMount(load);
 
-  const today = new Date().toISOString().slice(0, 10);
+  const today = tehranTodayIso();
 
   async function record(e: React.FormEvent) {
     e.preventDefault();

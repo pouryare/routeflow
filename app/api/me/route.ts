@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getDb, type UserRow } from "@/lib/db";
 import { getSessionFromCookies } from "@/lib/session";
 import { isVanRole } from "@/lib/roles";
 

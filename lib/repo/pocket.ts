@@ -3,6 +3,7 @@ import { canReachUser, scopeGroupIds, type Session } from "@/lib/session";
 import { bucket } from "@/lib/tasks/lenses";
 import {
   rowToCard,
+  compareTaskCards,
   TASK_CARD_SELECT,
   TASK_CARD_JOINS,
   type TaskCard,
@@ -25,8 +26,6 @@ export interface Pocket {
   week: TaskCard[];
   done: TaskCard[];
 }
-
-const PRIO_RANK: Record<string, number> = { CRITICAL: 0, HIGH: 1, NORMAL: 2, LOW: 3 };
 
 /** The personal task view. A member sees their own; a manager may pass `scopeUserId` to
  *  see a report's (only if `canReachUser`). */
@@ -75,13 +74,7 @@ export function pocketFor(
     )
     .all(org, target, ...held, u?.group_id ?? -1) as unknown as TaskCardRow[];
 
-  const cards = rows
-    .map(rowToCard)
-    .sort(
-      (a, b) =>
-        (PRIO_RANK[a.priority] ?? 2) - (PRIO_RANK[b.priority] ?? 2) ||
-        (a.due_at ?? "9999").localeCompare(b.due_at ?? "9999")
-    );
+  const cards = rows.map(rowToCard).sort(compareTaskCards);
 
   const done = cards.filter((c) => c.status === "done");
   const active = cards.filter((c) => c.status !== "done");
@@ -145,7 +138,7 @@ export function pocketTeam(session: Session): PocketTeamMember[] {
   let where =
     "u.organization_id = ? AND u.active = 1 AND EXISTS (" +
     "SELECT 1 FROM user_roles ur WHERE ur.user_id = u.id AND ur.role IN (" +
-    roles.map(() => "?").join(", ") + "))";
+    roleIn + "))";
   const params: unknown[] = [session.organizationId, ...roles];
 
   if (session.role === "group_manager" || session.role === "rep_manager") {

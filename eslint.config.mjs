@@ -17,6 +17,11 @@ const eslintConfig = defineConfig([
        12,264 problems `npm run lint` used to report came from, and why the command was
        not worth running. A separate checkout lints on its own terms. */
     ".claude/**",
+    /* Assistant-workflow tooling (brainstorming server, graph renderer): standalone CommonJS
+       scripts that are not part of the app and are never bundled, so the app's ESM/TypeScript
+       rules do not describe them. Ignored by directory, like `.claude/**`, not file by file. */
+    ".zoocode/**",
+    ".zoocodeules/**",
   ]),
   {
     /* `@next/next/no-img-element` wants every image routed through the optimiser. Avatar

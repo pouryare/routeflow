@@ -11,6 +11,7 @@ import {
 } from "@/lib/repo/leadRuns";
 import { isVanRole } from "@/lib/roles";
 import { MANAGE_ROLES } from "@/lib/roles";
+import { tehranTodayIso } from "@/lib/jalali";
 
 /** A driver's day, or a manager's roster of them.
  *
@@ -22,8 +23,6 @@ import { MANAGE_ROLES } from "@/lib/roles";
  *  and builds its stops the same way, so there is no null-prototype value left to trip React
  *  on. It is only needed where a whole array of raw rows goes out, which is the roster below. */
 
-const todayIso = () => new Date().toISOString().slice(0, 10);
-
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...MANAGE_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
@@ -32,7 +31,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
 
   if (isVanRole(session.role)) {
-    const run = readTodaysLeadRun(db, session.user.id, session.organizationId, todayIso());
+    const run = readTodaysLeadRun(db, session.user.id, session.organizationId, tehranTodayIso());
     return NextResponse.json({ ok: true, run });
   }
 

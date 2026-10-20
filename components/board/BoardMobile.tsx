@@ -1,8 +1,9 @@
 "use client";
 
+import { useEscapeKey } from "@/lib/useEscapeKey";
 import { Icon } from "@/components/meridian/Icon";
 import { taskKindLabel } from "@/lib/tasks/labels";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { faNum } from "@/lib/format";
 import type { BoardLane } from "@/lib/repo/board";
 import type { TaskCard } from "@/lib/repo/taskCard";
@@ -230,13 +231,7 @@ function MoveSheet({
   onPick: (toLane: string) => void;
   onClose: () => void;
 }) {
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <div

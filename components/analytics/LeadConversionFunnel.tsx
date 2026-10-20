@@ -1,6 +1,8 @@
 "use client";
 
-export default function LeadConversionFunnel({ locations }: { locations: any[] }) {
+import type { SavedLocationRow } from "@/lib/db";
+
+export default function LeadConversionFunnel({ locations }: { locations: SavedLocationRow[] }) {
   const total = locations.length || 1;
   const stages = [
     { label: "کل مکان‌ها", count: locations.length, color: "bg-accent" },
@@ -13,7 +15,7 @@ export default function LeadConversionFunnel({ locations }: { locations: any[] }
     <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">
       <h2 className="sechead__title mb-3">مسیر تبدیل</h2>
       <div className="flex flex-col gap-2">
-        {stages.map((stage, i) => (
+        {stages.map((stage) => (
           <div key={stage.label} className="flex items-center gap-2">
             <span className="text-[length:var(--text-sm)] text-text flex-1">{stage.label}</span>
             <div className="w-40 overflow-hidden rounded bg-border h-6 relative">

@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
+import { useCallback, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Icon } from "@/components/meridian/Icon";
 import { popover, withReducedMotion } from "@/lib/motion";
@@ -20,21 +21,8 @@ export function CardHelp({ id, className }: { id: string; className?: string }) 
   const reduced = usePrefersReducedMotion();
   const entry = getHelp(id);
 
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const dismiss = useCallback(() => setOpen(false), []);
+  useDismissOnOutside(open, dismiss, root);
 
   return (
     <span ref={root} className={`mhelp${className ? ` ${className}` : ""}`}>

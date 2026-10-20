@@ -44,6 +44,22 @@ export function isApproximate(fn: DistanceFn): boolean {
   return fn === straightLine;
 }
 
+/** Length of a day under `fn`: origin -> each stop in order -> optionally back to the origin.
+ *  The one place a tour is summed, so the optimiser and whatever displays its result can
+ *  never disagree about what a route "costs". */
+export function routeLength(
+  fn: DistanceFn,
+  origin: LatLng,
+  stops: readonly LatLng[],
+  returnToOrigin: boolean
+): number {
+  if (stops.length === 0) return 0;
+  let total = fn(origin, stops[0]);
+  for (let i = 1; i < stops.length; i++) total += fn(stops[i - 1], stops[i]);
+  if (returnToOrigin) total += fn(stops[stops.length - 1], origin);
+  return total;
+}
+
 /** Build a DistanceFn from an OSRM table, in the ONE shape the app has: the table plus the
  *  points it was fetched for, in the same order.
  *

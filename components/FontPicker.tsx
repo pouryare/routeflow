@@ -13,7 +13,8 @@
  *  `--font-ui` by app/globals.css under `:root[data-font="<id>"]`.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   FONT_CHANGE_EVENT,
   applyFont,
@@ -58,22 +59,8 @@ export default function FontPicker({
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
-  // A popover that cannot be dismissed by looking away is a popover that is in the way.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const dismiss = useCallback(() => setOpen(false), []);
+  useDismissOnOutside(open, dismiss, root);
 
   const current = FONT_CHOICES.find((f) => f.id === font) ?? FONT_CHOICES[0];
 

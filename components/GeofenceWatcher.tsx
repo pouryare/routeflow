@@ -1,5 +1,7 @@
 "use client";
 
+import { useLatest } from "@/lib/useLatest";
+import { tehranTodayIso } from "@/lib/jalali";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { CustomerRow } from "@/lib/types";
@@ -21,11 +23,6 @@ type Prompt =
   | { kind: "facility_arrive"; facility: FacilityRow }
   | { kind: "lead"; lead: { id: number; name: string; lat: number; lng: number } };
 
-function todayStr(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
 export default function GeofenceWatcher({
   enabled,
   facilitiesEnabled = false,
@@ -42,6 +39,7 @@ export default function GeofenceWatcher({
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const promptRef = useLatest(prompt);
   const snoozedRef = useRef(new Map<string, number>());
   /* The "latest value" refs: the watch effect below re-subscribes only on
      [enabled, position], and reads these to see the current lists without tearing the
@@ -101,7 +99,8 @@ export default function GeofenceWatcher({
     if (match) setPrompt((prev) => prev ?? { kind: "customer", customer: match.c });
 
     // Lead proximity check: notify when near a lead location.
-    if (!prompt || prompt.kind !== "lead") {
+    const shown = promptRef.current;
+    if (!shown || shown.kind !== "lead") {
       const leadMatch = leadsRef.current
         .filter((l) => l.lat !== null && l.lng !== null)
         .map((l) => ({ l, km: distanceKm(here, { lat: l.lat, lng: l.lng }) }))
@@ -113,7 +112,7 @@ export default function GeofenceWatcher({
     }
     // Runs per fix. The lists are read through refs so a customer refresh does not
     // re-evaluate the geofence against a position that has not changed.
-  }, [enabled, position]);
+  }, [enabled, position, promptRef]);
 
   function promptKey(p: Prompt): string {
     return p.kind === "customer" ? `customer:${p.customer.id}` : p.kind === "facility_arrive" ? `facility:${p.facility.id}` : `lead:${p.lead.id}`;
@@ -132,7 +131,7 @@ export default function GeofenceWatcher({
       const res = await fetch("/api/visit-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity_type: "customer", entity_id: customer.id, planned_date: todayStr() }),
+        body: JSON.stringify({ entity_type: "customer", entity_id: customer.id, planned_date: tehranTodayIso() }),
       });
       const data = await res.json();
       if (data.ok) {
@@ -191,7 +190,7 @@ export default function GeofenceWatcher({
       const res = await fetch("/api/visit-plans", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ entity_type: "lead", entity_id: lead.id, planned_date: todayStr() }),
+        body: JSON.stringify({ entity_type: "lead", entity_id: lead.id, planned_date: tehranTodayIso() }),
       });
       const data = await res.json();
       if (data.ok) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEscapeKey } from "@/lib/useEscapeKey";
 import { usePathname } from "next/navigation";
 import { Icon } from "@/components/meridian/Icon";
 import { helpRows, type Binding } from "@/lib/hotkeys";
@@ -41,13 +41,7 @@ export default function ShortcutHelp({
   bindings?: Binding[];
 }) {
   const pathname = usePathname() ?? "/";
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
+  useEscapeKey(onClose);
 
   return (
     <div

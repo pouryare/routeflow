@@ -10,6 +10,7 @@
  *  (every lunar one) actually disappears, which is the behaviour Task 2's tests pin. */
 
 import { getDb } from "@/lib/db";
+import { isRealIsoDate } from "@/lib/isoDate";
 import { holidaysForJalaliMonth, type Holiday } from "@/lib/holidays";
 import { jalaliMonthLength, jalaliToIsoDate } from "@/lib/jalali";
 
@@ -84,12 +85,7 @@ export function hasArabicScript(s: string): boolean {
   return /[\u0649\u0643\u064A\u0629\u064B-\u0652\uFE70-\uFEFF]/u.test(s);
 }
 
-/** A real calendar date, not merely a well-shaped string: 2026-02-30 is rejected too. */
-export function isRealIsoDate(s: unknown): s is string {
-  if (typeof s !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
-  const d = new Date(`${s}T00:00:00Z`);
-  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s;
-}
+export { isRealIsoDate };
 
 function storedInMonth(jy: number, jm: number): Map<string, StoredHoliday> {
   const from = jalaliToIsoDate(jy, jm, 1).slice(0, 10);

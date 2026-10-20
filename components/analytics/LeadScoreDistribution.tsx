@@ -1,8 +1,9 @@
 "use client";
 
+import type { SavedLocationRow } from "@/lib/db";
 import { averageScore } from "@/lib/leadScore";
 
-export default function LeadScoreDistribution({ locations }: { locations: any[] }) {
+export default function LeadScoreDistribution({ locations }: { locations: SavedLocationRow[] }) {
   const buckets = [
     { label: "۰–۱", min: 0, max: 1 },
     { label: "۱–۲", min: 1, max: 2 },

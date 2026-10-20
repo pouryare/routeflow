@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEscapeKey } from "@/lib/useEscapeKey";
+import { useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useSwipeDismiss } from "@/components/useSwipeDismiss";
@@ -44,12 +45,7 @@ export default function TapFlow(p: TapFlowProps) {
   const sheet = useRef<HTMLDivElement>(null);
   const { open, onClose } = p;
   useSwipeDismiss(sheet, "down", onClose, open);
-  useEffect(() => {
-    if (!open) return;
-    const k = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
-    window.addEventListener("keydown", k);
-    return () => window.removeEventListener("keydown", k);
-  }, [open, onClose]);
+  useEscapeKey(onClose, open);
 
   const view = p.state.saved ? null : viewStep(p.config, p.ctx, p.state);
   // A flow with a mis-set budget should still render one mark rather than none.

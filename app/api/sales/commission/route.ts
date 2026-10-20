@@ -1,3 +1,4 @@
+import { tehranTodayIso } from "@/lib/jalali";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
@@ -25,7 +26,7 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url);
   const period = {
     from: url.searchParams.get("from") ?? `${new Date().getFullYear()}-01-01`,
-    to: url.searchParams.get("to") ?? new Date().toISOString().slice(0, 10),
+    to: url.searchParams.get("to") ?? tehranTodayIso(),
   };
 
   const db = getDb();

@@ -5,9 +5,7 @@ export function isOneOf<T extends string>(list: readonly T[], v: unknown): v is 
   return typeof v === "string" && (list as readonly string[]).includes(v);
 }
 
-export function faDigits(s: string): string {
-  return s.replace(/\d/g, (d) => "۰۱۲۳۴۵۶۷۸۹"[Number(d)]);
-}
+export { faDigits } from "@/lib/format";
 
 export const BUSINESS_TYPES = [
   "KEBAB", "IRANIAN", "FAST_FOOD", "CAFE", "CONFECTIONERY", "BAKERY", "CATERING", "HOTEL", "CHAIN", "OTHER",

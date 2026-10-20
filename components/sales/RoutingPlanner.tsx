@@ -1,5 +1,6 @@
 "use client";
 
+import { tehranTodayIso } from "@/lib/jalali";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useState } from "react";
 import { faNum } from "@/lib/format";
@@ -27,7 +28,7 @@ interface Plan {
 }
 
 export default function RoutingPlanner({ vehicleNames }: { vehicleNames: Record<number, string> }) {
-  const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(() => tehranTodayIso());
   const [plan, setPlan] = useState<Plan | null>(null);
   const [runIds, setRunIds] = useState<number[]>([]);
   const [busy, setBusy] = useState(false);

@@ -9,7 +9,7 @@ import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import BriefingHero from "@/components/today/BriefingHero";
 import { cardFor } from "@/lib/repo/briefingCards";
-import { roleLabel, type Role } from "@/lib/roles";
+import { roleLabel } from "@/lib/roles";
 import RolePicker from "@/components/today/RolePicker";
 import NotificationBell from "@/components/NotificationBell";
 

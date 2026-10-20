@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEscapeKey } from "@/lib/useEscapeKey";
 import Link from "next/link";
 import CustomerBento, { useCustomerSummary } from "./CustomerBento";
 import { Icon } from "@/components/meridian/Icon";
@@ -30,14 +30,7 @@ export default function CustomerSheet({
   const data = useCustomerSummary(customerId);
   const failed = false;
 
-  useEffect(() => {
-    if (customerId === null) return;
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") onClose();
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [customerId, onClose]);
+  useEscapeKey(onClose, customerId !== null);
 
   const open = customerId !== null;
 

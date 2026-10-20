@@ -22,6 +22,8 @@
  *  Asia/Tehran (UTC+03:30, no DST since 2022) rather than UTC or the server's locale.
  */
 
+import { faDigits } from "./format";
+
 const TEHRAN = "Asia/Tehran";
 
 /** The one Tehran formatter, built once.
@@ -239,8 +241,23 @@ export function tehranTodayIso(now: Date = new Date()): string {
   return `${c.gy}-${String(c.gm).padStart(2, "0")}-${String(c.gd).padStart(2, "0")}`;
 }
 
-const LATIN_TO_FA = ["۰", "۱", "۲", "۳", "۴", "۵", "۶", "۷", "۸", "۹"];
-const faDigits = (s: string) => s.replace(/[0-9]/g, (d) => LATIN_TO_FA[Number(d)]);
+/** Jalali civil date as `YYYY-MM-DD` (Tehran) -- the sortable, storable counterpart of
+ *  `faJalaliDate`. Falls back to the ISO date's own first ten characters when the input is
+ *  not a date, so a malformed value degrades to something recognisable rather than throwing. */
+export function jalaliYmd(iso: string): string {
+  const j = toJalali(iso);
+  if (!j) return iso.slice(0, 10);
+  return `${j.jy}-${String(j.jm).padStart(2, "0")}-${String(j.jd).padStart(2, "0")}`;
+}
+
+/** The Jalali `YYYY-MM` an ISO date falls in. Two Gregorian days in the same month can sit in
+ *  different Persian months (2026-08-20 vs 2026-08-25), which is the case a report must get
+ *  right -- hence this and not `iso.slice(0, 7)`. */
+export function jalaliMonthKey(iso: string): string {
+  const j = toJalali(iso);
+  if (!j) return iso.slice(0, 7);
+  return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
+}
 
 /** «۱۴۰۵/۰۶/۰۴». Returns the input untouched when it is not a date, so a malformed
  *  value shows as itself rather than as "Invalid Date" or a silent blank. */

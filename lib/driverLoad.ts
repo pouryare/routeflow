@@ -8,6 +8,8 @@
  *  person doing the planning. Capacity is the safer number and the mean is the truer one —
  *  "does this week look like his normal week" is the question actually being asked. */
 
+import { DAY, toMs, toDate, persianWeekday } from "./persianWeek";
+
 export interface LoadPoint {
   /** `YYYY-MM-DD`. */
   date: string;
@@ -29,11 +31,6 @@ export interface RecentLoads {
 }
 
 /** Saturday-to-Friday, matching `streak.ts` — the same "week" the grid above draws. */
-const DAY = 86_400_000;
-const toMs = (d: string) =>
-  Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
-const toDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-const persianWeekday = (ms: number) => (new Date(ms).getUTCDay() + 1) % 7;
 /** The Saturday on or before `ms`. */
 const weekStartOf = (ms: number) => ms - persianWeekday(ms) * DAY;
 

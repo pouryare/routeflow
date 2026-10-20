@@ -2,29 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { extractLatLng, extractPlusCodeCoords, isAllowedLinkHost, isPrivateOrLocalHost } from "@/lib/geoLinks";
 import { requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
+import { fetchNoRedirect } from "@/lib/fetchNoRedirect";
 
 const MAX_REDIRECTS = 6;
-const FETCH_TIMEOUT_MS = 8000;
-
 // A "saved place" share link usually resolves to a URL with no direct @lat,lng at
 // all -- the Plus Code embedded in the displayed address is the only fallback signal,
 // so it's tried at every hop right alongside the direct pattern, not as an afterthought.
 function extractAnyCoords(url: string) {
   return extractLatLng(url) ?? extractPlusCodeCoords(url);
-}
-
-async function fetchNoRedirect(url: string) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      redirect: "manual",
-      signal: controller.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; CoverageMapBot/1.0)" },
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 // Guard only, no scope: this resolves a map link the caller already holds and reads

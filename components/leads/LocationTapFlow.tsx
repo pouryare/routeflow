@@ -1,13 +1,12 @@
 "use client";
 
-import { useState, useCallback, useEffect, useMemo } from "react";
+import { useState, useCallback, useMemo } from "react";
 import TapFlow, { CustomStepApi } from "@/components/tapflow/TapFlow";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
-import { answerStep, backStep, startFlow, viewStep } from "@/lib/crm/flows/machine";
+import { startFlow } from "@/lib/crm/flows/machine";
 import type { FlowContext, FlowState } from "@/lib/crm/flows/types";
 import { useToast } from "@/components/ToastProvider";
 import StarRating from "@/components/StarRating";
-import { MAX_STARS } from "@/lib/leadScore";
 import { navigateUrl } from "@/lib/navApps";
 import type { NavAppId } from "@/lib/navApps";
 
@@ -22,29 +21,34 @@ export interface LocationTapFlowProps {
   onClose: () => void;
 }
 
-export default function LocationTapFlow({ open, locationId, locationName, locationLat, locationLng, navAppId, onNavigate, onClose }: LocationTapFlowProps) {
+export default function LocationTapFlow({ open, locationName, locationLat, locationLng, navAppId, onNavigate, onClose }: LocationTapFlowProps) {
   const toast = useToast();
   const [ctx, setCtx] = useState<FlowContext | null>(null);
   const [state, setState] = useState<FlowState>({ stack: [], answers: [], acc: {}, values: {}, saved: false });
 
-  // Initialize flow when opened
-  useEffect(() => {
-    if (!open) return;
-    const initialCtx: FlowContext = {
-      entry: "driver_visit",
-      firstContact: true,
-      attemptNo: 1,
-      maxMisses: 5,
-      isManager: false,
-      vars: {},
-      knownContacts: [],
-      products: [],
-      reps: [],
-      recentCustomers: [],
-    };
-    setCtx(initialCtx);
-    setState(startFlow(leadVisitFlow, initialCtx));
-  }, [open]);
+  /* Start a fresh flow each time the sheet opens. Adjusted during render rather than in an
+     effect: the reset is derived from `open` flipping, and an effect would paint one frame
+     of the previous visit's answers before replacing them. */
+  const [wasOpen, setWasOpen] = useState(false);
+  if (open !== wasOpen) {
+    setWasOpen(open);
+    if (open) {
+      const initialCtx: FlowContext = {
+        entry: "driver_visit",
+        firstContact: true,
+        attemptNo: 1,
+        maxMisses: 5,
+        isManager: false,
+        vars: {},
+        knownContacts: [],
+        products: [],
+        reps: [],
+        recentCustomers: [],
+      };
+      setCtx(initialCtx);
+      setState(startFlow(leadVisitFlow, initialCtx));
+    }
+  }
 
   const handleStateChange = useCallback((next: FlowState) => {
     setState(next);

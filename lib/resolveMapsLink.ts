@@ -11,9 +11,9 @@ import {
 } from "@/lib/geoLinks";
 import { extractViaBrowser, browserLifecycle } from "@/lib/playwrightExtract";
 import type { LocationResolution } from "@/lib/db";
+import { FETCH_TIMEOUT_MS, fetchNoRedirect } from "@/lib/fetchNoRedirect";
 
 const MAX_REDIRECTS = 6;
-const FETCH_TIMEOUT_MS = 8000;
 
 export interface ResolvedLink {
   lat: number | null;
@@ -21,20 +21,6 @@ export interface ResolvedLink {
   address: string | null;
   resolvedUrl: string;
   resolution: LocationResolution;
-}
-
-async function fetchNoRedirect(url: string): Promise<Response> {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
-  try {
-    return await fetch(url, {
-      redirect: "manual",
-      signal: controller.signal,
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; CoverageMapBot/1.0)" },
-    });
-  } finally {
-    clearTimeout(timeout);
-  }
 }
 
 // Nominatim's usage policy caps public-instance traffic at 1 request/second --

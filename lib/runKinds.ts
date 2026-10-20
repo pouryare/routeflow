@@ -58,7 +58,7 @@ export function kindOfStop(stop: { order_id?: number | null }): StopKind {
 }
 
 /** One gesture for all three kinds, per Q29. What differs is the screen that follows. */
-export function tapActionFor(_kind: StopKind): "complete" {
+export function tapActionFor(): "complete" {
   return "complete";
 }
 
