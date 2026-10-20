@@ -100,7 +100,7 @@ export default function PoolViewTable({
   );
 }
 
-function DropdownMenu({ loc, inRun, runIdx, onToggleRun, onPin, onTogglePriority }: { loc: PoolViewItem["location"]; inRun: boolean; runIdx: number | null; onToggleRun: (id: number) => void; onPin: (id: number) => void; onTogglePriority: (id: number) => void }) {
+function DropdownMenu({ loc, inRun, onToggleRun, onPin, onTogglePriority }: { loc: PoolViewItem["location"]; inRun: boolean; runIdx: number | null; onToggleRun: (id: number) => void; onPin: (id: number) => void; onTogglePriority: (id: number) => void }) {
   const [open, setOpen] = useState(false);
   return (
     <div className="relative inline-block text-right">

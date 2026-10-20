@@ -1,33 +1,9 @@
 import { tehranTodayIso } from "@/lib/jalali";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, Reminder, EntityType } from "@/lib/db";
+import { withEntityLabels } from "@/lib/repo/entityLabels";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-
-function enrich(db: ReturnType<typeof getDb>, rows: Reminder[]) {
-  const customerIds = rows.filter((r) => r.entity_type === "customer").map((r) => r.entity_id);
-  const districtIds = rows.filter((r) => r.entity_type === "district").map((r) => r.entity_id);
-
-  const customerMap = new Map<number, string>();
-  if (customerIds.length) {
-    const placeholders = customerIds.map(() => "?").join(",");
-    (db.prepare(`SELECT id, business_name FROM customers WHERE id IN (${placeholders})`).all(...customerIds) as { id: number; business_name: string }[]).forEach(
-      (r) => customerMap.set(r.id, r.business_name)
-    );
-  }
-  const districtMap = new Map<number, string>();
-  if (districtIds.length) {
-    const placeholders = districtIds.map(() => "?").join(",");
-    (db.prepare(`SELECT id, name FROM districts WHERE id IN (${placeholders})`).all(...districtIds) as { id: number; name: string }[]).forEach(
-      (r) => districtMap.set(r.id, r.name)
-    );
-  }
-
-  return rows.map((r) => ({
-    ...r,
-    label: r.entity_type === "customer" ? customerMap.get(r.entity_id) ?? "مشتری حذف‌شده" : districtMap.get(r.entity_id) ?? "منطقه حذف‌شده",
-  }));
-}
 
 // reminders is option 2: a reminder is *about* a customer or district, so it belongs to
 // whichever group owns that row. Joined, not denormalised -- see entityGroupFilter.
@@ -62,7 +38,7 @@ export async function GET(req: NextRequest) {
       .all(...f.params) as unknown as Reminder[];
   }
 
-  return NextResponse.json({ ok: true, reminders: enrich(db, rows) });
+  return NextResponse.json({ ok: true, reminders: withEntityLabels(db, rows) });
 }
 
 export async function POST(req: NextRequest) {

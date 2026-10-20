@@ -2,7 +2,6 @@ import { refreshRetiredWording } from "./repo/retiredWording";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
-import type { FacilityRow } from "./facilityTypes";
 import type { Role } from "./roles";
 import type { CustomerLifecycle, CustomerType } from "./types";
 import { polygonCentroid } from "./simplify";
@@ -4611,7 +4610,7 @@ export function getDb(): DatabaseSync {
   if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");
   if (!nCols.includes("tg_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN tg_flushed_at TEXT");
 
-  seedFacilities(db);
+  seedFacilities();
   seedReasonCodes(db);
   seedCapacityFactors(db);
   seedRules(db);
@@ -5133,7 +5132,7 @@ export function logActivity(
  *  organization_id NULL, with a tenant free to override. A business's own address is not
  *  a default; it is data. */
 
-export function seedFacilities(_db: DatabaseSync): void {
+export function seedFacilities(): void {
   // Kept as a named no-op so the call site at the bottom of this file, and any external
   // caller of the export, stay valid. Delete it and every caller once they are gone.
 }

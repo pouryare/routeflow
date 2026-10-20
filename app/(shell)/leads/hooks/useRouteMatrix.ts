@@ -1,22 +1,33 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchOsrmTable } from "@/lib/routing/osrmMatrix";
 import type { LatLng } from "@/lib/geo";
 
+/** The OSRM road-distance matrix for `points`, in the same order, or null until it arrives
+ *  (or when OSRM cannot answer, in which case callers fall back to straight lines).
+ *
+ *  Keyed by the points themselves: a matrix fetched for one set of stops is NEVER handed back
+ *  for another. `fromMatrix` indexes the table by position, so a stale table answers "how far
+ *  is stop 3 from stop 7?" about the wrong stops -- with a plausible number, which is the
+ *  dangerous shape. Changing points refetches; unmounting or changing them aborts the
+ *  request in flight. */
 export function useRouteMatrix(points: LatLng[]) {
-  const [matrix, setMatrix] = useState<number[][] | null>(null);
-  const fetched = useRef(false);
+  const key = useMemo(() => points.map((p) => `${p.lat},${p.lng}`).join("|"), [points]);
+  const [result, setResult] = useState<{ key: string; km: number[][] } | null>(null);
 
-  const load = useCallback(async () => {
-    if (fetched.current || points.length < 2 || points.length > 100) return;
-    try {
-      const controller = new AbortController();
-      const table = await fetchOsrmTable(points, controller.signal);
-      if (table) { setMatrix(table.distances_km); fetched.current = true; }
-    } catch { /* silently ignore */ }
-  }, [points.map((p) => `${p.lat},${p.lng}`).join("|")]);
+  useEffect(() => {
+    if (!key) return;
+    const pts = key.split("|").map((pair) => {
+      const [lat, lng] = pair.split(",").map(Number);
+      return { lat, lng };
+    });
+    if (pts.length < 2 || pts.length > 100) return;
+    const controller = new AbortController();
+    fetchOsrmTable(pts, controller.signal).then((table) => {
+      if (table && !controller.signal.aborted) setResult({ key, km: table.distances_km });
+    });
+    return () => controller.abort();
+  }, [key]);
 
-  useEffect(() => { load(); return () => {}; }, [load]);
-
-  return { matrix };
+  return { matrix: result && result.key === key ? result.km : null };
 }

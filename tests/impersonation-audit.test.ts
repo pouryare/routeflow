@@ -14,9 +14,6 @@ const { logActivity } = await import("@/lib/db");
 const { createOrder } = await import("@/lib/orders");
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { applyMutations } = await import("@/lib/repo/syncMutations");
-const { createRun, addStop } = await import("@/lib/delivery");
-const { deliveryForStop } = await import("@/lib/repo/deliveries");
-const { advanceOrder } = await import("@/lib/repo/orders");
 
 afterAll(() => {
   for (const s of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${s}`, { force: true });

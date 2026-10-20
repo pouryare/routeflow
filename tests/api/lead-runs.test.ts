@@ -89,7 +89,6 @@ const LATER = new Date(Date.now() + 3 * 86_400_000).toISOString().slice(0, 10);
    loads, which is before beforeAll has assigned any id -- so it captures 0, and uid 0 is
    exactly the retired shared-password session, which every route treats as signed out. The
    failure then looks like an auth bug rather than a test bug. */
-const OWNER = () => [ownerId, "owner", null] as const;
 const MANAGER = () => [managerId, "group_manager", groupId] as const;
 const DRIVER = () => [driverId, "delivery_driver", groupId] as const;
 

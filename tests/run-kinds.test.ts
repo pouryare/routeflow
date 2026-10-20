@@ -53,9 +53,8 @@ describe("tapActionFor", () => {
     // Q29: one gesture for all three. Each opens a different screen, but the gesture is the
     // same, because a driver in a van should not have to learn three interaction models.
     for (const k of STOP_KINDS) expect(k.tapAction).toBe(k.tapAction.toLowerCase());
-    expect(tapActionFor("delivery")).toBe("complete");
-    expect(tapActionFor("revisit")).toBe("complete");
-    expect(tapActionFor("new")).toBe("complete");
+    // It takes no kind at all: there is nothing to branch on.
+    expect(tapActionFor()).toBe("complete");
   });
 });
 

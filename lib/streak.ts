@@ -8,6 +8,8 @@
  *  Pure: dates in, grid out. Dates are `YYYY-MM-DD` and handled in UTC, so the grid never
  *  shifts a day across a time-zone boundary. A date repeated N times is N events that day. */
 
+import { DAY, toMs, toDate, persianWeekday } from "./persianWeek";
+
 export type StreakLevel = 0 | 1 | 2 | 3 | 4;
 
 /** What a day MEANS, which is not the same as how much happened on it.
@@ -55,11 +57,6 @@ export type Streak = {
   longest: number;
 };
 
-const DAY = 86_400_000;
-const toMs = (d: string) => Date.UTC(Number(d.slice(0, 4)), Number(d.slice(5, 7)) - 1, Number(d.slice(8, 10)));
-const toDate = (ms: number) => new Date(ms).toISOString().slice(0, 10);
-/** 0 for Saturday … 6 for Friday. */
-const persianWeekday = (ms: number) => (new Date(ms).getUTCDay() + 1) % 7;
 
 export function buildStreak(dates: string[], today: string, weeks?: number): Streak;
 export function buildStreak(dates: string[], today: string, opts: StreakOptions): Streak;

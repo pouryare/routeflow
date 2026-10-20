@@ -1,11 +1,10 @@
 "use client";
 
-import { STATUS_META } from "@/app/(shell)/leads/hooks/useLeads";
+import { useState } from "react";
 import SectionHead from "@/components/meridian/SectionHead";
 import LocationCard from "@/components/leads/LocationCard";
 import type { PoolViewItem } from "./PoolViewWrapper";
 import { type NavAppId } from "@/lib/navApps";
-import { averageScore } from "@/lib/leadScore";
 
 const STATUS_COLUMNS = ["contacted", "visited", "no_answer", "declined"] as const;
 const STATUS_LABELS: Record<string, string> = {
@@ -57,16 +56,17 @@ function MinimalNameCard({
 }
 
 export default function PoolViewKanban({
-  items, navAppId, run, selectedMapId, onSelect, onToggleRun, onPin,
+  items, navAppId, onSelect, onToggleRun, onPin,
   onTogglePriority, onAddToPlan, onNotesChange, onNameChange,
-  sortAnchor, sortMode, priorityHigh,
+  priorityHigh,
 }: PoolViewKanbanProps) {
   const grouped: Record<string, PoolViewItem[]> = {};
   for (const status of STATUS_COLUMNS) {
     grouped[status] = items.filter(({ location: loc }) => loc.status === status);
   }
   // Recently added leads with no status go in the "new" column
-  const now = Date.now();
+  // Fixed for the life of the view: a 7-day window does not need a clock read per render.
+  const [now] = useState(() => Date.now());
   const newLeads = items.filter(({ location: loc }) =>
     loc.status === null && loc.created_at && (now - new Date(loc.created_at).getTime()) < SEVEN_DAYS
   );

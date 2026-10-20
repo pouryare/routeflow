@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { userInOrg } from "./organizations";
 import type { DatabaseSync } from "node:sqlite";
 
 import {
@@ -207,14 +208,12 @@ export function deletePlan(
  *
  *  Refused at the door rather than trusted: a plan attached to a user id from another tenant
  *  would sit in the table naming someone this owner cannot see, and `planFor` would never
- *  reach it — a row that pays nobody and looks configured. Raw SQL lives here, not in the
+ *  reach it — a row that pays nobody and looks configured. Raw SQL lives in lib/repo, not in the
  *  route (tests/repo-boundary.test.ts, whose allowlist only shrinks). */
 export function userInOrganization(
   organizationId: number,
   userId: number,
   db: DatabaseSync = getDb(),
 ): boolean {
-  return !!db
-    .prepare("SELECT id FROM users WHERE id = ? AND organization_id = ?")
-    .get(userId, organizationId);
+  return userInOrg(db, userId, organizationId);
 }

@@ -1,7 +1,7 @@
 import { getDb } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { scopeGroupIds } from "@/lib/session";
-import { toJalali, tehranTodayIso } from "@/lib/jalali";
+import { tehranTodayIso, jalaliMonthKey } from "@/lib/jalali";
 import { listTasks } from "./tasks";
 import { listAlerts } from "./alerts";
 import { targetProgress } from "./targets";
@@ -72,8 +72,7 @@ function panel(
 }
 
 function currentPeriod(): string {
-  const j = toJalali(new Date().toISOString())!;
-  return `${j.jy}-${String(j.jm).padStart(2, "0")}`;
+  return jalaliMonthKey(new Date().toISOString());
 }
 
 export function todayFor(session: Session): Briefing {

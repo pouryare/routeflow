@@ -15,10 +15,8 @@ import type { RunDraft } from "@/lib/repo/runDrafts";
 import type { PlannableOrder } from "@/lib/repo/dayPlan";
 
 export default function RunsViewClient({
-  drivers,
   drafts: initialDrafts,
   runs,
-  kgByRun,
   plannable,
 }: {
   drivers: { id: number; display_name: string }[];
@@ -28,7 +26,7 @@ export default function RunsViewClient({
   plannable: PlannableOrder[];
 }) {
   const router = useRouter();
-  const [drafts, setDrafts] = useState<RunDraft[]>(initialDrafts);
+  const [drafts] = useState<RunDraft[]>(initialDrafts);
 
   /** lane id -> order ids, plus the inverse lookup the board needs for each card. */
   const byLane = useMemo(() => {
@@ -80,15 +78,18 @@ export default function RunsViewClient({
     [plannable, laneOf]
   );
 
-  async function post(url: string, body: unknown) {
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
-    if (!res.ok) return;
-    router.refresh();
-  }
+  const post = useCallback(
+    async (url: string, body: unknown) => {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      if (!res.ok) return;
+      router.refresh();
+    },
+    [router]
+  );
 
   /** A drop into the pool takes the order OUT; a drop into a lane needs a lane to exist.
    *
@@ -104,7 +105,7 @@ export default function RunsViewClient({
       }
       void post("/api/runs/drafts/move", { orderId, draftId: Number(toLane.replace("draft-", "")) });
     },
-    []
+    [post]
   );
 
   return (

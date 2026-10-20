@@ -1,31 +1,26 @@
 "use client";
 
+import type { SavedLocationRow } from "@/lib/db";
 import { MapContainer, TileLayer, Marker, Popup } from "react-leaflet";
 import { divIcon } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { distanceKm } from "@/lib/geo";
 import { useMyPosition } from "@/components/MyPositionProvider";
-import { faFixed, faNum } from "@/lib/format";
-import { useMemo, useState } from "react";
+import { faFixed } from "@/lib/format";
+import { useMemo } from "react";
+
+/** A lead that has been pinned: the only kind the map can draw. */
+type Routable = SavedLocationRow & { lat: number; lng: number };
 
 const heatColors = ["#2DE0E6", "#2DE0E6", "#7dd3fc", "#facc15", "#f87171"];
 
-export default function LeadGeographicDensity({ locations }: { locations: any[] }) {
+export default function LeadGeographicDensity({ locations }: { locations: SavedLocationRow[] }) {
   const { position } = useMyPosition();
-  const [heatLevel, setHeatLevel] = useState(0);
 
   const routable = useMemo(
-    () => locations.filter((l) => l.lat !== null && l.lng !== null),
+    () => locations.filter((l): l is Routable => l.lat !== null && l.lng !== null),
     [locations]
   );
-
-  const userDistances = useMemo(() => {
-    if (!position) return [];
-    return routable.map((l) => ({
-      ...l,
-      dist: distanceKm(position, { lat: l.lat, lng: l.lng }),
-    })).sort((a, b) => a.dist - b.dist);
-  }, [routable, position]);
 
   return (
     <div className="rounded-[var(--radius-lg)] border border-border bg-surface p-4">

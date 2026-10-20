@@ -1,3 +1,4 @@
+import { clamp } from "@/lib/math";
 import { getDb } from "@/lib/db";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
 
@@ -26,7 +27,7 @@ export interface RepHealth {
 }
 
 const W = { onboarding: 0.3, recency: 0.4, coverage: 0.3 };
-const clamp = (n: number) => Math.max(0, Math.min(100, n));
+const clampScore = (n: number) => clamp(n, 0, 100);
 
 /** recency: 100 for an order in the last 14 days, linear to 0 at 60 days, 0 beyond. */
 function recencyScore(lastOrder: string | null, nowIso: string): number {
@@ -34,7 +35,7 @@ function recencyScore(lastOrder: string | null, nowIso: string): number {
   const days = (Date.parse(nowIso) - Date.parse(lastOrder)) / 86_400_000;
   if (days <= 14) return 100;
   if (days >= 60) return 0;
-  return clamp(Math.round((1 - (days - 14) / 46) * 100));
+  return clampScore(Math.round((1 - (days - 14) / 46) * 100));
 }
 
 export function repHealth(organizationId: number, representativeId: number): RepHealth {

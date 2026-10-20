@@ -1,20 +1,13 @@
 import { getDb } from "@/lib/db";
-import { canWriteBusiness, type Session } from "@/lib/session";
+import { type Session } from "@/lib/session";
 import { normPhone } from "@/lib/crm/phone";
 import { normInstagram } from "@/lib/crm/social";
 import { BUSINESS_TYPES, PRICE_TIERS, isOneOf, customerTypeFor } from "@/lib/crm/vocab";
 import { isWorkingHours } from "@/lib/crm/hours";
-import { getBusiness } from "./businesses";
 import { findDuplicates } from "./dedupe";
-import { CrmError } from "./write";
+import { CrmError, writableBusiness } from "./write";
 import { recomputeState } from "./state";
 
-function writable(session: Session, id: number) {
-  const b = getBusiness(session, id);
-  if (!b) throw new CrmError(404, "کسب‌وکار پیدا نشد");
-  if (!canWriteBusiness(session, b)) throw new CrmError(403, "دسترسی لازم را ندارید");
-  return b;
-}
 function correction(session: Session, id: number, org: number, note: string, verified = false) {
   const now = new Date().toISOString();
   getDb().prepare(`INSERT INTO activities (organization_id,customer_id,user_id,type,note,verification_to,occurred_at,created_at)
@@ -88,7 +81,7 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const b = writable(session, id), org = b.organization_id;
+    const b = writableBusiness(session, id), org = b.organization_id;
     if (values.phone_norm && db.prepare(`SELECT id FROM customers WHERE organization_id = ? AND id <> ? AND merged_into_id IS NULL
       AND (phone_norm = ? OR id IN (SELECT customer_id FROM contacts WHERE organization_id = ? AND active = 1 AND phone_norm = ?)) LIMIT 1`)
       .get(org, id, values.phone_norm, org, values.phone_norm)) throw new CrmError(409, "این شماره مال کسب‌وکار دیگری است");
@@ -106,7 +99,7 @@ export function verifyBusiness(session: Session, id: number): void {
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   try {
-    const b = writable(session, id);
+    const b = writableBusiness(session, id);
     if (b.closed_at) throw new CrmError(400, "کسب‌وکار بسته شده است");
     if (b.verification !== "verified") {
       correction(session, id, b.organization_id, "اطلاعات کسب‌وکار تأیید شد", true);

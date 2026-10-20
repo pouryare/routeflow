@@ -65,7 +65,7 @@ interface PoolViewClusterProps {
 }
 
 export default function PoolViewCluster({
-  items, navAppId, run, selectedMapId, onSelect, onToggleRun, onPin,
+  items, navAppId, onSelect, onToggleRun, onPin,
   onTogglePriority, onAddToPlan, onNotesChange, onNameChange, priorityHigh,
 }: PoolViewClusterProps) {
   const clusters = useMemo(() => clusterLocations(items), [items]);

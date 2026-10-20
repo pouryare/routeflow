@@ -1,5 +1,6 @@
 "use client";
 
+import { useLatest } from "@/lib/useLatest";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useEffect, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
@@ -38,6 +39,7 @@ export default function GeofenceWatcher({
   const [prompt, setPrompt] = useState<Prompt | null>(null);
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  const promptRef = useLatest(prompt);
   const snoozedRef = useRef(new Map<string, number>());
   /* The "latest value" refs: the watch effect below re-subscribes only on
      [enabled, position], and reads these to see the current lists without tearing the
@@ -97,7 +99,8 @@ export default function GeofenceWatcher({
     if (match) setPrompt((prev) => prev ?? { kind: "customer", customer: match.c });
 
     // Lead proximity check: notify when near a lead location.
-    if (!prompt || prompt.kind !== "lead") {
+    const shown = promptRef.current;
+    if (!shown || shown.kind !== "lead") {
       const leadMatch = leadsRef.current
         .filter((l) => l.lat !== null && l.lng !== null)
         .map((l) => ({ l, km: distanceKm(here, { lat: l.lat, lng: l.lng }) }))
@@ -109,7 +112,7 @@ export default function GeofenceWatcher({
     }
     // Runs per fix. The lists are read through refs so a customer refresh does not
     // re-evaluate the geofence against a position that has not changed.
-  }, [enabled, position]);
+  }, [enabled, position, promptRef]);
 
   function promptKey(p: Prompt): string {
     return p.kind === "customer" ? `customer:${p.customer.id}` : p.kind === "facility_arrive" ? `facility:${p.facility.id}` : `lead:${p.lead.id}`;

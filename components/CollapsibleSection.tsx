@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useContext, useState, useEffect } from "react";
+import { createContext, useContext, useState, useSyncExternalStore } from "react";
 import { faNum } from "@/lib/format";
 import { matchesQuery } from "@/lib/persian";
 import { Icon, type IconName } from "@/components/meridian/Icon";
@@ -18,6 +18,33 @@ import { Icon, type IconName } from "@/components/meridian/Icon";
  *  markup at several nesting depths, and threading a query string through all of them
  *  would touch a dozen call sites to add nothing any of them cares about. */
 export const SectionFilterContext = createContext<string>("");
+
+/* The remembered fold state is an external store (localStorage), so it is read as one rather
+   than copied into state by an effect: the server snapshot is `null` ("nothing remembered"),
+   so a server render and the hydrating render agree, and the stored value takes over in the
+   same commit instead of a frame later. Same-tab writes notify through `panelListeners`
+   because the browser only fires `storage` in OTHER tabs. */
+const PANEL_PREFIX = "coverage_panel_";
+const panelListeners = new Set<() => void>();
+
+function subscribePanels(onChange: () => void): () => void {
+  panelListeners.add(onChange);
+  window.addEventListener("storage", onChange);
+  return () => {
+    panelListeners.delete(onChange);
+    window.removeEventListener("storage", onChange);
+  };
+}
+
+function readPanel(storageKey: string | undefined): string | null {
+  if (!storageKey) return null;
+  try {
+    return localStorage.getItem(PANEL_PREFIX + storageKey);
+  } catch {
+    // Private mode and blocked site data both throw on access.
+    return null;
+  }
+}
 
 export default function CollapsibleSection({
   title,
@@ -47,8 +74,8 @@ export default function CollapsibleSection({
   /** Forces the fold open, beating the remembered state in both directions.
    *
    *  For a section holding something the reader must not miss -- a day split waiting to be
-   *  looked at. `defaultOpen` cannot do this: it only seeds `useState`, and the localStorage
-   *  effect below then overwrites it, so a section the reader collapsed once would keep a
+   *  looked at. `defaultOpen` cannot do this: it only seeds the local state, and a remembered
+   *  choice then overrides it, so a section the reader collapsed once would keep a
    *  live proposal hidden inside it. Omitted everywhere else, so nothing else changes. */
   forceOpen?: boolean;
   /** Extra words the filter should match. A section called «تنظیمات» is where you go
@@ -59,26 +86,12 @@ export default function CollapsibleSection({
   right?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  // Read in the initialiser rather than an effect. The usual reason to defer this is
-  // that localStorage doesn't exist during a server render -- but the sidebar lives
-  // inside CoverageMap, which is imported with `ssr: false`, so there is no server pass
-  // to mismatch. Deferring would render every section closed for one frame and then pop
-  // the remembered ones open, which is a visible flicker on every load.
-  //
-  // Hydration fix: initialise from defaultOpen (server-safe), then sync from localStorage
-  // in useEffect on the client. This avoids a server/client mismatch while preserving
-  // the persisted open state.
-  const [open, setOpen] = useState(defaultOpen);
-  useEffect(() => {
-    if (!storageKey) return;
-    try {
-      const stored = localStorage.getItem(`coverage_panel_${storageKey}`);
-      if (stored === "1") setOpen(true);
-      else if (stored === "0") setOpen(false);
-    } catch {
-      // Private mode and blocked site data both throw on access.
-    }
-  }, [storageKey]);
+  // Initial state is `defaultOpen` (server-safe); a remembered choice, once the client can
+  // read it, wins. A section that remembers nothing (no storageKey, or storage blocked) just
+  // keeps its local state, so the fold still works -- it simply is not persisted.
+  const [local, setLocal] = useState(defaultOpen);
+  const stored = useSyncExternalStore(subscribePanels, () => readPanel(storageKey), () => null);
+  const open = stored === "1" ? true : stored === "0" ? false : local;
 
   const filter = useContext(SectionFilterContext).trim();
   if (filter && !matchesQuery(`${title} ${keywords ?? ""}`, filter)) return null;
@@ -93,15 +106,15 @@ export default function CollapsibleSection({
   const expanded = filter ? true : (forceOpen ?? open);
 
   function toggle() {
-    setOpen((v) => {
-      const next = !v;
-      try {
-        if (storageKey) localStorage.setItem(`coverage_panel_${storageKey}`, next ? "1" : "0");
-      } catch {
-        // Storage unavailable -- the fold still works, it just won't be remembered.
-      }
-      return next;
-    });
+    const next = !open;
+    setLocal(next);
+    if (!storageKey) return;
+    try {
+      localStorage.setItem(PANEL_PREFIX + storageKey, next ? "1" : "0");
+    } catch {
+      // Storage unavailable -- the fold still works, it just won't be remembered.
+    }
+    panelListeners.forEach((notify) => notify());
   }
 
   return (

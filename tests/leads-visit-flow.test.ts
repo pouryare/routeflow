@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { startFlow, viewStep, answerStep } from "@/lib/crm/flows/machine";
+import { startFlow, answerStep } from "@/lib/crm/flows/machine";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
-import type { FlowContext, FlowOption, FlowSet } from "@/lib/crm/flows/types";
+import type { FlowContext, FlowOption } from "@/lib/crm/flows/types";
 
 const makeCtx = (): FlowContext => ({
   entry: "driver_visit",

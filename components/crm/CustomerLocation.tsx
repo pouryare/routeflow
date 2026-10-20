@@ -1,5 +1,6 @@
 "use client";
-import { useState, Suspense, useEffect } from "react";
+import { useEscapeKey } from "@/lib/useEscapeKey";
+import { useState, Suspense, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/meridian/Icon";
 const Map = dynamic(() => import("./CustomerLocationMap"), { ssr: false });
@@ -16,12 +17,8 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
 }) {
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
-  useEffect(() => {
-    if (!open) return;
-    const close = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", close);
-    return () => window.removeEventListener("keydown", close);
-  }, [open]);
+  const close = useCallback(() => setOpen(false), []);
+  useEscapeKey(close, open);
   const hasPin = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
   const editButton = canWrite && onConfirm ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => setEditing(true)}>
   <Icon name="map-pin" size="md" />

@@ -1,6 +1,5 @@
 "use client";
 
-import { Icon } from "@/components/meridian/Icon";
 import { averageScore, LEAD_CRITERIA, scoreOf } from "@/lib/leadScore";
 import type { PoolViewItem } from "./PoolViewWrapper";
 import { type NavAppId } from "@/lib/navApps";
@@ -35,8 +34,7 @@ interface PoolViewScoreProps {
 }
 
 export default function PoolViewScore({
-  items, navAppId, run, selectedMapId, onSelect, onToggleRun, onPin,
-  onTogglePriority, onAddToPlan, onNotesChange, sortAnchor, sortMode, priorityHigh,
+  items, selectedMapId, onSelect, priorityHigh,
 }: PoolViewScoreProps) {
   // Sort by average score descending
   const sorted = [...items].sort((a, b) => {
@@ -47,7 +45,7 @@ export default function PoolViewScore({
 
   return (
     <div className="flex flex-col gap-2">
-      {sorted.map(({ location: loc, inRun, runIdx, km }) => {
+      {sorted.map(({ location: loc }) => {
         const avg = averageScore(loc);
         const scorePercent = avg !== null ? (avg / 5) * 100 : 0;
         const isSelected = loc.id === selectedMapId;

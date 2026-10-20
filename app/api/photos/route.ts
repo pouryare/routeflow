@@ -3,6 +3,7 @@ import { encodeImage, PHOTO_MAX_EDGE } from "@/lib/imagePipeline";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
 import { getDb, Photo, EntityType, logActivity } from "@/lib/db";
+import { withEntityLabels } from "@/lib/repo/entityLabels";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -33,27 +34,7 @@ export async function GET(req: NextRequest) {
   }
 
   // enrich with a display label for the standalone /gallery browse view
-  const customerIds = rows.filter((r) => r.entity_type === "customer").map((r) => r.entity_id);
-  const districtIds = rows.filter((r) => r.entity_type === "district").map((r) => r.entity_id);
-  const customerMap = new Map<number, string>();
-  const districtMap = new Map<number, string>();
-  if (customerIds.length) {
-    const placeholders = customerIds.map(() => "?").join(",");
-    (db.prepare(`SELECT id, business_name FROM customers WHERE id IN (${placeholders})`).all(...customerIds) as { id: number; business_name: string }[]).forEach(
-      (r) => customerMap.set(r.id, r.business_name)
-    );
-  }
-  if (districtIds.length) {
-    const placeholders = districtIds.map(() => "?").join(",");
-    (db.prepare(`SELECT id, name FROM districts WHERE id IN (${placeholders})`).all(...districtIds) as { id: number; name: string }[]).forEach(
-      (r) => districtMap.set(r.id, r.name)
-    );
-  }
-
-  const photos = rows.map((r) => ({
-    ...r,
-    label: r.entity_type === "customer" ? customerMap.get(r.entity_id) ?? "مشتری حذف‌شده" : districtMap.get(r.entity_id) ?? "منطقه حذف‌شده",
-  }));
+  const photos = withEntityLabels(db, rows);
 
   return NextResponse.json({ ok: true, photos });
 }

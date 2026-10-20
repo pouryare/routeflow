@@ -10,7 +10,6 @@ const OUT = join(ROOT, "docs", "copy-audit", "catalogue.md");
 
 function staticRoutes(dir: string, base = ""): string[] {
   return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
-    const rel = `${base}/${e.name}`;
     if (!e.isDirectory()) return [];
     if (e.name.startsWith("[")) return [];
     if (e.name.startsWith("(")) return staticRoutes(join(dir, e.name), base);

@@ -12,7 +12,8 @@
  *  both that list and the stylesheet are written by the same generator run.
  */
 
-import { useEffect, useRef, useState } from "react";
+import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ACCENT_CHANGE_EVENT,
   applyAccent,
@@ -59,22 +60,8 @@ export default function AccentPicker({
   const [open, setOpen] = useState(false);
   const root = useRef<HTMLDivElement>(null);
 
-  // A popover that cannot be dismissed by looking away is a popover that is in the way.
-  useEffect(() => {
-    if (!open) return;
-    const onDown = (e: MouseEvent) => {
-      if (!root.current?.contains(e.target as Node)) setOpen(false);
-    };
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [open]);
+  const dismiss = useCallback(() => setOpen(false), []);
+  useDismissOnOutside(open, dismiss, root);
 
   const current = ACCENT_THEMES.find((t) => t.id === accent) ?? ACCENT_THEMES[0];
 

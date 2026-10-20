@@ -5,6 +5,8 @@
  *  survives page reloads.
  */
 
+import type { IconName } from "@/components/meridian/icon-map";
+
 export type LeadViewMode =
   | "compact"
   | "pocket"
@@ -18,7 +20,7 @@ export type LeadViewMode =
 export interface LeadViewConfig {
   mode: LeadViewMode;
   label: string;
-  icon: string; // matches IconName in @/components/meridian/Icon
+  icon: IconName;
   description: string;
 }
 

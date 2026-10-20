@@ -1,5 +1,6 @@
 "use client";
 
+import { usePostAction } from "@/lib/usePostAction";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
@@ -71,6 +72,17 @@ const METRIC_LABEL: Record<CommissionMetric, string> = {
  *  applies to and what unit it is in -- تومان در هر کیلو for فروشنده and راننده,
  *  درصد از فروش گروه for مدیر گروه. The kind selector switches both.
  */
+/** Parse a number typed with Persian or Arabic-Indic digits and `٫` as the decimal mark;
+ *  null when it is not a plain number. Pure, so it lives outside the component. */
+function toNumber(input: string): number | null {
+  const ascii = input.replace(/[۰-۹٠-٩]/g, (d) => {
+    const code = d.codePointAt(0)!;
+    return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
+  }).replace("٫", ".");
+  if (!/^-?\d+(\.\d+)?$/.test(ascii)) return null;
+  return Number(ascii);
+}
+
 export default function CommissionEditor({
   sellers,
   drivers,
@@ -81,32 +93,9 @@ export default function CommissionEditor({
   managers: { id: number; display_name: string }[];
 }) {
   const router = useRouter();
-  const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
+  const { busy, message, send } = usePostAction();
   const [rateKind, setRateKind] = useState<Kind>("sales");
   const [payKind, setPayKind] = useState<Kind>("sales");
-
-  async function send(url: string, body: unknown, okText: string) {
-    setBusy(true);
-    setMessage(null);
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setMessage({ kind: "error", text: json.error ?? "ثبت نشد" });
-        return false;
-      }
-      setMessage({ kind: "ok", text: okText });
-      router.refresh();
-      return true;
-    } finally {
-      setBusy(false);
-    }
-  }
 
   const today = () => tehranTodayIso();
   const peopleFor = (k: Kind) => (k === "sales" ? sellers : k === "driver" ? drivers : managers);
@@ -158,27 +147,21 @@ export default function CommissionEditor({
     { from: "0", to: "100", rate: "1000", type: "flat" },
   ]);
 
-  function toNumber(input: string): number | null {
-    const ascii = input.replace(/[۰-۹٠-٩]/g, (d) => {
-      const code = d.codePointAt(0)!;
-      return String(code >= 0x06f0 ? code - 0x06f0 : code - 0x0660);
-    }).replace("٫", ".");
-    if (!/^-?\d+(\.\d+)?$/.test(ascii)) return null;
-    return Number(ascii);
-  }
-
-  const draftPlan: Plan = {
-    mode: planMode,
-    metric: planMetric,
-    tiers: tierRows.map((t, i) => ({
-      from_value: toNumber(t.from) ?? 0,
-      // The last tier is always open-ended: an owner typing a bound on the final row is
-      // describing a gap they cannot see, and validatePlan would (rightly) refuse it.
-      to_value: i === tierRows.length - 1 ? null : toNumber(t.to),
-      rate_type: t.type,
-      rate_value: toNumber(t.rate) ?? 0,
-    })),
-  };
+  const draftPlan: Plan = useMemo(
+    () => ({
+      mode: planMode,
+      metric: planMetric,
+      tiers: tierRows.map((t, i) => ({
+        from_value: toNumber(t.from) ?? 0,
+        // The last tier is always open-ended: an owner typing a bound on the final row is
+        // describing a gap they cannot see, and validatePlan would (rightly) refuse it.
+        to_value: i === tierRows.length - 1 ? null : toNumber(t.to),
+        rate_type: t.type,
+        rate_value: toNumber(t.rate) ?? 0,
+      })),
+    }),
+    [planMode, planMetric, tierRows]
+  );
   const planProblem = validatePlan(draftPlan);
 
   /** Sample totals worth showing: a round figure, and the first tier boundary crossed —

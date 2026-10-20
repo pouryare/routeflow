@@ -1,7 +1,7 @@
 "use client";
 
 import { tehranTodayIso } from "@/lib/jalali";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faFixed, faNum } from "@/lib/format";
 import { toToman } from "@/lib/money";
@@ -163,14 +163,11 @@ export default function MarginHelperDrawer({
     ratePerKgToman
   );
 
-  const inputs: MarginInputs = useMemo(
-    () => ({
-      cost_toman: (product?.cost_toman ?? 0) + commissionToman,
-      fixed_toman: fixedToman + taxToman,
-      percent_deductions_pct: percentPct,
-    }),
-    [product?.cost_toman, commissionToman, fixedToman, taxToman, percentPct]
-  );
+  const inputs: MarginInputs = {
+    cost_toman: (product?.cost_toman ?? 0) + commissionToman,
+    fixed_toman: fixedToman + taxToman,
+    percent_deductions_pct: percentPct,
+  };
 
   /* Cost unknown is NOT cost zero. P = (C + F) / (1 - a - m) will happily return a
      confident price built from overheads alone for a product nobody ever purchased, so

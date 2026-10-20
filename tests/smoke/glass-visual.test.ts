@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { chromium, type Browser, type Page } from "playwright";
+import { chromium, type Browser, type BrowserContext, type Page } from "playwright";
 import { BASE, startDevServer } from "./server";
 import { sessionCookie } from "./session";
 
@@ -16,7 +16,7 @@ import { sessionCookie } from "./session";
  */
 let stop: () => Promise<void>;
 let browser: Browser;
-let ctx: any;
+let ctx: BrowserContext | undefined;
 let page: Page;
 
 async function freshPage(reducedMotion: "reduce" | "no-preference" = "no-preference") {

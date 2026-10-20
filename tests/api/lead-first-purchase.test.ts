@@ -23,7 +23,6 @@ afterAll(() => {
  *  first order at all -- a driver who closed a sale at the door had nowhere to put it, which
  *  is why Phase 2's order task pointed at a page that could not do the job. */
 
-let ownerId = 0;
 let driverId = 0;
 let groupId = 0;
 let productId = 0;
@@ -39,7 +38,7 @@ beforeAll(() => {
   const insertUser = db.prepare(
     "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x:y', ?, ?, ?, 1, ?, 1)"
   );
-  ownerId = Number(insertUser.run("first-owner", "مالک", "owner", null, now).lastInsertRowid);
+  insertUser.run("first-owner", "مالک", "owner", null, now);
   driverId = Number(insertUser.run("first-driver", "راننده", "delivery_driver", groupId, now).lastInsertRowid);
   // kg_per_base_unit is payroll input -- commission is paid per kilogram -- so an order
   // line freezes it. A product without one would make the order's accrual meaningless.

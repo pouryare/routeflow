@@ -8,10 +8,9 @@ import {
 } from "@/lib/leadImport/scheduler";
 import type { LocationResolution } from "@/lib/db";
 
-/** A URL that already carries coordinates, so predictTier calls it cheap.
- *  Without this the fixture would be unrealistic: a real pending item has whatever
- *  the paste contained, and the runner orders on that, not on a stored resolution. */
-const EASY = "https://maps.google.com/maps/place/x/@35.7,51.4,14z";
+/** A short link with no coordinates in it, so predictTier calls it expensive. A real pending
+ *  item has whatever the paste contained, and the runner orders on that, not on a stored
+ *  resolution. */
 const HARD = "https://maps.app.goo.gl/abc123";
 
 function item(ordinal: number, resolution: LocationResolution, url = HARD): SchedulableItem {
