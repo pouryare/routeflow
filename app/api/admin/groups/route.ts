@@ -49,6 +49,9 @@ export async function POST(req: NextRequest) {
 
   const body = (await req.json().catch(() => null)) as { name?: string; color?: string } | null;
   const name = typeof body?.name === "string" ? body.name.trim() : "";
+  if (name.length > 60) {
+    return NextResponse.json({ ok: false, error: "نام گروه حداکثر ۶۰ نویسه است" }, { status: 400 });
+  }
   if (!name) {
     return NextResponse.json({ ok: false, error: "نام گروه الزامی است" }, { status: 400 });
   }

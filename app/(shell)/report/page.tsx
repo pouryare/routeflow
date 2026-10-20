@@ -57,6 +57,10 @@ export default async function ReportPage({
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
+  // districts is shared reference data with no organization_id column, so the organisation
+  // guard groupFilter adds for an owner would be an unknown column there (the page failed to
+  // load for every owner); customers carry the column and keep the full guard.
+  const fd = groupFilter(session, "group_id", { shared: true });
   const f = groupFilter(session);
   // Districts are the same rows for every organisation and have no organization_id column, so
   // an owner's tenant guard must not be applied to them (it threw «no such column»).

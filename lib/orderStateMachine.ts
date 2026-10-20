@@ -154,13 +154,20 @@ export function orderTransition(
  *
  *  The union type is what keeps the ~139 existing `canAdvanceOrder(from, action, actor.role)`
  *  call sites compiling and correct without edit. */
+/** platform_owner is a strict superset of owner (lib/roles.ts), but the transition table names
+ *  only the owner, so the platform's own key was refused every transition an owner may fire.
+ *  Held as a role set it also counts as `owner`. */
+function withPlatformOwner(held: readonly string[]): readonly string[] {
+  return held.includes("platform_owner") && !held.includes("owner") ? [...held, "owner"] : held;
+}
+
 export function legalOrderActions(
   from: OrderStatus,
   role: OrderRole | readonly OrderRole[]
 ): OrderAction[] {
-  const held = Array.isArray(role) ? role : [role];
+  const held = withPlatformOwner((Array.isArray(role) ? role : [role]) as readonly string[]);
   return ORDER_TRANSITIONS.filter(
-    (t) => t.from === from && t.roles.some((r) => (held as readonly string[]).includes(r))
+    (t) => t.from === from && t.roles.some((r) => held.includes(r))
   ).map((t) => t.action);
 }
 
@@ -177,7 +184,7 @@ export function canAdvanceOrder(
 ): boolean {
   const t = orderTransition(from, action);
   if (!t) return false;
-  const held = Array.isArray(role) ? (role as readonly string[]) : [role];
+  const held = withPlatformOwner((Array.isArray(role) ? role : [role]) as readonly string[]);
   return t.roles.some((r) => held.includes(r));
 }
 

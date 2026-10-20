@@ -7,13 +7,14 @@ import { readCustomers } from "@/lib/customers";
 import ChequesBoard from "@/components/sales/ChequesBoard";
 import PageHeader from "@/components/meridian/PageHeader";
 
+import { MANAGE_ROLES } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function ChequesPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "owner" && session.role !== "group_manager") redirect("/sales");
+  if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   const customers = readCustomers(getDb(), scopeGroupIds(session)).map((c) => ({
     id: c.id,

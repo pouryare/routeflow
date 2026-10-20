@@ -8,6 +8,7 @@ import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
+import { isToman, toToman } from "@/lib/money";
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: "نقد",
@@ -201,8 +202,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
 
   const load = useCallback(async () => {
     const res = await fetch("/api/payments");
-    const body = await res.json();
-    setPayments(res.ok ? body.payments : []);
+    const body = await res.json().catch(() => null);
+    setPayments(res.ok && body ? body.payments : []);
   }, []);
 
   useRunAfterMount(load);
@@ -210,9 +211,19 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const amt = Number(amount.replace(/[^\d]/g, ""));
-    if (!customerId || !Number.isInteger(amt) || amt <= 0) {
+    // toToman reads Persian and Arabic digits and refuses anything that is not a number; the
+    // old strip-everything-but-digits rewrite turned "1000.5" into 10005 and "-5" into 5.
+    const amt = toToman(amount);
+    if (!customerId || amt === null || amt <= 0) {
       setError("مشتری و مبلغ لازم است");
+      return;
+    }
+    if (/[.٫]/.test(amount)) {
+      setError("مبلغ را به تومان و بدون اعشار وارد کنید");
+      return;
+    }
+    if (!isToman(amt)) {
+      setError("مبلغ بیش از حد مجاز است");
       return;
     }
     setBusy(true);

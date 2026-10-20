@@ -30,7 +30,8 @@ import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
 import CoveragePanels from "@/components/analysis/CoveragePanels";
 import { coverageAnalytics } from "@/lib/repo/coverageAnalytics";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
+
 
 export const dynamic = "force-dynamic";
 
@@ -73,7 +74,7 @@ export default async function DashboardPage() {
     to: jalaliToIsoDate(today.jy, today.jm, today.jd),
   };
 
-  const groupId = session.role === "owner" ? undefined : session.groupId;
+  const groupId = isOwner(session.role) ? undefined : session.groupId;
 
   const commission =
     session.role === "phone_sales"
@@ -83,7 +84,7 @@ export default async function DashboardPage() {
   // none of their business, the same boundary /sales/commission itself draws.
   const driverCommission = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId });
   const managerCommission =
-    session.role === "owner"
+    isOwner(session.role)
       ? allManagerStatements(db, period)
       : session.role === "group_manager"
         ? [managerStatementFor(db, session.user.id, period)]
@@ -124,7 +125,7 @@ export default async function DashboardPage() {
   const buckets = actionCenterFor(session);
   const health = customersHealthOverview(session);
   const kpiComputedAt = newestComputedAt(session.organizationId, aPeriod);
-  const isManager = session.role === "owner" || session.role === "group_manager";
+  const isManager = MANAGE_ROLES.includes(session.role);
   const bandCounts = health.reduce<Record<string, number>>((acc, h) => {
     acc[h.band] = (acc[h.band] ?? 0) + 1;
     return acc;

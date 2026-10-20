@@ -1,3 +1,4 @@
+import { isToman } from "@/lib/money";
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
 import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
@@ -71,7 +72,7 @@ export interface RecordPaymentInput {
 
 export const paymentsRepo = makeRepo<PaymentRow>("payments", { tenant: true });
 
-const isWholeToman = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n);
+const isWholeToman = (n: unknown): n is number => typeof n === "number" && isToman(n);
 
 interface OutstandingOrder {
   id: number;
@@ -247,6 +248,17 @@ function validateAllocations(
   return allocs;
 }
 
+/** A payment is recorded when the money arrives, so a date well in the future is a typo,
+ *  and one years back is almost certainly a wrong year. An unparseable string used to reach
+ *  the database and fail later as an empty 500. */
+function assertReasonableReceivedAt(receivedAt: unknown): void {
+  const t = typeof receivedAt === "string" ? Date.parse(receivedAt) : NaN;
+  const day = 86_400_000;
+  if (Number.isNaN(t) || t > Date.now() + day || t < Date.now() - 5 * 366 * day) {
+    throw new PaymentError("تاریخ دریافت معتبر نیست");
+  }
+}
+
 /** Insert a payment and its allocations inside a transaction the caller already owns.
  *  `recordDelivery` and the cheque path both need this so the money write joins their
  *  own atomic block. */
@@ -258,6 +270,7 @@ export function recordPaymentTxn(
   if (!isWholeToman(input.amount_toman) || input.amount_toman <= 0) {
     throw new PaymentError("مبلغ را به تومان، بدون اعشار و بیشتر از صفر وارد کنید");
   }
+  assertReasonableReceivedAt(input.received_at);
   const customer = db
     .prepare("SELECT organization_id FROM customers WHERE id = ?")
     .get(input.customer_id) as { organization_id: number | null } | undefined;

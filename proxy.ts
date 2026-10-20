@@ -199,6 +199,11 @@ export function proxy(req: NextRequest) {
   if (isDriverVisits && !isVan) return deny("/sales");
 
   const isDriverBriefing =
+    // Signing out, and the session/prefs reads the shell makes: «خروج» on /driver posts to
+    // /api/logout, and a 403 here left a van role unable to end its session.
+    pathname === "/api/logout" ||
+    pathname === "/api/me" ||
+    pathname === "/api/prefs" ||
     pathname.startsWith("/api/crm/driver-visits") ||
     pathname === "/today" ||
     pathname === "/api/today" ||

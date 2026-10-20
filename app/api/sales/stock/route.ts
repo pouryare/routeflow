@@ -4,7 +4,8 @@ import { requireRole } from "@/lib/session";
 import { stockPosition, readPurchases } from "@/lib/purchases";
 import { expiringBatches } from "@/lib/repo/batches";
 import { stockLevels } from "@/lib/repo/stock";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
+
 
 /** The warehouse position.
  *
@@ -34,6 +35,6 @@ export async function GET(req: NextRequest) {
     ok: true,
     stock,
     expiring_count: expiringBatches(org).length,
-    purchases: guard.session.role === "owner" ? readPurchases(db, org, 25) : [],
+    purchases: isOwner(guard.session.role) ? readPurchases(db, org, 25) : [],
   });
 }

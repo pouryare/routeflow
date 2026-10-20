@@ -56,6 +56,13 @@ beforeAll(() => {
 const SCOPE = { sql: "", params: [] as (number | string)[] };
 
 describe("readPlannableOrders", () => {
+  it("applies the caller's scope: its own organisation sees the order, another sees nothing", () => {
+    const own = readPlannableOrders(getDb(), { sql: " AND o.organization_id = ?", params: [1] });
+    expect(own.map((r) => r.orderId)).toContain(ctx.orderIds[0]);
+    const other = readPlannableOrders(getDb(), { sql: " AND o.organization_id = ?", params: [999] });
+    expect(other).toEqual([]);
+  });
+
   it("derives weight and volume from the frozen line columns", () => {
     const one = readPlannableOrders(getDb(), SCOPE).find((r) => r.orderId === ctx.orderIds[0]);
     expect(one).toBeDefined();

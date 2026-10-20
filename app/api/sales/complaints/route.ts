@@ -56,6 +56,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "دستهٔ شکایت نامعتبر است" }, { status: 400 });
   }
 
+  const description = typeof body.description === "string" ? body.description.trim() || null : null;
+  if (description !== null && description.length > 2000) {
+    return NextResponse.json({ ok: false, error: "شرح شکایت حداکثر ۲۰۰۰ نویسه است" }, { status: 400 });
+  }
+
   const id = fileComplaint(guard.session.organizationId, {
     customer_id: body.customer_id ?? null,
     order_id: body.order_id ?? null,
@@ -66,7 +71,7 @@ export async function POST(req: NextRequest) {
     severity: SEVERITIES.includes(body.severity as ComplaintSeverity)
       ? (body.severity as ComplaintSeverity)
       : undefined,
-    description: body.description ?? null,
+    description,
   });
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

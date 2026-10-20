@@ -156,9 +156,9 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/academy", label: "آموزش", group: "team", ready: true },
 
     // تنظیمات سازمان
-    { href: "/sales/admin/users", label: "کاربران", group: "org", ready: r === "owner" },
-    { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: r === "owner" },
-    { href: "/facilities", label: "مکان‌های ما", group: "org", ready: r === "owner" },
+    { href: "/sales/admin/users", label: "کاربران", group: "org", ready: isOwner(r) },
+    { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: isOwner(r) },
+    { href: "/facilities", label: "مکان‌های ما", group: "org", ready: isOwner(r) },
   ];
 }
 

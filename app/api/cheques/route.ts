@@ -1,3 +1,4 @@
+import { isToman } from "@/lib/money";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { recordChequePayment, listCheques, ChequeError } from "@/lib/repo/cheques";
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
 
   if (
     !body?.customer_id ||
-    !Number.isInteger(body.amount_toman) ||
+    !isToman(body.amount_toman as number) || (body.amount_toman as number) <= 0 ||
     !body.cheque_no ||
     !body.due_date ||
     !body.received_at

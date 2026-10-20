@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { freezeRun, RoutingError } from "@/lib/repo/routing";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
+
 
 export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/runs/[id]/freeze">) {
   const guard = requireRole(req, MANAGE_ROLES);
@@ -10,7 +11,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/sales/runs/
   try {
     freezeRun(guard.session.organizationId, Number(id), {
       id: guard.session.user.id,
-      role: guard.session.role === "owner" ? "owner" : "group_manager",
+      role: isOwner(guard.session.role) ? "owner" : "group_manager",
     });
     return NextResponse.json({ ok: true });
   } catch (e) {

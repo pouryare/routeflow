@@ -12,7 +12,8 @@ import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
+
 
 export const dynamic = "force-dynamic";
 
@@ -28,9 +29,9 @@ export default async function StockPage() {
 
   const db = getDb();
   const stock = advancedStockPosition(db);
-  const purchases = session.role === "owner" ? readPurchases(db, session.organizationId, 15) : [];
+  const purchases = isOwner(session.role) ? readPurchases(db, session.organizationId, 15) : [];
   const products =
-    session.role === "owner"
+    isOwner(session.role)
       ? (plain(
           db
             .prepare(
@@ -48,7 +49,7 @@ export default async function StockPage() {
   const expiring = expiringBatches(session.organizationId);
   /* Item 18: the batch list lives with the stock it makes up. The quarantine, release and
      recall actions stay on /sales/batches, for the roles that tab is open to. */
-  const canManageBatches = session.role === "owner" || session.role === "group_manager";
+  const canManageBatches = MANAGE_ROLES.includes(session.role);
   const batches = listBatchesWithProduct(session.organizationId).map((b) => ({
     id: b.id,
     batch_code: b.batch_code,
@@ -156,12 +157,12 @@ export default async function StockPage() {
           هنوز کالایی ثبت نشده است. کالاها را از صفحهٔ «کالاها و قیمت‌ها» اضافه کنید.
         </p>
       ) : (
-        <InventoryBoard rows={rows} canEdit={session.role === "owner"} />
+        <InventoryBoard rows={rows} canEdit={isOwner(session.role)} />
       )}
 
       <BatchList rows={batches} canManage={canManageBatches} />
 
-      {session.role === "owner" && <PurchaseEntry products={products} />}
+      {isOwner(session.role) && <PurchaseEntry products={products} />}
 
       {purchases.length > 0 && (
         <section className="card p-[var(--space-4)]">

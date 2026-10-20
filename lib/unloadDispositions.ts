@@ -1,9 +1,6 @@
-/** What can happen to stock a driver brings back.
- *
- *  Kept apart from lib/repo/unload.ts, which opens the database: the unload sheet on a phone
- *  needs these names and labels, and importing them from the repository module drags
- *  node:sqlite into the browser bundle, which crashes the driver page.
- */
+// Disposition names and labels, split out of lib/repo/unload.ts: that module imports lib/db
+// (node:sqlite), so a client component importing a value from it pulls the database into the
+// browser bundle and breaks `next build`. Keep this file free of server imports.
 
 export type Disposition =
   | "returned"

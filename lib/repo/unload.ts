@@ -21,11 +21,8 @@ import { getDb } from "@/lib/db";
 import { recordMovementsTxn, StockError, type MovementInput } from "@/lib/repo/stock";
 import { vanOnHand } from "@/lib/repo/vanStock";
 
-import { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/unloadDispositions";
-
-// Re-exported so callers of the repository keep one import.
-export { DISPOSITIONS, DISPOSITION_LABEL };
-export type { Disposition };
+export { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/unloadDispositions";
+import { DISPOSITIONS, type Disposition } from "@/lib/unloadDispositions";
 
 export interface UnloadLine {
   productId: number;

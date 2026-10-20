@@ -1,5 +1,6 @@
 "use client";
 
+import { safeNextPath } from "@/lib/safeNext";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,7 +26,7 @@ function LoginForm() {
     const next = params.get("next");
     if (next && !clearedRef.current) {
       setBounced(true);
-      nextPathRef.current = next;
+      nextPathRef.current = safeNextPath(next);
       clearedRef.current = true;
       // Remove ?next= from URL without triggering navigation
       const url = new URL(window.location.href);
