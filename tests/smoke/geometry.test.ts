@@ -29,10 +29,11 @@ let stop: () => Promise<void>;
 const ROUTES = [
   "/sales/dashboard",
   "/sales/products",
-  "/sales/deliveries",
+  // /sales/deliveries and /sales/journey are redirects now (to /sales/orders); a redirect page
+  // has no layout of its own, so the page they land on is the one that is measured.
+  "/sales/orders",
   "/sales/reps",
   "/sales/pocket",
-  "/sales/journey",
   "/sales/academy",
 ];
 
@@ -73,19 +74,23 @@ async function open(
      every assertion below would pass while testing none of the routes named above. This
      is the difference between a green suite and a working one. */
   const landed = new URL(page.url()).pathname;
-  if (landed !== route) {
+  // A route may carry a query («/sales/schedule?view=runs»); only the path is compared.
+  if (landed !== route.split("?")[0]) {
     await context.close();
     throw new Error(`${route} redirected to ${landed} — the smoke session was not accepted`);
   }
 
   /* RevealRoute lifts cards 16px and staggers them, so a box measured mid-entrance sits a
      few pixels off its neighbour: a stat row read as "wrapped" by 5px on a slow run. Wait
-     for every finite animation to land; infinite ones (spinners, pulses) never would. */
+     for every finite animation to land; infinite ones (spinners, pulses) never would.
+     Only time-based ones: the reveal is also driven by `animation-timeline: view()`, which
+     advances as a card scrolls into view. Those never finish for a card below the fold, so
+     waiting on them hung every test on any page taller than the viewport. */
   await page.evaluate(() =>
     Promise.all(
       document
         .getAnimations()
-        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .filter((a) => a.timeline === document.timeline && a.effect?.getTiming().iterations !== Infinity)
         .map((a) => a.finished.catch(() => undefined)),
     ),
   );
@@ -288,7 +293,7 @@ describe("runs", () => {
      the whole point of the form is that stop N sits in the same column in every lane. If a
      lane drifts off the axis, the chart silently lies about which van is further along. */
   it("every lane's stops sit on the shared stop axis, on one row", async () => {
-    const { page, close } = await open("/sales/runs", { width: 1440, height: 900 });
+    const { page, close } = await open("/sales/schedule?view=runs", { width: 1440, height: 900 });
     const report = await page.evaluate(() => {
       const ticks = Array.from(document.querySelectorAll<HTMLElement>(".mlanes__ticks > li")).map((t) => {
         const r = t.getBoundingClientRect();
@@ -317,7 +322,7 @@ describe("runs", () => {
   }, 90_000);
 
   it("the driver streak grid is seven days tall in every week", async () => {
-    const { page, close } = await open("/sales/runs", { width: 1440, height: 900 });
+    const { page, close } = await open("/sales/schedule?view=runs", { width: 1440, height: 900 });
     const bad = await page.evaluate(() =>
       Array.from(document.querySelectorAll<HTMLElement>(".streak__week"))
         .map((w) => w.querySelectorAll(".streak__cell").length)
@@ -527,8 +532,10 @@ describe("panels and controls stay where they belong", () => {
     expect(box.x + box.width, "the panel ends right of the screen").toBeLessThanOrEqual(viewport.width);
   }, 90_000);
 
-  it("the customer window's close icon sits in the middle of its circle", async () => {
+  it("the customer window's close button keeps its icon and label centred", async () => {
     // The orders grid opens پنجرهٔ مشتری from every pocket; the snapshot always has orders.
+    // The button reads «بستن مشخصات» beside its icon, so it is the icon and the label TOGETHER
+    // that must sit in the middle of the button (an icon-only circle is the one-child case).
     const { page, close } = await open("/sales/orders", { width: 1280, height: 800 });
     const opener = page.locator(".pockets > *").first();
     await opener.waitFor({ state: "visible", timeout: 10_000 });
@@ -538,12 +545,21 @@ describe("panels and controls stay where they belong", () => {
     await page.waitForTimeout(600); // the sheet slides in
     const off = await x.evaluate((b) => {
       const r = b.getBoundingClientRect();
-      const i = b.querySelector("svg")!.getBoundingClientRect();
-      return { dx: Math.abs(r.x + r.width / 2 - (i.x + i.width / 2)), dy: Math.abs(r.y + r.height / 2 - (i.y + i.height / 2)) };
+      const kids = Array.from(b.children).map((c) => c.getBoundingClientRect());
+      const left = Math.min(...kids.map((k) => k.x));
+      const right = Math.max(...kids.map((k) => k.x + k.width));
+      const top = Math.min(...kids.map((k) => k.y));
+      const bottom = Math.max(...kids.map((k) => k.y + k.height));
+      return {
+        dx: Math.abs(r.x + r.width / 2 - (left + right) / 2),
+        dy: Math.abs(r.y + r.height / 2 - (top + bottom) / 2),
+        hasLabel: (b.textContent ?? "").trim().length > 0,
+      };
     });
     await close();
-    expect(off.dx, "icon off-centre horizontally").toBeLessThanOrEqual(1);
-    expect(off.dy, "icon off-centre vertically").toBeLessThanOrEqual(1);
+    expect(off.hasLabel, "the close button says what it closes").toBe(true);
+    expect(off.dx, "content off-centre horizontally").toBeLessThanOrEqual(1);
+    expect(off.dy, "content off-centre vertically").toBeLessThanOrEqual(1);
   }, 90_000);
 
   it.each(ROUTES)("every icon-only button on %s centres its icon", async (route) => {
@@ -649,10 +665,17 @@ describe("the customer sheet opens and closes for real", () => {
     await page.locator(".pockets > *").first().click();
     const x = page.locator('.sheet.on button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
-    await page.waitForTimeout(600);
+    // Poll for the slide-in instead of sleeping a fixed time: on a long page under load the
+    // transition starts late. A sheet that never reaches the screen (the bug this test exists
+    // for: a fixed sheet captured by a transformed card) still fails, after the timeout.
+    await expect
+      .poll(async () => (await offscreen(page))?.top ?? Infinity, { timeout: 8_000, message: "the open sheet is not on screen" })
+      .toBeLessThan(800);
     const opened = await offscreen(page);
     await x.click();
-    await page.waitForTimeout(800); // the slide out
+    await expect
+      .poll(async () => (await offscreen(page))?.top ?? 0, { timeout: 8_000, message: "after ✕ the sheet is still on the page" })
+      .toBeGreaterThanOrEqual(800);
     const closed = await offscreen(page);
     await close();
     expect(opened!.top, "the open sheet is not on screen").toBeLessThan(opened!.vh);

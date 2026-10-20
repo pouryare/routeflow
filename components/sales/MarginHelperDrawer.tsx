@@ -2,7 +2,7 @@
 
 import { friendlyError } from "@/lib/userMessage";
 import { tehranTodayIso } from "@/lib/jalali";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { faFixed, faNum } from "@/lib/format";
 import { toToman } from "@/lib/money";

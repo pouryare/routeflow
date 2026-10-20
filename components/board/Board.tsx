@@ -367,7 +367,7 @@ export default function Board({
                 ))}
 
                 {lane.cards.length === 0 ? (
-                  <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>خالی</p>
+                  <p style={{ margin: 0, fontSize: 12, color: "var(--muted)" }}>در این ستون کاری نیست.</p>
                 ) : null}
               </section>
             ))}

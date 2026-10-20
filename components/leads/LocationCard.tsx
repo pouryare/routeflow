@@ -89,6 +89,7 @@ export default function LocationCard({
         {showCheckboxes && (
           <input
             type="checkbox"
+            aria-label={`انتخاب ${location.name}`}
             checked={checked}
             onChange={() => {}}
             className="mt-1 h-4 w-4 shrink-0 rounded border-border accent-accent cursor-pointer"
@@ -99,6 +100,7 @@ export default function LocationCard({
           <div className="flex items-center gap-2">
             <input
               type="text"
+              aria-label={`نام مکان ${location.name}`}
               defaultValue={location.name}
               onBlur={(e) => onNameChange(e.target.value)}
               className="bg-transparent text-text font-medium text-[length:var(--text-sm)] outline-none border-b border-transparent focus:border-accent min-w-0 flex-1"

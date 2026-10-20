@@ -80,7 +80,7 @@ export default async function DeepAnalysisSection({ session }: { session: Sessio
           </div>
           <div className="kblock__body">
             {risky.length === 0 ? (
-              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">مشتری پرخطری نیست.</p>
+              <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">مشتری پرخطری ندارید.</p>
             ) : (
               <ul className="m-0 list-none p-0 text-[length:var(--text-sm)]">
                 {risky.map((h) => (

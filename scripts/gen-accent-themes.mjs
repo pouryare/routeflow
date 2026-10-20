@@ -214,7 +214,7 @@ function surfaceTokens(hue, skin, id) {
 /** Inks the surface grounds have to keep carrying. From the `.meridian` blocks in
  *  app/globals.css; --text-faint is non-text (3:1) by design, see MASTER.md. */
 const SURFACE_INKS = {
-  light: { text: "#1A1F26", muted: "#5C6672", faint: "#828A98" },
+  light: { text: "#1A1F26", muted: "#5C6672", faint: "#656E7B" },
   dark: { text: "#EDF1F5", muted: "#8B98A5", faint: "#828C97" },
 };
 

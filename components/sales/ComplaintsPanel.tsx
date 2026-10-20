@@ -138,7 +138,7 @@ export default function ComplaintsPanel({
       )}
 
       <form onSubmit={file} className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3">
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
+        <select aria-label="مشتری" className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
           <option value="">— مشتری —</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
@@ -146,7 +146,7 @@ export default function ComplaintsPanel({
             </option>
           ))}
         </select>
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
+        <select aria-label="کالا" className="rounded border border-border bg-bg p-2 text-sm" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
           <option value="">— کالا —</option>
           {products.map((p) => (
             <option key={p.id} value={p.id}>
@@ -154,21 +154,21 @@ export default function ComplaintsPanel({
             </option>
           ))}
         </select>
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+        <select aria-label="دستهٔ شکایت" className="rounded border border-border bg-bg p-2 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
           {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
             </option>
           ))}
         </select>
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
+        <select aria-label="شدت شکایت" className="rounded border border-border bg-bg p-2 text-sm" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
           {Object.entries(SEVERITY_LABEL).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
             </option>
           ))}
         </select>
-        <input className="col-span-2 rounded border border-border bg-bg p-2 text-sm md:col-span-1" placeholder="توضیح" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} />
+        <label className="flex flex-col gap-1 text-xs text-text-muted col-span-2 md:col-span-1">توضیح<input className="rounded border border-border bg-bg p-2 text-sm w-full" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} /></label>
         <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
           <Icon name="check" size="md" />
           ثبت شکایت

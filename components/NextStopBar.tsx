@@ -125,7 +125,7 @@ export default function NextStopBar({
       dir="rtl"
       className="pointer-events-none pinned-bottom absolute left-1/2 z-[var(--z-map-overlay)] flex w-[min(460px,calc(100vw-2rem))] -translate-x-1/2 justify-center"
     >
-      <div className="pointer-events-auto flex w-full items-center gap-2 rounded-[var(--radius-lg)] border border-border-strong bg-surface-raised/95 px-3 py-2 backdrop-blur elevate-accent">
+      <div className="pointer-events-auto flex w-full flex-wrap items-center gap-2 rounded-[var(--radius-lg)] border border-border-strong bg-surface-raised/95 px-3 py-2 backdrop-blur elevate-accent">
         <span className="shrink-0 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
           توقف بعدی
         </span>
@@ -133,7 +133,7 @@ export default function NextStopBar({
         <button
           onClick={() => next.lat !== null && next.lng !== null && onFocus(next.entity_id, next.lat, next.lng)}
           disabled={next.lat === null || next.lng === null}
-          className="min-w-0 flex-1 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent disabled:hover:text-text"
+          className="min-w-0 flex-1 basis-40 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent disabled:hover:text-text"
         >
           <Icon name="locate" size="md" />
           <span className="block truncate text-[length:var(--text-sm)] font-medium text-text">{next.label}</span>
@@ -184,9 +184,10 @@ export default function NextStopBar({
         <button
           onClick={onDismiss}
           aria-label="پنهان کردن نوار توقف بعدی"
-          className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
+          className="inline-flex items-center justify-center gap-[var(--space-1)] shrink-0 whitespace-nowrap text-[length:var(--text-xs)] text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
         >
           <Icon name="x" size="sm" />
+          پنهان کردن نوار
         </button>
       </div>
     </div>

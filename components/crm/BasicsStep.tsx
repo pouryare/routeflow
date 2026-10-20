@@ -135,7 +135,7 @@ export default function BasicsStep({ api, prefillPhone, onOpenExisting, onReques
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={name.trim().length < 2 || blocked}
         onClick={() => api.submit("ok", JSON.stringify({ name: name.trim(), phone: phone.trim() || null, instagram: instagram.trim() || null, branch_of: branchOk ? branchOf : null }))}>
         <Icon name="arrow-left" size="md" />
-        ادامه به مرحلهٔ بعد
+        ادامه به سؤال بعد
       </button>
     </>
   );

@@ -1,5 +1,6 @@
 "use client";
 
+import { usePathname } from "next/navigation";
 import { createContext, useCallback, useContext, useEffect, useRef, useState, useSyncExternalStore } from "react";
 
 export interface MyPosition {
@@ -85,6 +86,10 @@ export function MyPositionProvider({ children }: { children: React.ReactNode }) 
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
   const watchIdRef = useRef<number | null>(null);
+  /* The sign-in form and the offline page have no use for a position, and asking for it there put
+     a permission prompt in front of someone who had not even signed in yet. */
+  const pathname = usePathname();
+  const noLocationHere = pathname === "/login" || pathname === "/offline";
 
   /* Whether this browser can locate at all is a fact about the browser, read as a
      snapshot: null on the server and the hydrating render (this provider sits in the root
@@ -92,7 +97,7 @@ export function MyPositionProvider({ children }: { children: React.ReactNode }) 
   const canLocate = useSyncExternalStore(noSubscribe, hasGeolocation, () => null);
 
   useEffect(() => {
-    if (!hasGeolocation()) return;
+    if (noLocationHere || !hasGeolocation()) return;
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
@@ -134,7 +139,7 @@ export function MyPositionProvider({ children }: { children: React.ReactNode }) 
       if (id !== null) navigator.geolocation.clearWatch(id);
       watchIdRef.current = null;
     };
-  }, [attempt]);
+  }, [attempt, noLocationHere]);
 
   const retry = useCallback(() => {
     setError(null);
@@ -143,8 +148,9 @@ export function MyPositionProvider({ children }: { children: React.ReactNode }) 
   }, []);
 
   // A watch is asked for as soon as the browser can answer, so "idle" means "locating".
-  const shownStatus: PositionStatus =
-    canLocate === null ? status : !canLocate ? "unavailable" : status === "idle" ? "locating" : status;
+  const shownStatus: PositionStatus = noLocationHere
+    ? "idle"
+    : canLocate === null ? status : !canLocate ? "unavailable" : status === "idle" ? "locating" : status;
   const shownError = canLocate === false ? "این مرورگر موقعیت‌یابی ندارد" : error;
 
   return (

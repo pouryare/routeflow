@@ -60,10 +60,11 @@ export default function ShortcutHelp({
           <h2 className="text-[length:var(--text-md)] font-bold text-text">میان‌برهای صفحه‌کلید</h2>
           <button
             onClick={onClose}
-            aria-label="بستن راهنمای میان‌بُرها"
-            className="rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
+            aria-label="بستن راهنما"
+            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
           >
             <Icon name="x" size="sm" />
+            <span className="text-[length:var(--text-xs)]">بستن راهنما</span>
           </button>
         </div>
 

@@ -7,10 +7,21 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep", "delivery_driver", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
+  const session = guard.session;
+  // Everyone below a manager sees their own tasks only: this used to return the whole
+  // organisation's open tasks to a driver. Managers are held to their group's (and the
+  // company-wide ones); owners keep the whole organisation.
+  const ownOnly = !MANAGE_ROLES.includes(session.role) && session.role !== "rep_manager";
+  // The rep manager runs the team board across groups, like an owner; only a group manager is
+  // held to one group.
+  const groupIds = session.role === "group_manager"
+    ? (session.groupId === null ? [] : [session.groupId])
+    : undefined;
   return NextResponse.json({
     ok: true,
-    tasks: listTasks(guard.session.organizationId, {
-      assignee: sp.get("mine") === "1" ? guard.session.user.id : undefined,
+    tasks: listTasks(session.organizationId, {
+      assignee: ownOnly || sp.get("mine") === "1" ? session.user.id : undefined,
+      groupIds: ownOnly ? undefined : groupIds,
       role: sp.get("role") ?? undefined,
       status: sp.get("status") ?? undefined,
     }),

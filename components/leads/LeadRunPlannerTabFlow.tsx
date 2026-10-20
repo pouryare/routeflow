@@ -158,7 +158,7 @@ export default function LeadRunPlannerTabFlow({
     }
   }, [chosen, driverId, loadAssignData, locationIds, onAssigned, override, runDate]);
 
-  /** The undo window. Tapping "ثبت و سپردن" starts a timer and a toast together; the route
+  /** The undo window. Tapping "ثبت مسیر و سپردن به راننده" starts a timer and a toast together; the route
    *  is written when the timer ends, not when the button is tapped.
    *
    *  This is the same 5 s the rest of the app uses for an undoable mutation, and the same
@@ -274,7 +274,7 @@ export default function LeadRunPlannerTabFlow({
             onClick={() => api.submit("next")}
           >
             <Icon name="arrow-left" size="md" />
-            ادامه به مرحلهٔ بعد
+            ادامه به سؤال بعد
           </button>
         </div>
       );
@@ -302,7 +302,7 @@ export default function LeadRunPlannerTabFlow({
             onClick={beginHandover}
           >
             <Icon name="route" size="md" />
-            {override ? "جایگزینی و سپردن" : holding ? "در انتظار تأیید…" : "ثبت و سپردن"}
+            {override ? "جایگزینی مسیر و سپردن به راننده" : holding ? "در انتظار تأیید…" : "ثبت مسیر و سپردن به راننده"}
           </button>
           {/* The bar that used to drain across this button now belongs to the toast `لغو`
               opens. Its lifetime is `OUTBOX_HOLD_MS` too, so the countdown a manager reads

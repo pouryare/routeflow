@@ -409,13 +409,14 @@ export default function FacilitiesPage() {
             افزودن مکان
           </h2>
           <div className="flex flex-wrap gap-2">
-            <input
+            <label className="flex flex-col gap-1 text-xs text-text-muted">نام مکان<input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="نام مکان"
-              className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent"
-            />
+             
+              className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent w-full"
+            /></label>
             <select
+              aria-label="نوع مکان"
               value={newKind}
               onChange={(e) => {
                 const k = e.target.value as FacilityKind;

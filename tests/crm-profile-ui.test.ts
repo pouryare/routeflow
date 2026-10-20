@@ -111,14 +111,15 @@ it("passes the product catalog into the intel flow", async () => {
   try {
     await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
     const click = async (label: string) => {
-      const button = Array.from(host.querySelectorAll("button")).find(b => b.textContent?.trim() === label);
+      // The flow's sheet is drawn in the document root (useSheetHost), outside `host`.
+      const button = Array.from(document.querySelectorAll("button")).find(b => b.textContent?.trim() === label);
       expect(button, label).toBeDefined();
       await act(async () => { button!.click(); vi.advanceTimersByTime(200); });
     };
     await click("ثبت شناخت");
     await click("متوسط");
     await click("پخش‌کننده");
-    const dialog = host.querySelector('[role="dialog"]')!;
+    const dialog = document.querySelector('[role="dialog"]')!;
     expect(dialog.textContent).toContain("کره");
     expect(dialog.textContent).toContain("پودر کاکائو");
   } finally { vi.useRealTimers(); }

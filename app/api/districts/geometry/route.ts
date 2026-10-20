@@ -13,8 +13,12 @@ import { MANAGE_ROLES } from "@/lib/roles";
 // it is administrative boundary shapes with no coverage, assignment or customer data
 // in it, and the client needs the whole set to draw a map. What reveals who holds
 // what is /api/districts, which is scoped.
+/* Boundary shapes only, no tenant data, so every role that opens the map may fetch them. It was
+   MANAGE_ROLES, which left the map without polygons for the salesperson the nav sends there. */
+const READERS = [...MANAGE_ROLES, "rep_manager", "phone_sales"] as const;
+
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, [...READERS]);
   if (!guard.ok) return guard.response;
 
   const requested = req.nextUrl.searchParams.get("v");

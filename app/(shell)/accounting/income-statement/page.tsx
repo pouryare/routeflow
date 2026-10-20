@@ -25,7 +25,7 @@ export default async function IncomeStatementPage({
   const periods = listPeriods(organizationId);
 
   const line = (label: string, value: number, opts?: { strong?: boolean }) => (
-    <tr className={`border-t border-border ${opts?.strong ? "font-medium" : ""}`}>
+    <tr key={label} className={`border-t border-border ${opts?.strong ? "font-medium" : ""}`}>
       <td className={CELL}>{label}</td>
       <td className={NUM}>{faNum(value)}</td>
     </tr>
@@ -50,7 +50,7 @@ export default async function IncomeStatementPage({
                 key={p.periodKey}
                 href={`/accounting/income-statement?period=${encodeURIComponent(p.periodKey)}`}
                 className={`rounded-[var(--radius-sm)] border px-2 py-1 ${
-                  period === p.periodKey ? "border-accent text-accent" : "border-border"
+                  period === p.periodKey ? "border-accent text-[var(--accent-text)]" : "border-border"
                 }`}
               >
                 {p.periodKey}

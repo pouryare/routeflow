@@ -38,7 +38,9 @@ export default function VectorBasemap({
 
     (async () => {
       try {
-        const maplibregl = (await import("maplibre-gl")).default;
+        // maplibre-gl 6 ships ES modules with no default export; older builds exposed one.
+        const mod = (await import("maplibre-gl")) as unknown as { default?: unknown };
+        const maplibregl = mod.default ?? mod;
         // The Leaflet bridge reads the renderer off the global rather than importing it,
         // so this assignment has to happen before the plugin module is evaluated.
         (window as unknown as { maplibregl: unknown }).maplibregl = maplibregl;

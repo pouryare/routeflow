@@ -7,9 +7,14 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "rep_manager"]);
   if (!guard.ok) return guard.response;
   const sp = req.nextUrl.searchParams;
+  const session = guard.session;
+  // Owners and the platform key see the whole organisation; everyone else sees their own
+  // group's alerts and the company-wide ones.
+  const wide = session.role === "owner" || session.role === "platform_owner";
   return NextResponse.json({
     ok: true,
-    alerts: listAlerts(guard.session.organizationId, {
+    alerts: listAlerts(session.organizationId, {
+      groupIds: wide ? undefined : session.groupId === null ? [] : [session.groupId],
       open: sp.get("open") === "1",
       severity: sp.get("severity") ?? undefined,
     }),

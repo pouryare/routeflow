@@ -151,13 +151,23 @@ export function moveTask(
 
 export function listTasks(
   organizationId: number,
-  filter: { assignee?: number; role?: string; status?: string; limit?: number } = {}
+  filter: { assignee?: number; role?: string; status?: string; limit?: number; groupIds?: number[] } = {}
 ): TaskRow[] {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.assignee !== undefined) {
     clauses.push("assignee_user_id = ?");
     params.push(filter.assignee);
+  }
+  if (filter.groupIds !== undefined) {
+    // An ungrouped row is company-wide; a grouped one is visible only inside its group. An empty
+    // list therefore sees the company-wide rows and nothing more -- never "everything".
+    clauses.push(
+      filter.groupIds.length
+        ? `(group_id IS NULL OR group_id IN (${filter.groupIds.map(() => "?").join(", ")}))`
+        : "group_id IS NULL"
+    );
+    params.push(...filter.groupIds);
   }
   if (filter.role !== undefined) {
     clauses.push("role_hint = ?");

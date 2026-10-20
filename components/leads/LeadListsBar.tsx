@@ -103,7 +103,7 @@ export default function LeadListsBar({
       keywords="فهرست ذخیره"
     >
       {lists.length === 0 ? (
-        <p className="py-2 text-[length:var(--text-xs)] text-text-faint">هنوز فهرستی ساخته نشده است.</p>
+        <p className="py-2 text-[length:var(--text-xs)] text-text-faint">هنوز فهرستی نساخته‌اید. مسیر را آماده کنید، نام فهرست را بنویسید و «ساختن از مسیر فعلی» را بزنید.</p>
       ) : (
         <ul className="flex flex-col gap-2">
           {lists.map((list) => {

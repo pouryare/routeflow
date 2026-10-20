@@ -66,7 +66,7 @@ export default function HoursPicker({ api }: { api: CustomStepApi }) {
           </div>
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go" disabled={days.length === 0} onClick={() => setPhase("from")}>
           <Icon name="arrow-left" size="md" />
-          ادامه به مرحلهٔ بعد</button>
+          ادامه به سؤال بعد</button>
         </>
       )}
 

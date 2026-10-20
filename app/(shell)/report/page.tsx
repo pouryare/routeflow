@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { getDb, District, Customer, CoverageStatus } from "@/lib/db";
-import { STATUS_LABEL, STATUS_COLOR, LIFECYCLE_LABEL } from "@/lib/types";
+import { STATUS_LABEL, STATUS_TEXT, LIFECYCLE_LABEL } from "@/lib/types";
 import { readFacilities, pickOrigin } from "@/lib/facilities";
 import { distanceKm } from "@/lib/geo";
 import type { FacilityRow } from "@/lib/facilityTypes";
@@ -182,7 +182,7 @@ export default async function ReportPage({
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
               <div key={s} className="rounded-[var(--radius-md)] border border-border bg-surface-raised p-3">
-                <div className="font-mono text-[length:var(--text-lg)] font-bold tabular-nums" style={{ color: STATUS_COLOR[s] }}>
+                <div className="font-mono text-[length:var(--text-lg)] font-bold tabular-nums" style={{ color: STATUS_TEXT[s] }}>
                   {districtCounts[s] ?? 0}
                 </div>
                 <div className="text-[length:var(--text-xs)] text-text-muted">{STATUS_LABEL[s]}</div>
@@ -260,7 +260,7 @@ export default async function ReportPage({
                     <tr key={d.id} className="border-b border-border last:border-b-0">
                       <td className="px-3 py-2 text-text">{d.name}</td>
                       <td className="px-3 py-2 text-text-muted">{d.parent_name ?? "—"}</td>
-                      <td className="px-3 py-2" style={{ color: STATUS_COLOR[d.coverage_status] }}>
+                      <td className="px-3 py-2" style={{ color: STATUS_TEXT[d.coverage_status] }}>
                         {STATUS_LABEL[d.coverage_status]}
                       </td>
                       {origin && (
@@ -303,7 +303,7 @@ export default async function ReportPage({
                     <td
                       dir="ltr"
                       className="px-3 py-2 text-right font-mono tabular-nums"
-                      style={{ color: debtOf(c.id).bucket_30_plus > 0 ? STATUS_COLOR.not_allowed : "inherit" }}
+                      style={{ color: debtOf(c.id).bucket_30_plus > 0 ? STATUS_TEXT.not_allowed : "inherit" }}
                     >
                       {debtOf(c.id).bucket_30_plus > 0 ? faNum(debtOf(c.id).bucket_30_plus) : "—"}
                     </td>
