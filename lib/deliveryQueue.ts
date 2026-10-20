@@ -113,3 +113,13 @@ export async function flush(
 
   return { sent, failed };
 }
+
+/** The one request that records a delivery. The flow, the retry on reconnect and the queue
+ *  flush all send through here, so they cannot drift apart. */
+export function sendDelivery(stopId: number, body: unknown): Promise<Response> {
+  return fetch(`/api/driver/stops/${stopId}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+}

@@ -86,3 +86,11 @@ describe("delivery flow", () => {
     expect(chips.join(" ")).toContain("دریافتی: ۰");
   });
 });
+
+describe("delivery failure copy", () => {
+  it("the 'saved on the phone' message survives friendlyError unchanged", async () => {
+    const { friendlyError } = await import("@/lib/userMessage");
+    const m = "تحویل هنوز ارسال نشد، اما روی گوشی ذخیره است و با وصل شدن اینترنت خودکار ارسال می‌شود.";
+    expect(friendlyError(m, "x")).toBe(m);
+  });
+});
