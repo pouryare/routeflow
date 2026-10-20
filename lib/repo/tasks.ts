@@ -204,6 +204,25 @@ export function canActOnTask(
   return row.role_hint === null || row.role_hint === actor.role;
 }
 
+/** A task may be linked to a customer or an order. Both ends of the link must be given, the type
+ *  must be one of those two, and the row must belong to the caller's organisation: the route used
+ *  to store whatever type and id it was handed, including ids that exist nowhere or in another
+ *  tenant. Returns true when there is no link at all. */
+export function taskEntityValid(
+  organizationId: number,
+  entityType: unknown,
+  entityId: unknown
+): boolean {
+  if (entityType == null && entityId == null) return true;
+  if (typeof entityType !== "string" || typeof entityId !== "number" || !Number.isInteger(entityId)) return false;
+  const table = entityType === "customer" ? "customers" : entityType === "order" ? "orders" : null;
+  if (!table) return false;
+  return !!tasksRepo
+    .db()
+    .prepare(`SELECT 1 FROM ${table} WHERE id = ? AND organization_id = ?`)
+    .get(entityId, organizationId);
+}
+
 /** Whether `userId` is an active user of the organisation. */
 export function assigneeInOrg(organizationId: number, userId: number): boolean {
   if (!Number.isInteger(userId)) return false;

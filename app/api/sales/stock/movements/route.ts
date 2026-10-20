@@ -4,6 +4,7 @@ import { requireRole } from "@/lib/session";
 import {
   listMovements,
   recordMovement,
+  onHand,
   defaultFacilityId,
   MANUAL_MOVEMENT_KINDS,
   StockError,
@@ -61,9 +62,28 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "مقدار، تاریخ یا یادداشت حرکت انبار معتبر نیست" }, { status: 400 });
   }
 
+  /* A manual movement may not take stock below zero. Deliveries and receipts keep their tolerance
+     for the books lagging the paper (see `onHand`), but a person typing an adjustment, transfer or
+     sample is asserting a quantity that exists; a count that overshoots is a typo or a hidden loss,
+     and the physical-count kind exists to correct a wrong total. */
+  const facilityId = body.facility_id ?? defaultFacilityId(guard.session.organizationId);
+  if (Number(body.base_qty) < 0) {
+    const have = onHand(guard.session.organizationId, {
+      product_id: Number(body.product_id),
+      facility_id: facilityId,
+      ...(body.batch_id != null ? { batch_id: body.batch_id } : {}),
+    });
+    if (have + Number(body.base_qty) < 0) {
+      return NextResponse.json(
+        { ok: false, error: `موجودی کافی نیست؛ موجودی فعلی ${have} است` },
+        { status: 409 }
+      );
+    }
+  }
+
   try {
     const id = recordMovement(guard.session.organizationId, {
-      facility_id: body.facility_id ?? defaultFacilityId(guard.session.organizationId),
+      facility_id: facilityId,
       product_id: Number(body.product_id),
       batch_id: body.batch_id ?? null,
       base_qty: Number(body.base_qty),

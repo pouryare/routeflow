@@ -59,3 +59,22 @@ describe("assignee must belong to the organisation", () => {
     expect(assigneeInOrg(1, 1.5)).toBe(false);
   });
 });
+
+describe("a task's linked record must be real and in the organisation", () => {
+  it("accepts no link, a real customer/order of the org, and refuses the rest", async () => {
+    const { taskEntityValid } = await import("@/lib/repo/tasks");
+    const db = getDb();
+    const now = new Date().toISOString();
+    const c1 = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('T1','x','active',?,1)").run(now).lastInsertRowid);
+    const c2 = Number(db.prepare("INSERT INTO customers (customer_code,business_name,lifecycle,synced_at,organization_id) VALUES ('T2','y','active',?,2)").run(now).lastInsertRowid);
+    expect(taskEntityValid(1, null, null)).toBe(true);
+    expect(taskEntityValid(1, undefined, undefined)).toBe(true);
+    expect(taskEntityValid(1, "customer", c1)).toBe(true);
+    expect(taskEntityValid(1, "customer", c2)).toBe(false); // another tenant
+    expect(taskEntityValid(1, "customer", 999999)).toBe(false);
+    expect(taskEntityValid(1, "district", c1)).toBe(false); // not a linkable type
+    expect(taskEntityValid(1, "customer", null)).toBe(false); // half a link
+    expect(taskEntityValid(1, null, c1)).toBe(false);
+    expect(taskEntityValid(1, "customer; DROP TABLE x", c1)).toBe(false);
+  });
+});
