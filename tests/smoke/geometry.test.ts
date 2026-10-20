@@ -80,12 +80,15 @@ async function open(
 
   /* RevealRoute lifts cards 16px and staggers them, so a box measured mid-entrance sits a
      few pixels off its neighbour: a stat row read as "wrapped" by 5px on a slow run. Wait
-     for every finite animation to land; infinite ones (spinners, pulses) never would. */
+     for every finite animation to land; infinite ones (spinners, pulses) never would.
+     Only time-based ones: the reveal is also driven by `animation-timeline: view()`, which
+     advances as a card scrolls into view. Those never finish for a card below the fold, so
+     waiting on them hung every test on any page taller than the viewport. */
   await page.evaluate(() =>
     Promise.all(
       document
         .getAnimations()
-        .filter((a) => a.effect?.getTiming().iterations !== Infinity)
+        .filter((a) => a.timeline === document.timeline && a.effect?.getTiming().iterations !== Infinity)
         .map((a) => a.finished.catch(() => undefined)),
     ),
   );
