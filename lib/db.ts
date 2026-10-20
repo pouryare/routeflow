@@ -1437,6 +1437,15 @@ export function getDb(): DatabaseSync {
   const db = new DatabaseSync(DB_PATH);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
+  /* Read tuning. synchronous is deliberately left at FULL: the offline outbox drops a fact
+     once the server acknowledges it, so a commit lost after an ack would never be re-sent.
+     cache_size is negative = KiB, so -65536 is 64 MiB. mmap_size lets large reads skip a
+     copy. busy_timeout makes a second writer wait rather than throw SQLITE_BUSY -- the
+     lead-import runner and the request path share this file. */
+  db.exec("PRAGMA temp_store = MEMORY;");
+  db.exec("PRAGMA cache_size = -65536;");
+  db.exec("PRAGMA mmap_size = 268435456;");
+  db.exec("PRAGMA busy_timeout = 5000;");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS customers (
