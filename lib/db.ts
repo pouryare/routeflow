@@ -1,3 +1,4 @@
+import { instrumentSlowSql, slowSqlThresholdMs } from "./slowSql";
 import { refreshRetiredWording } from "./repo/retiredWording";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
@@ -1435,6 +1436,9 @@ export function getDb(): DatabaseSync {
 
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new DatabaseSync(DB_PATH);
+  // Opt-in: ROUTEFLOW_SLOW_SQL_MS=200 logs any statement that takes that long, migrations included.
+  const slowMs = slowSqlThresholdMs();
+  if (slowMs > 0) instrumentSlowSql(db, slowMs);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
   /* Read tuning. synchronous is deliberately left at FULL: the offline outbox drops a fact
