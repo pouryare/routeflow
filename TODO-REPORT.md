@@ -10,6 +10,7 @@
 - [x] Driver stop actions and order status flow tested
 - [x] 41 findings listed in `AUDIT-2026-10-20.md`
 - [x] Always-on rule added to `CLAUDE.md`: this report is rewritten after every prompt
+- [x] Batch rule added to `CLAUDE.md` (replaces merge-after-every-push): do all tasks as separate commits, keep one PR, merge once at the end after CI is green
 
 - [x] Step 1: fixed build breakers (holidays page moved header into a layout; driver bundle no longer imports the database); `next build` passes
 - [x] Step 2: input validation (order lines/dates/notes/seller, payment amount/date, money cap for all `_toman` fields, cheque/payment/order forms, commission rows stamped with organization, user/group/product/complaint limits) + tests
