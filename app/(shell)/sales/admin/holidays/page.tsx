@@ -8,6 +8,7 @@ import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { faJalaliDate } from "@/lib/jalali";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 
+import { confirmAction } from "@/lib/confirm";
 interface StoredHoliday {
   iso_date: string;
   title_fa: string;
@@ -70,6 +71,7 @@ export default function AdminHolidaysPage() {
   }
 
   async function remove(isoDate: string) {
+    if (!confirmAction("این تعطیلی حذف شود؟")) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/admin/holidays/${encodeURIComponent(isoDate)}`, {
