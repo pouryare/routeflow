@@ -16,9 +16,9 @@
 import { cache } from "react";
 import { getDb } from "./db";
 import { linesByOrder } from "./repo/orderLines";
+import { orderKgOf } from "./repo/orderKg";
 import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
-import { lineKg } from "./orderMath";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman, roundToman } from "./money";
 import { orgOfUser } from "./repo/userOrg";
@@ -177,7 +177,7 @@ function computeAccruals(
 ): StatementOrder[] {
   const orders = db
     .prepare(
-      `SELECT o.id AS order_id, o.order_no, o.order_date, c.business_name AS customer_name
+      `SELECT o.id AS order_id, o.order_no, o.order_date, c.business_name AS customer_name, o.kg_total
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
         WHERE o.salesperson_user_id = ?
@@ -190,12 +190,21 @@ function computeAccruals(
     order_no: string;
     order_date: string;
     customer_name: string;
+    kg_total: number | null;
   }[];
 
-  const lineMap = linesByOrder(db, orders.map((o) => o.order_id));
-  const measured = orders.map((order) => {
+  /* A tiered plan is priced from the lines themselves, so for that person they are loaded. For
+     everyone else an order's weight is read from `orders.kg_total` (lib/repo/orderKg.ts) and the
+     lines are loaded only for orders where it is empty -- which is what keeps "owed", a lifetime
+     figure, from re-adding every line a person ever sold. Same value either way, to the bit. */
+  const plan = planFor(orgOf(db, salespersonId), salespersonId, period.to, db);
+  const lineMap = linesByOrder(
+    db,
+    orders.filter((o) => plan !== null || o.kg_total === null).map((o) => o.order_id)
+  );
+  const measured = orders.map(({ kg_total, ...order }) => {
     const lines = lineMap.get(order.order_id) ?? [];
-    return { order, lines, kg: lines.reduce((total, line) => total + lineKg(line), 0) };
+    return { order, lines, kg: plan === null && kg_total !== null ? kg_total : orderKgOf(lines) };
   });
 
   /* A tiered plan replaces the flat rate for this person, measured over the WHOLE PERIOD.
@@ -209,7 +218,6 @@ function computeAccruals(
    *  `planFor` returns null when the person is on the flat rate, and the fallback is the
    *  ORIGINAL code path unchanged — deliberately. Two implementations of accrual would
    *  drift, and the people on the flat rate are on real payroll today. */
-  const plan = planFor(orgOf(db, salespersonId), salespersonId, period.to, db);
   if (!plan) {
     return measured.map(({ order, kg }) => {
       // The rate in force on the day the order was taken -- not today's, and not the rate

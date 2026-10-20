@@ -110,6 +110,9 @@ describe("orders", () => {
         "requested_kind",
         // Phase 4 (Offline-first): the client-generated idempotency key.
         "client_uuid",
+        // A cache of the order's weight in kilograms (lib/repo/orderKg.ts), voided by triggers
+        // on order_lines whenever a line changes. Never a source of truth.
+        "kg_total",
         "notes",
         "created_by",
         "created_at",

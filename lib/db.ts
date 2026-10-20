@@ -1,4 +1,5 @@
 import { instrumentSlowSql, slowSqlThresholdMs } from "./slowSql";
+import { backfillOrderKg } from "./repo/orderKg";
 import { refreshRetiredWording } from "./repo/retiredWording";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
@@ -4824,6 +4825,30 @@ export function getDb(): DatabaseSync {
   // Fold existing customer reminders into the tasks spine (once, guarded).
   backfillReminderTasks(db);
   migrateCrm(db);
+
+  /* An order's weight in kilograms, stored so the commission ledgers do not have to re-add every
+     line of every order a person ever sold on each request (see lib/repo/orderKg.ts).
+
+     The value is a CACHE of something derivable from order_lines, so it must never be trusted
+     when it could be stale. These triggers void it on any insert, update or delete of a line;
+     the writers that know better (creating an order, recording a delivery, splitting a
+     back-order) refill it straight away, and everything else is refilled by the backfill just
+     below. A reader that finds it empty adds the lines up itself.
+
+     If a future migration rebuilds `orders` or `order_lines`, drop these triggers first and let
+     this block recreate them: SQLite refuses a RENAME while a trigger names a missing table. */
+  if (!(db.prepare("PRAGMA table_info(orders)").all() as { name: string }[]).some((c) => c.name === "kg_total")) {
+    db.exec("ALTER TABLE orders ADD COLUMN kg_total REAL");
+  }
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_insert AFTER INSERT ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL WHERE id = NEW.order_id; END;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_update AFTER UPDATE ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL WHERE id IN (OLD.order_id, NEW.order_id); END;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_delete AFTER DELETE ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL WHERE id = OLD.order_id; END;
+  `);
+  backfillOrderKg(db);
 
   _db = db;
   return db;

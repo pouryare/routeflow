@@ -6,6 +6,7 @@
  */
 
 import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
+import { refreshOrderKg } from "./repo/orderKg";
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "./db";
 import { resolvePrice, costBasisFor } from "./catalogue";
@@ -341,6 +342,7 @@ function insertLine(
     line.reverses_line_id ?? null,
     now
   );
+  refreshOrderKg(db, orderId);
 }
 
 /** Adds a line to a draft. Refuses once the order is confirmed -- at that point the
