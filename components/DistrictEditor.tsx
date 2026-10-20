@@ -78,10 +78,11 @@ export default function DistrictEditor({
           <h2 className="text-[length:var(--text-lg)] font-bold text-text">{district.properties.name}</h2>
           <button
             onClick={handleClose}
-            aria-label="بستن ویرایش منطقه"
+            aria-label="بستن ویرایش"
             className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
           >
             <Icon name="x" size="sm" />
+            <span className="text-[length:var(--text-xs)] whitespace-nowrap">بستن ویرایش</span>
           </button>
         </div>
         {district.properties.parent_name && (

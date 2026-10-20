@@ -27,7 +27,7 @@ approve them before they ship.
 **Done**
 - High-frequency flows (P1 #4): geofence prompt, next-stop bar, driver run, unload, visit verification, after-call, task row, quick-add, planner rows. Task deletion takes an explicit second tap; there is no undo for it because the API cannot reopen a dismissed task.
 - Error layer (P1 #1–2): `lib/userMessage.ts` (`friendlyError`) wraps every place the client shows a server message; ~100 failure messages follow «X نشد؛ دوباره تلاش کنید»; English field names removed from API messages; whole-toman validators say «…را به تومان و بدون اعشار وارد کنید».
-- Bare-verb labels (P1 #3): replaced across the app and in the tap-flow definitions (`lib/crm/flows/*.ts`); `CopyButton` always shows text; undo is «بازگردانی …» everywhere (`docs/tap-flow-principles.md` updated); sheet close buttons show «بستن …» next to the icon and every other close button has a noun-bearing accessible name.
+- Bare-verb labels (P1 #3): replaced across the app and in the tap-flow definitions (`lib/crm/flows/*.ts`); `CopyButton` always shows text; undo is «بازگردانی …» everywhere (`docs/tap-flow-principles.md` updated); every close button (sheets, search overlay, customer panel, layers panel, district editor, shortcut help) shows «بستن …» next to the icon and has a matching accessible name.
 - Glossary: جستجو, لینک, گوگل‌مپ, تأیید, سرنخ, «سفارش تازه» (UI, seeded rules and notification types, with `REWORDED` entries so existing installs update in place), no «لوکیشن». The Kanban column now reads «سرنخ‌های تازه».
 - Every browser dialog is gone (`window.confirm/prompt/alert`): group delete and rename, payment void (with its reversing-entry explanation), cheque replacement (Shamsi date picker instead of a typed ISO date), password reset (masked field), and both "view as another user" entry points (nothing is sent until the confirm button is tapped).
 - Empty states say what to do next; double negatives rewritten; placeholder-only inputs have accessible names; ellipses unified; the driver's nav tab no longer repeats its group's name.
@@ -39,7 +39,7 @@ approve them before they ship.
 
 **Open**
 - Placeholder-only inputs have accessible names but no visible labels; adding them changes layouts and needs a design pass.
-- Other icon-only close buttons (search overlay, shortcut help, layers panel, district editor, customer detail panel) have noun-bearing accessible names but no visible text yet.
+- The next-stop bar's own dismiss button (hide the bar) is still an icon with an accessible name only.
 - Flagged rows in `catalogue-wide.md` are review candidates, not all defects (e.g. file names ending in `.csv`, search keywords).
 
 ---

@@ -1994,6 +1994,7 @@ body {
   width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
 }
 .meridian .sov__close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .sov__close.sov__close--labelled { width: auto; height: 32px; padding: 0 12px; gap: 6px; font-size: 13px; white-space: nowrap; grid-auto-flow: column; }
 .meridian .sov__list { overflow-y: auto; padding: 8px; }
 .meridian .sov__section + .sov__section { margin-top: 6px; }
 .meridian .sov__heading { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
