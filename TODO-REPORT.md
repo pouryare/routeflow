@@ -27,20 +27,23 @@
 - [x] Routing plan/commit: fixed a plan for "zzzzzzzzzz" / 1900 / 2999 being accepted and committed (a run with that date, distance −5, duration 1e15 was created); date window and figures now checked
 - [x] Notifications: preferences, channels and test routes validate; fixed push subscriptions accepting any endpoint (server-side request to a URL of the user's choosing) — only browser-vendor push services, bounded keys
 - [x] PR #24 (all stacked commits: cheque/batch/stock validation, task access rules, routing validation, push-endpoint allow-list, batch rule) merged after CI went green
+- [x] Decisions (you said: go with my recommendations), implemented as three commits: a manual stock movement may not take stock below zero (409 with the current on-hand; deliveries and receipts keep their tolerance); a task's linked customer/order must exist in the organisation; a signed-in user opening /login goes to their home, decided on the database-checked session so a stale cookie cannot loop — verified on a production build
+- [x] Decided to leave: unknown-id pages returning HTTP 200, CRM maps link host, the 5 dev-tooling npm advisories, two sessions sharing the report (one section each)
 
 ## Not done / gaps
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
-- [ ] Deliberately not done: redirecting a signed-in user away from /login (a valid-signature cookie for a since-deactivated user would loop between proxy and page); soft-404 HTTP 200 on unknown ids (Next streaming behaviour)
+- [ ] Left on purpose: soft-404 HTTP 200 on unknown ids (Next streaming behaviour)
 - [ ] A rep manager with no group assigned sees an empty pin pool (group scope); assign them a group in the users admin
-- [ ] A stock adjustment may drive on-hand negative (up to 1e9); a task's entity link and a CRM maps link are not checked beyond shape (any https host) — not changed; actual push/Telegram delivery needs real devices and cannot run here
+- [ ] Seeded demo data already holds negative on-hand (deliveries ran ahead of receipts); the new rule only stops *manual* movements from adding to it. Actual push/Telegram delivery needs real devices and cannot run here
 
 ## Notes
 - Audit item 16 correction: `/api/sync/*` refusing platform_owner is intentional (`hasSyncClient`), not a bug.
 
 ## Next steps
-1. Nothing queued. Remaining gaps above need your call or real devices
+1. Merge this PR once CI is green (batch rule: merge at the end)
+2. Nothing else queued
 
 ---
 
