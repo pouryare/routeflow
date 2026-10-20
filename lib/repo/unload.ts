@@ -21,31 +21,11 @@ import { getDb } from "@/lib/db";
 import { recordMovementsTxn, StockError, type MovementInput } from "@/lib/repo/stock";
 import { vanOnHand } from "@/lib/repo/vanStock";
 
-export type Disposition =
-  | "returned"
-  | "damaged"
-  | "expired"
-  | "discarded"
-  | "lost"
-  | "sample";
+import { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/unloadDispositions";
 
-export const DISPOSITIONS: Disposition[] = [
-  "returned",
-  "damaged",
-  "expired",
-  "discarded",
-  "lost",
-  "sample",
-];
-
-export const DISPOSITION_LABEL: Record<Disposition, string> = {
-  returned: "برگشت به انبار",
-  damaged: "خراب",
-  expired: "تاریخ مصرف گذشته",
-  discarded: "دور ریخته شد",
-  lost: "گم شده",
-  sample: "نمونه",
-};
+// Re-exported so callers of the repository keep one import.
+export { DISPOSITIONS, DISPOSITION_LABEL };
+export type { Disposition };
 
 export interface UnloadLine {
   productId: number;

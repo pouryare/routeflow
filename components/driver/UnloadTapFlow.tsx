@@ -16,7 +16,7 @@
 
 import { Icon } from "@/components/meridian/Icon";
 import { useMemo, useState } from "react";
-import { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/repo/unload";
+import { DISPOSITIONS, DISPOSITION_LABEL, type Disposition } from "@/lib/unloadDispositions";
 
 /* One glyph per disposition, so six chips stay scannable in a van without reading them.
  *
