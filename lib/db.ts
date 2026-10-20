@@ -2711,6 +2711,10 @@ export function getDb(): DatabaseSync {
       (organization_id, product_id, batch_id, facility_id, occurred_at);
     /* Boot backfills ask "has this order line / purchase line already moved stock?" for every row. */
     CREATE INDEX IF NOT EXISTS ix_stock_ref ON stock_movements(ref_type, ref_id, kind);
+    /* On-hand is SUM(base_qty) per product. ix_stock_mv leads with organization_id, so a per-product
+       sum could not use it and scanned every movement once per product. This one answers both the
+       per-product and the per-product-per-org sums from the index alone. */
+    CREATE INDEX IF NOT EXISTS ix_stock_product_qty ON stock_movements(product_id, organization_id, base_qty);
 
     /* Phase 3: a confirmed order CLAIMS stock without moving it. on_hand stays
        SUM(stock_movements.base_qty); "available to promise" is on_hand minus the sum of

@@ -13,10 +13,12 @@
  *  back afterwards.
  */
 
-import { linesByOrder } from "./orderLinesBatch";
+import { cache } from "react";
+import { getDb } from "./db";
+import { linesByOrder } from "./repo/orderLines";
 import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
-import { lineKg, type LineSnapshot } from "./orderMath";
+import { lineKg } from "./orderMath";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman, roundToman } from "./money";
 import { orgOfUser } from "./repo/userOrg";
@@ -141,7 +143,33 @@ export function readRates(
 }
 
 /** Every delivered order credited to a person inside a period, with its accrual. */
+/** One person's accruals for a period, shared for the length of one server render.
+ *
+ *  The dashboard asks for the same person several times in one request: the salesperson ledger,
+ *  then once for every group manager (whose override is a share of the team's accruals, so
+ *  managerStatementFor re-reads every salesperson in the group, period AND lifetime). Each ask
+ *  walks every order that person ever sold. React's cache() shares one result across those asks
+ *  inside a single render and drops it afterwards; outside a render (route handlers, scripts,
+ *  tests) it simply calls through, and a handle other than the app's own is never memoised, so
+ *  nothing can go stale. Callers must treat the result as read-only. */
+const accrualsMemo = cache((salespersonId: number, from: string, to: string): StatementOrder[] => {
+  const db = getDb();
+  const rates = db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
+  return computeAccruals(db, salespersonId, { from, to }, rates);
+});
+
 function accrualsFor(
+  db: DatabaseSync,
+  salespersonId: number,
+  period: Period,
+  rates: RateRow[]
+): StatementOrder[] {
+  return db === getDb()
+    ? accrualsMemo(salespersonId, period.from, period.to)
+    : computeAccruals(db, salespersonId, period, rates);
+}
+
+function computeAccruals(
   db: DatabaseSync,
   salespersonId: number,
   period: Period,

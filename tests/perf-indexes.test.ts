@@ -67,4 +67,18 @@ describe("hot reads use an index", () => {
     );
     expect(batches.filter((l) => /SCAN (b|batches)\b/.test(l)), batches.join("\n")).toEqual([]);
   });
+
+  it("stock on hand is summed from a covering index, not by scanning every movement per product", () => {
+    const position = plan(
+      `SELECT p.id, COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.product_id = p.id AND m.base_qty > 0), 0)
+         FROM products p WHERE p.active = 1`
+    );
+    expect(position.filter((l) => /SCAN m\b|SCAN stock_movements/.test(l)), position.join("\n")).toEqual([]);
+    expect(position.join("\n")).toMatch(/COVERING INDEX/);
+    const onHand = plan(
+      "SELECT COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m WHERE m.product_id = p.id AND m.organization_id = ?), 0) FROM products p",
+      1
+    );
+    expect(onHand.join("\n")).toMatch(/COVERING INDEX/);
+  });
 });

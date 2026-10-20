@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { LineSnapshot } from "./orderMath";
+import type { LineSnapshot } from "@/lib/orderMath";
 
 /** The money-and-weight columns of every line of the given orders, grouped by order.
  *
