@@ -7,10 +7,11 @@
  *  the driver who ran it, rather than an order's own salesperson_user_id.
  */
 
+import { linesByOrder } from "./repo/orderLines";
+import { orderKgOf } from "./repo/orderKg";
 import type { DatabaseSync } from "node:sqlite";
 import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
-import { lineKg, type LineSnapshot } from "./orderMath";
 import { isToman } from "./money";
 import { orgOfUser } from "./repo/userOrg";
 import type { Period } from "./commissionLedger";
@@ -132,7 +133,7 @@ function stopsFor(
   const stops = db
     .prepare(
       `SELECT ds.order_id, o.order_no, ds.delivered_at, c.business_name AS customer_name,
-              dr.run_date
+              dr.run_date, o.kg_total
          FROM delivery_stops ds
          JOIN delivery_runs dr ON dr.id = ds.run_id
          JOIN orders o ON o.id = ds.order_id
@@ -148,17 +149,15 @@ function stopsFor(
     delivered_at: string | null;
     customer_name: string;
     run_date: string;
+    kg_total: number | null;
   }[];
 
-  const linesOf = db.prepare(
-    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
-            qty_per_pack, kg_per_base_unit
-       FROM order_lines WHERE order_id = ?`
-  );
+  // The order's stored weight when there is one (lib/repo/orderKg.ts); the lines are loaded only
+  // for orders where it is empty. Same value either way, to the bit.
+  const lineMap = linesByOrder(db, stops.filter((s) => s.kg_total === null).map((s) => s.order_id));
 
   return stops.map((stop) => {
-    const lines = linesOf.all(stop.order_id) as unknown as LineSnapshot[];
-    const kg = lines.reduce((total, line) => total + lineKg(line), 0);
+    const kg = stop.kg_total ?? orderKgOf(lineMap.get(stop.order_id) ?? []);
     // The rate in force on the day the ROUND ran, not when the order was taken -- a
     // driver is paid for the day they drove, the same way a فروشنده is paid for the
     // day they sold.

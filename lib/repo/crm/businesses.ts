@@ -84,14 +84,22 @@ export function listBusinesses(
 
 export function viewCounts(session: Session, nowIso: string = new Date().toISOString()): Record<CrmView, number> {
   const f = crmFilter(session, "c");
-  const out = {} as Record<CrmView, number>;
-  for (const view of CRM_VIEWS) {
+  // One pass over the visible customers with a conditional count per view, rather than
+  // one full query per view. Each view's predicate is the same fragment listBusinesses
+  // filters by, so the badge can never disagree with the list it opens.
+  const params: (string | number)[] = [];
+  const columns = CRM_VIEWS.map((view, i) => {
     const v = viewSql(view, session, nowIso);
-    out[view] = (getDb()
-      .prepare(`SELECT COUNT(*) n FROM customers c LEFT JOIN tasks t ON t.id = c.next_task_id AND t.status = 'open'
-                 WHERE c.merged_into_id IS NULL${f.sql}${v.sql}`)
-      .get(...(f.params as never[]), ...(v.params as never[])) as { n: number }).n;
-  }
+    params.push(...v.params);
+    return `COALESCE(SUM(CASE WHEN 1 = 1${v.sql} THEN 1 ELSE 0 END), 0) AS v${i}`;
+  });
+  const row = getDb()
+    .prepare(`SELECT ${columns.join(", ")}
+                FROM customers c LEFT JOIN tasks t ON t.id = c.next_task_id AND t.status = 'open'
+               WHERE c.merged_into_id IS NULL${f.sql}`)
+    .get(...(params as never[]), ...(f.params as never[])) as Record<string, number>;
+  const out = {} as Record<CrmView, number>;
+  CRM_VIEWS.forEach((view, i) => { out[view] = Number(row[`v${i}`]); });
   return out;
 }
 

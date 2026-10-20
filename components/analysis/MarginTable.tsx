@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 
 import { Icon } from "@/components/meridian/Icon";
+import { visibleRows } from "@/components/analysis/marginRows";
 interface MarginRow {
   key: string;
   label: string;
@@ -35,6 +36,8 @@ interface Loaded {
  *  low-margin row is visible at a glance. Manager+ only (the page omits it otherwise). */
 export default function MarginTable({ period }: { period: string }) {
   const [dim, setDim] = useState("customer");
+  // Which breakdown the reader expanded, so switching tabs starts compact again.
+  const [expandedDim, setExpandedDim] = useState<string | null>(null);
   const [loaded, setLoaded] = useState<Loaded | null>(null);
 
   useEffect(() => {
@@ -59,6 +62,7 @@ export default function MarginTable({ period }: { period: string }) {
   const fresh = loaded && loaded.dim === dim && loaded.period === period;
   const rows = fresh ? loaded.rows : null;
   const err = fresh ? loaded.err : null;
+  const { shown, hidden } = visibleRows(rows ?? [], expandedDim === dim);
 
   return (
     <div className="kblock" dir="rtl">
@@ -101,7 +105,7 @@ export default function MarginTable({ period }: { period: string }) {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => (
+              {shown.map((r) => (
                 <tr key={r.key}>
                   <td className="border-b border-[var(--border)] py-1 text-[var(--text)]">{r.label}</td>
                   <td className="border-b border-[var(--border)] py-1 text-left tabular-nums text-[var(--text-muted)]">
@@ -126,6 +130,16 @@ export default function MarginTable({ period }: { period: string }) {
               ))}
             </tbody>
           </table>
+          {hidden > 0 && (
+            <button
+              type="button"
+              onClick={() => setExpandedDim(dim)}
+              className="mt-[var(--space-2)] cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+            >
+              <Icon name="chevron-down" size="sm" />
+              نمایش {fa(hidden)} ردیف دیگر
+            </button>
+          )}
         </div>
       )}
     </div>

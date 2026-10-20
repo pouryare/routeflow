@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+      SESSION_SECRET: ci-secret-not-for-production
+    steps:
+      - uses: actions/checkout@v4
+
+      # package.json's dependencies (next, node:sqlite usage) need a recent Node 22.
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+
+      - run: npm ci
+
+      - name: Type-check
+        run: npm run typecheck
+
+      - name: Lint
+        run: npm run lint
+
+      # tests/playwrightExtract needs a real browser and tests/smoke drives one; both have their own
+      # config and are not part of this job. Excludes are explicit because passing --exclude replaces
+      # vitest's defaults.
+      - name: Unit tests
+        run: >
+          npx vitest run
+          --exclude "**/node_modules/**"
+          --exclude "tests/smoke/**"
+          --exclude "tests/playwrightExtract.test.ts"
+
+      # Builds for production, seeds the small demo dataset, starts the server and times every main
+      # page against a generous budget. This is what fails if a page suddenly takes seconds, which
+      # is how a missing index or a new N+1 shows up.
+      - name: Production build and page-time budget
+        run: npm run perf:smoke

@@ -60,6 +60,9 @@ export interface JournalReportRow {
 
 export interface JournalReport {
   rows: JournalReportRow[];
+  /** How many journals match the filters in all, whatever this page holds. */
+  total: number;
+  /** Debit and credit sums over the rows RETURNED, i.e. this page. */
   totalDebit: number;
   totalCredit: number;
 }
@@ -72,7 +75,7 @@ export interface JournalReport {
  *  correction. */
 export function journalReport(
   organizationId: number,
-  filter?: { periodKey?: string; sourceType?: string; limit?: number }
+  filter?: { periodKey?: string; sourceType?: string; limit?: number; offset?: number }
 ): JournalReport {
   const where: string[] = ["j.organization_id = ?"];
   const args: unknown[] = [organizationId];
@@ -85,6 +88,7 @@ export function journalReport(
     args.push(filter.sourceType);
   }
   const limit = filter?.limit ?? 500;
+  const offset = Math.max(0, filter?.offset ?? 0);
 
   const rows = getDb()
     .prepare(
@@ -98,19 +102,40 @@ export function journalReport(
          LEFT JOIN journals r ON r.reverses_journal_id = j.id
         WHERE ${where.join(" AND ")}
         ORDER BY j.seq DESC
-        LIMIT ?`
+        LIMIT ? OFFSET ?`
     )
-    .all(...(args as never[]), limit) as unknown as Omit<JournalReportRow, "legs">[];
+    .all(...(args as never[]), limit, offset) as unknown as Omit<JournalReportRow, "legs">[];
 
-  const legStmt = getDb().prepare(
-    `SELECT a.code, a.name_fa AS nameFa, e.side, e.amount_toman AS amountToman
-       FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
-      WHERE e.journal_id = ? ORDER BY a.code`
+  const total = Number(
+    (
+      getDb()
+        .prepare(`SELECT COUNT(*) AS n FROM journals j WHERE ${where.join(" AND ")}`)
+        .get(...(args as never[])) as { n: number }
+    ).n
   );
+
+  // One query for every journal on the page, not one per journal.
+  const legsByJournal = new Map<number, JournalReportRow["legs"]>();
+  for (let i = 0; i < rows.length; i += 500) {
+    const ids = rows.slice(i, i + 500).map((r) => r.journalId);
+    const legRows = getDb()
+      .prepare(
+        `SELECT e.journal_id AS journalId, a.code, a.name_fa AS nameFa, e.side, e.amount_toman AS amountToman
+           FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
+          WHERE e.journal_id IN (${ids.map(() => "?").join(",")})
+          ORDER BY e.journal_id, a.code, e.id`
+      )
+      .all(...ids) as unknown as (JournalReportRow["legs"][number] & { journalId: number })[];
+    for (const { journalId, ...leg } of legRows) {
+      const list = legsByJournal.get(journalId);
+      if (list) list.push(leg);
+      else legsByJournal.set(journalId, [leg]);
+    }
+  }
   let totalDebit = 0;
   let totalCredit = 0;
   const withLegs = rows.map((r) => {
-    const legs = legStmt.all(r.journalId) as unknown as JournalReportRow["legs"];
+    const legs = legsByJournal.get(r.journalId) ?? [];
     for (const l of legs) {
       if (l.side === "D") totalDebit += l.amountToman;
       else totalCredit += l.amountToman;
@@ -118,7 +143,7 @@ export function journalReport(
     return { ...r, legs };
   });
 
-  return { rows: withLegs, totalDebit, totalCredit };
+  return { rows: withLegs, total, totalDebit, totalCredit };
 }
 
 export interface IncomeStatement {
@@ -453,7 +478,7 @@ export interface AccountLedgerLine {
 export function accountLedger(
   organizationId: number,
   accountId: number,
-  filter?: { periodKey?: string }
+  filter?: { periodKey?: string; limit?: number; offset?: number }
 ) {
   const db = getDb();
   /* With no period filter there IS no opening: every posting is in scope, so an opening
@@ -495,8 +520,12 @@ export function accountLedger(
     )
     .all(...(args as never[]));
 
-  const { lines, closingToman } = withRunningBalance(rows as unknown as AccountLedgerLine[], "D", openingToman);
-  return { openingToman, lines, closingToman };
+  // The running balance is walked over EVERY row so a later page opens where the one before
+  // it closed; only the slice that gets rendered is cut. No limit means no cut (print, export).
+  const { lines: all, closingToman } = withRunningBalance(rows as unknown as AccountLedgerLine[], "D", openingToman);
+  const offset = Math.max(0, filter?.offset ?? 0);
+  const lines = filter?.limit === undefined ? all : all.slice(offset, offset + filter.limit);
+  return { openingToman, lines, totalLines: all.length, closingToman };
 }
 
 export function accountById(accountId: number): {

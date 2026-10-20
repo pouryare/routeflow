@@ -1,3 +1,5 @@
+import { instrumentSlowSql, slowSqlThresholdMs } from "./slowSql";
+import { backfillOrderKg } from "./repo/orderKg";
 import { refreshRetiredWording } from "./repo/retiredWording";
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
@@ -1435,8 +1437,20 @@ export function getDb(): DatabaseSync {
 
   fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
   const db = new DatabaseSync(DB_PATH);
+  // Opt-in: ROUTEFLOW_SLOW_SQL_MS=200 logs any statement that takes that long, migrations included.
+  const slowMs = slowSqlThresholdMs();
+  if (slowMs > 0) instrumentSlowSql(db, slowMs);
   db.exec("PRAGMA journal_mode = WAL;");
   db.exec("PRAGMA foreign_keys = ON;");
+  /* Read tuning. synchronous is deliberately left at FULL: the offline outbox drops a fact
+     once the server acknowledges it, so a commit lost after an ack would never be re-sent.
+     cache_size is negative = KiB, so -65536 is 64 MiB. mmap_size lets large reads skip a
+     copy. busy_timeout makes a second writer wait rather than throw SQLITE_BUSY -- the
+     lead-import runner and the request path share this file. */
+  db.exec("PRAGMA temp_store = MEMORY;");
+  db.exec("PRAGMA cache_size = -65536;");
+  db.exec("PRAGMA mmap_size = 268435456;");
+  db.exec("PRAGMA busy_timeout = 5000;");
 
   db.exec(`
     CREATE TABLE IF NOT EXISTS customers (
@@ -1993,6 +2007,12 @@ export function getDb(): DatabaseSync {
        lives inside the posting transaction. */
     CREATE UNIQUE INDEX IF NOT EXISTS ux_journals_org_seq ON journals(organization_id, seq);
     CREATE INDEX IF NOT EXISTS ix_journals_org_period ON journals(organization_id, period_key, id);
+    /* "Is this payment/sale already posted?" is asked before every posting and, at every boot, for
+       every payment by the backfill. Without this each ask scanned the whole journal table, which
+       made startup and every write grow with the size of the ledger. */
+    CREATE INDEX IF NOT EXISTS ix_journals_source ON journals(source_type, source_id);
+    /* The journal and ledger pages ask, for every row, which later journal reverses it. */
+    CREATE INDEX IF NOT EXISTS ix_journals_reverses ON journals(reverses_journal_id);
 
     CREATE TABLE IF NOT EXISTS ledger_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -2010,6 +2030,9 @@ export function getDb(): DatabaseSync {
        posted_at lives on journals and is not a column here, and an index naming a
        missing column fails the whole exec. The account statement joins journals. */
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_journal ON ledger_entries(journal_id);
+    /* The trial balance and the statements sum every entry of an organisation by account; with the
+       side and amount in the index that is answered without reading the 400k-row table itself. */
+    CREATE INDEX IF NOT EXISTS ix_ledger_entries_org_account ON ledger_entries(organization_id, account_id, side, amount_toman);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_account ON ledger_entries(account_id, id);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_customer ON ledger_entries(customer_id, id);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_supplier ON ledger_entries(supplier_id, id);
@@ -2613,6 +2636,9 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_alloc_order ON payment_allocations(order_id);
+    /* Looked up by payment in five places and by the ON DELETE CASCADE above; without this each
+       is a scan of the whole table. amount_toman rides along so the per-customer SUM is covered. */
+    CREATE INDEX IF NOT EXISTS ix_alloc_payment ON payment_allocations(payment_id, amount_toman);
 
     /* Phase 1 (Money). An Iranian customer cheque and its whole journey, as a state
        machine (lib/chequeStates.ts) rather than a free status field. The normal entry
@@ -2666,6 +2692,7 @@ export function getDb(): DatabaseSync {
       UNIQUE (organization_id, product_id, batch_code)
     );
     CREATE INDEX IF NOT EXISTS ix_batches_product ON batches(organization_id, product_id, expiry_date);
+    CREATE INDEX IF NOT EXISTS ix_batches_purchase_line ON batches(purchase_line_id);
 
     /* Signed, append-only stock ledger. On-hand is SUM(base_qty) over this table --
        still derived, never a stored counter, but now per batch and per facility. A
@@ -2692,6 +2719,12 @@ export function getDb(): DatabaseSync {
     );
     CREATE INDEX IF NOT EXISTS ix_stock_mv ON stock_movements
       (organization_id, product_id, batch_id, facility_id, occurred_at);
+    /* Boot backfills ask "has this order line / purchase line already moved stock?" for every row. */
+    CREATE INDEX IF NOT EXISTS ix_stock_ref ON stock_movements(ref_type, ref_id, kind);
+    /* On-hand is SUM(base_qty) per product. ix_stock_mv leads with organization_id, so a per-product
+       sum could not use it and scanned every movement once per product. This one answers both the
+       per-product and the per-product-per-org sums from the index alone. */
+    CREATE INDEX IF NOT EXISTS ix_stock_product_qty ON stock_movements(product_id, organization_id, base_qty);
 
     /* Phase 3: a confirmed order CLAIMS stock without moving it. on_hand stays
        SUM(stock_movements.base_qty); "available to promise" is on_hand minus the sum of
@@ -2727,6 +2760,7 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_dlb_batch ON delivery_line_batches(batch_id);
+    CREATE INDEX IF NOT EXISTS ix_dlb_line ON delivery_line_batches(order_line_id);
     CREATE INDEX IF NOT EXISTS ix_dlb_stop ON delivery_line_batches(delivery_stop_id);
 
     /* A quality complaint tied to a customer, order, product and batch. Clustering on a
@@ -4794,6 +4828,30 @@ export function getDb(): DatabaseSync {
   // Fold existing customer reminders into the tasks spine (once, guarded).
   backfillReminderTasks(db);
   migrateCrm(db);
+
+  /* An order's weight in kilograms, stored so the commission ledgers do not have to re-add every
+     line of every order a person ever sold on each request (see lib/repo/orderKg.ts).
+
+     The value is a CACHE of something derivable from order_lines, so it must never be trusted
+     when it could be stale. These triggers void it on any insert, update or delete of a line;
+     the writers that know better (creating an order, recording a delivery, splitting a
+     back-order) refill it straight away, and everything else is refilled by the backfill just
+     below. A reader that finds it empty adds the lines up itself.
+
+     If a future migration rebuilds `orders` or `order_lines`, drop these triggers first and let
+     this block recreate them: SQLite refuses a RENAME while a trigger names a missing table. */
+  if (!(db.prepare("PRAGMA table_info(orders)").all() as { name: string }[]).some((c) => c.name === "kg_total")) {
+    db.exec("ALTER TABLE orders ADD COLUMN kg_total REAL");
+  }
+  db.exec(`
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_insert AFTER INSERT ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL WHERE id = NEW.order_id; END;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_update AFTER UPDATE ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL WHERE id IN (OLD.order_id, NEW.order_id); END;
+    CREATE TRIGGER IF NOT EXISTS order_lines_void_kg_delete AFTER DELETE ON order_lines
+    BEGIN UPDATE orders SET kg_total = NULL WHERE id = OLD.order_id; END;
+  `);
+  backfillOrderKg(db);
 
   _db = db;
   return db;

@@ -7,7 +7,7 @@ const testDbPath = path.join(os.tmpdir(), `rf-crm-biz-${Date.now()}-${Math.rando
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 const { getDb } = await import("@/lib/db");
-const { listBusinesses, viewCounts, getBusiness, flowContextFor, addLeadContext } = await import("@/lib/repo/crm/businesses");
+const { listBusinesses, viewCounts, getBusiness, flowContextFor, addLeadContext, CRM_VIEWS } = await import("@/lib/repo/crm/businesses");
 const { findDuplicates } = await import("@/lib/repo/crm/dedupe");
 type Session = import("@/lib/session").Session;
 
@@ -59,6 +59,15 @@ describe("listBusinesses", () => {
   });
   it("counts every view", () => {
     expect(viewCounts(A, NOW)).toMatchObject({ today: 1, my_leads: 1, my_customers: 1, unassigned: 1, hot: 1, all: 3 });
+  });
+  it("counts every view exactly as listing it would, for every role", () => {
+    for (const who of [A, sess(repB, "phone_sales"), sess(mgr, "group_manager")]) {
+      const counts = viewCounts(who, NOW);
+      for (const view of CRM_VIEWS) {
+        const listed = listBusinesses(who, { view, limit: 200, nowIso: NOW }).rows.length;
+        expect(counts[view], `${who.role} ${view}`).toBe(listed);
+      }
+    }
   });
   it("paginates in a stable order and stops at the last page", () => {
     const first = listBusinesses(A, { view: "all", limit: 2, nowIso: NOW });

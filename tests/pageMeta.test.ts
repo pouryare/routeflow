@@ -174,6 +174,26 @@ describe("every page has an instant loading state", () => {
     expect(missing, `no loading.tsx for:\n${missing.join("\n")}`).toEqual([]);
   });
 
+  it("every dynamic detail page that renders content has a loading.tsx", () => {
+    const details = ["crm/[id]", "sales/orders/[id]", "sales/reps/[id]"];
+    const missing = details.filter((r) => !existsSync(join("app/(shell)", r, "loading.tsx")));
+    expect(missing, `no loading.tsx for:\n${missing.join("\n")}`).toEqual([]);
+  });
+
+  it("detail loading states whose page renders the section header borrow its real card", () => {
+    const parents: Record<string, string> = {
+      "crm/[id]": "/crm",
+      "sales/orders/[id]": "/sales/orders",
+    };
+    for (const [r, parent] of Object.entries(parents)) {
+      const p = join("app/(shell)", r, "loading.tsx");
+      if (!existsSync(p)) continue;
+      const src = readFileSync(p, "utf8");
+      expect(src, r).toContain("PageHeaderCard");
+      expect(src, r).toContain(`pageMetaFor("${parent}")`);
+    }
+  });
+
   it("each loading state shows the real page title, not a grey box", () => {
     for (const r of routes) {
       const p = join("app/(shell)", r, "loading.tsx");

@@ -13,9 +13,12 @@
  *  back afterwards.
  */
 
+import { cache } from "react";
+import { getDb } from "./db";
+import { linesByOrder } from "./repo/orderLines";
+import { orderKgOf } from "./repo/orderKg";
 import type { DatabaseSync } from "node:sqlite";
 import { rateFor, accrualToman, type RateRow } from "./commission";
-import { lineKg, type LineSnapshot } from "./orderMath";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
 import { isToman, roundToman } from "./money";
 import { orgOfUser } from "./repo/userOrg";
@@ -140,7 +143,33 @@ export function readRates(
 }
 
 /** Every delivered order credited to a person inside a period, with its accrual. */
+/** One person's accruals for a period, shared for the length of one server render.
+ *
+ *  The dashboard asks for the same person several times in one request: the salesperson ledger,
+ *  then once for every group manager (whose override is a share of the team's accruals, so
+ *  managerStatementFor re-reads every salesperson in the group, period AND lifetime). Each ask
+ *  walks every order that person ever sold. React's cache() shares one result across those asks
+ *  inside a single render and drops it afterwards; outside a render (route handlers, scripts,
+ *  tests) it simply calls through, and a handle other than the app's own is never memoised, so
+ *  nothing can go stale. Callers must treat the result as read-only. */
+const accrualsMemo = cache((salespersonId: number, from: string, to: string): StatementOrder[] => {
+  const db = getDb();
+  const rates = db.prepare("SELECT * FROM commission_rates").all() as unknown as RateRow[];
+  return computeAccruals(db, salespersonId, { from, to }, rates);
+});
+
 function accrualsFor(
+  db: DatabaseSync,
+  salespersonId: number,
+  period: Period,
+  rates: RateRow[]
+): StatementOrder[] {
+  return db === getDb()
+    ? accrualsMemo(salespersonId, period.from, period.to)
+    : computeAccruals(db, salespersonId, period, rates);
+}
+
+function computeAccruals(
   db: DatabaseSync,
   salespersonId: number,
   period: Period,
@@ -148,7 +177,7 @@ function accrualsFor(
 ): StatementOrder[] {
   const orders = db
     .prepare(
-      `SELECT o.id AS order_id, o.order_no, o.order_date, c.business_name AS customer_name
+      `SELECT o.id AS order_id, o.order_no, o.order_date, c.business_name AS customer_name, o.kg_total
          FROM orders o
          JOIN customers c ON c.id = o.customer_id
         WHERE o.salesperson_user_id = ?
@@ -161,17 +190,21 @@ function accrualsFor(
     order_no: string;
     order_date: string;
     customer_name: string;
+    kg_total: number | null;
   }[];
 
-  const linesOf = db.prepare(
-    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
-            qty_per_pack, kg_per_base_unit
-       FROM order_lines WHERE order_id = ?`
+  /* A tiered plan is priced from the lines themselves, so for that person they are loaded. For
+     everyone else an order's weight is read from `orders.kg_total` (lib/repo/orderKg.ts) and the
+     lines are loaded only for orders where it is empty -- which is what keeps "owed", a lifetime
+     figure, from re-adding every line a person ever sold. Same value either way, to the bit. */
+  const plan = planFor(orgOf(db, salespersonId), salespersonId, period.to, db);
+  const lineMap = linesByOrder(
+    db,
+    orders.filter((o) => plan !== null || o.kg_total === null).map((o) => o.order_id)
   );
-
-  const measured = orders.map((order) => {
-    const lines = linesOf.all(order.order_id) as unknown as LineSnapshot[];
-    return { order, lines, kg: lines.reduce((total, line) => total + lineKg(line), 0) };
+  const measured = orders.map(({ kg_total, ...order }) => {
+    const lines = lineMap.get(order.order_id) ?? [];
+    return { order, lines, kg: plan === null && kg_total !== null ? kg_total : orderKgOf(lines) };
   });
 
   /* A tiered plan replaces the flat rate for this person, measured over the WHOLE PERIOD.
@@ -185,7 +218,6 @@ function accrualsFor(
    *  `planFor` returns null when the person is on the flat rate, and the fallback is the
    *  ORIGINAL code path unchanged — deliberately. Two implementations of accrual would
    *  drift, and the people on the flat rate are on real payroll today. */
-  const plan = planFor(orgOf(db, salespersonId), salespersonId, period.to, db);
   if (!plan) {
     return measured.map(({ order, kg }) => {
       // The rate in force on the day the order was taken -- not today's, and not the rate

@@ -12,8 +12,7 @@
 
 import type { DatabaseSync } from "node:sqlite";
 import { orderFilter, groupFilter, type Session } from "./session";
-import { lineTotalToman, lineCostToman, lineKg, type LineSnapshot } from "./orderMath";
-import { customerDebtsForOrg } from "./repo/payments";
+import { customerDebtsForOrgOnce } from "./repo/payments";
 import {
   FULFILLED_ORDER_STATUSES,
   PRICED_ORDER_STATUSES,
@@ -75,14 +74,6 @@ function monthLabel(key: string): string {
   return JALALI_MONTHS[Number(month) - 1] ?? key;
 }
 
-interface DeliveredLine extends LineSnapshot {
-  order_id: number;
-  order_date: string;
-  customer_name: string;
-  product_name: string;
-  salesperson_name: string | null;
-}
-
 /** Sums a series, sorts it descending, and keeps the head. */
 function rank(map: Map<string, number>, limit = 10): Series[] {
   return [...map.entries()]
@@ -94,26 +85,68 @@ function rank(map: Map<string, number>, limit = 10): Series[] {
 export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboard {
   const scope = orderFilter(session);
 
-  // Every delivered line the caller may see, with the labels the charts group by. One
-  // query rather than one per chart: the row count here is an order of magnitude below
-  // anything worth paginating, and it keeps every figure on the page consistent with
-  // every other by construction.
-  const lines = db
+  /* Everything the charts group by, aggregated in SQL in two passes instead of loading every
+     delivered line (148k on a 78k-order ledger) into JS.
+     - `ot`: one row per delivered order -- its total, cost and weight. Customer, date and
+       salesperson are properties of the ORDER, so all of those breakdowns come from here.
+     - the product rows need the line level, so they get their own grouped scan.
+     Each line is rounded to whole Toman before it is added (round half away from zero, on the
+     delivered packs when there are any), exactly as lineTotalToman/lineCostToman do, so the
+     money columns are the same integers the old per-line JS arithmetic produced. Weight is a
+     float sum and SQLite adds it with compensated summation, so kilograms can differ from the
+     old naive sum in the last digit or two; nothing downstream depends on more than that.
+     The inner joins mirror the old row-by-row query so the same orders are counted. */
+  const EFF = "COALESCE(ol.packs_delivered, ol.packs_ordered)";
+  const LINE_TOTAL = `CAST(ROUND(${EFF} * ol.unit_price_toman) AS INTEGER)`;
+  const LINE_COST = `CAST(ROUND(${EFF} * ol.unit_cost_toman) AS INTEGER)`;
+  const LINE_KG = `(${EFF} * ol.qty_per_pack * ol.kg_per_base_unit)`;
+  const fulfilled = sqlStatusList(FULFILLED_ORDER_STATUSES);
+
+  const agg = db
     .prepare(
-      `SELECT ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman, ol.unit_cost_toman,
-              ol.qty_per_pack, ol.kg_per_base_unit,
-              o.id AS order_id, o.order_date,
-              c.business_name AS customer_name,
-              p.name AS product_name,
-              u.display_name AS salesperson_name
+      `WITH ot AS MATERIALIZED (
+         SELECT o.id AS oid, o.order_date AS od, o.customer_id AS cid, o.salesperson_user_id AS sid,
+                lt.t AS t, lt.cst AS cst, lt.kg AS kg
+           FROM orders o
+           JOIN customers c ON c.id = o.customer_id
+           JOIN (
+             SELECT ol.order_id AS order_id, SUM(${LINE_TOTAL}) AS t, SUM(${LINE_COST}) AS cst, SUM(${LINE_KG}) AS kg
+               FROM order_lines ol JOIN products p ON p.id = ol.product_id
+              GROUP BY ol.order_id
+           ) lt ON lt.order_id = o.id
+          WHERE o.status IN (${fulfilled})${scope.sql}
+       )
+       SELECT 'tot' AS kind, NULL AS label, SUM(t) AS a, SUM(cst) AS b, SUM(kg) AS c, COUNT(*) AS n FROM ot
+       UNION ALL
+       SELECT 'date', od, SUM(t), NULL, NULL, NULL FROM ot GROUP BY od
+       UNION ALL
+       SELECT 'cust', c.business_name, SUM(ot.t), NULL, NULL, NULL
+         FROM ot JOIN customers c ON c.id = ot.cid GROUP BY c.business_name
+       UNION ALL
+       SELECT 'rep', u.display_name, SUM(ot.t), NULL, NULL, NULL
+         FROM ot JOIN users u ON u.id = ot.sid
+        WHERE u.display_name IS NOT NULL AND u.display_name <> '' GROUP BY u.display_name`
+    )
+    .all(...scope.params) as unknown as {
+    kind: "tot" | "date" | "cust" | "rep";
+    label: string | null;
+    a: number | null;
+    b: number | null;
+    c: number | null;
+    n: number | null;
+  }[];
+
+  const productRows = db
+    .prepare(
+      `SELECT p.name AS label, SUM(${LINE_TOTAL}) AS total, SUM(${LINE_KG}) AS kg
          FROM order_lines ol
          JOIN orders o ON o.id = ol.order_id
          JOIN customers c ON c.id = o.customer_id
          JOIN products p ON p.id = ol.product_id
-         LEFT JOIN users u ON u.id = o.salesperson_user_id
-        WHERE o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})${scope.sql}`
+        WHERE o.status IN (${fulfilled})${scope.sql}
+        GROUP BY p.name`
     )
-    .all(...scope.params) as unknown as DeliveredLine[];
+    .all(...scope.params) as unknown as { label: string; total: number; kg: number }[];
 
   // Ordered/delivered packs across everything confirmed or beyond, for fill rate. A
   // draft has not been agreed yet, so including it would read as under-delivery.
@@ -140,45 +173,48 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   const bySalesperson = new Map<string, number>();
   const byCustomer = new Map<string, number>();
   const byWeekday = new Map<number, number>();
-  const orderTotals = new Map<number, number>();
+
+  // Ties in a ranked list are broken by name. The old code broke them by whichever row the
+  // database happened to return first, which is to say not at all.
+  const byLabel = <T extends { label: string | null }>(rows: T[]) =>
+    [...rows].sort((x, y) => (x.label ?? "").localeCompare(y.label ?? ""));
 
   let revenue = 0;
   let cost = 0;
   let kg = 0;
+  let orderCount = 0;
 
-  for (const line of lines) {
-    const total = lineTotalToman(line);
-    const lineWeight = lineKg(line);
-    revenue += total;
-    cost += lineCostToman(line);
-    kg += lineWeight;
-
-    const day = line.order_date.slice(0, 10);
-    byDay.set(day, (byDay.get(day) ?? 0) + total);
-
-    const month = jalaliMonthKey(line.order_date);
-    byMonth.set(month, (byMonth.get(month) ?? 0) + total);
-
-    byProduct.set(line.product_name, (byProduct.get(line.product_name) ?? 0) + total);
-    byProductKg.set(line.product_name, (byProductKg.get(line.product_name) ?? 0) + lineWeight);
-    byCustomer.set(line.customer_name, (byCustomer.get(line.customer_name) ?? 0) + total);
-    if (line.salesperson_name) {
-      bySalesperson.set(
-        line.salesperson_name,
-        (bySalesperson.get(line.salesperson_name) ?? 0) + total
-      );
+  for (const row of agg) {
+    if (row.kind === "tot") {
+      revenue = row.a ?? 0;
+      cost = row.b ?? 0;
+      kg = row.c ?? 0;
+      orderCount = row.n ?? 0;
     }
+  }
+  for (const row of byLabel(agg.filter((r) => r.kind === "cust"))) byCustomer.set(row.label!, row.a ?? 0);
+  for (const row of byLabel(agg.filter((r) => r.kind === "rep"))) bySalesperson.set(row.label!, row.a ?? 0);
+  for (const row of byLabel(productRows)) {
+    byProduct.set(row.label, row.total);
+    byProductKg.set(row.label, row.kg);
+  }
 
-    // Saturday-first, from the civil date rather than a Date parsed from a full ISO
-    // instant -- day is already just the calendar date, and constructing the Date at
-    // UTC midnight is what jalaliMonthGrid does for the same reason: a local-timezone
-    // parse can land on the wrong side of midnight and shift every bar by one day.
+  /* The date rows are one per distinct order_date, so the Jalali month and the weekday are
+     worked out once per date rather than once per line. The weekday is Saturday-first and
+     built from the civil date at UTC midnight, never a Date parsed from a full ISO instant:
+     a local-timezone parse can land on the wrong side of midnight and shift every bar by one
+     day (jalaliMonthGrid does the same for the same reason). */
+  for (const row of agg) {
+    if (row.kind !== "date") continue;
+    const total = row.a ?? 0;
+    const orderDate = row.label!;
+    const day = orderDate.slice(0, 10);
+    byDay.set(day, (byDay.get(day) ?? 0) + total);
+    const month = jalaliMonthKey(orderDate);
+    byMonth.set(month, (byMonth.get(month) ?? 0) + total);
     const [gy, gm, gd] = day.split("-").map(Number);
-    const jsDow = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
-    const weekday = (jsDow + 1) % 7;
+    const weekday = (new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay() + 1) % 7;
     byWeekday.set(weekday, (byWeekday.get(weekday) ?? 0) + total);
-
-    orderTotals.set(line.order_id, (orderTotals.get(line.order_id) ?? 0) + total);
   }
 
   // Customers and debt come from the customer table, which is group-scoped rather than
@@ -190,7 +226,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   const scopedCustomers = db
     .prepare(`SELECT id FROM customers WHERE 1 = 1${customerScope.sql}`)
     .all(...customerScope.params) as unknown as { id: number }[];
-  const debtByCustomer = customerDebtsForOrg(session.organizationId);
+  const debtByCustomer = customerDebtsForOrgOnce(session.organizationId);
   const debt = { d0_7: 0, d8_30: 0, over_30: 0, n: scopedCustomers.length };
   for (const { id } of scopedCustomers) {
     const d = debtByCustomer.get(id);
@@ -233,8 +269,6 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     const month = jalaliMonthKey(row.first_date);
     byNewCustomerMonth.set(month, (byNewCustomerMonth.get(month) ?? 0) + 1);
   }
-
-  const orderCount = orderTotals.size;
 
   return {
     revenue_toman: revenue,

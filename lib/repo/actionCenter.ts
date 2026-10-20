@@ -10,9 +10,9 @@
 import { getDb } from "@/lib/db";
 import { groupFilter, orderFilter, type Session } from "@/lib/session";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
-import { customerDebtsForOrg } from "@/lib/repo/payments";
+import { customerDebtsForOrgOnce } from "@/lib/repo/payments";
 import { stockLevels } from "@/lib/repo/stock";
-import { customerHealthFor } from "@/lib/repo/health";
+import { customerHealthMany } from "@/lib/repo/health";
 import { snapshotRows } from "@/lib/repo/kpiSnapshots";
 import { rankActionCenter, type Bucket, type Candidate, type RankedItem } from "@/lib/analysis/actionCenter";
 import { customerHref } from "@/lib/deepLink";
@@ -144,7 +144,7 @@ function overdueCandidates(session: Session): Candidate[] {
       }[]
     ).map((c) => [c.id, c.business_name])
   );
-  const debts = customerDebtsForOrg(session.organizationId);
+  const debts = customerDebtsForOrgOnce(session.organizationId);
   const out: Candidate[] = [];
   for (const [id, name] of inScope) {
     const over = debts.get(id)?.bucket_30_plus ?? 0;
@@ -192,9 +192,9 @@ function atRiskCandidates(session: Session): Candidate[] {
             AND o.order_date >= ? LIMIT 60`
       )
       .all(session.organizationId, new Date(Date.now() - 180 * DAY_MS).toISOString()) as { id: number }[];
-    scored = recent
-      .filter((r) => inScope.has(r.id))
-      .map((r) => ({ id: r.id, score: customerHealthFor(session.organizationId, r.id).score }));
+    const ids = recent.filter((r) => inScope.has(r.id)).map((r) => r.id);
+    const health = customerHealthMany(session.organizationId, ids);
+    scored = ids.map((id) => ({ id, score: health.get(id)!.score }));
   }
 
   return scored

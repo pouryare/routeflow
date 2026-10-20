@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { isToman } from "@/lib/money";
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
@@ -610,10 +611,19 @@ const ZERO_DEBT = (): CustomerDebt => ({
   bucket_30_plus: 0,
 });
 
+/** Asked once per database handle: migrations finish inside getDb(), so the column is either
+ *  there for the life of the handle or it is not, and re-reading the schema on every debt
+ *  lookup cost a PRAGMA per customer on the dashboard. */
+const openingBalanceColumn = new WeakMap<DatabaseSync, boolean>();
 function customersHasOpeningBalance(db: DatabaseSync): boolean {
-  return (
-    db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]
-  ).some((c) => c.name === "opening_balance_toman");
+  let has = openingBalanceColumn.get(db);
+  if (has === undefined) {
+    has = (db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]).some(
+      (c) => c.name === "opening_balance_toman"
+    );
+    openingBalanceColumn.set(db, has);
+  }
+  return has;
 }
 
 function ageDays(nowISO: string, refISO: string): number {
@@ -703,43 +713,48 @@ export function customerDebtsForOrg(
     out.set(c.id, d);
   }
 
-  const orders = db
+  /* Order totals are summed in SQL. Each line is rounded to whole Toman BEFORE it is added,
+     exactly as lineTotalToman does (round half away from zero, on the delivered packs when
+     there are any and the ordered ones otherwise), so the sum is the same integer the
+     per-line JS arithmetic produced. Only the orders still owing anything come back to JS,
+     where the ageing buckets are applied -- a few thousand rows instead of every line the
+     organisation has ever delivered. tests/debts-aggregate.test.ts holds this equal to the
+     original row-by-row version. */
+  /* One pass: the per-order totals are materialised once, then read two ways -- a row per
+     customer (their delivered total) and a row per order that still owes something (for the
+     ageing buckets). kind 0 / kind 1 tells the two apart. */
+  const rows = db
     .prepare(
-      `SELECT o.id, o.customer_id, o.order_date, o.delivered_at, o.paid_toman
-         FROM orders o
-         JOIN customers c ON c.id = o.customer_id
-        WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
+      `WITH ot AS MATERIALIZED (
+         SELECT o.customer_id AS customer_id, o.order_date AS order_date, o.delivered_at AS delivered_at,
+                o.paid_toman AS paid_toman, COALESCE(lt.total, 0) AS total
+           FROM orders o
+           JOIN customers c ON c.id = o.customer_id
+           LEFT JOIN (
+             SELECT order_id,
+                    SUM(CAST(ROUND(COALESCE(packs_delivered, packs_ordered) * unit_price_toman) AS INTEGER)) AS total
+               FROM order_lines GROUP BY order_id
+           ) lt ON lt.order_id = o.id
+          WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
+       )
+       SELECT 0 AS kind, customer_id, SUM(total) AS amount, NULL AS order_date, NULL AS delivered_at
+         FROM ot GROUP BY customer_id
+       UNION ALL
+       SELECT 1, customer_id, total - paid_toman, order_date, delivered_at
+         FROM ot WHERE total > paid_toman`
     )
     .all(organizationId) as unknown as {
-    id: number;
+    kind: number;
     customer_id: number;
-    order_date: string;
+    amount: number;
+    order_date: string | null;
     delivered_at: string | null;
-    paid_toman: number;
   }[];
-
-  const lineRows = db
-    .prepare(
-      `SELECT ol.order_id, ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman,
-              ol.unit_cost_toman, ol.qty_per_pack, ol.kg_per_base_unit
-         FROM order_lines ol
-         JOIN orders o ON o.id = ol.order_id
-         JOIN customers c ON c.id = o.customer_id
-        WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
-    )
-    .all(organizationId) as unknown as (LineSnapshot & { order_id: number })[];
-  const totalByOrder = new Map<number, number>();
-  for (const l of lineRows) {
-    totalByOrder.set(l.order_id, (totalByOrder.get(l.order_id) ?? 0) + lineTotalToman(l));
-  }
-
-  for (const o of orders) {
-    const d = out.get(o.customer_id);
+  for (const r of rows) {
+    const d = out.get(r.customer_id);
     if (!d) continue;
-    const total = totalByOrder.get(o.id) ?? 0;
-    d.total += total;
-    const outstanding = Math.max(0, total - o.paid_toman);
-    if (outstanding > 0) bucketOf(d, ageDays(now, o.delivered_at ?? o.order_date), outstanding);
+    if (r.kind === 0) d.total += r.amount;
+    else bucketOf(d, ageDays(now, r.delivered_at ?? r.order_date!), r.amount);
   }
 
   const allocRows = db
@@ -758,6 +773,16 @@ export function customerDebtsForOrg(
 
   return out;
 }
+
+/** customerDebtsForOrg, memoised for the length of one server render.
+ *
+ *  The dashboard asks for the whole organisation's debt three times in one request -- the
+ *  stat tiles, the health overview and the action center's overdue bucket -- and each pass
+ *  walks every delivered order and line. React's cache() shares one result across those
+ *  calls inside a single RSC render and discards it afterwards; outside a render (route
+ *  handlers, scripts, tests) it simply calls through, so nothing can go stale. Callers must
+ *  treat the Map as read-only. */
+export const customerDebtsForOrgOnce = cache((organizationId: number) => customerDebtsForOrg(organizationId));
 
 export function voidPaymentTxn(
   db: DatabaseSync,
