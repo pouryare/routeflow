@@ -65,8 +65,9 @@ export default function CustomerSheet({
                   : "در حال خواندن…"}
             </div>
           </div>
-          <button className="x" type="button" aria-label="بستن مشخصات مشتری" onClick={onClose}>
+          <button className="x x--labelled" type="button" aria-label="بستن مشخصات مشتری" onClick={onClose}>
             <Icon name="x" size="sm" />
+            <span>بستن مشخصات</span>
           </button>
         </div>
 

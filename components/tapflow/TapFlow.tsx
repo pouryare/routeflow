@@ -69,8 +69,9 @@ export default function TapFlow(p: TapFlowProps) {
             <h2 id="tf-title">{p.title}</h2>
             {p.subtitle ? <div className="s">{p.subtitle}</div> : null}
           </div>
-          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن این فرم" onClick={onClose}>
+          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x x--labelled" type="button" aria-label="بستن فرم" onClick={onClose}>
             <Icon name="x" size="sm" />
+            <span>بستن فرم</span>
           </button>
         </div>
         <div className="tapflow" aria-live="polite">
