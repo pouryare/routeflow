@@ -81,4 +81,13 @@ describe("hot reads use an index", () => {
     );
     expect(onHand.join("\n")).toMatch(/COVERING INDEX/);
   });
+
+  it("the 'who reversed this journal' join uses an index", () => {
+    const p = plan(
+      `SELECT j.id, r.id FROM journals j LEFT JOIN journals r ON r.reverses_journal_id = j.id
+        WHERE j.organization_id = ? ORDER BY j.seq DESC LIMIT 100`,
+      1
+    );
+    expect(p.filter((l) => /SCAN r\b/.test(l)), p.join("\n")).toEqual([]);
+  });
 });

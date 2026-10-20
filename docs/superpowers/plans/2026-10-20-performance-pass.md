@@ -1,5 +1,7 @@
 # Performance Pass Implementation Plan
 
+> **STATUS (2026-10-20): executed.** Results and the corrected diagnosis are in `docs/perf/2026-10-20-baseline.md`. Task 5 shipped as streaming sections (with the event-loop yield it turned out to need), Task 6 was not needed, Task 7 found no change, Task 8 also fixed the journal's N+1 and an unindexed reversal join. Tasks 1-4 shipped as written, plus the startup-hang indexes found while measuring at scale.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use /long-haul-development.md to implement this plan task-by-task (disk-backed plan + journal, `/newtask` relay, review gates). For a plan small enough to finish in one session, /executing-plans.md is the simpler inline path. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Cut perceived and real navigation latency in the shell by closing the remaining loading-state gaps, streaming slow page sections, tuning SQLite, and fixing the slowest queries, each change gated by a measurement.

@@ -2006,6 +2006,8 @@ export function getDb(): DatabaseSync {
        every payment by the backfill. Without this each ask scanned the whole journal table, which
        made startup and every write grow with the size of the ledger. */
     CREATE INDEX IF NOT EXISTS ix_journals_source ON journals(source_type, source_id);
+    /* The journal and ledger pages ask, for every row, which later journal reverses it. */
+    CREATE INDEX IF NOT EXISTS ix_journals_reverses ON journals(reverses_journal_id);
 
     CREATE TABLE IF NOT EXISTS ledger_entries (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
