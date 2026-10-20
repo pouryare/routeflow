@@ -9,6 +9,7 @@ import { Fragment, useCallback, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
 
+import { confirmAction } from "@/lib/confirm";
 interface Product {
   id: number;
   name: string;
@@ -93,6 +94,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
   }
 
   async function setStatus(id: number, to: BatchStatus) {
+    // A recall raises a reminder for every customer who received the lot, and recalled is a dead end
+    // (it can only go to depleted), so it asks first; quarantine is reversible and does not.
+    if (to === "recalled" && !confirmAction("این سری ساخت فراخوان شود؟ برای همهٔ مشتریانی که آن را گرفته‌اند یادآور ثبت می‌شود و برگشت‌پذیر نیست.")) return;
     const res = await fetch(`/api/sales/batches/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
