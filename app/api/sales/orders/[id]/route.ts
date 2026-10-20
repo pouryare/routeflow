@@ -23,17 +23,19 @@ function visible(session: Parameters<typeof orderFilter>[0], orderId: number): b
   return row !== undefined;
 }
 
-const NOT_FOUND = NextResponse.json({ ok: false, error: "سفارش پیدا نشد" }, { status: 404 });
+/* A function, not a module-level response: a Response body can be read once, so the second request
+   to reach this answer got an empty body. */
+const notFound = () => NextResponse.json({ ok: false, error: "سفارش پیدا نشد" }, { status: 404 });
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const guard = requireRole(req, [...CAN_SELL]);
   if (!guard.ok) return guard.response;
 
   const id = Number((await ctx.params).id);
-  if (!visible(guard.session, id)) return NOT_FOUND;
+  if (!visible(guard.session, id)) return notFound();
 
   const order = readOrder(getDb(), id);
-  if (!order) return NOT_FOUND;
+  if (!order) return notFound();
   return NextResponse.json({ ok: true, order });
 }
 
@@ -45,7 +47,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   // Checked before anything is read or written, so an order in another group is
   // indistinguishable from one that does not exist -- including on a failed confirm,
   // where a 400 would otherwise confirm it is real.
-  if (!visible(guard.session, id)) return NOT_FOUND;
+  if (!visible(guard.session, id)) return notFound();
 
   const body = (await req.json().catch(() => null)) as {
     status?: unknown;

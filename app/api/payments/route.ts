@@ -1,13 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireRole } from "@/lib/session";
+import { canReachGroup, requireRole } from "@/lib/session";
 import {
   recordPayment,
   listPayments,
+  listPaymentsScoped,
+  customerGroupOf,
   PaymentError,
   type PaymentMethod,
   type AllocationInput,
 } from "@/lib/repo/payments";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { isOwner, MANAGE_ROLES } from "@/lib/roles";
 
 const METHODS: PaymentMethod[] = ["CASH", "POS", "CARD_TO_CARD", "CHEQUE", "CREDIT_NOTE", "OTHER"];
 
@@ -16,12 +18,24 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const customerId = req.nextUrl.searchParams.get("customer_id");
+  const session = guard.session;
+  const customer_id = customerId ? Number(customerId) : undefined;
+  // Owners and the platform key see the organisation's receipts; a group manager their group's;
+  // a salesperson the ones they took or whose customer they sold to.
+  if (isOwner(session.role)) {
+    return NextResponse.json({
+      ok: true,
+      payments: listPayments(session.organizationId, customer_id ? { customer_id } : undefined),
+    });
+  }
   return NextResponse.json({
     ok: true,
-    payments: listPayments(
-      guard.session.organizationId,
-      customerId ? { customer_id: Number(customerId) } : undefined
-    ),
+    payments: listPaymentsScoped(session.organizationId, {
+      customer_id,
+      ...(session.role === "group_manager"
+        ? { groupIds: session.groupId === null ? [] : [session.groupId] }
+        : { salespersonId: session.user.id }),
+    }),
   });
 }
 
@@ -47,6 +61,13 @@ export async function POST(req: NextRequest) {
     !body.received_at
   ) {
     return NextResponse.json({ ok: false, error: "اطلاعات دریافت ناقص است" }, { status: 400 });
+  }
+
+  // A receipt against another group's customer is refused as if the customer did not exist,
+  // like every other cross-group write.
+  const owner = customerGroupOf(guard.session.organizationId, Number(body.customer_id));
+  if (owner && owner.group_id !== null && !canReachGroup(guard.session, owner.group_id)) {
+    return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 409 });
   }
 
   try {

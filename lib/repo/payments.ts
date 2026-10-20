@@ -375,6 +375,55 @@ export function recordPayment(organizationId: number, input: RecordPaymentInput)
   }
 }
 
+/** Payments a caller may see, narrowed beyond the organisation.
+ *
+ *  `groupIds` keeps payments whose customer sits in one of those groups; `salespersonId` keeps
+ *  payments the person received or whose customer they have sold to. Both can be given. The
+ *  route used to return every payment of the organisation to a salesperson, byte-identical to
+ *  the owner's view. */
+/** The group a customer belongs to, or `undefined` when there is no such customer in this
+ *  organisation. Lets a route refuse a write against another group's customer. */
+export function customerGroupOf(organizationId: number, customerId: number): { group_id: number | null } | undefined {
+  return paymentsRepo
+    .db()
+    .prepare("SELECT group_id FROM customers WHERE id = ? AND (organization_id = ? OR organization_id IS NULL)")
+    .get(customerId, organizationId) as { group_id: number | null } | undefined;
+}
+
+export function listPaymentsScoped(
+  organizationId: number,
+  scope: { groupIds?: number[]; salespersonId?: number; customer_id?: number }
+): PaymentRow[] {
+  const clauses = ["p.organization_id = ?"];
+  const params: (number | string)[] = [organizationId];
+  if (scope.customer_id !== undefined) {
+    clauses.push("p.customer_id = ?");
+    params.push(scope.customer_id);
+  }
+  if (scope.groupIds !== undefined) {
+    // A customer with no group yet is company-wide, the same rule tasks and alerts follow.
+    clauses.push(
+      scope.groupIds.length
+        ? `(c.group_id IS NULL OR c.group_id IN (${scope.groupIds.map(() => "?").join(", ")}))`
+        : "c.group_id IS NULL"
+    );
+    params.push(...scope.groupIds);
+  }
+  if (scope.salespersonId !== undefined) {
+    clauses.push(
+      `(p.received_by = ? OR EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = p.customer_id AND o.organization_id = p.organization_id AND o.salesperson_user_id = ?))`
+    );
+    params.push(scope.salespersonId, scope.salespersonId);
+  }
+  return paymentsRepo
+    .db()
+    .prepare(
+      `SELECT p.* FROM payments p JOIN customers c ON c.id = p.customer_id
+        WHERE ${clauses.join(" AND ")} ORDER BY p.received_at DESC, p.id DESC`
+    )
+    .all(...(params as never[])) as unknown as PaymentRow[];
+}
+
 export function listPayments(
   organizationId: number,
   filter?: { customer_id?: number }

@@ -45,13 +45,23 @@ export function raiseAlert(
 
 export function listAlerts(
   organizationId: number,
-  filter: { severity?: string; open?: boolean; limit?: number } = {}
+  filter: { severity?: string; open?: boolean; limit?: number; groupIds?: number[] } = {}
 ): AlertRow[] {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.severity) {
     clauses.push("severity = ?");
     params.push(filter.severity);
+  }
+  if (filter.groupIds !== undefined) {
+    // An ungrouped row is company-wide; a grouped one is visible only inside its group. An empty
+    // list therefore sees the company-wide rows and nothing more -- never "everything".
+    clauses.push(
+      filter.groupIds.length
+        ? `(group_id IS NULL OR group_id IN (${filter.groupIds.map(() => "?").join(", ")}))`
+        : "group_id IS NULL"
+    );
+    params.push(...filter.groupIds);
   }
   if (filter.open) clauses.push("resolved_at IS NULL");
   params.push(filter.limit ?? 100);

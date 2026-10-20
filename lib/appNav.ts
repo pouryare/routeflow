@@ -106,7 +106,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/today", label: "امروز", group: "day", ready: true },
     { href: "/sales/pocket", label: "کارهای من", group: "day", ready: true },
     { href: "/sales/schedule", label: "برنامهٔ تحویل", group: "day", ready: true },
-    { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: r !== "phone_sales" },
+    { href: "/planner", label: "برنامه‌ریز مسیر", group: "day", ready: isManager(r) },
 
     // مشتریان
     // The CRM is ready for every role that reaches this list. It used to read
@@ -115,13 +115,13 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/crm", label: "مشتریان و سرنخ‌ها", group: "customers", ready: true },
     { href: "/map", label: "نقشهٔ پوشش", group: "customers", ready: true },
     { href: "/leads", label: "پین‌های نقشه", group: "customers", ready: isRepLead(r) },
-    { href: "/sales/complaints", label: "شکایات", group: "customers", ready: true },
+    { href: "/sales/complaints", label: "شکایات", group: "customers", ready: r !== "rep_manager" },
     { href: "/gallery", label: "گالری تصاویر", group: "customers", ready: true },
 
     // فروش و دریافت
     { href: "/sales/orders", label: "سفارش‌ها", group: "sales", ready: true },
     { href: "/sales/products", label: "کالاها و قیمت‌ها", group: "sales", ready: true },
-    { href: "/sales/payments", label: "دریافت‌ها", group: "sales", ready: true },
+    { href: "/sales/payments", label: "دریافت‌ها", group: "sales", ready: r !== "rep_manager" },
     { href: "/sales/cheques", label: "چک‌ها", group: "sales", ready: isManager(r) },
     { href: "/sales/commission", label: "پورسانت", group: "sales", ready: true },
 

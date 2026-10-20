@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { COOKIE_NAME, parseSessionToken } from "./lib/auth";
-import { isVanRole, OWNER_ROLES } from "@/lib/roles";
+import { isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 
 // /sw.js, the manifest, and the offline fallback stay unauthenticated on purpose:
 // a service worker script must return the same bytes regardless of session state, or
@@ -269,6 +269,24 @@ export function proxy(req: NextRequest) {
     claims.role !== "rep_manager"
   ) {
     return deny("/crm");
+  }
+
+  /* Pages whose data routes answer the managers only. The route planner and the places list read
+     /api/locations, /api/facilities, /api/customers and /api/activity, which are MANAGE_ROLES; a
+     salesperson or rep manager who opened them got a page of 403s. appNav.ts hides the same
+     tabs, so the nav is again a gate rather than a suggestion. (/map and /gallery stay open to
+     them: their data routes now admit read access, scoped to the caller's group.) */
+  const isManagerOnlyPage = ["/planner", "/facilities"].some(
+    (p) => pathname === p || pathname.startsWith(`${p}/`),
+  );
+  if (isManagerOnlyPage && !MANAGE_ROLES.includes(claims.role)) return deny("/sales");
+
+  /* Receipts and complaints: the APIs admit the managers and phone_sales, not rep_manager. */
+  if (
+    claims.role === "rep_manager" &&
+    (pathname.startsWith("/sales/payments") || pathname.startsWith("/sales/complaints"))
+  ) {
+    return deny("/sales");
   }
 
   /* The accounting reports are org-wide money: the whole ledger, every supplier, every

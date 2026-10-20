@@ -370,3 +370,20 @@ describe("CRM", () => {
     expect(proxy(req("/api/crm/businesses", "phone_sales")).status).toBe(200);
   });
 });
+
+describe("pages whose data routes are manager-only", () => {
+  it("keeps the route planner and places list from a salesperson and a rep manager", () => {
+    for (const role of ["phone_sales", "rep_manager"] as const) {
+      for (const p of ["/planner", "/facilities"]) {
+        expect(proxy(req(p, role)).status, `${role} ${p}`).toBe(307);
+      }
+    }
+    expect(proxy(req("/planner", "group_manager")).status).toBe(200);
+    expect(proxy(req("/facilities", "owner")).status).toBe(200);
+  });
+  it("keeps receipts and complaints from a rep manager but not from a salesperson", () => {
+    expect(proxy(req("/sales/payments", "rep_manager")).status).toBe(307);
+    expect(proxy(req("/sales/complaints", "rep_manager")).status).toBe(307);
+    expect(proxy(req("/sales/payments", "phone_sales")).status).toBe(200);
+  });
+});
