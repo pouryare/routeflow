@@ -1578,9 +1578,10 @@ body {
   --border-strong: #CBD5DD;
   --text: #1A1F26;
   --text-muted: #5C6672;
-  /* Non-text only (3.07:1). Solved to 4.5 it collapses into --text-muted and the
-     two roles stop being distinguishable, so anything readable uses --text-muted. */
-  --text-faint: #828A98;
+  /* Was #828A98 (3.1:1) and documented as non-text only, but 150+ readable labels use it, so
+     it is now solved to 4.5 on --bg. The two roles sit close together; --text-muted stays the
+     darker of the pair. */
+  --text-faint: #656E7B;
   --accent: #0077BC;        /* fills only in light */
   --accent-text: #006EAE;   /* accent as text: 4.55 on --bg */
   --accent-ink: #FFFFFF;    /* on an --accent fill: 4.65 */
@@ -1631,13 +1632,13 @@ body {
   --sunk: #E7ECF1;
   --ink: #1A1F26;
   --ink-2: #3F4753;
-  --muted: #79818E;
+  --muted: #5C6672;
   --faint: #ABB2BE;
   --line: #DFE6EC;
   --line-2: #CBD5DD;
   --accent-2: #0065A1;
   --sage: #4F6B4A;      --sage-soft: #E9F0E6;
-  --amber: #9A6B10;     --amber-soft: #FBF1DD;
+  --amber: #8A5F0D;     --amber-soft: #FBF1DD;
   --plum: #6B4FA0;      --plum-soft: #F2ECFA;
   --sky: #2E6382;       --sky-soft: #E5F0F6;
 
@@ -2912,7 +2913,11 @@ body {
   background: var(--card); color: var(--accent-text);
   box-shadow: 0 0 0 4px var(--accent-soft), inset 0 0 0 2px var(--accent);
 }
-.meridian .spine__step--todo .spine__body { opacity: .62; }
+.meridian .spine__step--todo .spine__body { opacity: 1; }
+.meridian .spine__step--todo .spine__note { color: var(--muted); }
+/* Tailwind's text-accent is the FILL accent (4.3:1 on the ground). Readable accent text uses the
+   solved --accent-text everywhere inside the shell. */
+.meridian .text-accent { color: var(--accent-text); }
 .meridian .spine__body { min-width: 0; }
 /* min-height 36px is NOT a tap-target miss: spine__head holds only spans, an
    aria-hidden icon and a <time> (OrderSpine.tsx) — nothing here is clickable, so
@@ -3750,7 +3755,7 @@ body {
 .meridian .stgauge__fill[data-s="ok"] { background: var(--sage); }
 .meridian .stgauge__fill[data-s="over"] { background: var(--sky); }
 .meridian .stgauge__tick { position: absolute; top: -3px; width: 2px; height: 15px; background: var(--ink-2); opacity: .55; border-radius: 1px; }
-.meridian .stgauge__labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--faint); }
+.meridian .stgauge__labels { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); }
 .meridian .stgauge__labels b { color: var(--ink-2); font-weight: 600; font-family: var(--en); }
 
 .meridian .stcard__mid { display: flex; align-items: center; justify-content: space-between; gap: 12px; }

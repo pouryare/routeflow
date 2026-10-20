@@ -53,7 +53,7 @@ export default async function TrialBalancePage() {
               {/* The code is the drill-down: each account opens its own ledger. */}
               <Link
                 href={`/accounting/ledger/${r.accountId}`}
-                className="tnum text-accent hover:underline"
+                className="tnum text-[var(--accent-text)] hover:underline"
               >
                 {r.code}
               </Link>

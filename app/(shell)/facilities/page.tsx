@@ -416,6 +416,7 @@ export default function FacilitiesPage() {
               className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent w-full"
             /></label>
             <select
+              aria-label="نوع مکان"
               value={newKind}
               onChange={(e) => {
                 const k = e.target.value as FacilityKind;

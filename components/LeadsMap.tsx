@@ -229,6 +229,7 @@ export default function LeadsMap({
             <Marker
               key={l.id}
               position={[l.lat, l.lng]}
+              title={l.name}
               icon={leadIcon(l.runIndex, l.id === selectedId)}
               zIndexOffset={l.runIndex !== null ? 700 : 500}
               eventHandlers={{

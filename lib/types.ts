@@ -16,6 +16,16 @@ export const STATUS_COLOR: Record<CoverageStatus, string> = {
   unknown: "#7D7166",
 };
 
+/* The same three signals as TEXT. The hex above are fills for map shapes and sit at 1.8-3.5:1 on
+   the light ground, which fails for numbers and words; these resolve to --good/--warn/--crit,
+   which MASTER.md solves for text on both themes. Use these for any readable label. */
+export const STATUS_TEXT: Record<CoverageStatus, string> = {
+  visited: "var(--good)",
+  needs_coverage: "var(--warn)",
+  not_allowed: "var(--crit)",
+  unknown: "var(--text-muted)",
+};
+
 export const STATUS_LABEL: Record<CoverageStatus, string> = {
   visited: "بازدید شده",
   needs_coverage: "نیاز به پوشش",

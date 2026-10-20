@@ -397,6 +397,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2">
                       <select
+                        aria-label={`نقش ${u.display_name}`}
                         value={u.role}
                         onChange={(e) =>
                           send(`/api/admin/users/${u.id}`, "PATCH", { role: e.target.value })
@@ -410,6 +411,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2">
                       <select
+                        aria-label={`گروه ${u.display_name}`}
                         value={u.group_id ?? ""}
                         onChange={(e) =>
                           send(`/api/admin/users/${u.id}`, "PATCH", {

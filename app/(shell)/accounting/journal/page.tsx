@@ -51,7 +51,7 @@ export default async function JournalPage({
                 href={link(p.periodKey, "/accounting/journal", "period")}
                 className={`rounded-[var(--radius-sm)] border px-2 py-1 ${
                   period === p.periodKey
-                    ? "border-accent text-accent"
+                    ? "border-accent text-[var(--accent-text)]"
                     : "border-border"
                 }`}
               >

@@ -137,7 +137,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
             </button>
           ))}
         </div>
-        <select className="stsort" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
+        <select className="stsort" aria-label="مرتب‌سازی" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
           <option value="days">مرتب‌سازی: نزدیک‌ترین به اتمام</option>
           <option value="value">مرتب‌سازی: بیشترین ارزش</option>
           <option value="name">مرتب‌سازی: نام کالا</option>

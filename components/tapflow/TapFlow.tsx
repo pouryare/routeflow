@@ -65,7 +65,7 @@ export default function TapFlow(p: TapFlowProps) {
   return host ? createPortal(
     <>
       <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
-      <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tf-title" aria-hidden={!open}>
+      <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tf-title" aria-hidden={!open} inert={!open}>
         <div className="grab" />
         <div className="sheethead">
           <div>
