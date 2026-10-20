@@ -25,6 +25,9 @@ export default function AdminGroupsPage() {
   const [name, setName] = useState("");
   // Deleting a group cannot be undone, so it takes a second tap on an explicitly worded button.
   const [confirmingId, setConfirmingId] = useState<number | null>(null);
+  // The group being renamed, with the name as typed. An in-page form, not a browser prompt,
+  // so its buttons can say what they do.
+  const [renaming, setRenaming] = useState<{ id: number; name: string } | null>(null);
   const [color, setColor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -64,13 +67,14 @@ export default function AdminGroupsPage() {
     }
   }
 
-  async function rename(g: GroupRow) {
-    const next = window.prompt("نام تازه گروه", g.name);
-    if (next === null || !next.trim() || next.trim() === g.name) return;
+  async function rename(g: GroupRow, nextName: string) {
+    const next = nextName.trim();
+    setRenaming(null);
+    if (!next || next === g.name) return;
     const res = await fetch(`/api/admin/groups/${g.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: next.trim() }),
+      body: JSON.stringify({ name: next }),
     });
     const data = await res.json();
     if (!res.ok || !data.ok) setError(friendlyError(data.error, "نام گروه تغییر نکرد؛ دوباره تلاش کنید"));
@@ -184,14 +188,46 @@ export default function AdminGroupsPage() {
                     </button>
                   ))}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => rename(g)}
-                  className="cursor-pointer text-xs text-text-muted transition-colors hover:text-accent"
-                >
-                  <Icon name="edit" size="md" />
-                  تغییر نام
-                </button>
+                {renaming?.id === g.id ? (
+                  <span className="flex flex-wrap items-center gap-[var(--space-2)] text-xs">
+                    <input
+                      autoFocus
+                      value={renaming.name}
+                      onChange={(e) => setRenaming({ id: g.id, name: e.target.value })}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") void rename(g, renaming.name);
+                        if (e.key === "Escape") setRenaming(null);
+                      }}
+                      placeholder="نام تازهٔ گروه" aria-label="نام تازهٔ گروه"
+                      className="rounded border border-border bg-bg px-2 py-1 text-sm"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void rename(g, renaming.name)}
+                      className="cursor-pointer text-accent transition-colors hover:underline"
+                    >
+                      <Icon name="check" size="md" />
+                      ذخیرهٔ نام گروه
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setRenaming(null)}
+                      className="cursor-pointer text-text-muted transition-colors hover:text-text"
+                    >
+                      <Icon name="x" size="md" />
+                      انصراف از تغییر نام
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setRenaming({ id: g.id, name: g.name })}
+                    className="cursor-pointer text-xs text-text-muted transition-colors hover:text-accent"
+                  >
+                    <Icon name="edit" size="md" />
+                    تغییر نام گروه
+                  </button>
+                )}
                 {confirmingId === g.id ? (
                   <span className="flex flex-wrap items-center gap-[var(--space-2)] text-xs">
                     <span className="text-text-muted">محدوده‌های «{g.name}» بدون گروه می‌شوند و این کار برگشت ندارد.</span>

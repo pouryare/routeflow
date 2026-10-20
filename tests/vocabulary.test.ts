@@ -29,6 +29,7 @@ const RETIRED: { word: RegExp; use: string }[] = [
   { word: /تایید/, use: "تأیید" },
   { word: /پیوند/, use: "لینک" },
   { word: /گوگل\u200cمپس/, use: "گوگل‌مپ" },
+  { word: /سفارش جدید/, use: "سفارش تازه" },
 ];
 
 function sources(rel: string): string[] {

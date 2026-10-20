@@ -36,6 +36,9 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>([]);
   const [q, setQ] = useState("");
+  /* The account the person is about to act as. Nothing is sent until they tap the confirm
+     button: every write from here on is recorded as this person with our name beside it. */
+  const [asking, setAsking] = useState<Row | null>(null);
   const [busy, setBusy] = useState<number | null>(null);
 
   useEffect(() => {
@@ -56,17 +59,14 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
     return [...m.values()];
   }, [rows, q]);
 
-  async function actAs(row: Row) {
+  function actAs(row: Row) {
     if (row.isSelf || busy !== null) return;
-    // One confirmation, because every write from here on is recorded as this person with
-    // our name beside it. SearchOverlay already does this for the existing entry point.
-    if (
-      !window.confirm(
-        `برنامه را به‌جای «${row.display_name}» ببینید؟ تا وقتی «بازگشت» را نزنید، هر کاری به نام او ثبت می‌شود.`
-      )
-    ) {
-      return;
-    }
+    setAsking(row);
+  }
+
+  async function confirmActAs(row: Row) {
+    if (row.isSelf || busy !== null) return;
+    setAsking(null);
     setBusy(row.id);
     await fetch("/api/admin/impersonate", {
       method: "POST",
@@ -87,6 +87,21 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
         placeholder="جستجوی نام یا سازمان…" aria-label="جستجوی نام یا سازمان"
         className="mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text)] outline-none focus:border-[var(--accent)]"
       />
+      {asking && (
+        <div role="alertdialog" aria-label="ورود به‌جای کاربر" className="mb-[var(--space-3)] grid gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] p-[var(--space-3)]">
+          <p className="m-0 text-[length:var(--text-sm)]">
+            برنامه را به‌جای «{asking.display_name}» ببینید؟ تا وقتی «بازگشت به حساب خودم» را نزنید، هر کاری که انجام دهید به نام او ثبت می‌شود.
+          </p>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void confirmActAs(asking)}>
+            <Icon name="check" size="md" />
+            دیدن برنامه به‌جای «{asking.display_name}»
+          </button>
+          <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setAsking(null)}>
+            <Icon name="x" size="md" />
+            انصراف از ورود به‌جای کاربر
+          </button>
+        </div>
+      )}
       {byOrg.length === 0 && (
         <p className="text-[length:var(--text-sm)] text-[var(--text-muted)]">حسابی یافت نشد</p>
       )}
@@ -101,7 +116,7 @@ export default function AccountSwitcher({ variant = "page" }: { variant?: "menu"
                 <button
                   type="button"
                   disabled={r.isSelf || busy !== null}
-                  onClick={() => void actAs(r)}
+                  onClick={() => actAs(r)}
                   className="flex w-full items-center gap-[var(--space-2)] rounded-[var(--radius-md)] px-[var(--space-2)] py-[var(--space-2)] text-right disabled:opacity-40 enabled:hover:bg-[var(--surface-raised)]"
                 >
                   <Icon name="users" size="md" />

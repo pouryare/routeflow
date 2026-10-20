@@ -244,11 +244,16 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function resetPassword(u: UserRow) {
-    const pw = window.prompt(`رمز تازه برای «${u.display_name}» (حداقل ۸ نویسه)`);
+  /** The account whose password is being replaced, with the text typed so far. An in-page,
+   *  masked field rather than a browser prompt: a prompt shows what is typed in the clear. */
+  const [resetting, setResetting] = useState<{ id: number; name: string; pw: string } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function resetPassword(u: { id: number; name: string }, pw: string) {
     if (!pw) return;
     if (await send(`/api/admin/users/${u.id}`, "PATCH", { password: pw })) {
-      window.alert("رمز عوض شد. نشست‌های قبلی این کاربر بی‌اعتبار شدند.");
+      setResetting(null);
+      setNotice(`رمز «${u.name}» عوض شد. نشست‌های قبلی این کاربر بی‌اعتبار شدند.`);
     }
   }
 
@@ -259,6 +264,11 @@ export default function AdminUsersPage() {
       {error && (
         <p role="alert" className="rounded-md border border-crit/40 bg-crit/10 px-3 py-2 text-sm text-crit">
           {error}
+        </p>
+      )}
+      {notice && (
+        <p role="status" className="rounded-md border border-good/40 bg-good/10 px-3 py-2 text-sm text-good">
+          {notice}
         </p>
       )}
 
@@ -446,14 +456,48 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2">
                       <div className="flex gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => resetPassword(u)}
-                          className="cursor-pointer text-text-muted transition-colors hover:text-accent"
-                        >
-                          <Icon name="undo" size="md" />
-                          رمز تازه
-                        </button>
+                        {resetting?.id === u.id ? (
+                          <span className="flex flex-wrap items-center gap-2">
+                            <input
+                              type="password"
+                              autoComplete="new-password"
+                              autoFocus
+                              value={resetting.pw}
+                              onChange={(e) => setResetting({ ...resetting, pw: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void resetPassword(resetting, resetting.pw);
+                                if (e.key === "Escape") setResetting(null);
+                              }}
+                              placeholder="رمز تازه (حداقل ۸ نویسه)" aria-label={`رمز تازه برای ${u.display_name}`}
+                              className="rounded border border-border bg-bg px-2 py-1 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void resetPassword(resetting, resetting.pw)}
+                              className="cursor-pointer text-accent transition-colors hover:underline"
+                            >
+                              <Icon name="check" size="md" />
+                              ذخیرهٔ رمز تازه
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setResetting(null)}
+                              className="cursor-pointer text-text-muted transition-colors hover:text-text"
+                            >
+                              <Icon name="x" size="md" />
+                              انصراف از تغییر رمز
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setNotice(null); setResetting({ id: u.id, name: u.display_name, pw: "" }); }}
+                            className="cursor-pointer text-text-muted transition-colors hover:text-accent"
+                          >
+                            <Icon name="undo" size="md" />
+                            تعیین رمز تازه
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => send(`/api/admin/users/${u.id}`, "PATCH", { active: !u.active })}

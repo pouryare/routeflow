@@ -37,11 +37,11 @@ it("edits tags, Instagram and pre-visit intel on a snapshot, persisting across r
   await page.getByRole("button", { name: "ثبت شناخت", exact: true }).click();
   await page.getByRole("button", { name: "متوسط", exact: true }).click();
   await page.getByRole("button", { name: "پخش‌کننده", exact: true }).click();
-  await page.getByRole("button", { name: "ادامه به مرحلهٔ بعد", exact: true }).click();
+  await page.getByRole("button", { name: "ادامه به سؤال بعد", exact: true }).click();
   await page.getByRole("button", { name: "بعدازظهر · ۱۵ تا ۱۸", exact: true }).click();
   await page.getByPlaceholder("سراغ چه کسی برویم؟").fill("سراغ مدیر");
   const saved = page.waitForResponse(r => r.url().endsWith(`/businesses/${id}/intel`) && r.request().method() === "POST");
-  await page.getByRole("button", { name: "ثبت ساعت کاری", exact: true }).click();
+  await page.getByRole("button", { name: "ثبت این شناخت", exact: true }).click();
   expect((await saved).status()).toBe(200);
   await page.locator('[role="dialog"]').waitFor({ state: "detached" });
   await page.reload();
