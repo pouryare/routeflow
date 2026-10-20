@@ -8,7 +8,7 @@
 import { getDb } from "@/lib/db";
 import { groupFilter, type Session } from "@/lib/session";
 import { FULFILLED_ORDER_STATUSES, PRICED_ORDER_STATUSES, sqlStatusList } from "@/lib/orderStateMachine";
-import { customerDebt } from "@/lib/repo/payments";
+import { customerDebt, customerDebtsForOrg, customerDebtsForOrgOnce } from "@/lib/repo/payments";
 import { targetProgress } from "@/lib/repo/targets";
 import { periodRange } from "@/lib/analysis/period";
 import {
@@ -36,6 +36,22 @@ function daysBetween(a: string, b: string): number {
   return Math.floor((Date.parse(a) - Date.parse(b)) / DAY_MS);
 }
 
+/** The cadence signals a customer's priced order dates (oldest first) yield. Shared by the
+ *  one-customer and the whole-org paths so the two cannot drift apart. */
+function orderSignals(orderDates: string[], asOfIso: string) {
+  const last = orderDates.at(-1) ?? null;
+  const daysSince = last ? Math.max(0, daysBetween(asOfIso, last)) : null;
+  const meanInterval =
+    orderDates.length >= 2
+      ? daysBetween(orderDates.at(-1)!, orderDates[0]) / (orderDates.length - 1)
+      : null;
+  const qCut = new Date(Date.parse(asOfIso) - 90 * DAY_MS).toISOString();
+  const prevCut = new Date(Date.parse(asOfIso) - 180 * DAY_MS).toISOString();
+  const ordersThisQ = orderDates.filter((d) => d >= qCut).length;
+  const ordersPrevQ = orderDates.filter((d) => d >= prevCut && d < qCut).length;
+  return { daysSince, meanInterval, ordersThisQ, ordersPrevQ };
+}
+
 // ---- Customer ----------------------------------------------------------------
 
 export function customerHealthFor(
@@ -56,17 +72,9 @@ export function customerHealthFor(
       .all(organizationId, customerId) as { order_date: string }[]
   ).map((r) => r.order_date);
 
-  const last = orderDates.at(-1) ?? null;
-  const daysSince = last ? Math.max(0, daysBetween(asOfIso, last)) : null;
-  const meanInterval =
-    orderDates.length >= 2
-      ? daysBetween(orderDates.at(-1)!, orderDates[0]) / (orderDates.length - 1)
-      : null;
-
+  const { daysSince, meanInterval, ordersThisQ, ordersPrevQ } = orderSignals(orderDates, asOfIso);
   const qCut = new Date(Date.parse(asOfIso) - 90 * DAY_MS).toISOString();
   const prevCut = new Date(Date.parse(asOfIso) - 180 * DAY_MS).toISOString();
-  const ordersThisQ = orderDates.filter((d) => d >= qCut).length;
-  const ordersPrevQ = orderDates.filter((d) => d >= prevCut && d < qCut).length;
 
   const debt = customerDebt(organizationId, customerId, asOfIso);
   const creditLimit = Number(
@@ -113,6 +121,91 @@ export function customerHealthFor(
   });
 }
 
+/** Health for every customer of an organisation, in a handful of queries instead of six
+ *  per customer. Same inputs, same pure scorer as customerHealthFor -- tests/health-repo
+ *  holds the two equal row for row. Keys are customer ids; an id with no rows scores as a
+ *  customer with no history, exactly as the one-customer path does. */
+export function customerHealthMany(
+  organizationId: number,
+  ids: number[],
+  asOf?: string
+): Map<number, HealthResult> {
+  const db = getDb();
+  const asOfIso = asOf ?? new Date().toISOString();
+  const qCut = new Date(Date.parse(asOfIso) - 90 * DAY_MS).toISOString();
+  const prevCut = new Date(Date.parse(asOfIso) - 180 * DAY_MS).toISOString();
+
+  const datesBy = new Map<number, string[]>();
+  for (const r of db
+    .prepare(
+      `SELECT customer_id, order_date FROM orders
+        WHERE organization_id = ? AND status IN (${sqlStatusList(PRICED_ORDER_STATUSES)})
+        ORDER BY customer_id, order_date`
+    )
+    .all(organizationId) as { customer_id: number; order_date: string }[]) {
+    const list = datesBy.get(r.customer_id);
+    if (list) list.push(r.order_date);
+    else datesBy.set(r.customer_id, [r.order_date]);
+  }
+
+  const limitBy = new Map<number, number>();
+  for (const r of db
+    .prepare("SELECT id, COALESCE(credit_limit_toman, 0) AS l FROM customers WHERE organization_id = ?")
+    .all(organizationId) as { id: number; l: number }[]) {
+    limitBy.set(r.id, Number(r.l));
+  }
+
+  const complaintsBy = new Map<number, number>();
+  for (const r of db
+    .prepare(
+      `SELECT customer_id, COUNT(*) AS n FROM quality_complaints
+        WHERE organization_id = ? AND (status = 'open' OR reported_at >= ?)
+        GROUP BY customer_id`
+    )
+    .all(organizationId, qCut) as { customer_id: number; n: number }[]) {
+    complaintsBy.set(r.customer_id, Number(r.n));
+  }
+
+  const marginBy = new Map<number, { rev: number; cost: number }>();
+  for (const r of db
+    .prepare(
+      `SELECT o.customer_id AS customer_id,
+              COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_price_toman), 0) AS rev,
+              COALESCE(SUM(COALESCE(ol.packs_delivered, ol.packs_ordered) * ol.unit_cost_toman), 0) AS cost
+         FROM order_lines ol JOIN orders o ON o.id = ol.order_id
+        WHERE o.organization_id = ?
+          AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
+          AND o.order_date >= ?
+        GROUP BY o.customer_id`
+    )
+    .all(organizationId, prevCut) as { customer_id: number; rev: number; cost: number }[]) {
+    marginBy.set(r.customer_id, { rev: r.rev, cost: r.cost });
+  }
+
+  // Without an explicit clock the debt pass is shared with the rest of the render.
+  const debts = asOf ? customerDebtsForOrg(organizationId, asOf) : customerDebtsForOrgOnce(organizationId);
+
+  const out = new Map<number, HealthResult>();
+  for (const id of ids) {
+    const { daysSince, meanInterval, ordersThisQ, ordersPrevQ } = orderSignals(datesBy.get(id) ?? [], asOfIso);
+    const m = marginBy.get(id) ?? { rev: 0, cost: 0 };
+    out.set(
+      id,
+      customerHealth({
+        days_since_last_order: daysSince,
+        mean_interval_days: meanInterval,
+        orders_this_q: ordersThisQ,
+        orders_prev_q: ordersPrevQ,
+        overdue_toman: debts.get(id)?.bucket_30_plus ?? 0,
+        credit_limit_toman: limitBy.get(id) ?? 0,
+        complaints_90d: complaintsBy.get(id) ?? 0,
+        margin_pct: m.rev > 0 ? (m.rev - m.cost) / m.rev : 0,
+      })
+    );
+  }
+  return out;
+}
+
 /** One health row per customer the session may see. */
 export function customersHealthOverview(session: Session): CustomerHealthRow[] {
   const db = getDb();
@@ -121,11 +214,12 @@ export function customersHealthOverview(session: Session): CustomerHealthRow[] {
     .prepare(`SELECT id, business_name FROM customers WHERE 1 = 1${f.sql}`)
     .all(...f.params) as { id: number; business_name: string }[];
 
+  const health = customerHealthMany(
+    session.organizationId,
+    customers.map((c) => c.id)
+  );
   return customers
-    .map((c) => {
-      const h = customerHealthFor(session.organizationId, c.id);
-      return { customer_id: c.id, business_name: c.business_name, ...h };
-    })
+    .map((c) => ({ customer_id: c.id, business_name: c.business_name, ...health.get(c.id)! }))
     .sort((a, b) => a.score - b.score);
 }
 

@@ -13,7 +13,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { orderFilter, groupFilter, type Session } from "./session";
 import { lineTotalToman, lineCostToman, lineKg, type LineSnapshot } from "./orderMath";
-import { customerDebtsForOrg } from "./repo/payments";
+import { customerDebtsForOrgOnce } from "./repo/payments";
 import {
   FULFILLED_ORDER_STATUSES,
   PRICED_ORDER_STATUSES,
@@ -146,6 +146,13 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   let cost = 0;
   let kg = 0;
 
+  /* Many lines share a day, and the Jalali month and the weekday are pure functions of
+     it -- compute each once rather than once per line. The weekday is Saturday-first and
+     built from the civil date at UTC midnight, never a Date parsed from a full ISO
+     instant: a local-timezone parse can land on the wrong side of midnight and shift
+     every bar by one day (jalaliMonthGrid does the same for the same reason). */
+  const dayInfo = new Map<string, { month: string; weekday: number }>();
+
   for (const line of lines) {
     const total = lineTotalToman(line);
     const lineWeight = lineKg(line);
@@ -156,7 +163,16 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
     const day = line.order_date.slice(0, 10);
     byDay.set(day, (byDay.get(day) ?? 0) + total);
 
-    const month = jalaliMonthKey(line.order_date);
+    let info = dayInfo.get(line.order_date);
+    if (!info) {
+      const [gy, gm, gd] = day.split("-").map(Number);
+      info = {
+        month: jalaliMonthKey(line.order_date),
+        weekday: (new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay() + 1) % 7,
+      };
+      dayInfo.set(line.order_date, info);
+    }
+    const month = info.month;
     byMonth.set(month, (byMonth.get(month) ?? 0) + total);
 
     byProduct.set(line.product_name, (byProduct.get(line.product_name) ?? 0) + total);
@@ -169,13 +185,8 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
       );
     }
 
-    // Saturday-first, from the civil date rather than a Date parsed from a full ISO
-    // instant -- day is already just the calendar date, and constructing the Date at
-    // UTC midnight is what jalaliMonthGrid does for the same reason: a local-timezone
-    // parse can land on the wrong side of midnight and shift every bar by one day.
-    const [gy, gm, gd] = day.split("-").map(Number);
-    const jsDow = new Date(Date.UTC(gy, gm - 1, gd)).getUTCDay();
-    const weekday = (jsDow + 1) % 7;
+    // Saturday-first, from the civil date (see dayInfo above).
+    const weekday = info.weekday;
     byWeekday.set(weekday, (byWeekday.get(weekday) ?? 0) + total);
 
     orderTotals.set(line.order_id, (orderTotals.get(line.order_id) ?? 0) + total);
@@ -190,7 +201,7 @@ export function salesDashboard(db: DatabaseSync, session: Session): SalesDashboa
   const scopedCustomers = db
     .prepare(`SELECT id FROM customers WHERE 1 = 1${customerScope.sql}`)
     .all(...customerScope.params) as unknown as { id: number }[];
-  const debtByCustomer = customerDebtsForOrg(session.organizationId);
+  const debtByCustomer = customerDebtsForOrgOnce(session.organizationId);
   const debt = { d0_7: 0, d8_30: 0, over_30: 0, n: scopedCustomers.length };
   for (const { id } of scopedCustomers) {
     const d = debtByCustomer.get(id);

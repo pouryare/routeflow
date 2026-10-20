@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { isToman } from "@/lib/money";
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
@@ -561,10 +562,19 @@ const ZERO_DEBT = (): CustomerDebt => ({
   bucket_30_plus: 0,
 });
 
+/** Asked once per database handle: migrations finish inside getDb(), so the column is either
+ *  there for the life of the handle or it is not, and re-reading the schema on every debt
+ *  lookup cost a PRAGMA per customer on the dashboard. */
+const openingBalanceColumn = new WeakMap<DatabaseSync, boolean>();
 function customersHasOpeningBalance(db: DatabaseSync): boolean {
-  return (
-    db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]
-  ).some((c) => c.name === "opening_balance_toman");
+  let has = openingBalanceColumn.get(db);
+  if (has === undefined) {
+    has = (db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]).some(
+      (c) => c.name === "opening_balance_toman"
+    );
+    openingBalanceColumn.set(db, has);
+  }
+  return has;
 }
 
 function ageDays(nowISO: string, refISO: string): number {
@@ -709,6 +719,16 @@ export function customerDebtsForOrg(
 
   return out;
 }
+
+/** customerDebtsForOrg, memoised for the length of one server render.
+ *
+ *  The dashboard asks for the whole organisation's debt three times in one request -- the
+ *  stat tiles, the health overview and the action center's overdue bucket -- and each pass
+ *  walks every delivered order and line. React's cache() shares one result across those
+ *  calls inside a single RSC render and discards it afterwards; outside a render (route
+ *  handlers, scripts, tests) it simply calls through, so nothing can go stale. Callers must
+ *  treat the Map as read-only. */
+export const customerDebtsForOrgOnce = cache((organizationId: number) => customerDebtsForOrg(organizationId));
 
 export function voidPaymentTxn(
   db: DatabaseSync,

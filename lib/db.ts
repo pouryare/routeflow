@@ -2622,6 +2622,9 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL
     );
     CREATE INDEX IF NOT EXISTS ix_alloc_order ON payment_allocations(order_id);
+    /* Looked up by payment in five places and by the ON DELETE CASCADE above; without this each
+       is a scan of the whole table. amount_toman rides along so the per-customer SUM is covered. */
+    CREATE INDEX IF NOT EXISTS ix_alloc_payment ON payment_allocations(payment_id, amount_toman);
 
     /* Phase 1 (Money). An Iranian customer cheque and its whole journey, as a state
        machine (lib/chequeStates.ts) rather than a free status field. The normal entry
