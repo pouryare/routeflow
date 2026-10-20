@@ -174,7 +174,7 @@ export default function DecodeConsole({
             className="inline-flex items-center justify-center gap-[var(--space-2)] mr-auto text-[length:var(--text-xs)] text-text-faint hover:text-text"
           >
             <Icon name="x" size="sm" />
-            بستن
+            بستن نتیجه
           </button>
         </div>
       )}

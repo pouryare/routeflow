@@ -14,11 +14,11 @@ import {
 
 const ACTION_LABEL: Record<OrderAction, string> = {
   submit: "ارسال برای بررسی",
-  passReview: "تأیید",
+  passReview: "تأیید سفارش",
   flagCredit: "—",
   approveCredit: "تأیید اعتبار",
   rejectCredit: "رد اعتبار",
-  releaseHold: "رفع توقف",
+  releaseHold: "رفع توقف سفارش",
   plan: "برنامه‌ریزی",
   unplan: "بازگشت به تأییدشده",
   freeze: "قطعی‌کردن مسیر",

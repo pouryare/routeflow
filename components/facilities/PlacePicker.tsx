@@ -160,7 +160,7 @@ export default function PlacePicker({
         className="mt-0.5 w-full rounded-[var(--radius-sm)] px-1.5 py-1 text-[length:var(--text-xs)] text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text"
       >
         <Icon name="x" size="sm" />
-        انصراف
+        انصراف از انتخاب مکان
       </button>
     </div>
   );

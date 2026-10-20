@@ -93,9 +93,9 @@ it("resolves a pasted link into a pin and keeps the draft when resolution fails"
       Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "https://maps.app.goo.gl/abc");
       input.dispatchEvent(new Event("input", { bubbles: true }));
     });
-    await click("[aria-label=\"خواندن پیوند موقعیت\"]");
+    await click("[aria-label=\"خواندن لینک موقعیت\"]");
     expect(picked()).toBe("35.71,51.41");
-    await click("[aria-label=\"خواندن پیوند موقعیت\"]");
+    await click("[aria-label=\"خواندن لینک موقعیت\"]");
     expect(host.querySelector("[role=\"alert\"]")?.textContent).toContain("قابل استخراج");
     expect(picked()).toBe("35.71,51.41");
   } finally { /* Globals are restored after the root unmounts. */ }
@@ -109,7 +109,7 @@ it("does not invent a pin when a link resolves without coordinates", async () =>
     Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")!.set!.call(input, "https://maps.app.goo.gl/missing");
     input.dispatchEvent(new Event("input", { bubbles: true }));
   });
-  await click('[aria-label="خواندن پیوند موقعیت"]');
+  await click('[aria-label="خواندن لینک موقعیت"]');
   expect(picked()).toBe("");
   expect(host.querySelector('[role="alert"]')?.textContent).toContain("قابل استخراج نبود");
   expect((host.querySelector(".edit-actions .solid") as HTMLButtonElement).disabled).toBe(true);

@@ -186,7 +186,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <button type="button" className="sov__close" aria-label="بستن" onClick={onClose}>
+          <button type="button" className="sov__close" aria-label="بستن جستجو" onClick={onClose}>
             <Icon name="x" size="sm" />
           </button>
         </div>

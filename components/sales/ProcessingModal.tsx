@@ -77,7 +77,7 @@ export default function ProcessingModal({
                   {order.customer_name} · {faNum(Number(order.order_no.split("-")[1] ?? 0))}#
                 </div>
               </div>
-              <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن" onClick={onClose}>
+              <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن پردازش سفارش" onClick={onClose}>
                 <Icon name="x" size="sm" />
               </button>
             </div>

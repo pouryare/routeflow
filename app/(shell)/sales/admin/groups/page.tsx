@@ -23,6 +23,8 @@ export default function AdminGroupsPage() {
   const [palette, setPalette] = useState<string[]>([]);
   const [districts, setDistricts] = useState<DistrictProperties[]>([]);
   const [name, setName] = useState("");
+  // Deleting a group cannot be undone, so it takes a second tap on an explicitly worded button.
+  const [confirmingId, setConfirmingId] = useState<number | null>(null);
   const [color, setColor] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -85,7 +87,7 @@ export default function AdminGroupsPage() {
   }
 
   async function remove(g: GroupRow) {
-    if (!window.confirm(`گروه «${g.name}» حذف شود؟ محدوده‌هایش بدون گروه می‌شوند.`)) return;
+    setConfirmingId(null);
     const res = await fetch(`/api/admin/groups/${g.id}`, { method: "DELETE" });
     const data = await res.json();
     if (!res.ok || !data.ok) setError(friendlyError(data.error, "گروه حذف نشد؛ دوباره تلاش کنید"));
@@ -190,14 +192,36 @@ export default function AdminGroupsPage() {
                   <Icon name="edit" size="md" />
                   تغییر نام
                 </button>
-                <button
-                  type="button"
-                  onClick={() => remove(g)}
-                  className="cursor-pointer text-xs text-text-muted transition-colors hover:text-crit"
-                >
-                  <Icon name="trash" size="md" />
-                  حذف
-                </button>
+                {confirmingId === g.id ? (
+                  <span className="flex flex-wrap items-center gap-[var(--space-2)] text-xs">
+                    <span className="text-text-muted">محدوده‌های «{g.name}» بدون گروه می‌شوند و این کار برگشت ندارد.</span>
+                    <button
+                      type="button"
+                      onClick={() => remove(g)}
+                      className="cursor-pointer text-crit transition-colors hover:underline"
+                    >
+                      <Icon name="trash" size="md" />
+                      حذف همیشگی گروه «{g.name}»
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(null)}
+                      className="cursor-pointer text-text-muted transition-colors hover:text-text"
+                    >
+                      <Icon name="x" size="md" />
+                      انصراف از حذف گروه
+                    </button>
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingId(g.id)}
+                    className="cursor-pointer text-xs text-text-muted transition-colors hover:text-crit"
+                  >
+                    <Icon name="trash" size="md" />
+                    حذف گروه
+                  </button>
+                )}
               </li>
             ))}
           </ul>

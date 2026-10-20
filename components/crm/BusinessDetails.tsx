@@ -33,7 +33,7 @@ const GROUPS: { title: string; hint: string; icon: "building" | "phone" | "map-p
     title: "موقعیت و ساعت کاری", hint: "نشانی و برنامهٔ حضور", icon: "map-pin", tint: "var(--sage)",
     rows: [
       { key: "area_label", label: "محله", kind: "text" },
-      { key: "maps_url", label: "پیوند نقشه", kind: "text" },
+      { key: "maps_url", label: "لینک نقشه", kind: "text" },
       { key: "address", label: "آدرس", kind: "text" },
     ],
   },
@@ -131,7 +131,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
         ثبت تغییر</button>
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={disabled || !!pending || sending} onClick={() => { setEdit(null); setError(null); }}>
         <Icon name="x" size="md" />
-        انصراف</button>
+        انصراف از ویرایش</button>
       </div>
     </form>
   );
@@ -139,7 +139,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
     const v = valueOf(row.key);
     const inner = <>
       <span><span className="k">{row.label}</span><span className={`v${v ? "" : " empty"}`}>{v || "ثبت نشده"}</span></span>
-      {canWrite && <span className="cue">{v ? "ویرایش" : "افزودن"}</span>}
+      {canWrite && <span className="cue">{v ? `ویرایش ${row.label}` : `افزودن ${row.label}`}</span>}
     </>;
     if (!canWrite) return <div key={row.key} className="field-row">{inner}</div>;
     return (
@@ -157,7 +157,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
       <h2>اطلاعات کسب‌وکار</h2>
       {pending && <div className="pending-note" role="status"><span>{pending.row.label} ثبت می‌شود…</span><button type="button" style={TOUCH} onClick={undo}>
       <Icon name="x" size="md" />
-      لغو</button></div>}
+      بازگردانی ثبت</button></div>}
       <div className="details-grid">
         {GROUPS.map(g => (
           <section key={g.title} className={`bento-section${g.icon === "map-pin" ? " location-section wide" : ""}`} style={{ "--tint": g.tint } as CSSProperties}>

@@ -67,7 +67,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
         className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-2)] text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-50"
       >
         <Icon name="check" size="sm" />
-        {busy ? "…" : "تأیید"}
+        {busy ? "در حال تأیید سفارش…" : "تأیید سفارش"}
       </button>
       <button
         type="button"
@@ -75,7 +75,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
         className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)] hover:border-[var(--border-strong)]"
       >
         <Icon name="x" size="sm" />
-        انصراف
+        انصراف از تأیید سفارش
       </button>
     </div>
   );

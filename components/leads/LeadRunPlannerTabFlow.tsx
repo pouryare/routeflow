@@ -222,7 +222,7 @@ export default function LeadRunPlannerTabFlow({
       `تا ${faNum(OUTBOX_HOLD_MS / 1000)} ثانیه دیگر مسیر به راننده سپرده می‌شود.`,
       "info",
       {
-        label: "لغو",
+        label: "لغو سپردن مسیر",
         // No second toast: `ToastProvider` dismisses the one that owned this action, and
         // the confirm button reverting from "در انتظار تأیید…" is itself the confirmation
         // that the cancel landed. A second toast would only be noise.
@@ -275,7 +275,7 @@ export default function LeadRunPlannerTabFlow({
             onClick={() => api.submit("next")}
           >
             <Icon name="arrow-left" size="md" />
-            ادامه
+            ادامه به مرحلهٔ بعد
           </button>
         </div>
       );

@@ -147,7 +147,7 @@ export default function PhotoGallery({
                 className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-1.5 text-[length:var(--text-sm)] text-text"
               >
                 <Icon name="x" size="sm" />
-                بستن
+                بستن عکس
               </button>
               <button
                 onClick={() => remove(lightbox.id)}

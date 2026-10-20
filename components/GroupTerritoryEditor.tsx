@@ -90,7 +90,7 @@ export default function GroupTerritoryEditor({
         <input
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
-          placeholder="جست‌وجوی منطقه یا محله"
+          placeholder="جستجوی منطقه یا محله"
           className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
         />
         <select

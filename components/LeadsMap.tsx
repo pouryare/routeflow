@@ -249,7 +249,7 @@ export default function LeadsMap({
                       rel="noopener noreferrer"
                       className="shrink-0 whitespace-nowrap inline-flex items-center justify-center gap-2 rounded-[var(--radius-sm)] border border-accent px-5 py-1.5 text-[length:var(--text-sm)] font-medium text-accent"
                     >
-                      نقشه
+                      مسیریابی به مکان
                     </a>
                     {l.runIndex === null ? (
                       <button

@@ -191,7 +191,7 @@ export default function FacilitiesPage() {
       toast(
         `«${data.deleted?.name ?? "مکان"}» حذف شد.`,
         "success",
-        data.deleted ? { label: "بازگردان", onClick: () => restore(data.deleted as FacilityRow) } : undefined
+        data.deleted ? { label: "بازگردانی حذف", onClick: () => restore(data.deleted as FacilityRow) } : undefined
       );
       await load();
     } catch (e) {
@@ -290,7 +290,7 @@ export default function FacilitiesPage() {
                           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-2 py-1 text-[length:var(--text-xs)] font-medium text-accent-ink"
                         >
                           <Icon name="edit" size="sm" />
-                          ذخیره
+                          ذخیرهٔ نام مکان
                         </button>
                         <button
                           type="button"
@@ -298,7 +298,7 @@ export default function FacilitiesPage() {
                           className="rounded-[var(--radius-sm)] border border-border px-2 py-1 text-[length:var(--text-xs)] text-text-muted hover:border-crit hover:text-crit"
                         >
                           <Icon name="x" size="sm" />
-                          انصراف
+                          انصراف از تغییر نام
                         </button>
                       </form>
                     ) : (
@@ -326,7 +326,7 @@ export default function FacilitiesPage() {
                     <p className="mt-1.5 flex items-center gap-2 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
                       <span dir="ltr">{coordText(f.lat, f.lng)}</span>
                       {isPlaced(f) && <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />}
-                      <CopyButton value={() => siteLink(f.id)} what="کپی پیوند این مکان" />
+                      <CopyButton value={() => siteLink(f.id)} what="کپی لینک این مکان" />
                     </p>
                     {nearest && (
                       <p className="mt-1 font-mono text-[length:var(--text-xs)] text-text-faint">

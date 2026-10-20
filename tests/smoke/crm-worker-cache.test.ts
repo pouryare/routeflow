@@ -41,7 +41,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("replaces an obsolete cached map 
     await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
     await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
     await page.getByRole("dialog").locator(".leaflet-marker-icon").waitFor();
-    await page.getByRole("button", { name: "بستن", exact: true }).click();
+    await page.getByRole("button", { name: "بستن نقشهٔ بزرگ", exact: true }).click();
     expect(await page.evaluate(async url => !!(await (await caches.open("shell-v3")).match(url)), chunk)).toBe(false);
     expect(missing).toEqual([]);
     expect(errors).toEqual([]);

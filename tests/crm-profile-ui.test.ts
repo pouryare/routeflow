@@ -78,7 +78,7 @@ it("puts nested information first and the order action beside Back", async () =>
   await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
   const headings = Array.from(host.querySelectorAll("h2")).map(h => h.textContent);
   expect(headings.slice(0, 2)).toEqual(["اطلاعات کسب‌وکار", "شناخت پیش از بازدید"]);
-  for (const label of ["مشخصات پایه", "راه‌های ارتباطی", "موقعیت و ساعت کاری", "ساعت کاری", "ردهٔ قیمت", "تلفن دوم", "واتس‌اپ", "پیوند نقشه"]) expect(host.textContent).toContain(label);
+  for (const label of ["مشخصات پایه", "راه‌های ارتباطی", "موقعیت و ساعت کاری", "ساعت کاری", "ردهٔ قیمت", "تلفن دوم", "واتس‌اپ", "لینک نقشه"]) expect(host.textContent).toContain(label);
   const order = host.querySelector('a[href="/sales/orders/new?customer=7"]')!;
   expect(order.parentElement?.querySelector('a[href="/crm"]')).not.toBeNull();
   expect(host.textContent).toContain("موقعیت ثبت نشده است");

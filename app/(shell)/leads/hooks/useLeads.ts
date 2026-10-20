@@ -214,7 +214,7 @@ export function useLeads() {
    * algorithm ran. */
   const optimiseGain = useMemo(() => { if (!runOrigin || runLocations.length < 3) return null; const current = routeLengthKm(runOrigin, runLocations, false); if (current <= 0) return null; const best = routeLengthKm(runOrigin, nearestNeighborOrder(runLocations, runOrigin), false); const pct = Math.round(((current - best) / current) * 100); return pct >= 5 ? pct : null; }, [runOrigin, runLocations]);
   async function optimiseRun() { if (!runOrigin) return; const r = await orderStops(runLocations, runOrigin); updateRun(r.order.map((l) => l.id)); /* The toast tells the truth about which algorithm ran. VROOM_URL is unset in development, so today this is ALWAYS the fallback -- and the button used to claim "optimised" either way, which is the same class of lie as a precise-looking number that is not what it says. */ toast(r.quality === "solver" ? "ترتیب مسیر بهینه شد." : "ترتیب مسیر با روش نزدیک‌ترین چیده شد.", "success"); }
-  function clearRun() { const previous = run; updateRun([]); toast("مسیر خالی شد.", "info", { label: "بازگردان", onClick: () => updateRun(previous) }); }
+  function clearRun() { const previous = run; updateRun([]); toast("مسیر خالی شد.", "info", { label: "بازگردانی مسیر", onClick: () => updateRun(previous) }); }
   async function createList(name: string, ids: number[]) { const trimmed = name.trim(); if (!trimmed) { toast("برای فهرست یک نام بنویسید", "error"); return; } setBusy(true); try { const res = await fetch("/api/lead-lists", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed, location_ids: ids }) }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(data.error); setLists((prev) => [...prev, { id: data.id, name: trimmed, location_ids: ids }]); setNewListName("");
     /* Deliberately NOT `setActiveListId`/`setRun` any more. The button reads "ذخیره به‌عنوان
        فهرست" -- save a copy -- and it was overwriting the route being built, which is how
@@ -223,7 +223,7 @@ export function useLeads() {
   async function deleteList(id: number) { const doomed = lists.find((l) => l.id === id); try { const res = await fetch(`/api/lead-lists/${id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(); setLists((prev) => prev.filter((l) => l.id !== id)); if (activeListId === id) { /* `updateRun`, not `setRun`: clearing the active list hands the pool back to scratch, and
    scratch is persisted. A raw set left `localStorage` holding the deleted list's ids, so a
    reload put the whole list straight back into the pool. */
-    setActiveListId(null); updateRun([]); } toast(`فهرست «${data.deleted.name}» حذف شد.`, "success", { label: "بازگردان", onClick: () => createList(data.deleted.name, data.deleted.location_ids) }); } catch { toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف فهرست", "error"); } }
+    setActiveListId(null); updateRun([]); } toast(`فهرست «${data.deleted.name}» حذف شد.`, "success", { label: "بازگردانی فهرست", onClick: () => createList(data.deleted.name, data.deleted.location_ids) }); } catch { toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف فهرست", "error"); } }
   function openList(id: number | null) {
     setActiveListId(id);
     if (id === null) { try { const raw = localStorage.getItem(SCRATCH_KEY); const parsed = raw ? JSON.parse(raw) : []; setRun(stillAssignable(Array.isArray(parsed) ? parsed.filter((x): x is number => Number.isInteger(x)) : [])); } catch { setRun([]); } return; }

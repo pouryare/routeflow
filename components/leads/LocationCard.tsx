@@ -170,7 +170,7 @@ export default function LocationCard({
         )}
 
         <CopyButton value={location.maps_url} label="لینک اصلی" what="کپی لینک اصلی" className="px-2.5 py-1.5" />
-        <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} label="پیوند" what="کپی پیوند این مکان" className="px-2.5 py-1.5" />
+        <CopyButton value={() => `${window.location.origin}/leads?l=${location.id}`} label="لینک" what="کپی لینک این مکان" className="px-2.5 py-1.5" />
 
         <button
           type="button"

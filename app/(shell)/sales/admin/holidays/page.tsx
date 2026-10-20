@@ -138,7 +138,7 @@ export default function AdminHolidaysPage() {
               className="flex cursor-pointer items-center gap-1 rounded-md border border-border px-3 py-1 text-sm text-text transition-colors hover:border-accent disabled:opacity-50"
             >
               <Icon name="plus" size="md" />
-              ثبت
+              ثبت تعطیلی
             </button>
           </div>
         </form>
@@ -184,7 +184,7 @@ export default function AdminHolidaysPage() {
                     className="flex cursor-pointer items-center gap-1 text-xs text-text-muted transition-colors hover:text-crit disabled:opacity-50"
                   >
                     <Icon name="trash" size="sm" />
-                    حذف
+                    حذف این تعطیلی
                   </button>
                 </li>
               ))}

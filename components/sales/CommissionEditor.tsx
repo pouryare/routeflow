@@ -485,7 +485,7 @@ export default function CommissionEditor({
                     aria-label={`حذف پله ${i + 1}`}
                   >
                     <Icon name="trash" size="sm" />
-                    حذف
+                    حذف این پله
                   </button>
                 )}
               </div>

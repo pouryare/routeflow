@@ -19,7 +19,7 @@ export default function NotFound() {
               رفتن به خلاصهٔ فروش
             </Link>
             <Link className="btn ghost" href="/map">
-              نقشه
+              رفتن به نقشهٔ پوشش
             </Link>
           </>
         }

@@ -58,10 +58,10 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
   }
   if ("maps_url" in input) {
     const v = input.maps_url;
-    if (v !== null && typeof v !== "string") throw new CrmError(400, "پیوند نقشه معتبر نیست");
+    if (v !== null && typeof v !== "string") throw new CrmError(400, "لینک نقشه معتبر نیست");
     if (typeof v === "string" && v.trim()) {
       try { if (!["http:", "https:"].includes(new URL(v.trim()).protocol)) throw new Error(); }
-      catch { throw new CrmError(400, "پیوند نقشه معتبر نیست"); }
+      catch { throw new CrmError(400, "لینک نقشه معتبر نیست"); }
       values.maps_url = v.trim().slice(0, 500);
     } else values.maps_url = null;
   }

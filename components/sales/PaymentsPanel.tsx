@@ -497,7 +497,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                   onClick={() => setPage(safePage - 1)}
                 >
                   <Icon name="chevron-right" size="sm" />
-                  قبلی
+                  صفحهٔ قبل
                 </button>
                 <span className="tnum">
                   {safePage + 1} / {pageCount}
@@ -508,7 +508,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                   disabled={safePage >= pageCount - 1}
                   onClick={() => setPage(safePage + 1)}
                 >
-                  بعدی
+                  صفحهٔ بعد
                   <Icon name="chevron-left" size="sm" />
                 </button>
               </div>
@@ -603,7 +603,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                 className="rounded border border-border px-3 py-1 text-xs"
               >
                 <Icon name="x" size="sm" />
-                انصراف
+                انصراف از ویرایش تخصیص
               </button>
             </div>
           </div>

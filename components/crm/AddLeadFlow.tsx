@@ -79,7 +79,7 @@ export default function AddLeadFlow({
     }
     hold(async () => { const id = await post(st, uuid); if (id) onFinished(id); });
     toast(`سرنخ «${basicsOf(st.values)?.name ?? ""}» ثبت شد`, "success", {
-      label: "لغو",
+      label: "بازگردانی ثبت",
       onClick: () => { if (cancel()) { setState(backStep(addLeadFlow, ctx, st)); onReopen(); } },
     });
   }, [ctx, post, hold, cancel, toast, onFinished, onTalkedNow, onReopen]);

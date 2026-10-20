@@ -30,7 +30,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
     await expect.poll(() => page.locator(".field-row .cue").first().evaluate(el => getComputedStyle(el).fontSize)).toBe("12px");
     await page.getByRole("button", { name: "ویرایش نام کسب‌وکار", exact: true }).click();
     await page.getByRole("textbox", { name: "نام کسب‌وکار", exact: true }).waitFor();
-    await page.getByRole("button", { name: "انصراف", exact: true }).click();
+    await page.getByRole("button", { name: "انصراف از ویرایش", exact: true }).click();
     if (await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).count()) {
       await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
       await page.getByRole("button", { name: "بزرگ‌نمایی نقشه" }).click();
@@ -46,7 +46,7 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
       await page.mouse.up();
       await expect.poll(() => pane.getAttribute("style")).not.toBe(beforePan);
       expect(await enlarged.evaluate(el => { const r = el.getBoundingClientRect(); return el.contains(document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2)); })).toBe(true);
-      await page.getByRole("button", { name: "بستن", exact: true }).click();
+      await page.getByRole("button", { name: "بستن نقشهٔ بزرگ", exact: true }).click();
     }
     const editLocation = page.getByRole("button", { name: "ویرایش موقعیت", exact: true });
     if (await editLocation.count()) {
@@ -55,8 +55,8 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
       const map = editor.locator(".leaflet-container");
       await map.waitFor();
       await map.click({ position: { x: 180, y: 90 } });
-      await editor.getByRole("textbox", { name: "پیوند موقعیت" }).fill("https://maps.google.com/?q=35.72,51.42");
-      await editor.getByRole("button", { name: "خواندن پیوند موقعیت" }).click();
+      await editor.getByRole("textbox", { name: "لینک موقعیت" }).fill("https://maps.google.com/?q=35.72,51.42");
+      await editor.getByRole("button", { name: "خواندن لینک موقعیت" }).click();
       await map.evaluate(el => el.setAttribute("data-preserved-map", "yes"));
       await editor.getByRole("button", { name: "بزرگ‌نمایی ناحیهٔ ویرایش" }).click();
       await expect.poll(() => map.evaluate(el => el.clientHeight)).toBeGreaterThan(300);
@@ -65,8 +65,8 @@ it.skipIf(!process.env.CRM_READONLY_SMOKE_URL)("renders the real profile, inline
       await page.keyboard.press("Escape");
       expect(await editor.getAttribute("role")).toBeNull();
       expect(await map.getAttribute("data-preserved-map")).toBe("yes");
-      expect(await editor.getByRole("textbox", { name: "پیوند موقعیت" }).inputValue()).toContain("35.72,51.42");
-      await editor.getByRole("button", { name: "انصراف", exact: true }).click();
+      expect(await editor.getByRole("textbox", { name: "لینک موقعیت" }).inputValue()).toContain("35.72,51.42");
+      await editor.getByRole("button", { name: "انصراف از ثبت موقعیت", exact: true }).click();
       await page.locator(".mini-map > .map-frame .leaflet-marker-icon").waitFor();
     }
     for (const width of [360, 390, 768, 1280]) {

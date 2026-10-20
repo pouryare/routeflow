@@ -1046,7 +1046,7 @@ export default function CoverageMap({
   async function shareView() {
     const url = absoluteMapLink({ ...linkState, view: viewRef.current ?? undefined }, "/");
     const ok = await copyText(url);
-    toast(ok ? "پیوند این نما کپی شد." : "کپی پیوند ممکن نبود.", ok ? "success" : "error");
+    toast(ok ? "لینک این نما کپی شد." : "کپی لینک ممکن نبود.", ok ? "success" : "error");
   }
 
   /** Every route to an open customer panel funnels through here, so this is the one
@@ -1393,7 +1393,7 @@ export default function CoverageMap({
               names this page. What stays is the one map-native action the old «لینک‌های
               سریع» section held: the current view as a link. */}
           <div className="mapside__bar">
-            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی پیوند این نما" title="کپی پیوند این نما">
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] mapbtn mapbtn--sm" onClick={shareView} aria-label="کپی لینک این نما" title="کپی لینک این نما">
               <Icon name="link" size="sm" />
             </button>
           </div>

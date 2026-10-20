@@ -250,7 +250,7 @@ export default function CustomerDetailPanel({
         </button>
         <button
           onClick={handleClose}
-          aria-label="بستن"
+          aria-label="بستن مشخصات مشتری"
           className="grid shrink-0 place-items-center rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
         >
           <Icon name="x" size="sm" />
@@ -290,7 +290,7 @@ export default function CustomerDetailPanel({
         <div className="mr-auto flex items-center gap-1.5">
           {/* A link straight back to this customer on this map -- the thing you send
               yourself the night before, or send to someone else to look at. */}
-          <CopyButton value={() => customerLink(customer.id)} what="کپی پیوند این مشتری" />
+          <CopyButton value={() => customerLink(customer.id)} what="کپی لینک این مشتری" />
           <button
             onClick={addToTodayPlan}
             disabled={planState !== "idle"}

@@ -23,6 +23,12 @@ const RETIRED: { word: RegExp; use: string }[] = [
   { word: /(?<![؀-ۿ])بچ(?![هس])/, use: "سری ساخت" },
   { word: /داشبورد/, use: "خلاصهٔ فروش" },
   { word: /پاکت/, use: "کارهای من" },
+  // Added with the copy audit (docs/copy-audit/ux-copy-audit.md): one word per thing.
+  { word: /جست\u200cوجو/, use: "جستجو" },
+  { word: /لوکیشن/, use: "مکان" },
+  { word: /تایید/, use: "تأیید" },
+  { word: /پیوند/, use: "لینک" },
+  { word: /گوگل\u200cمپس/, use: "گوگل‌مپ" },
 ];
 
 function sources(rel: string): string[] {

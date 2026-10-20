@@ -175,7 +175,7 @@ export default function RepDefinitions() {
                 <th className="px-3 py-2">کد</th>
                 <th className="px-3 py-2">کسب‌وکار</th>
                 <th className="px-3 py-2">مرحله</th>
-                <th className="px-3 py-2">ایجاد</th>
+                <th className="px-3 py-2">تاریخ ایجاد</th>
                 <th className="px-3 py-2">
                   <span className="sr-only">اقدام</span>
                 </th>
@@ -213,7 +213,7 @@ export default function RepDefinitions() {
           <SectionHead
             title={`${openRep.business_name} — ${REP_STAGE_LABEL[openRep.stage] ?? "نامشخص"}`}
             actions={
-              <button onClick={() => setOpenId(null)} className="btn ghost" aria-label="بستن">
+              <button onClick={() => setOpenId(null)} className="btn ghost" aria-label="بستن جزئیات نماینده">
                 <Icon name="x" size="sm" />
               </button>
             }
@@ -255,7 +255,7 @@ export default function RepDefinitions() {
                     className="mr-auto text-[length:var(--text-xs)] text-accent hover:underline"
                   >
                     <Icon name="check" size="sm" />
-                    تکمیل
+                    تکمیل این مرحله
                   </button>
                 )}
                 {s.completed_at && (

@@ -25,7 +25,7 @@ const hoursFlowConfig: FlowConfig = {
   steps: {
     hours: { id: "hours", kind: "hours", q: "ساعت کاری", sub: "برنامهٔ تازه جایگزین ساعت‌های قبلی می‌شود", options: [{ id: "ok", label: "ثبت ساعت‌ها", tone: "rec", next: "confirm" }, { id: "skip", label: "پاک کردن ساعت‌ها", next: "clear" }] },
     clear: { id: "clear", kind: "choice", q: "ساعت‌های ثبت‌شده پاک شود؟", options: [{ id: "ok", label: "بله، پاک شود", tone: "bad", next: "confirm" }] },
-    confirm: { id: "confirm", kind: "choice", q: "ثبت شود؟", options: [{ id: "ok", label: "ثبت", tone: "rec", save: true }] },
+    confirm: { id: "confirm", kind: "choice", q: "ثبت شود؟", options: [{ id: "ok", label: "ثبت ساعت کاری", tone: "rec", save: true }] },
     skip: { id: "skip", kind: "choice", q: "برنامهٔ تازه‌ای نمی‌دانید؟", options: [{ id: "ok", label: "بدون تغییر بازگرد", next: "confirm" }] },
   },
 };
@@ -126,7 +126,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
         <span style={{ flex: 1 }}>{c.name || "بدون نام"} · {isOneOf(CONTACT_ROLES, c.role) ? CONTACT_ROLE_LABEL[c.role] : "سایر"}{c.is_primary ? " · مخاطب اصلی" : ""}<br />{c.phone_norm ? `0${c.phone_norm}` : "بدون تلفن"}</span>
         {profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} onClick={() => setEdit({ kind: "contact", contact: c })}>
         <Icon name="edit" size="md" />
-        ویرایش</button>}
+        ویرایش مخاطب</button>}
       </div>)}
       {profile.canWrite && <button className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} onClick={() => setEdit({ kind: "contact", contact: null })}>
       <Icon name="plus" size="md" />
@@ -193,10 +193,10 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
       {touched && bad && <p role="alert">شماره تلفن معتبر نیست</p>}
       <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" style={TOUCH} disabled={busy || bad}>
       <Icon name="edit" size="md" />
-      {busy ? "در حال ثبت…" : edit.kind === "verify" ? "بله، اطلاعات درست است" : "ذخیره"}</button>
+      {busy ? "در حال ثبت…" : edit.kind === "verify" ? "بله، اطلاعات درست است" : "ذخیرهٔ تغییر"}</button>
       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={onClose}>
       <Icon name="x" size="md" />
-      انصراف</button>
+      انصراف از ویرایش</button>
       {c && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => archive ? void onSave(`/contacts/${c.id}`, "DELETE") : setArchive(true)}>
       <Icon name="edit" size="md" />
       {archive ? "بله، مخاطب بایگانی شود" : "بایگانی مخاطب"}</button>}

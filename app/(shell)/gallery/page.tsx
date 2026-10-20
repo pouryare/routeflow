@@ -140,8 +140,8 @@ export default function GalleryPage() {
               <div className="flex gap-2">
                 <CopyButton
                   value={() => `${window.location.origin}/gallery?p=${lightbox.id}`}
-                  label="پیوند"
-                  what="کپی پیوند این عکس"
+                  label="لینک"
+                  what="کپی لینک این عکس"
                   className="px-3 py-1.5 text-[length:var(--text-sm)]"
                 />
                 <button
@@ -149,7 +149,7 @@ export default function GalleryPage() {
                   className="rounded-[var(--radius-sm)] border border-border bg-surface-raised px-3 py-1.5 text-[length:var(--text-sm)] text-text"
                 >
                   <Icon name="x" size="sm" />
-                  بستن
+                  بستن عکس
                 </button>
                 <button
                   onClick={() => remove(lightbox.id)}

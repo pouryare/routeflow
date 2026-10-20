@@ -22,6 +22,24 @@ approve them before they ship.
 **Why the existing audit missed this:** `scripts/audit-copy.mjs` reads only `app/(shell)/**/page.tsx`
 (296 strings). It never opens `components/` or `app/api/`, where the buttons, toasts and error messages live.
 
+## Implementation status
+
+**Done**
+- High-frequency flows (P1 #4): geofence prompt, next-stop bar, driver run, unload, visit verification, after-call, task row, quick-add, planner rows. Task deletion takes an explicit second tap; there is no undo for it because the API cannot reopen a dismissed task.
+- Error layer (P1 #1–2): `lib/userMessage.ts` (`friendlyError`) wraps every place the client shows a server message; ~100 failure messages follow «X نشد؛ دوباره تلاش کنید»; English field names removed from API messages; whole-toman validators say «…را به تومان و بدون اعشار وارد کنید».
+- Bare-verb labels (P1 #3): replaced across the app; `CopyButton` now always shows text; undo is «بازگردانی …» everywhere (`docs/tap-flow-principles.md` updated).
+- Glossary: جستجو, لینک, گوگل‌مپ, تأیید, سرنخ, «سفارش تازه» (UI), no «لوکیشن». Guards: `tests/no-bare-verb-labels.test.ts`, extra entries in `tests/vocabulary.test.ts`, `tests/userMessage.test.ts`.
+- `window.confirm` in `admin/groups` replaced with an inline, explicitly worded confirmation.
+
+**Open — needs a decision or a visual check**
+- `components/meridian/SearchOverlay.tsx`: the "view as another user" flow still uses the native `window.confirm`. It is a security-sensitive action, so the change was not made without sign-off. Proposed: an in-app panel with «دیدن برنامه به‌جای «X»» / «انصراف از ورود به‌جای کاربر».
+- Corner "X" close buttons now have noun-bearing accessible names («بستن رسید», «بستن نقشهٔ بزرگ» …) but remain icon-only on screen; rule 2 would add visible text, which needs a layout check.
+- New visible text in dense rows (planner row actions, next-stop bar, copy buttons) has not been checked on a phone-width screen.
+- Smoke tests (`npm run test:smoke`) were updated for the renamed labels but could not run here (Playwright browser unavailable); run them before merging.
+- Not done: empty states (P2 #8), placeholder-as-label fields (P3), ellipsis style (P3), the «جدید» Kanban column key (`PoolViewKanban.tsx`), seeded «سفارش جدید» in `lib/db.ts`, the مکان/موقعیت glossary decision, «ثبت و سپردن» wording, and extending `scripts/audit-copy.mjs` to `components/` and `app/api/`.
+
+---
+
 ## What already works (keep)
 
 - Error pages use a clear eyebrow / title / hint triad: «این نشانی به جایی نمی‌رسد», «این صفحه بدون اینترنت در دسترس نیست».

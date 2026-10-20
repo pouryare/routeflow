@@ -208,7 +208,7 @@ export function createOrder(
     .get(input.customer_id, input.organization_id);
 
   if (!isRepresentative && customer.hard_credit_block) {
-    throw new OrderError("این مشتری مسدود اعتباری است و سفارش جدید ثبت نمی‌شود");
+    throw new OrderError("این مشتری مسدود اعتباری است و سفارش تازه ثبت نمی‌شود");
   }
 
   // IMMEDIATE rather than a deferred BEGIN: the transaction reads the highest order
