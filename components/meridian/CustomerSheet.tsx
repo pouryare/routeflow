@@ -43,6 +43,7 @@ export default function CustomerSheet({
         aria-modal="true"
         aria-labelledby="sh-name"
         aria-hidden={!open}
+        inert={!open}
       >
         <div className="grab" />
         <div className="sheethead">

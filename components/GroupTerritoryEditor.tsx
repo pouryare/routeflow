@@ -94,6 +94,7 @@ export default function GroupTerritoryEditor({
           className="min-w-48 flex-1 rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
         />
         <select
+          aria-label="فیلتر مالک"
           value={String(ownerFilter)}
           onChange={(e) =>
             setOwnerFilter(e.target.value === "all" ? "all" : e.target.value === "none" ? "none" : Number(e.target.value))
@@ -153,6 +154,7 @@ export default function GroupTerritoryEditor({
       <div className="flex flex-wrap items-center gap-2">
         <span className="font-mono text-xs text-text-muted">{faNum(selected.size)} انتخاب شده</span>
         <select
+          aria-label="گروه مقصد"
           value={String(target)}
           onChange={(e) => setTarget(e.target.value === "none" ? "none" : Number(e.target.value))}
           className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"

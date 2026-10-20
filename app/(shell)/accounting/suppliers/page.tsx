@@ -33,7 +33,7 @@ export default async function SuppliersPage() {
           return (
             <tr key={s.id} className="border-t border-border">
               <td className={CELL}>
-                <Link href={`/accounting/suppliers/${s.id}`} className="text-accent hover:underline">
+                <Link href={`/accounting/suppliers/${s.id}`} className="text-[var(--accent-text)] hover:underline">
                   {s.name}
                 </Link>
               </td>

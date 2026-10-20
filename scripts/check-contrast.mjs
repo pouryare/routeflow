@@ -153,7 +153,7 @@ const SURFACE_CREAM = {
   },
 };
 const SURFACE_INK = {
-  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#828A98", 3] },
+  light: { "--text": ["#1A1F26", 7], "--text-muted": ["#5C6672", 4.5], "--text-faint": ["#656E7B", 4.5] },
   dark: { "--text": ["#EDF1F5", 7], "--text-muted": ["#8B98A5", 4.5], "--text-faint": ["#828C97", 3] },
 };
 

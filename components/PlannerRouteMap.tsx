@@ -118,7 +118,7 @@ export default function PlannerRouteMap({
               the list is more urgent than a landmark. Without these the origin is
               invisible on the very map that routes from it. */}
           {facilities.filter(isPlaced).map((f) => (
-            <Marker key={f.id} position={[f.lat, f.lng]} icon={facilityIcon(f.kind, f.icon_key)} zIndexOffset={800}>
+            <Marker key={f.id} position={[f.lat, f.lng]} title={f.name} icon={facilityIcon(f.kind, f.icon_key)} zIndexOffset={800}>
               <Tooltip>{f.name}</Tooltip>
             </Marker>
           ))}

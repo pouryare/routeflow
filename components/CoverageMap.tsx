@@ -2284,6 +2284,7 @@ export default function CoverageMap({
                 <Marker
                   key={c.id}
                   position={[c.lat as number, c.lng as number]}
+                  title={c.business_name}
                   icon={customerIcon(markerColor(c), false, shapedMarkers)}
                   eventHandlers={{ click: () => openCustomer(c) }}
                 />
@@ -2300,6 +2301,7 @@ export default function CoverageMap({
           {selectedCustomer?.lat && selectedCustomer?.lng && (
             <Marker
               position={[selectedCustomer.lat, selectedCustomer.lng]}
+              title={selectedCustomer.business_name}
               icon={customerIcon(markerColor(selectedCustomer), true, shapedMarkers)}
               zIndexOffset={900}
               eventHandlers={{ click: () => setSelectedCustomer(selectedCustomer) }}
@@ -2315,6 +2317,7 @@ export default function CoverageMap({
               <Marker
                 key={f.id}
                 position={[f.lat, f.lng]}
+                title={f.name}
                 icon={facilityIcon(f.kind, f.icon_key)}
                 zIndexOffset={1000}
               >
@@ -2363,6 +2366,7 @@ export default function CoverageMap({
             <Marker
               key={l.id}
               position={[l.lat, l.lng]}
+              title={l.name}
               icon={L.divIcon({
                 className: "",
                 html: `<div style="background:#2DE0E6;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(45,224,230,0.5)"></div>`,
@@ -2391,6 +2395,7 @@ export default function CoverageMap({
           {foundLocation && (
             <Marker
               position={[foundLocation.lat, foundLocation.lng]}
+              title={foundLocation.label}
               icon={foundLocationIcon()}
               eventHandlers={{ add: (e) => e.target.openPopup() }}
             >

@@ -288,6 +288,7 @@ export default function AdminUsersPage() {
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
           />
           <select
+            aria-label="نقش"
             value={form.role}
             onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
@@ -297,6 +298,7 @@ export default function AdminUsersPage() {
             ))}
           </select>
           <select
+            aria-label="گروه"
             value={form.group_id}
             onChange={(e) => setForm({ ...form, group_id: e.target.value })}
             disabled={form.role === "owner"}
@@ -387,6 +389,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2">
                       <select
+                        aria-label={`نقش ${u.display_name}`}
                         value={u.role}
                         onChange={(e) =>
                           send(`/api/admin/users/${u.id}`, "PATCH", { role: e.target.value })
@@ -400,6 +403,7 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2">
                       <select
+                        aria-label={`گروه ${u.display_name}`}
                         value={u.group_id ?? ""}
                         onChange={(e) =>
                           send(`/api/admin/users/${u.id}`, "PATCH", {

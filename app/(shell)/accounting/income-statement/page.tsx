@@ -50,7 +50,7 @@ export default async function IncomeStatementPage({
                 key={p.periodKey}
                 href={`/accounting/income-statement?period=${encodeURIComponent(p.periodKey)}`}
                 className={`rounded-[var(--radius-sm)] border px-2 py-1 ${
-                  period === p.periodKey ? "border-accent text-accent" : "border-border"
+                  period === p.periodKey ? "border-accent text-[var(--accent-text)]" : "border-border"
                 }`}
               >
                 {p.periodKey}

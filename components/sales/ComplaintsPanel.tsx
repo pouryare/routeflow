@@ -138,7 +138,7 @@ export default function ComplaintsPanel({
       )}
 
       <form onSubmit={file} className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3">
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
+        <select aria-label="مشتری" className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
           <option value="">— مشتری —</option>
           {customers.map((c) => (
             <option key={c.id} value={c.id}>
@@ -146,7 +146,7 @@ export default function ComplaintsPanel({
             </option>
           ))}
         </select>
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
+        <select aria-label="کالا" className="rounded border border-border bg-bg p-2 text-sm" value={form.product_id} onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}>
           <option value="">— کالا —</option>
           {products.map((p) => (
             <option key={p.id} value={p.id}>
@@ -154,14 +154,14 @@ export default function ComplaintsPanel({
             </option>
           ))}
         </select>
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
+        <select aria-label="دستهٔ شکایت" className="rounded border border-border bg-bg p-2 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
           {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
             </option>
           ))}
         </select>
-        <select className="rounded border border-border bg-bg p-2 text-sm" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
+        <select aria-label="شدت شکایت" className="rounded border border-border bg-bg p-2 text-sm" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
           {Object.entries(SEVERITY_LABEL).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
