@@ -47,9 +47,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     const message =
-      e instanceof Error && /UNIQUE/.test(e.message)
-        ? "این بسته‌بندی برای همین کالا قبلاً ثبت شده"
-        : "ثبت بسته‌بندی ممکن نشد";
+      e instanceof TypeError
+        ? e.message
+        : e instanceof Error && /UNIQUE/.test(e.message)
+          ? "این بسته‌بندی برای همین کالا قبلاً ثبت شده"
+          : "ثبت بسته‌بندی ممکن نشد";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }

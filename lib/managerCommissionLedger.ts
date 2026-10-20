@@ -8,6 +8,7 @@
  *  that sum a second way.
  */
 
+import { orgOfUser } from "./repo/userOrg";
 import type { DatabaseSync } from "node:sqlite";
 import { effectiveAt } from "./pricing";
 import { allStatements, type Period } from "./commissionLedger";
@@ -65,15 +66,17 @@ export function setManagerOverride(
   return Number(
     db
       .prepare(
-        `INSERT INTO manager_commission_overrides (manager_user_id, override_pct, valid_from, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?)`
+        `INSERT INTO manager_commission_overrides (manager_user_id, override_pct, valid_from, created_by, created_at,
+                                                   organization_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.manager_user_id ?? null,
         input.override_pct,
         input.valid_from.slice(0, 10),
         input.created_by ?? null,
-        new Date().toISOString()
+        new Date().toISOString(),
+        orgOfUser(db, input.manager_user_id, input.created_by)
       ).lastInsertRowid
   );
 }
@@ -94,8 +97,9 @@ export function recordManagerPayment(
     db
       .prepare(
         `INSERT INTO manager_commission_payments (manager_user_id, amount_toman, paid_on,
-                                                   period_from, period_to, notes, created_by, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
+                                                   period_from, period_to, notes, created_by, created_at,
+                                                   organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
       )
       .run(
         input.manager_user_id,
@@ -105,7 +109,8 @@ export function recordManagerPayment(
         input.period_to?.slice(0, 10) ?? null,
         input.notes ?? null,
         input.created_by ?? null,
-        new Date().toISOString()
+        new Date().toISOString(),
+        orgOfUser(db, input.manager_user_id, input.created_by)
       ).lastInsertRowid
   );
 }

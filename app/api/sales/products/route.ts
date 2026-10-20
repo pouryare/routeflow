@@ -64,7 +64,8 @@ export async function POST(req: NextRequest) {
     });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
-    const message = e instanceof Error && /UNIQUE/.test(e.message) ? "کد کالا تکراری است" : "ثبت کالا ممکن نشد";
+    const message =
+      e instanceof TypeError ? e.message : e instanceof Error && /UNIQUE/.test(e.message) ? "کد کالا تکراری است" : "ثبت کالا ممکن نشد";
     return NextResponse.json({ ok: false, error: message }, { status: 400 });
   }
 }
