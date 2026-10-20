@@ -6,7 +6,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
-import { useCallback, useMemo, useState } from "react";
+import { Fragment, useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import { isToman, toToman } from "@/lib/money";
 
@@ -251,26 +251,24 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
     void load();
   }
 
-  async function voidPayment(id: number) {
-    /* The wording matters: this no longer "deletes" a receipt. Task 4 made it post a
-       reversing journal, so the receipt stays in the ledger forever with a red line
-       through it. A user who believes they are deleting will be surprised by the audit
-       trail later, and a user who does not understand the reversal may hesitate to use
-       the feature at all. So say what is about to happen, in both halves: the money goes,
-       and the row stays. */
-    const reason = window.prompt(
-      "ابطال این دریافت\n\n" +
-        "این کار دریافت را حذف نمی‌کند: یک سند معکوس در دفتر ثبت می‌شود و ردیف اصلی خط‌خورده باقی می‌ماند.\n" +
-        "دلیل ابطال را بنویسید:"
-    );
-    if (!reason) return;
+  /* Voiding is asked on the row, in an in-app form, not a browser prompt: the wording matters.
+     This no longer "deletes" a receipt. It posts a reversing journal, so the receipt stays in
+     the ledger forever with a red line through it. A user who believes they are deleting will
+     be surprised by the audit trail later, and a user who does not understand the reversal may
+     hesitate to use the feature at all. So the form says what is about to happen, in both
+     halves: the money goes, and the row stays. */
+  const [voiding, setVoiding] = useState<{ id: number; reason: string } | null>(null);
+
+  async function voidPayment(id: number, reason: string) {
     const res = await fetch(`/api/payments/${id}?action=void`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ reason }),
     });
-    if (res.ok) void load();
-    else setError((await res.json().catch(() => null))?.error ?? "ابطال نشد");
+    if (res.ok) {
+      setVoiding(null);
+      void load();
+    } else setError(friendlyError((await res.json().catch(() => null))?.error, "دریافت ابطال نشد؛ دوباره تلاش کنید"));
   }
 
   return (
@@ -456,7 +454,8 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                   </thead>
                   <tbody>
                     {rows.map((p) => (
-                      <tr key={p.id} className="border-b border-border last:border-0">
+                      <Fragment key={p.id}>
+                      <tr className="border-b border-border last:border-0">
                         <td className="p-2">{customerName(p.customer_id)}</td>
                         <td
                           className={`p-2 text-left font-mono ${p.voided_at ? "line-through opacity-50" : ""}`}
@@ -476,7 +475,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                               <button
                                 type="button"
                                 className="text-xs text-text-muted hover:text-accent"
-                                onClick={() => voidPayment(p.id)}
+                                onClick={() => setVoiding({ id: p.id, reason: "" })}
                               >
                                 <Icon name="undo" size="sm" />
                                 ابطال + ثبت معکوس
@@ -493,6 +492,43 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                           )}
                         </td>
                       </tr>
+                      {voiding?.id === p.id && (
+                        <tr className="border-b border-border last:border-0">
+                          <td colSpan={5} className="p-2">
+                            <div className="flex flex-col gap-2 rounded border border-border p-2">
+                              <p className="m-0 text-xs text-text-muted">
+                                این کار دریافت را حذف نمی‌کند: یک سند معکوس در دفتر ثبت می‌شود و ردیف اصلی خط‌خورده باقی می‌ماند.
+                              </p>
+                              <label className="flex flex-col gap-1 text-xs text-text-muted">دلیل ابطال دریافت<input
+                                className="rounded border border-border bg-bg p-2 text-sm w-full"
+                                placeholder="دلیل ابطال را بنویسید"
+                                value={voiding.reason}
+                                onChange={(e) => setVoiding({ ...voiding, reason: e.target.value })}
+                              /></label>
+                              <div className="flex flex-wrap gap-2">
+                                <button
+                                  type="button"
+                                  disabled={!voiding.reason.trim()}
+                                  onClick={() => void voidPayment(p.id, voiding.reason.trim())}
+                                  className="rounded border border-danger px-3 py-1 text-xs text-danger disabled:opacity-50"
+                                >
+                                  <Icon name="undo" size="sm" />
+                                  ابطال دریافت و ثبت سند معکوس
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setVoiding(null)}
+                                  className="rounded border border-border px-3 py-1 text-xs"
+                                >
+                                  <Icon name="x" size="sm" />
+                                  انصراف از ابطال
+                                </button>
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

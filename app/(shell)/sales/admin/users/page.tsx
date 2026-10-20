@@ -245,11 +245,16 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function resetPassword(u: UserRow) {
-    const pw = window.prompt(`رمز تازه برای «${u.display_name}» (حداقل ۸ نویسه)`);
+  /** The account whose password is being replaced, with the text typed so far. An in-page,
+   *  masked field rather than a browser prompt: a prompt shows what is typed in the clear. */
+  const [resetting, setResetting] = useState<{ id: number; name: string; pw: string } | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
+  async function resetPassword(u: { id: number; name: string }, pw: string) {
     if (!pw) return;
     if (await send(`/api/admin/users/${u.id}`, "PATCH", { password: pw })) {
-      window.alert("رمز عوض شد. نشست‌های قبلی این کاربر بی‌اعتبار شدند.");
+      setResetting(null);
+      setNotice(`رمز «${u.name}» عوض شد. نشست‌های قبلی این کاربر بی‌اعتبار شدند.`);
     }
   }
 
@@ -262,58 +267,63 @@ export default function AdminUsersPage() {
           {error}
         </p>
       )}
+      {notice && (
+        <p role="status" className="rounded-md border border-good/40 bg-good/10 px-3 py-2 text-sm text-good">
+          {notice}
+        </p>
+      )}
 
       <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
         <h2 className="sechead__title mb-3">حساب تازه</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <input
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام نمایشی<input
             value={form.display_name}
             onChange={(e) => setForm({ ...form, display_name: e.target.value })}
-            placeholder="نام نمایشی"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
-          <input
+           
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-right text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<input
             value={form.username}
             onChange={(e) => setForm({ ...form, username: e.target.value })}
-            placeholder="نام کاربری"
+           
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
-          <input
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">رمز عبور<input
             value={form.password}
             onChange={(e) => setForm({ ...form, password: e.target.value })}
-            placeholder="رمز عبور (حداقل ۸ نویسه)"
+            placeholder="حداقل ۸ نویسه"
             type="password"
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
-          <select
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">نقش<select
             value={form.role}
             onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
+            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
           >
             {ROLES.map((r) => (
               <option key={r} value={r}>{ROLE_LABEL[r]}</option>
             ))}
-          </select>
-          <select
+          </select></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">گروه<select
             value={form.group_id}
             onChange={(e) => setForm({ ...form, group_id: e.target.value })}
             disabled={form.role === "owner"}
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent disabled:opacity-40"
+            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent disabled:opacity-40"
           >
             <option value="">{form.role === "owner" ? "بدون گروه (مالک)" : "گروه را انتخاب کنید"}</option>
             {groups.map((g) => (
               <option key={g.id} value={g.id}>{g.name}</option>
             ))}
-          </select>
-          <input
+          </select></label>
+          <label className="flex flex-col gap-1 text-xs text-text-muted">شناسه همکار<input
             value={form.staff_code}
             onChange={(e) => setForm({ ...form, staff_code: e.target.value })}
-            placeholder="شناسه همکار"
+           
             dir="ltr"
-            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
-          />
+            className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
+          /></label>
         </div>
         <button
           type="submit"
@@ -447,14 +457,48 @@ export default function AdminUsersPage() {
                     </td>
                     <td className="p-2">
                       <div className="flex gap-2 text-xs">
-                        <button
-                          type="button"
-                          onClick={() => resetPassword(u)}
-                          className="cursor-pointer text-text-muted transition-colors hover:text-accent"
-                        >
-                          <Icon name="undo" size="md" />
-                          رمز تازه
-                        </button>
+                        {resetting?.id === u.id ? (
+                          <span className="flex flex-wrap items-center gap-2">
+                            <input
+                              type="password"
+                              autoComplete="new-password"
+                              autoFocus
+                              value={resetting.pw}
+                              onChange={(e) => setResetting({ ...resetting, pw: e.target.value })}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") void resetPassword(resetting, resetting.pw);
+                                if (e.key === "Escape") setResetting(null);
+                              }}
+                              placeholder="رمز تازه (حداقل ۸ نویسه)" aria-label={`رمز تازه برای ${u.display_name}`}
+                              className="rounded border border-border bg-bg px-2 py-1 text-sm"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => void resetPassword(resetting, resetting.pw)}
+                              className="cursor-pointer text-accent transition-colors hover:underline"
+                            >
+                              <Icon name="check" size="md" />
+                              ذخیرهٔ رمز تازه
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setResetting(null)}
+                              className="cursor-pointer text-text-muted transition-colors hover:text-text"
+                            >
+                              <Icon name="x" size="md" />
+                              انصراف از تغییر رمز
+                            </button>
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => { setNotice(null); setResetting({ id: u.id, name: u.display_name, pw: "" }); }}
+                            className="cursor-pointer text-text-muted transition-colors hover:text-accent"
+                          >
+                            <Icon name="undo" size="md" />
+                            تعیین رمز تازه
+                          </button>
+                        )}
                         <button
                           type="button"
                           onClick={() => {

@@ -1994,6 +1994,7 @@ body {
   width: 28px; height: 28px; border-radius: 999px; display: grid; place-items: center;
 }
 .meridian .sov__close:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .sov__close.sov__close--labelled { width: auto; height: 32px; padding: 0 12px; gap: 6px; font-size: 13px; white-space: nowrap; grid-auto-flow: column; }
 .meridian .sov__list { overflow-y: auto; padding: 8px; }
 .meridian .sov__section + .sov__section { margin-top: 6px; }
 .meridian .sov__heading { padding: 8px 10px 4px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
@@ -3455,6 +3456,9 @@ body {
   flex: none; transition: background 160ms var(--ease);
 }
 .x:hover { background: var(--sunk); }
+/* A close button that says what it closes: «بستن فرم». The bare icon never told a first-time
+   user what it would do. */
+.x.x--labelled { width: auto; padding: 0 14px; gap: 6px; font-size: 13px; white-space: nowrap; grid-auto-flow: column; }
 .meridian .bento { display: grid; grid-template-columns: 1.5fr 1fr 1fr; gap: 12px; padding: 12px 24px 28px; max-width: 1150px; }
 /* The map's customer panel is 320px wide: three tiles across would be 90px each, which
    is narrower than the figures they carry. */

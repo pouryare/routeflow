@@ -85,7 +85,7 @@ const isRepLead = (r: Role) => OWNER_ROLES.includes(r) || r === "group_manager" 
  *  same reason proxy.ts allowlists it.
  */
 const DRIVER_TABS: AppTab[] = [
-  { href: "/driver", label: "روز من", group: "day", ready: true },
+  { href: "/driver", label: "مسیر امروز", group: "day", ready: true },
   { href: "/sales/academy", label: "آموزش", group: "day", ready: true },
 ];
 

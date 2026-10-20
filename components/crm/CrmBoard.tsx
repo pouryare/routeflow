@@ -111,7 +111,7 @@ export default function CrmBoard({ initialRows, initialCounts, initialView }: {
         ))}
       </div>
       <div className="crm-list">
-        {rows.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>اینجا چیزی نیست.</p> : null}
+        {rows.length === 0 ? <p className="tf-sub" style={{ textAlign: "center", padding: 24 }}>در این نما موردی نیست. نما یا عبارت جستجو را تغییر دهید.</p> : null}
         {rows.map((row) => (
           <BusinessCard key={row.id} row={row} mode={NEXT_MODE.has(view) ? "next" : "business"} highlight={highlight === row.id}
             onCall={onCall} onOpen={(r) => setSheet({ id: r.id, name: r.business_name })} onNavigate={onNavigate} />

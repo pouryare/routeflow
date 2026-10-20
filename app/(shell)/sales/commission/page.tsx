@@ -114,7 +114,7 @@ export default async function CommissionPage() {
       {/* ---- فروشنده‌ها ---------------------------------------------------- */}
       {statements.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          هنوز فروشنده‌ای ثبت نشده است.
+          هنوز فروشنده‌ای ثبت نشده است. فروشنده‌ها را از صفحهٔ «کاربران» اضافه کنید.
         </p>
       ) : (
         <div className="pcards">

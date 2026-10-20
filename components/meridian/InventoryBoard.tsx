@@ -116,7 +116,7 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
       <div className="sttoolbar">
         <label className="stsearch">
           <Icon name="search" size="sm" />
-          <input type="text" placeholder="جستجوی کالا…" value={q} onChange={(e) => setQ(e.target.value)} />
+          <input type="text" placeholder="جستجوی کالا…" aria-label="جستجوی کالا" value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         <div className="stchips" role="group" aria-label="فیلتر وضعیت">
           <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stchip" aria-pressed={filter === "all"} onClick={() => setFilter("all")}>
@@ -304,7 +304,7 @@ function ThresholdField({
           setValue(e.target.value);
           setSaved(false);
         }}
-        placeholder="تنظیم‌نشده"
+        placeholder="تنظیم‌نشده" aria-label={field === "reorder_point" ? "نقطهٔ سفارش" : "سقف هدف"}
       />
       {dirty ? (
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stmore__save" disabled={busy} onClick={save}>

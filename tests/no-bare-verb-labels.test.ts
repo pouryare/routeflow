@@ -41,8 +41,13 @@ const JSX_LABEL = new RegExp(`(?:\\/>|>)\\s*(${WORDS})\\s*<\\/(?:button|a|Link)>
 // toast(..., { label: "لغو", onClick })
 const TOAST_ACTION = new RegExp(`label:\\s*["'](${WORDS})["']`, "g");
 
+/** Tap-flow answers are defined in lib/crm/flows/*.ts as `label: "…"`, not in JSX. */
+function flowSources(): string[] {
+  return readdirSync(join(ROOT, "lib/crm/flows")).filter((n) => n.endsWith(".ts")).map((n) => `lib/crm/flows/${n}`);
+}
+
 describe("action labels", () => {
-  const files = ["app", "components"].flatMap(sources).filter((f) => !f.startsWith("app/api"));
+  const files = [...["app", "components"].flatMap(sources).filter((f) => !f.startsWith("app/api")), ...flowSources()];
 
   it("finds the source tree (guards the walker)", () => {
     expect(files.length).toBeGreaterThan(200);
