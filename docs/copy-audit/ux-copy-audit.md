@@ -50,7 +50,8 @@ approve them before they ship.
 
 **Open**
 - Smoke suite (`npm run test:smoke`), run here against a freshly seeded demo database: 164 passed, 1 failed. The failure is the `/leads` console check, caused by a blocked request to the public OSRM demo server (this environment has no internet). Run it once in a networked environment.
-- Flagged rows in `catalogue-wide.md` are review candidates, not all defects (e.g. file names ending in `.csv`, search keywords).
+
+**Decision — the wide scan keeps warning.** `catalogue-wide.md` lists 11 rows that are reviewed and harmless (hidden search keywords, `.csv` file names, the Instagram `@page` example, and joined pieces of labels such as «ویرایش» + field name). They are deliberately **not** suppressed: a silent exception list is how a real problem gets ignored later. Re-read the list when it changes; fix anything new.
 
 ---
 
