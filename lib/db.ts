@@ -2030,6 +2030,9 @@ export function getDb(): DatabaseSync {
        posted_at lives on journals and is not a column here, and an index naming a
        missing column fails the whole exec. The account statement joins journals. */
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_journal ON ledger_entries(journal_id);
+    /* The trial balance and the statements sum every entry of an organisation by account; with the
+       side and amount in the index that is answered without reading the 400k-row table itself. */
+    CREATE INDEX IF NOT EXISTS ix_ledger_entries_org_account ON ledger_entries(organization_id, account_id, side, amount_toman);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_account ON ledger_entries(account_id, id);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_customer ON ledger_entries(customer_id, id);
     CREATE INDEX IF NOT EXISTS ix_ledger_entries_supplier ON ledger_entries(supplier_id, id);

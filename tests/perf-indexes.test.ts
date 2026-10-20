@@ -90,4 +90,15 @@ describe("hot reads use an index", () => {
     );
     expect(p.filter((l) => /SCAN r\b/.test(l)), p.join("\n")).toEqual([]);
   });
+
+  it("the trial balance is read from a covering index, not by scanning every ledger entry", () => {
+    const p = plan(
+      `SELECT a.id, SUM(CASE WHEN e.side = 'D' THEN e.amount_toman END), SUM(CASE WHEN e.side = 'C' THEN e.amount_toman END)
+         FROM ledger_entries e JOIN accounts a ON a.id = e.account_id
+        WHERE e.organization_id = ? GROUP BY a.id ORDER BY a.code`,
+      1
+    );
+    expect(p.join("\n")).toMatch(/COVERING INDEX/);
+    expect(p.filter((l) => /^SCAN e\b(?! USING COVERING)/.test(l)), p.join("\n")).toEqual([]);
+  });
 });
