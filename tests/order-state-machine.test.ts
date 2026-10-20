@@ -125,3 +125,13 @@ describe("ORDER_TRANSITIONS", () => {
     for (const s of ORDER_STATUSES) expect(seen.has(s), `unreachable: ${s}`).toBe(true);
   });
 });
+
+describe("platform_owner", () => {
+  it("may fire every transition an owner may, and nothing an owner may not", () => {
+    for (const t of ORDER_TRANSITIONS) {
+      const ownerMay = canAdvanceOrder(t.from, t.action, "owner");
+      expect(canAdvanceOrder(t.from, t.action, ["platform_owner"] as never), `${t.from} ${t.action}`).toBe(ownerMay);
+    }
+    expect(legalOrderActions("CONFIRMED", ["platform_owner"] as never)).toEqual(legalOrderActions("CONFIRMED", "owner"));
+  });
+});

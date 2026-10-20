@@ -3,7 +3,8 @@ import { getDb, District, logActivity } from "@/lib/db";
 import { canReachGroup, requireRole } from "@/lib/session";
 import { recomputeCustomerGroups } from "@/lib/groups";
 import { STATUS_LABEL } from "@/lib/types";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
+
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
 
@@ -31,7 +32,7 @@ export async function PATCH(req: NextRequest) {
   // Handing territory between groups is an owner's decision. A manager who could set it
   // would be able to assign themselves someone else's districts, which is the whole
   // boundary this task exists to draw.
-  if (group_id !== undefined && session.role !== "owner") {
+  if (group_id !== undefined && !isOwner(session.role)) {
     return NextResponse.json({ ok: false, error: "دسترسی لازم را ندارید" }, { status: 403 });
   }
   if (group_id !== undefined && group_id !== null && !Number.isInteger(group_id)) {

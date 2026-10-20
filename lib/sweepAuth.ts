@@ -16,6 +16,7 @@ import { timingSafeEqual } from "node:crypto";
 import { requireRole } from "./session";
 import { allOrgIds } from "./repo/organizations";
 
+import { MANAGE_ROLES } from "@/lib/roles";
 function tokenMatches(header: string | null): boolean {
   const secret = process.env.SWEEP_TOKEN;
   if (!secret || !header) return false;
@@ -34,7 +35,7 @@ export function sweepScope(req: NextRequest): SweepScope {
   if (tokenMatches(req.headers.get("x-sweep-token"))) {
     return { ok: true, orgIds: allOrgIds(), via: "token" };
   }
-  const guard = requireRole(req, ["owner", "group_manager"]);
+  const guard = requireRole(req, MANAGE_ROLES);
   if (!guard.ok) return { ok: false, response: guard.response };
   return { ok: true, orgIds: [guard.session.organizationId], via: "session" };
 }

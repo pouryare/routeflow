@@ -110,6 +110,7 @@ const PLANNABLE_SQL = `
           AND ds.status = 'pending'
           AND o.status <> 'PLANNED'
      )
+     @@SCOPE@@
    GROUP BY o.id
    ORDER BY o.id DESC
    LIMIT ?`;
@@ -124,8 +125,12 @@ export function readPlannableOrders(
   scope: { sql: string; params: (number | string)[] },
   limit = 300,
 ): PlannableOrder[] {
+  // The caller's scope fragment (`AND o.organization_id = ?` ...) is spliced in here. It was
+  // bound as parameters but never placed in the statement, so an owner's request threw "column
+  // index out of range" and a role whose fragment carries no parameter silently saw every
+  // organisation's orders.
   const rows = db
-    .prepare(PLANNABLE_SQL)
+    .prepare(PLANNABLE_SQL.replace("@@SCOPE@@", scope.sql))
     .all(...scope.params, limit) as unknown as {
     id: number;
     order_no: string;

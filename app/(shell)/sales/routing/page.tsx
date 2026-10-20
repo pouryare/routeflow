@@ -7,13 +7,14 @@ import { listVehicles } from "@/lib/repo/routing";
 import RoutingPlanner from "@/components/sales/RoutingPlanner";
 import PageHeader from "@/components/meridian/PageHeader";
 
+import { MANAGE_ROLES } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function RoutingPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "owner" && session.role !== "group_manager") redirect("/sales");
+  if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   getDb();
   const vehicles = listVehicles(session.organizationId, false);

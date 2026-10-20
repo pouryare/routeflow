@@ -12,7 +12,8 @@ import CommissionEditor from "@/components/sales/CommissionEditor";
 import Avatar from "@/components/meridian/Avatar";
 import EarnerCard from "@/components/meridian/EarnerCard";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, VAN_ROLES } from "@/lib/roles";
+import { isVanRole, VAN_ROLES, isOwner } from "@/lib/roles";
+
 
 export const dynamic = "force-dynamic";
 
@@ -41,7 +42,7 @@ export default async function CommissionPage() {
   };
 
   const db = getDb();
-  const groupId = session.role === "owner" ? undefined : session.groupId;
+  const groupId = isOwner(session.role) ? undefined : session.groupId;
 
   const statements =
     session.role === "phone_sales"
@@ -52,7 +53,7 @@ export default async function CommissionPage() {
   // manager, are none of their business, the same boundary their own statement draws.
   const driverStatements = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId });
   const managerStatements =
-    session.role === "owner"
+    isOwner(session.role)
       ? allManagerStatements(db, period)
       : session.role === "group_manager"
         ? [managerStatementFor(db, session.user.id, period)]
@@ -63,7 +64,7 @@ export default async function CommissionPage() {
      that role to `phone_sales`. The commission seller's list was empty for the same
      reason and the same length of time. */
   const sellers =
-    session.role === "owner"
+    isOwner(session.role)
       ? (plain(
           db
             .prepare("SELECT id, display_name FROM users WHERE role = 'phone_sales' AND active = 1 ORDER BY display_name")
@@ -75,7 +76,7 @@ export default async function CommissionPage() {
      roles, inlined from the one list that defines them. See tests/van-role-dropdown.test.ts. */
   const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
   const drivers =
-    session.role === "owner"
+    isOwner(session.role)
       ? (plain(
           db
             .prepare(
@@ -87,7 +88,7 @@ export default async function CommissionPage() {
         ) as unknown as { id: number; display_name: string }[])
       : [];
   const managers =
-    session.role === "owner"
+    isOwner(session.role)
       ? (plain(
           db
             .prepare("SELECT id, display_name FROM users WHERE role = 'group_manager' AND active = 1 ORDER BY display_name")
@@ -95,11 +96,11 @@ export default async function CommissionPage() {
         ) as unknown as { id: number; display_name: string }[])
       : [];
 
-  const rates = session.role === "owner" ? readRates(db, session.organizationId).slice(0, 12) : [];
+  const rates = isOwner(session.role) ? readRates(db, session.organizationId).slice(0, 12) : [];
   const driverRates =
-    session.role === "owner" ? readDriverRates(db, session.organizationId).slice(0, 12) : [];
+    isOwner(session.role) ? readDriverRates(db, session.organizationId).slice(0, 12) : [];
   const managerOverrides =
-    session.role === "owner" ? readManagerOverrides(db, session.organizationId).slice(0, 12) : [];
+    isOwner(session.role) ? readManagerOverrides(db, session.organizationId).slice(0, 12) : [];
 
   return (
     <>
@@ -202,7 +203,7 @@ export default async function CommissionPage() {
         </>
       )}
 
-      {session.role === "owner" && (
+      {isOwner(session.role) && (
         <CommissionEditor sellers={sellers} drivers={drivers} managers={managers} />
       )}
 

@@ -10,13 +10,14 @@ import { repsRepo, listOnboarding } from "@/lib/repo/representatives";
 import { faNum } from "@/lib/format";
 import { Icon } from "@/components/meridian/Icon";
 
+import { MANAGE_ROLES } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function RepDetail({ params }: { params: Promise<{ id: string }> }) {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (!["owner", "group_manager", "rep_manager"].includes(session.role)) redirect("/sales");
+  if (!(MANAGE_ROLES.includes(session.role) || session.role === "rep_manager")) redirect("/sales");
 
   getDb();
   const id = Number((await params).id);
