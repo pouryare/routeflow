@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 
+import { isOwner } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 /** Administration, folded into the same app rather than a second one behind it.
@@ -33,7 +34,7 @@ export default async function SalesAdminLayout({ children }: { children: ReactNo
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "owner") redirect("/sales");
+  if (!isOwner(session.role)) redirect("/sales");
 
   return <>{children}</>;
 }

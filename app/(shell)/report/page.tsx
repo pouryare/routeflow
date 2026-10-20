@@ -57,12 +57,16 @@ export default async function ReportPage({
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
+  // districts is shared reference data with no organization_id column, so the organisation
+  // guard groupFilter adds for an owner would be an unknown column there (the page failed to
+  // load for every owner); customers carry the column and keep the full guard.
+  const fd = groupFilter(session, "group_id", { shared: true });
   const f = groupFilter(session);
 
   const db = getDb();
   const districts = db
-    .prepare(`SELECT * FROM districts WHERE 1 = 1${f.sql}`)
-    .all(...f.params) as unknown as District[];
+    .prepare(`SELECT * FROM districts WHERE 1 = 1${fd.sql}`)
+    .all(...fd.params) as unknown as District[];
   const customers = db
     .prepare(`SELECT * FROM customers WHERE 1 = 1${f.sql} ORDER BY business_name`)
     .all(...f.params) as unknown as Customer[];

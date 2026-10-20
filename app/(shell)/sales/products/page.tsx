@@ -11,7 +11,8 @@ import CatalogueEditor from "@/components/sales/CatalogueEditor";
 import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, isOwner } from "@/lib/roles";
+
 
 export const dynamic = "force-dynamic";
 
@@ -29,7 +30,7 @@ export default async function ProductsPage() {
 
   const db = getDb();
   const products = readCatalogue(db, session.organizationId, {
-    includeInactive: session.role === "owner",
+    includeInactive: isOwner(session.role),
   });
 
   /* ONE date for the whole page. The drawer resolves cost and commission against it, and
@@ -85,7 +86,7 @@ export default async function ProductsPage() {
       {products.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
           هنوز کالایی ثبت نشده است.
-          {session.role === "owner" && " با فرم پایین اولین کالا را اضافه کنید."}
+          {isOwner(session.role) && " با فرم پایین اولین کالا را اضافه کنید."}
         </p>
       ) : (
         <ProductsView
@@ -105,7 +106,7 @@ export default async function ProductsPage() {
         />
       )}
 
-      {session.role === "owner" && (
+      {isOwner(session.role) && (
         <CatalogueEditor
           companyRatePerKg={companyRatePerKg(db, session.organizationId, today)}
           products={products.map((p) => {

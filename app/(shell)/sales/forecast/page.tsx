@@ -14,13 +14,14 @@ import SweepButton from "@/components/SweepButton";
 import PageHeader from "@/components/meridian/PageHeader";
 import { faJalaliDateTime } from "@/lib/jalali";
 
+import { MANAGE_ROLES } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function ForecastPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "owner" && session.role !== "group_manager") redirect("/sales");
+  if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   getDb();
   const org = session.organizationId;

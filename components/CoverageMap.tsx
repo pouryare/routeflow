@@ -2505,7 +2505,7 @@ export default function CoverageMap({
               </option>
             ))}
           </select>
-          {role === "owner" && groups.length > 0 && (
+          {(role === "owner" || role === "platform_owner") && groups.length > 0 && (
             <select
               value={bulkGroupChoice}
               onChange={(e) => setBulkGroupChoice(e.target.value)}

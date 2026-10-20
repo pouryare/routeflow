@@ -11,6 +11,7 @@ import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { faNum } from "@/lib/format";
 import PageHeader from "@/components/meridian/PageHeader";
 
+import { isOwner, MANAGE_ROLES } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 /* Labels from REP_HEALTH_BAND_FA, the one map (this page's own copy said «مراقبت» where
@@ -33,10 +34,10 @@ export default async function RepsPage({
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (!["owner", "group_manager", "rep_manager"].includes(session.role)) redirect("/sales");
+  if (!(MANAGE_ROLES.includes(session.role) || session.role === "rep_manager")) redirect("/sales");
 
   getDb();
-  const canDefine = session.role === "owner" || session.role === "rep_manager";
+  const canDefine = isOwner(session.role) || session.role === "rep_manager";
   const mode = canDefine && one((await searchParams).view) === "define" ? "define" : "perform";
   const reps = repsOverview(session.organizationId);
 
