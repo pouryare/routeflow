@@ -16,7 +16,7 @@
     "seed:demo:reset": "npm run seed:demo -- --force",
     "dev:demo": "ROUTEFLOW_DB_PATH=./data/routeflow.demo.db next dev",
     "test:demo": "vitest run tests/seed-demo-deep.test.ts",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "next typegen && tsc --noEmit",
     "perf:smoke": "bash scripts/perf/ci-smoke.sh"
   },
   "dependencies": {
