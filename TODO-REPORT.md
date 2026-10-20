@@ -34,3 +34,32 @@
 ## Next steps
 1. Decide the `/leads` access for rep_manager (see Not done), then align nav, proxy and data routes
 2. Optionally finish the remaining test gaps (CRM add-lead, tasks drag-and-drop, stock/cheque/batch flows)
+
+---
+
+# Performance pass (PR [#17](https://github.com/pouryare/routeflow/pull/17), branch `claude/inspiring-einstein-wqv8v2`)
+
+_Updated 2026-10-20. Details and measurements: `docs/perf/2026-10-20-baseline.md`._
+
+## Done
+- [x] Startup hang fixed (missing boot-backfill indexes): `getDb()` on 78k orders never finished → 0.6 s
+- [x] More indexes (allocations, journal reversals, stock, trial balance); N+1s removed (health, CRM counts, journal, commission)
+- [x] Dashboard first content 4.6 s → ~1.0 s (SQL aggregation, per-render memo, streamed sections)
+- [x] Debt in SQL (equal to the original for all 700 customers); stored order weight `orders.kg_total` (payroll output byte-identical, 8.5 MB, re-verified after merging `main`)
+- [x] Journal/ledger paging, margin table capped, trial balance 244 → 45 ms
+- [x] Slow-SQL log, boot-index test, CI workflow, page-time budget; lint 31 → 0
+- [x] CI fixed: `typecheck` now runs `next typegen` first (reproduced the 56 errors from a clean tree, then fixed)
+- [x] Merged current `main` (Next 16.4, vitest 5) into the branch; typecheck from clean, lint, 3,807 tests, production build and page budget all pass
+
+## Not done / gaps
+- [ ] CI has not yet been seen green on GitHub (re-running after the fix and merge); `perf:smoke` is still unproven on a real runner
+- [ ] PR #17 not merged yet (waiting on green CI)
+- [ ] One unexplained intermittent unit-test failure, seen once
+- [ ] `/map` ~330 ms and owner dashboard ~2.7 s end to end (per-customer debt pass)
+- [ ] Journal table cramped and page-header tabs clipped at phone width; rep detail unchecked; demo seed shows a 552-day average delivery time
+
+## Next steps
+1. Watch CI on PR #17 to green; fix anything it finds
+2. Merge PR #17 into `main` (only when conflict-free and CI not failing)
+3. Store each order's total (like `kg_total`) to speed the debt pass, map and dashboard
+4. Track down the intermittent test failure
