@@ -44,8 +44,14 @@ export function rateLimitReset(key: string): void {
   buckets.delete(key);
 }
 
+/** The caller's address, as the nearest proxy saw it.
+ *
+ *  A proxy APPENDS the peer it received the connection from, so the LAST entry of
+ *  x-forwarded-for is the one the trusted hop wrote; every earlier entry is whatever the
+ *  client chose to send. Reading the first value let anyone rotate it to get a fresh
+ *  rate-limit bucket on every attempt. */
 export function clientKey(req: { headers: Headers }): string {
   const fwd = req.headers.get("x-forwarded-for");
-  const ip = fwd?.split(",")[0]?.trim();
-  return ip || "unknown";
+  const parts = fwd?.split(",").map((p) => p.trim()).filter(Boolean) ?? [];
+  return parts[parts.length - 1] || req.headers.get("x-real-ip")?.trim() || "unknown";
 }
