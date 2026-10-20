@@ -17,7 +17,7 @@ export default function AcctTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-      <table className="w-full border-collapse text-[length:var(--text-sm)]">
+      <table className="w-full min-w-[40rem] border-collapse text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap">
         <thead>
           <tr className="border-b border-border bg-surface text-right text-text-muted">
             {head.map((h, i) => (
