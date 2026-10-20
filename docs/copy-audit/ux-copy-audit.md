@@ -27,16 +27,30 @@ approve them before they ship.
 **Done**
 - High-frequency flows (P1 #4): geofence prompt, next-stop bar, driver run, unload, visit verification, after-call, task row, quick-add, planner rows. Task deletion takes an explicit second tap; there is no undo for it because the API cannot reopen a dismissed task.
 - Error layer (P1 #1–2): `lib/userMessage.ts` (`friendlyError`) wraps every place the client shows a server message; ~100 failure messages follow «X نشد؛ دوباره تلاش کنید»; English field names removed from API messages; whole-toman validators say «…را به تومان و بدون اعشار وارد کنید».
-- Bare-verb labels (P1 #3): replaced across the app; `CopyButton` now always shows text; undo is «بازگردانی …» everywhere (`docs/tap-flow-principles.md` updated).
-- Glossary: جستجو, لینک, گوگل‌مپ, تأیید, سرنخ, «سفارش تازه» (UI), no «لوکیشن». Guards: `tests/no-bare-verb-labels.test.ts`, extra entries in `tests/vocabulary.test.ts`, `tests/userMessage.test.ts`.
-- `window.confirm` in `admin/groups` replaced with an inline, explicitly worded confirmation.
+- Bare-verb labels (P1 #3): replaced across the app and in the tap-flow definitions (`lib/crm/flows/*.ts`); `CopyButton` always shows text; undo is «بازگردانی …» everywhere (`docs/tap-flow-principles.md` updated); every close button (sheets, search overlay, customer panel, layers panel, district editor, shortcut help) shows «بستن …» next to the icon and has a matching accessible name.
+- Glossary: جستجو, لینک, گوگل‌مپ, تأیید, سرنخ, «سفارش تازه» (UI, seeded rules and notification types, with `REWORDED` entries so existing installs update in place), no «لوکیشن». The Kanban column now reads «سرنخ‌های تازه».
+- Every browser dialog is gone (`window.confirm/prompt/alert`): group delete and rename, payment void (with its reversing-entry explanation), cheque replacement (Shamsi date picker instead of a typed ISO date), password reset (masked field), and both "view as another user" entry points (nothing is sent until the confirm button is tapped).
+- Empty states say what to do next; double negatives rewritten; placeholder-only inputs have accessible names; ellipses unified; the driver's nav tab no longer repeats its group's name.
+- Guards: `tests/no-bare-verb-labels.test.ts`, `tests/no-native-dialogs.test.ts`, `tests/userMessage.test.ts`, extra entries in `tests/vocabulary.test.ts`.
+- `scripts/audit-copy.mjs` now also writes `docs/copy-audit/catalogue-wide.md` (flagged-only) covering `components/`, `app/api/` and tap flows, with bare-label and developer-jargon detectors.
+- Found while checking in a browser: the driver page returned 500 because the unload sheet imported its constants from a module that opens the database. Fixed (`lib/unloadDispositions.ts`).
 
-**Open — needs a decision or a visual check**
-- `components/meridian/SearchOverlay.tsx`: the "view as another user" flow still uses the native `window.confirm`. It is a security-sensitive action, so the change was not made without sign-off. Proposed: an in-app panel with «دیدن برنامه به‌جای «X»» / «انصراف از ورود به‌جای کاربر».
-- Corner "X" close buttons now have noun-bearing accessible names («بستن رسید», «بستن نقشهٔ بزرگ» …) but remain icon-only on screen; rule 2 would add visible text, which needs a layout check.
-- New visible text in dense rows (planner row actions, next-stop bar, copy buttons) has not been checked on a phone-width screen.
-- Smoke tests (`npm run test:smoke`) were updated for the renamed labels but could not run here (Playwright browser unavailable); run them before merging.
-- Not done: empty states (P2 #8), placeholder-as-label fields (P3), ellipsis style (P3), the «جدید» Kanban column key (`PoolViewKanban.tsx`), seeded «سفارش جدید» in `lib/db.ts`, the مکان/موقعیت glossary decision, «ثبت و سپردن» wording, and extending `scripts/audit-copy.mjs` to `components/` and `app/api/`.
+**Decision recorded — مکان vs موقعیت.** Both stay, with fixed meanings: **مکان** is a place the business keeps a record of (a customer, lead or depot, as in «مکان‌های ما»); **موقعیت** is a position on the map (a GPS fix or a pin: «موقعیت من», «ثبت موقعیت»). Neither is renamed.
+
+**Also fixed (found by running the smoke suite)**
+- Bottom sheets (customer sheet, tap-flow sheet) opened at the bottom of the *card* they were opened from, about 6 800 px down a long orders list, because a `position: fixed` element is placed against its nearest transformed ancestor and the scroll-reveal leaves a `transform` on every card. They now draw into the `.meridian` root (`components/meridian/useSheetHost.ts`).
+- Income statement: a missing React `key` on the expense rows.
+- Smoke harness: waited on scroll-driven animations that never finish, listed redirect pages as routes, and slept a fixed time for the sheet slide-in; all corrected.
+
+- Visible labels on every data-entry field that only had a placeholder (users, groups, places, login, reminders, quick-add, purchases, cheques, complaints, batches, payment void). Search boxes keep their placeholder, and tap-flow fields are labelled by the question above them.
+- The next-stop bar's dismiss button now reads «پنهان کردن نوار», and the bar wraps on phones.
+- `/report` threw «no such column: organization_id» for every owner: it applied the tenant filter to `districts`, which is shared reference data with no such column. Regression test added in `tests/tenancy-scoping.test.ts`.
+- The planner and leads maps logged «Cannot read properties of null (reading 'removeLayer')»: a routing answer arriving after the control was removed. Late answers are now ignored (`lib/guardedRouter.ts`).
+- Cheques form: the date field overlapped the submit button on phones.
+
+**Open**
+- Smoke suite (`npm run test:smoke`), run here against a freshly seeded demo database: 164 passed, 1 failed. The failure is the `/leads` console check, caused by a blocked request to the public OSRM demo server (this environment has no internet). Run it once in a networked environment.
+- Flagged rows in `catalogue-wide.md` are review candidates, not all defects (e.g. file names ending in `.csv`, search keywords).
 
 ---
 

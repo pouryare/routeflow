@@ -80,7 +80,7 @@ export const afterCallFlow: FlowConfig = {
     },
     rename: {
       id: "rename", kind: "input", q: "نام تازه چیست؟", input: { field: "new_name", placeholder: "مثلاً: کبابی نایب ونک" },
-      options: [{ id: "ok", label: "ادامه", next: "who", set: { verification: "renamed" } }],
+      options: [{ id: "ok", label: "ادامه به سؤال بعد", next: "who", set: { verification: "renamed" } }],
     },
     moved: {
       id: "moved", kind: "choice", q: "آدرس تازه را دارید؟",
@@ -143,7 +143,7 @@ export const afterCallFlow: FlowConfig = {
     prods: {
       id: "prods", kind: "multi", q: "کدام کالاها؟", sub: "چند تا را بزنید · اختیاری",
       choices: (ctx) => ctx.products.map((p) => ({ id: String(p.id), label: p.name })),
-      options: [{ id: "ok", label: "ادامه", next: (_c, s) => (s.acc.outcome === "ASKED_PRICE" ? "sendnow" : "tinterest") }],
+      options: [{ id: "ok", label: "ادامه به سؤال بعد", next: (_c, s) => (s.acc.outcome === "ASKED_PRICE" ? "sendnow" : "tinterest") }],
     },
     sendnow: {
       id: "sendnow", kind: "choice", q: "همین حالا قیمت بفرستم؟", sub: "از قیمت‌های امروز ساخته می‌شود",

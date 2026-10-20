@@ -32,6 +32,14 @@ export interface RoutingControl {
 
 /** `L` with the plugin's namespace attached. Options stay loose because the plugin's own
  *  option set is large and undocumented here; the return value is what mattered. */
+export interface RoutingRouter {
+  route(waypoints: unknown, callback: (...args: unknown[]) => void, context?: unknown, options?: unknown): void;
+}
+
 export interface WithRouting {
-  Routing: { control(options: Record<string, unknown>): RoutingControl };
+  Routing: {
+    control(options: Record<string, unknown>): RoutingControl;
+    /** The default OSRM v1 router the control builds for itself when none is given. */
+    osrmv1(options?: Record<string, unknown>): RoutingRouter;
+  };
 }

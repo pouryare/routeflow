@@ -1672,7 +1672,7 @@ export default function CoverageMap({
               className="py-4"
             />
           ) : dormantCustomers.length === 0 ? (
-            <EmptyState icon="check" title="هیچ مشتری فعالی بیش از ۳۰ روز بدون خرید نیست" className="py-4" />
+            <EmptyState icon="check" title="همهٔ مشتریان فعال در ۳۰ روز گذشته خرید داشته‌اند" className="py-4" />
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {dormantCustomers.map(({ customer, days }) => (
@@ -1798,7 +1798,7 @@ export default function CoverageMap({
                       <span>
                         {corridorUncovered > 0
                           ? `${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
-                          : "منطقه نیازمند پوششی سر این راه نیست."}
+                          : "این مسیر از هیچ منطقهٔ بدون پوشش نمی‌گذرد."}
                       </span>
                       {!corridorRoute && !corridorRouting && (
                         <span className="mt-1 block text-warn">

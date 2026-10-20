@@ -25,7 +25,7 @@ export default async function IncomeStatementPage({
   const periods = listPeriods(organizationId);
 
   const line = (label: string, value: number, opts?: { strong?: boolean }) => (
-    <tr className={`border-t border-border ${opts?.strong ? "font-medium" : ""}`}>
+    <tr key={label} className={`border-t border-border ${opts?.strong ? "font-medium" : ""}`}>
       <td className={CELL}>{label}</td>
       <td className={NUM}>{faNum(value)}</td>
     </tr>

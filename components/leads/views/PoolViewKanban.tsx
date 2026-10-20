@@ -87,7 +87,7 @@ export default function PoolViewKanban({
               <SectionHead
                 as="h3"
                 className="text-[length:var(--text-sm)] font-semibold text-text"
-                title={isDefault ? "بدون وضعیت" : isNew ? "جدید" : STATUS_LABELS[col] ?? col}
+                title={isDefault ? "بدون وضعیت" : isNew ? "سرنخ‌های تازه" : STATUS_LABELS[col] ?? col}
               />
               <span className="rounded-full bg-border px-2 py-0.5 text-[length:var(--text-xs)] text-text-muted font-mono">
                 {colItems.length}

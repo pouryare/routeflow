@@ -199,10 +199,11 @@ export default function LayersPanel({
         <h2 className="text-[length:var(--text-md)] font-bold text-text">لایه‌های نقشه</h2>
         <button
           onClick={onClose}
-          aria-label="بستن لایه‌های نقشه"
-          className="rounded-[var(--radius-sm)] px-2 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
+          aria-label="بستن لایه‌ها"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
         >
           <Icon name="x" size="sm" />
+          <span className="text-[length:var(--text-xs)]">بستن لایه‌ها</span>
         </button>
       </div>
 

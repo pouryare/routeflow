@@ -199,7 +199,7 @@ export default function RepDefinitions() {
               {reps && reps.length === 0 && (
                 <tr>
                   <td colSpan={5} className="px-3 py-6 text-center text-text-muted">
-                    هنوز نماینده‌ای ثبت نشده است.
+                    هنوز نماینده‌ای ثبت نشده است. با «افزودن نماینده» اولین نماینده را ثبت کنید.
                   </td>
                 </tr>
               )}

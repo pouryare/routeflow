@@ -126,3 +126,17 @@ describe("tenant scoping", () => {
     expect(canReachOrg(session("platform_owner", 1, null), 2)).toBe(true);
   });
 });
+
+describe("shared reference tables", () => {
+  it("the coverage report reads districts with the shared filter, not the tenant one", () => {
+    // districts has no organization_id column. groupFilter(owner) adds `AND organization_id = ?`,
+    // which made /report throw «no such column: organization_id» for every owner.
+    const src = fs.readFileSync(path.join(__dirname, "..", "app/(shell)/report/page.tsx"), "utf8");
+    expect(src).toMatch(/groupFilter\(session, "group_id", \{ shared: true \}\)/);
+    expect(src).toMatch(/FROM districts WHERE 1 = 1\$\{fd\.sql\}/);
+  });
+
+  it("an owner's shared filter carries no organization guard", () => {
+    expect(groupFilter(session("owner", 1, null), "group_id", { shared: true }).sql).toBe("");
+  });
+});
