@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
+import { isAllowedPushEndpoint, isPushKey } from "@/lib/pushEndpoint";
 
 interface SubscriptionBody {
   endpoint?: string;
@@ -20,7 +21,7 @@ export async function POST(req: NextRequest) {
   const endpoint = body?.endpoint;
   const p256dh = body?.keys?.p256dh;
   const auth = body?.keys?.auth;
-  if (!endpoint || !p256dh || !auth) {
+  if (!isAllowedPushEndpoint(endpoint) || !isPushKey(p256dh, 200) || !isPushKey(auth, 100)) {
     return NextResponse.json({ ok: false, error: "اشتراک نامعتبر است" }, { status: 400 });
   }
 

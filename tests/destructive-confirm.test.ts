@@ -11,6 +11,7 @@ const GUARDED: [file: string, mustContain: string][] = [
   ["components/PhotoGallery.tsx", "confirmAction("],
   ["app/(shell)/sales/admin/users/page.tsx", "confirmAction("],
   ["app/(shell)/leads/hooks/useLeads.ts", "confirmAction("],
+  ["components/sales/BatchesPanel.tsx", "confirmAction("],
 ];
 
 describe("destructive actions ask before acting", () => {

@@ -85,3 +85,39 @@ describe("money input", () => {
     expect(() => pay(1000, "2999-01-01T00:00:00Z")).toThrow(PaymentError);
   });
 });
+
+describe("shape checks", () => {
+  it("dates", async () => {
+    const { isIsoDay, isDayWithin, isTimestampWithin } = await import("@/lib/inputChecks");
+    expect(isIsoDay("2026-02-30")).toBe(false);
+    expect(isIsoDay("zzz")).toBe(false);
+    expect(isIsoDay("2026-10-20")).toBe(true);
+    const now = Date.parse("2026-10-20T00:00:00Z");
+    expect(isDayWithin("2026-10-25", 366, 366, now)).toBe(true);
+    expect(isDayWithin("1900-01-01", 366, 366, now)).toBe(false);
+    expect(isDayWithin("2999-01-01", 366, 366, now)).toBe(false);
+    expect(isTimestampWithin("not-a-date", 10, 10, now)).toBe(false);
+  });
+  it("quantities and text", async () => {
+    const { isQuantity, boundedText } = await import("@/lib/inputChecks");
+    expect(isQuantity(10, 1e9)).toBe(true);
+    expect(isQuantity(-5, 1e9)).toBe(true);
+    for (const bad of [1e15, NaN, Infinity, "5", 1.2345]) expect(isQuantity(bad, 1e9)).toBe(false);
+    expect(boundedText("  ab ", 5)).toBe("ab");
+    expect(boundedText("x".repeat(6), 5)).toBeNull();
+    expect(boundedText(5, 5)).toBeNull();
+  });
+});
+
+describe("routing routes validate the plan they are given", () => {
+  const src = (f: string) => fs.readFileSync(f, "utf8");
+  it("the plan route refuses a date outside the planning window", () => {
+    expect(src("app/api/sales/routing/plan/route.ts")).toMatch(/isDayWithin\(b\.date, 30, 120\)/);
+  });
+  it("the commit route checks the date and every figure before committing", () => {
+    const s = src("app/api/sales/routing/commit/route.ts");
+    expect(s).toMatch(/isDayWithin\(b\.plan\.date, 30, 120\)/);
+    expect(s.indexOf("sane(a.distance_km")).toBeGreaterThan(-1);
+    expect(s.indexOf("sane(a.distance_km")).toBeLessThan(s.indexOf("commitPlan("));
+  });
+});

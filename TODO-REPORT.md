@@ -10,6 +10,7 @@
 - [x] Driver stop actions and order status flow tested
 - [x] 41 findings listed in `AUDIT-2026-10-20.md`
 - [x] Always-on rule added to `CLAUDE.md`: this report is rewritten after every prompt
+- [x] Batch rule added to `CLAUDE.md` (replaces merge-after-every-push): do all tasks as separate commits, keep one PR, merge once at the end after CI is green
 
 - [x] Step 1: fixed build breakers (holidays page moved header into a layout; driver bundle no longer imports the database); `next build` passes
 - [x] Step 2: input validation (order lines/dates/notes/seller, payment amount/date, money cap for all `_toman` fields, cheque/payment/order forms, commission rows stamped with organization, user/group/product/complaint limits) + tests
@@ -20,6 +21,11 @@
 - [x] Step 6: dependencies — `npm audit` 15 → 5 (critical and moderate cleared): next 16.4.2, maplibre-gl 6, sharp 0.35, vitest 5, xmldom, js-yaml, undici, source-map-js, brace-expansion; remaining 5 are eslint-config-next transitive (dev tooling only; npm's suggested fix is a downgrade)
 - [x] Step 7: remaining audit items — payments/tasks/alerts scoped (group manager = own group, salesperson = own); map data routes readable by the roles the nav sends there; /planner, /facilities (and receipts/complaints for rep manager) gated to match; driver stop resubmission (identical = no-op, different = 409) and cash cap; payment POST refuses another group's customer; module-level shared `NextResponse` fixed (empty 404 bodies); raw state code replaced by label; geolocation no longer requested on /login and /offline; notification popover width — verified on a production build + tests
 - [x] `/leads` for rep managers (decision B): `PIN_POOL_ROLES` = managers + rep manager now admitted by the pin, list, run, parse and depot-read routes; scope stays group-level (rep manager sees their group's 7 pins, same as the group manager; owner sees 20; salesperson still refused) — verified on a production build + test
+- [x] Remaining flows tested via API: cheque lifecycle (legal moves only; a bounce voids its payment), batch status machine, stock movements. Found and fixed unvalidated cheque dates/number, batch dates/quantity/cost/code/unknown product (was 500), stock-movement quantity/date/notes; batch recall now asks first (`lib/inputChecks.ts`, tests)
+- [x] CRM add-lead tested end to end in a phone-size browser (source → link/no link → name/phone → location → pin → type → price → hours → first step → call outcome → recall date): lead created (201) and outcome saved (200); API edge cases (garbage answers, bad phone/coordinates/fields, 500 tags, `file:`/`javascript:`/`data:` links) all refused cleanly; the map link is only ever rendered when it starts with http(s)
+- [x] Tasks board drag-and-drop works (PATCH move 200). Fixed: any role could complete, dismiss or move anyone's task (now own / group / org by role), and task creation accepted a 5,000-char title, unknown kind, garbage due date and an assignee from another tenant
+- [x] Routing plan/commit: fixed a plan for "zzzzzzzzzz" / 1900 / 2999 being accepted and committed (a run with that date, distance −5, duration 1e15 was created); date window and figures now checked
+- [x] Notifications: preferences, channels and test routes validate; fixed push subscriptions accepting any endpoint (server-side request to a URL of the user's choosing) — only browser-vendor push services, bounded keys
 
 ## Not done / gaps
 - [ ] Semgrep never ran (Python dependency conflict)
@@ -27,14 +33,14 @@
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
 - [ ] Deliberately not done: redirecting a signed-in user away from /login (a valid-signature cookie for a since-deactivated user would loop between proxy and page); soft-404 HTTP 200 on unknown ids (Next streaming behaviour)
 - [ ] A rep manager with no group assigned sees an empty pin pool (group scope); assign them a group in the users admin
-- [ ] Full CRM add-lead flow and tasks-board drag-and-drop not exercised
-- [ ] Stock movements, cheque lifecycle, batches, routing commit, notification delivery tested only by page load and API status
+- [ ] A stock adjustment may drive on-hand negative (up to 1e9); a task's entity link and a CRM maps link are not checked beyond shape (any https host) — not changed; actual push/Telegram delivery needs real devices and cannot run here
 
 ## Notes
 - Audit item 16 correction: `/api/sync/*` refusing platform_owner is intentional (`hasSyncClient`), not a bug.
 
 ## Next steps
-1. Optionally finish the remaining test gaps (CRM add-lead, tasks drag-and-drop, stock/cheque/batch flows)
+1. Merge PR #24 (all stacked commits) when CI is green
+2. Nothing else queued; remaining gaps above need your call or real devices
 
 ---
 

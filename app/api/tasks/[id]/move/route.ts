@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { moveTask } from "@/lib/repo/tasks";
+import { canActOnTask, moveTask, tasksRepo } from "@/lib/repo/tasks";
 import type { BoardView } from "@/lib/tasks/lenses";
 
 /** The one lane-move endpoint. The lane→field mapping lives in lib/tasks/lenses
@@ -22,6 +22,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     | null;
   if (!body?.view || !body?.to_lane) {
     return NextResponse.json({ ok: false, error: "نما و ستون مقصد لازم است" }, { status: 400 });
+  }
+  const row = tasksRepo.get(guard.session.organizationId, Number(id));
+  if (!row || !canActOnTask({ role: guard.session.role, userId: guard.session.user.id, groupId: guard.session.groupId }, row)) {
+    return NextResponse.json({ ok: false, error: "کار پیدا نشد" }, { status: 404 });
   }
   const card = moveTask(guard.session.organizationId, Number(id), {
     view: body.view,
