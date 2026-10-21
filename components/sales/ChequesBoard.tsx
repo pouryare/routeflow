@@ -287,7 +287,7 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                       <button
                         key={to}
                         onClick={() => advance(c.id, to)}
-                        className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent"
+                        className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent"
                       >
                         <Icon name="wallet" size="md" />
                         {`تغییر وضعیت به «${CHEQUE_STATUS_LABEL[to]}»`}

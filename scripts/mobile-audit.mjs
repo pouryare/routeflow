@@ -19,13 +19,37 @@ const RULES = {
   select: /<select\b/g,
   nativeDate: /type=["']date["']/g,
   textField: /<(?:input|textarea)\b/g,
-  tinyTarget: /py-\[2px\]|py-0\.5\b/g,
+  tinyTarget: null, // counted by countTinyTargets: only on controls, not on badges
   confirmDialog: /(?<![\w.])(?:window\.)?(?:confirm|alert|prompt)\(/g,
 };
 
 /** Occurrences of each rule in one source string. */
 export function countRules(src) {
-  return Object.fromEntries(Object.entries(RULES).map(([k, re]) => [k, (src.match(re) ?? []).length]));
+  return Object.fromEntries(
+    Object.entries(RULES).map(([k, re]) => [k, re ? (src.match(re) ?? []).length : countTinyTargets(src)]),
+  );
+}
+
+const TINY = /py-\[2px\]|py-0\.5\b/g;
+const CONTROL_TAGS = new Set(["button", "a", "Link", "summary"]);
+
+/** Tiny vertical padding only counts where someone taps: the nearest opening tag before the class
+ *  is a button, link or summary, and the class is not already lifted by a 44px minimum or the
+ *  `touch` utility on the same element. A badge (a span) with the same padding is not a target. */
+export function countTinyTargets(src) {
+  let n = 0;
+  for (const m of src.matchAll(TINY)) {
+    const open = src.lastIndexOf("<", m.index);
+    const tag = /^<([A-Za-z][\w.]*)/.exec(src.slice(open, open + 40))?.[1];
+    if (!tag || !CONTROL_TAGS.has(tag)) continue;
+    const element = src.slice(open, m.index + 400);
+    // The tag ends at the first `>` that is not the `=>` of an arrow function.
+    const end = element.search(/[^=]>/);
+    const attrs = end > 0 ? element.slice(0, end + 1) : element;
+    if (/min-h-\[44px\]|\btouch\b/.test(attrs)) continue;
+    n++;
+  }
+  return n;
 }
 
 function* walk(dir) {

@@ -3,7 +3,7 @@
     "select": 37,
     "nativeDate": 1,
     "textField": 98,
-    "tinyTarget": 31,
+    "tinyTarget": 0,
     "confirmDialog": 1
   }
 }

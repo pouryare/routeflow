@@ -228,7 +228,7 @@ export default async function ReportPage({
                   <span className="text-text-faint">مرتب‌سازی:</span>
                   <Link
                     href="/report"
-                    className={`rounded-[var(--radius-sm)] border px-2 py-0.5 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                    className={`rounded-[var(--radius-sm)] border px-2 py-0.5 touch transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                       sortByDistance ? "border-border text-text-muted hover:border-accent hover:text-accent" : "border-accent text-accent"
                     }`}
                   >
@@ -236,7 +236,7 @@ export default async function ReportPage({
                   </Link>
                   <Link
                     href="/report?gaps=near"
-                    className={`rounded-[var(--radius-sm)] border px-2 py-0.5 transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+                    className={`rounded-[var(--radius-sm)] border px-2 py-0.5 touch transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
                       sortByDistance ? "border-accent text-accent" : "border-border text-text-muted hover:border-accent hover:text-accent"
                     }`}
                   >

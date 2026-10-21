@@ -331,7 +331,7 @@ export default function CustomerDetailPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="مسیریابی به این مشتری"
-                className="rounded-[var(--radius-sm)] border border-border px-1.5 py-0.5 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
+                className="rounded-[var(--radius-sm)] border border-border px-1.5 py-0.5 touch text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
               >
                 <Icon name="external-link" size="sm" />
               </a>

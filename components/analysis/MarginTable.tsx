@@ -74,7 +74,7 @@ export default function MarginTable({ period }: { period: string }) {
               key={d.key}
               type="button"
               onClick={() => setDim(d.key)}
-              className="cursor-pointer rounded-[var(--radius-sm)] border px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)]"
+              className="cursor-pointer rounded-[var(--radius-sm)] border px-[var(--space-2)] py-[2px] touch text-[length:var(--text-xs)]"
               style={{
                 borderColor: dim === d.key ? "var(--accent)" : "var(--border)",
                 color: dim === d.key ? "var(--accent)" : "var(--text-muted)",
@@ -134,7 +134,7 @@ export default function MarginTable({ period }: { period: string }) {
             <button
               type="button"
               onClick={() => setExpandedDim(dim)}
-              className="mt-[var(--space-2)] cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] text-[length:var(--text-xs)] text-[var(--text-muted)]"
+              className="mt-[var(--space-2)] cursor-pointer rounded-[var(--radius-sm)] border border-[var(--border)] px-[var(--space-2)] py-[2px] touch text-[length:var(--text-xs)] text-[var(--text-muted)]"
             >
               <Icon name="chevron-down" size="sm" />
               نمایش {fa(hidden)} ردیف دیگر

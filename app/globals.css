@@ -5318,3 +5318,20 @@ body {
 .meridian .monthgrid__day--marked::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--crit); }
 .meridian .monthgrid__day--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 .meridian .monthgrid__nav:focus-visible, .meridian .monthgrid__day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- touch target utility ---------------------------------------------------------------------
+   Anything you tap is at least 44x44. Small controls (status buttons, chips, copy buttons) add
+   `touch` instead of growing their padding, so their look stays and only their hit area grows. */
+.touch { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* ---- accounting tables as cards on a phone (components/accounting/AcctTable, lib/tableCards) ------
+   Below 768px each row becomes a card: the first cell is its title, every other cell shows its
+   column header (data-label) in front of its value. From 768px it is the ordinary table. */
+@media (max-width: 767.98px) {
+  .acct-cards, .acct-cards tbody, .acct-cards tfoot, .acct-cards tr, .acct-cards td { display: block; width: 100%; }
+  .acct-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .acct-cards tr { padding: 10px 12px; border-top: 1px solid var(--line); }
+  .acct-cards td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; text-align: start; }
+  .acct-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
+  .acct-cards td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 400; }
+}

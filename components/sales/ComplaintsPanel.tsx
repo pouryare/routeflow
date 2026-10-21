@@ -273,7 +273,7 @@ export default function ComplaintsPanel({
                       {["investigating", "resolved", "dismissed"]
                         .filter((s) => s !== c.status)
                         .map((s) => (
-                          <button key={s} onClick={() => setStatus(c.id, s)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                          <button key={s} onClick={() => setStatus(c.id, s)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
                             <Icon name="warn" size="md" />
                             {STATUS_LABEL[s]}
                           </button>

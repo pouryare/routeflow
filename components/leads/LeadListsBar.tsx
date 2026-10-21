@@ -164,12 +164,12 @@ export default function LeadListsBar({
                             if (kind === "delete") onDelete(list.id);
                             else onOpen(list.id);
                           }}
-                          className="rounded bg-crit/15 px-1.5 py-0.5 text-crit"
+                          className="rounded bg-crit/15 px-1.5 py-0.5 touch text-crit"
                         >
                           <Icon name="x" size="md" />
                           {confirming?.kind === "delete" ? "حذف فهرست" : "جایگزینی مسیر"}
                         </button>
-                        <button type="button" onClick={() => setConfirming(null)} className="rounded px-1.5 py-0.5 text-text-faint">
+                        <button type="button" onClick={() => setConfirming(null)} className="rounded px-1.5 py-0.5 touch text-text-faint">
                         <Icon name="x" size="md" />
                         {confirming?.kind === "delete" ? "انصراف از حذف" : "انصراف از جایگزینی"}</button>
                       </p>
@@ -185,7 +185,7 @@ export default function LeadListsBar({
                           onClick={() => run(list.id, list.location_ids, list.name, a.id)}
                           disabled={busy || (a.id === "send" && count === 0) || (a.id === "split" && count === 0)}
                           title={a.id === "append" && openListName ? `به «${openListName}» افزوده می‌شود` : undefined}
-                          className={`inline-flex items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[length:var(--text-xs)] transition-colors disabled:opacity-40 ${
+                          className={`inline-flex items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-0.5 touch text-[length:var(--text-xs)] transition-colors disabled:opacity-40 ${
                             a.destructive
                               ? "border-border text-text-faint hover:border-crit hover:text-crit"
                               : "border-border text-text-muted hover:border-accent hover:text-accent"

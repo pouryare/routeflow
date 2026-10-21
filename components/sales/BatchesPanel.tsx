@@ -183,12 +183,12 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
                         {(BATCH_TRANSITIONS[b.status] ?? [])
                           .filter((t) => MANUAL_MOVES.includes(t))
                           .map((t) => (
-                            <button key={t} onClick={() => setStatus(b.id, t)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                            <button key={t} onClick={() => setStatus(b.id, t)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
                               <Icon name="package" size="md" />
                               {BATCH_STATUS_LABEL[t]}
                             </button>
                           ))}
-                        <button onClick={() => openTrace(b.id)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                        <button onClick={() => openTrace(b.id)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
                           <Icon name="route" size="md" />
                           ردیابی
                         </button>

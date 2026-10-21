@@ -131,7 +131,7 @@ export default function LeadsPage() {
             {posStatus === "active" && position ? (
               <span className="text-good">موقعیت شما زنده است — فهرست با حرکت شما به‌روز می‌شود (دقت {faNum(Math.round(position.accuracy))} متر)</span>
             ) : posStatus === "denied" ? (
-              <><span className="text-crit">{posError ?? "دسترسی به موقعیت داده نشده"}</span><span className="text-text-faint">— بدون آن، ترتیب «نزدیک‌ترین» ممکن نیست.</span><button onClick={retryPosition} className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-text-muted hover:border-accent hover:text-accent">
+              <><span className="text-crit">{posError ?? "دسترسی به موقعیت داده نشده"}</span><span className="text-text-faint">— بدون آن، ترتیب «نزدیک‌ترین» ممکن نیست.</span><button onClick={retryPosition} className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 touch text-text-muted hover:border-accent hover:text-accent">
               <Icon name="undo" size="md" />
               تلاش دوباره</button></>
             ) : <span className="text-text-muted">در حال یافتن موقعیت شما…</span>}
