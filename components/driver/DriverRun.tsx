@@ -9,6 +9,7 @@ import { flush, queueSize, sendDelivery, subscribe } from "@/lib/deliveryQueue";
 import { buildReceipt } from "@/lib/deliveryReceipt";
 import DeliveryFlow from "@/components/flows/DeliveryFlow";
 import SwipeRow from "@/components/mobile/SwipeRow";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useMyPosition } from "@/components/MyPositionProvider";
 import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
@@ -195,6 +196,23 @@ function StopCard({
   const [flowOpen, setFlowOpen] = useState(false);
   const [flowKey, setFlowKey] = useState(0);
   const done = stop.status !== "pending";
+  /* «بعداً»: a stop that cannot be done now goes to the end of the run (the server keeps it pending),
+     held 5 s with undo. */
+  const undoable = useUndoableAction();
+  const defer = () =>
+    undoable.run({
+      message: `«${stop.customer_name}» به آخر مسیر رفت`,
+      send: async () => {
+        const res = await fetch(`/api/driver/stops/${stop.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ action: "defer" }),
+        });
+        return res.ok ? { ok: true } : { ok: false };
+      },
+      failure: "توقف جابه‌جا نشد؛ دوباره تلاش کنید",
+      onDone: onRecorded,
+    });
   /* The arrival banner asks for this stop's flow by bumping `launchN`; adjusting state while
      rendering (not in an effect) opens it once per bump. */
   const [seenLaunch, setSeenLaunch] = useState(0);
@@ -210,7 +228,11 @@ function StopCard({
 
   return (
     <li className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
-      <SwipeRow ownButtons={false} start={done ? undefined : { label: "ثبت تحویل", icon: "check", run: startFlow }}>
+      <SwipeRow
+        ownButtons={false}
+        start={done ? undefined : { label: "ثبت تحویل", icon: "check", run: startFlow }}
+        end={done ? undefined : { label: "بعداً این توقف", icon: "arrow-left", run: defer }}
+      >
       <button
         type="button"
         onClick={onToggle}
@@ -299,6 +321,16 @@ function StopCard({
               >
                 <Icon name="check" size="md" />
                 ثبت تحویل این مشتری
+              </button>
+            )}
+            {!done && (
+              <button
+                type="button"
+                onClick={defer}
+                className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
+              >
+                <Icon name="arrow-left" size="md" />
+                بعداً این توقف
               </button>
             )}
             <button

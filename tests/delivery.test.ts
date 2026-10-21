@@ -15,7 +15,7 @@ const { ensureWarehouse } = await import("./helpers/ensureWarehouse");
 ensureWarehouse(getDb());
 const { createProduct, createPackaging, setPrice } = await import("@/lib/catalogue");
 const { createOrder, confirmOrder, readOrder } = await import("@/lib/orders");
-const { createRun, addStop, readRun, recordDelivery, DeliveryError, readDriverRuns } = await import(
+const { createRun, addStop, readRun, recordDelivery, DeliveryError, readDriverRuns, deferStop } = await import(
   "@/lib/delivery"
 );
 const { orderFilter } = await import("@/lib/session");
@@ -384,5 +384,42 @@ describe("readDriverRuns", () => {
     for (let i = 1; i < runs.length; i++) {
       expect(runs[i - 1].run_date >= runs[i].run_date).toBe(true);
     }
+  });
+});
+
+
+describe("deferStop («later»)", () => {
+  const mkOrder = () => {
+    const db = getDb();
+    const o = createOrder(db, {
+      customer_id: ctx.customer,
+      order_date: "2026-08-26",
+      created_by: ctx.owner,
+      organization_id: 1,
+      lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 1 }],
+    });
+    confirmOrder(db, o.id);
+    return o.id;
+  };
+  it("sends a pending stop to the end of its run and leaves the others in order", () => {
+    const db = getDb();
+    const run = createRun(db, { driver_user_id: ctx.otherDriver, run_date: "2026-08-27", created_by: ctx.owner, organization_id: 1 });
+    const stops = [mkOrder(), mkOrder(), mkOrder()].map((o) => addStop(db, run, o));
+    const ids = () => readRun(db, run)!.stops.map((s) => s.id);
+    const before = ids();
+    expect(before).toHaveLength(3);
+    expect(deferStop(db, before[0])).toEqual({ moved: true });
+    expect(ids()).toEqual([before[1], before[2], before[0]]);
+    // already last: nothing moves
+    expect(deferStop(db, before[0])).toEqual({ moved: false });
+    expect(ids()).toEqual([before[1], before[2], before[0]]);
+    void stops;
+  });
+  it("a stop that already has an outcome cannot be deferred, and an unknown stop is refused", () => {
+    const db = getDb();
+    db.prepare("UPDATE delivery_stops SET status = 'delivered' WHERE id = (SELECT id FROM delivery_stops ORDER BY id LIMIT 1)").run();
+    const done = db.prepare("SELECT id FROM delivery_stops WHERE status = 'delivered' LIMIT 1").get() as { id: number };
+    expect(() => deferStop(db, done.id)).toThrow(DeliveryError);
+    expect(() => deferStop(db, 999999)).toThrow(DeliveryError);
   });
 });
