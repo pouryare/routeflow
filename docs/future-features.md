@@ -2282,6 +2282,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F115. Voice read-out for drivers
+
+**What:** the phone reads out the next stop, the customer's name, what to hand over and the delivery instruction, so a driver can keep their eyes on the road and hands free. Optional, in Persian, with a repeat button.
+
+**Already in the app:** the driver screen already shows a next-stop banner and prompts on arrival (`components/driver/NextStopBanner.tsx`, `DriverRun.tsx`, `lib/arrival.ts`), navigation hand-off to the user's chosen map app, and per-stop notes. I found no speech output anywhere (no use of the browser's speech synthesis).
+
+**Why parked:** Persian voices vary by phone, and on some devices there is no Persian voice installed, so the quality is uncertain; reading out while driving has road-safety and liability questions; sound in a noisy van may not be heard; speech must stop at once when the driver taps.
+
+**Open questions**
+1. Which events are spoken: when a stop is completed (next stop), on arrival, when a note exists?
+2. Persian voice available on the driver phones? Test on the actual devices first.
+3. Read only when the phone is connected to car audio or earphones, or always when enabled?
+4. A setting per driver, off by default, never auto-starting while the driver is typing.
+
+**Suggested first slice:** a "read aloud" button on the next-stop banner that speaks the customer name, address line and instruction with the browser's speech synthesis, shown only when a Persian voice exists. No automatic speech.
+
+**Prerequisites:** F69 supplies instructions to read; F117 shares the sound and settings plumbing.
+
+---
+
+## F116. Amount in words
+
+**What:** show the written Persian amount (for example "دو میلیون و پانصد هزار تومان") beside the figure on receipts, payment records and cheque entries, as is usual on Iranian financial documents, to prevent misreading and tampering.
+
+**Already in the app:** receipts are drawn on a 384-dot-wide canvas that both the Bluetooth thermal printer (ESC/POS) and the PDF share, with right-aligned text, Persian-aware line breaking and measurement (`lib/receiptLayout.ts`, `lib/deliveryReceipt.ts`). Amounts are whole toman with Persian digits (`lib/money.ts`, `lib/format.ts`). I found no number-to-words function anywhere.
+
+**Why parked:** Persian number words have grammar details (the connecting "و", the unit words for thousands, millions and billions, the toman versus rial wording); a wrong word is worse than none on a money document; the width of a long amount in words needs wrapping on the narrow receipt; wording must switch with the F-series toman and rial display setting if that is built.
+
+**Open questions**
+1. Which documents: the delivery receipt, payment confirmation, cheque entry, statements?
+2. Unit word: toman, or rial when the display unit is rial?
+3. Library or a small tested function? A tested function with a table of edge cases (zero, one thousand, 1,001, 1,000,000, 2,000,001) avoids a dependency.
+4. Show on the payment entry step so the cashier can read it back to the customer.
+
+**Suggested first slice:** a pure, tested `amountInWords` function for whole toman up to billions, shown on the delivery receipt and the payment confirmation line. Other documents later.
+
+**Prerequisites:** none; F36 (templates) and F18 (statements) can reuse it.
+
+---
+
+## F117. Haptic and sound feedback settings
+
+**What:** a short vibration and an optional sound on scans, confirmations, errors and undo, with each switchable by the user, so the phone confirms an action without the person looking at the screen.
+
+**Already in the app:** the tap flows end in a confirmation screen with a five-second undo, and toasts show results. Each person has a preferences blob on their user record that is merged and validated against an allowed list of keys (`lib/repo/prefs.ts`), so a setting follows them across devices. I found no vibration or sound calls in the code.
+
+**Why parked:** vibration is not available in every mobile browser (it is not supported on iOS Safari), so the behaviour differs by device; sounds in a customer's shop can be intrusive; an accessibility setting must be respected for people who use screen readers or reduced motion.
+
+**Open questions**
+1. Which events: scan success, order saved, payment saved, error, undo?
+2. Default off or on? Sound off by default, haptics on where supported.
+3. One master switch plus separate toggles, saved in the preferences blob?
+4. Respect the phone's silent mode and the app's reduced-motion setting.
+
+**Suggested first slice:** a settings entry with "vibrate on confirm" and "sound on confirm", stored in the existing preferences, applied to the tap-flow confirmation screen only, and silent where the device does not support it.
+
+**Prerequisites:** the preferences store (exists); F1 and F30 (scanning) benefit from the same feedback.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
