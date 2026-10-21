@@ -15,7 +15,7 @@ export interface PushAction {
 }
 
 export function pushActionFor(
-  n: { type_code: string; entity_type: string | null; entity_id: number | null },
+  n: { type_code: string; entity_type: string | null; entity_id: number | null; ref_id?: number | null },
   chequeStatus: ChequeStatus | null,
 ): PushAction | null {
   if (n.type_code === "cheque.due_soon" && n.entity_type === "cheque" && n.entity_id !== null) {
@@ -26,6 +26,14 @@ export function pushActionFor(
       title: to === "deposited" ? "به بانک سپرده شد" : "وصول شد",
       request: { url: `/api/cheques/${n.entity_id}`, method: "PATCH", body: { action: "advance", to } },
       done: to === "deposited" ? "چک سپرده شد" : "چک وصول شد",
+    };
+  }
+  // A due reminder: «انجام شد» resolves that reminder (ref_id), not the customer it is about.
+  if (n.type_code === "reminder.due" && n.ref_id != null) {
+    return {
+      title: "انجام شد",
+      request: { url: `/api/reminders/${n.ref_id}`, method: "PATCH", body: { resolved: true } },
+      done: "یادآوری انجام شد",
     };
   }
   return null;

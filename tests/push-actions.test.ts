@@ -27,3 +27,14 @@ describe("push notification actions", () => {
     expect(isAllowedPushRequest("/other")).toBe(false);
   });
 });
+
+describe("reminder push button", () => {
+  it("«انجام شد» resolves the reminder by its own id, not the customer it is about", () => {
+    const a = pushActionFor({ type_code: "reminder.due", entity_type: "customer", entity_id: 5, ref_id: 77 }, null)!;
+    expect(a.title).toBe("انجام شد");
+    expect(a.request).toEqual({ url: "/api/reminders/77", method: "PATCH", body: { resolved: true } });
+  });
+  it("a reminder notification with no reminder id gets no button", () => {
+    expect(pushActionFor({ type_code: "reminder.due", entity_type: "customer", entity_id: 5, ref_id: null }, null)).toBeNull();
+  });
+});

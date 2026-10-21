@@ -4643,6 +4643,9 @@ export function getDb(): DatabaseSync {
   const nCols = (db.prepare("PRAGMA table_info(notifications)").all() as { name: string }[]).map((c) => c.name);
   if (!nCols.includes("push_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN push_flushed_at TEXT");
   if (!nCols.includes("tg_flushed_at")) db.exec("ALTER TABLE notifications ADD COLUMN tg_flushed_at TEXT");
+  /* ref_id: the row a one-tap action should act on when it is not the entity the notification is
+     about (a due reminder is about a customer, but the button resolves the reminder). */
+  if (!nCols.includes("ref_id")) db.exec("ALTER TABLE notifications ADD COLUMN ref_id INTEGER");
 
   seedFacilities();
   seedReasonCodes(db);

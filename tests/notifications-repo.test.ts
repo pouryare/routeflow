@@ -246,3 +246,11 @@ describe("notify action", () => {
     expect(unreadGroupCount(1, seller)).toBeGreaterThanOrEqual(1);
   });
 });
+
+it("a due-reminder notification remembers which reminder it is, so a push button can resolve it", () => {
+  const rule = { code: "notify_reminder_due", action_json: JSON.stringify({ notification_type: "reminder.due" }) };
+  const ev = { ...evRow("reminder.due", custId, { message: "تماس", reminder_id: 77 }, null), entity_type: "customer" };
+  expect(fanOutNotifications(1, rule, ev, null)).toBeGreaterThan(0);
+  const row = getDb().prepare("SELECT ref_id FROM notifications WHERE type_code = 'reminder.due' ORDER BY id DESC LIMIT 1").get() as { ref_id: number | null };
+  expect(row.ref_id).toBe(77);
+});

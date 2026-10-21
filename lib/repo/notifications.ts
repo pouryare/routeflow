@@ -341,8 +341,8 @@ export function fanOutNotifications(
   const insert = (db ?? getDb()).prepare(
     `INSERT INTO notifications
        (organization_id, user_id, type_code, title_fa, body_fa, entity_type, entity_id, group_key,
-        priority, created_at, source_event_id, source_rule_run_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        priority, created_at, source_event_id, source_rule_run_id, ref_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   let n = 0;
   for (const uid of recipients) {
@@ -358,7 +358,8 @@ export function fanOutNotifications(
       type.priority,
       now,
       event.id,
-      ruleRunId
+      ruleRunId,
+      typeof ctx.meta.reminder_id === "number" ? ctx.meta.reminder_id : null
     );
     n += 1;
   }
@@ -710,6 +711,7 @@ type FlushRow = {
   type_code: string;
   entity_type: string | null;
   entity_id: number | null;
+  ref_id: number | null;
   priority: string;
   group_key: string;
   title_fa: string;
@@ -807,7 +809,7 @@ async function flushChannel(
 
   const candidates = conn
     .prepare(
-      `SELECT id, type_code, entity_type, entity_id, priority, group_key, title_fa, body_fa
+      `SELECT id, type_code, entity_type, entity_id, ref_id, priority, group_key, title_fa, body_fa
          FROM notifications
         WHERE organization_id = ? AND user_id = ? AND ${col} IS NULL
         ORDER BY created_at, id`
