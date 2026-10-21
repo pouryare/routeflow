@@ -30,7 +30,13 @@
 - [x] Decisions (you said: go with my recommendations), implemented as three commits: a manual stock movement may not take stock below zero (409 with the current on-hand; deliveries and receipts keep their tolerance); a task's linked customer/order must exist in the organisation; a signed-in user opening /login goes to their home, decided on the database-checked session so a stale cookie cannot loop — verified on a production build
 - [x] Decided to leave: unknown-id pages returning HTTP 200, CRM maps link host, the 5 dev-tooling npm advisories, two sessions sharing the report (one section each)
 
+- [x] Parked feature F4 added to `docs/future-features.md`: Wazo VoIP inside the CRM/ERP (click-to-call, call logging, screen pop; first slice is server-side only)
+
+- [x] Parked feature F5 added to `docs/future-features.md`: Persian text proofing (spellcheck attribute, normalisation, Hunspell, LLM check); notes existing `lib/persian.ts`
+
 ## Not done / gaps
+- [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
+- [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
@@ -90,7 +96,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
-- [x] Decisions pass (you delegated them): reversible deletes and deactivation now undo instead of asking (holiday, photo, saved place, account; places-with-restore keep it), only the batch recall still confirms; «بعداً این توقف» sends a pending stop to the end of the run (no new state: the stop stays pending, server action + swipe + button, tested); cheque receipts and complaints queue offline like receipts (manager / phone-sales only, validated like the online routes, idempotent, tested); no dropdowns left outside the allowlist (0 of 46); expense photo, duplicates deck, order-card swipe, planner map selection and reminder push buttons decided **not** to build (reasons in `docs/future-features.md` F6)
+- [x] Decisions pass (you delegated them): reversible deletes and deactivation now undo instead of asking (holiday, photo, saved place, account; places-with-restore keep it), only the batch recall still confirms; «بعداً این توقف» sends a pending stop to the end of the run (no new state: the stop stays pending, server action + swipe + button, tested); cheque receipts and complaints queue offline like receipts (manager / phone-sales only, validated like the online routes, idempotent, tested); no dropdowns left outside the allowlist (0 of 46); expense photo, duplicates deck, order-card swipe, planner map selection and reminder push buttons decided **not** to build (reasons in `docs/future-features.md` F9)
 - [x] Gaps pass (3): real Chromium run at 375px as every demo role (found and fixed: blank /leads, crashing expenses page, 108px-wide pick lists, «+ ثبت» button covering the order submit bar); push notification button for a cheque due (deposit / cleared, runs in the service worker, falls back to opening the app); cash and card receipts made offline queue on the device and send on reconnect (verified in the browser: one `payment.record` held in the outbox); drag-to-reorder stops in the leads run list; users table as cards with pickers; commission editor on pickers, chips and keypad; «هفتهٔ بعد» delivery chip back in the order form; rep stage as chips; dropdowns 10→5 of 46
 - [x] Leftovers (round 2): long-press selection on cheques (hold a card or tap «انتخاب چند چک», tap to pick, one bar moves them all with the 5 s undo; only moves the server allows are sent and skipped ones are counted); swipe «ثبت نتیجه» on Pocket tasks that belong to a customer; `SwipeRow` gained a long-press hook
 - [x] Leftovers done so far: manager credit-approval deck on the briefing (approve / reject with the consequence printed, 5 s undo); map-search sort and route list, business type and contact role are chips; remaining dropdowns 10→6 of 46 (13 %, gate target ≤ 15 %); accounting trial balance and balance sheet become cards through the shared table
@@ -108,7 +114,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
-- [ ] Decided not to build, with reasons (docs/future-features.md F6): expense receipt photo, duplicates deck, swipe on order cards, planner map selection, reminder push buttons
+- [ ] Decided not to build, with reasons (docs/future-features.md F9): expense receipt photo, duplicates deck, swipe on order cards, planner map selection, reminder push buttons
 - [ ] Not tried on a physical phone (you said to drop that); everything was run in an emulated 375px Chromium on demo data
 - [ ] Offline still covers only delivery, receipts, cheques, complaints, order drafts and new customers; reminders and notes need the network
 

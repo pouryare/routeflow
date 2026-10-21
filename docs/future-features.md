@@ -75,7 +75,61 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F4. Force a new password on first sign-in
+## F4. Wazo VoIP inside the CRM/ERP (call from, and log to, the customer record)
+
+**What:** use [Wazo](https://wazo.io) (open-source, API-driven telephony platform) as the phone system behind RouteFlow, so calls are placed, received and recorded inside the app instead of in a separate dialer.
+
+| Moment | What the app does | Used by |
+|---|---|---|
+| Salesperson taps a phone number | click-to-call through Wazo (the user's softphone/desk phone rings, then the customer) | call list, customer page, lead page |
+| Incoming call | screen pop: caller matched by `customers.phone_norm` (or lead), shows open orders, balance, last visit | phone sales, group manager |
+| Call ends | proposes a call-outcome sheet (outcome, note, recall date, optional follow-up task) pre-filled with number, direction and duration | existing call-outcome step of `AddLeadFlow` / CRM |
+| Missed call | alert + task "call back" on the customer | tasks board, notifications |
+| Manager review | call history per customer, per rep, per day (talk time, answered/missed) | analytics |
+
+**Why parked:** needs a Wazo server (self-hosted or hosted) and SIP trunk with an Iranian carrier; WebRTC softphone in a PWA is unreliable on locked phones (calls arrive only when the app is open); call recording has legal and consent implications; per-tenant isolation (one Wazo tenant per RouteFlow organisation) must be designed.
+
+**Open questions to settle in the spec**
+1. Integration level: click-to-call and call logging through the Wazo REST API plus webhooks/websocket events (small, server-side) or an in-browser WebRTC softphone (large)? Phones keep using a normal SIP app or the native dialer first.
+2. Where does Wazo run, and which carrier/trunk provides the numbers? Does it work on the deployment network (`deploy/`)?
+3. Identity mapping: RouteFlow user ↔ Wazo user/extension, organisation ↔ Wazo tenant. Where are Wazo credentials stored (per organisation, encrypted)?
+4. Recording: off by default; if on, who is told, how long is audio kept, and who may play it back?
+5. Number matching: normalise Persian digits and `+98`/`09…` forms before matching `phone_norm`; what happens when two customers share a number?
+6. Offline/PWA: logging must queue and sync when the connection returns; the call itself needs signal anyway.
+
+**Suggested first slice (small, low risk):** server-side only. A Wazo webhook endpoint that writes a call-log row (number, direction, duration, matched customer/lead, user) and a click-to-call button on the customer and lead pages that asks Wazo to originate the call. No softphone, no recording, no screen pop. Call-outcome capture reuses the existing confirmation sheet, so nothing is saved without a tap.
+
+**Prerequisites:** a reachable Wazo instance and a decision on the carrier/trunk (infrastructure, not code). In code: the call-outcome step and `customers.phone_norm` already exist.
+
+---
+
+## F5. Persian text proofing (help users type clean Persian)
+
+**What:** catch and fix typing problems in free-text fields (notes, complaint descriptions, visit notes, customer and product names) before they are saved.
+
+| Layer | What it does | Cost |
+|---|---|---|
+| Browser spellcheck | `lang="fa" spellcheck="true"` on inputs and textareas; red underline in Chrome and Android keyboards, patchy on iOS Safari | one attribute, no control over the dictionary |
+| Normalisation | Arabic ي/ك to Persian ی/ک, mixed digit sets, zero-width non-joiner (نیم‌فاصله) fixes. Libraries: `@persian-tools/persian-tools` (JS), `hazm` / `Parsivar` (Python) | small; improves search and duplicate detection |
+| Hunspell `fa` dictionary | offline spellcheck via `nspell` / `typo-js` | moderate quality; compounds and zero-width non-joiners cause false positives |
+| LLM proofreading | grammar, spelling and zero-width non-joiner fixes on long text | needs signal, per-call cost, customer text leaves the device |
+| LanguageTool | Persian module exists, rule coverage limited | unverified, treat as a maybe |
+
+**Already in the app:** `lib/persian.ts` (`normalisePersian`, `matchesQuery`) maps Arabic ي/ك to Persian ی/ک for search matching. It is applied to search, not yet to what is stored or to digits and zero-width non-joiners everywhere.
+
+**Open questions**
+1. Normalise on save as well as on search? Existing rows would need a one-off backfill.
+2. Which fields get an LLM check (long notes only), and is the data-handling decision the same as F1 and F3?
+3. Does the Hunspell false-positive rate on Persian compounds make underlines more annoying than useful? Test on real notes first.
+4. Library choice: extend `lib/persian.ts` or adopt `@persian-tools/persian-tools`? Check licence, size and maintenance first (not verified here).
+
+**Suggested first slice (small, low risk):** `lang="fa" spellcheck="true"` on note fields, plus normalise-on-save in `lib/persian.ts`. LLM "check text" button later, as a confirmation tap: it proposes the fix, one tap accepts it, the usual 5 s undo applies.
+
+**Prerequisites:** none for the first slice. The LLM step shares the privacy decision with F1 and F3.
+
+---
+
+## F7. Force a new password on first sign-in
 
 **What:** an account created from the phone (or the desk) gets a one-time password that is shown once and shared. Nothing makes the person change it, so it stays their password until they do.
 
@@ -85,7 +139,7 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F5. Duplicate customers as a decision deck
+## F8. Duplicate customers as a decision deck
 
 **What:** a queue of likely duplicate businesses, each a card with the two records side by side and «ادغام» / «جدا هستند» / «بعداً».
 
@@ -95,7 +149,7 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F6. Decided: not building now
+## F9. Decided: not building now
 
 Decided during the mobile-first rollout (the owner delegated these calls):
 
