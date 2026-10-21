@@ -33,6 +33,7 @@ import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { Icon } from "@/components/meridian/Icon";
 
+const PlannerPickMap = dynamic(() => import("@/components/PlannerPickMap"), { ssr: false });
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
 const WEEKDAYS = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
@@ -301,6 +302,31 @@ export default function PlannerPage() {
       .map((lead): AddCandidate => ({ kind: "lead", lead }));
     return [...customerMatches, ...leadMatches];
   }, [addQuery, customers, leads, dayPlans]);
+
+  /* The pins on the pick map: every customer and saved lead place with a position that is not already
+     in the selected day. Keys are the ones VisitPlanFlow uses ("c" customer, "l" lead place). */
+  const pickCandidates = useMemo(() => {
+    const already = new Set(dayPlans.map((p) => `${p.entity_type}:${p.entity_id}`));
+    return [
+      ...customers
+        .filter((c) => c.lat !== null && c.lng !== null && !already.has(`customer:${c.id}`))
+        .map((c) => ({ key: `c${c.id}`, name: c.business_name, lat: c.lat as number, lng: c.lng as number })),
+      ...leads
+        .filter((l) => l.lat !== null && l.lng !== null && !already.has(`lead_location:${l.id}`))
+        .map((l) => ({ key: `l${l.id}`, name: l.name, lat: l.lat as number, lng: l.lng as number })),
+    ];
+  }, [customers, leads, dayPlans]);
+
+  async function addPicked(keys: string[]) {
+    for (const k of keys) {
+      await fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_type: k.startsWith("l") ? "lead_location" : "customer", entity_id: Number(k.slice(1)), planned_date: selectedDate }),
+      });
+    }
+    await loadWeek();
+  }
 
   async function addToPlan(customerId: number) {
     try {
@@ -1139,6 +1165,11 @@ export default function PlannerPage() {
             to it remounts the map in a visible container instead of leaving a grey box. */}
         <div className={`no-print ${pane === "list" ? "hidden md:block" : ""}`}>
           <PlannerRouteMap key={pane} stops={routeStops} facilities={facilities} />
+          {/* Choosing visits on the map: one pin each, or the nearest N to where the day starts. */}
+          <div className="mt-4">
+            <h2 className="sechead__title mb-2">انتخاب مکان‌ها از روی نقشه</h2>
+            <PlannerPickMap key={`pick-${pane}-${selectedDate}`} candidates={pickCandidates} origin={origin} dayLabel={dayLabel(new Date(selectedDate))} onAdd={addPicked} />
+          </div>
         </div>
       </div>
     </div>    </>
