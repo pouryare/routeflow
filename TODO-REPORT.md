@@ -119,4 +119,5 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [ ] Offline still covers only delivery, receipts, cheques, complaints, order drafts and new customers; reminders and notes need the network
 
 ## Next steps
+0. (in progress) Building the five F9 items you asked for: order-card swipe [done], reminder push buttons, planner map selection, expense receipt photo, duplicates deck; then merge
 1. Wait for CI on the final head, then merge PR #27 once with a merge commit

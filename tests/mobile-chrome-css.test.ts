@@ -40,3 +40,9 @@ describe("found in a real 375px browser run", () => {
     expect(css).toMatch(/\.meridian:has\(\[data-has-primary-bar\]\) \.qa-fab \{ display: none; \}/);
   });
 });
+
+describe("order pipeline cards on a phone", () => {
+  it("do not block touch scrolling (touch-action none was for the desktop drag)", () => {
+    expect(css).toMatch(/@media \(max-width: 767\.98px\) \{\s*\.meridian \.board\.pipe \.task \{ touch-action: pan-y; \}/);
+  });
+});

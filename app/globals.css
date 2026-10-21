@@ -5369,3 +5369,9 @@ body {
 /* reorder-by-drag rows (components/leads/RunPanel): a line where the row would land, the lifted row dimmed */
 .reorder-over { box-shadow: 0 -3px 0 0 var(--accent); }
 .reorder-lifted { opacity: .5; }
+
+/* On a phone the pipeline cards swipe (SwipeRow) instead of dragging, so they must let the page scroll
+   vertically and hand horizontal movement to the swipe: touch-action none would swallow both. */
+@media (max-width: 767.98px) {
+  .meridian .board.pipe .task { touch-action: pan-y; }
+}
