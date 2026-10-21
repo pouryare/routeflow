@@ -2342,6 +2342,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F118. Supplier pickup runs
+
+**What:** schedule a driver trip to collect goods from a supplier or factory as a run with its own stops, linked to the purchase order or receipt, so the pickup shows up on the same driver screen and the goods are received on return.
+
+**Already in the app:** a delivery run can include facility stops outside the numbered customer sequence: a load at the start of the day and an unload, each with a role, status, who did it and when (`run_facility_stops`, `components/driver/FacilityStopCards.tsx`, `lib/repo/unload.ts`). Facilities can be a warehouse, a factory and other kinds, so a factory could already be a place on a map. Suppliers are a separate table (`lib/repo/suppliers.ts`) and purchases are recorded only as receipts. There is no inbound stop at a supplier, and the existing load and unload roles describe the company's own warehouse and van, not a supplier's dock.
+
+**Why parked:** an inbound pickup changes the meaning of a run (stock enters the van, not only leaves), so van stock and the end-of-day unload rules would need to handle goods that were never loaded at the warehouse; supplier addresses and contacts must be usable as stops; payment on pickup (cash to the supplier) is a new money event for a driver.
+
+**Open questions**
+1. Model a supplier as a facility of kind "factory" for routing, or keep suppliers and give them a location?
+2. A pickup stop in the numbered sequence or outside it like load and unload?
+3. Link to a purchase order (F66) and prefill the receipt when the driver returns?
+4. Cash paid at the supplier recorded by the driver, with a receipt photo (see F88 and F26).
+
+**Suggested first slice:** a pickup stop role (alongside load and unload) tied to a supplier location, shown on the driver screen with navigation, and a "goods collected" tick that opens the existing receive flow at the end of the run. Cash handling later.
+
+**Prerequisites:** run facility stops (exist); F66 for the purchase order link; F31 benefits from the timing data.
+
+---
+
+## F119. Return pickup scheduling
+
+**What:** when a customer asks to return goods, the request is placed on the next convenient run for that area, and the driver sees a "pick up return" action on that customer's stop, with the reason and the quantities agreed.
+
+**Already in the app:** returns exist as an order outcome: an order can end `RETURNED`, delivery lines record a returned quantity, and the driver can record a refusal at the door (`lib/orderStateMachine.ts`, `delivery_lines.qty_returned`). A return that happens after delivery can only be recorded by a manager. Order types in the code are sale and sample; there is no return order and no pickup request, and a customer's request has nowhere to be recorded and routed.
+
+**Why parked:** accepting a return is a commercial decision (who approves, what is refundable); a pickup stop must carry the goods back and reach the warehouse returns step (F80); credit notes (not built) are the usual accounting outcome.
+
+**Open questions**
+1. Who records the request: the rep or phone sales, with a reason and approval by a manager?
+2. Should a pickup join a run already planned for that area, or create its own stop if none is near?
+3. What the driver does at the door: count, inspect, take photos, get a signature, hand over a receipt?
+4. Credit note or replacement as the outcome (a return can come with a replacement delivery).
+
+**Suggested first slice:** a "return pickup" request on a delivered order (reason, lines, quantities) that a manager approves and the planner attaches to the next run for that customer's area, showing a pick-up action on the driver stop. The return flows into the existing returned-order outcome.
+
+**Prerequisites:** F80 for the warehouse side, F12 for reasons; the order state machine (exists).
+
+---
+
+## F120. Delivery confirmation code
+
+**What:** the customer receives a short code by message when their delivery is on the way and tells it to the driver at the door; entering it confirms delivery without needing a signature or a photo.
+
+**Already in the app:** a delivery records the receiver's name, GPS position, a photo path and a signature path (see F17), and the driver confirms the stop. Customers have no notification channel in the app and no code is generated or checked.
+
+**Why parked:** it needs a message channel to customers (SMS or messaging app, see F6 and F79); customers without a phone or a signal need a fallback; a code can be shared in advance, so it proves less than a signature in some disputes; privacy of the customer's number.
+
+**Open questions**
+1. Send the code with the "on the way" message, or only when the driver arrives?
+2. Optional per customer, or required above an order value?
+3. What if the code is not available: the driver continues with a photo or signature and a reason?
+4. Store the code only as a hash, valid for one stop and a short time.
+
+**Suggested first slice:** per-customer opt-in, a six-digit code generated when the stop becomes next, shown to the dispatcher to read out or send manually, and a code field on the driver's confirmation step that falls back to the existing proof. Automatic sending later.
+
+**Prerequisites:** F79 and F6 for the customer message channel; F17 for the proof model.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
