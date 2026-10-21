@@ -25,3 +25,11 @@ export const REMINDER_PRESETS: { label: string; days: number }[] = [
   { label: "سه روز دیگر", days: 3 },
   { label: "یک هفته دیگر", days: 7 },
 ];
+
+/** Shelf life is quoted in months, so the shortcuts are too. */
+export const SHELF_PRESETS: { label: string; days: number }[] = [
+  { label: "سه ماه دیگر", days: 90 },
+  { label: "شش ماه دیگر", days: 180 },
+  { label: "یک سال دیگر", days: 365 },
+  { label: "دو سال دیگر", days: 730 },
+];

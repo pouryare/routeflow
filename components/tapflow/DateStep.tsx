@@ -8,14 +8,16 @@ import { addDaysIso } from "@/lib/flows/dates";
 /** A day, for a flow step. The presets are answers: tapping one submits at once. The calendar
  *  underneath is for the date nobody can express as an offset. A host renders this from
  *  `renderCustom` for a `date` step, passing the option that moves on. */
-export default function DateStep({ optionId, optionLabel, from, presets, ariaLabel, submit }: {
+export default function DateStep({ optionId, optionLabel, skip, from, presets, ariaLabel, submit }: {
   optionId: string;
   optionLabel: string;
+  /** A way forward that names no day -- «تاریخ انقضا ندارد». Submits with no value. */
+  skip?: { id: string; label: string };
   /** The day the presets count from (today, as ISO). */
   from: string;
   presets: { label: string; days: number }[];
   ariaLabel: string;
-  submit: (optionId: string, value: string) => void;
+  submit: (optionId: string, value?: string) => void;
 }) {
   const [iso, setIso] = useState("");
   return (
@@ -44,6 +46,12 @@ export default function DateStep({ optionId, optionLabel, from, presets, ariaLab
         <Icon name="check" size="md" />
         {optionLabel}
       </button>
+      {skip ? (
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => submit(skip.id)}>
+          <Icon name="arrow-left" size="md" />
+          {skip.label}
+        </button>
+      ) : null}
     </div>
   );
 }

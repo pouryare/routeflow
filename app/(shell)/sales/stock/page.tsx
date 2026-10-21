@@ -15,6 +15,7 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
 import { defaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
 import StockCountEntry from "@/components/flows/StockCountEntry";
+import ReceiveEntry from "@/components/flows/ReceiveEntry";
 
 export const dynamic = "force-dynamic";
 
@@ -168,7 +169,17 @@ export default async function StockPage() {
         </p>
       )}
 
-      {canCount && <StockCountEntry rows={countRows} facility={{ id: warehouseId, name: warehouseName }} />}
+      {(canCount || session.role === "owner") && (
+        <div className="flex flex-wrap gap-[var(--space-2)]">
+          {canCount && <StockCountEntry rows={countRows} facility={{ id: warehouseId, name: warehouseName }} />}
+          {session.role === "owner" && (
+            <ReceiveEntry
+              products={stock.map((r) => ({ id: r.product_id, name: r.name, base_unit: r.base_unit, avg_cost_toman: r.avg_cost_toman }))}
+              suppliers={[...new Set(purchases.map((p) => p.supplier).filter((x): x is string => !!x))].slice(0, 6)}
+            />
+          )}
+        </div>
+      )}
 
       {stock.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
