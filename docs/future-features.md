@@ -2402,6 +2402,46 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F121. Pre-orders against incoming stock
+
+**What:** reps take orders for goods on a supplier order that has not arrived yet, reserved first come, first served against the expected quantity, and converted into normal reservations when the goods are received.
+
+**Already in the app:** confirming an order reserves stock batch by batch, earliest expiry first, and shows available-to-promise as on-hand minus reserved (`reserveForOrder`, `stockLevels` in `lib/repo/stock.ts`). When stock is short, the reservation records an unbatched shortfall slice, so an oversell is allowed and visible. Nothing tracks stock that has been ordered but not received, because supplier orders are not recorded (F66), so there is no expected quantity to promise against.
+
+**Why parked:** it depends on purchase orders with reliable expected dates and quantities (F66); a late or short shipment turns every pre-order into a broken promise, so it needs a clear rule for who is served first and how customers are told; the existing backorder draft (F61) covers a related but different case (stock short after confirmation).
+
+**Open questions**
+1. How much of an incoming order may be pre-sold (all of it, or up to a safety percentage)?
+2. Priority when the shipment is short: first come first served, or by customer tier?
+3. Does the pre-order show a promised date on the order and in any customer message (F79)?
+4. Cancellation: if the shipment is cancelled or very late, the pre-orders fall back to backorders with a notice.
+
+**Suggested first slice:** once supplier orders exist, show "incoming, not yet promised" on the stock screen and allow an order line to be marked as pre-order against a specific incoming order, converting to a normal reservation at receipt. No customer messaging.
+
+**Prerequisites:** F66 for the incoming quantity; F61 for the fallback.
+
+---
+
+## F122. Custom fields on customers
+
+**What:** the owner adds their own fields to customers (for example "shop type", "number of employees", "delivery gate side") with a type (text, number, choice, date), shown on the customer page, usable in filters and exports, without a developer.
+
+**Already in the app:** customers carry a fixed set of columns, and the CRM edit route accepts only a named list of fields with validation (name, phone numbers, address, area, business type, price tier, working hours, website, Instagram and a few more, `lib/repo/crm/fields.ts`). Customer tags exist as a table (`customer_tags`), which covers labels but not typed values such as numbers or dates.
+
+**Why parked:** custom fields touch the edit route, the add-lead flow, the filters, exports and the sync to phones, and each needs the same validation as built-in fields; a free-for-all of fields makes data messy; some fields (credit, price tier) must stay built-in because the app's logic depends on them.
+
+**Open questions**
+1. A small set of types (text, number, choice, date, yes/no) and a limit of how many fields?
+2. Per organisation, with optional visibility per role (a field only managers see)?
+3. Where they appear: customer page and filters first, tap flows later?
+4. How they travel: included in the customer export and in the offline sync pull, with validation on the server.
+
+**Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
+
+**Prerequisites:** none; F37 duplicates and F98 search could later include them.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
