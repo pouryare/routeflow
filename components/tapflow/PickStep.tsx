@@ -13,9 +13,10 @@ export default function PickStep({ choices, optionId, submit, placeholder = "ج�
   placeholder?: string;
 }) {
   const [q, setQ] = useState("");
-  const shown = useMemo(() => {
+  const { shown, more } = useMemo(() => {
     const n = normalizeSearch(q);
-    return (n ? choices.filter((c) => normalizeSearch(c.label).includes(n)) : choices).slice(0, 8);
+    const all = n ? choices.filter((c) => normalizeSearch(c.label).includes(n)) : choices;
+    return { shown: all.slice(0, 8), more: all.length - 8 };
   }, [q, choices]);
   return (
     <div className="tf-pick">
@@ -28,6 +29,7 @@ export default function PickStep({ choices, optionId, submit, placeholder = "ج�
           </button>
         ))}
       </div>
+      {more > 0 ? <p className="tf-note">برای دیدن بقیه نام را جستجو کنید</p> : null}
     </div>
   );
 }

@@ -8,6 +8,7 @@ import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
+import PaymentFlow from "@/components/flows/PaymentFlow";
 
 const METHOD_LABEL: Record<string, string> = {
   CASH: "نقد",
@@ -64,6 +65,9 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
   const [note, setNote] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /* The tap flow remounts per opening (the key) so each recording starts on its first
+     question; `open` only slides the sheet in and out. */
+  const [flow, setFlow] = useState({ key: 0, open: false });
 
   const customerName = useMemo(() => {
     const m = new Map(customers.map((c) => [c.id, c.business_name]));
@@ -266,7 +270,18 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
     <div dir="rtl" className="mx-auto flex max-w-3xl flex-col gap-6 p-4">
       <h1 className="text-lg font-bold text-text">دریافت وجه</h1>
 
-      <form onSubmit={submit} className="flex flex-col gap-3 rounded-lg border border-border bg-surface p-4">
+      {/* On a phone the form is replaced by the tap flow; the full form stays from md up,
+          where backdating a receipt or typing a note is comfortable. */}
+      <button
+        type="button"
+        onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
+        className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-3 text-base font-medium text-accent-ink md:hidden"
+      >
+        <Icon name="plus" size="md" />
+        ثبت دریافت جدید
+      </button>
+
+      <form onSubmit={submit} className="hidden flex-col gap-3 rounded-lg border border-border bg-surface p-4 md:flex">
         <label className="flex flex-col gap-1 text-sm">
           مشتری
           <select
@@ -609,6 +624,17 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
           </div>
         ) : null}
       </div>
+      {flow.key > 0 && (
+        <PaymentFlow
+          key={flow.key}
+          open={flow.open}
+          customers={customers}
+          customerId={customerId ? Number(customerId) : undefined}
+          onRecorded={() => void load()}
+          onClose={() => setFlow((f) => ({ ...f, open: false }))}
+          onReopen={() => setFlow((f) => ({ ...f, open: true }))}
+        />
+      )}
     </div>
   );
 }

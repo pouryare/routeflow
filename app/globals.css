@@ -4818,7 +4818,7 @@ body {
 .meridian .tapflow .tf-go:disabled { opacity: .4; cursor: not-allowed; }
 .meridian .tapflow .tf-skip { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 6px; justify-self: center; }
 /* Generic step bodies (amount / pick / stepper): shared by every non-CRM flow. */
-.meridian .tapflow .tf-amount, .meridian .tapflow .tf-pick, .meridian .tapflow .tf-stepper { display: grid; gap: 10px; }
+.meridian .tapflow .tf-amount, .meridian .tapflow .tf-pick, .meridian .tapflow .tf-stepper, .meridian .tapflow .tf-date { display: grid; gap: 10px; }
 .meridian .tapflow .tf-amount .tf-input { font-size: 22px; text-align: center; }
 .meridian .tapflow .tf-stepper .tf-row {
   display: grid; grid-template-columns: 1fr 76px auto 76px; align-items: center; gap: 8px; min-height: 54px;

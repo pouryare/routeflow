@@ -32,9 +32,13 @@ const BANKS: { id: string; label: string }[] = [
   { id: "parsian", label: "پارسیان" },
 ];
 
+/** A screen that is only ever about cheques (the cheques board) passes `vars.method = "CHEQUE"`,
+ *  and the flow skips the method question rather than asking the one thing it already knows. */
+const firstAfterWho = (ctx: FlowContext): string => (ctx.vars.method === "CHEQUE" ? "cheque_no" : "method");
+
 export const paymentFlow: FlowConfig = {
   id: "payment",
-  start: (ctx) => (ctx.vars.customer_id ? "method" : "who"),
+  start: (ctx) => (ctx.vars.customer_id ? firstAfterWho(ctx) : "who"),
   budget: { common: 2, longest: 6 },
   steps: {
     who: {
@@ -42,7 +46,7 @@ export const paymentFlow: FlowConfig = {
       kind: "pick",
       q: "از کدام مشتری دریافت کردید؟",
       choices: (ctx) => ctx.recentCustomers.map((c) => ({ id: String(c.id), label: c.name })),
-      options: [{ id: "pick", label: "ادامه", next: "method" }],
+      options: [{ id: "pick", label: "ادامه", next: (ctx) => firstAfterWho(ctx) }],
     },
     method: {
       id: "method",
@@ -103,6 +107,9 @@ export function customerIdOf(ctx: FlowContext, st: FlowState): number {
   return Number(ctx.vars.customer_id ?? st.values.who);
 }
 
+/** The method answered in the flow, or the one the opening screen fixed. */
+export const methodOf = (ctx: FlowContext, st: FlowState): string => st.values.method ?? ctx.vars.method ?? "";
+
 /** Which endpoint, and the exact body it expects. A cheque goes to /api/cheques, which records
  *  the cheque and its payment in one transaction; everything else to /api/payments. The server
  *  allocates the money to the oldest unpaid orders itself. */
@@ -110,7 +117,7 @@ export function paymentRequest(ctx: FlowContext, st: FlowState): { url: string; 
   const customer_id = customerIdOf(ctx, st);
   const amount_toman = Number(st.values.amount);
   const received_at = ctx.vars.received_at;
-  if (st.values.method === "CHEQUE") {
+  if (methodOf(ctx, st) === "CHEQUE") {
     return {
       url: "/api/cheques",
       body: {
@@ -128,7 +135,7 @@ export function paymentRequest(ctx: FlowContext, st: FlowState): { url: string; 
     body: {
       customer_id,
       amount_toman,
-      method: st.values.method,
+      method: methodOf(ctx, st),
       received_at,
       reference: st.values.reference || null,
       note: null,
@@ -140,11 +147,12 @@ export function paymentRequest(ctx: FlowContext, st: FlowState): { url: string; 
 export function paymentChips(ctx: FlowContext, st: FlowState): string[] {
   const id = customerIdOf(ctx, st);
   const name = ctx.vars.customer ?? ctx.recentCustomers.find((c) => c.id === id)?.name ?? null;
-  const method = METHOD_LABEL[st.values.method] ?? st.values.method;
+  const m = methodOf(ctx, st);
+  const method = METHOD_LABEL[m] ?? m;
   return [
     ...(name ? [name] : []),
     `${method}: ${faToman(Number(st.values.amount))}`,
-    ...(st.values.method === "CHEQUE" ? [`چک ${st.values.cheque_no} · سررسید ${faJalaliDate(st.values.due)}`] : []),
+    ...(m === "CHEQUE" ? [`چک ${st.values.cheque_no} · سررسید ${faJalaliDate(st.values.due)}`] : []),
     ...(st.values.reference ? [`پیگیری ${st.values.reference}`] : []),
     `تاریخ: ${faJalaliDate(ctx.vars.received_at)}`,
   ];

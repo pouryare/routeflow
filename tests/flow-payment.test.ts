@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
 import { startFlow, answerStep, viewStep } from "@/lib/crm/flows/machine";
 import { paymentFlow, paymentRequest, paymentChips, METHOD_LABEL } from "@/lib/flows/payment";
+import { checkFlow } from "@/lib/crm/flows/validate";
 import { assertFlowBudget, assertNoRawEnumLabels } from "./helpers/flowAssert";
 
 const base: FlowContext = {
@@ -103,5 +104,30 @@ describe("payment flow", () => {
   it("offers no 'credit note' (that is created by the system, not collected at a door)", () => {
     const labels = (viewStep(paymentFlow, known, startFlow(paymentFlow, known)).options).map((o) => o.id);
     expect(labels).not.toContain("CREDIT_NOTE");
+  });
+});
+
+describe("a screen that only deals with cheques", () => {
+  const chq: FlowContext = { ...known, vars: { ...known.vars, method: "CHEQUE" } };
+  it("skips the method question when the customer is known", () => {
+    const st = startFlow(paymentFlow, chq);
+    expect(viewStep(paymentFlow, chq, st).id).toBe("cheque_no");
+  });
+  it("asks who first, then goes straight to the cheque number", () => {
+    const noCustomer: FlowContext = { ...base, vars: { ...base.vars, method: "CHEQUE" } };
+    let st = startFlow(paymentFlow, noCustomer);
+    st = answerStep(paymentFlow, noCustomer, st, "pick", "6");
+    expect(viewStep(paymentFlow, noCustomer, st).id).toBe("cheque_no");
+    st = answerStep(paymentFlow, noCustomer, st, "ok", "77");
+    st = answerStep(paymentFlow, noCustomer, st, "tejarat");
+    st = answerStep(paymentFlow, noCustomer, st, "ok", "2026-11-30");
+    st = answerStep(paymentFlow, noCustomer, st, "ok", "1000");
+    expect(paymentRequest(noCustomer, st)).toMatchObject({ url: "/api/cheques", body: { customer_id: 6, cheque_no: "77", bank_name: "تجارت" } });
+  });
+  it("is 4 taps from the cheques board with a known customer", () => {
+    const r = checkFlow(paymentFlow, [{ ctx: chq, values: { cheque_no: "1", due: "2026-12-01", amount: "1" } }]);
+    expect(r.deadEnds).toEqual([]);
+    expect(r.shortest).toBe(4);
+    expect(r.longest).toBe(4);
   });
 });
