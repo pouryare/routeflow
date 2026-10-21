@@ -30,7 +30,13 @@
 - [x] Decisions (you said: go with my recommendations), implemented as three commits: a manual stock movement may not take stock below zero (409 with the current on-hand; deliveries and receipts keep their tolerance); a task's linked customer/order must exist in the organisation; a signed-in user opening /login goes to their home, decided on the database-checked session so a stale cookie cannot loop — verified on a production build
 - [x] Decided to leave: unknown-id pages returning HTTP 200, CRM maps link host, the 5 dev-tooling npm advisories, two sessions sharing the report (one section each)
 
+- [x] Parked feature F4 added to `docs/future-features.md`: Wazo VoIP inside the CRM/ERP (click-to-call, call logging, screen pop; first slice is server-side only)
+
+- [x] Parked feature F5 added to `docs/future-features.md`: Persian text proofing (spellcheck attribute, normalisation, Hunspell, LLM check); notes existing `lib/persian.ts`
+
 ## Not done / gaps
+- [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
+- [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
