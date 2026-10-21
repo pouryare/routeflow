@@ -95,12 +95,15 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F6. Smaller gaps that need a decision first
+## F6. Decided: not building now
 
-- **Expense receipt photo.** `photos.entity_type` is a database constraint (customer, district, facility, …). Attaching a photo to an expense (a journal) needs the constraint widened with a table rebuild, the gallery's label lookup extended, and a retention decision; it belongs with F1.
-- **Skip a driver stop.** Stops are pending, delivered or refused. «Skipped, will return later» is a new state with consequences for the run's totals and for what the customer is told; decide that before adding a swipe for it.
-- **More offline writes.** The sync server accepts delivery, cash/card payment, order drafts and customer capture. Cheque receipts, complaints, reminders and notes have no offline op; each needs one and an idempotency key.
-- **Reminder push buttons.** A reminder notification should carry the reminder's own id (today it carries the customer or district it is about) so «انجام شد» can resolve it.
+Decided during the mobile-first rollout (the owner delegated these calls):
+
+- **Expense receipt photo — no.** `photos.entity_type` is a database constraint (customer, district) and photos inherit a group from what they are of; an expense has neither. It needs a table rebuild, a different scoping rule and a retention decision, and belongs with F1 (camera). The supplier and a note go in the journal memo meanwhile.
+- **Skip a driver stop — built as «later».** No new state: the stop stays pending and moves to the end of the run (`deferStop`, `PATCH /api/driver/stops/:id {action:"defer"}`), with a swipe, a button and the 5 s undo.
+- **More offline writes — built for cheques and complaints.** Reminders and notes stay online-only (low value, and a lost reminder is visible at once).
+- **Reminder push buttons — no.** The notification carries the customer/district a reminder is about, not the reminder; fixing that changes how rules fan out. Revisit with per-event pushes.
+- **Duplicates deck, swipe on order cards, planner map selection — no.** See their entries above and in the rules document: no pair queue/merge exists, draft cards already use drag, and the planner map has no pool to pick from.
 
 ---
 

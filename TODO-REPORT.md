@@ -90,6 +90,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Decisions pass (you delegated them): reversible deletes and deactivation now undo instead of asking (holiday, photo, saved place, account; places-with-restore keep it), only the batch recall still confirms; «بعداً این توقف» sends a pending stop to the end of the run (no new state: the stop stays pending, server action + swipe + button, tested); cheque receipts and complaints queue offline like receipts (manager / phone-sales only, validated like the online routes, idempotent, tested); no dropdowns left outside the allowlist (0 of 46); expense photo, duplicates deck, order-card swipe, planner map selection and reminder push buttons decided **not** to build (reasons in `docs/future-features.md` F6)
 - [x] Gaps pass (3): real Chromium run at 375px as every demo role (found and fixed: blank /leads, crashing expenses page, 108px-wide pick lists, «+ ثبت» button covering the order submit bar); push notification button for a cheque due (deposit / cleared, runs in the service worker, falls back to opening the app); cash and card receipts made offline queue on the device and send on reconnect (verified in the browser: one `payment.record` held in the outbox); drag-to-reorder stops in the leads run list; users table as cards with pickers; commission editor on pickers, chips and keypad; «هفتهٔ بعد» delivery chip back in the order form; rep stage as chips; dropdowns 10→5 of 46
 - [x] Leftovers (round 2): long-press selection on cheques (hold a card or tap «انتخاب چند چک», tap to pick, one bar moves them all with the 5 s undo; only moves the server allows are sent and skipped ones are counted); swipe «ثبت نتیجه» on Pocket tasks that belong to a customer; `SwipeRow` gained a long-press hook
 - [x] Leftovers done so far: manager credit-approval deck on the briefing (approve / reject with the consequence printed, 5 s undo); map-search sort and route list, business type and contact role are chips; remaining dropdowns 10→6 of 46 (13 %, gate target ≤ 15 %); accounting trial balance and balance sheet become cards through the shared table
@@ -107,18 +108,9 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
-- [ ] Not tested on a physical phone and no per-role day of tapping counted (the browser run was emulated, on demo data); interaction budgets remain targets
-- [ ] Expense receipt photo: photos can only be attached to customers, districts and facilities (a database constraint); an expense photo needs a schema change and its own spec (F1 in docs/future-features.md). The supplier is still written into the journal memo
-- [ ] Offline: delivery and cash/card receipts queue; cheque receipts, order drafts, complaints and the rest are still online-only (cheques have no offline op in the sync server)
-- [ ] Skip-with-reason on a driver stop: the server has no «skipped» state (stops are pending / delivered / refused); a swipe would need that product decision first
-- [ ] Swipe on order pipeline cards: draft cards already use touch drag to move between stages, which would fight a swipe; on phones the card opens a sheet with the confirm button instead
-- [ ] Planner map selection: the planner's map shows one fixed day route (there is no pool of places to pick from); adding a visit is already two taps (VisitPlanEntry)
-- [ ] Duplicates deck parked (F5): no pair queue or merge exists
-- [ ] Push buttons only for a cheque due; reminder pushes name the reminder's customer, not the reminder, so «انجام شد» has no target to hit
-- [ ] Remaining 5 dropdowns: map layer filters (3), a day-group picker (1), plus one other; `confirmAction` (a confirm-style helper the audit does not see) is still used for deactivating a user
-- [ ] CI results for the newest commits not yet seen
-- [ ] PR #27 stays unmerged until you say all phases are done
+- [ ] Decided not to build, with reasons (docs/future-features.md F6): expense receipt photo, duplicates deck, swipe on order cards, planner map selection, reminder push buttons
+- [ ] Not tried on a physical phone (you said to drop that); everything was run in an emulated 375px Chromium on demo data
+- [ ] Offline still covers only delivery, receipts, cheques, complaints, order drafts and new customers; reminders and notes need the network
 
 ## Next steps
-1. Phase I (admin presets); Phase E leftovers (credit approvals, duplicates, selection mode) (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
-2. Phase 8 layout pass; then the design-rules document and its check script
+1. Wait for CI on the final head, then merge PR #27 once with a merge commit

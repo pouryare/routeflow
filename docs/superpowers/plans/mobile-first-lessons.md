@@ -229,3 +229,10 @@ Seeded a small demo database (`npm run seed:demo -- --scale=smoke --db=/tmp/...`
 - **The offline outbox already existed; the UI just did not use it.** `postJSON(url, body, outbox)` queues a `payment.record` fact when the device is offline; wiring the payment flow was ten lines. Look for the plumbing before building it.
 - **Drag by a handle, not by the row.** The row stays scrollable and tappable; the handle (`touch-none`, pointer capture) owns the drag, and `slotAt`/`moveItem` decide where it lands.
 - **Some gaps are product questions, not work:** a «skipped» stop state, a pair queue for duplicates, a photo of an expense. Each is written down with what it needs.
+
+## Decisions pass
+
+- **When the owner delegates a policy, change the test that encoded the old one and say so.** Reversible deletes undo; the one irreversible action asks. The destructive-confirm test now holds each handler to its kind.
+- **«Later» is not a state.** Skipping a door for now is "come back to it last"; moving the stop to the end of the run answers it without a new status or any change to totals.
+- **Offline authorisation lives in the sync server, not the client.** Cheque and complaint mutations check the person's role set and re-validate the payload exactly like the online routes; the ledger (client_uuid) makes replays harmless.
+- **A grep audit counts words in comments.** Zero dropdowns took rewording one comment that said "<select>".

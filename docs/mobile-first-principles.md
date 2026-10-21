@@ -9,7 +9,7 @@ rule came from a real mistake, the mistake is named.
 real Chromium at 375x812 with touch emulation against a seeded demo database, as each demo role
 (driver, phone sales, field rep, owner); that run found four defects no unit test had (a blank page, a
 crash, narrow answer lists, a button covering the submit bar), all fixed and pinned by tests. The
-measurable part of the gate is met (dropdowns outside the allowlist are 5 of the original 46, no
+measurable part of the gate is met (dropdowns outside the allowlist are 0 of the original 46, no
 native dates, no tiny targets, no confirm dialogs). It has **not** been run on a physical phone, and no
 one has yet counted taps through a full working day per role, so treat the interaction budgets in §5
 as targets and correct them here when someone measures.
