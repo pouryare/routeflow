@@ -283,6 +283,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
 
+**Correction (found later):** the offline layer reaches beyond drivers. `lib/offline` (IndexedDB store, outbox, sync engine, device-generated ids) already queues draft orders (create, edit, submit), delivery start and complete, payments, cheques, complaints and new-customer capture, and the pull sends orders and customers to sales roles too (`lib/repo/syncPull.ts`, `lib/repo/syncMutations.ts`). Order approval, planning, freezing and credit decisions are refused offline on purpose. Tasks, notes and call outcomes are not covered (see F105).
+
 **Why parked:** conflict handling (two people editing the same record offline), idempotent writes and clear "not yet sent" states for every flow are large cross-cutting work; the existing `/api/sync/*` covers drivers only.
 
 **Open questions**
@@ -2037,6 +2039,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a read-only unified list assembled from the queues that already exist (credit approvals, orders in review, complaints to triage, cheques due), linking to the existing decision screens. Common actions later.
 
 **Prerequisites:** the existing decks and approvals; F48, F76, F82 and F88 plug into it later.
+
+---
+
+## F103. Rep mileage log
+
+**What:** distance driven by each salesperson on visits, estimated from the locations of the customers visited that day (or entered at month end), for reimbursement and for comparing effort across territories.
+
+**Already in the app:** visits and calls are logged against customers, customers and leads have coordinates, a straight-line distance helper exists (`lib/geo.ts`), and routing has road-distance support for delivery runs. Delivery runs record planned and actual distance (`delivery_runs.actual_distance_km`). Salespeople's own movement is not stored anywhere, so there is no log to total.
+
+**Why parked:** a distance derived from visit points is only an estimate (the order of visits and the road network matter); continuous tracking would be more accurate but raises the privacy issues in F68; reimbursement money rides on the number, so disputes need a clear method.
+
+**Open questions**
+1. Method: sum of road distances between the day's logged visit locations in time order (estimate), or manual odometer entries at start and end of day?
+2. Starting and ending point: home, office, or the first and last visit?
+3. Approval by the group manager before it reaches reimbursement (F88)?
+4. Non-visit trips (collecting a cheque, a meeting) added by hand.
+
+**Suggested first slice:** a day summary for each rep: the visits logged in time order and the estimated road distance between them, using the routing distance helper, shown to the rep and manager. No reimbursement link yet.
+
+**Prerequisites:** visit activities with locations (exist); F68 if position events are stored; F88 for the payout.
+
+---
+
+## F104. Customer snapshot on call pickup
+
+**What:** a compact card shown when a rep opens a customer from a call list: balance, last order, last note, open tasks, risk flags, and the best time to call, so the rep is ready within two seconds.
+
+**Already in the app:** the briefing's call list shows only each customer's name and last purchase date and links to the customer page (`lib/repo/briefing.ts`); the customer page has the history timeline, purchase history, photos and reminders; the visit "intel" flow collects business facts (size, current supplier channel, products used, best time to visit, a note for the next visitor, `lib/crm/intel.ts`). Debt and risk (churn, credit) are computed elsewhere. They are not combined into one pre-call card.
+
+**Why parked:** a card must be fast, so its pieces need to come from one cheap query; too much on it defeats the purpose; each field needs its own role check (a rep may not see another group's balance).
+
+**Open questions**
+1. Which five facts, in what order? Candidates: balance and overdue, last order date and items, last note, open tasks, next best action.
+2. Show it as a sheet over the call list or at the top of the customer page?
+3. Include the intel facts (best time to call, supplier channel)?
+4. Offline cache for the most recent customers (see F105).
+
+**Suggested first slice:** a bottom sheet opened from a call-list row showing balance, last order, last note and open tasks from existing data, with a "call" and "log outcome" button. No new scoring.
+
+**Prerequisites:** none; F8, F46 and F47 add signals later.
+
+---
+
+## F105. Offline tasks and notes
+
+**What:** reps can read their tasks and customer notes, add notes and log call outcomes with no signal, synced when the connection returns.
+
+**Already in the app:** an offline layer exists (`lib/offline`: an IndexedDB store, an outbox, a sync engine, queue-if-offline, clock-skew handling and ids generated on the device). Offline it can queue draft orders (create, edit, submit), delivery start and complete, payment records, cheque records, complaint records and new-customer capture (`lib/repo/syncMutations.ts`). The pull sends the catalogue, and orders and customers for the user's scope. Tasks, notes (activities) and call outcomes are not in the pull or in the queued actions, and approvals (order approve, plan, freeze, credit decision) are explicitly refused offline. Note: this means F13 should record that the layer reaches beyond drivers.
+
+**Why parked:** tasks change on the server while the rep is offline (reassigned, completed by a manager), so conflict rules are needed; a call outcome creates follow-up tasks on the server, which the offline copy must not duplicate; the pulled data grows with each added table.
+
+**Open questions**
+1. Which actions first: read tasks, add a note, close a task, log a call outcome?
+2. Conflict rule when a task changed on the server meanwhile: server wins and the rep is told?
+3. Do offline call outcomes create their follow-up task locally, with a temporary id replaced on sync?
+4. How many days of tasks and customers are cached, and how is the cache cleared on logout?
+
+**Suggested first slice:** pull the user's open tasks and the last notes for their customers, show them read-only offline, and queue "add note" only (a pure append, no conflict). Task closing and call outcomes after that.
+
+**Prerequisites:** the offline layer and sync pull (exist); F13 describes the wider goal.
 
 ---
 
