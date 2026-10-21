@@ -11,8 +11,7 @@ import { customerIdOf, paymentChips, paymentFlow, paymentRequest } from "@/lib/f
 import { faToman } from "@/lib/format";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
-import { getSyncEngine } from "@/lib/offline/syncEngine";
-import { postJSON } from "@/lib/offline/net";
+import { QUEUED_MESSAGE, queueIfOffline } from "@/lib/offline/queueIfOffline";
 
 export interface PaymentCustomer {
   id: number;
@@ -68,19 +67,11 @@ export default function PaymentFlow({
   const { state, setState, onSaved } = useFlowHost(paymentFlow, ctx, {
     send: async (st) => {
       const req = paymentRequest(ctx, st);
-      /* With no signal a cash/card receipt is a FACT that already happened: it goes into the device
-         outbox and is sent when the connection returns (a cheque has no offline op, so it still
-         needs the network). */
-      if (req.url === "/api/payments" && typeof navigator !== "undefined" && navigator.onLine === false) {
-        try {
-          const queued = await postJSON(req.url, req.body, getSyncEngine().outbox);
-          if (queued.queued) {
-            toast("اینترنت قطع است؛ دریافت روی گوشی ذخیره شد و به‌محض اتصال ارسال می‌شود.", "info");
-            return { ok: true };
-          }
-        } catch {
-          /* the outbox refused: fall through to a normal attempt, which will report the failure */
-        }
+      /* With no signal a receipt or a cheque is a FACT that already happened: it goes into the device
+         outbox and is sent when the connection returns. */
+      if (await queueIfOffline(req.url, req.body)) {
+        toast(QUEUED_MESSAGE, "info");
+        return { ok: true };
       }
       const res = await fetch(req.url, {
         method: "POST",

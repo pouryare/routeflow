@@ -15,6 +15,8 @@ const FACTS: OfflineOp[] = [
   "delivery.start",
   "delivery.complete",
   "payment.record",
+  "cheque.record",
+  "complaint.record",
   "customer.capture",
 ];
 const CLAIMS: OfflineOp[] = ["order.approve", "order.plan", "order.freeze", "credit.decide"];

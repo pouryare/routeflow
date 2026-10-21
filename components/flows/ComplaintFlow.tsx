@@ -5,6 +5,8 @@ import TapFlow from "@/components/tapflow/TapFlow";
 import FlowDone from "@/components/tapflow/FlowDone";
 import { useFlowHost } from "@/components/tapflow/useFlowHost";
 import { EMPTY_CONTEXT, type FlowContext } from "@/lib/crm/flows/types";
+import { useToast } from "@/components/ToastProvider";
+import { QUEUED_MESSAGE, queueIfOffline } from "@/lib/offline/queueIfOffline";
 import { complaintChips, complaintFlow, complaintPayload } from "@/lib/flows/complaint";
 
 export interface ComplaintCustomer {
@@ -58,12 +60,18 @@ export default function ComplaintFlow({
     };
   }, [customers, products, customerId, orderId]);
 
+  const toast = useToast();
   const { state, setState, onSaved } = useFlowHost(complaintFlow, ctx, {
     send: async (st) => {
+      const body = complaintPayload(ctx, st);
+      if (await queueIfOffline("/api/sales/complaints", body as Record<string, unknown>)) {
+        toast(QUEUED_MESSAGE, "info");
+        return { ok: true };
+      }
       const res = await fetch("/api/sales/complaints", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(complaintPayload(ctx, st)),
+        body: JSON.stringify(body),
       });
       if (res.ok) return { ok: true };
       const json = (await res.json().catch(() => ({}))) as { error?: string };

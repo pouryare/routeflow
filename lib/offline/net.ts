@@ -23,6 +23,8 @@ export function noteServerTime(serverIso: string | undefined): void {
 const OFFLINE_ENDPOINTS: { test: RegExp; op: OfflineOp }[] = [
   { test: /\/api\/sales\/deliveries\/\d+\/complete$/, op: "delivery.complete" },
   { test: /\/api\/payments$/, op: "payment.record" },
+  { test: /\/api\/cheques$/, op: "cheque.record" },
+  { test: /\/api\/sales\/complaints$/, op: "complaint.record" },
 ];
 
 function matchOfflineOp(url: string): OfflineOp | null {

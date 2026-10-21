@@ -231,4 +231,36 @@ describe("applyMutations", () => {
     // Documenting today's behaviour, not endorsing it. See the comment above.
     expect(res.notadriver.status).toBe("applied");
   });
+
+  describe("cheque and complaint facts made offline", () => {
+    const today = () => new Date().toISOString().slice(0, 10);
+    const cheque = (extra: Record<string, unknown> = {}) => ({
+      customer_id: custId,
+      amount_toman: 5_000_000,
+      cheque_no: "123456",
+      bank_name: "ملی",
+      due_date: new Date(Date.now() + 30 * 86_400_000).toISOString().slice(0, 10),
+      received_at: new Date().toISOString(),
+      ...extra,
+    });
+    it("a manager's cheque lands once, and replaying the batch adds nothing", () => {
+      const batch = [mut({ client_uuid: "ch1", op: "cheque.record", payload: cheque() })];
+      expect(applyMutations(1, owner, batch).ch1.status).toBe("applied");
+      applyMutations(1, owner, batch);
+      expect((getDb().prepare("SELECT COUNT(*) AS n FROM cheques").get() as { n: number }).n).toBe(1);
+    });
+    it("a cheque from someone who may not record cheques, or with bad data, is refused", () => {
+      expect(applyMutations(1, driver, [mut({ client_uuid: "ch2", op: "cheque.record", payload: cheque() })]).ch2.status).toBe("failed");
+      expect(applyMutations(1, owner, [mut({ client_uuid: "ch3", op: "cheque.record", payload: cheque({ amount_toman: 12.5 }) })]).ch3.status).toBe("failed");
+      expect(applyMutations(1, owner, [mut({ client_uuid: "ch4", op: "cheque.record", payload: cheque({ due_date: "zzz" }) })]).ch4.status).toBe("failed");
+    });
+    it("a complaint is filed once; an unknown category is refused", () => {
+      const ok = mut({ client_uuid: "cp1", op: "complaint.record", payload: { customer_id: custId, category: "spoilage", severity: "high", description: "بد بو" } });
+      expect(applyMutations(1, owner, [ok]).cp1.status).toBe("applied");
+      applyMutations(1, owner, [ok]);
+      expect((getDb().prepare("SELECT COUNT(*) AS n FROM quality_complaints").get() as { n: number }).n).toBe(1);
+      expect(applyMutations(1, owner, [mut({ client_uuid: "cp2", op: "complaint.record", payload: { category: "nope" } })]).cp2.status).toBe("failed");
+      void today;
+    });
+  });
 });
