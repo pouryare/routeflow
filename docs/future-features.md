@@ -317,6 +317,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** several warehouses with stock transfers between them, per-branch ledgers, and consolidated reporting across branches.
 
+**Correction (found later):** stock is already location-aware, so the original premise below is too strong. Stock movements and batches carry a `facility_id`, a facility can be a warehouse, cold storage, van, factory or another kind, and stock moves between locations as paired `TRANSFER_OUT` / `TRANSFER_IN` movements (used when loading and unloading vans, `lib/repo/vanStock.ts`, `lib/repo/unload.ts`). Reservations still use the organisation's default facility. What is missing is warehouse-to-warehouse transfers as a first-class flow, per-branch ledgers and consolidated reporting.
+
 **Why parked:** stock, batches, runs and the ledger currently assume one stock location per organisation; moving to many touches nearly every stock and accounting query.
 
 **Open questions**
@@ -1795,6 +1797,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a read-only monthly sheet per person assembled from the three existing commission statements plus targets, with a CSV export and no salary or attendance columns.
 
 **Prerequisites:** the commission statements (exist); F25 and F88 add attendance and reimbursements; F27 for logging exports.
+
+---
+
+## F91. Call and visit quota tracking
+
+**What:** a daily or weekly target for the number of calls and visits per salesperson, with a simple progress bar on their day and a summary for managers, kept separate from revenue targets.
+
+**Already in the app:** targets exist for revenue, kilograms and order count per person or group and month (`lib/repo/targets.ts`, `TargetMetric`). Calls and visits are logged as activities with outcomes, and the coverage analytics already report how many visits actually got logged and how long the days ran (`lib/repo/coverageAnalytics.ts`). There is no target for the number of calls or visits, so activity is measured but never compared with a goal.
+
+**Why parked:** activity quotas can encourage quantity over quality (many short, pointless calls); the right number differs by role and season; the count must come from logged outcomes, not taps on a counter.
+
+**Open questions**
+1. Count calls, visits, or both? Does a no-answer count?
+2. Daily, weekly, or both; per role or per person?
+3. Shown to the rep only, or compared in a team table? Start with the rep and their manager.
+4. Pair with outcome measures (orders per call) so the number alone is not the goal (see F41).
+
+**Suggested first slice:** extend targets with a "calls and visits per week" metric counted from the existing activities, and show the progress bar on the rep's day. No team ranking.
+
+**Prerequisites:** the activity timeline and targets (exist); F41 for quality alongside quantity.
+
+---
+
+## F92. Territory revenue map
+
+**What:** a map of revenue by district compared with the district's potential (customers and prospects), to show where growth is available and which districts are over- or under-served.
+
+**Already in the app:** the map has a customer density heat map (`components/HeatmapLayer.tsx`), districts with a coverage status (visited, needs coverage, not allowed, unknown), and a coverage and cost-to-serve analytics module (`lib/repo/coverageAnalytics.ts`). The heat map shows where customers are, not how much they buy, and there is no per-district revenue or potential figure.
+
+**Why parked:** "potential" needs a definition (number of businesses of the right type in the district, from lead imports; population; competitor presence) and those figures may be thin or stale; district boundaries must stay consistent for trends to mean anything; group-scoped views must not reveal another group's revenue.
+
+**Open questions**
+1. Potential from what: the count of known customers and leads per district, an owner-entered estimate, or both?
+2. Metric: revenue, kilograms or orders; last 90 days against the previous 90?
+3. Visual: a district colour scale (low, expected, high) or a ratio of revenue to potential?
+4. Who sees it: the owner for all districts, a group manager for their group's districts only.
+
+**Suggested first slice:** colour each district by revenue over the last 90 days (from delivered orders grouped by the customer's district) on the existing map, group-scoped, with potential left out for now.
+
+**Prerequisites:** districts and customer district assignment (exist); lead data supplies potential later.
+
+---
+
+## F93. Warehouse bin locations and stock transfers
+
+**What:** record where inside a warehouse each batch is kept (aisle, shelf, bin or cold room), move stock between bins with a scan, keep a history of who moved what, and show locations on pick lists.
+
+**Already in the app:** stock is tracked per location (`facility_id` on stock movements and batches), where a location can be a warehouse, cold storage, van and several other kinds (`facilities`). Moving stock between two locations is already done as a paired `TRANSFER_OUT` and `TRANSFER_IN` movement, used when loading a van and when unloading it (`lib/repo/vanStock.ts`, `lib/repo/unload.ts`), and available as a manual movement kind. There is no level below a location: no aisle, shelf or bin.
+
+**Why parked:** bin tracking needs discipline at every move or the data rots; it multiplies the transfer volume; pick lists ordered by bin only help after the physical layout is mapped; label and scan support (F1, F30, and label printing) should exist first.
+
+**Open questions**
+1. Model bins as child locations of a warehouse, or as a free-text "position" on a batch's stock record?
+2. Scan to move (needs labels on bins and batches) or pick from a list?
+3. Does the first slice stay at "which cold room or zone" rather than shelf-level?
+4. Should reservations and FEFO picking consider bin proximity?
+
+**Suggested first slice:** add a zone field (for example cold room, dry store, returns) to warehouse stock via the existing transfer movement, with a zone-to-zone transfer in the stock screen and a history list. Shelf-level bins later.
+
+**Prerequisites:** stock movements and facilities (exist); F1 and F30 for scanning.
 
 ---
 
