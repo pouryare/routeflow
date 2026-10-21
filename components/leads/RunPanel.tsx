@@ -1,5 +1,7 @@
 "use client";
 
+import { useRef, useState } from "react";
+import { moveItem, slotAt } from "@/lib/reorder";
 import { faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
 import { NavAppId, navApp, routeIsSingleLeg, droppedWaypoints } from "@/lib/navApps";
@@ -29,6 +31,7 @@ export default function RunPanel({
   routeHref,
   navigateHref,
   onMove,
+  onReorder,
   onRemove,
   onClear,
   onOptimise,
@@ -43,6 +46,8 @@ export default function RunPanel({
   routeHref: string | null;
   navigateHref: (stop: RunStop) => string;
   onMove: (id: number, dir: -1 | 1) => void;
+  /** Drag-to-reorder: the new order of stop ids. The up/down buttons stay for keyboards. */
+  onReorder?: (ids: number[]) => void;
   onRemove: (id: number) => void;
   onClear: () => void;
   onOptimise: () => void;
@@ -53,6 +58,29 @@ export default function RunPanel({
   /** Opens the "سپردن مسیر" assignment flow. Omitted for a driver, who cannot assign. */
   onAssignRoute?: () => void;
 }) {
+  /* Dragging a stop by its handle: the row under the pointer shows a drop line, and letting go
+     reorders. Pointer events with capture on the handle (touch-none keeps the page from scrolling
+     under the finger); the decision is lib/reorder. */
+  const listRef = useRef<HTMLOListElement>(null);
+  const [drag, setDrag] = useState<{ from: number; over: number } | null>(null);
+  const startDrag = (e: React.PointerEvent<HTMLButtonElement>, from: number) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setDrag({ from, over: from });
+  };
+  const moveDrag = (e: React.PointerEvent<HTMLButtonElement>) => {
+    if (!drag || !listRef.current) return;
+    const mids = [...listRef.current.children].map((c) => {
+      const r = c.getBoundingClientRect();
+      return r.top + r.height / 2;
+    });
+    const over = slotAt(mids, e.clientY);
+    if (over !== drag.over) setDrag({ ...drag, over });
+  };
+  const endDrag = () => {
+    if (drag && drag.over !== drag.from && onReorder) onReorder(moveItem(stops, drag.from, drag.over).map((x) => x.id));
+    setDrag(null);
+  };
+
   const singleLeg = routeIsSingleLeg(navAppId, stops.length);
   const dropped = droppedWaypoints(navAppId, stops.length);
 
@@ -122,9 +150,9 @@ export default function RunPanel({
         </p>
       )}
 
-      <ol className="flex flex-col gap-1.5">
+      <ol className="flex flex-col gap-1.5" ref={listRef}>
         {stops.map((s, i) => (
-          <li key={s.id} className="flex flex-col gap-1">
+          <li key={s.id} className={`flex flex-col gap-1${drag && drag.over === i && drag.from !== i ? " reorder-over" : ""}${drag?.from === i ? " reorder-lifted" : ""}`}>
             {s.legKm !== null && (
               <div className="flex items-center gap-2 pe-6 font-mono text-[length:var(--text-xs)] text-text-faint">
                 <span aria-hidden="true"><Icon name="arrow-down" size="sm" /></span>
@@ -138,12 +166,25 @@ export default function RunPanel({
               </span>
               <span className="min-w-0 flex-1 truncate text-[length:var(--text-sm)] text-text">{s.name}</span>
 
+              {onReorder && (
+                <button
+                  type="button"
+                  aria-label={`جابه‌جایی ${s.name}`}
+                  className="touch shrink-0 cursor-grab touch-none text-text-faint"
+                  onPointerDown={(e) => startDrag(e, i)}
+                  onPointerMove={moveDrag}
+                  onPointerUp={endDrag}
+                  onPointerCancel={() => setDrag(null)}
+                >
+                  <Icon name="layers" size="md" />
+                </button>
+              )}
               <div className="flex shrink-0 flex-col gap-0.5">
                 <button
                   onClick={() => onMove(s.id, -1)}
                   disabled={i === 0 || busy}
                   aria-label="بالا"
-                  className="text-text-faint hover:text-text disabled:opacity-30"
+                  className="touch text-text-faint hover:text-text disabled:opacity-30"
                 >
                   <Icon name="arrow-up" size="sm" />
                 </button>
@@ -151,7 +192,7 @@ export default function RunPanel({
                   onClick={() => onMove(s.id, 1)}
                   disabled={i === stops.length - 1 || busy}
                   aria-label="پایین"
-                  className="text-text-faint hover:text-text disabled:opacity-30"
+                  className="touch text-text-faint hover:text-text disabled:opacity-30"
                 >
                   <Icon name="arrow-down" size="sm" />
                 </button>

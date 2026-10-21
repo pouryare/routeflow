@@ -27,6 +27,7 @@ export interface RouteSectionProps {
   routeHref: string | null;
   navigateHref: (stop: RunStop) => string;
   onMove: (id: number, dir: -1 | 1) => void;
+  onReorder?: (ids: number[]) => void;
   onRemove: (id: number) => void;
   onClear: () => void;
   onOptimise: () => void;
@@ -64,6 +65,7 @@ export default function RouteSection({
   routeHref,
   navigateHref,
   onMove,
+  onReorder,
   onRemove,
   onClear,
   onOptimise,
@@ -294,6 +296,7 @@ export default function RouteSection({
           routeHref={routeHref}
           navigateHref={navigateHref}
           onMove={onMove}
+          onReorder={onReorder}
           onRemove={onRemove}
           onClear={onClear}
           onOptimise={onOptimise}

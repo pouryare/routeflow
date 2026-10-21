@@ -305,7 +305,7 @@ export default function LeadsPage() {
           <RouteSection
             run={run} runStops={runStops} totalKm={runTotalKm} navAppId={navAppId} routeHref={runHref}
             navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
-            onMove={moveInRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
+            onMove={moveInRun} onReorder={updateRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
             proposedDays={dayGroups}
             onTapFlow={undefined}
             refuseAssigned={refuseAssigned}

@@ -5365,3 +5365,7 @@ body {
 @media (max-width: 767.98px) {
   .meridian:has([data-has-primary-bar]) .qa-fab { display: none; }
 }
+
+/* reorder-by-drag rows (components/leads/RunPanel): a line where the row would land, the lifted row dimmed */
+.reorder-over { box-shadow: 0 -3px 0 0 var(--accent); }
+.reorder-lifted { opacity: .5; }
