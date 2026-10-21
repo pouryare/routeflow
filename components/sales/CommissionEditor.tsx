@@ -1,5 +1,7 @@
 "use client";
 
+import { ChipGroup } from "@/components/mobile/FilterChips";
+import SmartPicker from "@/components/mobile/SmartPicker";
 import KeypadField from "@/components/mobile/KeypadField";
 import { planToEditable, type PlanSource } from "@/lib/commission/copyPlan";
 import { usePostAction } from "@/lib/usePostAction";
@@ -235,28 +237,21 @@ export default function CommissionEditor({
             <label className={LABEL} htmlFor="rate-seller">
               {KIND_LABEL[rateKind]}
             </label>
-            <select id="rate-seller" className={FIELD} value={rateSeller} onChange={(e) => setRateSeller(e.target.value)}>
-              <option value="">همهٔ {KIND_LABEL[rateKind]}‌ها (پیش‌فرض)</option>
-              {peopleFor(rateKind).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.display_name}
-                </option>
-              ))}
-            </select>
+            <SmartPicker
+              scope="commission-people"
+              label={KIND_LABEL[rateKind]}
+              items={peopleFor(rateKind).map((p) => ({ id: String(p.id), label: p.display_name }))}
+              value={rateSeller}
+              onChange={setRateSeller}
+              clearLabel={`همهٔ ${KIND_LABEL[rateKind]}‌ها (پیش‌فرض)`}
+              placeholder={`همهٔ ${KIND_LABEL[rateKind]}‌ها (پیش‌فرض)`}
+            />
           </div>
           <div>
             <label className={LABEL} htmlFor="rate-value">
               {rateKind === "manager" ? "درصد از فروش گروه" : "تومان در هر کیلو"}
             </label>
-            <input
-              id="rate-value"
-              className={FIELD}
-              value={rateValue}
-              onChange={(e) => setRateValue(e.target.value)}
-              inputMode="numeric"
-              placeholder={rateKind === "manager" ? "۱۰" : "۲۵۰۰"}
-              required
-            />
+            <KeypadField label={rateKind === "manager" ? "درصد از فروش گروه" : "تومان در هر کیلو"} value={rateValue} onChange={setRateValue} unit={rateKind === "manager" ? "درصد" : "تومان"} decimal={rateKind === "manager"} />
             {rateValue !== "" && (
               <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
                 {!rateValid ? "عدد معتبر نیست" : rateKind === "manager" ? `${rateValue}٪` : faToman(parsedRate ?? 0)}
@@ -302,28 +297,19 @@ export default function CommissionEditor({
             <label className={LABEL} htmlFor="pay-seller">
               پرداخت به
             </label>
-            <select id="pay-seller" className={FIELD} value={paySeller} onChange={(e) => setPaySeller(e.target.value)} required>
-              <option value="">انتخاب کنید…</option>
-              {peopleFor(payKind).map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.display_name}
-                </option>
-              ))}
-            </select>
+            <SmartPicker
+              scope="commission-people"
+              label="پرداخت به"
+              items={peopleFor(payKind).map((p) => ({ id: String(p.id), label: p.display_name }))}
+              value={paySeller}
+              onChange={setPaySeller}
+            />
           </div>
           <div>
             <label className={LABEL} htmlFor="pay-amount">
               مبلغ (تومان)
             </label>
-            <input
-              id="pay-amount"
-              className={FIELD}
-              value={payAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
-              inputMode="numeric"
-              placeholder="۵۰۰۰۰۰"
-              required
-            />
+            <KeypadField label="مبلغ پرداخت" value={payAmount} onChange={setPayAmount} unit="تومان" />
             {payAmount !== "" && (
               <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
                 {parsedPay === null ? "عدد معتبر نیست" : faToman(parsedPay)}
@@ -374,32 +360,34 @@ export default function CommissionEditor({
           )}
 
           <div className="flex flex-wrap gap-[var(--space-3)]">
-            <label className="flex min-w-[180px] flex-1 flex-col">
+            <div className="flex min-w-[180px] flex-1 flex-col">
               <span className={LABEL}>فروشنده</span>
-              <select className={FIELD} value={planSeller} onChange={(e) => setPlanSeller(e.target.value)}>
-                <option value="">— همه (پیش‌فرض شرکت) —</option>
-                {sellers.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    {s.display_name}
-                  </option>
-                ))}
-              </select>
-            </label>
+              <SmartPicker
+                scope="commission-people"
+                label="فروشنده"
+                items={sellers.map((x) => ({ id: String(x.id), label: x.display_name }))}
+                value={planSeller}
+                onChange={setPlanSeller}
+                clearLabel="همه (پیش‌فرض شرکت)"
+                placeholder="همه (پیش‌فرض شرکت)"
+              />
+            </div>
 
-            <label className="flex min-w-[180px] flex-1 flex-col">
+            <div className="flex min-w-[180px] flex-1 flex-col">
               <span className={LABEL}>معیار سنجش</span>
-              <select
-                className={FIELD}
-                value={planMetric}
-                onChange={(e) => setPlanMetric(e.target.value as CommissionMetric)}
-              >
-                <option value="kg">وزن (کیلوگرم)</option>
-                <option value="volume_m3">حجم (متر مکعب)</option>
-                <option value="revenue_toman">مبلغ فروش (تومان)</option>
-                <option value="margin_toman">حاشیه سود (تومان)</option>
-                <option value="orders">تعداد سفارش</option>
-              </select>
-            </label>
+              <ChipGroup
+                wrap
+                group={{
+                  id: "plan_metric",
+                  label: "معیار سنجش",
+                  mode: "single",
+                  neutral: "__none",
+                  value: planMetric,
+                  onChange: (v) => { if (v && v !== "__none") setPlanMetric(v as CommissionMetric); },
+                  options: (Object.keys(METRIC_LABEL) as CommissionMetric[]).map((m) => ({ id: m, label: METRIC_LABEL[m] })),
+                }}
+              />
+            </div>
           </div>
 
           <div className="flex flex-col gap-[var(--space-1)]">
@@ -464,23 +452,20 @@ export default function CommissionEditor({
                     />
                   )}
                 </label>
-                <label className="flex w-[110px] flex-col">
+                <div className="flex w-[150px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">نوع</span>
-                  <select
-                    className={FIELD}
-                    value={t.type}
-                    onChange={(e) =>
-                      setTierRows(
-                        tierRows.map((r, j) =>
-                          j === i ? { ...r, type: e.target.value as RateType } : r,
-                        ),
-                      )
-                    }
-                  >
-                    <option value="flat">تومان</option>
-                    <option value="pct">درصد</option>
-                  </select>
-                </label>
+                  <ChipGroup
+                    group={{
+                      id: `tier_type_${i}`,
+                      label: `نوع نرخ پلهٔ ${i + 1}`,
+                      mode: "single",
+                      neutral: "__none",
+                      value: t.type,
+                      onChange: (v) => { if (v && v !== "__none") setTierRows(tierRows.map((r, j) => (j === i ? { ...r, type: v as RateType } : r))); },
+                      options: [{ id: "flat", label: "تومان" }, { id: "pct", label: "درصد" }],
+                    }}
+                  />
+                </div>
                 <label className="flex w-[140px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">نرخ</span>
                   <KeypadField

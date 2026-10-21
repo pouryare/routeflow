@@ -1,5 +1,7 @@
 "use client";
 
+import { labelCells } from "@/lib/tableCards";
+import SmartPicker from "@/components/mobile/SmartPicker";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -187,6 +189,9 @@ function AvatarCell({
   );
 }
 
+/** The column headers, in order: on a phone each row is a card and these become its labels. */
+const USER_HEAD = ["عکس", "نام", "نام کاربری", "نقش", "گروه", "شناسه همکار", "تلگرام", "اجازه موقعیت", "وضعیت", "کارها"];
+
 const EMPTY = {
   username: "",
   password: "",
@@ -320,26 +325,12 @@ export default function AdminUsersPage() {
             dir="ltr"
             className="rounded-md border border-border bg-surface-raised px-3 py-2 text-left font-mono text-sm text-text outline-none placeholder:text-text-faint focus:border-accent w-full"
           /></label>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">نقش<select
-            value={form.role}
-            onChange={(e) => setForm({ ...form, role: e.target.value as Role })}
-            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent"
-          >
-            {ROLES.map((r) => (
-              <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-            ))}
-          </select></label>
-          <label className="flex flex-col gap-1 text-xs text-text-muted">گروه<select
-            value={form.group_id}
-            onChange={(e) => setForm({ ...form, group_id: e.target.value })}
-            disabled={form.role === "owner"}
-            className="w-full rounded-md border border-border bg-surface-raised px-3 py-2 text-sm text-text outline-none focus:border-accent disabled:opacity-40"
-          >
-            <option value="">{form.role === "owner" ? "بدون گروه (مالک)" : "گروه را انتخاب کنید"}</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>{g.name}</option>
-            ))}
-          </select></label>
+          <div className="flex flex-col gap-1 text-xs text-text-muted">نقش
+            <SmartPicker scope="admin-roles" label="نقش" items={ROLES.map((r) => ({ id: r, label: ROLE_LABEL[r] }))} value={form.role} onChange={(id) => setForm({ ...form, role: id as Role })} />
+          </div>
+          <div className="flex flex-col gap-1 text-xs text-text-muted">گروه
+            <SmartPicker scope="admin-groups" label="گروه" items={groups.map((g) => ({ id: String(g.id), label: g.name }))} value={form.role === "owner" ? "" : form.group_id} onChange={(id) => setForm({ ...form, group_id: id })} placeholder={form.role === "owner" ? "بدون گروه (مالک)" : "گروه را انتخاب کنید"} />
+          </div>
           <label className="flex flex-col gap-1 text-xs text-text-muted">شناسه همکار<input
             value={form.staff_code}
             onChange={(e) => setForm({ ...form, staff_code: e.target.value })}
@@ -364,7 +355,7 @@ export default function AdminUsersPage() {
           <p className="text-sm text-text-muted">در حال بارگذاری…</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-3xl text-right text-sm">
+            <table className="acct-cards w-full text-right text-sm md:min-w-3xl">
               <thead>
                 <tr className="border-b border-border text-xs text-text-muted">
                   <th className="p-2 font-normal">عکس</th>
@@ -380,7 +371,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {users.map((u) => (
+                {labelCells(users.map((u) => (
                   <tr key={u.id} className={`border-b border-border last:border-b-0 ${u.active ? "" : "opacity-50"}`}>
                     <td className="p-2">
                       <AvatarCell
@@ -419,35 +410,23 @@ export default function AdminUsersPage() {
                       />
                     </td>
                     <td className="p-2">
-                      <select
-                        aria-label={`نقش ${u.display_name}`}
+                      <SmartPicker
+                        scope="admin-roles"
+                        label={`نقش ${u.display_name}`}
+                        items={ROLES.map((r) => ({ id: r, label: ROLE_LABEL[r] }))}
                         value={u.role}
-                        onChange={(e) =>
-                          send(`/api/admin/users/${u.id}`, "PATCH", { role: e.target.value })
-                        }
-                        className="rounded-md border border-border bg-surface-raised px-2 py-1 text-xs text-text outline-none focus:border-accent"
-                      >
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>{ROLE_LABEL[r]}</option>
-                        ))}
-                      </select>
+                        onChange={(id) => void send(`/api/admin/users/${u.id}`, "PATCH", { role: id })}
+                      />
                     </td>
                     <td className="p-2">
-                      <select
-                        aria-label={`گروه ${u.display_name}`}
-                        value={u.group_id ?? ""}
-                        onChange={(e) =>
-                          send(`/api/admin/users/${u.id}`, "PATCH", {
-                            group_id: e.target.value === "" ? null : Number(e.target.value),
-                          })
-                        }
-                        className="rounded-md border border-border bg-surface-raised px-2 py-1 text-xs text-text outline-none focus:border-accent"
-                      >
-                        <option value="">—</option>
-                        {groups.map((g) => (
-                          <option key={g.id} value={g.id}>{g.name}</option>
-                        ))}
-                      </select>
+                      <SmartPicker
+                        scope="admin-groups"
+                        label={`گروه ${u.display_name}`}
+                        items={groups.map((g) => ({ id: String(g.id), label: g.name }))}
+                        value={u.group_id === null ? "" : String(u.group_id)}
+                        clearLabel="بدون گروه"
+                        onChange={(id) => void send(`/api/admin/users/${u.id}`, "PATCH", { group_id: id === "" ? null : Number(id) })}
+                      />
                     </td>
                     <td className="p-2">
                       <input
@@ -538,7 +517,7 @@ export default function AdminUsersPage() {
                       </div>
                     </td>
                   </tr>
-                ))}
+                )), USER_HEAD)}
               </tbody>
             </table>
           </div>

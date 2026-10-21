@@ -1,5 +1,6 @@
 "use client";
 
+import { ChipGroup } from "@/components/mobile/FilterChips";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCallback, useEffect, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
@@ -217,22 +218,19 @@ export default function RepDefinitions() {
 
           <div className="flex items-center gap-2">
             <span className="text-[length:var(--text-xs)] text-text-muted">تغییر مرحله:</span>
-            <select
-              value=""
-              onChange={(e) => {
-                const to = e.target.value as RepStage;
-                if (to) void patch(openRep.id, { action: "advance", stage: to });
+            <ChipGroup
+              wrap
+              group={{
+                id: "rep_stage",
+                label: "تغییر مرحله",
+                mode: "single",
+                value: "",
+                onChange: (v) => {
+                  if (v) void patch(openRep.id, { action: "advance", stage: v as RepStage });
+                },
+                options: REP_STAGE_TRANSITIONS[openRep.stage].map((st) => ({ id: st, label: REP_STAGE_LABEL[st] })),
               }}
-              disabled={REP_STAGE_TRANSITIONS[openRep.stage].length === 0}
-              className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)]"
-            >
-              <option value="">—</option>
-              {REP_STAGE_TRANSITIONS[openRep.stage].map((s) => (
-                <option key={s} value={s}>
-                  {REP_STAGE_LABEL[s]}
-                </option>
-              ))}
-            </select>
+            />
           </div>
 
           <ul className="flex flex-col gap-1">
@@ -248,7 +246,7 @@ export default function RepDefinitions() {
                 {!s.completed_at && (
                   <button
                     onClick={() => patch(openRep.id, { action: "complete_step", step_code: s.step_code })}
-                    className="mr-auto text-[length:var(--text-xs)] text-accent hover:underline"
+                    className="touch mr-auto text-[length:var(--text-xs)] text-accent hover:underline"
                   >
                     <Icon name="check" size="sm" />
                     تکمیل این مرحله

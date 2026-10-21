@@ -272,6 +272,18 @@ export default function OrderForm({
               <Icon name={requestedMode === "soonest" ? "check" : "calendar"} size="sm" />
               {UNCOMMITTED_LABEL}
             </button>
+            <button
+              type="button"
+              className={`daychip${requestedMode === "week_offset" ? " daychip--on" : ""}`}
+              aria-pressed={requestedMode === "week_offset"}
+              onClick={() => {
+                setRequestedMode("week_offset");
+                setRequestedDate("");
+              }}
+            >
+              <Icon name={requestedMode === "week_offset" ? "check" : "calendar"} size="sm" />
+              هفتهٔ بعد
+            </button>
             <DayChips
               value={requestedMode === "exact_date" ? requestedDate : ""}
               ariaLabel="روز تحویل خواسته‌شده"

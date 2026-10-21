@@ -1,8 +1,8 @@
 {
   "total": {
-    "select": 6,
+    "select": 5,
     "nativeDate": 0,
-    "textField": 98,
+    "textField": 96,
     "tinyTarget": 0,
     "confirmDialog": 0
   },
