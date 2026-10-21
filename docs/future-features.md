@@ -2242,6 +2242,46 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F113. Radial quick-action menu and home-screen shortcuts
+
+**What:** press and hold the «+ ثبت» button (or the app icon on the home screen) and the role's most-used actions fan out as a pie or radial menu within thumb reach: new order, log a payment, new lead or note, complaint, today's run. One quick drag selects and opens the matching tap flow.
+
+**Already in the app:** the phone has a «+ ثبت» button above the bottom bar (`components/mobile/QuickActions.tsx`). A tap opens a bottom sheet titled "what shall we record" listing the role's actions: reminder, note, new order, payment, complaint, filtered per role so nothing leads to a refusal (`quickActionsFor` in `lib/mobileNav.ts`). A reminder or note opens its flow in place; the others go to the page whose own flow opens on arrival (`?new=1` / `?quick=1`). The web app manifest sets the start page and standalone display but declares no shortcuts (`app/manifest.ts`), so long-pressing the installed app icon shows nothing.
+
+**Why parked:** the project's mobile rules say a gesture is never the only way: every gesture needs a visible button, targets are at least 44 px, and motion respects reduced-motion (`docs/mobile-first-principles.md`). So the radial menu must be an addition, with the existing sheet kept as the accessible path and a plain tap still opening it. Layout in a right-to-left screen, the thumb arc on large phones, and accidental activation while scrolling need testing on real devices. Home-screen shortcuts are static and can only open pages, not specific flows chosen per role.
+
+**Open questions**
+1. Which three to five actions are in the arc for each role, and can the user pin their own?
+2. Press-and-hold to open then drag to choose, or tap to open the arc then tap an item?
+3. Arc direction and place for right-handed and left-handed users, and a setting to turn it off.
+4. Manifest shortcuts: one fixed list for everyone (new order, today) or per role? Manifest shortcuts cannot vary per user, so a fixed shortlist that routes by role may be needed.
+
+**Suggested first slice:** add manifest shortcuts for the two or three actions every role has (today, new order, new lead) opening the same `?quick=1` pages, and a press-and-hold radial menu on «+ ثبت» that offers the same role-filtered actions as the sheet, with the sheet unchanged. Arc customisation later.
+
+**Prerequisites:** the quick-actions list and tap flows (exist); a device-testing pass (the rules require it for gestures).
+
+---
+
+## F114. Carton completion nudges
+
+**What:** at order entry, tell the rep when adding a few units completes a carton or a larger pack (for example "7 more units complete the carton of 24"), or when the quantity is just under a pack size, so orders align with how goods are packed and picked.
+
+**Already in the app:** each product can have several packagings with a name and a quantity per pack (`packagings`: for example units and cartons, with a barcode), and an order line stores the packs ordered with its quantity per pack (`orderQuick` flow and order lines). Quantities are chosen in a keypad step. There is no suggestion based on how far the quantity is from the next whole pack.
+
+**Why parked:** a nudge on every line is noise; it should only appear when it is close (for example within 20% of the next pack) and the customer actually buys by the carton; promoting bigger packs can raise sales but must not push customers into stock they cannot sell; pack hierarchies differ by product (not every product has a carton).
+
+**Open questions**
+1. Threshold for showing it, and per product or global?
+2. Show only when the customer has bought the carton packaging before?
+3. Message wording and a one-tap "add them" action; no automatic changes.
+4. Does the uplift interact with the small-quantity uplift (F65), which charges more below a threshold?
+
+**Suggested first slice:** in the quantity step, when the units are within a set distance below a pack's quantity, show a single line with the missing count and a button to round up, for products that have a carton packaging. Off by default for owners to enable.
+
+**Prerequisites:** packagings (exist); F65 and F58 relate.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).

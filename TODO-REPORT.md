@@ -87,6 +87,8 @@
 
 - [x] Parked features F109–F112 added to `docs/future-features.md`: self-service password reset, login activity log, recycle bin, what's new notes — each notes what already exists (admin-set passwords and token version, in-memory login rate limit, hard deletes with id-only sync tombstones, academy but no release notes)
 
+- [x] Parked features F113–F114 added to `docs/future-features.md`: radial quick-action menu with home-screen shortcuts, carton completion nudges — each notes what already exists (the «+ ثبت» sheet with role-filtered actions, no manifest shortcuts, packagings with quantity per pack)
+
 ## Not done / gaps
 - [ ] F102: whether orders in review appear in a decision deck is not verified
 - [ ] F97: whether run planning fills the vehicle on each run is not confirmed (a code comment says runs carry no vehicle, but the column exists)
@@ -96,7 +98,7 @@
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F112 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111 partly exist)
+- [ ] F6–F114 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
