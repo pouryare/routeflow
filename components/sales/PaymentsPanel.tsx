@@ -3,6 +3,8 @@
 import { tehranTodayIso, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
+import FilterChips from "@/components/mobile/FilterChips";
+import { PERIODS, PERIOD_LABEL, periodRange, type Period } from "@/lib/periods";
 import { Icon } from "@/components/meridian/Icon";
 import SectionHead from "@/components/meridian/SectionHead";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
@@ -82,6 +84,15 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
   const [fFrom, setFFrom] = useState("");
   const [fTo, setFTo] = useState("");
   const [fVoided, setFVoided] = useState<"hide" | "only" | "all">("hide");
+  const [period, setPeriod] = useState<Period | "">("");
+  /* A period chip sets the same from/to the date fields used to; tapping the chosen one again clears it. */
+  function choosePeriod(p: Period | "") {
+    setPeriod(p);
+    const r = p === "" ? { from: "", to: "" } : periodRange(p, tehranTodayIso());
+    setFFrom(r.from);
+    setFTo(r.to);
+    setPage(0);
+  }
   const [page, setPage] = useState(0);
   const [editing, setEditing] = useState<number | null>(null);
   const [draft, setDraft] = useState<AllocationDraft[]>([]);
@@ -399,46 +410,37 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
         </div>
 
         <h2 className="sechead__title">دریافت‌ها</h2>
+        <FilterChips
+          groups={[
+            {
+              id: "period",
+              label: "بازه",
+              mode: "single",
+              options: PERIODS.filter((x) => x !== "all" && x !== "custom").map((x) => ({ id: x, label: PERIOD_LABEL[x] })),
+              value: period,
+              onChange: (v) => { choosePeriod(v as Period); },
+            },
+            {
+              id: "method",
+              label: "روش",
+              mode: "single",
+              options: Object.entries(METHOD_LABEL).map(([k, v]) => ({ id: k, label: v })),
+              value: fMethod,
+              onChange: (v) => { setFMethod(v as string); setPage(0); },
+            },
+            {
+              id: "voided",
+              label: "باطال‌شده‌ها",
+              mode: "single",
+              neutral: "hide",
+              options: [{ id: "only", label: "فقط باطال‌شده‌ها" }, { id: "all", label: "همه با باطال‌شده‌ها" }],
+              value: fVoided,
+              sheet: true,
+              onChange: (v) => { setFVoided(v as "hide" | "only" | "all"); setPage(0); },
+            },
+          ]}
+        />
         <div className="flex flex-wrap items-end gap-2 text-sm">
-          <label className="flex flex-col gap-1">
-            روش
-            <select
-              className="rounded border border-border bg-bg p-1"
-              value={fMethod}
-              onChange={(e) => { setFMethod(e.target.value); setPage(0); }}
-              aria-label="فیلتر روش"
-            >
-              <option value="">همه</option>
-              {Object.entries(METHOD_LABEL).map(([k, v]) => (
-                <option key={k} value={k}>{v}</option>
-              ))}
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            از
-            <JalaliDateInput value={fFrom}
-              onChange={(v) => { setFFrom(v); setPage(0); }}
-              aria-label="از تاریخ" className="rounded border border-border bg-bg p-1" />
-          </label>
-          <label className="flex flex-col gap-1">
-            تا
-            <JalaliDateInput value={fTo}
-              onChange={(v) => { setFTo(v); setPage(0); }}
-              aria-label="تا تاریخ" className="rounded border border-border bg-bg p-1" />
-          </label>
-          <label className="flex flex-col gap-1">
-            باطال‌شده‌ها
-            <select
-              className="rounded border border-border bg-bg p-1"
-              value={fVoided}
-              onChange={(e) => { setFVoided(e.target.value as "hide" | "only" | "all"); setPage(0); }}
-              aria-label="نمایش باطال‌شده‌ها"
-            >
-              <option value="hide">پنهان</option>
-              <option value="only">فقط باطال‌شده‌ها</option>
-              <option value="all">همه</option>
-            </select>
-          </label>
           <button type="button" className="rounded border border-border px-2 py-1 text-xs"
             onClick={exportCsv}>
             <Icon name="download" size="sm" />

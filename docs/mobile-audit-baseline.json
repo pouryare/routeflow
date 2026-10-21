@@ -1,9 +1,9 @@
 {
   "total": {
-    "select": 40,
+    "select": 37,
     "nativeDate": 1,
     "textField": 99,
-    "tinyTarget": 32,
+    "tinyTarget": 31,
     "confirmDialog": 1
   }
 }

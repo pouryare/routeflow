@@ -1,5 +1,6 @@
 "use client";
 
+import FilterChips from "@/components/mobile/FilterChips";
 import KeypadField from "@/components/mobile/KeypadField";
 import { faJalaliDate } from "@/lib/jalali";
 import { useMemo, useState } from "react";
@@ -138,11 +139,23 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
             </button>
           ))}
         </div>
-        <select className="stsort" aria-label="مرتب‌سازی" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-          <option value="days">مرتب‌سازی: نزدیک‌ترین به اتمام</option>
-          <option value="value">مرتب‌سازی: بیشترین ارزش</option>
-          <option value="name">مرتب‌سازی: نام کالا</option>
-        </select>
+        <FilterChips
+          groups={[
+            {
+              id: "sort",
+              label: "مرتب‌سازی",
+              mode: "single",
+              neutral: "days",
+              options: [
+                { id: "days", label: "نزدیک‌ترین به اتمام" },
+                { id: "value", label: "بیشترین ارزش" },
+                { id: "name", label: "نام کالا" },
+              ],
+              value: sort,
+              onChange: (v) => setSort(v as typeof sort),
+            },
+          ]}
+        />
       </div>
 
       {visible.length === 0 ? (

@@ -90,12 +90,14 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Phase D: filter chips + «فیلترها» sheet (no dropdowns), Persian-month periods (`lib/periods.ts`); used in payments (period, method, voided), inventory sort, customer salesperson filter. Audit: dropdowns 40→37, tiny targets 32→31
 - [x] Phase 9: expense entry flow (what for → amount → who it was paid to → how paid; 4 taps, today's date, 5 s undo) behind «ثبت هزینه» on `/accounting/expenses`
 - [x] Phase C adopted in forms: order form (customer, product, packaging pickers; pack count keypad; delivery day chips), batches, purchase entry, rep definitions, inventory threshold; pick step ranks by recents. Audit: selects 46→40, text fields 106→99 (baseline lowered)
 - [x] Phase C building blocks: recents model, keypad (own number pad; the amount step now uses it, no OS keyboard), day-choice model + `DayChips` (used by the date step when there are no presets), `SmartPicker`, `KeypadField`; `RecentsUser` mounted in the header
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
+- [ ] Phase D: complaints, cheques and the order pipeline have no list filters today (their dropdowns are per-row status changes, handled by swipe rows in Phase E); accounting date ranges and the CRM view toolbar not converted; payments keep the two date fields for a custom range
 - [ ] Expense: no photo of the receipt (no column on an expense; parked as F1) and no supplier column (the name goes into the journal memo); only today's date, older expenses stay a desk job
 - [ ] Order form: the old «چند هفته بعد» (week offset) choice is gone from the UI (day chips replace it); the server still accepts it
 - [ ] Rep definitions stage-change select and commission editor still use plain controls
@@ -107,5 +109,5 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [ ] Phone bar not seen on a device (safe-area, browser chrome overlap); `StickyAction` has no page using it yet
 
 ## Next steps
-1. Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
+1. Phase E–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
 2. Phase 8 layout pass; then the design-rules document and its check script

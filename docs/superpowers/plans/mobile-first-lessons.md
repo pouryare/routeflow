@@ -133,3 +133,11 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Method is required by the API but was missing from the plan.** The flow asks it last (it is also the save tap) and offers only the three methods that map to a cash or bank account.
 - **Zero amounts are blocked by the amount step, not the machine**; test the step's `allowZero`, not a thrown error.
 - Render tests of hosts that call `useRouter` need `vi.mock("next/navigation")`.
+
+## Phase D (filters)
+
+- **Only some dropdowns are filters.** The plan listed complaints, cheques and the order pipeline, but their dropdowns change one row's status; there is no list filter to convert. Those belong to the swipe-row phase. Read the control's job before swapping it.
+- **Filters apply live.** The sheet's «نمایش نتایج» only closes; the list updates as chips are tapped. A draft-then-apply model would need every host to hold two copies of its filter state.
+- **A period is a shortcut for the two date fields, not a new filter.** The chip writes from/to; editing a date clears the chip. The page's filtering code did not change.
+- **Persian months, tested at a year boundary** (last month from early Farvardin is Esfand of the year before).
+- A group's "no filter" value can be non-empty (`neutral: "hide"` for the voided filter), so the active badge and the clear button ask the group, not `""`.
