@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import type { RunDetail, RunStop } from "@/lib/delivery";
@@ -9,6 +9,8 @@ import { flush, queueSize, sendDelivery, subscribe } from "@/lib/deliveryQueue";
 import { buildReceipt } from "@/lib/deliveryReceipt";
 import DeliveryFlow from "@/components/flows/DeliveryFlow";
 import SwipeRow from "@/components/mobile/SwipeRow";
+import { useMyPosition } from "@/components/MyPositionProvider";
+import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { ReceiptData } from "@/lib/receiptLayout";
 
@@ -51,6 +53,15 @@ export default function DriverRun({
   const [openStop, setOpenStop] = useState<number | null>(null);
   const [receipt, setReceipt] = useState<ReceiptData | null>(null);
 
+  /* Arrival: when the driver is within 150 m of a pending stop, a one-line banner offers the
+     delivery flow for exactly that stop (a banner, not a question). «فعلاً نه» hides it for
+     that stop until the page is reloaded; the position watch is the app-wide one. */
+  const { position } = useMyPosition();
+  const [waved, setWaved] = useState<ReadonlySet<number>>(new Set());
+  const [launch, setLaunch] = useState<{ id: number; n: number } | null>(null);
+  const here = useMemo(() => (position ? { lat: position.lat, lng: position.lng } : null), [position]);
+  const atDoor = useMemo(() => stopAtDoor(run.stops, here, waved), [run.stops, here, waved]);
+
   // Both read through useSyncExternalStore: they are external state, and setting them
   // from an effect would cost an extra render pass every time the signal flickers.
   const online = useSyncExternalStore(subscribeOnline, () => navigator.onLine, () => true);
@@ -85,10 +96,35 @@ export default function DriverRun({
         </p>
       )}
 
+      {atDoor && (
+        <div className="flex flex-wrap items-center gap-[var(--space-2)] rounded-[var(--radius-lg)] border border-[var(--accent)] bg-[var(--surface-raised)] p-[var(--space-3)]" role="status">
+          <span className="min-w-0 flex-1 text-[length:var(--text-sm)] text-[var(--text)]">
+            به <strong className="text-[var(--accent)]">{atDoor.customer_name}</strong> رسیدید
+          </span>
+          <button
+            type="button"
+            onClick={() => setLaunch((l) => ({ id: atDoor.id, n: (l?.n ?? 0) + 1 }))}
+            className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] text-[length:var(--text-sm)] font-medium text-accent-ink"
+          >
+            <Icon name="check" size="md" />
+            ثبت تحویل
+          </button>
+          <button
+            type="button"
+            onClick={() => setWaved((w) => new Set(w).add(atDoor.id))}
+            className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
+          >
+            <Icon name="arrow-left" size="md" />
+            فعلاً نه
+          </button>
+        </div>
+      )}
+
       <ul className="flex list-none flex-col gap-[var(--space-2)] p-0">
         {run.stops.map((stop) => (
           <StopCard
             key={stop.id}
+            launchN={launch?.id === stop.id ? launch.n : 0}
             stop={stop}
             open={openStop === stop.id}
             onToggle={() => setOpenStop(openStop === stop.id ? null : stop.id)}
@@ -134,6 +170,7 @@ function Tile({ label, value }: { label: string; value: string }) {
 
 function StopCard({
   stop,
+  launchN,
   open,
   onToggle,
   onRecorded,
@@ -143,6 +180,8 @@ function StopCard({
   businessName,
 }: {
   stop: RunStop;
+  /** Bumped by the arrival banner to open this stop's delivery flow. */
+  launchN: number;
   open: boolean;
   onToggle: () => void;
   onRecorded: () => void;
@@ -156,6 +195,14 @@ function StopCard({
   const [flowOpen, setFlowOpen] = useState(false);
   const [flowKey, setFlowKey] = useState(0);
   const done = stop.status !== "pending";
+  /* The arrival banner asks for this stop's flow by bumping `launchN`; adjusting state while
+     rendering (not in an effect) opens it once per bump. */
+  const [seenLaunch, setSeenLaunch] = useState(0);
+  if (launchN !== 0 && launchN !== seenLaunch) {
+    setSeenLaunch(launchN);
+    setFlowKey((k) => k + 1);
+    setFlowOpen(true);
+  }
   const startFlow = () => {
     setFlowKey((k) => k + 1);
     setFlowOpen(true);
