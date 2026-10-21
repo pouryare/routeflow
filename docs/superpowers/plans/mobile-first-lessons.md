@@ -205,3 +205,9 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **A smoke test on an empty database caught a wrong join** (`credit_approvals` has no `customer_id`; the customer comes through the order) before it reached a page. Every new repo query gets one.
 - **Chips replace dropdowns inside map panels too**; a sort order with seven options is a scrolling row, a list of saved routes goes behind «فیلترها».
 - **A neutral value that is truthy is a trap** (`"__none"`): guard the handler, not just the group.
+
+## Leftovers round 2
+
+- **Long press is a swipe's quiet sibling.** One timer, cancelled by any movement past the travel threshold, and the click it produces is swallowed for a moment. Selection mode turns the row's swipe actions off, otherwise a drag while picking runs an action.
+- **Bulk actions send only what the server allows.** `chequeBulk` filters by the server's own transition table and reports how many were skipped, so the toast tells the truth.
+- **Not every plan item has something behind it.** The duplicates deck needs a pair queue and a merge that do not exist; it moved to `docs/future-features.md` (F5) instead of being faked.

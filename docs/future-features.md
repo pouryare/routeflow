@@ -85,6 +85,16 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
+## F5. Duplicate customers as a decision deck
+
+**What:** a queue of likely duplicate businesses, each a card with the two records side by side and «ادغام» / «جدا هستند» / «بعداً».
+
+**Why parked:** `GET /api/crm/businesses/dedupe` answers "does this candidate match anything" for one phone, name or position; there is no list of duplicate pairs and no merge operation. Both are real features (matching across the whole table, and re-pointing contacts, tasks, orders and history at the survivor) and need their own spec.
+
+**First slice:** a nightly pairing job that stores candidate pairs, then the deck with «جدا هستند» only (it needs no merge), then merge.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).

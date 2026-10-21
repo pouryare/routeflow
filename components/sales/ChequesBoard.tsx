@@ -1,5 +1,6 @@
 "use client";
 
+import { chequeBulk, toggleId } from "@/lib/selection";
 import DecisionDeck from "@/components/mobile/DecisionDeck";
 import { CHEQUE_CHOICES, chequeRequest, chequesDue } from "@/lib/decisions";
 import { addDaysIso } from "@/lib/flows/dates";
@@ -12,7 +13,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
-import { faToman } from "@/lib/format";
+import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
 
@@ -169,6 +170,36 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
       onDone: () => void load(),
     });
 
+  /* Selection mode: a long press on a card (or «انتخاب چند چک») starts it; a tap then toggles a card
+     and the bar moves all the picked cheques one step in a single undoable action. */
+  const [picked, setPicked] = useState<Set<number> | null>(null);
+  const bulk = (to: ChequeStatus) => {
+    const { ids, skipped } = chequeBulk(cheques ?? [], picked ?? new Set(), to);
+    if (ids.length === 0) {
+      setError("هیچ‌کدام از چک‌های انتخاب‌شده به این وضعیت نمی‌روند");
+      return;
+    }
+    undoable.run({
+      message: `${faNum(ids.length)} چک «${CHEQUE_STATUS_LABEL[to]}» شد${skipped ? ` · ${faNum(skipped)} مورد انجام نشد` : ""}`,
+      send: async () => {
+        for (const id of ids) {
+          const res = await fetch(`/api/cheques/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "advance", to }),
+          });
+          if (!res.ok) return { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+        }
+        return { ok: true };
+      },
+      failure: "تغییر وضعیت چک‌ها کامل انجام نشد؛ دوباره تلاش کنید",
+      onDone: () => {
+        setPicked(null);
+        void load();
+      },
+    });
+  };
+
   const byStatus = (s: ChequeStatus) => (cheques ?? []).filter((c) => c.status === s);
 
   return (
@@ -213,6 +244,33 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             </>
           )}
         />
+      )}
+
+      {picked === null ? (
+        <button
+          type="button"
+          onClick={() => setPicked(new Set())}
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded border border-border px-4 py-3 text-base text-text md:hidden"
+        >
+          <Icon name="check" size="md" />
+          انتخاب چند چک
+        </button>
+      ) : (
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded border border-accent bg-surface p-2" role="status">
+          <span className="text-sm">{faNum(picked.size)} چک انتخاب شد</span>
+          <button type="button" disabled={picked.size === 0} onClick={() => bulk("deposited")} className="touch rounded border border-border px-3 text-sm disabled:opacity-40">
+            <Icon name="check" size="sm" />
+            به بانک سپرده شد
+          </button>
+          <button type="button" disabled={picked.size === 0} onClick={() => bulk("bounced")} className="touch rounded border border-border px-3 text-sm text-crit disabled:opacity-40">
+            <Icon name="x" size="sm" />
+            برگشت خورد
+          </button>
+          <button type="button" onClick={() => setPicked(null)} className="touch rounded px-3 text-sm text-text-muted">
+            <Icon name="arrow-right" size="sm" />
+            پایان انتخاب
+          </button>
+        </div>
       )}
 
       <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
@@ -270,10 +328,17 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                 <div key={c.id} className="overflow-hidden rounded border border-border bg-bg text-sm">
                   <SwipeRow
                     ownButtons={false}
-                    start={SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.start, "check", "good") : undefined}
-                    end={SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.end, "x", "bad") : undefined}
+                    onLongPress={() => setPicked((p) => toggleId(p ?? new Set(), c.id))}
+                    start={!picked && SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.start, "check", "good") : undefined}
+                    end={!picked && SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.end, "x", "bad") : undefined}
                   >
-                  <div className="p-2">
+                  <div className="p-2" onClick={picked ? () => setPicked(toggleId(picked, c.id)) : undefined}>
+                  {picked && (
+                    <span className="mb-1 inline-flex items-center gap-1 text-xs text-accent" aria-live="polite">
+                      <Icon name={picked.has(c.id) ? "check" : "plus"} size="sm" />
+                      {picked.has(c.id) ? "انتخاب شده" : "برای انتخاب لمس کنید"}
+                    </span>
+                  )}
                   <div className="flex justify-between">
                     <span>{customerName(c.customer_id)}</span>
                     <span className="font-mono">{faToman(c.amount_toman)}</span>

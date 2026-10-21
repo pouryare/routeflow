@@ -2,7 +2,7 @@
 
 import { useRef, useState, type ReactNode } from "react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
-import { decide, SWIPE_DEFAULTS } from "@/lib/swipe";
+import { decide, LONG_PRESS_MS, SWIPE_DEFAULTS } from "@/lib/swipe";
 
 export interface SwipeAction {
   /** What it does, as a verb phrase («ثبت نتیجه»). Also the accessible name of its button. */
@@ -26,32 +26,50 @@ const CLICK_GUARD_MS = 60;
  *  still finger is a tap, a short click guard after release. `touch-action: pan-y` lets the page
  *  keep scrolling vertically. Do not nest it in a sheet: the sheet's swipe-down listens on the
  *  same touches. */
-export default function SwipeRow({ start, end, children, ownButtons = true }: {
+export default function SwipeRow({ start, end, children, ownButtons = true, onLongPress }: {
   start?: SwipeAction;
   end?: SwipeAction;
   children: ReactNode;
   /** False when the row already has its own visible buttons for these actions (no duplicates). */
   ownButtons?: boolean;
+  /** Holding a still finger on the row for LONG_PRESS_MS (selection mode starts here). */
+  onLongPress?: () => void;
 }) {
   const [dx, setDx] = useState(0);
   const press = useRef<{ x: number; y: number; id: number } | null>(null);
   const moved = useRef(false);
   const guard = useRef(false);
+  const hold = useRef<number | null>(null);
+  const stopHold = () => {
+    if (hold.current !== null) window.clearTimeout(hold.current);
+    hold.current = null;
+  };
 
   const side = (d: number) => decide({ dx: d }, { ...SWIPE_DEFAULTS, rtl: true });
   const live = side(dx);
   const armed = live.state === "idle" ? null : live.side === "start" ? start : end;
 
   function onPointerDown(e: React.PointerEvent<HTMLDivElement>) {
-    if (e.pointerType === "mouse" || !(start || end)) return;
+    if (e.pointerType === "mouse" || !(start || end || onLongPress)) return;
     press.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
     moved.current = false;
+    stopHold();
+    if (onLongPress) {
+      hold.current = window.setTimeout(() => {
+        hold.current = null;
+        press.current = null; // the gesture is now a long press, not a swipe or a tap
+        guard.current = true;
+        window.setTimeout(() => (guard.current = false), 400);
+        onLongPress();
+      }, LONG_PRESS_MS);
+    }
   }
   function onPointerMove(e: React.PointerEvent<HTMLDivElement>) {
     const p = press.current;
     if (!p) return;
     const mx = e.clientX - p.x;
     const my = e.clientY - p.y;
+    if (Math.abs(mx) > TRAVEL || Math.abs(my) > TRAVEL) stopHold(); // a moving finger is not a long press
     if (!moved.current) {
       if (Math.abs(my) > Math.abs(mx) && Math.abs(my) > TRAVEL) {
         press.current = null; // a scroll; let the page have it
@@ -67,6 +85,7 @@ export default function SwipeRow({ start, end, children, ownButtons = true }: {
     setDx(Math.max(-220, Math.min(220, mx)));
   }
   function release(e: React.PointerEvent<HTMLDivElement>, cancelled: boolean) {
+    stopHold();
     const p = press.current;
     press.current = null;
     if (!p || !moved.current) return;
