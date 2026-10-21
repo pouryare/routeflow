@@ -1,4 +1,4 @@
-import type { FlowConfig, FlowContext, FlowOption, FlowState } from "@/lib/crm/flows/types";
+import type { FlowConfig, FlowContext, FlowOption } from "@/lib/crm/flows/types";
 import { addDaysIso } from "@/lib/flows/dates";
 import { faJalaliDate } from "@/lib/jalali";
 

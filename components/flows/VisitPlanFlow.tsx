@@ -95,7 +95,7 @@ export default function VisitPlanFlow({
       onSaved={onSaved}
       onClose={onClose}
       renderCustom={renderCustom}
-      done={<FlowDone key={state.answers.length} chips={visitPlanChips(ctx, state)} onReturn={onClose} />}
+      done={state.saved ? <FlowDone key={state.answers.length} chips={visitPlanChips(ctx, state)} onReturn={onClose} /> : null}
     />
   );
 }
