@@ -53,11 +53,18 @@
 
 - [x] Parked features F56–F60 added to `docs/future-features.md`: price list versioning, delivery time windows, order templates, salesperson handover, call-to-order shortcut — each notes what already exists (insert-only dated prices, customer opening hours and solver time-window support, repeat-last-order flow, owner reassign, post-call order step)
 
+- [x] Parked features F61–F67 added to `docs/future-features.md`: backorders, product visibility, deposits/prepayments, minimum order and delivery fee, threshold price uplift (both readings), supplier order tracking, Friday weekly scorecard — each notes what already exists
+- [x] Investigated stock reservation: it already exists (FEFO reservations per order on confirm, released/consumed by the order state machine), so it was NOT added; partial delivery and an automatic backorder draft also exist (recorded in F61)
+
+- [x] Parked features F68–F70 added to `docs/future-features.md`: rep activity map, delivery instructions (per customer and per order note), segment campaigns; F17 now notes that receiver name, GPS and photo are already recorded on deliveries
+
 ## Not done / gaps
+- [ ] F69: whether the driver stop card shows customer or order notes is not verified
+- [ ] F65: which reading of "under threshold" was meant (small quantity vs low stock) is unconfirmed; F67: assumed a Friday end-of-week report
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F60 are parked, not built (F9, F11, F32, F33, F51, F52, F56, F58 partly exist)
+- [ ] F6–F70 are parked, not built (F9, F11, F17, F32, F33, F51, F52, F56, F58, F61, F63 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe

@@ -353,6 +353,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** `photos` and `/api/photos`, and the photo step on the `DeliveryFlow` done screen. What is missing is a required-proof rule, a signature capture and the dispute case itself.
 
+**More already in the app:** a delivery entity records the receiver's name, the device GPS position and time, a photo path, and a signature path column (`receiver_name`, `gps_lat`, `gps_lng`, `device_time`, `photo_path`, `signature_path`); the order page shows the receiver and whether a photo exists (`lib/repo/orderDeliveries.ts`). I found no code that captures a signature (the column is only declared), and no required-proof rule or dispute case.
+
 **Why parked:** forcing proof slows drivers at the door; signatures on a small screen are hard; GPS can be off or wrong indoors; disputes need an owner and a resolution path (credit note, redelivery).
 
 **Open questions**
@@ -1190,6 +1192,209 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** pass the customer and the "same as last time" lines into `orderQuickFlow` from the existing post-call "register the order" option. Incoming calls wait for F4.
 
 **Prerequisites:** F58 for the usual basket; F4 for incoming calls.
+
+---
+
+## F61. Backorders and partial fulfilment
+
+**What:** when stock covers only part of an order, ship what is available and track the rest as a backorder with its own promised date, a visible list, and automatic fulfilment when stock arrives.
+
+**Already in the app:** partial delivery exists. A driver can record a short delivery (`deliverPartial`), which moves the order to `PARTIALLY_DELIVERED`; when it is settled, the `spawnBackorder` effect (`lib/repo/deliveries.ts`) copies the shortfall (planned minus delivered per line) into a fresh `DRAFT` order at the original agreed price, which someone then has to confirm. Stock reservation also records a shortfall slice (a reservation with no batch) when stock is short at confirmation. Missing: a promised date for the backorder, a backorder list or badge, a link back to the parent order, automatic confirmation when stock is received, and telling the customer.
+
+**Why parked:** automatic fulfilment of a backorder competes with new orders for the same stock (who gets it first?); customers may no longer want the goods weeks later; prices must follow the rule already used (original price carried over).
+
+**Open questions**
+1. Priority when stock arrives: backorders before new orders, or first come first served?
+2. Expiry: a backorder not fulfilled in N days is cancelled or asked about.
+3. Does the customer choose between waiting, cancelling the short lines, or substituting?
+4. Shortage at confirmation (not at delivery): split the order immediately, or hold it?
+
+**Suggested first slice:** a "backorders" list built from the existing spawned drafts (note text and parent link), showing age and the stock now available, with a one-tap confirm when stock covers it.
+
+**Prerequisites:** the existing partial-delivery and reservation code; F44 and F64 touch the same order creation path.
+
+---
+
+## F62. Customer-specific product visibility
+
+**What:** hide products from customers or groups that don't buy them, so reps and customers see shorter, relevant lists.
+
+**Already in the app:** products have a global `active` flag. I found no per-customer or per-group visibility.
+
+**Why parked:** hiding the wrong product costs a sale; exceptions ("this customer wants it once a year") must be easy; the rules (by customer type, by region, by price group) need agreeing with sales.
+
+**Open questions**
+1. Hide by rule (customer type, group), by explicit list, or by purchase history (not bought in 12 months goes to "more")?
+2. Hidden or only moved down the list? Start with moved down, searchable.
+3. Does visibility apply to customer-facing catalogues (F23) as well as order entry?
+
+**Suggested first slice:** in order entry, show the customer's usual products first (from history, see F58) and the rest behind "all products". No hiding.
+
+**Prerequisites:** F58 for the usual-products signal.
+
+---
+
+## F63. Deposits and prepayments
+
+**What:** record advance payments from customers and apply them to later orders automatically, with the customer's credit visible at order entry.
+
+**Already in the app:** a payment can be split into allocations, and a slice with no order sits on the customer's account as an unallocated credit (`payment_allocations.order_id` NULL; `autoAllocateFIFO` fills the oldest unpaid delivered orders first and leaves the remainder on account). The chart of accounts has a prepayments account (1301). Missing: applying on-account credit automatically to a new order, showing the credit on the order and in the credit check, and a deposit requirement before an order (for example for custom or large orders).
+
+**Why parked:** on-account credit and credit limits interact (credit should offset exposure); refunds of unused deposits need a flow; accounting treatment of deposits versus on-account payments must be confirmed with the accountant.
+
+**Open questions**
+1. Apply on-account credit automatically at delivery, or let the cashier choose?
+2. Does the credit-approval check (limit versus balance) count unallocated credit?
+3. Deposit required: per customer type, per order size, per product?
+4. Refund path and approval (see F48).
+
+**Suggested first slice:** show the customer's on-account credit on the order page and in the payment screen, with a one-tap "apply to this order" that creates the allocation.
+
+**Prerequisites:** payments and allocations (exist); F46 shares the credit view.
+
+---
+
+## F64. Minimum order and delivery fee rules
+
+**What:** a minimum basket value (or quantity) per route or customer type, and a delivery fee charged below a threshold, applied at order entry.
+
+**Already in the app:** nothing I could find enforces a minimum order or a delivery fee (a search for minimum-order and delivery-fee terms found only an unrelated analytics metric).
+
+**Why parked:** hard minimums lose small customers who matter strategically; fees need a line on the invoice and a ledger account; rules differ by route length and customer type.
+
+**Open questions**
+1. Warn or block when below the minimum? Start with warn plus manager override.
+2. Fee: fixed, or by distance or zone?
+3. Free delivery above a threshold; are delivery fees taxable?
+4. Where does the fee appear: a separate order line with its own product code?
+
+**Suggested first slice:** a warning at order confirmation when the basket is below the route's minimum, with a reason picker when the rep proceeds. No fee yet.
+
+**Prerequisites:** none for the warning; the fee needs a decision on order-line representation.
+
+---
+
+## F65. Threshold-based price uplift
+
+**What:** raise the unit price automatically when a condition is met. Two readings, to be settled before building:
+
+- **Small-quantity uplift:** an item ordered below a quantity threshold gets a higher unit price (the opposite of a volume discount), to discourage tiny orders that cost more to deliver.
+- **Low-stock uplift:** an item whose stock falls below a threshold gets a price increase while it is scarce.
+
+**Already in the app:** prices are dated and insert-only (`product_prices.valid_from`, see F56), order lines freeze the price they were sold at (`unit_price_toman`, `price_id`), and a reorder point is computed per product (`lib/predict/inventory.ts`, see F11). No price rules or tiers by quantity or stock exist as far as I found.
+
+**Why parked:** automatic price changes surprise customers and reps, and may conflict with agreed prices, contracts (F44) and campaigns (F21); a low-stock uplift can look like profiteering and needs a cap; the price the customer was quoted must never change after the quote.
+
+**Open questions**
+1. Which reading applies, or both? This is the first thing to confirm.
+2. Uplift as a percentage or a fixed amount, with a cap?
+3. Which customers are exempt (contracts, tiers, reps' agreed prices)?
+4. Visible to the rep before confirming ("price includes small-order uplift") and recorded on the line?
+5. Approval above a threshold (F48)?
+
+**Suggested first slice:** a small-quantity uplift rule per product (quantity threshold, percentage, cap) shown as a separate labelled adjustment on the order line, off by default and exempting customers with agreed prices. Low-stock uplift only after that proves useful.
+
+**Prerequisites:** F56 for dated price handling; F64 for the small-order treatment; F48 for approvals.
+
+---
+
+## F66. Supplier order tracking (purchase orders)
+
+**What:** purchase orders with an expected date and a status (ordered, in transit, partly received, received), alerts for lateness, and receipt against the order.
+
+**Already in the app:** purchases are recorded as receipts only (`purchases` and `purchase_lines`: supplier, date, invoice number, base quantity and unit cost per line), with a suppliers repo and a payables page. There is no order before the receipt, no expected date and no status.
+
+**Why parked:** it needs a new document type that links to receipts, lead times per supplier (F11 wants them too), and partial receipts; ordering practice may be phone and WhatsApp, so people must actually enter the order.
+
+**Open questions**
+1. Does the order get entered by hand, or generated from F11 suggestions and confirmed?
+2. Partial receipt: close the order at receipt or keep the remainder open?
+3. Price on the order versus the invoice price at receipt: flag differences?
+4. Feeds supplier scorecards (F31) with promised dates.
+
+**Suggested first slice:** a purchase order with supplier, expected date and lines, a "receive against this order" action that pre-fills the existing receipt, and an overdue list.
+
+**Prerequisites:** the receive flow (TapFlow Phase 6); F11 and F31 build on it.
+
+---
+
+## F67. Friday weekly scorecard
+
+**What:** an automatic weekly summary for each manager and the owner, generated on Friday at the end of the Persian week (Saturday to Friday): orders, deliveries, collection, complaints, visits, targets, with the change from the previous week.
+
+**Already in the app:** the briefing panels (`lib/repo/briefing.ts`), KPI snapshots and health scores (`lib/repo/health.ts`, `kpi_snapshots`), targets, and a scheduled sweep with weekly recurrence rules (`weekly:<day>`, including `fri`, in `lib/tasks/recurrence.ts`). Notifications reach people through push and Telegram. There is no weekly digest.
+
+**Why parked:** Friday is the rest day, so a notification then must be quiet and useful rather than a work alert; numbers must match the screens people check; the scorecard design differs by role.
+
+**Open questions**
+1. Window: Saturday to Friday as the week, summarised on Friday evening, or delivered on Thursday night for use on Saturday morning? (I took "for Friday" to mean the week-end report; confirm.)
+2. Delivery: briefing card on the next working day, a Telegram message, or both?
+3. Which five numbers per role, and the comparison (last week, same week last year)?
+4. Quiet-hours rule: respect each person's quiet window (the notification code already has one).
+
+**Suggested first slice:** a "this week versus last" card on the owner and manager briefing, computed from existing KPI snapshots and shown from Friday on. Telegram digest second.
+
+**Prerequisites:** KPI snapshots and the briefing (exist).
+
+---
+
+## F68. Rep activity map
+
+**What:** where each rep went today and this week, what they visited and how long they stayed, from visit, call and order locations, for managers to coach and to check coverage.
+
+**Already in the app:** the map shows customers, leads and districts with coverage status, and the phone tracks its own position live (`MyPositionProvider`) for navigation and arrival prompts (see F38). Delivery stops record the device's GPS at the moment of the action (`gps_lat`, `gps_lng`, `device_time`). I found no stored position history for salespeople, so there is nothing yet to draw as a rep's day.
+
+**Why parked:** recording staff locations is a privacy and labour-law matter that needs a written policy and clear consent; continuous tracking drains batteries and is unreliable in a PWA (see F6 and F38); a map of movement can be read as surveillance and misused.
+
+**Open questions**
+1. Continuous trail, or only location at logged events (visit saved, call outcome, order created)? Event-only is far less intrusive.
+2. Retention: delete after 30 days?
+3. Who sees what: the rep sees their own, the manager sees their team's, the owner sees all?
+4. Working hours only, with an obvious on/off indicator for the rep?
+
+**Suggested first slice:** save the device location with each visit, call-outcome and order creation (event-only, with the rep's knowledge), and show a day map of those points for the rep and their manager. No continuous tracking.
+
+**Prerequisites:** the visit and call flows (exist); F6 and F38 share the position-handling decisions.
+
+---
+
+## F69. Delivery instructions (per customer and per order)
+
+**What:** standing instructions for each customer (gate code, parking spot, "ring twice", who receives, receiving hours, floor), and a one-off note on each order ("deliver before noon", "call on arrival"). Both appear on the driver's stop card, and the order note can be a quick pick from common phrases.
+
+**Already in the app:** customers have an address, a contact person and a free notes field; orders have a notes field (the repeat-order flow leaves it empty); a delivery stop has its own notes, which the driver writes when acting on it (`delivery_stops.notes`). I did not confirm that the driver's stop card shows the customer's or the order's notes, nor that order entry offers a place to type the order note.
+
+**Why parked:** free-text notes fill with noise, and gate codes are sensitive (they should be visible only to the driver on that run and not on shared screens); instructions that apply "always" versus "this time" must not be mixed; notes must survive a customer merge (F37).
+
+**Open questions**
+1. Structured fields (access code, floor, parking, receiver, best hours) plus a free-text line, or free text only? Structured is easier to read on a phone.
+2. Who may edit the standing instructions: rep, manager, or the driver with a suggestion that needs approval?
+3. Is an order note copied to the stop at planning time so a later edit does not reach a frozen run?
+4. Hide access codes from roles that don't deliver.
+
+**Suggested first slice:** show the customer's notes and the order's note on the driver stop card (read-only), and add a one-line order-note field with three quick-pick phrases to order entry. Structured fields next.
+
+**Prerequisites:** the driver stop card; order entry flow (`orderQuickFlow`); F57 for receiving hours.
+
+---
+
+## F70. Segment campaigns
+
+**What:** pick a segment (dormant for 45 days, bought product X, in district Y, owes more than Z), and generate a call list with a short script and a result to record per call, then measure the outcome.
+
+**Already in the app:** call lists and follow-ups (the briefing's `call_list` panel, tasks, call-outcome flows), lead lists and lead runs (`/leads`, `lib/repo/leadRuns.ts`) for planned visits to leads, and churn and health scores for who is at risk. There is no segment builder and no campaign record that ties a list, a script and results together.
+
+**Why parked:** segments built from many filters invite mistakes (everyone in the list is the wrong people); calling the same customers too often damages the relationship, so contact frequency needs a limit; results need a clear measure (reorder within 14 days).
+
+**Open questions**
+1. Filters first: last order date, product bought, district, balance, owner?
+2. A cap on how often one customer appears in campaigns?
+3. Script: free text with Persian rich fields, or tied to the objection cards in the academy?
+4. Outcome definition and window; report per campaign and per rep.
+
+**Suggested first slice:** a saved "dormant 45 days in my group" list that creates call tasks for the owning reps, with a one-line script and a "reordered within 14 days" count after.
+
+**Prerequisites:** F8 and F9 supply the "who is due or at risk" signals; the call-outcome flow.
 
 ---
 
