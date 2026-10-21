@@ -90,6 +90,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Gaps pass (3): real Chromium run at 375px as every demo role (found and fixed: blank /leads, crashing expenses page, 108px-wide pick lists, «+ ثبت» button covering the order submit bar); push notification button for a cheque due (deposit / cleared, runs in the service worker, falls back to opening the app); cash and card receipts made offline queue on the device and send on reconnect (verified in the browser: one `payment.record` held in the outbox); drag-to-reorder stops in the leads run list; users table as cards with pickers; commission editor on pickers, chips and keypad; «هفتهٔ بعد» delivery chip back in the order form; rep stage as chips; dropdowns 10→5 of 46
 - [x] Leftovers (round 2): long-press selection on cheques (hold a card or tap «انتخاب چند چک», tap to pick, one bar moves them all with the 5 s undo; only moves the server allows are sent and skipped ones are counted); swipe «ثبت نتیجه» on Pocket tasks that belong to a customer; `SwipeRow` gained a long-press hook
 - [x] Leftovers done so far: manager credit-approval deck on the briefing (approve / reject with the consequence printed, 5 s undo); map-search sort and route list, business type and contact role are chips; remaining dropdowns 10→6 of 46 (13 %, gate target ≤ 15 %); accounting trial balance and balance sheet become cards through the shared table
 - [x] Phase 10: design rules written (`docs/mobile-first-principles.md`, 20 numbered rules), enforced by `npm run check:mobile` (audit ratchet + every mobile component has a test + only recorded files import the calendar input + every allowlist entry has a real reason), pointers in CLAUDE.md, README and the TapFlow rules; allowlist now per-rule with written reasons; dropdowns 37→10, native date 0, confirm dialogs 0
@@ -106,24 +107,17 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
-- [ ] Dropped with reason: duplicates deck (the dedupe endpoint looks up one candidate, there is no queue of duplicate pairs and no merge action to run); selection mode on orders (no bulk order action exists to attach); dashboard/analytics chart heights not changed (charts could not be looked at, so nothing was assumed broken)
-- [ ] Phase 10 gate: the measurable part is met (6 dropdowns left, 13 %), but there is no day-in-the-life run at 375 px per role on a real phone, so the interaction budgets are targets; some patterns (swipe, deck, map select, action cards, carousel, admin presets) are on one or two screens, not all they could be
-- [ ] Phase 8 left out: schedule page day strip, dashboard/analytics chart minimum heights, the planner file was not split into separate components (panes are toggled in place), `scripts/check-touch-targets.mjs` (the ratchet `check:mobile` already fails if a small control returns, so a second script was not added), the other modals (`ProcessingModal` was the only one converted)
-- [ ] Phase I left out: group «copy from» (a group has only a name and colour, its districts belong to one group, so there is nothing to copy); the flat rate / payment forms of the commission editor and the users table edits (role, group, reset password) are unchanged; forced password change on first sign-in does not exist (recorded in docs/future-features.md); the new account's write is held 5 s, so «ارسال» sends it first
-- [ ] Phase H left out: balance sheet and trial balance cards, KPI strips on `/sales/dashboard`, forecast and analytics pages beyond the shared strip, `ResponsiveTable` for long tables (Phase 8), period chips on the analysis pages
-- [ ] Phase G left out: acting from a push notification (pushes are one combined digest, not one per event, so there is no single item to attach «انجام شد» to; needs per-event pushes first); the map's customer geofence prompt is unchanged (arrival-to-delivery is on the driver run); lead arrival does not open the lead flow; suggestion dismissals are per device, not saved on the server; suggestions only for phone sales
-- [ ] Phase F left out: the planner page's map (it shows a fixed route, not a pool to pick from), dragging stops to reorder in the tray (the run list below the map still has move buttons), dragging the circle's radius (fixed steps instead); the map UI itself is not render-tested (Leaflet), only the helpers are
-- [ ] Phase E left out: credit-approvals deck (the list API has no customer/order names and the decision lives on the order page), CRM duplicates deck (request shape not verified), swipe on Pocket reminders and the order pipeline / board cards, long-press selection mode with bulk actions, skip-with-reason swipe on driver stops, swipe gestures inside the deck (a sheet already uses swipe-down)
-- [ ] Phase D: complaints, cheques and the order pipeline have no list filters today (their dropdowns are per-row status changes, handled by swipe rows in Phase E); accounting date ranges and the CRM view toolbar not converted; payments keep the two date fields for a custom range
-- [ ] Expense: no photo of the receipt (no column on an expense; parked as F1) and no supplier column (the name goes into the journal memo); only today's date, older expenses stay a desk job
-- [ ] Order form: the old «چند هفته بعد» (week offset) choice is gone from the UI (day chips replace it); the server still accepts it
-- [ ] Rep definitions stage-change select and commission editor still use plain controls
-- [ ] PR #27 is intentionally left open and unmerged (all phases first, then one merge)
-- [ ] Nothing here has been run on a real phone (seeding needs network); covered by config tests and server-render tests
-- [ ] Flows are online-only except delivery (queued on the device); payments are not wired to the offline outbox
-- [ ] Hidden desk forms (`hidden md:…`) still count in the mobile audit; they need allowlist entries with reasons in Phase 10
-- [ ] Batch-level stock counts; van counts; complaint photos (no column)
-- [ ] Phone bar not seen on a device (safe-area, browser chrome overlap); `StickyAction` has no page using it yet
+- [ ] Not tested on a physical phone and no per-role day of tapping counted (the browser run was emulated, on demo data); interaction budgets remain targets
+- [ ] Expense receipt photo: photos can only be attached to customers, districts and facilities (a database constraint); an expense photo needs a schema change and its own spec (F1 in docs/future-features.md). The supplier is still written into the journal memo
+- [ ] Offline: delivery and cash/card receipts queue; cheque receipts, order drafts, complaints and the rest are still online-only (cheques have no offline op in the sync server)
+- [ ] Skip-with-reason on a driver stop: the server has no «skipped» state (stops are pending / delivered / refused); a swipe would need that product decision first
+- [ ] Swipe on order pipeline cards: draft cards already use touch drag to move between stages, which would fight a swipe; on phones the card opens a sheet with the confirm button instead
+- [ ] Planner map selection: the planner's map shows one fixed day route (there is no pool of places to pick from); adding a visit is already two taps (VisitPlanEntry)
+- [ ] Duplicates deck parked (F5): no pair queue or merge exists
+- [ ] Push buttons only for a cheque due; reminder pushes name the reminder's customer, not the reminder, so «انجام شد» has no target to hit
+- [ ] Remaining 5 dropdowns: map layer filters (3), a day-group picker (1), plus one other; `confirmAction` (a confirm-style helper the audit does not see) is still used for deactivating a user
+- [ ] CI results for the newest commits not yet seen
+- [ ] PR #27 stays unmerged until you say all phases are done
 
 ## Next steps
 1. Phase I (admin presets); Phase E leftovers (credit approvals, duplicates, selection mode) (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)

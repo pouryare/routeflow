@@ -222,3 +222,10 @@ Seeded a small demo database (`npm run seed:demo -- --scale=smoke --db=/tmp/...`
 - **The floating «+ ثبت» button covered the order form's submit button.** It now hides on pages that mark their own primary bar.
 - Worked as designed: bottom bar, quick actions, suggestion cards with real churn data, income statement cards and drill sheet, KPI carousel (13 cards) and drill sheet, planner panes, leads selection tray, customer picker sheet, payments filter sheet, expense and new-account flows, keypad.
 - Method note: `.tf-opt` also matches hidden quick-action links in the DOM; select inside `.sheet.on`.
+
+## Gaps pass (3)
+
+- **Push buttons need exactly one target.** Pushes are digests, so a button is attached only when the digest is about one actionable thing, and the service worker may only make a relative /api/ request (pinned by a test that is mirrored by a regex in `public/sw.js`). Reminder pushes carry the reminder's customer, not the reminder id, so they got no button.
+- **The offline outbox already existed; the UI just did not use it.** `postJSON(url, body, outbox)` queues a `payment.record` fact when the device is offline; wiring the payment flow was ten lines. Look for the plumbing before building it.
+- **Drag by a handle, not by the row.** The row stays scrollable and tappable; the handle (`touch-none`, pointer capture) owns the drag, and `slotAt`/`moveItem` decide where it lands.
+- **Some gaps are product questions, not work:** a «skipped» stop state, a pair queue for duplicates, a photo of an expense. Each is written down with what it needs.

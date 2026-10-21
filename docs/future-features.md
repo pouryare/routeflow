@@ -95,6 +95,15 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
+## F6. Smaller gaps that need a decision first
+
+- **Expense receipt photo.** `photos.entity_type` is a database constraint (customer, district, facility, …). Attaching a photo to an expense (a journal) needs the constraint widened with a table rebuild, the gallery's label lookup extended, and a retention decision; it belongs with F1.
+- **Skip a driver stop.** Stops are pending, delivered or refused. «Skipped, will return later» is a new state with consequences for the run's totals and for what the customer is told; decide that before adding a swipe for it.
+- **More offline writes.** The sync server accepts delivery, cash/card payment, order drafts and customer capture. Cheque receipts, complaints, reminders and notes have no offline op; each needs one and an idempotency key.
+- **Reminder push buttons.** A reminder notification should carry the reminder's own id (today it carries the customer or district it is about) so «انجام شد» can resolve it.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
