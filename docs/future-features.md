@@ -2442,6 +2442,26 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F123. Report builder with saved reports
+
+**What:** pick a data set (orders, customers, payments, deliveries, stock), choose columns, filters and grouping, save the result as a named report, run it again later and export it. More open than the fixed question menu of natural-language reports (F14).
+
+**Already in the app:** reports are fixed pages: the coverage report with print and CSV export (`/report`, `components/CsvExportButton.tsx`, `lib/csv.ts`), the sales dashboard and analysis pages, and the accounting reports (trial balance, income statement, balance sheet, journal, ledger). Customer lists the sidebar keeps are per-browser pinned and recent shortcuts in local storage (`lib/customerLists.ts`), not saved queries. There is no way for a user to define, save or share their own report.
+
+**Why parked:** every data set must keep the same role and group scoping as its page (a report builder is a side door to data otherwise); arbitrary filters and joins can be slow, so each data set needs a fixed, indexed shape; saved definitions must survive schema changes; exports contain personal data and money.
+
+**Open questions**
+1. Which data sets first, and only through existing scoped read functions (never raw SQL from the user)?
+2. Columns and filters from a fixed menu per data set, with grouping limited to a few safe dimensions (day, month, group, salesperson, product)?
+3. Saved per user, shared with a group, or both? Who can edit a shared report?
+4. Output: table, CSV and a simple chart; scheduled delivery later (F67 style).
+
+**Suggested first slice:** a "save this view" on the orders and payments lists that stores the current filters, columns and sort as a named report, reopens it from a menu and exports it as CSV. No grouping or sharing yet.
+
+**Prerequisites:** the scoped list endpoints (exist); F14 shares the safe-query layer.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
