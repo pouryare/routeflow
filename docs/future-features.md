@@ -2162,6 +2162,86 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F109. Self-service password reset
+
+**What:** a user who forgot their password resets it themselves with a code sent to their linked Telegram, instead of asking the owner or a manager.
+
+**Already in the app:** passwords are hashed and set by an administrator: the admin user routes accept a new password with a minimum length, store the hash and bump the user's token version so old sessions end (`app/api/admin/users/[id]/route.ts`), and a helper generates a readable username and password when a user is added, leaving out look-alike characters (`lib/credentials.ts`). The notification system already links a user's Telegram account with a one-time nonce (`lib/repo/notifications.ts`, `telegram-link`), which is the channel a reset code could use. There is no way for a user to start a reset on their own.
+
+**Why parked:** a reset path is also an attack path (anyone who can read the user's Telegram can take over the account), so it must be rate-limited and logged; users who never linked Telegram still need the old route; the second factor idea (F106) uses the same channel and should share it.
+
+**Open questions**
+1. Reset only if Telegram is linked, with the owner or a manager as the fallback for everyone else?
+2. Code lifetime (for example 10 minutes), attempts allowed, and how many resets per day?
+3. After a reset: sign out all other devices (token version) and send a notice to Telegram?
+4. Owner accounts: allow self-reset, or require a second person?
+
+**Suggested first slice:** a "forgot password" link that sends a six-digit code to the linked Telegram, rate-limited, ending in a new password and a forced sign-out of other sessions. The administrator route stays.
+
+**Prerequisites:** the Telegram link (exists); F110 for the log; F106 shares the code channel.
+
+---
+
+## F110. Login activity log
+
+**What:** a record of who signed in, when, from which device and address, plus failed attempts, visible to the owner, so odd sign-ins can be spotted.
+
+**Already in the app:** the login route limits attempts per address and per username with an in-memory counter (`lib/rateLimit.ts`), which forgets everything on restart and is not a log. Changes to records are logged separately (`activity_log`, see F27). I found no stored sign-in history and no last-login time on users.
+
+**Why parked:** it adds a database write on every sign-in (small, but constant); addresses are personal data and need a retention rule; a log without anyone reading it adds little, so alerts for odd patterns (many failures, a new country or device) are what makes it useful.
+
+**Open questions**
+1. What to store: user, time, result, address, browser or device label (not the password, never the typed username when it doesn't exist)?
+2. Retention (for example 90 days) and an owner-only view with filters.
+3. Alerts: five failures in a row, or a sign-in from a new device, sent to the owner on Telegram?
+4. Include Login-As starts and ends (owner acting as another user) in the same log.
+
+**Suggested first slice:** a table written on every successful and failed sign-in, an owner-only list with the last 100 entries and a "last sign-in" shown on each user in the admin page. Alerts later.
+
+**Prerequisites:** none; F107 uses the same device information; F27 covers change auditing.
+
+---
+
+## F111. Recycle bin
+
+**What:** deleted customers, tasks, reminders, photos and similar records are kept for 30 days and can be restored by a manager, then removed for good.
+
+**Already in the app:** some records are switched off rather than removed (users and products carry an active flag), but many deletes are real deletes (for example reminders, photos and the customer rows created by lead conversion are removed with `DELETE`). A deletion record exists for offline sync clients (`deleted_rows`, in `lib/repo/tombstones.ts`) but it stores only the type, id and time, not the content, so it cannot bring anything back. Confirmation prompts before destructive actions were added earlier, which reduces accidents without allowing recovery.
+
+**Why parked:** restoring a record means restoring what hung off it (orders, payments, tasks, photos) and that varies by type; foreign keys and uniqueness (a phone number reused after deletion) can block a restore; keeping deleted data for 30 days has privacy consequences (see F-privacy).
+
+**Open questions**
+1. Which types first? Reminders, tasks and photos are simple; customers carry history and are risky.
+2. Soft delete (a deleted-at column on each table) or a trash table that stores a JSON copy of the row?
+3. Who can restore: the person who deleted it, a manager, or only the owner?
+4. Retention and automatic purge, and an exception for personal-data deletion requests.
+
+**Suggested first slice:** a trash table that stores a JSON copy of deleted reminders, tasks and photo records for 30 days with a "restore" action for managers. Customers and orders are excluded.
+
+**Prerequisites:** none; F34 (backup and restore) and F27 (audit) relate.
+
+---
+
+## F112. What's new notes
+
+**What:** short release notes shown once after an update, written for staff ("the order screen now remembers the delivery day"), so changes are learned without a meeting.
+
+**Already in the app:** the sales academy (`/sales/academy`) holds lessons and objection cards for selling, and the help registry (F84) explains cards. Neither announces changes to the app itself. I found no release notes or version display for users.
+
+**Why parked:** it only works if someone writes the notes in plain Persian for each release; a notice that appears too often is dismissed unread; role-specific notes (a change that only affects drivers) need filtering.
+
+**Open questions**
+1. Written in the repository with each release (a Persian notes file keyed by version), shown once per user per version?
+2. Filter by role, so a driver doesn't see warehouse changes?
+3. One short card with an optional "see more", reachable later from the help menu?
+4. Who writes them: the developer at release time, as part of the pull request?
+
+**Suggested first slice:** a notes file in the repository keyed by version and role, a small "what's new" card shown once after an update (remembered per user in their preferences), and an "all updates" list under help.
+
+**Prerequisites:** the preferences store (`users.prefs_json`, exists); F84 for the help menu location.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
