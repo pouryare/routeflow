@@ -211,6 +211,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** flag customers whose order rhythm is dropping (churn) or whose payments are slipping (credit risk), before a cheque bounces. Shown as exceptions on the manager briefing and as a warning in the credit-approval step.
 
+**Already in the app:** churn scoring exists. `lib/repo/churn.ts` and `lib/predict/churn.ts` score every customer from order history with a logistic model, learn per-tenant weights once enough real lapses exist, and give a reason; `components/predict/ChurnList.tsx` shows it on `/sales/forecast`. Credit-risk scoring (payment delay, bounced cheques) is the part that is missing.
+
 **Why parked:** a score that is wrong blocks a good customer or lets a bad one through; the inputs (payment delay, bounced cheques, order trend) must be defined with the people who grant credit.
 
 **Open questions**
@@ -244,6 +246,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F11. Demand forecasting and auto-purchasing
 
 **What:** forecast stock need per product from sales history, and draft purchase orders to suppliers for a manager to confirm.
+
+**Already in the app:** demand forecasting exists. `lib/predict` smooths demand on a deseasonalised series and `lib/predict/inventory.ts` computes the reorder point (average daily sales × lead time + safety stock); `/sales/forecast` shows the demand table. Missing: supplier lead times and minimum orders, and drafting purchase orders from the result.
 
 **Why parked:** perishables with batches and expiry make "how much to buy" depend on shelf life; supplier lead times and minimum quantities must be modelled; poor forecasts cost real money.
 
@@ -639,6 +643,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** the holiday calendar (`listHolidaysForMonth`), weather forecasts on the schedule page, and order history. They are not yet combined into a seasonal forecast.
 
+**Already in the app (more than first noted):** `lib/predict/seasonality.ts` holds Jalali-month seasonal factors, tenant-tunable through `seasonal_factors`, used by the demand forecast. Missing: holiday-period shifting for events that move on the calendar (Ramadan, Nowruz timing) and a planner banner.
+
 **Why parked:** needs at least a year of clean history per product; holiday dates move on the Jalali/lunar calendar, so "same period last year" is not a fixed date range; weather effects differ per product.
 
 **Open questions**
@@ -766,6 +772,125 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a training organisation seeded by the existing demo scripts, a clearly marked banner, and a short checklist per role. No in-app guided overlays yet.
 
 **Prerequisites:** the demo seed scripts; tenant isolation (exists).
+
+---
+
+## F40. Customer onboarding checklist
+
+**What:** a new customer's first-order steps tracked until complete: credit limit set, location confirmed, price group chosen, contact person recorded, first delivery slot agreed. Incomplete items show on the owner's task list and the customer page.
+
+**Already in the app:** lead stages (`lib/crm/stage.ts`) and tasks. They track a lead's progress, not the readiness of a new customer to be served.
+
+**Why parked:** the checklist must match how the business really onboards; too many mandatory steps slow sales; some items (credit) need a manager.
+
+**Open questions**
+1. Which steps are mandatory before the first order and which can follow?
+2. Who owns each step (salesperson, manager, warehouse)?
+3. Does an incomplete checklist block order confirmation or only warn?
+
+**Suggested first slice:** a four-item checklist (location, price group, contact, credit) derived from existing customer fields, shown on the customer page and on new customers' first order. Warn only.
+
+**Prerequisites:** none.
+
+---
+
+## F41. Visit and call quality review
+
+**What:** managers sample call outcomes and visit notes, give a quick score and a comment, and coach reps from it.
+
+**Already in the app:** call outcomes, attempt numbers and notes are stored as activities (`insertActivity` in `lib/repo/crm/write.ts`) and appear on the customer timeline (`lib/crm/timeline.ts`). There is no review, score or coaching comment.
+
+**Why parked:** scoring staff is sensitive; a rubric must be agreed; review only makes sense if the notes are good enough to judge, and call audio is not recorded (see F4 on recording).
+
+**Open questions**
+1. Rubric: three to five criteria with a short scale, set by the owner?
+2. Sampling: random, or targeted (very short calls, repeated no-answers)?
+3. Who sees scores: the rep and their manager only?
+4. Do scores feed commission or only coaching? Default: coaching only.
+
+**Suggested first slice:** a manager "review five random calls this week" list with one-tap rating and an optional comment, visible to the rep.
+
+**Prerequisites:** the activity timeline; F4 if call recordings are ever added.
+
+---
+
+## F42. Complaint root-cause analytics
+
+**What:** group complaints by product, batch, supplier, route, driver, district and time, to find the pattern behind them and show trends.
+
+**Already in the app:** `lib/repo/complaints.ts` has categories (spoilage, packaging, foreign object, short weight, wrong product), severity, status and links to customer, order, product and batch. `complaintClusters` flags batches with two or more open complaints in 30 days, and `backwardTrace` follows a complaint to its order, batch, purchase line and the supplier's lot reference. The complaints page (`/sales/complaints`) lists them. Missing: patterns across route, driver, district and supplier, resolved complaints, and trends over time.
+
+**Why parked:** driver and route attribution can be unfair when the cause is upstream (a bad batch, not the driver); small counts mislead; supplier conclusions have commercial consequences.
+
+**Open questions**
+1. Dimensions to add first: supplier, route, driver, district, product?
+2. Minimum count before a pattern is shown, and over what window?
+3. Rates, not only counts: complaints per 1,000 units delivered.
+4. Who sees driver-level views?
+
+**Suggested first slice:** complaint rate per product and per supplier over the last 90 days, including resolved complaints, with the existing batch clusters alongside. Driver and route views later.
+
+**Prerequisites:** `quality_complaints`, batch and purchase links (exist); F12 and F31 add richer data.
+
+---
+
+## F43. Shared notes and @-mentions
+
+**What:** @-mention a colleague on a customer, order or task, creating a notification and a task for them.
+
+**Already in the app:** activity notes on the customer timeline (`lib/crm/timeline.ts`), tasks with assignees, and the notification feed with unread counts (`lib/repo/notifications.ts`). There is no mention syntax or conversation on an order or task.
+
+**Why parked:** mentions need access checks (someone mentioned must be allowed to see the record, or the mention leaks it); threads on every object grow into a chat product; notification noise.
+
+**Open questions**
+1. Where can a note be written: customer, order, task, complaint?
+2. Does a mention auto-grant visibility, or is it refused when the person cannot see the record?
+3. Reply threads, or one flat note list per record?
+4. Does a mention create a task, a notification, or both?
+
+**Suggested first slice:** @-mention in customer notes only, restricted to people who can already see that customer, creating a notification (not a task).
+
+**Prerequisites:** the notifications fan-out; role and scope checks.
+
+---
+
+## F44. Standing orders and contracts
+
+**What:** a customer who orders the same thing every week gets a recurring order that generates a draft each time for confirmation, with a contract (start, end, quantities, agreed prices).
+
+**Already in the app:** `task_recurrences` and `lib/tasks/recurrence.ts` (`rruleMatches`: `daily`, `weekly:<day>`, `monthly:<1-28>`) generate recurring tasks from the sweep rules. Nothing generates orders.
+
+**Why parked:** a generated order touches stock, credit and the delivery plan; holidays and skipped weeks need rules; price changes during a contract; a draft that nobody confirms must not silently ship.
+
+**Open questions**
+1. Draft only, always requiring a confirmation tap, or auto-confirm for trusted customers? Start with draft only.
+2. Prices: fixed for the contract, or current price list at generation time?
+3. Holiday handling: skip, move to the next working day, or ask?
+4. How does the customer change or pause it (call, portal)?
+
+**Suggested first slice:** a standing order that reuses the existing recurrence rules to create an order draft in `DRAFT` state and a task for the salesperson to confirm it.
+
+**Prerequisites:** the recurrence engine; TapFlow Phase 5 (`orderQuickFlow`); the holiday calendar.
+
+---
+
+## F45. Customer feedback loop (delivery rating)
+
+**What:** a one-tap rating after delivery, where a low rating creates a follow-up task or a complaint.
+
+**Already in the app:** the complaints flow (`ComplaintFlow`, `ComplaintFromOrder`) for problems a customer reports. There is no positive or neutral rating and no prompt after delivery.
+
+**Why parked:** needs a way to reach the customer (see F6 and F18 for message channels); response rates are usually low and biased towards complaints; ratings of drivers feed pay (F24) and need care.
+
+**Open questions**
+1. Channel: a link in a message, a rep asking on the next visit, or the driver's tap on a tablet?
+2. Scale: thumbs up/down or one to five? A reason list for low ratings.
+3. A low rating creates a complaint (with severity) or only a follow-up task?
+4. Are ratings shown to drivers?
+
+**Suggested first slice:** a rep-entered rating on the next visit (two taps, optional reason), low ratings creating a follow-up task. No automatic messages.
+
+**Prerequisites:** complaints repo; F6/F18 for automated delivery of the request.
 
 ---
 
