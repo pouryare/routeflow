@@ -1940,6 +1940,106 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F98. Customer note and visit search
+
+**What:** search across all call and visit notes for a phrase, such as "closing for renovation" or "prefers morning", to find the customers affected, with results scoped to what the searcher may see.
+
+**Already in the app:** a global search overlay already finds customers, orders and other records, with Persian-aware matching (it folds Arabic and Persian letter forms and digits, `lib/persian.ts`, `lib/repo/search.ts`) and the same group and role scoping as the pages it mirrors. Call and visit notes are stored on activities (`insertActivity`, with a `note` column) and shown on the customer timeline, but they are not searched.
+
+**Why parked:** notes may contain sensitive remarks about people, so searching them widens what a manager can find; matching in free Persian text needs normalisation and, ideally, word-boundary handling; searching every note across many customers must stay fast (an index, not a full scan on each keystroke).
+
+**Open questions**
+1. Who may search notes: managers over their group, reps over their own customers only?
+2. Search note text only, or also task titles, complaint descriptions and order notes?
+3. Result view: customer cards with a highlighted snippet, and a way to turn a result list into a call list (see F70).
+4. Highlight the match and show date and author.
+
+**Suggested first slice:** a "search notes" mode in the existing search overlay that matches activity notes for customers the user can already see, returning customer, date and a snippet. Task and complaint text later.
+
+**Prerequisites:** the existing search model and activity notes.
+
+---
+
+## F99. Product catalogue change log
+
+**What:** a history of product creation, renaming, pack-size and unit changes, price entries and deactivation, with who changed it and when, shown on the product page.
+
+**Already in the app:** prices and costs are already versioned as dated, insert-only rows (`product_prices`, `product_costs`), so price history exists in the data. A generic activity log (`logActivity` into `activity_log`: entity, event type, old and new value, note, who) is used for districts, visit plans, photos and the duplicate-customer merge. The product routes do not write to it, so renames, unit and pack changes and deactivation leave no history.
+
+**Why parked:** a rename that silently changes how past orders read is the kind of change people want traced; the log must not slow product edits; showing it to everyone is unnecessary, so access needs a rule.
+
+**Open questions**
+1. Log all field changes or a short list (name, unit, pack, active, SKU)?
+2. Show on the product page to managers, and to finance?
+3. One shared change log helper for products and other reference data (suppliers, vehicles, price tiers)?
+4. Include who deactivated a product and the stock on hand at that moment.
+
+**Suggested first slice:** call the existing `logActivity` from the product create, update and deactivate routes, and add a "history" list on the product page. Price changes appear from the existing dated rows.
+
+**Prerequisites:** none; F27 describes the broader audit trail.
+
+---
+
+## F100. Customer ownership change history
+
+**What:** when a customer moves between salespeople or groups, record who moved it, when, from whom to whom and why, and show it on the customer page and in a report.
+
+**Already in the app:** an `owner_change` activity ("change of owner") appears on the customer timeline (`lib/crm/timeline.ts`), but it is written only when a salesperson takes a customer from the group pool, with the note "taken from the group pool" and no previous owner (`lib/repo/crm/write.ts`). A reassign request exists (`requestReassign`). I found no record of a manager moving a customer from one rep to another, or of a group change.
+
+**Why parked:** reassigning customers affects commission, targets and open tasks (see F59), so the history should be written wherever the owner changes, not only in one flow; old owners should not lose access to their past activity.
+
+**Open questions**
+1. Capture every change path (pool claim, manager reassign, bulk handover, deactivated user) in one place?
+2. Store previous owner, new owner, actor and reason (reason from a short list)?
+3. Does commission follow the owner at the time of the order (current behaviour) or the owner at the time of payment? Confirm and document.
+4. A report of ownership changes by month to spot churn in assignments.
+
+**Suggested first slice:** write the previous and new owner and a reason into the existing `owner_change` activity from all owner-changing paths, and show "from X to Y by Z" on the timeline.
+
+**Prerequisites:** the activity timeline (exists); F59 handover uses the same record.
+
+---
+
+## F101. Bulk delivery notes per run
+
+**What:** print all of a run's delivery notes in one go, in stop order, with a cover sheet (driver, van, totals, cash to collect), instead of printing them one at a time.
+
+**Already in the app:** the receipt handed over at the door is built from one stop's numbers (`lib/deliveryReceipt.ts`, `lib/receiptLayout.ts`) and printed from the delivery flow ("print receipt") and from done stops; the planner and report pages have print buttons (`components/PrintButton.tsx`). That is the customer's copy after delivery. There is no pre-printed note per stop for the run and no multi-page print.
+
+**Why parked:** print layout for many pages needs page breaks that work on common printers; right-to-left Persian text and Jalali dates must print correctly; the format is a document design (see F36 on templates).
+
+**Open questions**
+1. Printed at loading time as a packing and handover note, or as a paper backup of the route sheet?
+2. One page per stop with lines and totals, plus a cover page with the run summary?
+3. Reprinting after a stop changes (an order edited or cancelled) must show the latest.
+4. Combine with the route sheet idea so the driver has one packet.
+
+**Suggested first slice:** a "print all notes" button on a ready run that renders the existing receipt layout for each stop in order, separated by page breaks, with a cover summary. No new template editor.
+
+**Prerequisites:** the receipt builder and print button (exist); F36 later for owner-editable templates.
+
+---
+
+## F102. Manager approval inbox
+
+**What:** one screen listing everything waiting for the manager's decision (orders in review, credit approvals, price changes, expenses, reassign requests), sorted by age, with the decision actions in place.
+
+**Already in the app:** quick-decision decks exist for specific queues: cheques due for a verdict, complaints to triage, credit approvals, and duplicate customer pairs (`lib/decisions.ts`, the decks on `/sales/today`, with `pendingForDeck` for credit). The briefing lists credit waiting and unplanned orders. Orders waiting in `PENDING_REVIEW` for a manager's pass are handled through the orders pages (I did not verify that they appear in a deck). There is no single list across all kinds.
+
+**Why parked:** a unified inbox pulls in several repos with different permissions, so each item must be filtered by what this manager may decide; every new approval type (F48, F76, F88) must plug into it, which needs a common item shape; the inbox has to stay fast.
+
+**Open questions**
+1. A common item shape (kind, subject, age, requester, summary, actions) that each approval type provides?
+2. Order of the list: oldest first, or by value and risk?
+3. Delegation (F82): shows items for those the manager is covering, marked as such.
+4. Actions in place with the existing consequence confirmation, or open the detail page?
+
+**Suggested first slice:** a read-only unified list assembled from the queues that already exist (credit approvals, orders in review, complaints to triage, cheques due), linking to the existing decision screens. Common actions later.
+
+**Prerequisites:** the existing decks and approvals; F48, F76, F82 and F88 plug into it later.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
