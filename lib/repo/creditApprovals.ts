@@ -147,5 +147,7 @@ export function pendingForDeck(organizationId: number): PendingApprovalCard[] {
         WHERE ca.organization_id = ? AND ca.status = 'pending'
         ORDER BY ca.requested_at`
     )
-    .all(organizationId) as unknown as PendingApprovalCard[];
+    .all(organizationId)
+    // Plain objects: a database row has a null prototype and cannot cross into a client component.
+    .map((r) => ({ ...r })) as unknown as PendingApprovalCard[];
 }

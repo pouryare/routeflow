@@ -32,7 +32,9 @@ export default async function ExpensesPage() {
     amountToman: number;
   }[];
 
-  const categories = expenseCategories();
+  /* Plain objects: rows straight from the database have a null prototype, which React refuses to
+     pass from a server component to a client one. */
+  const categories = expenseCategories().map((c) => ({ id: c.id, nameFa: c.nameFa }));
   const suppliers = listSuppliers(organizationId).map((x) => x.name);
 
   const total = byCategory.reduce((s, r) => s + r.amountToman, 0);

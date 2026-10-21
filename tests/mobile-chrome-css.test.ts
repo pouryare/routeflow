@@ -28,3 +28,15 @@ describe("the phone chrome", () => {
     expect(phone).toMatch(/\.meridian \.sticky-action \{ padding: 8px 0; \}/);
   });
 });
+
+describe("found in a real 375px browser run", () => {
+  it("a one-column answer list fills its sheet (it shrank to 108px inside the flex column)", () => {
+    expect(css).toMatch(/\.tf-grid\.one \{[^}]*width: 100%/);
+  });
+  it("a chip row never widens its parent (the leads page went 952px wide and blank)", () => {
+    expect(css).toMatch(/\.meridian \.filterchips \{ min-width: 0; max-width: 100%; \}/);
+  });
+  it("the floating «+ ثبت» button steps aside on a page with its own sticky primary bar", () => {
+    expect(css).toMatch(/\.meridian:has\(\[data-has-primary-bar\]\) \.qa-fab \{ display: none; \}/);
+  });
+});

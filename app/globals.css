@@ -4733,7 +4733,7 @@ body {
    last row stranded in column one, which reads as a straight column under the row above.
    `flex: 1 1` keeps the full rows evenly divided while a lone leftover centres on its own. */
 .meridian .tapflow .tf-grid > * { flex: 1 1 calc(50% - 4px); }
-.meridian .tapflow .tf-grid.one { display: grid; grid-template-columns: 1fr; }
+.meridian .tapflow .tf-grid.one { display: grid; grid-template-columns: 1fr; width: 100%; }
 .meridian .tapflow .tf-grid.three > * { flex-basis: calc(33.333% - 6px); }
 .meridian .tapflow .tf-group { margin-bottom: -4px; font-size: 12px; color: var(--muted); }
 .meridian .tapflow .tf-opt {
@@ -5356,4 +5356,12 @@ body {
     scrollbar-width: none;
   }
   .meridian .board.pipe .col { flex: 0 0 86%; scroll-snap-align: center; max-height: 70vh; }
+}
+/* A chip row must never widen its parent: the row scrolls inside, the parent keeps its width. */
+.meridian .filterchips { min-width: 0; max-width: 100%; }
+
+/* A page with its own sticky primary action (the order form's total + submit bar) hides the floating
+   «+ ثبت» button: both live at the bottom edge and the floating one covered the submit button. */
+@media (max-width: 767.98px) {
+  .meridian:has([data-has-primary-bar]) .qa-fab { display: none; }
 }

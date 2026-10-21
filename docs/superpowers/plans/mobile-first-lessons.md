@@ -211,3 +211,14 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Long press is a swipe's quiet sibling.** One timer, cancelled by any movement past the travel threshold, and the click it produces is swallowed for a moment. Selection mode turns the row's swipe actions off, otherwise a drag while picking runs an action.
 - **Bulk actions send only what the server allows.** `chequeBulk` filters by the server's own transition table and reports how many were skipped, so the toast tells the truth.
 - **Not every plan item has something behind it.** The duplicates deck needs a pair queue and a merge that do not exist; it moved to `docs/future-features.md` (F5) instead of being faked.
+
+## First real-browser run (375px, demo data, Chromium)
+
+Seeded a small demo database (`npm run seed:demo -- --scale=smoke --db=/tmp/...`; the default heavy scale fails on order dates older than a year), ran `next dev` against it, logged in as each demo role and drove pages with Playwright at 375x812 with touch. It found what no unit test had:
+
+- **`/leads` was blank and 952px wide** (the sort chips I added sat in a non-wrapping flex row and widened the page). Fixed, and `.filterchips` now cannot widen its parent.
+- **The expenses page crashed**: rows straight from node:sqlite have a null prototype and cannot be passed from a server component to a client one. Map to plain objects at the boundary (done for expense categories and credit approvals).
+- **Every single-column answer list (pick steps) was 108px wide** instead of full width: `.tf-grid.one` is a grid inside a flex column. A pre-existing bug that every pick-step flow had.
+- **The floating «+ ثبت» button covered the order form's submit button.** It now hides on pages that mark their own primary bar.
+- Worked as designed: bottom bar, quick actions, suggestion cards with real churn data, income statement cards and drill sheet, KPI carousel (13 cards) and drill sheet, planner panes, leads selection tray, customer picker sheet, payments filter sheet, expense and new-account flows, keypad.
+- Method note: `.tf-opt` also matches hidden quick-action links in the DOM; select inside `.sheet.on`.

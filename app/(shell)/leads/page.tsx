@@ -209,7 +209,7 @@ export default function LeadsPage() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
               <button
                 onClick={() => {
                   const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
