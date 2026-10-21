@@ -1658,6 +1658,46 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F84. In-app help and tooltips
+
+**What:** short Persian help for each screen and field (what it is, how to read it, what to do next), reachable from a small `(i)` button and editable by the owner without a developer.
+
+**Already in the app:** a help registry exists (`lib/help`, with `getHelp` and a typed entry: title, what it shows, how to read it). The `(i)` button is `components/meridian/CardHelp.tsx`: a deliberate click opens a small panel, an unwritten entry shows a calm "coming soon" line, and unwritten ids are collected for a help-debt backlog (`tests/meridian-help.test.ts`). It is used on a small number of dashboard cards; the registry has only a handful of written entries. The sales academy (`/sales/academy`) covers lessons and objection cards, which is training rather than per-screen help.
+
+**Why parked:** writing good help for every screen is a large content job; help must be kept in step with the screens or it misleads; an owner-editable help layer needs a version, a review and a way to restore the default text.
+
+**Open questions**
+1. Scope: per-card help only, or per-field hints inside forms and tap flows?
+2. Language: Persian only at first; do staff want English or Arabic later?
+3. Who writes and approves entries: the developer in code, or the owner in an editor with the shipped text as a fallback?
+4. Where it shows up first: the screens people ask most questions about (orders, payments, routing, the driver run).
+
+**Suggested first slice:** work down the existing help-debt list to write the missing entries for the five most-used screens, and add `CardHelp` to their headers. No editor yet.
+
+**Prerequisites:** none; builds on the existing registry and button.
+
+---
+
+## F85. Order source tracking
+
+**What:** record how each order arrived (phone call, visit, app, WhatsApp or Telegram message, driver on the spot, repeat from a standing order) to see which channels bring volume and where to invest rep time.
+
+**Already in the app:** orders have a type (`order_type`, default `SALE`, with sample orders) and a creator and salesperson, and leads have a source (`source_code`, chosen in the add-lead flow). I found no field recording the channel an order came through.
+
+**Why parked:** the channel must be captured in one tap at entry or it will be left blank; some channels (a customer's WhatsApp message) only exist once paste-to-parse (F3) or telephony (F4) are built; existing orders have no value to backfill.
+
+**Open questions**
+1. A short fixed list (phone, visit, app, message, driver, standing order) plus "other"?
+2. Defaulted where it can be known (a standing order draft, an order created from a call outcome, a driver order) and asked only otherwise?
+3. Reports: orders and revenue per channel per rep and per group, and conversion from the lead source to the first order?
+4. Include a "created at the door" source for orders raised by drivers?
+
+**Suggested first slice:** add a source field with a one-tap picker to order entry and prefill it from the flow that created the order, then show orders and revenue by source on the analytics page.
+
+**Prerequisites:** none for the first slice; F3, F4 and F44 add automatic sources.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
