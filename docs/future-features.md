@@ -1758,6 +1758,46 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F89. Customer price history
+
+**What:** every price a customer has been charged (and, once quotes exist, offered) for each product, with dates and the list price at the time, to settle "you charged me less last time" and to spot unplanned discounts.
+
+**Already in the app:** each order line freezes the price it was sold at (`unit_price_toman`, with `price_id` pointing at the dated list price), so the history is in the data. The customer page shows a purchase history with each order's number, status, date, payment status, total and line count, and a product mix with packs and totals per product (`components/PurchaseHistory.tsx`). It does not show unit price per product over time, and quotes are not recorded (F29).
+
+**Why parked:** showing past prices to reps changes negotiations (they may anchor on the lowest price ever given); prices for different pack sizes are not comparable without normalising; discounts and uplifts (F21, F65) must be shown as adjustments, not as price changes.
+
+**Open questions**
+1. Who sees it: the rep and manager for their customers, or managers only?
+2. Compare unit price per base unit to make pack sizes comparable?
+3. Mark lines sold below list price (using `price_id` to find the list price in force on that date) and below a margin floor?
+4. Include prices from orders that were cancelled or returned? Probably show them greyed.
+
+**Suggested first slice:** on the customer page, a per-product list of the last five unit prices with dates and the list price at the time, read from existing order lines. Quotes and discount flags later.
+
+**Prerequisites:** none; F29 adds quotes, F56 improves the list-price history.
+
+---
+
+## F90. Monthly staff pay summary for the accountant
+
+**What:** an end-of-month sheet per person combining commission (accrued, paid and owed), progress against targets, attendance, and approved expense reimbursements, ready to export for the accountant.
+
+**Already in the app:** commission statements exist for salespeople (`lib/commissionLedger.ts`: delivered kilograms, accrued, paid and still owed, the orders behind it, and the plan used, flat or tiered), for drivers (`lib/driverCommissionLedger.ts`) and for managers (`lib/managerCommissionLedger.ts`), shown on `/sales/commission` with a plan copy tool. Targets exist (`lib/repo/targets.ts`) and the chart of accounts has a salary account (5103). Attendance (F25) and reimbursements (F88) do not exist, and I found no stored base salary, so a "total pay" figure would be incomplete.
+
+**Why parked:** payroll is a sensitive, legally relevant output; the commission figures must stay exactly equal to what the ledger already produces (earlier work required payroll output to stay byte-identical), so the sheet must reuse those functions and never recalculate; base salary and deductions are outside the app today.
+
+**Open questions**
+1. Does the sheet stop at "commission owed plus approved reimbursements", or include a base salary entered by hand each month?
+2. Export format for the accountant: Excel or CSV with fixed columns, per month, with a lock once exported?
+3. Who may see it: the owner only, or managers for their group?
+4. Corrections after export: shown as an adjustment in the next month rather than editing a locked month.
+
+**Suggested first slice:** a read-only monthly sheet per person assembled from the three existing commission statements plus targets, with a CSV export and no salary or attendance columns.
+
+**Prerequisites:** the commission statements (exist); F25 and F88 add attendance and reimbursements; F27 for logging exports.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
