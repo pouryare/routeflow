@@ -53,3 +53,16 @@ describe("deck and swipe row render", () => {
     expect(renderToStaticMarkup(h(SwipeRow, { end: act, ownButtons: false, children: "x" }))).not.toContain("swiperow__btn");
   });
 });
+
+import { CREDIT_CHOICES, CREDIT_CONSEQUENCE, creditRequest } from "@/lib/decisions";
+
+describe("credit approval verdicts", () => {
+  it("the two verdicts are exactly what the decide route accepts, and reject is the tinted one", () => {
+    expect(CREDIT_CHOICES.map((c) => c.id)).toEqual(["approved", "rejected"]);
+    expect(CREDIT_CHOICES.find((c) => c.id === "rejected")?.tone).toBe("bad");
+    expect(creditRequest("approved")).toEqual({ verdict: "approved" });
+  });
+  it("both outcomes have a consequence line to print on the card", () => {
+    for (const c of CREDIT_CHOICES) expect(CREDIT_CONSEQUENCE[c.id].length).toBeGreaterThan(10);
+  });
+});

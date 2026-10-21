@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import CreditDeckEntry from "@/components/flows/CreditDeckEntry";
+import { pendingForDeck } from "@/lib/repo/creditApprovals";
 import ActionCards from "@/components/mobile/ActionCard";
 import { suggestionsFor } from "@/lib/repo/suggestions";
 import { redirect } from "next/navigation";
@@ -64,6 +66,12 @@ export default async function SalesTodayPage() {
         roleLabel={roleLabel(session.role)}
         dateIso={new Date().toISOString()}
       />
+
+      {MANAGE_ROLES.includes(session.role) && (
+        <div className="mb-3 flex">
+          <CreditDeckEntry approvals={pendingForDeck(session.organizationId)} />
+        </div>
+      )}
 
       <ActionCards cards={suggestionsFor(session)} />
 

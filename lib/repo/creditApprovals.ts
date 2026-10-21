@@ -1,3 +1,4 @@
+import { getDb } from "@/lib/db";
 import { makeRepo } from "./base";
 import { advanceOrder, registerOrderEffectHandlers } from "./orders";
 
@@ -121,4 +122,30 @@ export function listApprovals(
   return status
     ? creditApprovalsRepo.list(organizationId, { status } as Partial<CreditApprovalRow>)
     : creditApprovalsRepo.list(organizationId);
+}
+
+export interface PendingApprovalCard {
+  id: number;
+  order_no: string;
+  customer_name: string;
+  customer_balance_toman: number;
+  credit_limit_toman: number | null;
+  overage_toman: number;
+  requested_at: string;
+}
+
+/** The pending requests with the words a decision card needs (customer, order number), oldest
+ *  first. Tenant-scoped through the approval row; the joins only add names. */
+export function pendingForDeck(organizationId: number): PendingApprovalCard[] {
+  return getDb()
+    .prepare(
+      `SELECT ca.id, o.order_no, c.business_name AS customer_name, ca.customer_balance_toman,
+              ca.credit_limit_toman, ca.overage_toman, ca.requested_at
+         FROM credit_approvals ca
+         JOIN orders o ON o.id = ca.order_id
+         JOIN customers c ON c.id = o.customer_id
+        WHERE ca.organization_id = ? AND ca.status = 'pending'
+        ORDER BY ca.requested_at`
+    )
+    .all(organizationId) as unknown as PendingApprovalCard[];
 }

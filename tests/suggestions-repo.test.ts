@@ -28,3 +28,11 @@ describe("suggestionsFor", () => {
     expect(suggestionsFor(sess("owner"))).toEqual([]);
   });
 });
+
+const { pendingForDeck } = await import("@/lib/repo/creditApprovals");
+describe("pendingForDeck", () => {
+  it("runs its join cleanly on an empty database", () => {
+    getDb();
+    expect(pendingForDeck(1)).toEqual([]);
+  });
+});

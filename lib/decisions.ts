@@ -32,3 +32,18 @@ export const COMPLAINT_CHOICES: DeckChoice[] = [
 ];
 
 export const complaintRequest = (status: string) => ({ status });
+
+/** Credit approvals: the manager's verdict on an order parked for exceeding a customer's limit.
+ *  Rejecting is the destructive answer (tinted); its consequence is printed on the card, the way
+ *  the order page's own confirm step prints it. */
+export const CREDIT_CHOICES: DeckChoice[] = [
+  { id: "approved", label: "تأیید اعتبار", tone: "good" },
+  { id: "rejected", label: "رد درخواست", tone: "bad" },
+];
+
+export const creditRequest = (verdict: string) => ({ verdict });
+
+export const CREDIT_CONSEQUENCE: Record<string, string> = {
+  approved: "سفارش تأیید می‌شود و موجودی برایش رزرو می‌شود.",
+  rejected: "سفارش متوقف می‌ماند تا لغو شود یا بدهی مشتری زیر سقف برگردد.",
+};
