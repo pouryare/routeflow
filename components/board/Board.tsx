@@ -8,7 +8,6 @@ import type { Board as BoardData } from "@/lib/repo/board";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import { lanesFor, movePatch, type BoardView } from "@/lib/tasks/lenses";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
-import { useIsNarrow } from "@/lib/useIsNarrow";
 import OutcomeFlow from "@/components/flows/OutcomeFlow";
 import { useCardDrag } from "./useCardDrag";
 import BoardMobile from "./BoardMobile";
@@ -41,7 +40,6 @@ export default function Board({
   const [outcomeFor, setOutcomeFor] = useState<{ cardId: number; toLane: string; key: number; open: boolean } | null>(null);
   const outcomeKey = useRef(0);
   const [log, setLog] = useState<string>("");
-  const narrow = useIsNarrow();
 
   const refetch = useCallback(
     async (v: BoardView, k: string) => {
@@ -164,7 +162,10 @@ export default function Board({
       </div>
       {toolbar}
 
-      {narrow ? (
+      {/* Both layouts are in the markup and a media query picks one (see `.board-mobile` /
+          `.board-desktop` in globals.css). Choosing in JS meant a phone first painted the desk
+          board and swapped after hydration. */}
+      <div className="board-mobile">
         <BoardMobile
           lanes={lanes}
           view={view}
@@ -172,7 +173,8 @@ export default function Board({
           onMove={move}
           onCustomer={setCustId}
         />
-      ) : (
+      </div>
+      <div className="board-desktop">
         <>
           <div className={boardCls} style={{ padding: "6px 24px 20px" }}>
             {lanes.map((lane) => (
@@ -352,7 +354,7 @@ export default function Board({
             </div>
           ) : null}
         </>
-      )}
+      </div>
 
       <div className="hint" aria-live="polite">
         {log ? <span>{log}</span> : <span>یک کارت را جابه‌جا کنید تا در هر سه نما هم‌گام شود.</span>}

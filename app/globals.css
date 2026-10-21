@@ -5107,3 +5107,11 @@ body {
     transform: none !important;
   }
 }
+
+/* The board has two layouts in the markup and the media query picks one, so a phone never paints
+   the desk board first. The query is the same one `lib/useIsNarrow.ts` uses for behaviour. */
+.meridian .board-mobile { display: none; }
+@media (max-width: 620px), (pointer: coarse) {
+  .meridian .board-mobile { display: block; }
+  .meridian .board-desktop { display: none; }
+}
