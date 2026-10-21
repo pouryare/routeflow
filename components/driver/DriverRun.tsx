@@ -8,6 +8,7 @@ import { faToman, faNum } from "@/lib/format";
 import { flush, queueSize, sendDelivery, subscribe } from "@/lib/deliveryQueue";
 import { buildReceipt } from "@/lib/deliveryReceipt";
 import DeliveryFlow from "@/components/flows/DeliveryFlow";
+import SwipeRow from "@/components/mobile/SwipeRow";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { ReceiptData } from "@/lib/receiptLayout";
 
@@ -162,6 +163,7 @@ function StopCard({
 
   return (
     <li className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
+      <SwipeRow ownButtons={false} start={done ? undefined : { label: "ثبت تحویل", icon: "check", run: startFlow }}>
       <button
         type="button"
         onClick={onToggle}
@@ -199,6 +201,7 @@ function StopCard({
           </span>
         </span>
       </button>
+      </SwipeRow>
 
       {open && (
         <div className="border-t border-[var(--border)] p-[var(--space-4)]">

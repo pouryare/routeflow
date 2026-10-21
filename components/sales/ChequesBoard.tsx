@@ -1,5 +1,10 @@
 "use client";
 
+import DecisionDeck from "@/components/mobile/DecisionDeck";
+import { CHEQUE_CHOICES, chequeRequest, chequesDue } from "@/lib/decisions";
+import { addDaysIso } from "@/lib/flows/dates";
+import SwipeRow from "@/components/mobile/SwipeRow";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { isToman, toToman } from "@/lib/money";
 import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -116,6 +121,54 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     } else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید"));
   }
 
+  /* A swipe moves a cheque one step and ends in the 5 s undo (the buttons below keep the plain,
+     immediate path). Only the two moves a collector makes all day are swipes: start is the good
+     outcome, end is the bounce; anything with a form (replacing) stays a button. */
+  const undoable = useUndoableAction();
+  const SWIPE: Partial<Record<ChequeStatus, { start: ChequeStatus; end: ChequeStatus }>> = {
+    in_hand: { start: "deposited", end: "bounced" },
+    deposited: { start: "cleared", end: "bounced" },
+  };
+  const swipeAction = (c: Cheque, to: ChequeStatus, icon: "check" | "x", tone: "good" | "bad") => ({
+    label: CHEQUE_STATUS_LABEL[to],
+    icon,
+    tone,
+    run: () =>
+      undoable.run({
+        message: `چک ${c.cheque_no} · «${CHEQUE_STATUS_LABEL[to]}» شد`,
+        send: async () => {
+          const res = await fetch(`/api/cheques/${c.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "advance", to }),
+          });
+          return res.ok ? { ok: true } : { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+        },
+        failure: "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید",
+        onDone: () => void load(),
+      }),
+  });
+
+  /* «تصمیم‌گیری سریع»: the cheques due within a week as a deck, one verdict per card. The deck
+     gets a snapshot taken when it opens, so it does not reshuffle as verdicts refresh the board. */
+  const [deck, setDeck] = useState<{ key: number; open: boolean; items: Cheque[] }>({ key: 0, open: false, items: [] });
+  const openDeck = () =>
+    setDeck((d) => ({ key: d.key + 1, open: true, items: chequesDue(cheques ?? [], addDaysIso(today, 7)) }));
+  const decideCheque = (c: Cheque, to: string) =>
+    undoable.run({
+      message: `چک ${c.cheque_no} · «${CHEQUE_STATUS_LABEL[to as ChequeStatus]}» شد`,
+      send: async () => {
+        const res = await fetch(`/api/cheques/${c.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(chequeRequest(to)),
+        });
+        return res.ok ? { ok: true } : { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+      },
+      failure: "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید",
+      onDone: () => void load(),
+    });
+
   const byStatus = (s: ChequeStatus) => (cheques ?? []).filter((c) => c.status === s);
 
   return (
@@ -130,6 +183,37 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
         <Icon name="plus" size="md" />
         ثبت چک جدید
       </button>
+
+      <button
+        type="button"
+        onClick={openDeck}
+        className="inline-flex items-center justify-center gap-[var(--space-2)] rounded border border-border px-4 py-3 text-base text-text md:hidden"
+      >
+        <Icon name="check" size="md" />
+        تصمیم‌گیری سریع چک‌های نزدیک
+      </button>
+      {deck.key > 0 && (
+        <DecisionDeck
+          key={deck.key}
+          open={deck.open}
+          title="چک‌های نزدیک به سررسید"
+          items={deck.items}
+          keyOf={(c) => c.id}
+          choices={CHEQUE_CHOICES}
+          onDecide={decideCheque}
+          onClose={() => setDeck((d) => ({ ...d, open: false }))}
+          render={(c) => (
+            <>
+              <strong>{customerName(c.customer_id)}</strong>
+              <span>{faToman(c.amount_toman)}</span>
+              <span className="text-text-muted">
+                چک {c.cheque_no}{c.bank_name ? ` · ${c.bank_name}` : ""} · سررسید {faJalaliDate(c.due_date)}
+                {c.due_date < today ? " (گذشته)" : ""}
+              </span>
+            </>
+          )}
+        />
+      )}
 
       <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <select
@@ -183,7 +267,13 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             {byStatus(col).map((c) => {
               const overdue = col === "in_hand" && c.due_date < today;
               return (
-                <div key={c.id} className="rounded border border-border bg-bg p-2 text-sm">
+                <div key={c.id} className="overflow-hidden rounded border border-border bg-bg text-sm">
+                  <SwipeRow
+                    ownButtons={false}
+                    start={SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.start, "check", "good") : undefined}
+                    end={SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.end, "x", "bad") : undefined}
+                  >
+                  <div className="p-2">
                   <div className="flex justify-between">
                     <span>{customerName(c.customer_id)}</span>
                     <span className="font-mono">{faToman(c.amount_toman)}</span>
@@ -204,8 +294,10 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                       </button>
                     ))}
                   </div>
+                  </div>
+                  </SwipeRow>
                   {replacing?.id === c.id && (
-                    <div className="mt-2 flex flex-col gap-2 rounded border border-border p-2">
+                    <div className="m-2 flex flex-col gap-2 rounded border border-border p-2">
                       <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک جایگزین<input
                         className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
                        

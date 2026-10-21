@@ -141,3 +141,12 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **A period is a shortcut for the two date fields, not a new filter.** The chip writes from/to; editing a date clears the chip. The page's filtering code did not change.
 - **Persian months, tested at a year boundary** (last month from early Farvardin is Esfand of the year before).
 - A group's "no filter" value can be non-empty (`neutral: "hide"` for the voided filter), so the active badge and the clear button ask the group, not `""`.
+
+## Phase E (swipe rows, decision decks)
+
+- **A gesture is a shortcut, never the only way.** `SwipeRow` keeps each action as a real button (hidden but focusable on phones, visible from 768px); rows that already had their own buttons pass `ownButtons={false}` so nothing is duplicated.
+- **Portals bubble.** A sheet opened from inside a swipe row sends its pointer events up React's tree to the row, so a drag in the sheet would move the row. Flows are rendered outside the swipe face.
+- **Swipe is easy to do by accident, so it ends in undo, not a question.** Each swipe goes through `useUndoableAction` (5 s, one held write at a time, a new one sends the previous).
+- **Decks take a snapshot.** The board refreshes as verdicts land; the deck keeps the list it opened with so cards do not shuffle.
+- **The plan's "first queue" was not buildable as written.** Credit approvals have no screen and the list endpoint returns ids only; check the data a card needs before promising it.
+- The bare-verb test also applies to swipe labels («حذف» alone fails; «حذف این کار»).

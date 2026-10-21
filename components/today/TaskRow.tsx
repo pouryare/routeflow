@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import SwipeRow from "@/components/mobile/SwipeRow";
 import { useRouter } from "next/navigation";
 import AfterCallFlow from "@/components/crm/AfterCallFlow";
 import OutcomeFlow from "@/components/flows/OutcomeFlow";
@@ -73,8 +74,16 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
 
   if (gone) return null;
 
+  const openOutcome = () => (customerId ? setFlow({ open: true }) : setOutcome((o) => ({ key: o.key + 1, open: true })));
+
   return (
-    <li className="flex flex-col gap-[var(--space-1)] border-b border-[var(--border)] py-[var(--space-2)]">
+    <li className="border-b border-[var(--border)]">
+    <SwipeRow
+      ownButtons={false}
+      start={{ label: "ثبت نتیجه", icon: "check", run: openOutcome }}
+      end={{ label: "حذف این کار", icon: "trash", tone: "bad", run: remove }}
+    >
+    <div className="flex flex-col gap-[var(--space-1)] py-[var(--space-2)]">
       <span className="text-[var(--text)]">
         {label}
         {sub && <span className="mr-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-faint)]">· {sub}</span>}
@@ -110,6 +119,10 @@ export default function TaskRow({ taskId, label, sub, customerId }: { taskId: nu
           <p className="m-0 mt-[var(--space-1)] leading-6 text-[var(--text-muted)]">{card.script_fa}</p>
         </div>
       )}
+    </div>
+    </SwipeRow>
+    {/* The sheets sit outside the swipe face: events from a portal bubble through React's tree,
+        and a drag inside a sheet must not move the row. */}
       {customerId && flow ? (
         <AfterCallFlow customerId={customerId} taskId={taskId} open={flow.open}
           onHide={() => setFlow({ open: false })}
