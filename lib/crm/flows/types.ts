@@ -67,7 +67,19 @@ export interface FlowOption {
   url?: string;
 }
 
-export interface FlowInput { field: string; placeholder: string; ltr?: boolean; optional?: boolean }
+export interface FlowInput {
+  field: string;
+  placeholder: string;
+  ltr?: boolean;
+  optional?: boolean;
+  /** `amount` steps: allow a decimal point (a count in kilograms). Whole numbers by default. */
+  decimal?: boolean;
+  /** `amount` steps: 0 is a valid answer. */
+  allowZero?: boolean;
+  /** `amount` steps: the unit printed under the number. Defaults to تومان; a step whose unit
+   *  varies per item reads `ctx.vars["<field>_unit"]` instead. */
+  unit?: string;
+}
 
 export interface FlowStep {
   id: string;
