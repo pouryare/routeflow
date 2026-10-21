@@ -2542,6 +2542,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F128. Read-only auditor role
+
+**What:** an external accountant or auditor gets read access to the accounting pages and reports (and nothing else), cannot change anything, and the access has an expiry date.
+
+**Already in the app:** there are seven fixed roles (platform owner, owner, group manager, representative manager, phone sales, field rep, delivery driver; `lib/roles.ts`). The accounting pages have their own authoritative gate: the whole-organisation reports (trial balance, balance sheet, income statement, payables, suppliers) are owner-only, and a group manager can read only the journal and the expense report, because they post to them (`lib/accountingGate.ts`). Users can hold several roles (`user_roles`). No role is read-only, and no account has an expiry.
+
+**Why parked:** a new role touches every role list and gate in the code (each one fails open or closed depending on how it is written, as the roles file itself warns); the proxy also keeps its own coarse tab and bundle gating; read-only has to be enforced on the server for every write route, not just hidden in the interface; an auditor sees the whole organisation's money, so the access must be logged.
+
+**Open questions**
+1. A new role value, or an owner-granted flag on an existing account with the "read-only" behaviour layered in the shared gates?
+2. Which pages: accounting only, or also orders, payments and stock reports?
+3. Expiry date on the account and an automatic sign-out at that time (token version, see F107).
+4. Everything the auditor opens goes to the access log (like the vendor's cross-tenant log in `lib/platformAccess.ts`).
+
+**Suggested first slice:** an expiring "accounting read-only" access flag, enforced in the accounting gate for read pages and by refusing every write route for that account, with each page view logged. No other pages.
+
+**Prerequisites:** F107 for ending sessions at expiry; F110 for the access log.
+
+---
+
+## F129. Approval chains
+
+**What:** configure who approves what in sequence or in parallel (rep, then manager, then owner) for the approval types in F48, F76 and F82, with limits by amount and a clear status for the requester.
+
+**Already in the app:** approvals exist as separate single-step decisions: an order waits for a manager to pass review, a credit-limit breach goes to a manager or owner for one decision with a reason (`credit_approvals`), and cheques and complaints have quick decision decks. Who may act is written into the order state machine per transition (`lib/orderStateMachine.ts`). There is no configurable chain, no second approver, and no amount-based routing.
+
+**Why parked:** a chain is a workflow engine in small, and workflow engines grow without limit; the existing single-step flows work and are tested, so a generic layer must wrap them rather than replace them; delegation (F82) and the inbox (F102) must understand chains; every added step slows the business.
+
+**Open questions**
+1. Which three approval types get a chain first (large orders, discounts, credit increases)?
+2. Fixed shapes only (one approver, approver plus owner above a limit) instead of a free designer?
+3. What happens when an approver is away (F82) or the request waits too long (F51)?
+4. Requester view: "waiting for Ali, then the owner", and a way to withdraw the request.
+
+**Suggested first slice:** one amount-based rule for credit approvals: above a stated limit the decision needs the owner after the group manager, shown as two steps on the existing credit-approval card. No designer.
+
+**Prerequisites:** the existing credit-approval flow; F48, F76, F82 and F102 consume it later.
+
+---
+
+## F130. Rule builder screen
+
+**What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
+
+**Already in the app:** a rule engine runs event rules and daily sweeps: a rule has a trigger, a flat list of conditions, an action (task, alert or notify), a cooldown and an optional escalation after N minutes to a role (`lib/rules/engine.ts`, `lib/repo/rules.ts`, `rules` and `rule_runs` tables). The default rules ship in the database and an organisation can override one: the existing rules API lets an owner turn a rule on or off and change its cooldown, nothing more (`setTenantRuleOverride`), and a button on the day page runs the sweep on demand. Creating a rule, changing its conditions, action or escalation has no screen or API.
+
+**Why parked:** a free rule designer can create rules that spam or loop (a task rule that triggers another rule); the engine intentionally supports only a flat AND list of conditions, so the form must stay inside that; rules reach into other people's task lists and notifications, so who may edit them matters.
+
+**Open questions**
+1. Edit only from a menu of known triggers, condition fields and operators, never free text or code?
+2. A "dry run" that shows who would be affected before saving a rule?
+3. Limits: a maximum number of firings per day per rule, with an automatic pause and an alert when exceeded.
+4. Who edits: owner only; managers can switch rules on or off for their group.
+
+**Suggested first slice:** a rules list for the owner showing each rule, its recent firings and its on/off and cooldown (already supported by the API), plus editing the escalation window and target role. Creating new rules later.
+
+**Prerequisites:** the rule engine and overrides (exist); F51 uses the escalation settings.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
