@@ -5115,3 +5115,51 @@ body {
   .meridian .board-mobile { display: block; }
   .meridian .board-desktop { display: none; }
 }
+
+/* ---- phone chrome: bottom bar, quick action, sticky action ------------------------------------
+   Below 768px the 30-destination pill in the header does not fit a thumb, so the bar replaces it
+   (components/mobile/BottomNav.tsx, derived from the same appTabs). From 768px up none of this
+   shows and the header is as it was. Fixed things sit below the sheets (z-index 70/71) so a sheet
+   covers them, and clear the home indicator with env(safe-area-inset-bottom). */
+.meridian .bottomnav, .meridian .qa-fab { display: none; }
+/* From md up the sticky action is an ordinary button in the flow. */
+.meridian .sticky-action { padding: 8px 0; }
+.meridian .sticky-action__btn {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 22px;
+  border: 0; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.meridian .sticky-action__btn:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 767px) {
+  .meridian .top > .segwrap { display: none; }
+  .meridian .app { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .meridian .bottomnav {
+    display: flex; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 60;
+    background: var(--bg); border-top: 1px solid var(--line); direction: rtl;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .meridian .bottomnav__item {
+    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; padding: 6px 2px; border: 0; background: none; color: var(--muted);
+    font: inherit; font-size: 11px; line-height: 1.2; text-decoration: none; cursor: pointer;
+  }
+  .meridian .bottomnav__item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meridian .bottomnav__item[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .meridian .bottomnav__item:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .meridian .qa-fab {
+    display: inline-flex; align-items: center; gap: 6px; position: fixed; z-index: 60;
+    inset-inline-end: 14px; inset-block-end: calc(70px + env(safe-area-inset-bottom));
+    min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent);
+    color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 20px -6px rgba(30,41,59,.45);
+  }
+  .meridian .sticky-action {
+    position: fixed; inset-inline: 0; z-index: 59;
+    inset-block-end: calc(56px + env(safe-area-inset-bottom)); padding: 8px 14px;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+  }
+  .meridian .sticky-action__btn { width: 100%; min-height: 52px; font-size: 16px; }
+  .meridian .sticky-action-gap { height: 76px; }
+}
+.meridian .mobilemore__group { display: grid; gap: 8px; padding: 0 16px 16px; }
+@media (prefers-reduced-motion: reduce) { .meridian .qa-fab { box-shadow: none; } }

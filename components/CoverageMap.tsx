@@ -890,13 +890,23 @@ export default function CoverageMap({
     if (!el) return;
     const fit = () => {
       const top = el.getBoundingClientRect().top + window.scrollY;
-      el.style.height = `${Math.max(360, Math.floor(window.innerHeight - top - 16))}px`;
+      /* On a phone the fixed bottom bar covers the last stretch of the viewport, so the map
+         stops above it: measured, not guessed, because the bar grows by the home-indicator
+         inset on some phones. Zero where the bar is not shown. */
+      const bar = document.querySelector<HTMLElement>(".bottomnav");
+      const barPx = bar && getComputedStyle(bar).display !== "none" ? bar.offsetHeight : 0;
+      el.style.height = `${Math.max(360, Math.floor(window.innerHeight - top - 16 - barPx))}px`;
       mapRef.current?.invalidateSize();
     };
     fit();
+    /* The bar streams in with the header, which may land after this effect; fit again once it has. */
+    const raf = requestAnimationFrame(() => requestAnimationFrame(fit));
     document.fonts?.ready.then(fit).catch(() => {});
     window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", fit);
+    };
   }, []);
   const [accent] = useAccent();
   const [ink, setInk] = useState<MapInk>(() => MAP_INK_FALLBACK[activeBasemap.ground]);

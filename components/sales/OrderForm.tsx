@@ -465,7 +465,7 @@ export default function OrderForm({
         </p>
       )}
 
-      <div className="sticky bottom-0 flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-2)] p-[var(--space-4)]">
+      <div className="sticky bottom-[calc(56px+env(safe-area-inset-bottom))] md:bottom-0 flex items-center justify-between gap-[var(--space-3)] rounded-[var(--radius-lg)] border border-[var(--border-strong)] bg-[var(--surface-2)] p-[var(--space-4)]">
         <div>
           <strong className="block text-[length:var(--text-lg)] font-medium tabular-nums text-[var(--text)]">
             {faToman(total)}

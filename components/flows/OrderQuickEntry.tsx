@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import OrderQuickFlow, { type QuickCustomer } from "./OrderQuickFlow";
+import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import type { CatalogueProduct } from "@/lib/flows/orderQuick";
 
 /** On a phone, the top of the new-order page offers «سفارش سریع» (repeat an order in a few taps)
@@ -12,7 +13,7 @@ export default function OrderQuickEntry({ customers, products, initialCustomerId
   products: CatalogueProduct[];
   initialCustomerId: number | null;
 }) {
-  const [flow, setFlow] = useState({ key: 0, open: false });
+  const [flow, setFlow] = useState(() => autoOpenFlow("quick", currentSearch()));
   return (
     <div className="md:hidden">
       <button

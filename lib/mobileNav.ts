@@ -72,7 +72,7 @@ export interface QuickAction {
 export const QUICK_ACTIONS: QuickAction[] = [
   { id: "reminder", label: "ثبت یادآوری", icon: "clock" },
   { id: "note", label: "ثبت یادداشت", icon: "edit" },
-  { id: "order", label: "سفارش جدید", icon: "receipt", href: "/sales/orders/new?quick=1", requires: "/sales/orders", except: ["rep_manager"] },
+  { id: "order", label: "سفارش تازه", icon: "receipt", href: "/sales/orders/new?quick=1", requires: "/sales/orders", except: ["rep_manager"] },
   { id: "payment", label: "ثبت دریافت", icon: "wallet", href: "/sales/payments?new=1", requires: "/sales/payments" },
   { id: "complaint", label: "ثبت شکایت", icon: "warn", href: "/sales/complaints?new=1", requires: "/sales/complaints" },
 ];

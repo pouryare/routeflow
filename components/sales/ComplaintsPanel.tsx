@@ -6,6 +6,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useMemo, useState } from "react";
 import { faJalaliDateTime } from "@/lib/jalali";
 import ComplaintFlow from "@/components/flows/ComplaintFlow";
+import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { CATEGORY_LABEL, SEVERITY_LABEL } from "@/lib/flows/complaint";
 
 /* Category and severity words live with the flow that also uses them. Widened to plain string
@@ -56,7 +57,7 @@ export default function ComplaintsPanel({
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [error, setError] = useState<string | null>(null);
   /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
-  const [flow, setFlow] = useState({ key: 0, open: false });
+  const [flow, setFlow] = useState(() => autoOpenFlow("new", currentSearch()));
   const [form, setForm] = useState(() => {
     let customer_id = "";
     if (typeof window !== "undefined") {

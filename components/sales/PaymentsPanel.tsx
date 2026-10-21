@@ -9,6 +9,7 @@ import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Fragment, useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
+import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { isToman, toToman } from "@/lib/money";
 
 const METHOD_LABEL: Record<string, string> = {
@@ -68,7 +69,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
   const [busy, setBusy] = useState(false);
   /* The tap flow remounts per opening (the key) so each recording starts on its first
      question; `open` only slides the sheet in and out. */
-  const [flow, setFlow] = useState({ key: 0, open: false });
+  const [flow, setFlow] = useState(() => autoOpenFlow("new", currentSearch()));
 
   const customerName = useMemo(() => {
     const m = new Map(customers.map((c) => [c.id, c.business_name]));
