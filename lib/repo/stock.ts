@@ -469,3 +469,19 @@ export function stockLevels(organizationId: number): StockLevel[] {
   >[];
   return rows.map((r) => ({ ...r, available: r.on_hand - r.reserved }));
 }
+
+/** Units on hand per product at ONE facility. A shelf count is a count of one place, so what to
+ *  compare it with is that place's own balance, not the company-wide figure (which also holds
+ *  what is sitting in vans). Products with no movement there are absent: read them as 0. */
+export function onHandByProduct(organizationId: number, facilityId: number): Map<number, number> {
+  const rows = stockMovementsRepo
+    .db()
+    .prepare(
+      `SELECT product_id, COALESCE(SUM(base_qty), 0) AS n
+         FROM stock_movements
+        WHERE organization_id = ? AND facility_id = ?
+        GROUP BY product_id`
+    )
+    .all(organizationId, facilityId) as unknown as { product_id: number; n: number }[];
+  return new Map(rows.map((r) => [r.product_id, r.n]));
+}

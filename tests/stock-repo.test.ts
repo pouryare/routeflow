@@ -11,7 +11,7 @@ process.env.ROUTEFLOW_DB_PATH = testDbPath;
 process.env.SESSION_SECRET = "test-secret";
 
 const { getDb } = await import("@/lib/db");
-const { recordMovement, onHand, allocateFEFO, defaultFacilityId, batchStock, stockLevels } =
+const { recordMovement, onHand, allocateFEFO, defaultFacilityId, batchStock, stockLevels, onHandByProduct } =
   await import("@/lib/repo/stock");
 
 afterAll(() => {
@@ -141,5 +141,27 @@ describe("batchStock", () => {
     const rows = batchStock(1, prod, fac);
     expect(rows.map((r) => r.batch_id)).toEqual([b2, b1]);
     expect(rows[0].on_hand).toBe(5);
+  });
+});
+
+describe("onHandByProduct", () => {
+  it("sums one facility only, so a van's stock is not mistaken for the shelf", () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    const van = Number(
+      db
+        .prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES (?,?,?,35,51,?,1,?)")
+        .run(`v${Date.now()}`, "van", "وانت", now, now).lastInsertRowid
+    );
+    // beforeEach put 10 + 5 into the warehouse; now move 4 to a van and write 1 off on the shelf.
+    recordMovement(1, { facility_id: fac, product_id: prod, batch_id: null, base_qty: -4, kind: "TRANSFER_OUT", occurred_at: now });
+    recordMovement(1, { facility_id: van, product_id: prod, batch_id: null, base_qty: 4, kind: "TRANSFER_IN", occurred_at: now });
+    recordMovement(1, { facility_id: fac, product_id: prod, batch_id: null, base_qty: -1, kind: "WRITE_OFF", occurred_at: now });
+    expect(onHandByProduct(1, fac).get(prod)).toBe(10);
+    expect(onHandByProduct(1, van).get(prod)).toBe(4);
+    expect(onHand(1, { product_id: prod })).toBe(14);
+  });
+  it("leaves out products with no movement at that facility", () => {
+    expect(onHandByProduct(1, fac + 999).size).toBe(0);
   });
 });
