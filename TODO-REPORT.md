@@ -83,6 +83,8 @@
 - [x] Parked features F103–F105 added to `docs/future-features.md`: rep mileage log, customer snapshot on call pickup, offline tasks and notes — each notes what already exists
 - [x] Corrected F13: the offline layer already covers draft orders, deliveries, payments, cheques, complaints and new customers for sales roles as well; tasks, notes and call outcomes are the gap (F105)
 
+- [x] Parked features F106–F108 added to `docs/future-features.md`: two-step login, device and session management, system status page — each notes what already exists (signed 30-day cookie with a token version, Login-As, data-freshness indicator, slow-query log, local backup script)
+
 ## Not done / gaps
 - [ ] F102: whether orders in review appear in a decision deck is not verified
 - [ ] F97: whether run planning fills the vehicle on each run is not confirmed (a code comment says runs carry no vehicle, but the column exists)
@@ -92,7 +94,7 @@
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F105 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105 partly exist)
+- [ ] F6–F108 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe

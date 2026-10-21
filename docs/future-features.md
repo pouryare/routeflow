@@ -2102,6 +2102,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F106. Two-step login for owners and managers
+
+**What:** a one-time code (sent by SMS or Telegram, or from an authenticator app) required at sign-in for roles that can approve money and see everything, with trusted-device memory so it is asked rarely.
+
+**Already in the app:** sign-in produces a signed session cookie that lasts 30 days, carrying the user, role, group, organisation and a token version (`lib/auth.ts`); login is rate-limited per username and per address; Login-As for owners is time-limited and re-validated on every request (`lib/impersonation.ts`). I found no one-time-code or second-factor code anywhere.
+
+**Why parked:** a code channel must exist first (Telegram is linked per user already, SMS needs a provider); a lost phone must not lock the owner out, so recovery codes and an owner reset path are required; asking for a code too often makes people choose weak habits.
+
+**Open questions**
+1. Which channel: Telegram (already linked for notifications), an authenticator app, or SMS?
+2. Required for which roles: owner and group manager only, or optional for everyone?
+3. Trusted-device length (for example 30 days) and how it is revoked (see F107).
+4. Recovery: printed codes, or the owner resets a manager, and who resets the owner?
+
+**Suggested first slice:** optional authenticator-app codes (no provider needed) for the owner and group-manager roles, with recovery codes shown once and a trusted-device cookie. Required-for-role setting later.
+
+**Prerequisites:** none; F107 supplies device revocation.
+
+---
+
+## F107. Device and session management
+
+**What:** each person sees where they are signed in, can sign out another device, and the owner can end a lost phone's access, which matters more now that data is cached on phones (offline orders, customers and, later, tasks).
+
+**Already in the app:** sessions are stateless signed cookies, and each user has a `token_version`: raising it makes every token already issued to that user invalid immediately (that is how a password reset or deactivation takes effect, `lib/auth.ts`). Sign-out exists. What does not exist is a list of devices or sessions: because nothing is stored per session, the app can sign someone out everywhere but cannot show or end one device.
+
+**Why parked:** a per-device list needs a stored session record (id, device, last seen, address), which changes the stateless design and adds a database write per sign-in; remote wipe of the offline cache needs the phone to check in; the device name must come from something reliable.
+
+**Open questions**
+1. Store a session row only at sign-in and on refresh (last seen updated at most once an hour) to keep writes low?
+2. Show device type, browser and approximate place, last used?
+3. Remote action: end the session on the server, and the phone clears its offline data at the next contact?
+4. Notify the user when a new device signs in (Telegram message).
+
+**Suggested first slice:** a "sign out everywhere" button for each person, using the existing token version, plus an owner action to do the same for another user. A device list comes after.
+
+**Prerequisites:** none for the first slice; F106 trusted devices use the same list.
+
+---
+
+## F108. System status page for the owner
+
+**What:** one page showing the app's own health: last sync activity, last backup and how old it is, failed notifications, errors and slow queries from the last day, how fresh the imported data is, and whether outside services (routing, weather, messaging) respond.
+
+**Already in the app:** pieces exist but are scattered: a data-freshness indicator for the spreadsheet-based imports (fresh, ageing, stale, unknown; `lib/freshness.ts`), a slow-query log written to the server console when a statement exceeds a threshold set by an environment variable (`lib/slowSql.ts`), a nightly backup script with rotation that writes to the local disk only (`scripts/backup.mjs`), notification delivery records (`notification_deliveries`), and a script for the scheduled sweeps (`scripts/run-sweeps.mjs`). There is no health endpoint and no page that brings these together; the slow-query and error output goes to logs that an owner never sees.
+
+**Why parked:** a status page shows internals, so it must be owner-only and must not leak other tenants' data in a multi-organisation setup; some checks (backup age, error rate) need the server to record them somewhere the page can read; alerting on bad status needs a channel.
+
+**Open questions**
+1. Which five checks first: last backup age, last sweep time, failed notifications in 24 hours, data freshness, database size?
+2. Where do error and slow-query counts come from: a small table written by the logger?
+3. External checks (routing engine, weather source, Telegram) done on demand with a short timeout.
+4. A push or Telegram message to the operator when a check turns red (ties to F16).
+
+**Suggested first slice:** an owner-only page that reads what already exists: last backup file time, last sweep time, failed and pending notification deliveries, and the data freshness tier. No logging changes yet.
+
+**Prerequisites:** none; F34 adds backup restore and storage location.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
