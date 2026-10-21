@@ -10,7 +10,8 @@ export type StepKind =
   | "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours" | "stars" | "driver" | "date"
   | "amount"   // numeric entry, prefilled from ctx.vars[step.input.field]
   | "pick"     // searchable list from step.choices
-  | "stepper"; // one +/- row per ctx.items entry
+  | "stepper"   // one +/- row per ctx.items entry
+  | "photo";    // the host takes a picture (camera), or the person skips it
 
 /** Everything an answer can contribute. Merged left to right; a later answer wins. */
 export interface FlowSet {

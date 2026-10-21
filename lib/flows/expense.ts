@@ -9,13 +9,14 @@ import { METHOD_LABEL } from "@/lib/flows/payment";
  *  COGS never does. Paying methods are the three that are real money on the spot; cheques and
  *  credit notes are not expenses paid at a counter.
  *
- *  The server has no supplier or photo column on an expense, so the supplier is written into the
- *  journal memo, and photo capture is parked (docs/future-features.md F1).
+ *  The server has no supplier column on an expense, so the supplier is written into the journal
+ *  memo. The receipt photo is optional: the host takes it (camera) and uploads it to the new
+ *  expense once the expense itself is saved (values.photo is "take" when there is one).
  *
  *  Contract with `expenseRequest`: values.category (account id, from the pick step), values.amount,
- *  values.supplier (a name, optional), values.method; vars.today; ctx.lists.category (accounts),
+ *  values.supplier (a name, optional), values.method, answered option `take` on the photo step; vars.today; ctx.lists.category (accounts),
  *  ctx.lists.supplier (recent names). */
-type Vals = { values: Record<string, string> };
+type Vals = { values: Record<string, string>; answers?: { step: string; option: string }[] };
 
 /** The ways to pay that map to a cash or bank account on the ledger. */
 export const EXPENSE_METHODS = ["CASH", "POS", "CARD_TO_CARD"] as const;
@@ -23,7 +24,7 @@ export const EXPENSE_METHODS = ["CASH", "POS", "CARD_TO_CARD"] as const;
 export const expenseFlow: FlowConfig = {
   id: "expense",
   start: () => "category",
-  budget: { common: 4, longest: 4 },
+  budget: { common: 5, longest: 5 },
   steps: {
     category: {
       id: "category",
@@ -53,7 +54,17 @@ export const expenseFlow: FlowConfig = {
       kind: "choice",
       q: "چطور پرداخت شد؟",
       sub: (ctx, s) => `${categoryName(ctx, s)} · ${faToman(Number(s.values.amount))}`,
-      options: EXPENSE_METHODS.map((m): FlowOption => ({ id: m, label: METHOD_LABEL[m], save: true, put: { method: m } })),
+      options: EXPENSE_METHODS.map((m): FlowOption => ({ id: m, label: METHOD_LABEL[m], next: "photo", put: { method: m } })),
+    },
+    photo: {
+      id: "photo",
+      kind: "photo",
+      q: "از رسید عکس بگیریم؟",
+      sub: "اختیاری؛ عکس کنار این هزینه نگه داشته می‌شود",
+      options: [
+        { id: "take", label: "عکس رسید", tone: "rec", save: true },
+        { id: "none", label: "بدون عکس", save: true },
+      ],
     },
   },
 };
@@ -79,5 +90,10 @@ export function expenseChips(ctx: FlowContext, st: Vals): string[] {
     `${faNum(Math.round(Number(st.values.amount)))} تومان`,
     ...(st.values.supplier ? [st.values.supplier] : []),
     METHOD_LABEL[st.values.method] ?? "نامشخص",
+    ...(hasPhoto(st) ? ["با عکس رسید"] : []),
   ];
 }
+
+/** Did the person take a receipt photo? (The photo step is the last; its answer is recorded.) */
+export const hasPhoto = (st: { answers?: { step: string; option: string }[] }): boolean =>
+  (st.answers ?? []).some((a) => a.step === "photo" && a.option === "take");

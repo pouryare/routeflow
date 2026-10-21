@@ -18,7 +18,7 @@ const DIRS = ["app", "components"];
 const RULES = {
   select: /<select\b/g,
   nativeDate: /type=["']date["']/g,
-  textField: /<(?:input|textarea)\b/g,
+  textField: /<(?:input|textarea)\b(?![^>]*type=["']file["'])/g, // a camera/file input is the replacement for typing, not typing
   tinyTarget: null, // counted by countTinyTargets: only on controls, not on badges
   confirmDialog: /(?<![\w.])(?:window\.)?(?:confirm|alert|prompt)\(/g,
 };

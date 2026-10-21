@@ -121,6 +121,7 @@ export const TENANT_TABLES = [
   "customer_tags",
   "fiscal_periods",
   "journals",
+  "expense_receipts",
   "ledger_entries",
   "suppliers",
 ] as const satisfies readonly string[];
@@ -1988,6 +1989,19 @@ export function getDb(): DatabaseSync {
       created_at TEXT NOT NULL,
       UNIQUE (organization_id, period_key)
     );
+
+    /* A photo of the paper behind an expense. Not in the photos table: that table is of a customer or a
+       district and inherits its group from them, and an expense has neither. One receipt per
+       journal; the files are the same avif/webp pair every photo has (lib/photos). */
+    CREATE TABLE IF NOT EXISTS expense_receipts (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      journal_id INTEGER NOT NULL REFERENCES journals(id),
+      file_stem TEXT NOT NULL UNIQUE,
+      created_by INTEGER NOT NULL REFERENCES users(id),
+      created_at TEXT NOT NULL
+    );
+    CREATE UNIQUE INDEX IF NOT EXISTS ux_expense_receipts_journal ON expense_receipts(journal_id);
 
     CREATE TABLE IF NOT EXISTS journals (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
