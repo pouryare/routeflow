@@ -252,6 +252,14 @@ If the test shows a role has `reachable` hrefs different from the guesses above,
 - [ ] **Step 5:** tests: extend `tests/app-header.test.ts` to assert the pill is still rendered and `BottomNav` receives `bottomTabs(session)`. Manual 375 px check: every page still scrolls to its end above the bar; the bar never covers a sticky action.
 - [ ] **Step 6:** tsc, lint, vitest, `npm run check:mobile`. Commit `feat(mobile): bottom bar, quick actions, sticky action`.
 
+### Task B.2b: Fix the phone-detection flash (owed from TapFlow Phase 4)
+
+`lib/useIsNarrow.ts` returns `false` on the server and on first paint, so a phone briefly renders the desk affordance (the inline reminder form, the desktop board) until the first effect runs. Used by `Board`, `Pocket` and `AddReminder`.
+
+- [ ] **Step 1:** replace the `useState(false)` + effect with `useSyncExternalStore` over `matchMedia("(max-width: 620px), (pointer: coarse)")`, with `getServerSnapshot` returning `false` (the server cannot know) — this removes the extra render pass, and the client's first render already has the right value.
+- [ ] **Step 2:** for the one place a wrong first paint is visible (the layout swap in `Board`), prefer CSS: render both layouts and hide one with a media query, or gate with the `md:`/`max-[620px]:` classes, so nothing flashes before hydration. Keep the hook only for behaviour (which handler a button runs), not for layout.
+- [ ] **Step 3:** test the pure part (`narrowQuery` constant and the snapshot function) and add a note to the lessons file. Commit `fix(mobile): no desk flash on phones`.
+
 ### Task B.3: Driver bar
 
 - [ ] `app/(bare)/driver/page.tsx` has its own header and no shell. Add a two-item `BottomNav` variant (روز من / نقشه) only if the driver page has more than one destination worth a bar; otherwise record "driver stays single-screen" in the lessons file and skip. Commit `feat(driver): phone bar` or `docs: driver stays single-screen`.
