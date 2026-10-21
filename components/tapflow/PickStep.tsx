@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
-import { normalizeSearch } from "@/lib/search/normalize";
+import { matchesQuery } from "@/lib/persian";
 
 /** A searchable list for a step whose answer is "which one": a customer, a product. The tap
  *  on a row is the answer, so there is no confirm button. */
@@ -16,8 +16,7 @@ export default function PickStep({ choices, optionId, extras = [], submit, place
 }) {
   const [q, setQ] = useState("");
   const { shown, more } = useMemo(() => {
-    const n = normalizeSearch(q);
-    const all = n ? choices.filter((c) => normalizeSearch(c.label).includes(n)) : choices;
+    const all = choices.filter((c) => matchesQuery(c.label, q));
     return { shown: all.slice(0, 8), more: all.length - 8 };
   }, [q, choices]);
   return (

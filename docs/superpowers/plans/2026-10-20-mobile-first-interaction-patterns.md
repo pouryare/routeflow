@@ -297,9 +297,7 @@ describe("recents ranking", () => {
 ```ts
 export type History = Record<string, { n: number; last: number }>;
 
-export const normalizeFa = (s: string) =>
-  s.replace(/[٠-٩]/g, (d) => String(d.charCodeAt(0) - 1632)).replace(/[۰-۹]/g, (d) => String(d.charCodeAt(0) - 1776))
-   .replace(/ي/g, "ی").replace(/ك/g, "ک").replace(/‌/g, "").toLowerCase().trim();
+import { matchesQuery } from "@/lib/persian";
 
 export function record(h: History, id: string, now: number): History {
   const cur = h[id] ?? { n: 0, last: 0 };
@@ -308,8 +306,7 @@ export function record(h: History, id: string, now: number): History {
 
 /** Score = uses, with a recency tiebreak. With a query: filter first, then the same order. */
 export function rank<T extends { id: string; label: string }>(items: T[], h: History, q: string, now: number, limit = 8): T[] {
-  const n = normalizeFa(q);
-  const pool = n ? items.filter((i) => normalizeFa(i.label).includes(n)) : items;
+  const pool = items.filter((i) => matchesQuery(i.label, q)); // empty query matches everything
   return [...pool]
     .sort((a, b) => (h[b.id]?.n ?? 0) - (h[a.id]?.n ?? 0) || (h[b.id]?.last ?? 0) - (h[a.id]?.last ?? 0) || a.label.localeCompare(b.label, "fa"))
     .slice(0, limit);
@@ -323,7 +320,7 @@ export function saveHistory(userId: number, scope: string, h: History) {
   try { localStorage.setItem(key(userId, scope), JSON.stringify(h)); } catch { /* private mode: ranking just resets */ }
 }
 ```
-This is the same normaliser Task 0.2 of the TapFlow plan looks for: **if `normalizeSearch` already exists, re-export it here instead of defining `normalizeFa`** (grep first; one implementation only).
+The normaliser already exists: **`normalisePersian` / `matchesQuery` in `lib/persian.ts`** (British spelling — grep for `normalis`, not `normaliz`). Use it; do not define `normalizeFa`. `PickStep` already uses `matchesQuery`.
 - [ ] **Step 4:** PASS. **Step 5:** commit `feat(mobile): recents ranking model`.
 
 ### Task C.2: `SmartPicker` and adoption

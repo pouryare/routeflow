@@ -11,3 +11,11 @@ describe("clampCount", () => {
     expect(clampCount(10, 4.9)).toBe(4);
   });
 });
+
+describe("FlowItem.max", () => {
+  it("lets a count rise past what was expected when the item says so", () => {
+    const item = { id: 1, label: "x", qty: 10, max: 50 };
+    expect(clampCount(item.max ?? item.qty, 30)).toBe(30);
+    expect(clampCount(item.max ?? item.qty, 99)).toBe(50);
+  });
+});

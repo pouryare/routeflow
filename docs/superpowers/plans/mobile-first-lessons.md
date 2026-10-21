@@ -62,3 +62,7 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - Phones get the flow, desks keep the inline form: `useIsNarrow` (previously private to `Board`) moved to `lib/useIsNarrow.ts` so Pocket, AddReminder and Board share one meaning of "phone". Caveat: it is false on first paint, so a phone briefly renders the desk affordance before the first effect.
 - Ratchet: tiny tap targets 36 → 32 (the baseline was re-written downward).
 - Not done: the board's drag-to-done on a phone still only works through `BoardMobile`'s own move control; making that control a full-height bottom action is Phase E (swipe rows).
+
+## Correction (Phase 5 start)
+
+- I added `lib/search/normalize.ts` in Phase 0 after grepping for "normaliz". The repo already had a fuller normaliser, `normalisePersian` / `matchesQuery` in `lib/persian.ts`, spelled the British way. Removed the duplicate; `PickStep` uses `matchesQuery`. **Lesson: grep for both spellings before adding a helper.**

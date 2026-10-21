@@ -15,7 +15,7 @@ export default function StepperStep({ items, option, submit }: {
   submit: (optionId: string, value: string) => void;
 }) {
   const [n, setN] = useState<Record<number, number>>(() => Object.fromEntries(items.map((i) => [i.id, i.qty ?? 0])));
-  const bump = (i: FlowItem, d: number) => setN((s) => ({ ...s, [i.id]: clampCount(i.qty ?? 0, (s[i.id] ?? 0) + d) }));
+  const bump = (i: FlowItem, d: number) => setN((s) => ({ ...s, [i.id]: clampCount(i.max ?? i.qty ?? 0, (s[i.id] ?? 0) + d) }));
   return (
     <div className="tf-stepper">
       {items.map((i) => (
