@@ -211,6 +211,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** flag customers whose order rhythm is dropping (churn) or whose payments are slipping (credit risk), before a cheque bounces. Shown as exceptions on the manager briefing and as a warning in the credit-approval step.
 
+**Already in the app:** churn scoring exists. `lib/repo/churn.ts` and `lib/predict/churn.ts` score every customer from order history with a logistic model, learn per-tenant weights once enough real lapses exist, and give a reason; `components/predict/ChurnList.tsx` shows it on `/sales/forecast`. Credit-risk scoring (payment delay, bounced cheques) is the part that is missing.
+
 **Why parked:** a score that is wrong blocks a good customer or lets a bad one through; the inputs (payment delay, bounced cheques, order trend) must be defined with the people who grant credit.
 
 **Open questions**
@@ -244,6 +246,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F11. Demand forecasting and auto-purchasing
 
 **What:** forecast stock need per product from sales history, and draft purchase orders to suppliers for a manager to confirm.
+
+**Already in the app:** demand forecasting exists. `lib/predict` smooths demand on a deseasonalised series and `lib/predict/inventory.ts` computes the reorder point (average daily sales × lead time + safety stock); `/sales/forecast` shows the demand table. Missing: supplier lead times and minimum orders, and drafting purchase orders from the result.
 
 **Why parked:** perishables with batches and expiry make "how much to buy" depend on shelf life; supplier lead times and minimum quantities must be modelled; poor forecasts cost real money.
 
@@ -620,6 +624,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** orders store `total_toman` and `cost_toman`; runs store planned and actual distance and duration. Delivery cost per run, discounts and bad-debt allocation are not yet attributed.
 
+**Also existing:** `components/CostToServePanel.tsx` already shows revenue against straight-line distance from the dispatch site per customer, and reports how many sales rows failed to match a customer. It is a distance proxy, not a cost model.
+
 **Why parked:** allocating shared costs (fuel, driver time, vehicle) to orders is a modelling decision; results can upset sales and drivers if shown carelessly; accuracy depends on the cost inputs being right.
 
 **Open questions**
@@ -638,6 +644,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **What:** before Nowruz, Ramadan, Yalda or a heat wave, forecast demand and capacity from last year's same period, and warn the planner of the stock and van shortfall.
 
 **Already in the app:** the holiday calendar (`listHolidaysForMonth`), weather forecasts on the schedule page, and order history. They are not yet combined into a seasonal forecast.
+
+**Already in the app (more than first noted):** `lib/predict/seasonality.ts` holds Jalali-month seasonal factors, tenant-tunable through `seasonal_factors`, used by the demand forecast. Missing: holiday-period shifting for events that move on the calendar (Ramadan, Nowruz timing) and a planner banner.
 
 **Why parked:** needs at least a year of clean history per product; holiday dates move on the Jalali/lunar calendar, so "same period last year" is not a fixed date range; weather effects differ per product.
 
@@ -669,6 +677,281 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** owner-only CSV/Excel export of customers, orders and payments, plus a "last backup" status line. Restore stays an operator task for now.
 
 **Prerequisites:** F27 for logging; the backup script as the engine.
+
+---
+
+## F35. Role-based dashboard builder
+
+**What:** managers and owners choose which panels appear on their briefing and in what order, without a developer.
+
+**Already in the app:** `lib/repo/briefing.ts` (`todayFor`) returns a fixed set of panels per role, each capped at five items and each carrying a link or an action, and `users.prefs_json` / `lib/repo/prefs.ts` store per-user preferences. What is missing is letting a person show, hide or reorder panels.
+
+**Why parked:** a free-form builder is a large product; letting users hide panels can hide exceptions they need to see; panel availability must still respect role and scope (a group manager must not be able to add another group's panel).
+
+**Open questions**
+1. Show/hide/reorder of existing panels only, or also new panels with filters?
+2. Which panels are pinned (exceptions, credit approvals) and cannot be hidden?
+3. Per user, or a default per role that the owner sets for the team?
+
+**Suggested first slice:** show/hide and reorder of the existing panels stored in `prefs_json`, with a pinned set that cannot be hidden. No new panels.
+
+**Prerequisites:** none; builds on `briefing.ts` and `prefs.ts`.
+
+---
+
+## F36. Document templates (invoices, delivery notes, statements)
+
+**What:** invoices, delivery notes and statements with the company's logo, wording, numbering and layout, editable by the owner and printable or shareable as PDF.
+
+**Why parked:** invoice layout and numbering can be a legal matter (and links to e-invoicing); a template editor is a product of its own; Persian right-to-left printing and Jalali dates need careful PDF handling. Check what print views exist today before designing (the orders, report and planner pages have print-related code; its coverage was not verified).
+
+**Open questions**
+1. Fixed layouts with owner-editable fields (logo, header, footer, terms), or a visual editor? Start with fixed layouts.
+2. Numbering: one sequence per organisation, per year, per document type? Gaps allowed?
+3. PDF generation on the server or print-to-PDF in the browser? Persian shaping and fonts must be tested.
+4. Which documents first: delivery note (drivers need it), statement (F18), invoice?
+
+**Suggested first slice:** one delivery-note layout with the organisation's logo, name and footer text, printable from the order page.
+
+**Prerequisites:** F18 for the statement; the e-invoicing decision for invoices.
+
+---
+
+## F37. Duplicate customer detection upgrade (fuzzy match, preview, undo)
+
+**What:** find customers entered twice even when phone and Instagram differ, show exactly what a merge will move, and allow an undo within a window.
+
+**Already in the app:** `lib/repo/crm/duplicates.ts` already finds duplicate pairs on the `customers` table by identical phone or Instagram, picks a survivor (`chooseSurvivor`: more orders, then more recent, then older id), supports "mark separate" and `mergeBusinesses`, and `lib/duplicates.ts` holds the pure survivor logic. What is missing is matching on name similarity and nearby location, a preview of what moves, and an undo.
+
+**Why parked:** fuzzy matching on Persian names produces false positives (shared common words, branches of one chain); a merge moves orders, payments, tasks and history, so a wrong merge is costly; undo needs the pre-merge state kept.
+
+**Open questions**
+1. Signals and weights: normalised name (see F5), distance under some metres, same owner?
+2. Merge preview: counts of orders, payments, tasks, notes, files that will move.
+3. Undo window and how the pre-merge snapshot is stored.
+4. Who may merge: owner and managers only?
+
+**Suggested first slice:** name-plus-location suggestions shown as extra pairs in the existing duplicates list, using `normalisePersian`, with the preview counts. Undo second.
+
+**Prerequisites:** F5 name normalisation helps; existing duplicates repo.
+
+---
+
+## F38. Automatic arrival and departure (geofencing)
+
+**What:** detect when a driver arrives at and leaves a customer's location and record the times, giving stop duration and on-time data without a tap.
+
+**Already in the app:** `lib/arrival.ts` (`stopAtDoor`) prompts the driver when they are within 150 m of a pending stop (`ARRIVAL_RADIUS_KM`), used in `components/driver/DriverRun.tsx`. `deliveries.actual_arrival` is a server timestamp set when the stop action is received, not when the driver physically arrived, and there is no departure time or dwell time.
+
+**Why parked:** continuous background location is unreliable in a PWA (works only while the app is open and the screen is on); battery use; GPS error indoors and in dense streets; location tracking of staff needs consent and clear rules (see F6).
+
+**Open questions**
+1. Record the prompt's first detection time as arrival, or require the driver to confirm?
+2. Departure: first position beyond the radius after arrival?
+3. Where is the raw position kept, and for how long?
+4. How are the times used: ETA correction (F6), on-time rate (F24), service-time learning for the route planner?
+
+**Suggested first slice:** store the time the existing prompt first fired for each stop (`detected_arrival_at`) alongside the server-received time, and show both to managers. No departure tracking yet.
+
+**Prerequisites:** the existing arrival prompt; F6 shares the position-handling decisions.
+
+---
+
+## F39. Training and onboarding mode
+
+**What:** a sandbox with demo data and guided tasks, so new staff can practise creating orders, recording payments and running a delivery without touching real records.
+
+**Already in the app:** demo seed scripts (`scripts/seed-demo-org.mjs`, `scripts/seed-demo-drivers.mjs`) build a demo organisation. There is no in-app training mode or guided tasks.
+
+**Why parked:** a sandbox must be completely isolated from real data, including notifications and messages (a practice order must never message a real customer); guided tasks need content in Persian per role; resetting the sandbox must be safe.
+
+**Open questions**
+1. Separate demo organisation per learner, or one shared training organisation that resets nightly?
+2. Which guided tasks per role: first order, record a cheque, finish a delivery stop, add a lead?
+3. How is training mode entered and clearly shown on every screen so nobody confuses it with live data?
+4. Outbound channels (push, Telegram, messaging) are disabled in training.
+
+**Suggested first slice:** a training organisation seeded by the existing demo scripts, a clearly marked banner, and a short checklist per role. No in-app guided overlays yet.
+
+**Prerequisites:** the demo seed scripts; tenant isolation (exists).
+
+---
+
+## F40. Customer onboarding checklist
+
+**What:** a new customer's first-order steps tracked until complete: credit limit set, location confirmed, price group chosen, contact person recorded, first delivery slot agreed. Incomplete items show on the owner's task list and the customer page.
+
+**Already in the app:** lead stages (`lib/crm/stage.ts`) and tasks. They track a lead's progress, not the readiness of a new customer to be served.
+
+**Why parked:** the checklist must match how the business really onboards; too many mandatory steps slow sales; some items (credit) need a manager.
+
+**Open questions**
+1. Which steps are mandatory before the first order and which can follow?
+2. Who owns each step (salesperson, manager, warehouse)?
+3. Does an incomplete checklist block order confirmation or only warn?
+
+**Suggested first slice:** a four-item checklist (location, price group, contact, credit) derived from existing customer fields, shown on the customer page and on new customers' first order. Warn only.
+
+**Prerequisites:** none.
+
+---
+
+## F41. Visit and call quality review
+
+**What:** managers sample call outcomes and visit notes, give a quick score and a comment, and coach reps from it.
+
+**Already in the app:** call outcomes, attempt numbers and notes are stored as activities (`insertActivity` in `lib/repo/crm/write.ts`) and appear on the customer timeline (`lib/crm/timeline.ts`). There is no review, score or coaching comment.
+
+**Why parked:** scoring staff is sensitive; a rubric must be agreed; review only makes sense if the notes are good enough to judge, and call audio is not recorded (see F4 on recording).
+
+**Open questions**
+1. Rubric: three to five criteria with a short scale, set by the owner?
+2. Sampling: random, or targeted (very short calls, repeated no-answers)?
+3. Who sees scores: the rep and their manager only?
+4. Do scores feed commission or only coaching? Default: coaching only.
+
+**Suggested first slice:** a manager "review five random calls this week" list with one-tap rating and an optional comment, visible to the rep.
+
+**Prerequisites:** the activity timeline; F4 if call recordings are ever added.
+
+---
+
+## F42. Complaint root-cause analytics
+
+**What:** group complaints by product, batch, supplier, route, driver, district and time, to find the pattern behind them and show trends.
+
+**Already in the app:** `lib/repo/complaints.ts` has categories (spoilage, packaging, foreign object, short weight, wrong product), severity, status and links to customer, order, product and batch. `complaintClusters` flags batches with two or more open complaints in 30 days, and `backwardTrace` follows a complaint to its order, batch, purchase line and the supplier's lot reference. The complaints page (`/sales/complaints`) lists them. Missing: patterns across route, driver, district and supplier, resolved complaints, and trends over time.
+
+**Why parked:** driver and route attribution can be unfair when the cause is upstream (a bad batch, not the driver); small counts mislead; supplier conclusions have commercial consequences.
+
+**Open questions**
+1. Dimensions to add first: supplier, route, driver, district, product?
+2. Minimum count before a pattern is shown, and over what window?
+3. Rates, not only counts: complaints per 1,000 units delivered.
+4. Who sees driver-level views?
+
+**Suggested first slice:** complaint rate per product and per supplier over the last 90 days, including resolved complaints, with the existing batch clusters alongside. Driver and route views later.
+
+**Prerequisites:** `quality_complaints`, batch and purchase links (exist); F12 and F31 add richer data.
+
+---
+
+## F43. Shared notes and @-mentions
+
+**What:** @-mention a colleague on a customer, order or task, creating a notification and a task for them.
+
+**Already in the app:** activity notes on the customer timeline (`lib/crm/timeline.ts`), tasks with assignees, and the notification feed with unread counts (`lib/repo/notifications.ts`). There is no mention syntax or conversation on an order or task.
+
+**Why parked:** mentions need access checks (someone mentioned must be allowed to see the record, or the mention leaks it); threads on every object grow into a chat product; notification noise.
+
+**Open questions**
+1. Where can a note be written: customer, order, task, complaint?
+2. Does a mention auto-grant visibility, or is it refused when the person cannot see the record?
+3. Reply threads, or one flat note list per record?
+4. Does a mention create a task, a notification, or both?
+
+**Suggested first slice:** @-mention in customer notes only, restricted to people who can already see that customer, creating a notification (not a task).
+
+**Prerequisites:** the notifications fan-out; role and scope checks.
+
+---
+
+## F44. Standing orders and contracts
+
+**What:** a customer who orders the same thing every week gets a recurring order that generates a draft each time for confirmation, with a contract (start, end, quantities, agreed prices).
+
+**Already in the app:** `task_recurrences` and `lib/tasks/recurrence.ts` (`rruleMatches`: `daily`, `weekly:<day>`, `monthly:<1-28>`) generate recurring tasks from the sweep rules. Nothing generates orders.
+
+**Why parked:** a generated order touches stock, credit and the delivery plan; holidays and skipped weeks need rules; price changes during a contract; a draft that nobody confirms must not silently ship.
+
+**Open questions**
+1. Draft only, always requiring a confirmation tap, or auto-confirm for trusted customers? Start with draft only.
+2. Prices: fixed for the contract, or current price list at generation time?
+3. Holiday handling: skip, move to the next working day, or ask?
+4. How does the customer change or pause it (call, portal)?
+
+**Suggested first slice:** a standing order that reuses the existing recurrence rules to create an order draft in `DRAFT` state and a task for the salesperson to confirm it.
+
+**Prerequisites:** the recurrence engine; TapFlow Phase 5 (`orderQuickFlow`); the holiday calendar.
+
+---
+
+## F45. Customer feedback loop (delivery rating)
+
+**What:** a one-tap rating after delivery, where a low rating creates a follow-up task or a complaint.
+
+**Already in the app:** the complaints flow (`ComplaintFlow`, `ComplaintFromOrder`) for problems a customer reports. There is no positive or neutral rating and no prompt after delivery.
+
+**Why parked:** needs a way to reach the customer (see F6 and F18 for message channels); response rates are usually low and biased towards complaints; ratings of drivers feed pay (F24) and need care.
+
+**Open questions**
+1. Channel: a link in a message, a rep asking on the next visit, or the driver's tap on a tablet?
+2. Scale: thumbs up/down or one to five? A reason list for low ratings.
+3. A low rating creates a complaint (with severity) or only a follow-up task?
+4. Are ratings shown to drivers?
+
+**Suggested first slice:** a rep-entered rating on the next visit (two taps, optional reason), low ratings creating a follow-up task. No automatic messages.
+
+**Prerequisites:** complaints repo; F6/F18 for automated delivery of the request.
+
+---
+
+## F46. Credit-risk scoring from payment behaviour
+
+**What:** a score and the top reasons per customer, built from days-late trend, bounced cheques and credit exposure, shown at the credit-approval step and on the customer page. Finishes the half of F9 that is not built.
+
+**Already in the app:** a per-customer credit limit and an approval queue. An order that breaches a direct customer's limit is parked in `credit_approvals` (`lib/repo/creditApprovals.ts`: pending, approved, rejected, expired, with the balance, limit, overage and a reason), and the approver decides. The check is balance against limit only; it knows nothing about how the customer pays. Churn scoring (`lib/repo/churn.ts`) is a separate, existing model.
+
+**Why parked:** a wrong score blocks a good customer or lets a bad one through; the approver must see *why*; few bounced cheques per customer means little data.
+
+**Open questions**
+1. Transparent rules (days late, bounced count, exposure over limit) or a learned model like churn? Start with rules.
+2. Advisory only, or can it suggest a lower limit or hold the order? Default: advisory.
+3. Window for "recent" behaviour, and per-group thresholds?
+4. Representatives who settle in cash are outside credit control; they should be skipped.
+
+**Suggested first slice:** a transparent score with the top three reasons shown on the existing credit-approval card, advisory only.
+
+**Prerequisites:** payments, cheques and customer debt (exist).
+
+---
+
+## F47. Customer 360 page
+
+**What:** one screen for a customer with orders, payments and balance, cheques, complaints, calls and visits, tasks, ratings, churn and credit risk, and next best action.
+
+**Already in the app:** the customer detail panel and page (`components/CustomerDetailPanel.tsx`, `/crm/[id]`) with the history timeline, purchase history, photos and reminders, plus the unified timeline (`lib/crm/timeline.ts`, kinds: activity, task, order, payment). Missing: cheques, complaints, balance and risk in the same place, and a clear "what to do next" line.
+
+**Why parked:** a page that shows everything shows nothing; the sections must differ by role (a driver needs the door and the balance, a manager needs risk); every section needs its own access check so no role sees more than it should.
+
+**Open questions**
+1. Which five facts sit at the top for each role?
+2. Is the timeline extended with cheques and complaints, or are they separate cards?
+3. Does the page propose one next action (call, collect, reorder) from F8 and F46, or only show data?
+
+**Suggested first slice:** add balance, open cheques and open complaints cards to the existing customer page, role-gated, with no new scoring.
+
+**Prerequisites:** none; F8 and F46 add the signals later.
+
+---
+
+## F48. Change approvals (second-person sign-off)
+
+**What:** price edits, discounts above a limit, credit-limit increases and similar sensitive changes need a second person's approval, with the reason recorded.
+
+**Already in the app:** only the credit-limit breach is approved this way (`credit_approvals`, with its own decision flow). There is no general approval request for price, discount or limit changes.
+
+**Why parked:** a generic approval engine touches every sensitive write path; too many approvals slow the business and people route around them; approvers need a quick decision screen (the decision deck is the pattern); who approves whom depends on roles and groups.
+
+**Open questions**
+1. Which actions need approval, and thresholds (discount over X%, price below cost, limit increase over Y)?
+2. Who approves: group manager, owner, or the next level up? What if the requester is the approver?
+3. Does the change wait (pending) or apply immediately and get reviewed afterwards?
+4. Expiry of unanswered requests, and a record in the audit trail (F27).
+
+**Suggested first slice:** one action only, a discount above a threshold on an order line, requesting approval from the group manager through the existing decision deck. Generalise after.
+
+**Prerequisites:** the decision deck and notifications; F27 for the audit record.
 
 ---
 

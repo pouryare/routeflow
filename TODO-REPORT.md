@@ -41,10 +41,18 @@
 
 - [x] Parked features F29–F34 added to `docs/future-features.md`: quotations, van loading verification, supplier scorecards, margin analytics, seasonal planning, data export/backup self-service (notes existing suppliers repo, holiday/weather data, order cost fields and `scripts/backup.mjs`)
 
+- [x] Parked features F35–F39 added to `docs/future-features.md`: dashboard builder, document templates, duplicate-customer upgrade, arrival/departure geofencing, training mode — each notes what already exists
+- [x] Investigated the notifications centre: it already exists (priority levels, per-user type × channel prefs, quiet window, grouped feed with unread counts, push + Telegram), so it was NOT added
+
+- [x] Parked features F40–F45 added to `docs/future-features.md`: onboarding checklist, call/visit quality review, complaint root-cause analytics, shared notes and mentions, standing orders, customer feedback loop — each notes what already exists
+- [x] Found that churn scoring, demand forecasting, reorder point and Jalali seasonality are already built (`lib/predict`, `/sales/forecast`); added "Already in the app" notes to F9, F11 and F33
+
+- [x] Parked features F46–F48 added to `docs/future-features.md`: credit-risk scoring, customer 360 page, change approvals — each notes what already exists (credit approvals, customer panel and timeline); F32 now notes the existing cost-to-serve panel
+
 ## Not done / gaps
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F34 are parked, not built
+- [ ] F6–F48 are parked, not built (F9, F11, F32, F33 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
