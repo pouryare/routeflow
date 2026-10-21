@@ -66,3 +66,15 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 ## Correction (Phase 5 start)
 
 - I added `lib/search/normalize.ts` in Phase 0 after grepping for "normaliz". The repo already had a fuller normaliser, `normalisePersian` / `matchesQuery` in `lib/persian.ts`, spelled the British way. Removed the duplicate; `PickStep` uses `matchesQuery`. **Lesson: grep for both spellings before adding a helper.**
+
+## TapFlow Phase 5 (orders)
+
+- **Repeat order (5.1).** Needs no server change: the last order is `GET /api/sales/orders?customer=ID` (newest first; the first that is not a draft, cancelled or returned) plus `GET /api/sales/orders/:id` for its lines. Lines are re-priced from *today's* catalogue; a line whose packaging has gone or has no price is counted and the recap says «N قلم دیگر قابل سفارش نیست» rather than quietly sending a shorter order.
+- The common path is 3 taps (همان سفارش قبلی → in the first opportunity → ثبت سفارش) and the order is created as a **DRAFT**, exactly like the full form; the confirm question says so, and the done screen offers «باز کردن سفارش» (the new id is only known after the held write is sent, so that button flushes first).
+- Quantities may go **up** as well as down: `FlowItem.max` (the delivery flow's cap of "what was ordered" was wrong for an order). The credit limit warns and records `credit_override`, never blocks, matching the form.
+- The "loading the last order" state is an explicit step option, not an empty list: while `vars.last = "loading"` the only option is «در حال بارگذاری…», so the person can never save from stale data. In practice the fetch is done before the first tap.
+- Host trap found by the linter: deriving `picked` from the flow's own state in an effect is a render loop in disguise (the flow's ctx depends on what was picked). Adjusting state *during render* is the sanctioned pattern.
+- **Status actions (5.2).** The server treats the reason code as optional, so «دلیل مشخص نیست» is an honest answer, not a loophole. Only cancel, return and failed delivery ask why (from `/api/sales/reason-codes?domain=…`); every other action is one tap with the 5 s undo, via a new `useUndoableAction` hook.
+- `ConfirmOrderButton` lost its "are you sure?" second tap (a slip was the expensive case; the undo now covers it and costs nothing when the tap was right). The button text says it cannot be edited afterwards and that there are 5 seconds to change your mind.
+- `ACTION_LABEL` moved out of the panel into `lib/flows/orderAction.ts`, with a test that every action the state machine can fire has a label.
+- Not done: the **order list's per-card advance buttons** (OrderPipeline/BoardMobile) still call the transition API directly; they are Phase E swipe-row candidates. `OrderForm` itself keeps its selects (it is the full form).
