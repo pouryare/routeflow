@@ -672,6 +672,103 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F35. Role-based dashboard builder
+
+**What:** managers and owners choose which panels appear on their briefing and in what order, without a developer.
+
+**Already in the app:** `lib/repo/briefing.ts` (`todayFor`) returns a fixed set of panels per role, each capped at five items and each carrying a link or an action, and `users.prefs_json` / `lib/repo/prefs.ts` store per-user preferences. What is missing is letting a person show, hide or reorder panels.
+
+**Why parked:** a free-form builder is a large product; letting users hide panels can hide exceptions they need to see; panel availability must still respect role and scope (a group manager must not be able to add another group's panel).
+
+**Open questions**
+1. Show/hide/reorder of existing panels only, or also new panels with filters?
+2. Which panels are pinned (exceptions, credit approvals) and cannot be hidden?
+3. Per user, or a default per role that the owner sets for the team?
+
+**Suggested first slice:** show/hide and reorder of the existing panels stored in `prefs_json`, with a pinned set that cannot be hidden. No new panels.
+
+**Prerequisites:** none; builds on `briefing.ts` and `prefs.ts`.
+
+---
+
+## F36. Document templates (invoices, delivery notes, statements)
+
+**What:** invoices, delivery notes and statements with the company's logo, wording, numbering and layout, editable by the owner and printable or shareable as PDF.
+
+**Why parked:** invoice layout and numbering can be a legal matter (and links to e-invoicing); a template editor is a product of its own; Persian right-to-left printing and Jalali dates need careful PDF handling. Check what print views exist today before designing (the orders, report and planner pages have print-related code; its coverage was not verified).
+
+**Open questions**
+1. Fixed layouts with owner-editable fields (logo, header, footer, terms), or a visual editor? Start with fixed layouts.
+2. Numbering: one sequence per organisation, per year, per document type? Gaps allowed?
+3. PDF generation on the server or print-to-PDF in the browser? Persian shaping and fonts must be tested.
+4. Which documents first: delivery note (drivers need it), statement (F18), invoice?
+
+**Suggested first slice:** one delivery-note layout with the organisation's logo, name and footer text, printable from the order page.
+
+**Prerequisites:** F18 for the statement; the e-invoicing decision for invoices.
+
+---
+
+## F37. Duplicate customer detection upgrade (fuzzy match, preview, undo)
+
+**What:** find customers entered twice even when phone and Instagram differ, show exactly what a merge will move, and allow an undo within a window.
+
+**Already in the app:** `lib/repo/crm/duplicates.ts` already finds duplicate pairs on the `customers` table by identical phone or Instagram, picks a survivor (`chooseSurvivor`: more orders, then more recent, then older id), supports "mark separate" and `mergeBusinesses`, and `lib/duplicates.ts` holds the pure survivor logic. What is missing is matching on name similarity and nearby location, a preview of what moves, and an undo.
+
+**Why parked:** fuzzy matching on Persian names produces false positives (shared common words, branches of one chain); a merge moves orders, payments, tasks and history, so a wrong merge is costly; undo needs the pre-merge state kept.
+
+**Open questions**
+1. Signals and weights: normalised name (see F5), distance under some metres, same owner?
+2. Merge preview: counts of orders, payments, tasks, notes, files that will move.
+3. Undo window and how the pre-merge snapshot is stored.
+4. Who may merge: owner and managers only?
+
+**Suggested first slice:** name-plus-location suggestions shown as extra pairs in the existing duplicates list, using `normalisePersian`, with the preview counts. Undo second.
+
+**Prerequisites:** F5 name normalisation helps; existing duplicates repo.
+
+---
+
+## F38. Automatic arrival and departure (geofencing)
+
+**What:** detect when a driver arrives at and leaves a customer's location and record the times, giving stop duration and on-time data without a tap.
+
+**Already in the app:** `lib/arrival.ts` (`stopAtDoor`) prompts the driver when they are within 150 m of a pending stop (`ARRIVAL_RADIUS_KM`), used in `components/driver/DriverRun.tsx`. `deliveries.actual_arrival` is a server timestamp set when the stop action is received, not when the driver physically arrived, and there is no departure time or dwell time.
+
+**Why parked:** continuous background location is unreliable in a PWA (works only while the app is open and the screen is on); battery use; GPS error indoors and in dense streets; location tracking of staff needs consent and clear rules (see F6).
+
+**Open questions**
+1. Record the prompt's first detection time as arrival, or require the driver to confirm?
+2. Departure: first position beyond the radius after arrival?
+3. Where is the raw position kept, and for how long?
+4. How are the times used: ETA correction (F6), on-time rate (F24), service-time learning for the route planner?
+
+**Suggested first slice:** store the time the existing prompt first fired for each stop (`detected_arrival_at`) alongside the server-received time, and show both to managers. No departure tracking yet.
+
+**Prerequisites:** the existing arrival prompt; F6 shares the position-handling decisions.
+
+---
+
+## F39. Training and onboarding mode
+
+**What:** a sandbox with demo data and guided tasks, so new staff can practise creating orders, recording payments and running a delivery without touching real records.
+
+**Already in the app:** demo seed scripts (`scripts/seed-demo-org.mjs`, `scripts/seed-demo-drivers.mjs`) build a demo organisation. There is no in-app training mode or guided tasks.
+
+**Why parked:** a sandbox must be completely isolated from real data, including notifications and messages (a practice order must never message a real customer); guided tasks need content in Persian per role; resetting the sandbox must be safe.
+
+**Open questions**
+1. Separate demo organisation per learner, or one shared training organisation that resets nightly?
+2. Which guided tasks per role: first order, record a cheque, finish a delivery stop, add a lead?
+3. How is training mode entered and clearly shown on every screen so nobody confuses it with live data?
+4. Outbound channels (push, Telegram, messaging) are disabled in training.
+
+**Suggested first slice:** a training organisation seeded by the existing demo scripts, a clearly marked banner, and a short checklist per role. No in-app guided overlays yet.
+
+**Prerequisites:** the demo seed scripts; tenant isolation (exists).
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
