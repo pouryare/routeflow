@@ -183,3 +183,11 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Sharing a secret before it is saved is a trap.** The new-account write is held 5 s for undo; «ارسال» calls `flush()` first so the details work the moment they arrive.
 - **Flow tests key variant values by step id**, not by field name (`name`, `phonenum`).
 - The month grid cells are buttons without icons; the recorded-reason comment satisfies the button rule without 31 decorative glyphs.
+
+## Phase 8 (layout pass)
+
+- **Count what is tapped, not what is styled.** The tiny-target rule matched `py-0.5` on badges as well as buttons (31 hits, 19 real). The audit now finds the element's own opening tag, ignores `=>` when looking for its end, and only counts controls; a test pins it. Then the fix was one utility (`touch`) added where it was real.
+- **Cards from the same markup beat a second component.** `AcctTable` labels every cell from its header and CSS lays the row out as a card, so ten pages changed without being touched; only string headers become labels and `colSpan` is honoured.
+- **A map first mounted inside a hidden pane has no size.** The planner keys the map by the visible pane so switching remounts it in a visible container.
+- **Toggling panes in place (`contents` / `hidden md:contents`) kept the diff to one file**; splitting a 1100-line page into components would have been a larger, riskier change for the same result.
+- **A sheet is CSS plus one hook.** The processing modal became a bottom sheet with a media query and `useSwipeDismiss`, no new component.

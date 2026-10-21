@@ -5346,3 +5346,14 @@ body {
   }
   .meridian .modal.on { transform: translateY(0); }
 }
+
+/* ---- order pipeline: swipe through the stages on a phone ------------------------------------------
+   One stage per screen with the next peeking in, instead of four stacked lists. Stage order is the
+   reading order, so the row runs the same way the text does. */
+@media (max-width: 767.98px) {
+  .meridian .board.pipe {
+    display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-inline: 12px;
+    scrollbar-width: none;
+  }
+  .meridian .board.pipe .col { flex: 0 0 86%; scroll-snap-align: center; max-height: 70vh; }
+}
