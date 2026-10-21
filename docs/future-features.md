@@ -1617,6 +1617,147 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F82. Approval delegation while away
+
+**What:** a manager or owner who is on leave names a stand-in for order review, credit approvals and other approvals (see F48, F76), for a set period. Decisions are recorded as "approved by X on behalf of Y", and the delegation ends on its own.
+
+**Already in the app:** a person can hold several roles (`user_roles`, with `setRoles`, `usersWithRole` and `rolesFor` in `lib/repo/userRoles.ts`), and the code's rule is that "who can do X" is answered from that table, not from the primary role. So an approval can already be done by anyone holding the approving role, and order transitions accept an actor with several roles. What is missing is a time limit on a role grant, a way to say "I am away", and the "on behalf of" record. I also found no leave or absence state for users.
+
+**Why parked:** a lasting extra role is a security risk if nobody removes it; approving for someone else must be visible in the audit trail (F27); some approvals (credit increases, price cuts) may not be delegable; nested delegation (a stand-in delegating again) must be forbidden.
+
+**Open questions**
+1. Time-boxed role grant (start and end dates), or a separate delegation record that is checked at approval time? The record is safer: the stand-in never holds the role.
+2. Which approvals can be delegated: order review, credit approval, cheque decisions, price changes?
+3. Who may delegate: the approver themself, or the owner on their behalf?
+4. Notice to the delegator when something is approved in their name, and a morning summary when they return.
+
+**Suggested first slice:** a delegation record (from, to, start, end, approval kinds) that the approval check consults, "approved on behalf of" shown on the order timeline, and an automatic end. No change to who holds which role.
+
+**Prerequisites:** the multi-role model and the order state machine (exist); F27 and F48 build on it.
+
+---
+
+## F83. Payment terms and early-payment discounts
+
+**What:** each customer has agreed payment terms (cash, 15 days, 30 days, cheque dated N days) and an optional discount for paying early, such as 2% within 7 days. Terms set each order's due date, drive statements (F18) and reminders, and feed risk scoring (F46).
+
+**Already in the app:** debt is computed live from delivered orders minus payments and aged into three buckets (up to 7 days, 8 to 30 days, over 30 days) from the delivery date; the opening balance is always counted as over 30 days (`customerDebt`, `bucketOf` in `lib/repo/payments.ts`). Cheques have due dates, and customers can have a credit limit. There is no agreed term or due date on a customer or order, so "overdue" currently means "old", not "past its agreed date". I found no early-payment or cash discount fields.
+
+**Why parked:** a discount for early payment changes the amount owed, so it needs a clear rule on the invoice and in the ledger (and it interacts with F65's uplift and F21's campaigns); terms must be frozen on the order when it is created so later changes do not rewrite history; cheques dated in the future blur "paid" versus "promised" (see F50).
+
+**Open questions**
+1. Terms per customer, per customer group, or per order? Start per customer with a default per group.
+2. Due date counted from the delivery date or the invoice date?
+3. Early-payment discount: applied automatically when a payment arrives in the window, or offered and confirmed by the cashier?
+4. How are post-dated cheques treated against the due date?
+5. Tax and accounting treatment of the discount, to confirm with the accountant.
+
+**Suggested first slice:** a terms field on the customer (days), copied onto each order as a due date at creation, and an "overdue by terms" count next to the existing age buckets. No discount yet.
+
+**Prerequisites:** none for the first slice; F18, F46 and F50 consume the due dates; the discount needs the ledger decision.
+
+---
+
+## F84. In-app help and tooltips
+
+**What:** short Persian help for each screen and field (what it is, how to read it, what to do next), reachable from a small `(i)` button and editable by the owner without a developer.
+
+**Already in the app:** a help registry exists (`lib/help`, with `getHelp` and a typed entry: title, what it shows, how to read it). The `(i)` button is `components/meridian/CardHelp.tsx`: a deliberate click opens a small panel, an unwritten entry shows a calm "coming soon" line, and unwritten ids are collected for a help-debt backlog (`tests/meridian-help.test.ts`). It is used on a small number of dashboard cards; the registry has only a handful of written entries. The sales academy (`/sales/academy`) covers lessons and objection cards, which is training rather than per-screen help.
+
+**Why parked:** writing good help for every screen is a large content job; help must be kept in step with the screens or it misleads; an owner-editable help layer needs a version, a review and a way to restore the default text.
+
+**Open questions**
+1. Scope: per-card help only, or per-field hints inside forms and tap flows?
+2. Language: Persian only at first; do staff want English or Arabic later?
+3. Who writes and approves entries: the developer in code, or the owner in an editor with the shipped text as a fallback?
+4. Where it shows up first: the screens people ask most questions about (orders, payments, routing, the driver run).
+
+**Suggested first slice:** work down the existing help-debt list to write the missing entries for the five most-used screens, and add `CardHelp` to their headers. No editor yet.
+
+**Prerequisites:** none; builds on the existing registry and button.
+
+---
+
+## F85. Order source tracking
+
+**What:** record how each order arrived (phone call, visit, app, WhatsApp or Telegram message, driver on the spot, repeat from a standing order) to see which channels bring volume and where to invest rep time.
+
+**Already in the app:** orders have a type (`order_type`, default `SALE`, with sample orders) and a creator and salesperson, and leads have a source (`source_code`, chosen in the add-lead flow). I found no field recording the channel an order came through.
+
+**Why parked:** the channel must be captured in one tap at entry or it will be left blank; some channels (a customer's WhatsApp message) only exist once paste-to-parse (F3) or telephony (F4) are built; existing orders have no value to backfill.
+
+**Open questions**
+1. A short fixed list (phone, visit, app, message, driver, standing order) plus "other"?
+2. Defaulted where it can be known (a standing order draft, an order created from a call outcome, a driver order) and asked only otherwise?
+3. Reports: orders and revenue per channel per rep and per group, and conversion from the lead source to the first order?
+4. Include a "created at the door" source for orders raised by drivers?
+
+**Suggested first slice:** add a source field with a one-tap picker to order entry and prefill it from the flow that created the order, then show orders and revenue by source on the analytics page.
+
+**Prerequisites:** none for the first slice; F3, F4 and F44 add automatic sources.
+
+---
+
+## F86. Manager coaching notes
+
+**What:** a private notebook per salesperson, kept by their manager: observations, agreed goals with review dates, and follow-ups after a coaching conversation. Visible to the manager and the owner, not to the rep unless the manager shares an entry.
+
+**Already in the app:** a per-user salesperson score exists in the health analysis (`salespersonScore` in `lib/analysis/health.ts`, assembled in `lib/repo/health.ts`), and revenue, weight and order targets per person (`lib/repo/targets.ts`). Note that the existing `/sales/reps` pages are for representatives (partner customers with onboarding stages and a health band, `lib/repo/representatives.ts`), not for the company's own salespeople, so they are not the place for this. There is no manager notebook, no goals with dates and no coaching follow-up.
+
+**Why parked:** private notes about people are sensitive (retention, access, who sees them if a manager leaves); notes can be unfair or become disputes; a coaching tool that feels like surveillance will not be used honestly.
+
+**Open questions**
+1. Who can read: the writing manager, the owner, or the rep too (shared entries only)?
+2. Structure: a free-text note with an optional goal and review date, or a fixed template (strength, to improve, agreed action)?
+3. Link to F41 (call and visit reviews): a reviewed call can be attached to a note.
+4. Retention and handover when a manager changes (F59).
+
+**Suggested first slice:** a manager-only note list on a salesperson's page with an optional goal and review date, a reminder task on the review date, and no sharing yet.
+
+**Prerequisites:** none; F41 and F59 connect to it.
+
+---
+
+## F87. Warehouse receiving appointments
+
+**What:** suppliers book a delivery time slot, and the warehouse sees the day's expected arrivals so it can staff unloading and clear space.
+
+**Already in the app:** purchases are recorded only at receipt (`purchases` and `purchase_lines`), with a receive flow for batches. There is no expected delivery, slot or arrival schedule. I found no appointment or dock concept in the code.
+
+**Why parked:** it only helps if suppliers actually announce arrivals; it needs the purchase-order record that does not exist yet (F66); a booking page for suppliers means external access, with its own login and scope.
+
+**Open questions**
+1. Booked by the warehouse after a phone call, or by the supplier through a link? Start internal.
+2. Slot length and capacity: one truck at a time, or several?
+3. Late and no-show handling, and feeding supplier scorecards (F31).
+4. Does an appointment link to a purchase order and prefill the receipt?
+
+**Suggested first slice:** a daily "expected arrivals" list built from purchase orders (F66) with an expected date and optional time, shown on the warehouse view. No supplier-facing booking.
+
+**Prerequisites:** F66 for the order record; F31 consumes the arrival data.
+
+---
+
+## F88. Staff expense reimbursement
+
+**What:** when a salesperson or driver pays a business cost from their own pocket (fuel, parking, a small repair), they log it with a receipt, a manager approves it, and the app tracks that the business owes the person and records the repayment.
+
+**Already in the app:** expenses can already be logged in a short tap flow (`lib/flows/expense.ts`, `ExpenseEntry`): category from the live chart of expense accounts, amount, optional supplier name, how it was paid, and an optional receipt photo, with posting to the ledger and reports of expenses by category and by who entered them (`/accounting/expenses`). The flow deliberately models money the business spent on the spot (cash, card machine, card to card); it does not model a person paying out of pocket and being repaid later. There is no approval step or amount owed to a person.
+
+**Why parked:** it adds a liability account per person and a repayment flow; approval limits and who approves; receipts are paper (F1 can read them later); mixing personal-pocket and business-cash expenses in one list must stay unambiguous.
+
+**Open questions**
+1. A new "paid by me" method on the existing flow that creates an amount owed, or a separate claim form?
+2. Approval: the group manager up to a limit, the owner above it (F48)?
+3. Repayment: marked paid in cash, bank transfer or together with salary? Posted to which accounts?
+4. Monthly statement per person and a clear "you are owed" figure.
+
+**Suggested first slice:** add a "paid from my pocket" choice to the existing expense flow that marks the expense as owed to the person, a manager approve or reject list, and a per-person owed balance. Repayment recorded by hand.
+
+**Prerequisites:** the expense flow and ledger postings (exist); F26 describes the field-expense side; F48 for approval limits.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
