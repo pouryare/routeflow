@@ -1,4 +1,6 @@
 import { cookies } from "next/headers";
+import { listPlans } from "@/lib/repo/commissionTiers";
+import { latestPlans } from "@/lib/commission/copyPlan";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
@@ -204,7 +206,7 @@ export default async function CommissionPage() {
       )}
 
       {isOwner(session.role) && (
-        <CommissionEditor sellers={sellers} drivers={drivers} managers={managers} />
+        <CommissionEditor sellers={sellers} drivers={drivers} managers={managers} plans={latestPlans(listPlans(session.organizationId), new Map(sellers.map((x) => [x.id, x.display_name])))} />
       )}
 
       {(rates.length > 0 || driverRates.length > 0 || managerOverrides.length > 0) && (

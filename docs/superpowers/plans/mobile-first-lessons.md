@@ -175,3 +175,11 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **One markup, CSS decides the layout; JS decides behaviour.** Bar and carousel are both rendered and a media query hides one; only whether the drill opens as a sheet reads `useIsNarrow`, so there is no flash.
 - **Role and icon rules apply to new widgets too.** `role="list"` / `listitem` trip the no-role-literals test; use `<ul>/<li>`. A button that is a picture needs a recorded reason (or an icon) inside it.
 - **Totals keep the table's sign convention** (costs negative) so the card and the table can never disagree; a test pins it.
+
+## Phase I (admin presets)
+
+- **Check what there is to copy before building «copy from».** A group is a name and a colour; its districts each belong to exactly one group, so copying a territory would steal it. The commission plan is the real template, and `listPlans` already existed: only the page prop and a pure mapping (`latestPlans`, `planToEditable`) were needed.
+- **Generated credentials need a testable random source.** `lib/credentials.ts` takes the byte source as a parameter and rejects bytes that would bias the alphabet; the app passes `crypto.getRandomValues`.
+- **Sharing a secret before it is saved is a trap.** The new-account write is held 5 s for undo; «ارسال» calls `flush()` first so the details work the moment they arrive.
+- **Flow tests key variant values by step id**, not by field name (`name`, `phonenum`).
+- The month grid cells are buttons without icons; the recorded-reason comment satisfies the button rule without 31 decorative glyphs.

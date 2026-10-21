@@ -54,6 +54,7 @@ export default function MonthGrid({
             aria-label={`${faNum(d.jd)} ${grid.monthName}${marked.has(d.iso) ? " (تعطیل ثبت‌شده)" : ""}`}
             onClick={() => onChange(d.iso)}
           >
+            {/* A day cell is its own label: the day number, a dot when a holiday is recorded, and the filled accent when chosen; an icon in 31 cells would only crowd the grid. */}
             {faNum(d.jd)}
           </button>
         ))}

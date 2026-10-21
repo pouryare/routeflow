@@ -75,6 +75,16 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
+## F4. Force a new password on first sign-in
+
+**What:** an account created from the phone (or the desk) gets a one-time password that is shown once and shared. Nothing makes the person change it, so it stays their password until they do.
+
+**Why parked:** there is no `must_change_password` state anywhere today (users table, sign-in, session); adding it touches login, the session cookie and every route that assumes a signed-in user can proceed.
+
+**First slice:** a boolean on the user set at creation and on admin password reset, a redirect to a «رمز تازه» screen from the shell layout while it is set, cleared when the user saves a new password.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).

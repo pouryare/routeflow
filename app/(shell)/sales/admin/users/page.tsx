@@ -6,6 +6,7 @@ import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useRef, useState } from "react";
 
 import Avatar from "@/components/meridian/Avatar";
+import UserAddFlow from "@/components/flows/UserAddFlow";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
 
@@ -202,6 +203,9 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /* The phone path: a tap flow that makes the credentials itself. The desk form below stays
+     from md up, where typing a username and a password is comfortable. */
+  const [addFlow, setAddFlow] = useState({ key: 0, open: false });
 
   const load = useCallback(async () => {
     const [uRes, gRes] = await Promise.all([fetch("/api/admin/users"), fetch("/api/admin/groups")]);
@@ -273,7 +277,26 @@ export default function AdminUsersPage() {
         </p>
       )}
 
-      <form onSubmit={create} className="rounded-lg border border-border bg-surface p-4">
+      <button
+        type="button"
+        onClick={() => setAddFlow((f) => ({ key: f.key + 1, open: true }))}
+        className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-md border border-accent bg-accent px-4 text-sm text-accent-ink md:hidden"
+      >
+        <Icon name="plus" size="md" />
+        کاربر جدید
+      </button>
+      {addFlow.key > 0 && (
+        <UserAddFlow
+          key={addFlow.key}
+          open={addFlow.open}
+          groups={groups}
+          onCreated={() => void load()}
+          onClose={() => setAddFlow((f) => ({ ...f, open: false }))}
+          onReopen={() => setAddFlow((f) => ({ ...f, open: true }))}
+        />
+      )}
+
+      <form onSubmit={create} className="hidden rounded-lg border border-border bg-surface p-4 md:block">
         <h2 className="sechead__title mb-3">حساب تازه</h2>
         <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
           <label className="flex flex-col gap-1 text-xs text-text-muted">نام نمایشی<input

@@ -1,5 +1,7 @@
 "use client";
 
+import KeypadField from "@/components/mobile/KeypadField";
+import { planToEditable, type PlanSource } from "@/lib/commission/copyPlan";
 import { usePostAction } from "@/lib/usePostAction";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
@@ -87,10 +89,13 @@ export default function CommissionEditor({
   sellers,
   drivers,
   managers,
+  plans = [],
 }: {
   sellers: { id: number; display_name: string }[];
   drivers: { id: number; display_name: string }[];
   managers: { id: number; display_name: string }[];
+  /** Existing plans to copy from (the latest per person and the company default). */
+  plans?: PlanSource[];
 }) {
   const router = useRouter();
   const { busy, message, send } = usePostAction("تنظیمات پورسانت ثبت نشد؛ دوباره تلاش کنید");
@@ -344,6 +349,30 @@ export default function CommissionEditor({
             تخت بالا اعمال می‌شود.
           </p>
 
+          {plans.length > 0 && (
+            <div className="flex flex-col gap-[var(--space-1)]">
+              <span className={LABEL}>شروع از پلن موجود</span>
+              <div className="flex flex-wrap gap-[var(--space-2)]" role="group" aria-label="کپی از پلن موجود">
+                {plans.map((src) => (
+                  <button
+                    key={src.id}
+                    type="button"
+                    className={SEG_BTN(false)}
+                    onClick={() => {
+                      const e = planToEditable(src.plan);
+                      setPlanMode(e.mode);
+                      setPlanMetric(e.metric);
+                      setTierRows(e.rows);
+                    }}
+                  >
+                    <Icon name="layers" size="md" />
+                    {`کپی از ${src.label}`}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap gap-[var(--space-3)]">
             <label className="flex min-w-[180px] flex-1 flex-col">
               <span className={LABEL}>فروشنده</span>
@@ -411,26 +440,29 @@ export default function CommissionEditor({
               <div key={i} className="flex flex-wrap items-end gap-[var(--space-2)]">
                 <label className="flex w-[110px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">از</span>
-                  <input
-                    className={FIELD}
-                    value={t.from}
-                    inputMode="decimal"
-                    disabled={i === 0}
-                    onChange={(e) =>
-                      setTierRows(tierRows.map((r, j) => (j === i ? { ...r, from: e.target.value } : r)))
-                    }
-                  />
+                  {i === 0 ? (
+                    <input className={FIELD} value={t.from} inputMode="decimal" disabled aria-label="شروع پلهٔ اول" readOnly />
+                  ) : (
+                    <KeypadField
+                      label={`شروع پلهٔ ${i + 1}`}
+                      value={t.from}
+                      decimal
+                      onChange={(v) => setTierRows(tierRows.map((r, j) => (j === i ? { ...r, from: v } : r)))}
+                    />
+                  )}
                 </label>
                 <label className="flex w-[110px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">تا</span>
-                  <input
-                    className={FIELD}
-                    value={i === tierRows.length - 1 ? "به بالا" : t.to}
-                    disabled={i === tierRows.length - 1}
-                    onChange={(e) =>
-                      setTierRows(tierRows.map((r, j) => (j === i ? { ...r, to: e.target.value } : r)))
-                    }
-                  />
+                  {i === tierRows.length - 1 ? (
+                    <input className={FIELD} value="به بالا" disabled readOnly aria-label="پایان پلهٔ آخر" />
+                  ) : (
+                    <KeypadField
+                      label={`پایان پلهٔ ${i + 1}`}
+                      value={t.to}
+                      decimal
+                      onChange={(v) => setTierRows(tierRows.map((r, j) => (j === i ? { ...r, to: v } : r)))}
+                    />
+                  )}
                 </label>
                 <label className="flex w-[110px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">نوع</span>
@@ -451,13 +483,12 @@ export default function CommissionEditor({
                 </label>
                 <label className="flex w-[140px] flex-col">
                   <span className="text-[length:var(--text-xs)] text-[var(--text-faint)]">نرخ</span>
-                  <input
-                    className={FIELD}
+                  <KeypadField
+                    label={`نرخ پلهٔ ${i + 1}`}
                     value={t.rate}
-                    inputMode="decimal"
-                    onChange={(e) =>
-                      setTierRows(tierRows.map((r, j) => (j === i ? { ...r, rate: e.target.value } : r)))
-                    }
+                    decimal
+                    unit={t.type === "pct" ? "درصد" : "تومان"}
+                    onChange={(v) => setTierRows(tierRows.map((r, j) => (j === i ? { ...r, rate: v } : r)))}
                   />
                 </label>
                 {tierRows.length > 1 && (

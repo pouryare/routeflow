@@ -106,7 +106,7 @@ export interface FlowContext {
   entry:
     | "call" | "talked_now" | "add_lead" | "driver_visit"
     | "delivery" | "payment" | "complaint" | "outcome" | "order_quick" | "order_action"
-    | "stock_count" | "receive" | "lifecycle" | "visit_plan" | "place" | "expense";
+    | "stock_count" | "receive" | "lifecycle" | "visit_plan" | "place" | "expense" | "user_add" | "group_copy";
   firstContact: boolean;
   attemptNo: number;
   maxMisses: number;
