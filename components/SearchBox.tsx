@@ -1,5 +1,6 @@
 "use client";
 
+import FilterChips from "@/components/mobile/FilterChips";
 import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
@@ -471,13 +472,30 @@ export default function SearchBox({
       {open && (
         <div className="mapsearch__panel">
           <div className="mapsearch__filter-strip border-b border-border p-2 flex flex-wrap gap-1.5 items-center">
-              <select value={sortMode ?? "nearest"} onChange={(e) => onSortModeChange?.(e.target.value)} disabled={sortDisabled} className="rounded-[var(--radius-sm)] px-2 py-1 text-[length:var(--text-xs)] border border-border bg-surface text-text-muted disabled:opacity-40">
-                {visibleSortOptions.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-              </select>
-              <select value={activeListId ?? ""} onChange={(e) => onListChange?.(e.target.value ? Number(e.target.value) : null)} className="flex-1 min-w-0 rounded border border-border bg-surface px-2 py-1 text-[length:var(--text-xs)]">
-                <option value="">مسیر آزاد</option>
-                {(lists ?? []).map((l) => <option key={l.id} value={l.id}>{l.name}</option>)}
-              </select>
+              {/* Chips, not dropdowns: a dropdown over a map search panel is a full-screen wheel on a phone. */}
+              <FilterChips
+                groups={[
+                  {
+                    id: "sort",
+                    label: "ترتیب",
+                    mode: "single",
+                    neutral: "nearest",
+                    value: sortMode ?? "nearest",
+                    onChange: (v) => { if (!sortDisabled) onSortModeChange?.(v as string); },
+                    options: visibleSortOptions.map((o) => ({ id: o.value, label: o.label })),
+                  },
+                  {
+                    id: "list",
+                    label: "فهرست مسیر",
+                    mode: "single",
+                    neutral: "",
+                    value: activeListId === null || activeListId === undefined ? "" : String(activeListId),
+                    sheet: true,
+                    onChange: (v) => onListChange?.(v ? Number(v) : null),
+                    options: (lists ?? []).map((l) => ({ id: String(l.id), label: l.name })),
+                  },
+                ]}
+              />
               {sortAnchor ? (
                 <span className="flex items-center gap-1 rounded-[var(--radius-sm)] border border-accent bg-accent/10 px-2 py-1 text-[length:var(--text-xs)] text-accent">
                   <Icon name="map-pin" size="sm" /> شما

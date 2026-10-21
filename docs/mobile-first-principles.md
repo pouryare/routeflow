@@ -6,8 +6,10 @@ after the patterns below were built, from `docs/superpowers/plans/mobile-first-l
 rule came from a real mistake, the mistake is named.
 
 **Status of the evidence.** Everything here was built and unit-tested, and the layout is checked by
-CSS and render tests. It has **not** been run on a real phone, and the "day in the life at 375 px
-per role" check the plan asked for before writing this has not been done. Treat the interaction
+CSS and render tests. The measurable part of the gate is met (dropdowns outside the allowlist are 6
+of the 46 at the start, no native dates, no tiny targets, no confirm dialogs). It has **not** been run
+on a real phone, and the "day in the life at 375 px per role" check the plan asked for before writing
+this has not been done. Treat the interaction
 budgets in §5 as targets, not measurements, and correct them in this file when someone measures.
 
 ## 1. Defaults at a glance

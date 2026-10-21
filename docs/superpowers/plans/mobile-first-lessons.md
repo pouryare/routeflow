@@ -199,3 +199,9 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **The check found its own gaps on first run:** three mobile components (ActionCard, KeypadField, SmartPicker) had no test naming them. A rule that is enforced finds the exceptions you forgot.
 - **`confirm()` as a function name is a false positive for a regex audit;** rename it rather than loosen the rule.
 - **Verified the check fails:** a scratch `<select>` made `check:mobile` exit 1 with the rule cited, then was removed.
+
+## Leftovers pass
+
+- **A smoke test on an empty database caught a wrong join** (`credit_approvals` has no `customer_id`; the customer comes through the order) before it reached a page. Every new repo query gets one.
+- **Chips replace dropdowns inside map panels too**; a sort order with seven options is a scrolling row, a list of saved routes goes behind «فیلترها».
+- **A neutral value that is truthy is a trap** (`"__none"`): guard the handler, not just the group.
