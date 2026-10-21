@@ -1860,6 +1860,86 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F94. Warehouse picking accuracy log
+
+**What:** record picking mistakes (wrong item, short, extra, damaged on pick) per picker, product and order, found at loading, at delivery or by a customer, to see patterns and fix their causes.
+
+**Already in the app:** delivery lines record planned, delivered and returned quantities per order line, a short delivery has its own order state and reasons, and van loading creates paired transfer movements (`lib/repo/vanStock.ts`). There is no picking step as such (no pick list, no picker identity on an order) and nothing that attributes a mistake to a picker.
+
+**Why parked:** without a pick step there is no one to attribute a mistake to; a log of mistakes per person is sensitive and can feel punitive; many shortages are stock-record errors, not picking errors, so the log needs a cause category.
+
+**Open questions**
+1. Who is the picker: the person who loads the van, recorded on the load step?
+2. Categories: wrong item, wrong quantity, damaged, expired item picked, stock record wrong?
+3. Where do errors enter: at loading (a checker), at the door (driver), or from a complaint?
+4. Reports by cause and product first; by person only for the manager.
+
+**Suggested first slice:** a "load check" with an error reason when the checker finds a difference at van loading (ties to F30), and a simple report by reason and product. No per-person view.
+
+**Prerequisites:** F30 (van loading verification) creates the moment to record it.
+
+---
+
+## F95. Staff birthdays and work anniversaries
+
+**What:** reminders for the team for birthdays and work anniversaries, with an optional congratulation message.
+
+**Already in the app:** users have a display name, role and phone number; the occasions list in the planner (`lib/holidayOccasions.ts`) is for lunar-calendar days off, not staff events. I found no birth date or start date on a user.
+
+**Why parked:** birth dates are personal data and need the person's consent; the field must be optional; the reminder has little business value on its own and should not compete with real work alerts.
+
+**Open questions**
+1. Does each person enter their own date (optional), or does the owner?
+2. Jalali dates for birthdays; how are Gregorian-registered dates shown?
+3. Who is reminded: only the owner and the person's manager, or the whole team?
+4. A weekly digest rather than a daily push, to keep notifications quiet (see F67).
+
+**Suggested first slice:** two optional fields on the user (birth date, start date) set by the person, and a card on the owner's and manager's briefing for the coming seven days. No push.
+
+**Prerequisites:** none; F90 and F86 could use the start date.
+
+---
+
+## F96. Inter-group order transfers
+
+**What:** an order taken by one group that must be fulfilled from another group's stock or route, with a clear handover, status visible to both groups, and the commission and revenue assigned according to a stated rule.
+
+**Already in the app:** data is scoped by group (orders, runs, customers, tasks all carry a group), and some reference data can be shared across groups (facilities with no group are visible to every group in the organisation, `groupFilterWithShared` in `lib/session.ts`, read-only). An order is planned onto its own group's runs. There is no way to hand an order from one group to another.
+
+**Why parked:** scope rules are a security boundary (a group manager must never see another group's customers); commission and target credit across groups needs an agreed rule; stock reservation and delivery would have to cross the scope line in a controlled way.
+
+**Open questions**
+1. Transfer the whole order (the other group fulfils and delivers), or only stock (the other group supplies, the original group delivers)?
+2. Commission and revenue: to the selling group, the delivering group, or split?
+3. Who approves: both group managers, or the owner?
+4. What each side may see: the receiving group sees the order and delivery address, not the customer's history.
+
+**Suggested first slice:** a "request fulfilment by group B" action on a confirmed order that creates a task for group B's manager to accept or refuse, and on acceptance moves the delivery responsibility only. Stock and commission rules stay unchanged for now.
+
+**Prerequisites:** the group scope model (exists); F48 for approval; the commission statements need a documented rule.
+
+---
+
+## F97. Vehicle assignment history
+
+**What:** which driver used which van on which day, kept as a history, to answer questions about fuel, damage, fines and maintenance and to compare vans.
+
+**Already in the app:** vehicles have a plate, name, capacity limits, refrigeration flag, cost per kilometre and a default driver (`vehicles.driver_default_id`), and delivery runs gained a `vehicle_id` column during the routing work, alongside a route template with a default driver and vehicle. A comment in `lib/repo/vanStock.ts` still says runs carry no vehicle and that the default driver is the only link, so I could not confirm that run planning actually fills the vehicle in. Each van also has its own stock location.
+
+**Why parked:** the history is only as good as the planner's discipline in choosing a vehicle per run; a driver swapping vans on the day must be recorded; fuel and damage records (the fleet ideas) do not exist yet to attach to it.
+
+**Open questions**
+1. Is the vehicle chosen at planning time, at loading, or both (a swap at the depot)?
+2. How is a van swap recorded mid-day, and who may record it?
+3. Reports: days used and kilometres per vehicle, per driver; cost per kilometre against actual.
+4. Link to incidents and fuel logs once they exist.
+
+**Suggested first slice:** require a vehicle on each run when it moves to ready, show "driver, van, date" in a history list per vehicle and per driver, and report kilometres by vehicle from the run's actual distance.
+
+**Prerequisites:** the existing run vehicle column and vehicles table.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
