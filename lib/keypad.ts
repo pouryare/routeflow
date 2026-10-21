@@ -3,6 +3,8 @@
  *  A phone keyboard for a number is a full QWERTY with a row of digits, pushed up over the field
  *  that is being filled. A keypad of our own keeps the field and the keys in one place, adds the
  *  keys people actually want (000 for money), and offers the likely answers as one-tap chips. */
+import { faDigits, faNum } from "@/lib/format";
+
 export type Key = "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "000" | "." | "⌫";
 
 export const MAX_DIGITS = 12;
@@ -23,6 +25,16 @@ export function press(value: string, key: Key, decimal = false): string {
   if (digitsIn(value) >= MAX_DIGITS) return value;
   if (value === "0") return key === "0" ? value : key;
   return value + key;
+}
+
+/** How the keypad string reads on screen: Persian digits, the integer part grouped, the
+ *  fraction exactly as typed (so "2.0" does not collapse to "2" mid-entry), "۰" when empty. */
+export function display(v: string): string {
+  if (v === "") return "۰";
+  const [int, frac] = v.split(".");
+  const head = faNum(Number(int === "" ? "0" : int));
+  if (frac === undefined) return head;
+  return `${head}٫${faDigits(frac)}`;
 }
 
 /** The value of a keypad string as a number; "" and "0." read as the number they show. */

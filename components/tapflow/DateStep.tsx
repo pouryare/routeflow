@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import DayChips from "@/components/mobile/DayChips";
 import { addDaysIso } from "@/lib/flows/dates";
 
 /** A day, for a flow step. The presets are answers: tapping one submits at once. The calendar
@@ -35,8 +36,12 @@ export default function DateStep({ optionId, optionLabel, skip, from, presets, a
           </button>
         ))}
       </div>
-      <p className="tf-sub">یا تاریخ دیگری را انتخاب کنید</p>
-      <JalaliDateInput value={iso} onChange={setIso} aria-label={ariaLabel} />
+      <p className="tf-sub">{presets.length ? "یا روز دیگری را انتخاب کنید" : "کدام روز؟"}</p>
+      {presets.length ? (
+        <JalaliDateInput value={iso} onChange={setIso} aria-label={ariaLabel} />
+      ) : (
+        <DayChips value={iso} onChange={setIso} ariaLabel={ariaLabel} />
+      )}
       <button
         type="button"
         className="inline-flex items-center justify-center gap-[var(--space-2)] tf-go"

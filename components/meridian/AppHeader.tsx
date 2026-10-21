@@ -14,6 +14,7 @@ import { APP_GROUPS, appTabs } from "@/lib/appNav";
 import { bottomTabs, quickActionsFor } from "@/lib/mobileNav";
 import BottomNav from "@/components/mobile/BottomNav";
 import QuickActions from "@/components/mobile/QuickActions";
+import RecentsUser from "@/components/mobile/RecentsUser";
 
 /** The shell's top chrome, on one row: the travelling nav pill, then search, the bell and
  *  the viewer's avatar menu. No brand block — see tests/app-header.test.ts.
@@ -76,6 +77,7 @@ export default async function AppHeader() {
         this is not needed; the pill is hidden below it. Both derive from the same appTabs. */}
     <BottomNav {...bottomTabs(session)} />
     <QuickActions actions={quickActionsFor(session)} />
+    <RecentsUser id={session.user.id} />
     </>
   );
 }

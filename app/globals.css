@@ -5163,3 +5163,51 @@ body {
 }
 .meridian .mobilemore__group { display: grid; gap: 8px; padding: 0 16px 16px; }
 @media (prefers-reduced-motion: reduce) { .meridian .qa-fab { box-shadow: none; } }
+
+/* ---- phone-first inputs: picker field, keypad, day chips ---------------------------------------
+   components/mobile/{SmartPicker,KeypadField,Keypad,DayChips}. Every target is 44-56px; the chosen
+   state is the accent, never colour alone (a check icon rides with it). */
+.meridian .picker-trigger {
+  width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
+  color: var(--text); font: inherit; font-size: 15px; text-align: start; cursor: pointer;
+}
+.meridian .picker-trigger__empty { color: var(--muted); }
+.meridian .picker-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .smartpicker, .meridian .keypadfield__sheet { display: grid; gap: 10px; padding: 0 16px 20px; }
+.meridian .keypad { display: grid; gap: 10px; outline: none; }
+.meridian .keypad__readout {
+  display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 10px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+.meridian .keypad__readout strong { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+.meridian .keypad__readout span { font-size: 14px; color: var(--muted); }
+.meridian .keypad__quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.meridian .keypad__chip {
+  min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+  color: var(--text); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.meridian .keypad__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.meridian .keypad__key {
+  min-height: 56px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--card); color: var(--text); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer;
+}
+.meridian .keypad__key:active { background: var(--accent-soft); }
+.meridian .keypad__key:focus-visible, .meridian .keypad__chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .daychips { display: grid; gap: 8px; }
+.meridian .daychips__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.meridian .daychips__row--strip { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.meridian .daychip {
+  min-height: 52px; min-width: 76px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
+  color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; scroll-snap-align: start; flex: none;
+}
+.meridian .daychip small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.meridian .daychip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .daychip--on small { color: var(--accent-ink); }
+.meridian .daychip--holiday:not(.daychip--on), .meridian .daychip--weekend:not(.daychip--on) { border-style: dashed; }
+.meridian .daychips__link {
+  justify-self: start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px;
+  border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
+}
+.meridian .daychip:focus-visible, .meridian .picker-trigger:focus-visible, .meridian .daychips__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }

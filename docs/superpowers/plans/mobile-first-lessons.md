@@ -114,3 +114,12 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - Drivers: `/driver` is a bare single-screen page with no bar (its header links to its own destinations). The bar appears for vans only on the shell pages they can reach (academy): two items, no «بیشتر», no «+ ثبت». Decision: the driver page stays single-screen.
 - `StickyAction` exists and is tested but no page uses it yet: the order form already had its own sticky total/submit bar, which now sits above the bar. First adopters: planner confirm, count-sheet.
 - Not verified on a device: bar overlap with browser chrome, the safe-area values on a real notch phone, and the swipe-to-dismiss of the sheets inside the bar.
+
+## Phase C (inputs)
+
+- **Pure model first, component second.** `lib/keypad.ts`, `lib/recents.ts` and `lib/dayChoices.ts` are plain functions with tests; the components only render them. That made the keypad display bug ("2.0" collapsing to "2" mid-entry) a one-line, unit-tested fix (`display`).
+- **The audit counts text, not intent.** The mobile audit regex matches `<input` anywhere, comments included; reword prose instead of fighting the ratchet.
+- **React-compiler purity.** `Date.now()` inside a component body (even in a handler) is flagged; read the clock through a module-level helper.
+- **Own keypad changes test contracts.** Tests that looked for `value="800000"` on a text field now assert the readout and the key grid, and that no OS-keyboard field exists.
+- **Labels still can't be bare verbs.** «تأیید» alone fails the bare-verb test; «تأیید عدد».
+- `vitest` includes only `tests/**/*.test.ts`; write component tests with `createElement`, not JSX.

@@ -90,9 +90,12 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Phase C (building blocks, partial): recents model, keypad (own number pad; the amount step now uses it, no OS keyboard), day-choice model + `DayChips` (used by the date step when there are no presets), `SmartPicker`, `KeypadField`; `RecentsUser` mounted in the header
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
+- [ ] Phase C adoption: `SmartPicker`/`KeypadField`/`DayChips` are not yet used in OrderForm, BatchesPanel, RepDefinitions, PurchaseEntry, InventoryBoard; `PickStep` does not rank by recents yet
+- [ ] PR #27 is intentionally left open and unmerged (all phases first, then one merge)
 - [ ] Nothing here has been run on a real phone (seeding needs network); covered by config tests and server-render tests
 - [ ] Flows are online-only except delivery (queued on the device); payments are not wired to the offline outbox
 - [ ] Hidden desk forms (`hidden md:…`) still count in the mobile audit; they need allowlist entries with reasons in Phase 10
@@ -100,6 +103,6 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [ ] Phone bar not seen on a device (safe-area, browser chrome overlap); `StickyAction` has no page using it yet
 
 ## Next steps
-1. Phase C: keypad, smart pickers (recents), day chips
+1. Finish Phase C adoption (forms above, PickStep recents)
 2. Phase 9 expense entry; Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
 3. Phase 8 layout pass; then the design-rules document and its check script

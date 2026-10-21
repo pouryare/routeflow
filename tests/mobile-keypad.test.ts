@@ -73,3 +73,16 @@ describe("hardware keyboard", () => {
     expect(keyFromEvent({ key: "Tab" })).toBeNull();
   });
 });
+
+import { display } from "@/lib/keypad";
+describe("how the keypad reads on screen", () => {
+  it("groups the integer part in Persian digits", () => {
+    expect(display("1250000")).toBe("۱٬۲۵۰٬۰۰۰");
+    expect(display("")).toBe("۰");
+  });
+  it("shows the fraction exactly as typed, including a trailing point and zero", () => {
+    expect(display("2.")).toBe("۲٫");
+    expect(display("2.0")).toBe("۲٫۰");
+    expect(display("0.50")).toBe("۰٫۵۰");
+  });
+});
