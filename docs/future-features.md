@@ -2662,6 +2662,46 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F134. Profit and loss by group
+
+**What:** each group's revenue, cost of goods, delivery cost and allocated overheads for a period, to compare groups on real profit and see which are worth growing.
+
+**Already in the app:** the income statement is whole-organisation, for a period, with revenue less cost of goods less expenses (`incomeStatement` in `lib/repo/reports.ts`, `/accounting/income-statement`, owner-only). The ledger is double-entry: a journal has a period key, memo and source, and its lines carry an account, a side, an amount and optional customer and supplier (`lib/repo/ledger.ts`). Orders, runs, customers and tasks all carry a group, but journal lines have no group dimension; expenses are reported by who entered them, which is accountability and not allocation (`expensesByEnterer`). Group-level cost can be derived for revenue and cost of goods through the source order, but not for expenses.
+
+**Why parked:** a group P&L depends on how shared costs are allocated (rent, owner's salary, vehicles), and that is a management choice that can be argued about; adding a group to every journal line is a ledger change that must be backfilled; group managers must not see other groups' figures.
+
+**Open questions**
+1. Group dimension on journal lines (backfilled from the source order or the enterer's group), or computed at report time from the sources?
+2. Allocation of overheads: by revenue share, by headcount, or hand-entered percentages per period?
+3. Include delivery cost per run (vehicle cost per kilometre, driver pay) from the run records?
+4. Who sees what: the owner sees all groups; each group manager sees only their own.
+
+**Suggested first slice:** an owner-only table of revenue, cost of goods and gross profit by group for a period, derived from delivered orders' groups, with no expenses or allocation. Overheads second.
+
+**Prerequisites:** none for the first slice; F32 margin analytics shares the cost inputs.
+
+---
+
+## F135. Manager ride-along visits
+
+**What:** schedule and record joint visits between a manager and a salesperson: which customer, who came, what was observed and what was agreed, with the notes feeding coaching (F86) and the visit quality review (F41).
+
+**Already in the app:** the visit calendar (`visit_plans`) holds planned visits with a date, a status (planned, done, skipped), an order and a purpose (first visit, sample, delivery, collect; `lib/tripPurpose.ts`), pointing at a district, customer, facility or lead location. Visits and calls are logged as activities on the customer timeline. A planned visit has no participants and no notes of its own, so a joint visit cannot be recorded as one.
+
+**Why parked:** coaching notes about a person are sensitive (see F86); a manager's presence changes what a visit is for, so it needs its own purpose and not a hidden flag; the calendar rows would need a participant list and a note field, which touches the visit-plan table and its API.
+
+**Open questions**
+1. A new purpose ("joint visit") plus a second participant field on the visit plan, or a separate record linked to the visit?
+2. What the manager records: a short observation list (opening, needs discovery, closing, next step) with a free note?
+3. Visible to the salesperson, or private to the manager (see F86)?
+4. How it appears on the customer timeline: as a normal visit with a "joint" tag.
+
+**Suggested first slice:** a "joint visit" purpose with a second participant on the visit plan and a free-text coaching note visible to the manager only, linked to the salesperson's note list (F86). No observation checklist.
+
+**Prerequisites:** the visit plan table and calendar (exist); F86 for the private notes.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
