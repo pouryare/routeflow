@@ -61,6 +61,9 @@
 - [x] F65 narrowed to the confirmed meaning (small-quantity price uplift; the low-stock reading was dropped)
 - [x] Parked features F71–F75 added to `docs/future-features.md`: customer credit holds by rep, duplicate order warning, order edit history, rep daily wrap-up, offline product catalogue — each notes what already exists (order hold state, `order_events`, `/sales/today`, the sync pull of the catalogue)
 
+- [x] Parked features F76–F81 added to `docs/future-features.md`: order approval by value, visit frequency targets, driver map pin correction, late-delivery notices, warehouse returns handling, peak-day capacity warning — each notes what already exists
+- [x] Checked your point on warehouse returns (item 7): partly implemented — `RETURNED` orders, `qty_returned`, a narrow `RETURN_IN` movement, write-off and quarantine exist; the warehouse receiving and inspection step does not (recorded in F80)
+
 ## Not done / gaps
 - [ ] F71: who can set `blocked` and whether it stops order entry is not verified; F73: how confirmed orders are edited is not verified; F75: whether sales screens read the catalogue offline is not verified
 - [ ] F69: whether the driver stop card shows customer or order notes is not verified
@@ -68,7 +71,7 @@
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F75 are parked, not built (F9, F11, F17, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75 partly exist)
+- [ ] F6–F81 are parked, not built (F9, F11, F17, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe

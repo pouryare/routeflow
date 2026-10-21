@@ -1497,6 +1497,126 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F76. Order approval by value
+
+**What:** orders above a value, or with unusual discounts, wait for a manager's tap before reaching the warehouse; small ordinary orders pass automatically.
+
+**Already in the app:** every order of a direct customer already waits for a manager. `submitOrder` (`lib/orders.ts`) moves a draft to `PENDING_REVIEW`, where a group manager or owner must `passReview` it; orders of representatives and sample orders pass automatically; an order that breaches the customer's credit limit goes to the separate credit approval (`PENDING_CREDIT`). What does not exist is a value-based rule: today the review is the same for a small repeat order as for a very large one, and nothing looks at discount size.
+
+**Why parked:** thresholds that are too low flood managers and delay deliveries; too high and the control means nothing; auto-passing needs a safe definition of "ordinary" (usual customer, usual products, prices at list).
+
+**Open questions**
+1. Auto-pass rule: order below value X, from a customer with N prior delivered orders, no discount, price at list?
+2. A second level: orders above a higher value go to the owner rather than the group manager?
+3. Time limit: an order unreviewed for N hours reminds the manager and, past a limit, escalates (see F51).
+4. Does a manager pass from the briefing in one tap (the decision deck pattern already used for credit)?
+
+**Suggested first slice:** auto-pass small orders from customers with a clean history and list prices, leaving everything else in the existing review. Value escalation to the owner second.
+
+**Prerequisites:** the order state machine and decision deck (exist); F48 for the discount rule; F51 for the time limit.
+
+---
+
+## F77. Customer visit frequency targets
+
+**What:** set how often each customer tier should be visited (for example weekly for top accounts, monthly for small ones), and flag customers overdue for a visit on the rep's day list and the manager's briefing.
+
+**Already in the app:** the visit calendar (`visit_plans`, `/sales/schedule`), visit and call activities on the customer timeline, and sales targets for revenue, kilograms and order count (`lib/repo/targets.ts`). There is no per-customer visit interval, so "overdue for a visit" cannot be computed.
+
+**Why parked:** a single cadence per tier ignores that some customers need calls rather than visits; targets that reps cannot reach (too many customers) become noise; the tier definition itself (F28) is not built.
+
+**Open questions**
+1. Cadence by tier, by customer type, or per customer? Start with per tier or type.
+2. A visit counts only if a visit activity is logged, or a call also counts?
+3. Rep capacity: warn when the targets add up to more visits than the rep can make in a day (see F20).
+4. Reports: visit compliance per rep and per group.
+
+**Suggested first slice:** a per-customer-type visit interval and an "overdue for a visit" list on the rep's day, from the last visit activity. No manager report yet.
+
+**Prerequisites:** the activity timeline (exists); F28 for tiers; F20 for turning the list into a route.
+
+---
+
+## F78. Driver map pin correction
+
+**What:** a driver who finds a customer's pin wrong drops a corrected pin from the stop screen. It is sent to a manager (or the rep) for approval, so the next delivery is routed to the right place.
+
+**Already in the app:** pin editing exists for leads and facilities (`components/LocationPinPicker.tsx`, `components/crm/PinStep.tsx`), and drivers already verify phone-less leads on their round with a short flow (`components/driver/VerifyVisits.tsx`, `lib/crm/flows/driverVisit.ts`). Delivery stops record the device GPS at the time of the action (`gps_lat`, `gps_lng`). I did not find a way for a driver to propose a corrected position for a customer from the stop card.
+
+**Why parked:** a driver's phone location at the door is not always the building entrance; letting the pin change instantly would let one bad reading mislead every later route; approvals add work for managers; customers with several delivery points need more than one pin.
+
+**Open questions**
+1. Propose-and-approve, or auto-accept when the driver's position is within a few hundred metres of the old pin?
+2. Use the device position at the moment of the tap, or let the driver drag a pin on the map?
+3. Who approves: the customer's rep, the group manager, or the dispatcher?
+4. Keep the history of pins (with F37 duplicate and merge tools in mind).
+
+**Suggested first slice:** a "location is wrong here" button on the stop card that sends the current device position as a proposed correction to the rep, who accepts or rejects it with one tap. The accepted pin updates the customer.
+
+**Prerequisites:** the stop GPS capture (exists); F27 records who changed what.
+
+---
+
+## F79. Late-delivery notices to customers
+
+**What:** when a run is delayed past a threshold, a templated message goes to the affected customers (reviewed by the dispatcher before sending, at least at first), with a new expected time.
+
+**Already in the app:** stops carry a planned arrival and a delay reason code, and staff get push and Telegram notifications (`lib/repo/notifications.ts`). Customers are not notification recipients, and I found no customer-facing messaging channel.
+
+**Why parked:** it needs a way to reach customers (SMS gateway or messaging app accounts, see F6), consent and opt-out, and a trustworthy new ETA (see F6 and F38); a wrong message is worse than none.
+
+**Open questions**
+1. Channel: SMS, Telegram or WhatsApp? Which do customers actually read?
+2. Trigger: run late by 30 minutes, or a stop expected to miss its receiving window (F57)?
+3. Dispatcher approval for each notice, or automatic for small delays?
+4. Wording and language, and one message per customer or per contact?
+
+**Suggested first slice:** a "delayed" button for the dispatcher that lists the affected stops and generates a copy-ready message per customer (copy and paste into the usual chat). No automatic sending.
+
+**Prerequisites:** F6 for a live ETA and the channel decision.
+
+---
+
+## F80. Warehouse returns handling
+
+**What:** returned items are received at the warehouse, inspected, counted and sent to restock, quarantine or write-off, with the reason and the customer recorded.
+
+**Already in the app:** returns partly exist. An order can end in `RETURNED` (a driver can record it when a customer refuses, or a manager after delivery), and delivery lines record `qty_returned`. Stock has a manual `RETURN_IN` movement, but its meaning is deliberately narrow: a replacement handed back at the door (the code comment says so, and warns against using it as a general "goods came back" movement). Manual `WRITE_OFF`, `ADJUSTMENT` and `COUNT` movements exist, and batches can be quarantined or recalled (`lib/batchStates.ts`). What is missing is the warehouse-side receiving step for goods that came back on the van, an inspection outcome per line, and a link to the reason and customer.
+
+**Why parked:** the existing stock model treats a refused delivery as "never left the van" (nothing moves), so a returns flow must not double count; disposition rules depend on shelf life and condition; supplier claims (F12) need the same data.
+
+**Open questions**
+1. Where do returned goods enter: the end-of-day unload (`UnloadTapFlow`) or a separate receiving screen?
+2. Dispositions: restock to the original batch, restock as a new lot, quarantine, write-off, return to supplier?
+3. Who inspects, and is a photo required for write-off?
+4. Link back to the order, delivery line and reason code so reports (F12, F42) can use it.
+
+**Suggested first slice:** add a disposition choice (restock, quarantine, write-off) to the van unload step for returned quantities, creating the matching stock movement and recording the reason. No supplier claims yet.
+
+**Prerequisites:** the unload flow and stock movements (exist); F12 for reasons.
+
+---
+
+## F81. Peak-day capacity warning
+
+**What:** when tomorrow's (or next week's) confirmed orders exceed van capacity or driver availability, warn the planner a day ahead, with options (move some orders, add a van, split the day).
+
+**Already in the app:** vehicles carry limits for stops, weight and volume (`max_stops`, `max_weight_kg`, `max_volume_m3`), and `lib/dayCapacity.ts` splits orders across days against those limits when the planner builds runs (`lib/repo/dayPlan.ts`, `readPlannableOrders`). The briefing shows unplanned orders. It does not warn ahead that a coming day is over capacity.
+
+**Why parked:** capacity depends on which vehicles and drivers are available that day (F25 is not built); orders keep arriving until cut-off, so an early warning can be wrong; the weather capacity factors (`capacity_factors`, learned in `lib/predict/capacityLearning.ts`) change the effective capacity.
+
+**Open questions**
+1. Horizon: tomorrow only, or the next three working days?
+2. Source of available vehicles and drivers until F25 exists: all active vehicles?
+3. Who is warned: the planner, plus the owner when the gap is large?
+4. Offer the existing day-splitting as the suggested fix, with the customers affected.
+
+**Suggested first slice:** a banner on the planner for each of the next three days showing confirmed demand (stops, weight, volume) against total vehicle limits, using the existing day-capacity maths and weather factors. Warning only.
+
+**Prerequisites:** the day-capacity module and vehicle limits (exist); F25 for driver availability; F57 for windows.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
