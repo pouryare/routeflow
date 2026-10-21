@@ -283,6 +283,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
 
+**Correction (found later):** the offline layer reaches beyond drivers. `lib/offline` (IndexedDB store, outbox, sync engine, device-generated ids) already queues draft orders (create, edit, submit), delivery start and complete, payments, cheques, complaints and new-customer capture, and the pull sends orders and customers to sales roles too (`lib/repo/syncPull.ts`, `lib/repo/syncMutations.ts`). Order approval, planning, freezing and credit decisions are refused offline on purpose. Tasks, notes and call outcomes are not covered (see F105).
+
 **Why parked:** conflict handling (two people editing the same record offline), idempotent writes and clear "not yet sent" states for every flow are large cross-cutting work; the existing `/api/sync/*` covers drivers only.
 
 **Open questions**
@@ -316,6 +318,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F15. Multi-warehouse and multi-branch
 
 **What:** several warehouses with stock transfers between them, per-branch ledgers, and consolidated reporting across branches.
+
+**Correction (found later):** stock is already location-aware, so the original premise below is too strong. Stock movements and batches carry a `facility_id`, a facility can be a warehouse, cold storage, van, factory or another kind, and stock moves between locations as paired `TRANSFER_OUT` / `TRANSFER_IN` movements (used when loading and unloading vans, `lib/repo/vanStock.ts`, `lib/repo/unload.ts`). Reservations still use the organisation's default facility. What is missing is warehouse-to-warehouse transfers as a first-class flow, per-branch ledgers and consolidated reporting.
 
 **Why parked:** stock, batches, runs and the ledger currently assume one stock location per organisation; moving to many touches nearly every stock and accounting query.
 
@@ -1755,6 +1759,586 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** add a "paid from my pocket" choice to the existing expense flow that marks the expense as owed to the person, a manager approve or reject list, and a per-person owed balance. Repayment recorded by hand.
 
 **Prerequisites:** the expense flow and ledger postings (exist); F26 describes the field-expense side; F48 for approval limits.
+
+---
+
+## F89. Customer price history
+
+**What:** every price a customer has been charged (and, once quotes exist, offered) for each product, with dates and the list price at the time, to settle "you charged me less last time" and to spot unplanned discounts.
+
+**Already in the app:** each order line freezes the price it was sold at (`unit_price_toman`, with `price_id` pointing at the dated list price), so the history is in the data. The customer page shows a purchase history with each order's number, status, date, payment status, total and line count, and a product mix with packs and totals per product (`components/PurchaseHistory.tsx`). It does not show unit price per product over time, and quotes are not recorded (F29).
+
+**Why parked:** showing past prices to reps changes negotiations (they may anchor on the lowest price ever given); prices for different pack sizes are not comparable without normalising; discounts and uplifts (F21, F65) must be shown as adjustments, not as price changes.
+
+**Open questions**
+1. Who sees it: the rep and manager for their customers, or managers only?
+2. Compare unit price per base unit to make pack sizes comparable?
+3. Mark lines sold below list price (using `price_id` to find the list price in force on that date) and below a margin floor?
+4. Include prices from orders that were cancelled or returned? Probably show them greyed.
+
+**Suggested first slice:** on the customer page, a per-product list of the last five unit prices with dates and the list price at the time, read from existing order lines. Quotes and discount flags later.
+
+**Prerequisites:** none; F29 adds quotes, F56 improves the list-price history.
+
+---
+
+## F90. Monthly staff pay summary for the accountant
+
+**What:** an end-of-month sheet per person combining commission (accrued, paid and owed), progress against targets, attendance, and approved expense reimbursements, ready to export for the accountant.
+
+**Already in the app:** commission statements exist for salespeople (`lib/commissionLedger.ts`: delivered kilograms, accrued, paid and still owed, the orders behind it, and the plan used, flat or tiered), for drivers (`lib/driverCommissionLedger.ts`) and for managers (`lib/managerCommissionLedger.ts`), shown on `/sales/commission` with a plan copy tool. Targets exist (`lib/repo/targets.ts`) and the chart of accounts has a salary account (5103). Attendance (F25) and reimbursements (F88) do not exist, and I found no stored base salary, so a "total pay" figure would be incomplete.
+
+**Why parked:** payroll is a sensitive, legally relevant output; the commission figures must stay exactly equal to what the ledger already produces (earlier work required payroll output to stay byte-identical), so the sheet must reuse those functions and never recalculate; base salary and deductions are outside the app today.
+
+**Open questions**
+1. Does the sheet stop at "commission owed plus approved reimbursements", or include a base salary entered by hand each month?
+2. Export format for the accountant: Excel or CSV with fixed columns, per month, with a lock once exported?
+3. Who may see it: the owner only, or managers for their group?
+4. Corrections after export: shown as an adjustment in the next month rather than editing a locked month.
+
+**Suggested first slice:** a read-only monthly sheet per person assembled from the three existing commission statements plus targets, with a CSV export and no salary or attendance columns.
+
+**Prerequisites:** the commission statements (exist); F25 and F88 add attendance and reimbursements; F27 for logging exports.
+
+---
+
+## F91. Call and visit quota tracking
+
+**What:** a daily or weekly target for the number of calls and visits per salesperson, with a simple progress bar on their day and a summary for managers, kept separate from revenue targets.
+
+**Already in the app:** targets exist for revenue, kilograms and order count per person or group and month (`lib/repo/targets.ts`, `TargetMetric`). Calls and visits are logged as activities with outcomes, and the coverage analytics already report how many visits actually got logged and how long the days ran (`lib/repo/coverageAnalytics.ts`). There is no target for the number of calls or visits, so activity is measured but never compared with a goal.
+
+**Why parked:** activity quotas can encourage quantity over quality (many short, pointless calls); the right number differs by role and season; the count must come from logged outcomes, not taps on a counter.
+
+**Open questions**
+1. Count calls, visits, or both? Does a no-answer count?
+2. Daily, weekly, or both; per role or per person?
+3. Shown to the rep only, or compared in a team table? Start with the rep and their manager.
+4. Pair with outcome measures (orders per call) so the number alone is not the goal (see F41).
+
+**Suggested first slice:** extend targets with a "calls and visits per week" metric counted from the existing activities, and show the progress bar on the rep's day. No team ranking.
+
+**Prerequisites:** the activity timeline and targets (exist); F41 for quality alongside quantity.
+
+---
+
+## F92. Territory revenue map
+
+**What:** a map of revenue by district compared with the district's potential (customers and prospects), to show where growth is available and which districts are over- or under-served.
+
+**Already in the app:** the map has a customer density heat map (`components/HeatmapLayer.tsx`), districts with a coverage status (visited, needs coverage, not allowed, unknown), and a coverage and cost-to-serve analytics module (`lib/repo/coverageAnalytics.ts`). The heat map shows where customers are, not how much they buy, and there is no per-district revenue or potential figure.
+
+**Why parked:** "potential" needs a definition (number of businesses of the right type in the district, from lead imports; population; competitor presence) and those figures may be thin or stale; district boundaries must stay consistent for trends to mean anything; group-scoped views must not reveal another group's revenue.
+
+**Open questions**
+1. Potential from what: the count of known customers and leads per district, an owner-entered estimate, or both?
+2. Metric: revenue, kilograms or orders; last 90 days against the previous 90?
+3. Visual: a district colour scale (low, expected, high) or a ratio of revenue to potential?
+4. Who sees it: the owner for all districts, a group manager for their group's districts only.
+
+**Suggested first slice:** colour each district by revenue over the last 90 days (from delivered orders grouped by the customer's district) on the existing map, group-scoped, with potential left out for now.
+
+**Prerequisites:** districts and customer district assignment (exist); lead data supplies potential later.
+
+---
+
+## F93. Warehouse bin locations and stock transfers
+
+**What:** record where inside a warehouse each batch is kept (aisle, shelf, bin or cold room), move stock between bins with a scan, keep a history of who moved what, and show locations on pick lists.
+
+**Already in the app:** stock is tracked per location (`facility_id` on stock movements and batches), where a location can be a warehouse, cold storage, van and several other kinds (`facilities`). Moving stock between two locations is already done as a paired `TRANSFER_OUT` and `TRANSFER_IN` movement, used when loading a van and when unloading it (`lib/repo/vanStock.ts`, `lib/repo/unload.ts`), and available as a manual movement kind. There is no level below a location: no aisle, shelf or bin.
+
+**Why parked:** bin tracking needs discipline at every move or the data rots; it multiplies the transfer volume; pick lists ordered by bin only help after the physical layout is mapped; label and scan support (F1, F30, and label printing) should exist first.
+
+**Open questions**
+1. Model bins as child locations of a warehouse, or as a free-text "position" on a batch's stock record?
+2. Scan to move (needs labels on bins and batches) or pick from a list?
+3. Does the first slice stay at "which cold room or zone" rather than shelf-level?
+4. Should reservations and FEFO picking consider bin proximity?
+
+**Suggested first slice:** add a zone field (for example cold room, dry store, returns) to warehouse stock via the existing transfer movement, with a zone-to-zone transfer in the stock screen and a history list. Shelf-level bins later.
+
+**Prerequisites:** stock movements and facilities (exist); F1 and F30 for scanning.
+
+---
+
+## F94. Warehouse picking accuracy log
+
+**What:** record picking mistakes (wrong item, short, extra, damaged on pick) per picker, product and order, found at loading, at delivery or by a customer, to see patterns and fix their causes.
+
+**Already in the app:** delivery lines record planned, delivered and returned quantities per order line, a short delivery has its own order state and reasons, and van loading creates paired transfer movements (`lib/repo/vanStock.ts`). There is no picking step as such (no pick list, no picker identity on an order) and nothing that attributes a mistake to a picker.
+
+**Why parked:** without a pick step there is no one to attribute a mistake to; a log of mistakes per person is sensitive and can feel punitive; many shortages are stock-record errors, not picking errors, so the log needs a cause category.
+
+**Open questions**
+1. Who is the picker: the person who loads the van, recorded on the load step?
+2. Categories: wrong item, wrong quantity, damaged, expired item picked, stock record wrong?
+3. Where do errors enter: at loading (a checker), at the door (driver), or from a complaint?
+4. Reports by cause and product first; by person only for the manager.
+
+**Suggested first slice:** a "load check" with an error reason when the checker finds a difference at van loading (ties to F30), and a simple report by reason and product. No per-person view.
+
+**Prerequisites:** F30 (van loading verification) creates the moment to record it.
+
+---
+
+## F95. Staff birthdays and work anniversaries
+
+**What:** reminders for the team for birthdays and work anniversaries, with an optional congratulation message.
+
+**Already in the app:** users have a display name, role and phone number; the occasions list in the planner (`lib/holidayOccasions.ts`) is for lunar-calendar days off, not staff events. I found no birth date or start date on a user.
+
+**Why parked:** birth dates are personal data and need the person's consent; the field must be optional; the reminder has little business value on its own and should not compete with real work alerts.
+
+**Open questions**
+1. Does each person enter their own date (optional), or does the owner?
+2. Jalali dates for birthdays; how are Gregorian-registered dates shown?
+3. Who is reminded: only the owner and the person's manager, or the whole team?
+4. A weekly digest rather than a daily push, to keep notifications quiet (see F67).
+
+**Suggested first slice:** two optional fields on the user (birth date, start date) set by the person, and a card on the owner's and manager's briefing for the coming seven days. No push.
+
+**Prerequisites:** none; F90 and F86 could use the start date.
+
+---
+
+## F96. Inter-group order transfers
+
+**What:** an order taken by one group that must be fulfilled from another group's stock or route, with a clear handover, status visible to both groups, and the commission and revenue assigned according to a stated rule.
+
+**Already in the app:** data is scoped by group (orders, runs, customers, tasks all carry a group), and some reference data can be shared across groups (facilities with no group are visible to every group in the organisation, `groupFilterWithShared` in `lib/session.ts`, read-only). An order is planned onto its own group's runs. There is no way to hand an order from one group to another.
+
+**Why parked:** scope rules are a security boundary (a group manager must never see another group's customers); commission and target credit across groups needs an agreed rule; stock reservation and delivery would have to cross the scope line in a controlled way.
+
+**Open questions**
+1. Transfer the whole order (the other group fulfils and delivers), or only stock (the other group supplies, the original group delivers)?
+2. Commission and revenue: to the selling group, the delivering group, or split?
+3. Who approves: both group managers, or the owner?
+4. What each side may see: the receiving group sees the order and delivery address, not the customer's history.
+
+**Suggested first slice:** a "request fulfilment by group B" action on a confirmed order that creates a task for group B's manager to accept or refuse, and on acceptance moves the delivery responsibility only. Stock and commission rules stay unchanged for now.
+
+**Prerequisites:** the group scope model (exists); F48 for approval; the commission statements need a documented rule.
+
+---
+
+## F97. Vehicle assignment history
+
+**What:** which driver used which van on which day, kept as a history, to answer questions about fuel, damage, fines and maintenance and to compare vans.
+
+**Already in the app:** vehicles have a plate, name, capacity limits, refrigeration flag, cost per kilometre and a default driver (`vehicles.driver_default_id`), and delivery runs gained a `vehicle_id` column during the routing work, alongside a route template with a default driver and vehicle. A comment in `lib/repo/vanStock.ts` still says runs carry no vehicle and that the default driver is the only link, so I could not confirm that run planning actually fills the vehicle in. Each van also has its own stock location.
+
+**Why parked:** the history is only as good as the planner's discipline in choosing a vehicle per run; a driver swapping vans on the day must be recorded; fuel and damage records (the fleet ideas) do not exist yet to attach to it.
+
+**Open questions**
+1. Is the vehicle chosen at planning time, at loading, or both (a swap at the depot)?
+2. How is a van swap recorded mid-day, and who may record it?
+3. Reports: days used and kilometres per vehicle, per driver; cost per kilometre against actual.
+4. Link to incidents and fuel logs once they exist.
+
+**Suggested first slice:** require a vehicle on each run when it moves to ready, show "driver, van, date" in a history list per vehicle and per driver, and report kilometres by vehicle from the run's actual distance.
+
+**Prerequisites:** the existing run vehicle column and vehicles table.
+
+---
+
+## F98. Customer note and visit search
+
+**What:** search across all call and visit notes for a phrase, such as "closing for renovation" or "prefers morning", to find the customers affected, with results scoped to what the searcher may see.
+
+**Already in the app:** a global search overlay already finds customers, orders and other records, with Persian-aware matching (it folds Arabic and Persian letter forms and digits, `lib/persian.ts`, `lib/repo/search.ts`) and the same group and role scoping as the pages it mirrors. Call and visit notes are stored on activities (`insertActivity`, with a `note` column) and shown on the customer timeline, but they are not searched.
+
+**Why parked:** notes may contain sensitive remarks about people, so searching them widens what a manager can find; matching in free Persian text needs normalisation and, ideally, word-boundary handling; searching every note across many customers must stay fast (an index, not a full scan on each keystroke).
+
+**Open questions**
+1. Who may search notes: managers over their group, reps over their own customers only?
+2. Search note text only, or also task titles, complaint descriptions and order notes?
+3. Result view: customer cards with a highlighted snippet, and a way to turn a result list into a call list (see F70).
+4. Highlight the match and show date and author.
+
+**Suggested first slice:** a "search notes" mode in the existing search overlay that matches activity notes for customers the user can already see, returning customer, date and a snippet. Task and complaint text later.
+
+**Prerequisites:** the existing search model and activity notes.
+
+---
+
+## F99. Product catalogue change log
+
+**What:** a history of product creation, renaming, pack-size and unit changes, price entries and deactivation, with who changed it and when, shown on the product page.
+
+**Already in the app:** prices and costs are already versioned as dated, insert-only rows (`product_prices`, `product_costs`), so price history exists in the data. A generic activity log (`logActivity` into `activity_log`: entity, event type, old and new value, note, who) is used for districts, visit plans, photos and the duplicate-customer merge. The product routes do not write to it, so renames, unit and pack changes and deactivation leave no history.
+
+**Why parked:** a rename that silently changes how past orders read is the kind of change people want traced; the log must not slow product edits; showing it to everyone is unnecessary, so access needs a rule.
+
+**Open questions**
+1. Log all field changes or a short list (name, unit, pack, active, SKU)?
+2. Show on the product page to managers, and to finance?
+3. One shared change log helper for products and other reference data (suppliers, vehicles, price tiers)?
+4. Include who deactivated a product and the stock on hand at that moment.
+
+**Suggested first slice:** call the existing `logActivity` from the product create, update and deactivate routes, and add a "history" list on the product page. Price changes appear from the existing dated rows.
+
+**Prerequisites:** none; F27 describes the broader audit trail.
+
+---
+
+## F100. Customer ownership change history
+
+**What:** when a customer moves between salespeople or groups, record who moved it, when, from whom to whom and why, and show it on the customer page and in a report.
+
+**Already in the app:** an `owner_change` activity ("change of owner") appears on the customer timeline (`lib/crm/timeline.ts`), but it is written only when a salesperson takes a customer from the group pool, with the note "taken from the group pool" and no previous owner (`lib/repo/crm/write.ts`). A reassign request exists (`requestReassign`). I found no record of a manager moving a customer from one rep to another, or of a group change.
+
+**Why parked:** reassigning customers affects commission, targets and open tasks (see F59), so the history should be written wherever the owner changes, not only in one flow; old owners should not lose access to their past activity.
+
+**Open questions**
+1. Capture every change path (pool claim, manager reassign, bulk handover, deactivated user) in one place?
+2. Store previous owner, new owner, actor and reason (reason from a short list)?
+3. Does commission follow the owner at the time of the order (current behaviour) or the owner at the time of payment? Confirm and document.
+4. A report of ownership changes by month to spot churn in assignments.
+
+**Suggested first slice:** write the previous and new owner and a reason into the existing `owner_change` activity from all owner-changing paths, and show "from X to Y by Z" on the timeline.
+
+**Prerequisites:** the activity timeline (exists); F59 handover uses the same record.
+
+---
+
+## F101. Bulk delivery notes per run
+
+**What:** print all of a run's delivery notes in one go, in stop order, with a cover sheet (driver, van, totals, cash to collect), instead of printing them one at a time.
+
+**Already in the app:** the receipt handed over at the door is built from one stop's numbers (`lib/deliveryReceipt.ts`, `lib/receiptLayout.ts`) and printed from the delivery flow ("print receipt") and from done stops; the planner and report pages have print buttons (`components/PrintButton.tsx`). That is the customer's copy after delivery. There is no pre-printed note per stop for the run and no multi-page print.
+
+**Why parked:** print layout for many pages needs page breaks that work on common printers; right-to-left Persian text and Jalali dates must print correctly; the format is a document design (see F36 on templates).
+
+**Open questions**
+1. Printed at loading time as a packing and handover note, or as a paper backup of the route sheet?
+2. One page per stop with lines and totals, plus a cover page with the run summary?
+3. Reprinting after a stop changes (an order edited or cancelled) must show the latest.
+4. Combine with the route sheet idea so the driver has one packet.
+
+**Suggested first slice:** a "print all notes" button on a ready run that renders the existing receipt layout for each stop in order, separated by page breaks, with a cover summary. No new template editor.
+
+**Prerequisites:** the receipt builder and print button (exist); F36 later for owner-editable templates.
+
+---
+
+## F102. Manager approval inbox
+
+**What:** one screen listing everything waiting for the manager's decision (orders in review, credit approvals, price changes, expenses, reassign requests), sorted by age, with the decision actions in place.
+
+**Already in the app:** quick-decision decks exist for specific queues: cheques due for a verdict, complaints to triage, credit approvals, and duplicate customer pairs (`lib/decisions.ts`, the decks on `/sales/today`, with `pendingForDeck` for credit). The briefing lists credit waiting and unplanned orders. Orders waiting in `PENDING_REVIEW` for a manager's pass are handled through the orders pages (I did not verify that they appear in a deck). There is no single list across all kinds.
+
+**Why parked:** a unified inbox pulls in several repos with different permissions, so each item must be filtered by what this manager may decide; every new approval type (F48, F76, F88) must plug into it, which needs a common item shape; the inbox has to stay fast.
+
+**Open questions**
+1. A common item shape (kind, subject, age, requester, summary, actions) that each approval type provides?
+2. Order of the list: oldest first, or by value and risk?
+3. Delegation (F82): shows items for those the manager is covering, marked as such.
+4. Actions in place with the existing consequence confirmation, or open the detail page?
+
+**Suggested first slice:** a read-only unified list assembled from the queues that already exist (credit approvals, orders in review, complaints to triage, cheques due), linking to the existing decision screens. Common actions later.
+
+**Prerequisites:** the existing decks and approvals; F48, F76, F82 and F88 plug into it later.
+
+---
+
+## F103. Rep mileage log
+
+**What:** distance driven by each salesperson on visits, estimated from the locations of the customers visited that day (or entered at month end), for reimbursement and for comparing effort across territories.
+
+**Already in the app:** visits and calls are logged against customers, customers and leads have coordinates, a straight-line distance helper exists (`lib/geo.ts`), and routing has road-distance support for delivery runs. Delivery runs record planned and actual distance (`delivery_runs.actual_distance_km`). Salespeople's own movement is not stored anywhere, so there is no log to total.
+
+**Why parked:** a distance derived from visit points is only an estimate (the order of visits and the road network matter); continuous tracking would be more accurate but raises the privacy issues in F68; reimbursement money rides on the number, so disputes need a clear method.
+
+**Open questions**
+1. Method: sum of road distances between the day's logged visit locations in time order (estimate), or manual odometer entries at start and end of day?
+2. Starting and ending point: home, office, or the first and last visit?
+3. Approval by the group manager before it reaches reimbursement (F88)?
+4. Non-visit trips (collecting a cheque, a meeting) added by hand.
+
+**Suggested first slice:** a day summary for each rep: the visits logged in time order and the estimated road distance between them, using the routing distance helper, shown to the rep and manager. No reimbursement link yet.
+
+**Prerequisites:** visit activities with locations (exist); F68 if position events are stored; F88 for the payout.
+
+---
+
+## F104. Customer snapshot on call pickup
+
+**What:** a compact card shown when a rep opens a customer from a call list: balance, last order, last note, open tasks, risk flags, and the best time to call, so the rep is ready within two seconds.
+
+**Already in the app:** the briefing's call list shows only each customer's name and last purchase date and links to the customer page (`lib/repo/briefing.ts`); the customer page has the history timeline, purchase history, photos and reminders; the visit "intel" flow collects business facts (size, current supplier channel, products used, best time to visit, a note for the next visitor, `lib/crm/intel.ts`). Debt and risk (churn, credit) are computed elsewhere. They are not combined into one pre-call card.
+
+**Why parked:** a card must be fast, so its pieces need to come from one cheap query; too much on it defeats the purpose; each field needs its own role check (a rep may not see another group's balance).
+
+**Open questions**
+1. Which five facts, in what order? Candidates: balance and overdue, last order date and items, last note, open tasks, next best action.
+2. Show it as a sheet over the call list or at the top of the customer page?
+3. Include the intel facts (best time to call, supplier channel)?
+4. Offline cache for the most recent customers (see F105).
+
+**Suggested first slice:** a bottom sheet opened from a call-list row showing balance, last order, last note and open tasks from existing data, with a "call" and "log outcome" button. No new scoring.
+
+**Prerequisites:** none; F8, F46 and F47 add signals later.
+
+---
+
+## F105. Offline tasks and notes
+
+**What:** reps can read their tasks and customer notes, add notes and log call outcomes with no signal, synced when the connection returns.
+
+**Already in the app:** an offline layer exists (`lib/offline`: an IndexedDB store, an outbox, a sync engine, queue-if-offline, clock-skew handling and ids generated on the device). Offline it can queue draft orders (create, edit, submit), delivery start and complete, payment records, cheque records, complaint records and new-customer capture (`lib/repo/syncMutations.ts`). The pull sends the catalogue, and orders and customers for the user's scope. Tasks, notes (activities) and call outcomes are not in the pull or in the queued actions, and approvals (order approve, plan, freeze, credit decision) are explicitly refused offline. Note: this means F13 should record that the layer reaches beyond drivers.
+
+**Why parked:** tasks change on the server while the rep is offline (reassigned, completed by a manager), so conflict rules are needed; a call outcome creates follow-up tasks on the server, which the offline copy must not duplicate; the pulled data grows with each added table.
+
+**Open questions**
+1. Which actions first: read tasks, add a note, close a task, log a call outcome?
+2. Conflict rule when a task changed on the server meanwhile: server wins and the rep is told?
+3. Do offline call outcomes create their follow-up task locally, with a temporary id replaced on sync?
+4. How many days of tasks and customers are cached, and how is the cache cleared on logout?
+
+**Suggested first slice:** pull the user's open tasks and the last notes for their customers, show them read-only offline, and queue "add note" only (a pure append, no conflict). Task closing and call outcomes after that.
+
+**Prerequisites:** the offline layer and sync pull (exist); F13 describes the wider goal.
+
+---
+
+## F106. Two-step login for owners and managers
+
+**What:** a one-time code (sent by SMS or Telegram, or from an authenticator app) required at sign-in for roles that can approve money and see everything, with trusted-device memory so it is asked rarely.
+
+**Already in the app:** sign-in produces a signed session cookie that lasts 30 days, carrying the user, role, group, organisation and a token version (`lib/auth.ts`); login is rate-limited per username and per address; Login-As for owners is time-limited and re-validated on every request (`lib/impersonation.ts`). I found no one-time-code or second-factor code anywhere.
+
+**Why parked:** a code channel must exist first (Telegram is linked per user already, SMS needs a provider); a lost phone must not lock the owner out, so recovery codes and an owner reset path are required; asking for a code too often makes people choose weak habits.
+
+**Open questions**
+1. Which channel: Telegram (already linked for notifications), an authenticator app, or SMS?
+2. Required for which roles: owner and group manager only, or optional for everyone?
+3. Trusted-device length (for example 30 days) and how it is revoked (see F107).
+4. Recovery: printed codes, or the owner resets a manager, and who resets the owner?
+
+**Suggested first slice:** optional authenticator-app codes (no provider needed) for the owner and group-manager roles, with recovery codes shown once and a trusted-device cookie. Required-for-role setting later.
+
+**Prerequisites:** none; F107 supplies device revocation.
+
+---
+
+## F107. Device and session management
+
+**What:** each person sees where they are signed in, can sign out another device, and the owner can end a lost phone's access, which matters more now that data is cached on phones (offline orders, customers and, later, tasks).
+
+**Already in the app:** sessions are stateless signed cookies, and each user has a `token_version`: raising it makes every token already issued to that user invalid immediately (that is how a password reset or deactivation takes effect, `lib/auth.ts`). Sign-out exists. What does not exist is a list of devices or sessions: because nothing is stored per session, the app can sign someone out everywhere but cannot show or end one device.
+
+**Why parked:** a per-device list needs a stored session record (id, device, last seen, address), which changes the stateless design and adds a database write per sign-in; remote wipe of the offline cache needs the phone to check in; the device name must come from something reliable.
+
+**Open questions**
+1. Store a session row only at sign-in and on refresh (last seen updated at most once an hour) to keep writes low?
+2. Show device type, browser and approximate place, last used?
+3. Remote action: end the session on the server, and the phone clears its offline data at the next contact?
+4. Notify the user when a new device signs in (Telegram message).
+
+**Suggested first slice:** a "sign out everywhere" button for each person, using the existing token version, plus an owner action to do the same for another user. A device list comes after.
+
+**Prerequisites:** none for the first slice; F106 trusted devices use the same list.
+
+---
+
+## F108. System status page for the owner
+
+**What:** one page showing the app's own health: last sync activity, last backup and how old it is, failed notifications, errors and slow queries from the last day, how fresh the imported data is, and whether outside services (routing, weather, messaging) respond.
+
+**Already in the app:** pieces exist but are scattered: a data-freshness indicator for the spreadsheet-based imports (fresh, ageing, stale, unknown; `lib/freshness.ts`), a slow-query log written to the server console when a statement exceeds a threshold set by an environment variable (`lib/slowSql.ts`), a nightly backup script with rotation that writes to the local disk only (`scripts/backup.mjs`), notification delivery records (`notification_deliveries`), and a script for the scheduled sweeps (`scripts/run-sweeps.mjs`). There is no health endpoint and no page that brings these together; the slow-query and error output goes to logs that an owner never sees.
+
+**Why parked:** a status page shows internals, so it must be owner-only and must not leak other tenants' data in a multi-organisation setup; some checks (backup age, error rate) need the server to record them somewhere the page can read; alerting on bad status needs a channel.
+
+**Open questions**
+1. Which five checks first: last backup age, last sweep time, failed notifications in 24 hours, data freshness, database size?
+2. Where do error and slow-query counts come from: a small table written by the logger?
+3. External checks (routing engine, weather source, Telegram) done on demand with a short timeout.
+4. A push or Telegram message to the operator when a check turns red (ties to F16).
+
+**Suggested first slice:** an owner-only page that reads what already exists: last backup file time, last sweep time, failed and pending notification deliveries, and the data freshness tier. No logging changes yet.
+
+**Prerequisites:** none; F34 adds backup restore and storage location.
+
+---
+
+## F109. Self-service password reset
+
+**What:** a user who forgot their password resets it themselves with a code sent to their linked Telegram, instead of asking the owner or a manager.
+
+**Already in the app:** passwords are hashed and set by an administrator: the admin user routes accept a new password with a minimum length, store the hash and bump the user's token version so old sessions end (`app/api/admin/users/[id]/route.ts`), and a helper generates a readable username and password when a user is added, leaving out look-alike characters (`lib/credentials.ts`). The notification system already links a user's Telegram account with a one-time nonce (`lib/repo/notifications.ts`, `telegram-link`), which is the channel a reset code could use. There is no way for a user to start a reset on their own.
+
+**Why parked:** a reset path is also an attack path (anyone who can read the user's Telegram can take over the account), so it must be rate-limited and logged; users who never linked Telegram still need the old route; the second factor idea (F106) uses the same channel and should share it.
+
+**Open questions**
+1. Reset only if Telegram is linked, with the owner or a manager as the fallback for everyone else?
+2. Code lifetime (for example 10 minutes), attempts allowed, and how many resets per day?
+3. After a reset: sign out all other devices (token version) and send a notice to Telegram?
+4. Owner accounts: allow self-reset, or require a second person?
+
+**Suggested first slice:** a "forgot password" link that sends a six-digit code to the linked Telegram, rate-limited, ending in a new password and a forced sign-out of other sessions. The administrator route stays.
+
+**Prerequisites:** the Telegram link (exists); F110 for the log; F106 shares the code channel.
+
+---
+
+## F110. Login activity log
+
+**What:** a record of who signed in, when, from which device and address, plus failed attempts, visible to the owner, so odd sign-ins can be spotted.
+
+**Already in the app:** the login route limits attempts per address and per username with an in-memory counter (`lib/rateLimit.ts`), which forgets everything on restart and is not a log. Changes to records are logged separately (`activity_log`, see F27). I found no stored sign-in history and no last-login time on users.
+
+**Why parked:** it adds a database write on every sign-in (small, but constant); addresses are personal data and need a retention rule; a log without anyone reading it adds little, so alerts for odd patterns (many failures, a new country or device) are what makes it useful.
+
+**Open questions**
+1. What to store: user, time, result, address, browser or device label (not the password, never the typed username when it doesn't exist)?
+2. Retention (for example 90 days) and an owner-only view with filters.
+3. Alerts: five failures in a row, or a sign-in from a new device, sent to the owner on Telegram?
+4. Include Login-As starts and ends (owner acting as another user) in the same log.
+
+**Suggested first slice:** a table written on every successful and failed sign-in, an owner-only list with the last 100 entries and a "last sign-in" shown on each user in the admin page. Alerts later.
+
+**Prerequisites:** none; F107 uses the same device information; F27 covers change auditing.
+
+---
+
+## F111. Recycle bin
+
+**What:** deleted customers, tasks, reminders, photos and similar records are kept for 30 days and can be restored by a manager, then removed for good.
+
+**Already in the app:** some records are switched off rather than removed (users and products carry an active flag), but many deletes are real deletes (for example reminders, photos and the customer rows created by lead conversion are removed with `DELETE`). A deletion record exists for offline sync clients (`deleted_rows`, in `lib/repo/tombstones.ts`) but it stores only the type, id and time, not the content, so it cannot bring anything back. Confirmation prompts before destructive actions were added earlier, which reduces accidents without allowing recovery.
+
+**Why parked:** restoring a record means restoring what hung off it (orders, payments, tasks, photos) and that varies by type; foreign keys and uniqueness (a phone number reused after deletion) can block a restore; keeping deleted data for 30 days has privacy consequences (see F-privacy).
+
+**Open questions**
+1. Which types first? Reminders, tasks and photos are simple; customers carry history and are risky.
+2. Soft delete (a deleted-at column on each table) or a trash table that stores a JSON copy of the row?
+3. Who can restore: the person who deleted it, a manager, or only the owner?
+4. Retention and automatic purge, and an exception for personal-data deletion requests.
+
+**Suggested first slice:** a trash table that stores a JSON copy of deleted reminders, tasks and photo records for 30 days with a "restore" action for managers. Customers and orders are excluded.
+
+**Prerequisites:** none; F34 (backup and restore) and F27 (audit) relate.
+
+---
+
+## F112. What's new notes
+
+**What:** short release notes shown once after an update, written for staff ("the order screen now remembers the delivery day"), so changes are learned without a meeting.
+
+**Already in the app:** the sales academy (`/sales/academy`) holds lessons and objection cards for selling, and the help registry (F84) explains cards. Neither announces changes to the app itself. I found no release notes or version display for users.
+
+**Why parked:** it only works if someone writes the notes in plain Persian for each release; a notice that appears too often is dismissed unread; role-specific notes (a change that only affects drivers) need filtering.
+
+**Open questions**
+1. Written in the repository with each release (a Persian notes file keyed by version), shown once per user per version?
+2. Filter by role, so a driver doesn't see warehouse changes?
+3. One short card with an optional "see more", reachable later from the help menu?
+4. Who writes them: the developer at release time, as part of the pull request?
+
+**Suggested first slice:** a notes file in the repository keyed by version and role, a small "what's new" card shown once after an update (remembered per user in their preferences), and an "all updates" list under help.
+
+**Prerequisites:** the preferences store (`users.prefs_json`, exists); F84 for the help menu location.
+
+---
+
+## F113. Radial quick-action menu and home-screen shortcuts
+
+**What:** press and hold the «+ ثبت» button (or the app icon on the home screen) and the role's most-used actions fan out as a pie or radial menu within thumb reach: new order, log a payment, new lead or note, complaint, today's run. One quick drag selects and opens the matching tap flow.
+
+**Already in the app:** the phone has a «+ ثبت» button above the bottom bar (`components/mobile/QuickActions.tsx`). A tap opens a bottom sheet titled "what shall we record" listing the role's actions: reminder, note, new order, payment, complaint, filtered per role so nothing leads to a refusal (`quickActionsFor` in `lib/mobileNav.ts`). A reminder or note opens its flow in place; the others go to the page whose own flow opens on arrival (`?new=1` / `?quick=1`). The web app manifest sets the start page and standalone display but declares no shortcuts (`app/manifest.ts`), so long-pressing the installed app icon shows nothing.
+
+**Why parked:** the project's mobile rules say a gesture is never the only way: every gesture needs a visible button, targets are at least 44 px, and motion respects reduced-motion (`docs/mobile-first-principles.md`). So the radial menu must be an addition, with the existing sheet kept as the accessible path and a plain tap still opening it. Layout in a right-to-left screen, the thumb arc on large phones, and accidental activation while scrolling need testing on real devices. Home-screen shortcuts are static and can only open pages, not specific flows chosen per role.
+
+**Open questions**
+1. Which three to five actions are in the arc for each role, and can the user pin their own?
+2. Press-and-hold to open then drag to choose, or tap to open the arc then tap an item?
+3. Arc direction and place for right-handed and left-handed users, and a setting to turn it off.
+4. Manifest shortcuts: one fixed list for everyone (new order, today) or per role? Manifest shortcuts cannot vary per user, so a fixed shortlist that routes by role may be needed.
+
+**Suggested first slice:** add manifest shortcuts for the two or three actions every role has (today, new order, new lead) opening the same `?quick=1` pages, and a press-and-hold radial menu on «+ ثبت» that offers the same role-filtered actions as the sheet, with the sheet unchanged. Arc customisation later.
+
+**Prerequisites:** the quick-actions list and tap flows (exist); a device-testing pass (the rules require it for gestures).
+
+---
+
+## F114. Carton completion nudges
+
+**What:** at order entry, tell the rep when adding a few units completes a carton or a larger pack (for example "7 more units complete the carton of 24"), or when the quantity is just under a pack size, so orders align with how goods are packed and picked.
+
+**Already in the app:** each product can have several packagings with a name and a quantity per pack (`packagings`: for example units and cartons, with a barcode), and an order line stores the packs ordered with its quantity per pack (`orderQuick` flow and order lines). Quantities are chosen in a keypad step. There is no suggestion based on how far the quantity is from the next whole pack.
+
+**Why parked:** a nudge on every line is noise; it should only appear when it is close (for example within 20% of the next pack) and the customer actually buys by the carton; promoting bigger packs can raise sales but must not push customers into stock they cannot sell; pack hierarchies differ by product (not every product has a carton).
+
+**Open questions**
+1. Threshold for showing it, and per product or global?
+2. Show only when the customer has bought the carton packaging before?
+3. Message wording and a one-tap "add them" action; no automatic changes.
+4. Does the uplift interact with the small-quantity uplift (F65), which charges more below a threshold?
+
+**Suggested first slice:** in the quantity step, when the units are within a set distance below a pack's quantity, show a single line with the missing count and a button to round up, for products that have a carton packaging. Off by default for owners to enable.
+
+**Prerequisites:** packagings (exist); F65 and F58 relate.
+
+---
+
+## F115. Voice read-out for drivers
+
+**What:** the phone reads out the next stop, the customer's name, what to hand over and the delivery instruction, so a driver can keep their eyes on the road and hands free. Optional, in Persian, with a repeat button.
+
+**Already in the app:** the driver screen already shows a next-stop banner and prompts on arrival (`components/driver/NextStopBanner.tsx`, `DriverRun.tsx`, `lib/arrival.ts`), navigation hand-off to the user's chosen map app, and per-stop notes. I found no speech output anywhere (no use of the browser's speech synthesis).
+
+**Why parked:** Persian voices vary by phone, and on some devices there is no Persian voice installed, so the quality is uncertain; reading out while driving has road-safety and liability questions; sound in a noisy van may not be heard; speech must stop at once when the driver taps.
+
+**Open questions**
+1. Which events are spoken: when a stop is completed (next stop), on arrival, when a note exists?
+2. Persian voice available on the driver phones? Test on the actual devices first.
+3. Read only when the phone is connected to car audio or earphones, or always when enabled?
+4. A setting per driver, off by default, never auto-starting while the driver is typing.
+
+**Suggested first slice:** a "read aloud" button on the next-stop banner that speaks the customer name, address line and instruction with the browser's speech synthesis, shown only when a Persian voice exists. No automatic speech.
+
+**Prerequisites:** F69 supplies instructions to read; F117 shares the sound and settings plumbing.
+
+---
+
+## F116. Amount in words
+
+**What:** show the written Persian amount (for example "دو میلیون و پانصد هزار تومان") beside the figure on receipts, payment records and cheque entries, as is usual on Iranian financial documents, to prevent misreading and tampering.
+
+**Already in the app:** receipts are drawn on a 384-dot-wide canvas that both the Bluetooth thermal printer (ESC/POS) and the PDF share, with right-aligned text, Persian-aware line breaking and measurement (`lib/receiptLayout.ts`, `lib/deliveryReceipt.ts`). Amounts are whole toman with Persian digits (`lib/money.ts`, `lib/format.ts`). I found no number-to-words function anywhere.
+
+**Why parked:** Persian number words have grammar details (the connecting "و", the unit words for thousands, millions and billions, the toman versus rial wording); a wrong word is worse than none on a money document; the width of a long amount in words needs wrapping on the narrow receipt; wording must switch with the F-series toman and rial display setting if that is built.
+
+**Open questions**
+1. Which documents: the delivery receipt, payment confirmation, cheque entry, statements?
+2. Unit word: toman, or rial when the display unit is rial?
+3. Library or a small tested function? A tested function with a table of edge cases (zero, one thousand, 1,001, 1,000,000, 2,000,001) avoids a dependency.
+4. Show on the payment entry step so the cashier can read it back to the customer.
+
+**Suggested first slice:** a pure, tested `amountInWords` function for whole toman up to billions, shown on the delivery receipt and the payment confirmation line. Other documents later.
+
+**Prerequisites:** none; F36 (templates) and F18 (statements) can reuse it.
+
+---
+
+## F117. Haptic and sound feedback settings
+
+**What:** a short vibration and an optional sound on scans, confirmations, errors and undo, with each switchable by the user, so the phone confirms an action without the person looking at the screen.
+
+**Already in the app:** the tap flows end in a confirmation screen with a five-second undo, and toasts show results. Each person has a preferences blob on their user record that is merged and validated against an allowed list of keys (`lib/repo/prefs.ts`), so a setting follows them across devices. I found no vibration or sound calls in the code.
+
+**Why parked:** vibration is not available in every mobile browser (it is not supported on iOS Safari), so the behaviour differs by device; sounds in a customer's shop can be intrusive; an accessibility setting must be respected for people who use screen readers or reduced motion.
+
+**Open questions**
+1. Which events: scan success, order saved, payment saved, error, undo?
+2. Default off or on? Sound off by default, haptics on where supported.
+3. One master switch plus separate toggles, saved in the preferences blob?
+4. Respect the phone's silent mode and the app's reduced-motion setting.
+
+**Suggested first slice:** a settings entry with "vibrate on confirm" and "sound on confirm", stored in the existing preferences, applied to the tap-flow confirmation screen only, and silent where the device does not support it.
+
+**Prerequisites:** the preferences store (exists); F1 and F30 (scanning) benefit from the same feedback.
 
 ---
 
