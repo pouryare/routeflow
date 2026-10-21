@@ -197,3 +197,38 @@ export function orderChips(ctx: FlowContext, st: Vals): string[] {
     "پیش‌نویس",
   ];
 }
+
+/** The most recent order worth repeating: not a draft nobody confirmed, and not one that was
+ *  cancelled or came back. `orders` is newest first, as GET /api/sales/orders returns it. */
+const NOT_REPEATABLE = new Set(["DRAFT", "CANCELLED", "RETURNED"]);
+export function pickLastOrder<T extends { status: string }>(orders: T[]): T | null {
+  return orders.find((o) => !NOT_REPEATABLE.has(o.status)) ?? null;
+}
+
+export interface CatalogueProduct {
+  id: number;
+  name: string;
+  packagings: { id: number; name: string; price_toman: number | null }[];
+}
+
+/** Last order's lines as flow items, priced from TODAY's catalogue. A line whose packaging has
+ *  gone, or has no price, cannot be re-ordered and is counted in `dropped` so the recap can say
+ *  so instead of quietly sending a shorter order. Reversal lines are not goods. */
+export function itemsFromLastOrder(
+  lines: { product_id: number; packaging_id: number; packs_ordered: number; is_reversal?: number }[],
+  products: CatalogueProduct[],
+): { items: NonNullable<FlowContext["items"]>; dropped: number } {
+  const items: NonNullable<FlowContext["items"]> = [];
+  let dropped = 0;
+  for (const l of lines) {
+    if (l.is_reversal) continue;
+    const p = products.find((x) => x.id === l.product_id);
+    const k = p?.packagings.find((x) => x.id === l.packaging_id);
+    if (!p || !k || k.price_toman === null || !(l.packs_ordered > 0)) {
+      dropped += 1;
+      continue;
+    }
+    items.push({ id: k.id, parent: p.id, label: `${p.name} · ${k.name}`, qty: l.packs_ordered, max: 999, unit: "بسته", price: k.price_toman });
+  }
+  return { items, dropped };
+}

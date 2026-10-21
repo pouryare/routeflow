@@ -177,3 +177,33 @@ describe("repeat-order flow", () => {
     expect(r.deadEnds).toEqual([]);
   });
 });
+
+import { pickLastOrder, itemsFromLastOrder } from "@/lib/flows/orderQuick";
+
+describe("choosing what to repeat", () => {
+  it("skips drafts, cancelled and returned orders", () => {
+    const orders = [{ id: 9, status: "DRAFT" }, { id: 8, status: "CANCELLED" }, { id: 7, status: "DELIVERED" }, { id: 6, status: "CLOSED" }];
+    expect(pickLastOrder(orders)?.id).toBe(7);
+    expect(pickLastOrder([{ id: 1, status: "DRAFT" }])).toBeNull();
+  });
+
+  const products = [
+    { id: 11, name: "شیر", packagings: [{ id: 101, name: "کارتن", price_toman: 60000 }, { id: 103, name: "تک", price_toman: null }] },
+  ];
+  it("prices from the current catalogue and counts lines that can no longer be ordered", () => {
+    const r = itemsFromLastOrder([
+      { product_id: 11, packaging_id: 101, packs_ordered: 10 },
+      { product_id: 11, packaging_id: 103, packs_ordered: 2 },   // no price today
+      { product_id: 99, packaging_id: 900, packs_ordered: 1 },   // product gone
+    ], products);
+    expect(r.items).toEqual([{ id: 101, parent: 11, label: "شیر · کارتن", qty: 10, max: 999, unit: "بسته", price: 60000 }]);
+    expect(r.dropped).toBe(2);
+  });
+  it("ignores reversal lines and zero-pack lines", () => {
+    const r = itemsFromLastOrder([
+      { product_id: 11, packaging_id: 101, packs_ordered: 5, is_reversal: 1 },
+      { product_id: 11, packaging_id: 101, packs_ordered: 0 },
+    ], products);
+    expect(r.items).toEqual([]);
+  });
+});
