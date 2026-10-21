@@ -129,7 +129,7 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F7. Force a new password on first sign-in
+## F35. Force a new password on first sign-in
 
 **What:** an account created from the phone (or the desk) gets a one-time password that is shown once and shared. Nothing makes the person change it, so it stays their password until they do.
 
@@ -139,7 +139,7 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F8. Duplicate customers as a decision deck — built
+## F36. Duplicate customers as a decision deck — built
 
 A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page is one card, «ادغام شود» or «دو مشتری جدا هستند», with the 5 s undo. `GET/POST /api/crm/businesses/duplicates`, `lib/repo/crm/duplicates.ts`. The record with more orders survives, except that the one owning accounting lines always does (the ledger is append-only, so a pair where both have lines is not offered). Merge re-points orders, payments, complaints, contacts, activities, reminders, visit plans, tasks, alerts and photos, and records the merge in the survivor's history. «جدا هستند» is remembered in `crm_not_duplicates`.
 
@@ -147,7 +147,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F9. Decisions from the mobile-first rollout
+## F37. Decisions from the mobile-first rollout
 
 - **Expense receipt photo — built.** Own table `expense_receipts` (one per journal), photo step in the expense flow, receipt button on the journal; kept off `photos` because that table's scoping is customer/district.
 - **Skip a driver stop — built as «later»** (`deferStop`, swipe, button, undo).
@@ -155,6 +155,520 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 - **Reminder push buttons — built.** `notifications.ref_id` carries the reminder; a single-reminder push offers «انجام شد».
 - **Swipe on order cards — built** (draft cards on phones; drag stays for desktop).
 - **Planner map selection — built** (pick places from the map into the day).
+## F6. Live driver tracking and customer ETA
+
+**What:** drivers' positions on the map in real time, and an automatic "your delivery arrives in about 15 minutes" message (SMS, Telegram or WhatsApp) to the customer.
+
+**Why parked:** continuous GPS drains batteries and needs background location, which a PWA gets only while open; message channels need provider accounts and customer consent; sending customer phone numbers to a messaging provider is a privacy decision.
+
+**Open questions**
+1. Position source: the driver app while a run is active (foreground only) or a dedicated tracker?
+2. ETA model: planned arrival from the run plus live offset, or a routing-engine recalculation from the current position?
+3. Which channel do customers actually read? Ask before choosing.
+4. Retention: keep the breadcrumb trail (useful for disputes and `actual_distance_km`) or only the last position?
+
+**Suggested first slice:** position pings every 30–60 s while a run is `IN_TRANSIT`, a live dot on the existing map, and a manager-only view. Customer messages second.
+
+**Prerequisites:** none in code; a messaging provider for the customer-facing half.
+
+---
+
+## F7. Dynamic re-routing during the day
+
+**What:** when a stop fails, a rush order arrives or traffic changes, the system re-optimises the remaining stops of a run and proposes the new order. The driver (or dispatcher) confirms with one tap.
+
+**Why parked:** re-ordering after a run is frozen and loaded touches the plan-freeze rule (`PLANNED` to `READY`); customers already told an ETA must be told again; the optimiser must be fast enough to run on demand.
+
+**Open questions**
+1. Who may accept a re-route: driver, dispatcher, or both?
+2. Do rush orders insert into a live run, and what limits (van capacity, working hours) apply?
+3. Does a changed order notify customers (F6)?
+
+**Suggested first slice:** "re-optimise remaining stops" button for the dispatcher that shows the before/after order and distance, applied only on confirmation.
+
+**Prerequisites:** F6 is useful but not required; the existing routing engine.
+
+---
+
+## F8. Reorder prediction (who is due to order)
+
+**What:** from each customer's order history, estimate when they usually reorder and what. Customers who are "due" go onto the salesperson's call list with a pre-filled order draft.
+
+**Why parked:** needs enough history per customer; seasonal and irregular buyers produce noisy predictions; wrong suggestions erode trust fast.
+
+**Open questions**
+1. Rule-based (median gap between orders, usual lines) or a learned model? Start with rules.
+2. Minimum history before a prediction is shown?
+3. How does a salesperson dismiss a bad suggestion, and does that feed back?
+
+**Suggested first slice:** "due today" panel on the briefing for salespeople using median order gap, with a one-tap draft via `orderQuickFlow`.
+
+**Prerequisites:** TapFlow plan Phase 5 (`orderQuickFlow`).
+
+---
+
+## F9. Churn and credit-risk scoring
+
+**What:** flag customers whose order rhythm is dropping (churn) or whose payments are slipping (credit risk), before a cheque bounces. Shown as exceptions on the manager briefing and as a warning in the credit-approval step.
+
+**Why parked:** a score that is wrong blocks a good customer or lets a bad one through; the inputs (payment delay, bounced cheques, order trend) must be defined with the people who grant credit.
+
+**Open questions**
+1. Explainable rules (days late, bounced count, order trend) or a statistical model? Credit approvers need to see *why*.
+2. Advisory only, or can it put an order `ON_HOLD` automatically? Default: advisory only.
+3. Per-group thresholds?
+
+**Suggested first slice:** a transparent score with the top three reasons shown beside the credit decision, advisory only.
+
+**Prerequisites:** none; uses existing payments, cheques and orders.
+
+---
+
+## F10. Bank and payment reconciliation
+
+**What:** import bank statements (or connect a payment gateway), and auto-match deposits to customers, invoices and cheques. Unmatched lines go to a short review list with a proposed match to confirm.
+
+**Why parked:** Iranian bank export formats vary and no common open API exists; payer names in statements are inconsistent Persian text (see F5); matching one deposit to several invoices needs a split step.
+
+**Open questions**
+1. Which banks and formats first (CSV/Excel export vs gateway)?
+2. Match keys: amount + date + payer name, plus a reference code the customer quotes?
+3. Who confirms a match, and does it post to the ledger automatically?
+
+**Suggested first slice:** upload a statement file, show proposed matches against open payments and cheques, post only the ones a person confirms.
+
+**Prerequisites:** the cheque and payment flows; F5 normalisation helps name matching.
+
+---
+
+## F11. Demand forecasting and auto-purchasing
+
+**What:** forecast stock need per product from sales history, and draft purchase orders to suppliers for a manager to confirm.
+
+**Why parked:** perishables with batches and expiry make "how much to buy" depend on shelf life; supplier lead times and minimum quantities must be modelled; poor forecasts cost real money.
+
+**Open questions**
+1. Horizon (days or weeks) and per-product shelf-life limit?
+2. Supplier data: lead time, minimum order, price. Where is it kept today?
+3. Draft only, never auto-send, at first.
+
+**Suggested first slice:** a "suggested reorder" column on stock using average daily sales × lead time minus on-hand, drafted into a purchase entry on confirmation.
+
+**Prerequisites:** batch and stock data (exists); supplier lead times to be added.
+
+---
+
+## F12. Returns and quality management
+
+**What:** a return reason per line, per product and per batch; supplier claims; recall tracing from a batch to every customer who received it.
+
+**Why parked:** needs a consistent reason list agreed with the business; claims involve supplier paperwork outside the app; recall tracing depends on batch codes being captured at every delivery.
+
+**Open questions**
+1. Reason codes: damaged, expired, wrong item, customer refused?
+2. Does a return restock, quarantine, or write off the goods?
+3. Is batch captured at delivery today, or only at receipt?
+
+**Suggested first slice:** reason code on returns, a "which customers got batch X" query, and a quarantine state for returned stock.
+
+**Prerequisites:** batch recall and stock movements (exist); F1 batch scanning helps.
+
+---
+
+## F13. Offline-first everywhere
+
+**What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
+
+**Why parked:** conflict handling (two people editing the same record offline), idempotent writes and clear "not yet sent" states for every flow are large cross-cutting work; the existing `/api/sync/*` covers drivers only.
+
+**Open questions**
+1. Which flows matter most offline: new order, payment, stock count, lead capture?
+2. Conflict rule: last write wins, or ask the person?
+3. How much data is cached on the device, and how is it cleared on logout?
+
+**Suggested first slice:** offline lead capture and call outcomes (low conflict risk), queued with the existing sync client.
+
+**Prerequisites:** the driver sync client (`hasSyncClient`) as the pattern.
+
+---
+
+## F14. Natural-language reports ("ask your data")
+
+**What:** type or say "which customers in district 3 haven't ordered in 30 days?" and get a table back, built on the existing analytics.
+
+**Why parked:** generated queries must respect role and tenant scope (a group manager must never see another group's data); answers must be checkable; sending business data to a model is a data-handling decision.
+
+**Open questions**
+1. Free-form SQL generation (risky) or a fixed menu of parameterised questions that the model only fills in (safe)? Default: the fixed menu.
+2. Which roles get it?
+3. Persian questions with Persian/Jalali dates must be understood (see F5).
+
+**Suggested first slice:** a handful of saved, parameterised reports (dormant customers, top debtors, slow products) with a search box that picks one and fills its parameters.
+
+**Prerequisites:** analytics queries with scope helpers.
+
+---
+
+## F15. Multi-warehouse and multi-branch
+
+**What:** several warehouses with stock transfers between them, per-branch ledgers, and consolidated reporting across branches.
+
+**Why parked:** stock, batches, runs and the ledger currently assume one stock location per organisation; moving to many touches nearly every stock and accounting query.
+
+**Open questions**
+1. Is a branch a separate legal entity with its own books, or just a location?
+2. In-transit stock between warehouses: modelled as a state?
+3. Which roles see across branches?
+
+**Suggested first slice:** a warehouse dimension on stock movements and batches with transfers, before any per-branch ledger.
+
+**Prerequisites:** a design for how organisation, group and warehouse relate.
+
+---
+
+## F16. Owner mobile dashboard with push alerts
+
+**What:** a daily summary and push alerts for exceptions (large unpaid balances, failed deliveries, stock-outs, bounced cheques), tuned for the owner on a phone.
+
+**Why parked:** alert fatigue; thresholds differ per business; real push delivery needs real devices and cannot be tested here.
+
+**Open questions**
+1. Which five alerts matter, and what thresholds?
+2. Daily digest at a fixed time vs instant alerts?
+3. Quiet hours?
+
+**Suggested first slice:** a morning digest through the existing push and Telegram channels, built from the briefing panels the owner already has.
+
+**Prerequisites:** notification channels and `briefing.ts` (exist).
+
+---
+
+## F17. Delivery proof and dispute handling
+
+**What:** every stop ends with proof: signature or recipient name, photo, GPS stamp and time. A dispute ("I never received it") opens a case that pulls up the proof, the stop's order lines and the driver's run.
+
+**Already in the app:** `photos` and `/api/photos`, and the photo step on the `DeliveryFlow` done screen. What is missing is a required-proof rule, a signature capture and the dispute case itself.
+
+**Why parked:** forcing proof slows drivers at the door; signatures on a small screen are hard; GPS can be off or wrong indoors; disputes need an owner and a resolution path (credit note, redelivery).
+
+**Open questions**
+1. Which proof is required: photo only, photo + name, or signature? Per customer type?
+2. What if proof cannot be captured (no signal, shy customer)? An explicit "no proof" reason, never a silent skip.
+3. Dispute outcomes: credit note, redelivery, rejected. Who decides?
+4. Retention period for photos and signatures.
+
+**Suggested first slice:** GPS and time stamp saved with the existing photo, a "no proof" reason when skipped, and a dispute button on the order that shows the stop's proof.
+
+**Prerequisites:** TapFlow `DeliveryFlow`, `photos`.
+
+---
+
+## F18. Customer statements and dunning
+
+**What:** auto-generated account statements (open invoices, cheques due, balance) and polite payment reminders by message, escalating by days overdue.
+
+**Why parked:** wording matters for Persian business relationships; wrong or duplicated reminders damage trust; message channels need provider accounts and consent (see F6); statements must reconcile with the ledger.
+
+**Open questions**
+1. Escalation ladder: days overdue and tone per step. Who approves the wording?
+2. Channel: SMS, Telegram, WhatsApp, or a printable PDF handed over by the salesperson?
+3. Pause rules: a customer with a promised date or a bounced cheque in dispute gets no reminder.
+4. Does a reminder also create a task for the salesperson (`tasks`)?
+
+**Suggested first slice:** a printable/shareable statement per customer and a manager-approved list of "reminders due today" that creates call tasks. No automatic sending.
+
+**Prerequisites:** payments, cheques and debts (exist); F10 helps keep balances current.
+
+---
+
+## F19. Salesperson earnings view and commission simulator
+
+**What:** show a rep "if you close these three orders you earn X", and let managers try a commission rule change on last month's data before applying it.
+
+**Already in the app:** the commission engine and `commission_rates` / `commission_payments`; payroll output must stay byte-identical, so the simulator must reuse the same calculation, not copy it.
+
+**Why parked:** showing earnings creates disputes when the number differs from payroll; a simulator that diverges from the real engine is worse than none.
+
+**Open questions**
+1. Show projected earnings to reps at all, or only to managers?
+2. Rule changes: simulate against which period, and is the result stored?
+3. Rounding and cutoff dates must match payroll exactly.
+
+**Suggested first slice:** a read-only "this month so far" earnings card from the real engine, then a manager-only "what if" that runs the same function with edited rates and shows the difference.
+
+**Prerequisites:** the commission engine's pure calculation function.
+
+---
+
+## F20. Daily visit route for salespeople
+
+**What:** a suggested daily visit route built from customers due for a call or visit (see F8), pending leads and overdue balances, ordered to minimise travel, with a one-tap start.
+
+**Already in the app:** `visit_plans` and the schedule page already hold planned visits on the calendar (`/sales/schedule`), and the routing engine orders delivery stops. What is missing is *building* the day's visit list automatically and ordering it for travel.
+
+**Why parked:** a good visit list weighs value, urgency and distance; reps will not follow a list that ignores what they know; the delivery optimiser assumes vans and capacity, not a person on foot or by motorbike.
+
+**Open questions**
+1. Inputs and weights: overdue balance, due reorder, lead stage, last visit age?
+2. Start and end point (home, office) and working hours per rep?
+3. Can the rep drag stops out and in, and does that feed back into the weights?
+
+**Suggested first slice:** "suggest my day" button that selects up to N due customers/leads in the rep's group, orders them by nearest-neighbour from the rep's last position, and writes `visit_plans` rows only on confirmation.
+
+**Prerequisites:** F8 for the "due" signal (a simple overdue/last-visit rule works first); `visit_plans`; routing helpers.
+
+---
+
+## F21. Promotion and campaign manager
+
+**What:** define a discount, bundle or expiry-driven offer for a group of customers with start/end dates, a margin floor and measured uplift afterwards.
+
+**Why parked:** pricing rules interact with credit, commission and invoicing; a campaign that sells below cost is a real loss; measuring uplift needs a baseline.
+
+**Open questions**
+1. Types: percentage, fixed price, buy-X-get-Y, near-expiry batch discount?
+2. Stacking rules between campaigns and customer-specific prices.
+3. Does commission use the discounted or the list price?
+4. Who may create a campaign, and is there an approval for low margin?
+
+**Suggested first slice:** near-expiry batch discount only (reads `batches` expiry, applies a fixed percentage on the order line, shows margin before confirm).
+
+**Prerequisites:** batch expiry data (exists); a decision on price storage per line.
+
+---
+
+## F22. Market and competitor price log
+
+**What:** reps record shelf prices seen in shops (with a photo), and the system shows where RouteFlow's prices sit above or below the market, per product and district.
+
+**Why parked:** data quality depends on reps entering it; competitor products must be matched to ours; stale prices mislead.
+
+**Open questions**
+1. How does a rep pick the competing product quickly (catalogue of competitor items, or free text with photo)?
+2. Which fields: product, brand, price, shop, date, photo?
+3. How old may a price be before it is hidden?
+
+**Suggested first slice:** a two-tap capture (our product, competitor price, optional photo) inside the visit flow and a per-product price-position view for managers.
+
+**Prerequisites:** the visit flow (`leadVisit`), `photos`; F1 can read price tags later.
+
+---
+
+## F23. Digital catalogue and price list
+
+**What:** a shareable catalogue or price list per customer group (photos, units, prices), sent through Telegram or WhatsApp or opened as a web page.
+
+**Why parked:** each group may see different prices, so a shared link must not leak another group's prices; keeping the list current when prices change; image sizes on weak connections.
+
+**Open questions**
+1. Public link with a secret token, or sign-in for customers (see the customer portal idea)?
+2. Does opening the list let the customer start an order draft?
+3. Expiry of shared links.
+
+**Suggested first slice:** a PDF/image export of the price list per customer group from `readCatalogue()`, shared manually by the salesperson.
+
+**Prerequisites:** product photos and per-group prices (check what exists first).
+
+---
+
+## F24. Driver pay and incentives
+
+**What:** pay or bonus per delivered stop, distance, on-time rate and fewer failures, reusing the commission engine's structure.
+
+**Why parked:** incentives change behaviour (drivers may skip hard stops or rush); the rules are a business and legal decision; the data must be trustworthy (see F6 and F17 for proof).
+
+**Open questions**
+1. Which measures count, and are they capped?
+2. How are failed deliveries that were not the driver's fault excluded?
+3. Is the result shown to the driver, and how often?
+
+**Suggested first slice:** a manager-only monthly summary per driver (stops, failures, on-time rate, km) with no pay calculation.
+
+**Prerequisites:** run and stop data (exists); the commission engine as a pattern.
+
+---
+
+## F25. Staff scheduling and attendance
+
+**What:** shifts, leave and check-in for drivers and warehouse staff, tied to route capacity so a planner sees how many vans can run tomorrow.
+
+**Why parked:** labour rules, shift swaps and leave approval are a product of their own; check-in by GPS raises privacy questions.
+
+**Open questions**
+1. Check-in method: a tap, a tap with location, or none (manager marks attendance)?
+2. Does an absent driver automatically reduce planned capacity and warn the planner?
+3. Leave types and approver.
+
+**Suggested first slice:** a per-day availability list for drivers that the planner can use when assigning runs, with no check-in.
+
+**Prerequisites:** run assignment and capacity (exist).
+
+---
+
+## F26. Field expenses and petty cash
+
+**What:** drivers and reps log expenses (fuel, parking, repairs) in two taps with a receipt photo, and the group manager approves; approved items post to the ledger.
+
+**Why parked:** needs the right expense categories and ledger accounts; approval flow and limits per role; receipts are paper (see F1).
+
+**Open questions**
+1. Categories and which ledger accounts they post to.
+2. Per-role spending limits and an approval threshold.
+3. Cash advance and reimbursement: tracked per person?
+
+**Suggested first slice:** a log-only expense form with a photo and category, an approve/reject list for managers, posting to the ledger only on approval.
+
+**Prerequisites:** `expenseFlow` (TapFlow), `photos`, the ledger.
+
+---
+
+## F27. Audit trail and anomaly detection
+
+**What:** a tamper-evident log of who changed what, plus alerts for odd patterns: many cancellations by one user, price edits after confirmation, large cash shortfalls, off-hours changes.
+
+**Already in the app:** `activity_log` records activity; a hash-chained, append-only trail and pattern rules are the new part.
+
+**Why parked:** a strict audit trail touches every write path; false alerts make people ignore the real ones; staff may feel watched.
+
+**Open questions**
+1. Which actions are audited (money, stock, status, permissions)?
+2. Tamper evidence: hash chain per organisation? Who can read it?
+3. Which five anomaly rules first, with what thresholds?
+
+**Suggested first slice:** a read-only "money and status changes" audit view for owners from `activity_log`, plus three simple rules (cancel rate, edit-after-confirm, cash variance) surfaced as exceptions on the briefing.
+
+**Prerequisites:** `activity_log`, the briefing exceptions panel.
+
+---
+
+## F28. Customer segmentation and loyalty
+
+**What:** tiers by volume and payment behaviour (for example gold, regular, watch), with perks such as faster credit approval, priority delivery slots or better terms.
+
+**Why parked:** perks that cost money need rules and limits; tiers visible to customers raise fairness questions; tiers must not be gamed.
+
+**Open questions**
+1. Tier inputs and window (last 90 days volume, on-time payment rate)?
+2. Which perks are real and affordable?
+3. Are tiers shown to customers or internal only? Start internal.
+
+**Suggested first slice:** an internal tier badge on the customer page computed from existing orders and payments, used only to sort the call list.
+
+**Prerequisites:** F9 shares the payment-behaviour inputs.
+
+---
+
+## F29. Sales pipeline and quotations
+
+**What:** quotes with an expiry date, follow-up reminders, a win/loss reason, and one-tap conversion of an accepted quote into an order draft.
+
+**Already in the app:** lead stages (`lib/crm/stage.ts`), tasks for follow-ups and `orderQuickFlow` for drafts. There is no quote document or quote state.
+
+**Why parked:** a quote is a price promise, so it must freeze prices and interact with credit, discounts (F21) and stock; expiry and re-quote rules need agreeing with sales.
+
+**Open questions**
+1. Does a quote reserve stock, or is it only a price promise?
+2. Validity period and what happens on expiry (auto-close, reminder)?
+3. Win/loss reasons: a short fixed list so the reports are usable.
+4. Is the quote a printable document the customer receives (PDF/message), or internal only?
+
+**Suggested first slice:** a quote as a draft order with an expiry date and a "won / lost + reason" close step, converted to an order with the quoted prices.
+
+**Prerequisites:** TapFlow Phase 5 (`orderQuickFlow`); F23 for the customer-facing document.
+
+---
+
+## F30. Van loading verification
+
+**What:** at loading, scan or tick each line so the van's contents are compared with the run's order lines. Missing, extra or wrong items are caught before the van leaves.
+
+**Why parked:** scanning needs barcodes or batch labels on goods (see F1 slice 1); a hard block at the gate slows departures, so it needs an override with a reason; partial loads must split stops sensibly.
+
+**Open questions**
+1. Scan every unit, every case, or tick per order line? Match to what the warehouse can do.
+2. Override rule: who can release a short-loaded van, and does the shortfall move to a later run?
+3. Does the check also record the batch loaded, giving recall tracing for free (F12)?
+
+**Suggested first slice:** a per-run loading checklist (tick each line, quantity confirmed), with a "short" reason when under-loaded. Scanning later.
+
+**Prerequisites:** run and `READY` state; F1 barcode slice for scanning.
+
+---
+
+## F31. Supplier scorecards and price history
+
+**What:** per-supplier delivery performance (late, short, damaged), and price history per supplier and product, to compare suppliers and spot price creep.
+
+**Already in the app:** `lib/repo/suppliers.ts` and batch receipts with `unit_cost_toman`. Receipts do not yet record a promised date, so lateness cannot be measured.
+
+**Why parked:** scorecards need a promised date and a received-condition entry at receipt; unfair scores damage supplier relations; units and pack sizes differ between suppliers.
+
+**Open questions**
+1. Capture at receipt: promised date, short quantity, damage note?
+2. Score formula: on-time rate, fill rate, quality rate; weights?
+3. Price comparison across pack sizes: normalise per unit?
+
+**Suggested first slice:** unit-cost history chart per product and supplier from existing batches, plus a "promised date" field on receipt to start collecting on-time data.
+
+**Prerequisites:** the receive flow (TapFlow Phase 6); F12 for quality data.
+
+---
+
+## F32. Margin analytics (customer, product, route)
+
+**What:** true profit per customer, product and route, including delivery cost, discounts, returns and bad debt, not just revenue.
+
+**Already in the app:** orders store `total_toman` and `cost_toman`; runs store planned and actual distance and duration. Delivery cost per run, discounts and bad-debt allocation are not yet attributed.
+
+**Why parked:** allocating shared costs (fuel, driver time, vehicle) to orders is a modelling decision; results can upset sales and drivers if shown carelessly; accuracy depends on the cost inputs being right.
+
+**Open questions**
+1. Delivery cost model: per km, per minute, per stop, or a blend? Where do the rates live?
+2. Is bad debt allocated to the customer when a cheque bounces or a balance is written off?
+3. Who sees margins: owner only, or managers per group?
+
+**Suggested first slice:** owner-only margin by customer and product from `total_toman` less `cost_toman`, then add a per-km delivery cost on runs.
+
+**Prerequisites:** stored order cost and total (exist); run distance (exists).
+
+---
+
+## F33. Seasonal and holiday planning
+
+**What:** before Nowruz, Ramadan, Yalda or a heat wave, forecast demand and capacity from last year's same period, and warn the planner of the stock and van shortfall.
+
+**Already in the app:** the holiday calendar (`listHolidaysForMonth`), weather forecasts on the schedule page, and order history. They are not yet combined into a seasonal forecast.
+
+**Why parked:** needs at least a year of clean history per product; holiday dates move on the Jalali/lunar calendar, so "same period last year" is not a fixed date range; weather effects differ per product.
+
+**Open questions**
+1. Index demand by day-of-holiday-period rather than calendar date?
+2. Which products are seasonal enough to bother with?
+3. Output: a planner banner ("expect +40% in two weeks") or a suggested purchase order (see F11)?
+
+**Suggested first slice:** a last-year-vs-now view of orders by product around each holiday, with a banner on the planner two weeks ahead.
+
+**Prerequisites:** order history; F11 for purchase suggestions.
+
+---
+
+## F34. Data export and backup self-service
+
+**What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
+
+**Already in the app:** `scripts/backup.mjs` makes backups from the command line.
+
+**Why parked:** a self-service restore can destroy current data, so it needs strong confirmation, a pre-restore snapshot and tenant isolation (an owner restores only their organisation); exports contain personal data, so access is limited and logged.
+
+**Open questions**
+1. Export formats: Excel/CSV per table, or a full archive?
+2. Restore scope: whole organisation only, or per table? Default: whole organisation, with a snapshot taken first.
+3. Where are backups stored, how long are they kept, and are they encrypted?
+4. Every export and restore goes into the audit trail (F27).
+
+**Suggested first slice:** owner-only CSV/Excel export of customers, orders and payments, plus a "last backup" status line. Restore stays an operator task for now.
+
+**Prerequisites:** F27 for logging; the backup script as the engine.
 
 ---
 
