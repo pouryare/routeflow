@@ -5261,3 +5261,17 @@ body {
 .meridian .deck__card strong { font-size: 17px; }
 .meridian .deck__choices { display: grid; gap: 8px; }
 .meridian .deck__done { display: grid; gap: 12px; justify-items: center; padding: 24px 0; text-align: center; }
+
+/* ---- action cards (components/mobile/ActionCard) ------------------------------------------------- */
+.meridian .actioncards { display: grid; gap: 10px; margin: 0 0 14px; }
+.meridian .actioncard { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); }
+.meridian .actioncard--churn { border-color: var(--amber, var(--accent)); }
+.meridian .actioncard h3 { margin: 0; font-size: 15px; }
+.meridian .actioncard p { margin: 0; font-size: 13px; color: var(--muted); }
+.meridian .actioncard__row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.meridian .actioncard__primary, .meridian .actioncard__secondary, .meridian .actioncard__later {
+  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-size: 14px; text-decoration: none; cursor: pointer;
+}
+.meridian .actioncard__primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.meridian .actioncard__later { color: var(--muted); }

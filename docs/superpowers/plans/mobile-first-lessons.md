@@ -158,3 +158,13 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Bulk add returns how many were new**, so the tray can say «همه‌شان از قبل در مسیر بودند» instead of silently doing nothing.
 - **Fixed steps beat a drag for the radius** on a phone: four 44 px chips are quicker and more accurate than dragging a circle edge with a thumb.
 - Leaflet components are not render-tested here (they need a browser); the geometry lives in `lib/mapSelect.ts` so it is.
+
+## Phase G (auto-triggers, action cards)
+
+- **Put the trigger where the data is.** The geofence prompt lives on the coverage map, which does not know today's run; the driver run page knows its stops and already sits under the app-wide position watch. The arrival banner went there, built on a pure `stopAtDoor` (pending only, has coordinates, not waved away, nearest wins).
+- **A banner, not a question.** It names the place and offers one button; «فعلاً نه» is per stop.
+- **Opening a child's sheet from the parent without an effect:** the parent bumps a counter prop and the child adjusts its own state during render when it sees a new value.
+- **Suggestions are scoped to the person's own customers** (those they have sold to). Showing a salesperson other people's customers would leak data and make the call someone else's job. Other roles get none.
+- **Per-device dismissal is a deliberate shortcut**: it needs no table or migration; the cost is that «الان نه» on a phone does not hide the card on the desk.
+- **The plan assumed per-event push notifications.** Pushes are one grouped digest, so there is no single item to hang a button on. Check how a channel is built before planning actions on it.
+- Repo smoke test on an empty database catches SQL typos in the new queries cheaply.
