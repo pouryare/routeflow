@@ -85,7 +85,7 @@ export function duplicatePairs(session: Session, limit = 30): DupPair[] {
     const lb = ledgerLines(b.id);
     if (la > 0 && lb > 0) continue; // both have journal lines: the books cannot be merged, so do not offer it
     // The record that owns accounting lines must survive; otherwise the busier one does.
-    const { keep } = la > 0 ? { keep: side(card(a)), drop: side(card(b)) } : lb > 0 ? { keep: side(card(b)), drop: side(card(a)) } : chooseSurvivor(side(card(a)), side(card(b)));
+    const keep = la > 0 ? side(card(a)) : lb > 0 ? side(card(b)) : chooseSurvivor(side(card(a)), side(card(b))).keep;
     out.push({ reason: p.reason, keep: card(keep.id === a.id ? a : b), drop: card(keep.id === a.id ? b : a) });
     if (out.length >= limit) break;
   }
