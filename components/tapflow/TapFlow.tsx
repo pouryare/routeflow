@@ -43,7 +43,7 @@ export interface TapFlowProps {
 
 /** Steps the host renders itself via `renderCustom`, rather than TapFlow's own body.
  *  `driver` / `date` are the lead-run planner's picker steps. */
-const CUSTOM = new Set(["basics", "link", "pin", "hours", "stars", "driver", "date"]);
+const CUSTOM = new Set(["basics", "link", "pin", "hours", "stars", "driver", "date", "photo"]);
 
 /** One question per screen, in the meridian bottom sheet (docs/tap-flow-principles.md).
  *  Controlled: the host owns FlowState, which is what lets undo reopen the last question. */

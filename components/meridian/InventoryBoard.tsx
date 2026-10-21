@@ -1,5 +1,7 @@
 "use client";
 
+import FilterChips from "@/components/mobile/FilterChips";
+import KeypadField from "@/components/mobile/KeypadField";
 import { faJalaliDate } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -137,11 +139,23 @@ export default function InventoryBoard({ rows, canEdit }: { rows: InventoryRow[]
             </button>
           ))}
         </div>
-        <select className="stsort" aria-label="مرتب‌سازی" value={sort} onChange={(e) => setSort(e.target.value as typeof sort)}>
-          <option value="days">مرتب‌سازی: نزدیک‌ترین به اتمام</option>
-          <option value="value">مرتب‌سازی: بیشترین ارزش</option>
-          <option value="name">مرتب‌سازی: نام کالا</option>
-        </select>
+        <FilterChips
+          groups={[
+            {
+              id: "sort",
+              label: "مرتب‌سازی",
+              mode: "single",
+              neutral: "days",
+              options: [
+                { id: "days", label: "نزدیک‌ترین به اتمام" },
+                { id: "value", label: "بیشترین ارزش" },
+                { id: "name", label: "نام کالا" },
+              ],
+              value: sort,
+              onChange: (v) => setSort(v as typeof sort),
+            },
+          ]}
+        />
       </div>
 
       {visible.length === 0 ? (
@@ -296,15 +310,14 @@ function ThresholdField({
 
   return (
     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <input
-        type="text"
-        inputMode="decimal"
+      <KeypadField
+        label={field === "reorder_point" ? "نقطهٔ سفارش" : "سقف هدف"}
         value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
+        decimal
+        onChange={(v) => {
+          setValue(v);
           setSaved(false);
         }}
-        placeholder="تنظیم‌نشده" aria-label={field === "reorder_point" ? "نقطهٔ سفارش" : "سقف هدف"}
       />
       {dirty ? (
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stmore__save" disabled={busy} onClick={save}>

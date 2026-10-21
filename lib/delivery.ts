@@ -875,3 +875,22 @@ export function readDriverRuns(db: DatabaseSync, driverUserId: number): RunSumma
     )
     .all(driverUserId) as unknown as RunSummary[];
 }
+
+/** «Later»: a driver sends a stop they cannot do now to the end of their run. Only a stop that is
+ *  still pending moves (a delivered or refused one is finished), and only within its own run, so the
+ *  order of everyone else's stops is untouched. It is not a new state: the stop stays pending and
+ *  simply comes last, which is what skipping a door for now means in practice. Idempotent: a stop
+ *  already last stays last. */
+export function deferStop(db: DatabaseSync, stopId: number): { moved: boolean } {
+  const stop = db
+    .prepare("SELECT id, run_id, status FROM delivery_stops WHERE id = ?")
+    .get(stopId) as { id: number; run_id: number; status: string } | undefined;
+  if (!stop) throw new DeliveryError("توقف پیدا نشد");
+  if (stop.status !== "pending") throw new DeliveryError("این توقف تعیین‌تکلیف شده و جابه‌جا نمی‌شود");
+  const last = db
+    .prepare("SELECT id, sort_order FROM delivery_stops WHERE run_id = ? ORDER BY sort_order DESC, id DESC LIMIT 1")
+    .get(stop.run_id) as { id: number; sort_order: number };
+  if (last.id === stop.id) return { moved: false };
+  db.prepare("UPDATE delivery_stops SET sort_order = ? WHERE id = ?").run(last.sort_order + 1, stop.id);
+  return { moved: true };
+}

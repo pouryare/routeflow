@@ -16,3 +16,20 @@ describe("mobile audit counters", () => {
     expect(countRules("modal.confirm('x')").confirmDialog).toBe(0);
   });
 });
+
+import { countTinyTargets } from "../scripts/mobile-audit.mjs";
+
+describe("tiny tap targets are counted on controls only", () => {
+  it("a small button counts, a badge with the same padding does not", () => {
+    expect(countTinyTargets('<button className="px-2 py-0.5">x</button>')).toBe(1);
+    expect(countTinyTargets('<span className="px-2 py-0.5">x</span>')).toBe(0);
+  });
+  it("a control lifted by the touch utility or a 44px minimum does not count", () => {
+    expect(countTinyTargets('<button className="px-2 py-0.5 touch">x</button>')).toBe(0);
+    expect(countTinyTargets('<a className="py-[2px] min-h-[44px]">x</a>')).toBe(0);
+  });
+  it("an arrow function in the attributes does not end the tag early", () => {
+    expect(countTinyTargets('<button onClick={() => go()} className="py-0.5 touch">x</button>')).toBe(0);
+    expect(countTinyTargets('<button onClick={() => go()} className="py-0.5">x</button>')).toBe(1);
+  });
+});

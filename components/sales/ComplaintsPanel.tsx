@@ -1,11 +1,15 @@
 "use client";
 
+import DecisionDeck from "@/components/mobile/DecisionDeck";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
+import { COMPLAINT_CHOICES, complaintRequest, complaintsToTriage } from "@/lib/decisions";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useMemo, useState } from "react";
 import { faJalaliDateTime } from "@/lib/jalali";
 import ComplaintFlow from "@/components/flows/ComplaintFlow";
+import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { CATEGORY_LABEL, SEVERITY_LABEL } from "@/lib/flows/complaint";
 
 /* Category and severity words live with the flow that also uses them. Widened to plain string
@@ -56,7 +60,7 @@ export default function ComplaintsPanel({
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [error, setError] = useState<string | null>(null);
   /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
-  const [flow, setFlow] = useState({ key: 0, open: false });
+  const [flow, setFlow] = useState(() => autoOpenFlow("new", currentSearch()));
   const [form, setForm] = useState(() => {
     let customer_id = "";
     if (typeof window !== "undefined") {
@@ -129,6 +133,24 @@ export default function ComplaintsPanel({
     else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت شکایت انجام نشد؛ دوباره تلاش کنید"));
   }
 
+  /* «بررسی سریع»: complaints nobody has looked at, one card each, verdict in one tap with undo. */
+  const undoable = useUndoableAction();
+  const [deck, setDeck] = useState<{ key: number; open: boolean; items: Complaint[] }>({ key: 0, open: false, items: [] });
+  const decideComplaint = (c: Complaint, status: string) =>
+    undoable.run({
+      message: `شکایت «${STATUS_LABEL[status] ?? "نامشخص"}» شد`,
+      send: async () => {
+        const res = await fetch(`/api/sales/complaints/${c.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(complaintRequest(status)),
+        });
+        return res.ok ? { ok: true } : { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+      },
+      failure: "تغییر وضعیت شکایت انجام نشد؛ دوباره تلاش کنید",
+      onDone: () => void load(),
+    });
+
   return (
     <div dir="rtl" className="mx-auto flex max-w-4xl flex-col gap-6 p-4">
       <h1 className="text-lg font-bold text-text">شکایات کیفی</h1>
@@ -148,6 +170,37 @@ export default function ComplaintsPanel({
         <Icon name="plus" size="md" />
         ثبت شکایت جدید
       </button>
+
+      {canManage && (
+        <button
+          type="button"
+          onClick={() => setDeck((d) => ({ key: d.key + 1, open: true, items: complaintsToTriage(complaints ?? []) }))}
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded border border-border px-4 py-3 text-base text-text md:hidden"
+        >
+          <Icon name="check" size="md" />
+          بررسی سریع شکایت‌های باز
+        </button>
+      )}
+      {deck.key > 0 && (
+        <DecisionDeck
+          key={deck.key}
+          open={deck.open}
+          title="شکایت‌های باز"
+          items={deck.items}
+          keyOf={(c) => c.id}
+          choices={COMPLAINT_CHOICES}
+          onDecide={decideComplaint}
+          onClose={() => setDeck((d) => ({ ...d, open: false }))}
+          render={(c) => (
+            <>
+              <strong>{label.customer(c.customer_id)}</strong>
+              <span>{label.product(c.product_id)} · {CATEGORY_TEXT[c.category] ?? "نامشخص"} · {SEVERITY_TEXT[c.severity] ?? "نامشخص"}</span>
+              {c.description ? <span className="text-text-muted">{c.description}</span> : null}
+              <span className="text-text-muted">{faJalaliDateTime(c.reported_at)}</span>
+            </>
+          )}
+        />
+      )}
 
       <form onSubmit={file} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <select aria-label="مشتری" className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
@@ -220,7 +273,7 @@ export default function ComplaintsPanel({
                       {["investigating", "resolved", "dismissed"]
                         .filter((s) => s !== c.status)
                         .map((s) => (
-                          <button key={s} onClick={() => setStatus(c.id, s)} className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent">
+                          <button key={s} onClick={() => setStatus(c.id, s)} className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent">
                             <Icon name="warn" size="md" />
                             {STATUS_LABEL[s]}
                           </button>

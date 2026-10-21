@@ -10,7 +10,8 @@ export type StepKind =
   | "choice" | "multi" | "input" | "roles" | "basics" | "link" | "pin" | "hours" | "stars" | "driver" | "date"
   | "amount"   // numeric entry, prefilled from ctx.vars[step.input.field]
   | "pick"     // searchable list from step.choices
-  | "stepper"; // one +/- row per ctx.items entry
+  | "stepper"   // one +/- row per ctx.items entry
+  | "photo";    // the host takes a picture (camera), or the person skips it
 
 /** Everything an answer can contribute. Merged left to right; a later answer wins. */
 export interface FlowSet {
@@ -106,7 +107,7 @@ export interface FlowContext {
   entry:
     | "call" | "talked_now" | "add_lead" | "driver_visit"
     | "delivery" | "payment" | "complaint" | "outcome" | "order_quick" | "order_action"
-    | "stock_count" | "receive" | "lifecycle" | "visit_plan" | "place" | "expense";
+    | "stock_count" | "receive" | "lifecycle" | "visit_plan" | "place" | "expense" | "user_add" | "group_copy";
   firstContact: boolean;
   attemptNo: number;
   maxMisses: number;
@@ -118,6 +119,8 @@ export interface FlowContext {
   recentCustomers: { id: number; name: string }[];
   /** Lines a non-CRM flow asks about (delivery lines, products). Optional so CRM contexts are unchanged. */
   items?: FlowItem[];
+  /** Named lists a non-CRM flow chooses from (expense categories, recent suppliers). Optional so CRM contexts are unchanged. */
+  lists?: Record<string, { id: number; label: string }[]>;
 }
 
 export const EMPTY_CONTEXT: FlowContext = {

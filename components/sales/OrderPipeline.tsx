@@ -9,6 +9,9 @@ import { faNum } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { useToast } from "@/components/ToastProvider";
 import ProcessingModal from "./ProcessingModal";
+import SwipeRow from "@/components/mobile/SwipeRow";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
+import { useIsNarrow } from "@/lib/useIsNarrow";
 import Pocketed from "@/components/meridian/Pocketed";
 import Avatar from "@/components/meridian/Avatar";
 import { STAGES, stageOf, moveRefusal, type StageKey } from "./orderStage";
@@ -78,6 +81,25 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
   const [hover, setHover] = useState<StageKey | null>(null);
   const [open, setOpen] = useState<PipelineOrder | null>(null);
   const [busy, setBusy] = useState(false);
+  /* On a phone the lanes scroll sideways, so dragging a draft to the next lane is not possible; a
+     draft swipes instead (start side = «تأیید»), through the same PATCH with the 5 s undo. The
+     drag stays for a mouse and a wide screen. */
+  const narrow = useIsNarrow();
+  const undoable = useUndoableAction();
+  const swipeConfirm = (order: PipelineOrder) =>
+    undoable.run({
+      message: `سفارش ${order.order_no} تأیید شد؛ بعد از تأیید قابل ویرایش نیست.`,
+      send: async () => {
+        const res = await fetch(`/api/sales/orders/${order.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ status: "confirmed" }),
+        });
+        return res.ok ? { ok: true } : { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+      },
+      failure: "سفارش تأیید نشد؛ دوباره تلاش کنید",
+      onDone: () => router.refresh(),
+    });
   /* The one move this board makes is draft → confirmed. Say so, and say when there is
      nothing to move: with no drafts every card is click-only, and an unexplained board
      that will not drag is what the user reported as broken (item 22). */
@@ -223,15 +245,19 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                 const docs = STAGE_DOCS[stage.key];
                 return (
                   <Pocketed key={o.id} papers={docs.papers} tone={docs.tone} fan>
+                  <SwipeRow
+                    ownButtons={false}
+                    start={narrow && movable ? { label: "تأیید سفارش", icon: "check", run: () => swipeConfirm(o) } : undefined}
+                  >
                   <button
                     type="button"
                     data-tone={docs.tone}
                     data-movable={movable ? "" : undefined}
                     className={`task${drag?.order.id === o.id ? " dragging" : ""}`}
-                    onPointerDown={movable ? (e) => onPointerDown(e, o, stage.key) : undefined}
-                    onPointerMove={movable ? onPointerMove : undefined}
-                    onPointerUp={movable ? onPointerUp : undefined}
-                    onPointerCancel={movable ? onPointerUp : undefined}
+                    onPointerDown={movable && !narrow ? (e) => onPointerDown(e, o, stage.key) : undefined}
+                    onPointerMove={movable && !narrow ? onPointerMove : undefined}
+                    onPointerUp={movable && !narrow ? onPointerUp : undefined}
+                    onPointerCancel={movable && !narrow ? onPointerUp : undefined}
                     onClick={() => {
                       if (suppressClick.current) return;
                       setOpen(o);
@@ -255,6 +281,7 @@ export default function OrderPipeline({ orders }: { orders: PipelineOrder[] }) {
                       </div>
                     )}
                   </button>
+                  </SwipeRow>
                   </Pocketed>
                 );
               })}

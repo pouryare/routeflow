@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { labelCells } from "@/lib/tableCards";
 
 /** The table every accounting report is made of.
  *
@@ -21,7 +22,7 @@ export default function AcctTable({
 }) {
   return (
     <div className="overflow-x-auto rounded-[var(--radius-md)] border border-border">
-      <table className={`w-full ${compact ? "" : "min-w-[40rem]"} border-collapse text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap`}>
+      <table className={`acct-cards w-full ${compact ? "" : "md:min-w-[40rem]"} border-collapse text-[length:var(--text-sm)] [&_.tnum]:whitespace-nowrap`}>
         <thead>
           <tr className="border-b border-border bg-surface text-right text-text-muted">
             {head.map((h, i) => (
@@ -34,9 +35,9 @@ export default function AcctTable({
             ))}
           </tr>
         </thead>
-        <tbody>{children}</tbody>
+        <tbody>{labelCells(children, head)}</tbody>
         {foot ? (
-          <tfoot className="border-t-2 border-border font-medium">{foot}</tfoot>
+          <tfoot className="border-t-2 border-border font-medium">{labelCells(foot, head)}</tfoot>
         ) : null}
       </table>
     </div>

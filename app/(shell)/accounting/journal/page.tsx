@@ -6,6 +6,8 @@ import { requireAccounting } from "@/lib/accountingGate";
 import { journalReport, listPeriods } from "@/lib/repo/reports";
 import Pager from "@/components/accounting/Pager";
 import { faNum } from "@/lib/format";
+import ReceiptButton from "@/components/accounting/ReceiptButton";
+import { journalsWithReceipt } from "@/lib/repo/expenseReceipts";
 import { pagingFor, requestedPage } from "@/lib/paging";
 
 export const dynamic = "force-dynamic";
@@ -36,6 +38,7 @@ export default async function JournalPage({
     report = journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: paging.offset });
   }
   const periods = listPeriods(organizationId);
+  const withReceipt = journalsWithReceipt(organizationId, report.rows.map((r) => r.journalId));
   const reversed = report.rows.filter((r) => r.reversedByJournalId !== null).length;
 
   const link = (active: string, base: string, key: "period" | "source") =>
@@ -106,6 +109,7 @@ export default async function JournalPage({
                     معکوسِ #{r.reversesJournalId}
                   </span>
                 ) : null}
+                {r.sourceType === "EXPENSE" && !struck ? <ReceiptButton journalId={r.journalId} has={withReceipt.has(r.journalId)} /> : null}
                 {r.createdByName ? (
                   <span className="mr-2 text-[length:var(--text-xs)] text-text-muted">
                     {r.createdByName}

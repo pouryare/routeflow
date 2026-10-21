@@ -31,11 +31,12 @@ const html = (kind: "amount" | "pick" | "stepper") => {
 };
 
 describe("generic step bodies render inside TapFlow", () => {
-  it("amount: prefilled from ctx.vars, one confirm button, no duplicate text input", () => {
+  it("amount: prefilled from ctx.vars on our keypad, one confirm button, no OS-keyboard input", () => {
     const h = html("amount");
-    expect(h).toContain('value="800000"');
+    expect(h).toContain("۸۰۰٬۰۰۰");
+    expect(h).toContain("keypad__grid");
     expect(h).toContain("ثبت");
-    expect(h.match(/<input/g)).toHaveLength(1);
+    expect(h).not.toContain("<input");
   });
   it("pick: lists the choices and offers a search box", () => {
     const h = html("pick");

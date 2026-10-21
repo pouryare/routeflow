@@ -34,6 +34,7 @@
 
 - [x] Parked feature F5 added to `docs/future-features.md`: Persian text proofing (spellcheck attribute, normalisation, Hunspell, LLM check); notes existing `lib/persian.ts`
 
+- [x] F37 items built (you asked for them after all): order-card swipe, reminder push «انجام شد», planner map selection, expense receipt photo (own table, journal button), duplicates deck (merge / not-the-same, undo, ledger-safe)
 - [x] Parked features F6–F16 added to `docs/future-features.md`: live tracking/ETA, dynamic re-routing, reorder prediction, churn/credit-risk scoring, bank reconciliation, demand forecasting, returns/quality, offline-first, natural-language reports, multi-warehouse, owner push dashboard
 
 - [x] Parked features F17–F28 added to `docs/future-features.md`: delivery proof, statements/dunning, commission simulator, daily visit route (visit calendar already exists; auto-built route is the new part), promotions, market price log, digital catalogue, driver pay, staff scheduling, field expenses, audit trail, customer tiers
@@ -102,17 +103,29 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 5: repeat-order quick flow on `/sales/orders/new`; order status actions (cancel/return/failure ask why, credit-reject asks once, everything else one tap + undo)
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
-- [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here)
+- [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Decisions pass (you delegated them): reversible deletes and deactivation now undo instead of asking (holiday, photo, saved place, account; places-with-restore keep it), only the batch recall still confirms; «بعداً این توقف» sends a pending stop to the end of the run (no new state: the stop stays pending, server action + swipe + button, tested); cheque receipts and complaints queue offline like receipts (manager / phone-sales only, validated like the online routes, idempotent, tested); no dropdowns left outside the allowlist (0 of 46); expense photo, duplicates deck, order-card swipe, planner map selection and reminder push buttons first decided not to build, then built on your request (see below; `docs/future-features.md` F37)
+- [x] Gaps pass (3): real Chromium run at 375px as every demo role (found and fixed: blank /leads, crashing expenses page, 108px-wide pick lists, «+ ثبت» button covering the order submit bar); push notification button for a cheque due (deposit / cleared, runs in the service worker, falls back to opening the app); cash and card receipts made offline queue on the device and send on reconnect (verified in the browser: one `payment.record` held in the outbox); drag-to-reorder stops in the leads run list; users table as cards with pickers; commission editor on pickers, chips and keypad; «هفتهٔ بعد» delivery chip back in the order form; rep stage as chips; dropdowns 10→5 of 46
+- [x] Leftovers (round 2): long-press selection on cheques (hold a card or tap «انتخاب چند چک», tap to pick, one bar moves them all with the 5 s undo; only moves the server allows are sent and skipped ones are counted); swipe «ثبت نتیجه» on Pocket tasks that belong to a customer; `SwipeRow` gained a long-press hook
+- [x] Leftovers done so far: manager credit-approval deck on the briefing (approve / reject with the consequence printed, 5 s undo); map-search sort and route list, business type and contact role are chips; remaining dropdowns 10→6 of 46 (13 %, gate target ≤ 15 %); accounting trial balance and balance sheet become cards through the shared table
+- [x] Phase 10: design rules written (`docs/mobile-first-principles.md`, 20 numbered rules), enforced by `npm run check:mobile` (audit ratchet + every mobile component has a test + only recorded files import the calendar input + every allowlist entry has a real reason), pointers in CLAUDE.md, README and the TapFlow rules; allowlist now per-rule with written reasons; dropdowns 37→10, native date 0, confirm dialogs 0
+- [x] Phase 8 (partial): every small tappable control is now 44 px (`touch` utility; audit counts controls only, now 0); accounting tables turn into one card per row on phones (labels from the headers, same markup, `lib/tableCards.ts`); planner has «فهرست»/«نقشه» panes below 768px; the order-processing modal is a bottom sheet on phones (swipe down to close); the customer panel starts at the bottom on phones; the order pipeline swipes stage by stage
+- [x] Phase I (partial): holidays by a tap-a-day month grid with common-occasion chips (free text last); new account as a phone flow (role → group → name → optional phone; username and one-time password generated, shown once with «ارسال»/copy); commission plan editor starts from an existing plan («کپی از …») and edits tier numbers on the number pad
+- [x] Phase H (partial): key indicators as a swipeable card row on phones (80 % wide, dots; the bar stays from 768px) with the breakdown («چرا؟») in a sheet; income statement as stacked section cards with expenses opening to their lines (table from 768px); number/delta formatting in `lib/kpiCards.ts`
+- [x] Phase G (partial): arriving within 150 m of a pending stop shows «به {name} رسیدید» with «ثبت تحویل» on the driver run (opens that stop's delivery flow); phone sales get up to 3 suggestion cards on `/sales/today` (churn risk → call; due to reorder → order) each with a one-line why and «الان نه» (hides for 7 days on this device)
+- [x] Phase F (leads map): selection mode (tap pins to add/remove from the run, numbered in tap order), «نزدیک‌ترین ۵/۱۰/۲۰ مکان», circle tool (tap a centre, pick 1/3/5/10 km, add all inside), clear selection; helpers in `lib/mapSelect.ts`
+- [x] Phase E (partial): swipe rows (`lib/swipe.ts`, `SwipeRow`; every swipe ends in the 5 s undo and keeps a button) on tasks, cheques (deposit / bounce) and driver stops (record delivery); decision deck (`DecisionDeck`) for cheques due within a week and for open complaints, with undo on each verdict
+- [x] Phase D: filter chips + «فیلترها» sheet (no dropdowns), Persian-month periods (`lib/periods.ts`); used in payments (period, method, voided), inventory sort, customer salesperson filter. Audit: dropdowns 40→37, tiny targets 32→31
+- [x] Phase 9: expense entry flow (what for → amount → who it was paid to → how paid; 4 taps, today's date, 5 s undo) behind «ثبت هزینه» on `/accounting/expenses`
+- [x] Phase C adopted in forms: order form (customer, product, packaging pickers; pack count keypad; delivery day chips), batches, purchase entry, rep definitions, inventory threshold; pick step ranks by recents. Audit: selects 46→40, text fields 106→99 (baseline lowered)
+- [x] Phase C building blocks: recents model, keypad (own number pad; the amount step now uses it, no OS keyboard), day-choice model + `DayChips` (used by the date step when there are no presets), `SmartPicker`, `KeypadField`; `RecentsUser` mounted in the header
+- [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
-- [ ] Nothing here has been run on a real phone (seeding needs network); covered by config tests and server-render tests
-- [ ] Flows are online-only except delivery (queued on the device); payments are not wired to the offline outbox
-- [ ] Hidden desk forms (`hidden md:…`) still count in the mobile audit; they need allowlist entries with reasons in Phase 10
-- [ ] Batch-level stock counts; van counts; complaint photos (no column)
-- [ ] `useIsNarrow` is false on first paint, so a phone can flash the desk control (fix is Phase B task B.2b)
+- [ ] Duplicates match on phone / Instagram only (no name matching or nightly job); pairs where both records own accounting lines are not offered because the ledger is immutable
+- [ ] `tests/playwrightExtract.test.ts` fails here only because the Chromium headless-shell binary is missing in this container
+- [ ] Not tried on a physical phone (you said to drop that); everything was run in an emulated 375px Chromium on demo data
+- [ ] Offline still covers only delivery, receipts, cheques, complaints, order drafts and new customers; reminders and notes need the network
 
 ## Next steps
-1. Phase B: bottom tab bar per role, quick-action button, sticky action, detection-flash fix
-2. Phase C: keypad, smart pickers (recents), day chips
-3. Phase 9 expense entry; Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
-4. Phase 8 layout pass; then the design-rules document and its check script
+1. Wait for CI on the final head, then merge PR #27 once with a merge commit

@@ -58,7 +58,7 @@ export default function CopyButton({
       onClick={onClick}
       aria-label={what}
       title={what}
-      className={`inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-0.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
+      className={`inline-flex shrink-0 items-center gap-1 rounded-[var(--radius-sm)] border px-1.5 py-0.5 touch text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
         copied
           ? "border-good text-good"
           : "border-border text-text-faint hover:border-accent hover:text-accent"

@@ -408,7 +408,7 @@ export function runSweepRules(organizationId: number, asOfIso: string = new Date
       r.entity_type === "customer"
         ? db.prepare("SELECT 1 FROM customers WHERE id = ? AND organization_id = ?").get(r.entity_id, organizationId)
         : db.prepare("SELECT 1 FROM districts WHERE id = ?").get(r.entity_id);
-    if (inOrg) consider("notify_reminder_due", r.entity_type, r.entity_id, { meta: { message: r.message } });
+    if (inOrg) consider("notify_reminder_due", r.entity_type, r.entity_id, { meta: { message: r.message, reminder_id: r.id } });
   }
 
   // Board & Pocket: templates that spawn a task on a schedule. Same hook, same cooldown

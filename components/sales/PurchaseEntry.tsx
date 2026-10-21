@@ -1,5 +1,7 @@
 "use client";
 
+import SmartPicker from "@/components/mobile/SmartPicker";
+import KeypadField from "@/components/mobile/KeypadField";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
@@ -187,35 +189,15 @@ export default function PurchaseEntry({ products }: { products: Product[] }) {
       )}
 
       <div className="grid gap-[var(--space-2)] md:grid-cols-4">
-        <select
-          aria-label="کالا"
-          className={FIELD}
+        <SmartPicker
+          scope="purchase-products"
+          label="کالا"
+          items={products.map((p) => ({ id: String(p.id), label: p.name }))}
           value={pickProduct}
-          onChange={(e) => setPickProduct(e.target.value)}
-        >
-          <option value="">کالا…</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
-        <input
-          aria-label="تعداد"
-          className={FIELD}
-          value={qty}
-          onChange={(e) => setQty(e.target.value)}
-          inputMode="decimal"
-          placeholder={product ? `تعداد (${product.base_unit})` : "تعداد"}
+          onChange={setPickProduct}
         />
-        <label className="flex flex-col gap-1 text-xs text-text-muted">قیمت واحد<input
-         
-          className={FIELD}
-          value={cost}
-          onChange={(e) => setCost(e.target.value)}
-          inputMode="numeric"
-          placeholder="قیمت هر واحد"
-        /></label>
+        <KeypadField label="تعداد" value={qty} onChange={setQty} decimal unit={product?.base_unit} />
+        <div className="flex flex-col gap-1 text-xs text-text-muted">قیمت واحد<KeypadField label="قیمت هر واحد" value={cost} onChange={setCost} unit="تومان" /></div>
         <button
           type="button"
           onClick={addLine}

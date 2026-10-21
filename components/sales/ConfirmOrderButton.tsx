@@ -14,7 +14,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
   const router = useRouter();
   const { run, pending } = useUndoableAction();
 
-  function confirm() {
+  function confirmNow() {
     run({
       message: "سفارش تأیید شد؛ بعد از تأیید قابل ویرایش نیست.",
       failure: "سفارش تأیید نشد. دوباره تلاش کنید.",
@@ -36,7 +36,7 @@ export default function ConfirmOrderButton({ orderId }: { orderId: number }) {
     <div className="flex flex-col gap-[var(--space-1)]">
       <button
         type="button"
-        onClick={confirm}
+        onClick={confirmNow}
         disabled={pending}
         className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] hover:brightness-110 disabled:opacity-50"
       >

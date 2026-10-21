@@ -1,4 +1,10 @@
 import type { DatabaseSync } from "node:sqlite";
+import { boundedText, isDayWithin, isTimestampWithin } from "@/lib/inputChecks";
+import { isToman } from "@/lib/money";
+import { recordChequePayment } from "@/lib/repo/cheques";
+import { fileComplaint, type ComplaintCategory, type ComplaintSeverity } from "@/lib/repo/complaints";
+const COMPLAINT_CATEGORIES: ComplaintCategory[] = ["spoilage", "packaging", "foreign_object", "short_weight", "wrong_product", "other"];
+const COMPLAINT_SEVERITIES: ComplaintSeverity[] = ["low", "medium", "high", "critical"];
 import { getDb } from "@/lib/db";
 import { createOrder, addLine, submitOrder, OrderError } from "@/lib/orders";
 import { advanceOrder } from "@/lib/repo/orders";
@@ -376,6 +382,62 @@ function applyOne(
         client_uuid: mut.client_uuid,
         allocations,
         allow_overpay: p.allow_overpay === true,
+      });
+      return { status: "applied", server_id: id };
+    }
+
+    case "cheque.record": {
+      /* A cheque received with no signal is a fact. Same rules as POST /api/cheques: managers only,
+         the same bounds on the number, the dates and the note; the sync ledger (client_uuid) makes a
+         re-sent mutation a no-op. */
+      if (!roles.some((r) => r === "owner" || r === "group_manager")) {
+        return { status: "failed", error: "اجازهٔ ثبت چک ندارید" };
+      }
+      const chequeNo = boundedText(p.cheque_no, 40);
+      const bank = p.bank_name == null ? null : boundedText(p.bank_name, 80);
+      const note = p.note == null ? null : boundedText(p.note, 2000);
+      const due = String(p.due_date ?? "");
+      const received = String(p.received_at ?? deviceTime());
+      if (
+        !Number(p.customer_id) || !isToman(Number(p.amount_toman)) || Number(p.amount_toman) <= 0 || !chequeNo ||
+        (p.bank_name != null && bank === null) || (p.note != null && note === null) ||
+        !isDayWithin(due, 366, 5 * 366) || !isTimestampWithin(received, 5 * 366, 1)
+      ) {
+        return { status: "failed", error: "اطلاعات چک معتبر نیست" };
+      }
+      const out = recordChequePayment(organizationId, {
+        customer_id: Number(p.customer_id),
+        amount_toman: Number(p.amount_toman),
+        cheque_no: chequeNo,
+        bank_name: bank,
+        due_date: due,
+        received_at: received,
+        received_by: userId,
+        note,
+      });
+      return { status: "applied", server_id: out.cheque_id };
+    }
+
+    case "complaint.record": {
+      if (!roles.some((r) => r === "owner" || r === "group_manager" || r === "phone_sales")) {
+        return { status: "failed", error: "اجازهٔ ثبت شکایت ندارید" };
+      }
+      if (!COMPLAINT_CATEGORIES.includes(p.category as ComplaintCategory)) {
+        return { status: "failed", error: "دستهٔ شکایت نامعتبر است" };
+      }
+      const description = typeof p.description === "string" ? p.description.trim() || null : null;
+      if (description !== null && description.length > 2000) {
+        return { status: "failed", error: "شرح شکایت حداکثر ۲۰۰۰ نویسه است" };
+      }
+      const id = fileComplaint(organizationId, {
+        customer_id: (p.customer_id as number | null) ?? null,
+        order_id: (p.order_id as number | null) ?? null,
+        product_id: (p.product_id as number | null) ?? null,
+        batch_id: (p.batch_id as number | null) ?? null,
+        reported_by: userId,
+        category: p.category as ComplaintCategory,
+        severity: COMPLAINT_SEVERITIES.includes(p.severity as ComplaintSeverity) ? (p.severity as ComplaintSeverity) : undefined,
+        description,
       });
       return { status: "applied", server_id: id };
     }

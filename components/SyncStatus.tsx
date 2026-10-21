@@ -144,7 +144,7 @@ export default function SyncStatus() {
   if (!badge) return null;
 
   return (
-    <div className="fixed bottom-3 left-3 z-40 text-[length:var(--text-xs)]" dir="rtl">
+    <div className="fixed bottom-3 left-3 z-40 text-[length:var(--text-xs)] max-md:bottom-[calc(72px+env(safe-area-inset-bottom))] max-md:left-auto max-md:right-3" dir="rtl">
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { isToman } from "@/lib/money";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
-import { recordDelivery, DeliveryError } from "@/lib/delivery";
+import { recordDelivery, deferStop, DeliveryError } from "@/lib/delivery";
 
 /** Records what happened at one door.
  *
@@ -98,6 +98,31 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     if (e instanceof DeliveryError) {
       return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
     }
+    throw e;
+  }
+}
+
+
+/** «Later»: send a pending stop to the end of the driver's own run. */
+export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
+  const guard = requireRole(req, ["field_rep", "delivery_driver"]);
+  if (!guard.ok) return guard.response;
+  const stopId = Number((await ctx.params).id);
+  const db = getDb();
+  // Same ownership rule as recording: another driver's stop answers 404.
+  const owned = db
+    .prepare(
+      `SELECT ds.id FROM delivery_stops ds JOIN delivery_runs dr ON dr.id = ds.run_id
+        WHERE ds.id = ? AND dr.driver_user_id = ? AND dr.organization_id = ?`
+    )
+    .get(stopId, guard.session.user.id, guard.session.organizationId);
+  if (!owned) return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });
+  const body = (await req.json().catch(() => null)) as { action?: string } | null;
+  if (body?.action !== "defer") return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
+  try {
+    return NextResponse.json({ ok: true, ...deferStop(db, stopId) });
+  } catch (e) {
+    if (e instanceof DeliveryError) return NextResponse.json({ ok: false, error: e.message }, { status: 409 });
     throw e;
   }
 }

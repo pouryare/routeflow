@@ -3,6 +3,8 @@ import { randomBytes } from "node:crypto";
 import { getDb } from "@/lib/db";
 import { faNum } from "@/lib/format";
 import { faJalaliDate, jalaliYmd } from "@/lib/jalali";
+import { pushActionFor, type PushAction } from "@/lib/pushActions";
+import type { ChequeStatus } from "@/lib/chequeStates";
 import { configureWebPush, webpush } from "@/lib/push";
 import { editTelegram, sendTelegram, telegramConfigured } from "@/lib/telegram";
 
@@ -339,8 +341,8 @@ export function fanOutNotifications(
   const insert = (db ?? getDb()).prepare(
     `INSERT INTO notifications
        (organization_id, user_id, type_code, title_fa, body_fa, entity_type, entity_id, group_key,
-        priority, created_at, source_event_id, source_rule_run_id)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+        priority, created_at, source_event_id, source_rule_run_id, ref_id)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   let n = 0;
   for (const uid of recipients) {
@@ -356,7 +358,8 @@ export function fanOutNotifications(
       type.priority,
       now,
       event.id,
-      ruleRunId
+      ruleRunId,
+      typeof ctx.meta.reminder_id === "number" ? ctx.meta.reminder_id : null
     );
     n += 1;
   }
@@ -706,6 +709,9 @@ const FLUSHED_COL: Record<LoudChannel, "push_flushed_at" | "tg_flushed_at"> = {
 type FlushRow = {
   id: number;
   type_code: string;
+  entity_type: string | null;
+  entity_id: number | null;
+  ref_id: number | null;
   priority: string;
   group_key: string;
   title_fa: string;
@@ -763,13 +769,13 @@ function deliveredIds(json: string): number[] {
 /** Push the digest to every current subscription of `userId`; returns how many landed.
  *  A `404`/`410` means the browser threw the subscription away — delete it here, which is
  *  the only garbage collection push subscriptions get. */
-async function sendPushDigest(conn: DatabaseSync, userId: number, text: string): Promise<number> {
+async function sendPushDigest(conn: DatabaseSync, userId: number, text: string, act: PushAction | null = null): Promise<number> {
   if (!configureWebPush()) return 0;
   const subs = conn
     .prepare("SELECT id, endpoint, p256dh, auth FROM push_subscriptions WHERE user_id = ?")
     .all(userId) as { id: number; endpoint: string; p256dh: string; auth: string }[];
 
-  const payload = JSON.stringify({ title: "کارگاه", body: text, url: "/notifications", tag: PUSH_TAG });
+  const payload = JSON.stringify({ title: "کارگاه", body: text, url: "/notifications", tag: PUSH_TAG, ...(act ? { act } : {}) });
   let ok = 0;
   for (const s of subs) {
     try {
@@ -803,7 +809,7 @@ async function flushChannel(
 
   const candidates = conn
     .prepare(
-      `SELECT id, type_code, priority, group_key, title_fa, body_fa
+      `SELECT id, type_code, entity_type, entity_id, ref_id, priority, group_key, title_fa, body_fa
          FROM notifications
         WHERE organization_id = ? AND user_id = ? AND ${col} IS NULL
         ORDER BY created_at, id`
@@ -856,7 +862,14 @@ async function flushChannel(
     // the send is identical either way and only the ledger bookkeeping differs. Doing it
     // once (rather than "try edit, fall back to send") is what keeps a failure from
     // double-notifying.
-    const landed = await sendPushDigest(conn, userId, text);
+    /* A digest of exactly one thing the person can act on carries a button for it. Several things
+       have no single target, so they get none. */
+    const only = rows.length === 1 ? rows[0] : null;
+    const chequeStatus =
+      only?.entity_type === "cheque" && only.entity_id !== null
+        ? ((conn.prepare("SELECT status FROM cheques WHERE id = ? AND organization_id = ?").get(only.entity_id, organizationId) as { status: ChequeStatus } | undefined)?.status ?? null)
+        : null;
+    const landed = await sendPushDigest(conn, userId, text, only ? pushActionFor(only, chequeStatus) : null);
     if (landed === 0) return none; // nothing reached a device -> retry next tick
     if (reusable && prev) {
       updateDelivery(prev);

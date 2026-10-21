@@ -247,7 +247,7 @@ function ToastCard({ toast, onDone }: ToastCardProps) {
             onClick={runAction}
             disabled={running}
             aria-label={actionLabel}
-            className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
+            className="inline-flex items-center justify-center gap-[var(--space-2)] shrink-0 rounded-[var(--radius-sm)] border border-accent px-2 py-0.5 touch text-[length:var(--text-xs)] font-medium text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:bg-accent hover:enabled:text-accent-ink disabled:opacity-50"
           >
             <Icon name={toast.action.icon ?? "check"} size="sm" />
             {running ? "…" : toast.action.label}

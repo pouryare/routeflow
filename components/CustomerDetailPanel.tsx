@@ -182,7 +182,10 @@ export default function CustomerDetailPanel({
     // First render after hydration: localStorage does not exist on the server.
     setOrientRestored(true);
     const saved = readSavedOrient();
+    /* No saved preference on a phone: start as the wide bottom panel, which is the only shape that
+       leaves the map usable at that width. A saved choice always wins. */
     if (saved) setOrient(saved);
+    else if (window.matchMedia("(max-width: 767px)").matches) setOrient("bottom");
   }
   function flip() {
     const next = orient === "side" ? "bottom" : "side";
@@ -331,7 +334,7 @@ export default function CustomerDetailPanel({
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label="مسیریابی به این مشتری"
-                className="rounded-[var(--radius-sm)] border border-border px-1.5 py-0.5 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
+                className="rounded-[var(--radius-sm)] border border-border px-1.5 py-0.5 touch text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
               >
                 <Icon name="external-link" size="sm" />
               </a>

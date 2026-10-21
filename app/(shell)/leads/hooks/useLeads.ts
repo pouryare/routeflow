@@ -1,4 +1,5 @@
 "use client";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useSession } from "@/lib/useSession";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -18,7 +19,6 @@ import { routeUrl } from "@/lib/navApps";
 import { assignableIds, resolveScope } from "@/lib/leadRunAssign";
 import type { LeadRunAssignment } from "@/lib/repo/leadRuns";
 
-import { confirmAction } from "@/lib/confirm";
 type LocationStatus = "contacted" | "visited" | "no_answer" | "declined";
 export const STATUS_META: Record<LocationStatus, string> = { contacted: "تماس گرفته شد", visited: "بازدید شد", no_answer: "پاسخ نداد", declined: "رد کرد" };
 export interface SavedLocation { id: number; name: string; maps_url: string; address: string | null; lat: number | null; lng: number | null; notes: string | null; resolution: "direct" | "pluscode" | "nominatim" | "manual" | "unresolved"; status: LocationStatus | null; rating_potential: number | null; rating_volume: number | null; rating_ease: number | null; created_at: string; priority: boolean; organization_id: number | null; group_id: number | null; }
@@ -227,7 +227,7 @@ export function useLeads() {
        فهرست" -- save a copy -- and it was overwriting the route being built, which is how
        list #8 exists with zero stops. Loading is now the list bar's job, by an explicit tap. */ toast(`فهرست «${trimmed}» ساخته شد.`, "success"); } catch (e) { toast(e instanceof Error && e.message ? e.message : "خطا در ساخت فهرست", "error"); } finally { setBusy(false); } }
   async function renameList(id: number, name: string) { const trimmed = name.trim(); if (!trimmed) return; setLists((prev) => prev.map((l) => (l.id === id ? { ...l, name: trimmed } : l))); try { const res = await fetch(`/api/lead-lists/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: trimmed }) }); if (!res.ok) throw new Error(); } catch { toast("تغییر نام ذخیره نشد", "error"); load(); } }
-  async function deleteList(id: number) { const doomed = lists.find((l) => l.id === id); if (!confirmAction(`فهرست «${doomed?.name ?? ""}» حذف شود؟`)) return; try { const res = await fetch(`/api/lead-lists/${id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(); setLists((prev) => prev.filter((l) => l.id !== id)); if (activeListId === id) { /* `updateRun`, not `setRun`: clearing the active list hands the pool back to scratch, and
+  async function deleteList(id: number) { const doomed = lists.find((l) => l.id === id); try { const res = await fetch(`/api/lead-lists/${id}`, { method: "DELETE" }); const data = await res.json(); if (!res.ok || !data.ok) throw new Error(); setLists((prev) => prev.filter((l) => l.id !== id)); if (activeListId === id) { /* `updateRun`, not `setRun`: clearing the active list hands the pool back to scratch, and
    scratch is persisted. A raw set left `localStorage` holding the deleted list's ids, so a
    reload put the whole list straight back into the pool. */
     setActiveListId(null); updateRun([]); } toast(`فهرست «${data.deleted.name}» حذف شد.`, "success", { label: "بازگردانی فهرست", onClick: () => createList(data.deleted.name, data.deleted.location_ids) }); } catch { toast(doomed ? `خطا در حذف «${doomed.name}»` : "خطا در حذف فهرست", "error"); } }
@@ -281,7 +281,20 @@ export function useLeads() {
   const runPoints = useMemo(() => { const pts: [number, number][] = []; if (runOrigin && runLocations.length) pts.push([runOrigin.lat, runOrigin.lng]); runLocations.forEach((l) => pts.push([l.lat, l.lng])); return pts; }, [runOrigin, runLocations]);
   const runHref = useMemo(() => routeUrl(navAppId, runLocations.map((l) => ({ lat: l.lat, lng: l.lng })), runOrigin), [navAppId, runLocations, runOrigin]);
   const activeList = activeListId === null ? null : lists.find((l) => l.id === activeListId) ?? null;
-  async function remove(id: number) { if (!confirmAction("این مکان برای همیشه حذف شود؟")) return; try { const res = await fetch(`/api/locations/${id}`, { method: "DELETE" }); if (!res.ok) throw new Error(); setRun((prev) => prev.filter((x) => x !== id)); toast("از فهرست حذف شد.", "info"); } catch { toast("مکان حذف نشد؛ دوباره تلاش کنید", "error"); } finally { load(); } }
+  /* Deleting a saved place is permanent on the server, so the write is held for 5 s and
+     «بازگردانی ثبت» cancels it (the place leaves the run when the delete lands). */
+  const undoable = useUndoableAction();
+  function remove(id: number) {
+    undoable.run({
+      message: "مکان از فهرست حذف شد",
+      send: async () => ((await fetch(`/api/locations/${id}`, { method: "DELETE" })).ok ? { ok: true } : { ok: false }),
+      failure: "مکان حذف نشد؛ دوباره تلاش کنید",
+      onDone: () => {
+        setRun((prev) => prev.filter((x) => x !== id));
+        load();
+      },
+    });
+  }
   async function savePin(id: number, lat: number | null, lng: number | null) { try { const res = await fetch(`/api/locations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ lat, lng }) }); if (!res.ok) throw new Error(); toast(lat === null ? "موقعیت پاک شد." : "موقعیت ثبت شد.", "success"); setPinningId(null); load(); } catch { toast("موقعیت ثبت نشد؛ دوباره تلاش کنید", "error"); } }
   async function updateLocationName(id: number, name: string) { try { const res = await fetch(`/api/locations/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: name.trim() }) }); if (!res.ok) throw new Error(); toast("نام به‌روز شد.", "success"); load(); } catch { toast("نام تغییر نکرد؛ دوباره تلاش کنید", "error"); } }
   async function convertToCustomer(id: number) { setConverting(id); try { const res = await fetch(`/api/locations/${id}/convert`, { method: "POST" }); const data = await res.json(); if (!data.ok) throw new Error(data.error); toast("به فهرست مشتریان اضافه شد.", "success"); load(); } catch (e) { toast(e instanceof Error && e.message ? e.message : "تبدیل به مشتری انجام نشد؛ دوباره تلاش کنید", "error"); } finally { setConverting(null); } }

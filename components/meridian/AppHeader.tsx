@@ -11,6 +11,10 @@ import HoverPill from "@/components/meridian/HoverPill";
 import Chrome from "@/components/meridian/Chrome";
 import HeaderSkeleton from "@/components/meridian/HeaderSkeleton";
 import { APP_GROUPS, appTabs } from "@/lib/appNav";
+import { bottomTabs, quickActionsFor } from "@/lib/mobileNav";
+import BottomNav from "@/components/mobile/BottomNav";
+import QuickActions from "@/components/mobile/QuickActions";
+import RecentsUser from "@/components/mobile/RecentsUser";
 
 /** The shell's top chrome, on one row: the travelling nav pill, then search, the bell and
  *  the viewer's avatar menu. No brand block — see tests/app-header.test.ts.
@@ -41,6 +45,7 @@ export default async function AppHeader() {
   const tabs = appTabs(session);
 
   return (
+    <>
     <Chrome>
       {/* Login-As: an owner seeing the app as this user. Not dismissible, see the banner.
           asRole matters as much as asName: a dual-hat driver sees a different app in each
@@ -68,5 +73,11 @@ export default async function AppHeader() {
         </div>
       </div>
     </Chrome>
+    {/* The phone's navigation. Hidden by CSS from 768px up, where the pill above is used and
+        this is not needed; the pill is hidden below it. Both derive from the same appTabs. */}
+    <BottomNav {...bottomTabs(session)} />
+    <QuickActions actions={quickActionsFor(session)} />
+    <RecentsUser id={session.user.id} />
+    </>
   );
 }

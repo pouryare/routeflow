@@ -1,5 +1,6 @@
 "use client";
 
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { Icon } from "@/components/meridian/Icon";
 import { useState, useCallback } from "react";
@@ -11,7 +12,6 @@ import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { faJalaliDate } from "@/lib/jalali";
 
-import { confirmAction } from "@/lib/confirm";
 interface PhotoItem {
   id: number;
   entity_type: "district" | "customer";
@@ -47,11 +47,18 @@ export default function GalleryPage() {
 
   useRunAfterMount(load);
 
-  async function remove(id: number) {
-    if (!confirmAction("این عکس حذف شود؟")) return;
-    await fetch(`/api/photos/${id}`, { method: "DELETE" });
+  const undoable = useUndoableAction();
+  function remove(id: number) {
     setLightbox(null);
-    load();
+    undoable.run({
+      message: "عکس حذف شد",
+      send: async () => {
+        const res = await fetch(`/api/photos/${id}`, { method: "DELETE" });
+        return res.ok ? { ok: true } : { ok: false };
+      },
+      failure: "عکس حذف نشد؛ دوباره تلاش کنید",
+      onDone: () => load(),
+    });
   }
 
   return (

@@ -4733,7 +4733,7 @@ body {
    last row stranded in column one, which reads as a straight column under the row above.
    `flex: 1 1` keeps the full rows evenly divided while a lone leftover centres on its own. */
 .meridian .tapflow .tf-grid > * { flex: 1 1 calc(50% - 4px); }
-.meridian .tapflow .tf-grid.one { display: grid; grid-template-columns: 1fr; }
+.meridian .tapflow .tf-grid.one { display: grid; grid-template-columns: 1fr; width: 100%; }
 .meridian .tapflow .tf-grid.three > * { flex-basis: calc(33.333% - 6px); }
 .meridian .tapflow .tf-group { margin-bottom: -4px; font-size: 12px; color: var(--muted); }
 .meridian .tapflow .tf-opt {
@@ -5106,4 +5106,272 @@ body {
     opacity: 1 !important;
     transform: none !important;
   }
+}
+
+/* The board has two layouts in the markup and the media query picks one, so a phone never paints
+   the desk board first. The query is the same one `lib/useIsNarrow.ts` uses for behaviour. */
+.meridian .board-mobile { display: none; }
+@media (max-width: 620px), (pointer: coarse) {
+  .meridian .board-mobile { display: block; }
+  .meridian .board-desktop { display: none; }
+}
+
+/* ---- phone chrome: bottom bar, quick action, sticky action ------------------------------------
+   Below 768px the 30-destination pill in the header does not fit a thumb, so the bar replaces it
+   (components/mobile/BottomNav.tsx, derived from the same appTabs). From 768px up none of this
+   shows and the header is as it was. Fixed things sit below the sheets (z-index 70/71) so a sheet
+   covers them, and clear the home indicator with env(safe-area-inset-bottom). */
+.meridian .bottomnav, .meridian .qa-fab { display: none; }
+/* From md up the sticky action is an ordinary button in the flow. */
+.meridian .sticky-action { padding: 8px 0; }
+.meridian .sticky-action__btn {
+  min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 22px;
+  border: 0; border-radius: var(--r-md); background: var(--accent); color: var(--accent-ink);
+  font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+}
+.meridian .sticky-action__btn:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 767px) {
+  .meridian .top > .segwrap { display: none; }
+  .meridian .app { padding-bottom: calc(92px + env(safe-area-inset-bottom)); }
+  .meridian .bottomnav {
+    display: flex; position: fixed; inset-inline: 0; inset-block-end: 0; z-index: 60;
+    background: var(--bg); border-top: 1px solid var(--line); direction: rtl;
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .meridian .bottomnav__item {
+    flex: 1 1 0; min-width: 0; min-height: 56px; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 3px; padding: 6px 2px; border: 0; background: none; color: var(--muted);
+    font: inherit; font-size: 11px; line-height: 1.2; text-decoration: none; cursor: pointer;
+  }
+  .meridian .bottomnav__item span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .meridian .bottomnav__item[aria-current="page"] { color: var(--accent); font-weight: 600; }
+  .meridian .bottomnav__item:focus-visible { outline: 2px solid var(--accent); outline-offset: -3px; }
+  .meridian .qa-fab {
+    display: inline-flex; align-items: center; gap: 6px; position: fixed; z-index: 60;
+    inset-inline-end: 14px; inset-block-end: calc(70px + env(safe-area-inset-bottom));
+    min-height: 48px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--accent);
+    color: var(--accent-ink); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer;
+    box-shadow: 0 6px 20px -6px rgba(30,41,59,.45);
+  }
+  .meridian .sticky-action {
+    position: fixed; inset-inline: 0; z-index: 59;
+    inset-block-end: calc(56px + env(safe-area-inset-bottom)); padding: 8px 14px;
+    background: linear-gradient(to top, var(--bg) 70%, transparent);
+  }
+  .meridian .sticky-action__btn { width: 100%; min-height: 52px; font-size: 16px; }
+  .meridian .sticky-action-gap { height: 76px; }
+}
+.meridian .mobilemore__group { display: grid; gap: 8px; padding: 0 16px 16px; }
+@media (prefers-reduced-motion: reduce) { .meridian .qa-fab { box-shadow: none; } }
+
+/* ---- phone-first inputs: picker field, keypad, day chips ---------------------------------------
+   components/mobile/{SmartPicker,KeypadField,Keypad,DayChips}. Every target is 44-56px; the chosen
+   state is the accent, never colour alone (a check icon rides with it). */
+.meridian .picker-trigger {
+  width: 100%; min-height: 52px; display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  padding: 0 14px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
+  color: var(--text); font: inherit; font-size: 15px; text-align: start; cursor: pointer;
+}
+.meridian .picker-trigger__empty { color: var(--muted); }
+.meridian .picker-trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .smartpicker, .meridian .keypadfield__sheet { display: grid; gap: 10px; padding: 0 16px 20px; }
+.meridian .keypad { display: grid; gap: 10px; outline: none; }
+.meridian .keypad__readout {
+  display: flex; align-items: baseline; justify-content: center; gap: 8px; padding: 10px 0 2px;
+  font-variant-numeric: tabular-nums;
+}
+.meridian .keypad__readout strong { font-size: 34px; font-weight: 700; letter-spacing: -.02em; }
+.meridian .keypad__readout span { font-size: 14px; color: var(--muted); }
+.meridian .keypad__quick { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.meridian .keypad__chip {
+  min-height: 44px; padding: 0 14px; border: 1px solid var(--line); border-radius: 999px; background: var(--card);
+  color: var(--text); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.meridian .keypad__grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+.meridian .keypad__key {
+  min-height: 56px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-md);
+  background: var(--card); color: var(--text); font: inherit; font-size: 22px; font-weight: 600; cursor: pointer;
+}
+.meridian .keypad__key:active { background: var(--accent-soft); }
+.meridian .keypad__key:focus-visible, .meridian .keypad__chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .daychips { display: grid; gap: 8px; }
+.meridian .daychips__row { display: flex; flex-wrap: wrap; gap: 8px; }
+.meridian .daychips__row--strip { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; scroll-snap-type: x proximity; }
+.meridian .daychip {
+  min-height: 52px; min-width: 76px; display: inline-flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
+  color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; scroll-snap-align: start; flex: none;
+}
+.meridian .daychip small { font-size: 11px; font-weight: 400; color: var(--muted); }
+.meridian .daychip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .daychip--on small { color: var(--accent-ink); }
+.meridian .daychip--holiday:not(.daychip--on), .meridian .daychip--weekend:not(.daychip--on) { border-style: dashed; }
+.meridian .daychips__link {
+  justify-self: start; min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 6px;
+  border: 0; background: none; color: var(--accent); font: inherit; font-size: 13px; cursor: pointer;
+}
+.meridian .daychip:focus-visible, .meridian .picker-trigger:focus-visible, .meridian .daychips__link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- filter chips (components/mobile/FilterChips, FilterSheet) -----------------------------------
+   One scrolling row, 44px chips; the chosen state is accent fill plus a check icon, never colour alone. */
+.meridian .filterchips__row { display: flex; align-items: center; gap: 8px; overflow-x: auto; padding: 2px 0 6px; scrollbar-width: none; }
+.meridian .filterchips__group { display: flex; gap: 8px; flex: none; }
+.meridian .filterchips__group--wrap { flex-wrap: wrap; }
+.meridian .filterchip {
+  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; flex: none;
+  border: 1px solid var(--line); border-radius: 999px; background: var(--card); color: var(--text);
+  font: inherit; font-size: 14px; cursor: pointer; white-space: nowrap;
+}
+.meridian .filterchip--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .filterchip__badge { min-width: 20px; height: 20px; padding: 0 5px; display: inline-grid; place-items: center; border-radius: 999px; background: var(--accent-ink); color: var(--accent); font-size: 12px; }
+.meridian .filterchip:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .filtersheet { display: grid; gap: 14px; padding: 0 16px 20px; }
+.meridian .filtersheet__group { display: grid; gap: 8px; }
+
+/* ---- swipe rows (components/mobile/SwipeRow) ---------------------------------------------------
+   The face moves; the action it will run shows underneath. The same actions exist as buttons:
+   visually hidden on phones until focused (keyboard / screen reader), plain buttons from 768px. */
+.meridian .swiperow { position: relative; overflow: hidden; }
+.meridian .swiperow__face { position: relative; background: var(--card); touch-action: pan-y; }
+.meridian .swiperow__under {
+  position: absolute; inset: 0; display: flex; align-items: center; gap: 8px; padding: 0 18px;
+  font-size: 14px; font-weight: 600; color: var(--accent-ink); background: var(--accent);
+}
+.meridian .swiperow__under--bad { background: var(--crit); }
+.meridian .swiperow__under--start { justify-content: flex-start; }
+.meridian .swiperow__under--end { justify-content: flex-end; }
+.meridian .swiperow__under--commit { filter: brightness(1.08); }
+.meridian .swiperow__buttons { display: flex; flex-wrap: wrap; gap: 8px; }
+.meridian .swiperow__btn {
+  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px;
+  border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); color: var(--text);
+  font: inherit; font-size: 13px; cursor: pointer;
+}
+.meridian .swiperow__btn--bad { color: var(--crit); }
+@media (max-width: 767.98px) {
+  .meridian .swiperow__buttons:not(:focus-within) {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+}
+
+/* ---- decision deck (components/mobile/DecisionDeck) ---------------------------------------------- */
+.meridian .deck { display: grid; gap: 12px; padding: 0 16px 20px; }
+.meridian .deck__progress { margin: 0; text-align: center; color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.meridian .deck__card { display: grid; gap: 6px; padding: 16px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); }
+.meridian .deck__card strong { font-size: 17px; }
+.meridian .deck__choices { display: grid; gap: 8px; }
+.meridian .deck__done { display: grid; gap: 12px; justify-items: center; padding: 24px 0; text-align: center; }
+
+/* ---- action cards (components/mobile/ActionCard) ------------------------------------------------- */
+.meridian .actioncards { display: grid; gap: 10px; margin: 0 0 14px; }
+.meridian .actioncard { display: grid; gap: 6px; padding: 14px; border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); }
+.meridian .actioncard--churn { border-color: var(--amber, var(--accent)); }
+.meridian .actioncard h3 { margin: 0; font-size: 15px; }
+.meridian .actioncard p { margin: 0; font-size: 13px; color: var(--muted); }
+.meridian .actioncard__row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+.meridian .actioncard__primary, .meridian .actioncard__secondary, .meridian .actioncard__later {
+  min-height: 44px; display: inline-flex; align-items: center; gap: 6px; padding: 0 14px; border-radius: var(--r-md);
+  border: 1px solid var(--line); background: var(--card); color: var(--text); font: inherit; font-size: 14px; text-decoration: none; cursor: pointer;
+}
+.meridian .actioncard__primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.meridian .actioncard__later { color: var(--muted); }
+
+/* ---- report cards: carousel + drill sheet (components/mobile/KpiCarousel, DrillSheet) ---------- */
+.meridian .kpicarousel { display: none; }
+.meridian .kpicarousel__row { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 8px; scrollbar-width: none; }
+.meridian .kpicarousel__card {
+  display: grid; gap: 4px; padding: 14px; text-align: start;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); color: var(--text); font: inherit; cursor: pointer;
+}
+.meridian .kpicarousel__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .kpicarousel__dots { display: flex; justify-content: center; gap: 6px; }
+.meridian .kpicarousel__dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.meridian .kpicarousel__dots i.on { background: var(--accent); }
+.meridian .drillsheet { display: grid; gap: 10px; padding: 0 16px 20px; }
+.meridian .summarycards { display: grid; gap: 10px; }
+.meridian .summarycard {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px; width: 100%;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); color: var(--text); font: inherit; text-align: start; font-variant-numeric: tabular-nums;
+}
+.meridian .summarycard--strong { font-weight: 700; }
+.meridian .summarycard--total { border-color: var(--accent); }
+@media (max-width: 767.98px) {
+  .meridian .kpicarousel { display: block; }
+  .meridian .kpibar, .meridian .kpibar__detail { display: none; }
+}
+.meridian ul.kpicarousel__row, .meridian ul.summarycards { list-style: none; margin: 0; padding-inline: 2px; }
+.meridian .kpicarousel__item { flex: 0 0 80%; scroll-snap-align: center; display: flex; }
+.meridian .kpicarousel__item .kpicarousel__card { flex: 1 1 auto; }
+.meridian ul.summarycards > li.summarycard { display: flex; }
+.meridian ul.summarycards > li { display: block; }
+
+/* ---- month grid (components/mobile/MonthGrid) ---------------------------------------------------- */
+.meridian .monthgrid { display: grid; gap: 8px; }
+.meridian .monthgrid__head { display: flex; align-items: center; justify-content: space-between; }
+.meridian .monthgrid__nav { width: 44px; height: 44px; display: grid; place-items: center; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card); color: var(--text); cursor: pointer; }
+.meridian .monthgrid__week, .meridian .monthgrid__days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center; }
+.meridian .monthgrid__week span { font-size: 12px; color: var(--muted); }
+.meridian .monthgrid__day {
+  min-height: 44px; position: relative; border: 1px solid var(--line); border-radius: var(--r-md); background: var(--card);
+  color: var(--text); font: inherit; font-size: 14px; font-variant-numeric: tabular-nums; cursor: pointer;
+}
+.meridian .monthgrid__day--marked::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--crit); }
+.meridian .monthgrid__day--on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .monthgrid__nav:focus-visible, .meridian .monthgrid__day:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---- touch target utility ---------------------------------------------------------------------
+   Anything you tap is at least 44x44. Small controls (status buttons, chips, copy buttons) add
+   `touch` instead of growing their padding, so their look stays and only their hit area grows. */
+.touch { min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; justify-content: center; }
+
+/* ---- accounting tables as cards on a phone (components/accounting/AcctTable, lib/tableCards) ------
+   Below 768px each row becomes a card: the first cell is its title, every other cell shows its
+   column header (data-label) in front of its value. From 768px it is the ordinary table. */
+@media (max-width: 767.98px) {
+  .acct-cards, .acct-cards tbody, .acct-cards tfoot, .acct-cards tr, .acct-cards td { display: block; width: 100%; }
+  .acct-cards thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .acct-cards tr { padding: 10px 12px; border-top: 1px solid var(--line); }
+  .acct-cards td { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; text-align: start; }
+  .acct-cards td:first-child { font-weight: 600; padding-bottom: 6px; }
+  .acct-cards td[data-label]::before { content: attr(data-label); color: var(--muted); font-weight: 400; }
+}
+
+/* ---- processing modal as a bottom sheet on phones ----------------------------------------------- */
+@media (max-width: 767.98px) {
+  .meridian .modal {
+    top: auto; bottom: 0; left: 0; right: 0; width: 100%; max-height: 90vh;
+    border-radius: var(--r-2xl) var(--r-2xl) 0 0;
+    transform: translateY(100%);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .meridian .modal.on { transform: translateY(0); }
+}
+
+/* ---- order pipeline: swipe through the stages on a phone ------------------------------------------
+   One stage per screen with the next peeking in, instead of four stacked lists. Stage order is the
+   reading order, so the row runs the same way the text does. */
+@media (max-width: 767.98px) {
+  .meridian .board.pipe {
+    display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding-inline: 12px;
+    scrollbar-width: none;
+  }
+  .meridian .board.pipe .col { flex: 0 0 86%; scroll-snap-align: center; max-height: 70vh; }
+}
+/* A chip row must never widen its parent: the row scrolls inside, the parent keeps its width. */
+.meridian .filterchips { min-width: 0; max-width: 100%; }
+
+/* A page with its own sticky primary action (the order form's total + submit bar) hides the floating
+   «+ ثبت» button: both live at the bottom edge and the floating one covered the submit button. */
+@media (max-width: 767.98px) {
+  .meridian:has([data-has-primary-bar]) .qa-fab { display: none; }
+}
+
+/* reorder-by-drag rows (components/leads/RunPanel): a line where the row would land, the lifted row dimmed */
+.reorder-over { box-shadow: 0 -3px 0 0 var(--accent); }
+.reorder-lifted { opacity: .5; }
+
+/* On a phone the pipeline cards swipe (SwipeRow) instead of dragging, so they must let the page scroll
+   vertically and hand horizontal movement to the swipe: touch-action none would swallow both. */
+@media (max-width: 767.98px) {
+  .meridian .board.pipe .task { touch-action: pan-y; }
 }

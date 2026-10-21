@@ -183,6 +183,8 @@ Every flow is **config + one generic sheet + one write path**:
 
 ## 7. Where to apply it next in RouteFlow
 
+> Everything that is not a flow (filters, pickers, numbers, days, lists, queues, maps, reports) follows [`mobile-first-principles.md`](mobile-first-principles.md).
+
 | Surface | Today | As a tap flow |
 |---|---|---|
 | Call / visit outcome (CRM) | 4 outcome chips on `/today` (`components/today/OutcomeChips.tsx`) | The reference flow |

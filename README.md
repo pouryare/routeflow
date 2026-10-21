@@ -5,6 +5,10 @@ territory (visited / needs coverage / not allowed) on an interactive OpenStreetM
 map. Customer data flows one-way from the `سیستم فروش و انبار.xlsx` workbook;
 district coverage status is tracked here, not in Excel.
 
+## UI rules
+
+Phone-first patterns and how to build them: [`docs/mobile-first-principles.md`](docs/mobile-first-principles.md) (flows that record what happened: [`docs/tap-flow-principles.md`](docs/tap-flow-principles.md)). Run `npm run check:mobile` before committing UI changes.
+
 ## Stack
 
 - Next.js 16 (App Router, TypeScript, Turbopack)

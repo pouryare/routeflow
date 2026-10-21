@@ -1,14 +1,15 @@
 "use client";
 
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useCallback, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 
 import { Icon } from "@/components/meridian/Icon";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { faJalaliDate } from "@/lib/jalali";
-import JalaliDateInput from "@/components/meridian/JalaliDateInput";
+import MonthGrid from "@/components/mobile/MonthGrid";
+import { LUNAR_OCCASIONS, isCommonOccasion } from "@/lib/holidayOccasions";
 
-import { confirmAction } from "@/lib/confirm";
 interface StoredHoliday {
   iso_date: string;
   title_fa: string;
@@ -70,23 +71,20 @@ export default function AdminHolidaysPage() {
     }
   }
 
-  async function remove(isoDate: string) {
-    if (!confirmAction("این تعطیلی حذف شود؟")) return;
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/holidays/${encodeURIComponent(isoDate)}`, {
-        method: "DELETE",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        setError(friendlyError(data.error, "تعطیلی حذف نشد؛ دوباره تلاش کنید"));
-        return;
-      }
-      setError(null);
-      await load();
-    } finally {
-      setBusy(false);
-    }
+  /* Deleting a holiday is undone, not confirmed: the write is held for 5 s and «بازگردانی ثبت»
+     cancels it. */
+  const undoable = useUndoableAction();
+  function remove(isoDate: string, title: string) {
+    undoable.run({
+      message: `تعطیلی «${title}» حذف شد`,
+      send: async () => {
+        const res = await fetch(`/api/admin/holidays/${encodeURIComponent(isoDate)}`, { method: "DELETE" });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+        return res.ok && data.ok ? { ok: true } : { ok: false, error: data.error };
+      },
+      failure: "تعطیلی حذف نشد؛ دوباره تلاش کنید",
+      onDone: () => void load(),
+    });
   }
 
   return (
@@ -107,35 +105,39 @@ export default function AdminHolidaysPage() {
 
         <form onSubmit={add} className="rounded-lg border border-border bg-surface p-4">
           <h2 className="sechead__title mb-3">ثبت تعطیل قمری</h2>
-          <div className="flex flex-wrap items-end gap-2">
-            {/* JalaliDateInput rather than a native date field: the browser's picker is
-                Gregorian, so an owner hunting for عید فطر would be reading the wrong
-                calendar entirely while the field looked Persian. This component shows and
-                returns Jalali while speaking ISO underneath. tests/no-gregorian-dates.test.ts
-                enforces that no rendered file reaches for the native picker. */}
+          <div className="flex flex-col gap-3">
+            {/* A month grid rather than a typed or native date: tap the day. The browser's own
+                picker is Gregorian (tests/no-gregorian-dates.test.ts keeps it out), and a day
+                already recorded wears a dot so a repeat is visible before it is entered. */}
+            <MonthGrid value={iso} onChange={setIso} marked={new Set(rows?.map((r) => r.iso_date) ?? [])} ariaLabel="تاریخ تعطیل" />
+            <div className="flex flex-wrap gap-2" role="group" aria-label="مناسبت">
+              {LUNAR_OCCASIONS.map((o) => (
+                <button
+                  key={o}
+                  type="button"
+                  aria-pressed={title === o}
+                  onClick={() => setTitle(title === o ? "" : o)}
+                  className={`filterchip${title === o ? " filterchip--on" : ""}`}
+                >
+                  <Icon name={title === o ? "check" : "calendar"} size="sm" />
+                  {o}
+                </button>
+              ))}
+            </div>
+            {/* Free text last: only for an occasion that is not in the chips above. */}
             <label className="flex flex-col gap-1 text-xs text-text-muted">
-              تاریخ
-              <JalaliDateInput
-                value={iso}
-                onChange={setIso}
-                required
-                aria-label="تاریخ تعطیل"
-              />
-            </label>
-            <label className="flex flex-1 flex-col gap-1 text-xs text-text-muted">
-              عنوان
+              مناسبت دیگر
               <input
-                value={title}
+                value={isCommonOccasion(title) ? "" : title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="عید فطر"
-                required
-                className="rounded-md border border-border bg-surface-raised px-2 py-1 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
+                placeholder="عنوان"
+                className="rounded-md border border-border bg-surface-raised px-2 py-2 text-sm text-text outline-none placeholder:text-text-faint focus:border-accent"
               />
             </label>
             <button
               type="submit"
-              disabled={busy}
-              className="flex cursor-pointer items-center gap-1 rounded-md border border-border px-3 py-1 text-sm text-text transition-colors hover:border-accent disabled:opacity-50"
+              disabled={busy || !iso || !title.trim()}
+              className="inline-flex min-h-[44px] cursor-pointer items-center justify-center gap-1 rounded-md border border-accent bg-accent px-3 py-1 text-sm text-accent-ink transition-colors disabled:opacity-50"
             >
               <Icon name="plus" size="md" />
               ثبت تعطیلی
@@ -178,7 +180,7 @@ export default function AdminHolidaysPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => void remove(r.iso_date)}
+                    onClick={() => remove(r.iso_date, r.title_fa)}
                     disabled={busy}
                     aria-label={`حذف ${r.title_fa}`}
                     className="flex cursor-pointer items-center gap-1 text-xs text-text-muted transition-colors hover:text-crit disabled:opacity-50"

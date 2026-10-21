@@ -1,4 +1,10 @@
 import { cookies } from "next/headers";
+import CreditDeckEntry from "@/components/flows/CreditDeckEntry";
+import DuplicatesDeckEntry from "@/components/flows/DuplicatesDeckEntry";
+import { duplicatePairs } from "@/lib/repo/crm/duplicates";
+import { pendingForDeck } from "@/lib/repo/creditApprovals";
+import ActionCards from "@/components/mobile/ActionCard";
+import { suggestionsFor } from "@/lib/repo/suggestions";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
@@ -62,6 +68,15 @@ export default async function SalesTodayPage() {
         roleLabel={roleLabel(session.role)}
         dateIso={new Date().toISOString()}
       />
+
+      {MANAGE_ROLES.includes(session.role) && (
+        <div className="mb-3 flex flex-wrap gap-2">
+          <CreditDeckEntry approvals={pendingForDeck(session.organizationId)} />
+          <DuplicatesDeckEntry pairs={duplicatePairs(session).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
+        </div>
+      )}
+
+      <ActionCards cards={suggestionsFor(session)} />
 
       <Briefing data={data} variant="meridian" />
     </div>    </>

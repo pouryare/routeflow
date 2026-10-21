@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import Keypad from "@/components/mobile/Keypad";
 import { faNum } from "@/lib/format";
 import type { ResolvedOption } from "@/lib/crm/flows/types";
 
@@ -26,18 +27,15 @@ export default function AmountStep({ prefill, chips, option, label, unit = "تو
   const valid = Number.isFinite(n) && (allowZero ? n >= 0 : n > 0);
   return (
     <div className="tf-amount">
-      <input
-        className="tf-input ltr"
-        inputMode={decimal ? "decimal" : "numeric"}
-        aria-label={label}
+      <Keypad
         value={text}
-        onChange={(e) => {
-          const raw = e.target.value.replace(decimal ? /[^\d.]/g : /[^\d]/g, "");
-          setText(decimal ? raw.replace(/^(\d*\.?\d*).*$/, "$1") : raw);
-        }}
-        autoFocus
+        onChange={setText}
+        onEnter={() => valid && submit(option.id, String(n))}
+        decimal={decimal}
+        unit={unit}
+        suggested={!decimal && unit === "تومان" && n > 0 ? n : undefined}
       />
-      <p className="tf-sub">{valid ? `${faNum(n, { maximumFractionDigits: 2 })} ${unit}` : "عدد را وارد کنید"}</p>
+      <p className="tf-sub" aria-label={label}>{valid ? `${faNum(n, { maximumFractionDigits: 2 })} ${unit}` : "عدد را وارد کنید"}</p>
       {chips?.length ? (
         <div className="tf-grid">
           {chips.map((c) => (

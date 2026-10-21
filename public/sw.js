@@ -140,13 +140,35 @@ self.addEventListener("push", (event) => {
       body: data.body,
       icon: "/icon.svg",
       badge: "/icon.svg",
-      data: { url: data.url },
+      data: { url: data.url, act: data.act || null },
+      // A notification about exactly one thing carries one button for it (see lib/pushActions.ts).
+      // Browsers without action support ignore `actions` and the tap opens the app as before.
+      actions: data.act ? [{ action: "act", title: data.act.title }] : [],
     })
   );
 });
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
+  const act = event.notification.data?.act;
+  // The button: do the one thing with the signed-in cookie, and say so. Only relative /api/ paths,
+  // mirrored by isAllowedPushRequest in lib/pushActions.ts. If it fails, open the app instead.
+  if (event.action === "act" && act && /^\/api\/[A-Za-z0-9/_-]+$/.test(act.request?.url || "")) {
+    event.waitUntil(
+      fetch(act.request.url, {
+        method: act.request.method,
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(act.request.body),
+      })
+        .then((res) => {
+          if (!res.ok) throw new Error("refused");
+          return self.registration.showNotification(act.done, { icon: "/icon.svg", tag: "meridian-act", silent: true });
+        })
+        .catch(() => self.clients.openWindow(event.notification.data?.url || "/"))
+    );
+    return;
+  }
   const url = event.notification.data?.url || "/";
   event.waitUntil(
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((clientList) => {

@@ -5,6 +5,8 @@ import AcctTable, { CELL, NUM, CostIncompleteNote } from "@/components/accountin
 import { requireAccounting } from "@/lib/accountingGate";
 import { incomeStatement, listPeriods } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
+import SummaryCards from "@/components/accounting/SummaryCards";
+import { incomeStatementCards } from "@/lib/accountingCards";
 
 export const dynamic = "force-dynamic";
 
@@ -63,6 +65,10 @@ export default async function IncomeStatementPage({
       {/* Honesty requirement 2, on the face of the screen. */}
       {!is.costComplete ? <CostIncompleteNote /> : null}
 
+      <div className="md:hidden">
+        <SummaryCards ariaLabel="سود و زیان" cards={incomeStatementCards(is)} />
+      </div>
+      <div className="hidden md:block">
       <AcctTable
         head={["شرح", "تومان"]}
         foot={
@@ -78,6 +84,7 @@ export default async function IncomeStatementPage({
         {is.expenses.map((e) => line(`هزینه — ${e.nameFa}`, -e.amountToman))}
         {is.totalExpensesToman ? line("جمع هزینه‌ها", -is.totalExpensesToman) : null}
       </AcctTable>
+      </div>
     </>
   );
 }

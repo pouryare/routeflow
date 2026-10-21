@@ -4,6 +4,9 @@ import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { expensesByCategory, expensesByEnterer } from "@/lib/repo/reports";
 import { faNum } from "@/lib/format";
+import ExpenseEntry from "@/components/flows/ExpenseEntry";
+import { expenseCategories } from "@/lib/repo/ledgerPostings";
+import { listSuppliers } from "@/lib/repo/suppliers";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +32,11 @@ export default async function ExpensesPage() {
     amountToman: number;
   }[];
 
+  /* Plain objects: rows straight from the database have a null prototype, which React refuses to
+     pass from a server component to a client one. */
+  const categories = expenseCategories().map((c) => ({ id: c.id, nameFa: c.nameFa }));
+  const suppliers = listSuppliers(organizationId).map((x) => x.name);
+
   const total = byCategory.reduce((s, r) => s + r.amountToman, 0);
 
   return (
@@ -42,6 +50,10 @@ export default async function ExpensesPage() {
             : "هنوز هزینه‌ای ثبت نشده است."
         }
       />
+
+      <div className="mb-4 flex">
+        <ExpenseEntry categories={categories} suppliers={suppliers} />
+      </div>
 
       <section className="mb-6">
         <SectionHead title="بر اساس حساب" as="h3" />

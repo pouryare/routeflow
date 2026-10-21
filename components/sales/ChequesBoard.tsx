@@ -1,5 +1,11 @@
 "use client";
 
+import { chequeBulk, toggleId } from "@/lib/selection";
+import DecisionDeck from "@/components/mobile/DecisionDeck";
+import { CHEQUE_CHOICES, chequeRequest, chequesDue } from "@/lib/decisions";
+import { addDaysIso } from "@/lib/flows/dates";
+import SwipeRow from "@/components/mobile/SwipeRow";
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { isToman, toToman } from "@/lib/money";
 import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -7,7 +13,7 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
-import { faToman } from "@/lib/format";
+import { faNum, faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
 
@@ -116,6 +122,84 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     } else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید"));
   }
 
+  /* A swipe moves a cheque one step and ends in the 5 s undo (the buttons below keep the plain,
+     immediate path). Only the two moves a collector makes all day are swipes: start is the good
+     outcome, end is the bounce; anything with a form (replacing) stays a button. */
+  const undoable = useUndoableAction();
+  const SWIPE: Partial<Record<ChequeStatus, { start: ChequeStatus; end: ChequeStatus }>> = {
+    in_hand: { start: "deposited", end: "bounced" },
+    deposited: { start: "cleared", end: "bounced" },
+  };
+  const swipeAction = (c: Cheque, to: ChequeStatus, icon: "check" | "x", tone: "good" | "bad") => ({
+    label: CHEQUE_STATUS_LABEL[to],
+    icon,
+    tone,
+    run: () =>
+      undoable.run({
+        message: `چک ${c.cheque_no} · «${CHEQUE_STATUS_LABEL[to]}» شد`,
+        send: async () => {
+          const res = await fetch(`/api/cheques/${c.id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "advance", to }),
+          });
+          return res.ok ? { ok: true } : { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+        },
+        failure: "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید",
+        onDone: () => void load(),
+      }),
+  });
+
+  /* «تصمیم‌گیری سریع»: the cheques due within a week as a deck, one verdict per card. The deck
+     gets a snapshot taken when it opens, so it does not reshuffle as verdicts refresh the board. */
+  const [deck, setDeck] = useState<{ key: number; open: boolean; items: Cheque[] }>({ key: 0, open: false, items: [] });
+  const openDeck = () =>
+    setDeck((d) => ({ key: d.key + 1, open: true, items: chequesDue(cheques ?? [], addDaysIso(today, 7)) }));
+  const decideCheque = (c: Cheque, to: string) =>
+    undoable.run({
+      message: `چک ${c.cheque_no} · «${CHEQUE_STATUS_LABEL[to as ChequeStatus]}» شد`,
+      send: async () => {
+        const res = await fetch(`/api/cheques/${c.id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(chequeRequest(to)),
+        });
+        return res.ok ? { ok: true } : { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+      },
+      failure: "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید",
+      onDone: () => void load(),
+    });
+
+  /* Selection mode: a long press on a card (or «انتخاب چند چک») starts it; a tap then toggles a card
+     and the bar moves all the picked cheques one step in a single undoable action. */
+  const [picked, setPicked] = useState<Set<number> | null>(null);
+  const bulk = (to: ChequeStatus) => {
+    const { ids, skipped } = chequeBulk(cheques ?? [], picked ?? new Set(), to);
+    if (ids.length === 0) {
+      setError("هیچ‌کدام از چک‌های انتخاب‌شده به این وضعیت نمی‌روند");
+      return;
+    }
+    undoable.run({
+      message: `${faNum(ids.length)} چک «${CHEQUE_STATUS_LABEL[to]}» شد${skipped ? ` · ${faNum(skipped)} مورد انجام نشد` : ""}`,
+      send: async () => {
+        for (const id of ids) {
+          const res = await fetch(`/api/cheques/${id}`, {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "advance", to }),
+          });
+          if (!res.ok) return { ok: false, error: ((await res.json().catch(() => null)) as { error?: string } | null)?.error };
+        }
+        return { ok: true };
+      },
+      failure: "تغییر وضعیت چک‌ها کامل انجام نشد؛ دوباره تلاش کنید",
+      onDone: () => {
+        setPicked(null);
+        void load();
+      },
+    });
+  };
+
   const byStatus = (s: ChequeStatus) => (cheques ?? []).filter((c) => c.status === s);
 
   return (
@@ -130,6 +214,64 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
         <Icon name="plus" size="md" />
         ثبت چک جدید
       </button>
+
+      <button
+        type="button"
+        onClick={openDeck}
+        className="inline-flex items-center justify-center gap-[var(--space-2)] rounded border border-border px-4 py-3 text-base text-text md:hidden"
+      >
+        <Icon name="check" size="md" />
+        تصمیم‌گیری سریع چک‌های نزدیک
+      </button>
+      {deck.key > 0 && (
+        <DecisionDeck
+          key={deck.key}
+          open={deck.open}
+          title="چک‌های نزدیک به سررسید"
+          items={deck.items}
+          keyOf={(c) => c.id}
+          choices={CHEQUE_CHOICES}
+          onDecide={decideCheque}
+          onClose={() => setDeck((d) => ({ ...d, open: false }))}
+          render={(c) => (
+            <>
+              <strong>{customerName(c.customer_id)}</strong>
+              <span>{faToman(c.amount_toman)}</span>
+              <span className="text-text-muted">
+                چک {c.cheque_no}{c.bank_name ? ` · ${c.bank_name}` : ""} · سررسید {faJalaliDate(c.due_date)}
+                {c.due_date < today ? " (گذشته)" : ""}
+              </span>
+            </>
+          )}
+        />
+      )}
+
+      {picked === null ? (
+        <button
+          type="button"
+          onClick={() => setPicked(new Set())}
+          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded border border-border px-4 py-3 text-base text-text md:hidden"
+        >
+          <Icon name="check" size="md" />
+          انتخاب چند چک
+        </button>
+      ) : (
+        <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 rounded border border-accent bg-surface p-2" role="status">
+          <span className="text-sm">{faNum(picked.size)} چک انتخاب شد</span>
+          <button type="button" disabled={picked.size === 0} onClick={() => bulk("deposited")} className="touch rounded border border-border px-3 text-sm disabled:opacity-40">
+            <Icon name="check" size="sm" />
+            به بانک سپرده شد
+          </button>
+          <button type="button" disabled={picked.size === 0} onClick={() => bulk("bounced")} className="touch rounded border border-border px-3 text-sm text-crit disabled:opacity-40">
+            <Icon name="x" size="sm" />
+            برگشت خورد
+          </button>
+          <button type="button" onClick={() => setPicked(null)} className="touch rounded px-3 text-sm text-text-muted">
+            <Icon name="arrow-right" size="sm" />
+            پایان انتخاب
+          </button>
+        </div>
+      )}
 
       <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <select
@@ -183,7 +325,20 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             {byStatus(col).map((c) => {
               const overdue = col === "in_hand" && c.due_date < today;
               return (
-                <div key={c.id} className="rounded border border-border bg-bg p-2 text-sm">
+                <div key={c.id} className="overflow-hidden rounded border border-border bg-bg text-sm">
+                  <SwipeRow
+                    ownButtons={false}
+                    onLongPress={() => setPicked((p) => toggleId(p ?? new Set(), c.id))}
+                    start={!picked && SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.start, "check", "good") : undefined}
+                    end={!picked && SWIPE[c.status] ? swipeAction(c, SWIPE[c.status]!.end, "x", "bad") : undefined}
+                  >
+                  <div className="p-2" onClick={picked ? () => setPicked(toggleId(picked, c.id)) : undefined}>
+                  {picked && (
+                    <span className="mb-1 inline-flex items-center gap-1 text-xs text-accent" aria-live="polite">
+                      <Icon name={picked.has(c.id) ? "check" : "plus"} size="sm" />
+                      {picked.has(c.id) ? "انتخاب شده" : "برای انتخاب لمس کنید"}
+                    </span>
+                  )}
                   <div className="flex justify-between">
                     <span>{customerName(c.customer_id)}</span>
                     <span className="font-mono">{faToman(c.amount_toman)}</span>
@@ -197,15 +352,17 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                       <button
                         key={to}
                         onClick={() => advance(c.id, to)}
-                        className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent"
+                        className="rounded border border-border px-2 py-0.5 touch text-xs hover:border-accent"
                       >
                         <Icon name="wallet" size="md" />
                         {`تغییر وضعیت به «${CHEQUE_STATUS_LABEL[to]}»`}
                       </button>
                     ))}
                   </div>
+                  </div>
+                  </SwipeRow>
                   {replacing?.id === c.id && (
-                    <div className="mt-2 flex flex-col gap-2 rounded border border-border p-2">
+                    <div className="m-2 flex flex-col gap-2 rounded border border-border p-2">
                       <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک جایگزین<input
                         className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
                        

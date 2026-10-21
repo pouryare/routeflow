@@ -20,6 +20,8 @@ export type OfflineOp =
   | "delivery.start"
   | "delivery.complete"
   | "payment.record"
+  | "cheque.record"
+  | "complaint.record"
   | "customer.capture"
   | "order.approve"
   | "order.plan"
@@ -35,6 +37,8 @@ export const OFFLINE_OPS: Record<OfflineOp, { class: OfflineClass; label_fa: str
   "delivery.start": { class: "fact", label_fa: "شروع مسیر" },
   "delivery.complete": { class: "fact", label_fa: "ثبت تحویل درِ محل" },
   "payment.record": { class: "fact", label_fa: "ثبت دریافت وجه" },
+  "cheque.record": { class: "fact", label_fa: "ثبت دریافت چک" },
+  "complaint.record": { class: "fact", label_fa: "ثبت شکایت" },
   "customer.capture": { class: "fact", label_fa: "ثبت مشتری تازه" },
   "order.approve": { class: "claim", label_fa: "تأیید سفارش" },
   "order.plan": { class: "claim", label_fa: "برنامه‌ریزی سفارش روی مسیر" },

@@ -1,1 +1,56 @@
-{}
+{
+  "components/sales/CatalogueEditor.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "Product catalogue: reference data typed once at a desk, not a mobile path (principles section 8)."
+  },
+  "components/sales/MarginHelperDrawer.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "Pricing helper for the owner at a desk while setting prices."
+  },
+  "components/sales/PaymentsPanel.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "The remaining selects are in the desk form, which is hidden below 768px; the phone path is PaymentFlow and the filters are chips."
+  },
+  "components/sales/ChequesBoard.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "The remaining select is in the desk form (hidden below 768px); the phone path is PaymentFlow, swipe rows and the cheque deck."
+  },
+  "components/sales/ComplaintsPanel.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "The selects are in the desk form (hidden below 768px); the phone path is ComplaintFlow and the complaint deck."
+  },
+  "components/GroupTerritoryEditor.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "Assigning districts to groups: admin configuration done at a desk."
+  },
+  "components/DistrictEditor.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "Editing a district's group and details: admin configuration done at a desk."
+  },
+  "app/(shell)/facilities/page.tsx": {
+    "rules": [
+      "select"
+    ],
+    "reason": "Facility administration at a desk; creating a place on a phone is PlaceFlow."
+  },
+  "components/meridian/JalaliDateInput.tsx": {
+    "rules": [
+      "nativeDate"
+    ],
+    "reason": "The one component that owns the browser's date field (shown and returned as Jalali). Every other file goes through it, and the rules script limits who may import it."
+  }
+}

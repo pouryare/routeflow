@@ -4,7 +4,11 @@ import { canReachEntity, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/reminders/[id]">) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  /* Resolving a reminder is also what the «انجام شد» button on a push notification does, and the
+     recipient of a due customer reminder is that customer's salesperson, so sellers may resolve
+     (only that: DELETE stays with managers). canReachEntity below still limits it to customers
+     they can reach. */
+  const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "field_rep"]);
   if (!guard.ok) return guard.response;
 
   const { id } = await ctx.params;

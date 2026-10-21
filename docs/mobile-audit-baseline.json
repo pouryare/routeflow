@@ -1,9 +1,21 @@
 {
   "total": {
-    "select": 46,
-    "nativeDate": 1,
-    "textField": 106,
-    "tinyTarget": 32,
-    "confirmDialog": 1
-  }
+    "select": 0,
+    "nativeDate": 0,
+    "textField": 96,
+    "tinyTarget": 0,
+    "confirmDialog": 0
+  },
+  "jalaliImporters": [
+    "components/AddReminder.tsx",
+    "components/leads/LeadRunPlannerTabFlow.tsx",
+    "components/mobile/DayChips.tsx",
+    "components/pocket/QuickAdd.tsx",
+    "components/sales/BatchesPanel.tsx",
+    "components/sales/ChequesBoard.tsx",
+    "components/sales/PaymentsPanel.tsx",
+    "components/sales/RoutingPlanner.tsx",
+    "components/tapflow/DateStep.tsx",
+    "components/tapflow/TapFlow.tsx"
+  ]
 }

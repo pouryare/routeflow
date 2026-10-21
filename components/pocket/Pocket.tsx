@@ -8,6 +8,7 @@ import type { Pocket as PocketData, PocketTeamMember } from "@/lib/repo/pocket";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
+import SwipeRow from "@/components/mobile/SwipeRow";
 import ReminderFlow from "@/components/flows/ReminderFlow";
 import { useIsNarrow } from "@/lib/useIsNarrow";
 import AfterCallFlow from "@/components/crm/AfterCallFlow";
@@ -69,8 +70,16 @@ export default function Pocket({
   }
 
   const row = (c: TaskCard) => (
-    <div
+    <SwipeRow
       key={c.id}
+      ownButtons={false}
+      start={
+        c.customer && c.status === "open" && c.kind !== "order" && c.kind !== "delivery_retry"
+          ? { label: "ثبت نتیجه", icon: "check", run: () => setFlow({ customerId: c.customer!.id, taskId: c.id, open: true }) }
+          : undefined
+      }
+    >
+    <div
       style={{
         display: "flex",
         gap: 11,
@@ -153,6 +162,7 @@ export default function Pocket({
         </div>
       </div>
     </div>
+    </SwipeRow>
   );
 
   const group = (title: string, cards: TaskCard[]) =>

@@ -129,6 +129,32 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
+## F35. Force a new password on first sign-in
+
+**What:** an account created from the phone (or the desk) gets a one-time password that is shown once and shared. Nothing makes the person change it, so it stays their password until they do.
+
+**Why parked:** there is no `must_change_password` state anywhere today (users table, sign-in, session); adding it touches login, the session cookie and every route that assumes a signed-in user can proceed.
+
+**First slice:** a boolean on the user set at creation and on admin password reset, a redirect to a «رمز تازه» screen from the shell layout while it is set, cleared when the user saves a new password.
+
+---
+
+## F36. Duplicate customers as a decision deck — built
+
+A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page is one card, «ادغام شود» or «دو مشتری جدا هستند», with the 5 s undo. `GET/POST /api/crm/businesses/duplicates`, `lib/repo/crm/duplicates.ts`. The record with more orders survives, except that the one owning accounting lines always does (the ledger is append-only, so a pair where both have lines is not offered). Merge re-points orders, payments, complaints, contacts, activities, reminders, visit plans, tasks, alerts and photos, and records the merge in the survivor's history. «جدا هستند» is remembered in `crm_not_duplicates`.
+
+**Still open:** matching by name/position only (phone and Instagram today); no nightly pairing job.
+
+---
+
+## F37. Decisions from the mobile-first rollout
+
+- **Expense receipt photo — built.** Own table `expense_receipts` (one per journal), photo step in the expense flow, receipt button on the journal; kept off `photos` because that table's scoping is customer/district.
+- **Skip a driver stop — built as «later»** (`deferStop`, swipe, button, undo).
+- **Offline writes — cheques and complaints built.** Reminders and notes stay online-only.
+- **Reminder push buttons — built.** `notifications.ref_id` carries the reminder; a single-reminder push offers «انجام شد».
+- **Swipe on order cards — built** (draft cards on phones; drag stays for desktop).
+- **Planner map selection — built** (pick places from the map into the day).
 ## F6. Live driver tracking and customer ETA
 
 **What:** drivers' positions on the map in real time, and an automatic "your delivery arrives in about 15 minutes" message (SMS, Telegram or WhatsApp) to the customer.

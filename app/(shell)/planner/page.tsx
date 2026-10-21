@@ -33,6 +33,7 @@ import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { Icon } from "@/components/meridian/Icon";
 
+const PlannerPickMap = dynamic(() => import("@/components/PlannerPickMap"), { ssr: false });
 const PlannerRouteMap = dynamic(() => import("@/components/PlannerRouteMap"), { ssr: false });
 
 const WEEKDAYS = ["یکشنبه", "دوشنبه", "سه‌شنبه", "چهارشنبه", "پنجشنبه", "جمعه", "شنبه"];
@@ -146,6 +147,9 @@ export default function PlannerPage() {
   }, []);
 
   const [selectedDate, setSelectedDate] = useState(() => toDateStr(days[0]));
+  /* Below md the plan list and the route map are two panes behind a segmented control (one screen
+     of content at a time); from md up both show, as before. */
+  const [pane, setPane] = useState<"list" | "map">("list");
 
   // /planner?date=2026-08-24 -- "here is tomorrow's round".
   //
@@ -298,6 +302,31 @@ export default function PlannerPage() {
       .map((lead): AddCandidate => ({ kind: "lead", lead }));
     return [...customerMatches, ...leadMatches];
   }, [addQuery, customers, leads, dayPlans]);
+
+  /* The pins on the pick map: every customer and saved lead place with a position that is not already
+     in the selected day. Keys are the ones VisitPlanFlow uses ("c" customer, "l" lead place). */
+  const pickCandidates = useMemo(() => {
+    const already = new Set(dayPlans.map((p) => `${p.entity_type}:${p.entity_id}`));
+    return [
+      ...customers
+        .filter((c) => c.lat !== null && c.lng !== null && !already.has(`customer:${c.id}`))
+        .map((c) => ({ key: `c${c.id}`, name: c.business_name, lat: c.lat as number, lng: c.lng as number })),
+      ...leads
+        .filter((l) => l.lat !== null && l.lng !== null && !already.has(`lead_location:${l.id}`))
+        .map((l) => ({ key: `l${l.id}`, name: l.name, lat: l.lat as number, lng: l.lng as number })),
+    ];
+  }, [customers, leads, dayPlans]);
+
+  async function addPicked(keys: string[]) {
+    for (const k of keys) {
+      await fetch("/api/visit-plans", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_type: k.startsWith("l") ? "lead_location" : "customer", entity_id: Number(k.slice(1)), planned_date: selectedDate }),
+      });
+    }
+    await loadWeek();
+  }
 
   async function addToPlan(customerId: number) {
     try {
@@ -772,6 +801,22 @@ export default function PlannerPage() {
           })}
         </div>
 
+        <div className="no-print flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1 md:hidden" role="group" aria-label="نمایش برنامه">
+          {([["list", "فهرست برنامه", "calendar"], ["map", "نقشه مسیر", "map-pin"]] as const).map(([id, label, icon]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={pane === id}
+              onClick={() => setPane(id)}
+              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] ${pane === id ? "bg-accent font-medium text-accent-ink" : "text-text-muted"}`}
+            >
+              <Icon name={icon} size="md" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className={pane === "map" ? "hidden md:contents" : "contents"}>
         <section className="no-print rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <h2 className="sechead__title mb-2">
             افزودن به برنامه
@@ -1114,9 +1159,17 @@ export default function PlannerPage() {
             </>
           )}
         </section>
+        </div>
 
-        <div className="no-print">
-          <PlannerRouteMap stops={routeStops} facilities={facilities} />
+        {/* Keyed by the pane: a map first mounted inside a hidden pane has no size, so switching
+            to it remounts the map in a visible container instead of leaving a grey box. */}
+        <div className={`no-print ${pane === "list" ? "hidden md:block" : ""}`}>
+          <PlannerRouteMap key={pane} stops={routeStops} facilities={facilities} />
+          {/* Choosing visits on the map: one pin each, or the nearest N to where the day starts. */}
+          <div className="mt-4">
+            <h2 className="sechead__title mb-2">انتخاب مکان‌ها از روی نقشه</h2>
+            <PlannerPickMap key={`pick-${pane}-${selectedDate}`} candidates={pickCandidates} origin={origin} dayLabel={dayLabel(new Date(selectedDate))} onAdd={addPicked} />
+          </div>
         </div>
       </div>
     </div>    </>

@@ -1,5 +1,6 @@
 "use client";
 
+import FilterChips from "@/components/mobile/FilterChips";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -131,7 +132,7 @@ export default function LeadsPage() {
             {posStatus === "active" && position ? (
               <span className="text-good">موقعیت شما زنده است — فهرست با حرکت شما به‌روز می‌شود (دقت {faNum(Math.round(position.accuracy))} متر)</span>
             ) : posStatus === "denied" ? (
-              <><span className="text-crit">{posError ?? "دسترسی به موقعیت داده نشده"}</span><span className="text-text-faint">— بدون آن، ترتیب «نزدیک‌ترین» ممکن نیست.</span><button onClick={retryPosition} className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 text-text-muted hover:border-accent hover:text-accent">
+              <><span className="text-crit">{posError ?? "دسترسی به موقعیت داده نشده"}</span><span className="text-text-faint">— بدون آن، ترتیب «نزدیک‌ترین» ممکن نیست.</span><button onClick={retryPosition} className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-2 py-0.5 touch text-text-muted hover:border-accent hover:text-accent">
               <Icon name="undo" size="md" />
               تلاش دوباره</button></>
             ) : <span className="text-text-muted">در حال یافتن موقعیت شما…</span>}
@@ -208,7 +209,7 @@ export default function LeadsPage() {
                 )}
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex min-w-0 max-w-full flex-wrap items-center gap-2">
               <button
                 onClick={() => {
                   const ids = visible.filter(({ loc }) => loc.lat !== null && loc.lng !== null).map(({ loc }) => loc.id);
@@ -246,20 +247,27 @@ export default function LeadsPage() {
                   }
                 />
               )}
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-                aria-label="ترتیب"
-              >
-                <option value="nearest">نزدیک‌ترین</option>
-                <option value="score">امتیاز</option>
-                <option value="name">نام</option>
-                <option value="newest">تازه‌ترین</option>
-                <option value="status">وضعیت</option>
-                <option value="route">ترتیب مسیر</option>
-                <option value="priority">اولویت</option>
-              </select>
+              <FilterChips
+                groups={[
+                  {
+                    id: "sort",
+                    label: "ترتیب",
+                    mode: "single",
+                    neutral: "nearest",
+                    value: sortMode,
+                    onChange: (v) => setSortMode(v as SortMode),
+                    options: [
+                      { id: "nearest", label: "نزدیک‌ترین" },
+                      { id: "score", label: "امتیاز" },
+                      { id: "name", label: "نام" },
+                      { id: "newest", label: "تازه‌ترین" },
+                      { id: "status", label: "وضعیت" },
+                      { id: "route", label: "ترتیب مسیر" },
+                      { id: "priority", label: "اولویت" },
+                    ],
+                  },
+                ]}
+              />
             </div>
           </div>
 
@@ -297,7 +305,7 @@ export default function LeadsPage() {
           <RouteSection
             run={run} runStops={runStops} totalKm={runTotalKm} navAppId={navAppId} routeHref={runHref}
             navigateHref={(s) => navigateUrl(navAppId, { lat: s.lat, lng: s.lng }, s.name)}
-            onMove={moveInRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
+            onMove={moveInRun} onReorder={updateRun} onRemove={removeFromRun} onClear={clearRun} onOptimise={optimiseRun} optimiseGain={optimiseGain} busy={busy}
             proposedDays={dayGroups}
             onTapFlow={undefined}
             refuseAssigned={refuseAssigned}
@@ -329,7 +337,7 @@ export default function LeadsPage() {
             openListName={activeList?.name ?? null}
           />
 
-          <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} />
+          <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} onAddMany={appendToRun} onClear={clearRun} />
 
           <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
         </div>

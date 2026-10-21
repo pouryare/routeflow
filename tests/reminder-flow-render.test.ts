@@ -17,7 +17,7 @@ describe("ReminderFlow sheet", () => {
     const h = html({});
     expect(h).toContain("کی یادآوری شود؟");
     for (const d of ["امروز", "فردا", "دو روز دیگر", "یک هفته دیگر"]) expect(h).toContain(d);
-    expect(h).toContain("یا تاریخ دیگری را انتخاب کنید");
+    expect(h).toContain("یا روز دیگری را انتخاب کنید");
   });
   it("a note starts straight at the words", () => {
     const h = html({ kind: "note" });
