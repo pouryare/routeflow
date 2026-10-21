@@ -1,8 +1,10 @@
+import { boundedText, isDayWithin, isQuantity, isTimestampWithin } from "@/lib/inputChecks";
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import {
   listMovements,
   recordMovement,
+  onHand,
   defaultFacilityId,
   MANUAL_MOVEMENT_KINDS,
   StockError,
@@ -50,9 +52,38 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Quantities in whole base units up to a billion and three decimals; a date that parses and is not
+  // in the future; bounded notes. ±1e15, "zz" and a 100 KB note were all recorded.
+  if (
+    !isQuantity(body.base_qty, 1_000_000_000) ||
+    (body.occurred_at != null && !isTimestampWithin(body.occurred_at, 5 * 366, 1)) ||
+    (body.notes != null && boundedText(body.notes, 2000) === null)
+  ) {
+    return NextResponse.json({ ok: false, error: "مقدار، تاریخ یا یادداشت حرکت انبار معتبر نیست" }, { status: 400 });
+  }
+
+  /* A manual movement may not take stock below zero. Deliveries and receipts keep their tolerance
+     for the books lagging the paper (see `onHand`), but a person typing an adjustment, transfer or
+     sample is asserting a quantity that exists; a count that overshoots is a typo or a hidden loss,
+     and the physical-count kind exists to correct a wrong total. */
+  const facilityId = body.facility_id ?? defaultFacilityId(guard.session.organizationId);
+  if (Number(body.base_qty) < 0) {
+    const have = onHand(guard.session.organizationId, {
+      product_id: Number(body.product_id),
+      facility_id: facilityId,
+      ...(body.batch_id != null ? { batch_id: body.batch_id } : {}),
+    });
+    if (have + Number(body.base_qty) < 0) {
+      return NextResponse.json(
+        { ok: false, error: `موجودی کافی نیست؛ موجودی فعلی ${have} است` },
+        { status: 409 }
+      );
+    }
+  }
+
   try {
     const id = recordMovement(guard.session.organizationId, {
-      facility_id: body.facility_id ?? defaultFacilityId(guard.session.organizationId),
+      facility_id: facilityId,
       product_id: Number(body.product_id),
       batch_id: body.batch_id ?? null,
       base_qty: Number(body.base_qty),

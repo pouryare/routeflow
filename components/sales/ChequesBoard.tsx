@@ -1,5 +1,6 @@
 "use client";
 
+import { isToman, toToman } from "@/lib/money";
 import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
@@ -60,8 +61,16 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
   async function record(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    const amt = Number(form.amount_toman.replace(/[^\d]/g, ""));
-    if (!form.customer_id || !Number.isInteger(amt) || amt <= 0 || !form.cheque_no) {
+    const amt = toToman(form.amount_toman);
+    if (/[.٫]/.test(form.amount_toman)) {
+      setError("مبلغ را به تومان و بدون اعشار وارد کنید");
+      return;
+    }
+    if (amt !== null && !isToman(amt)) {
+      setError("مبلغ بیش از حد مجاز است");
+      return;
+    }
+    if (!form.customer_id || amt === null || amt <= 0 || !form.cheque_no) {
       setError("مشتری، مبلغ و شمارهٔ چک لازم است");
       return;
     }
@@ -86,21 +95,25 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     void load();
   }
 
-  async function advance(id: number, to: ChequeStatus) {
-    let replacement: unknown;
-    if (to === "replaced") {
-      const cheque_no = window.prompt("شمارهٔ چک جایگزین؟");
-      if (!cheque_no) return;
-      const due_date = window.prompt("سررسید چک جایگزین (YYYY-MM-DD)؟", today) ?? today;
-      replacement = { cheque_no, due_date };
+  /** The replacement cheque being entered on one card. It is a form on the card, not a
+   *  browser prompt: a prompt cannot show the Shamsi date picker, so it asked for an ISO date
+   *  to be typed by hand. */
+  const [replacing, setReplacing] = useState<{ id: number; cheque_no: string; due_date: string } | null>(null);
+
+  async function advance(id: number, to: ChequeStatus, replacement?: { cheque_no: string; due_date: string }) {
+    if (to === "replaced" && !replacement) {
+      setReplacing({ id, cheque_no: "", due_date: today });
+      return;
     }
     const res = await fetch(`/api/cheques/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "advance", to, replacement }),
     });
-    if (res.ok) void load();
-    else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید"));
+    if (res.ok) {
+      setReplacing(null);
+      void load();
+    } else setError(friendlyError((await res.json().catch(() => null))?.error, "تغییر وضعیت چک انجام نشد؛ دوباره تلاش کنید"));
   }
 
   const byStatus = (s: ChequeStatus) => (cheques ?? []).filter((c) => c.status === s);
@@ -131,30 +144,30 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
             </option>
           ))}
         </select>
-        <input
-          className="rounded border border-border bg-bg p-2 text-left font-mono text-sm"
-          placeholder="مبلغ (تومان)"
+        <label className="flex flex-col gap-1 text-xs text-text-muted">مبلغ (تومان)<input
+          className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
+         
           inputMode="numeric"
           value={form.amount_toman}
           onChange={(e) => setForm((f) => ({ ...f, amount_toman: e.target.value }))}
-        />
-        <input
-          className="rounded border border-border bg-bg p-2 text-sm"
-          placeholder="شمارهٔ چک"
+        /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک<input
+          className="rounded border border-border bg-bg p-2 text-sm w-full"
+         
           value={form.cheque_no}
           onChange={(e) => setForm((f) => ({ ...f, cheque_no: e.target.value }))}
-        />
-        <input
-          className="rounded border border-border bg-bg p-2 text-sm"
-          placeholder="بانک"
+        /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">بانک<input
+          className="rounded border border-border bg-bg p-2 text-sm w-full"
+         
           value={form.bank_name}
           onChange={(e) => setForm((f) => ({ ...f, bank_name: e.target.value }))}
-        />
-        <label className="flex items-center gap-2 text-xs text-text-muted">
+        /></label>
+        <label className="col-span-2 flex items-center gap-2 text-xs text-text-muted md:col-span-1">
           سررسید
           <JalaliDateInput value={form.due_date} onChange={(iso) => setForm((f) => ({ ...f, due_date: iso }))} aria-label="تاریخ سررسید" />
         </label>
-        <button type="submit" className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white">
+        <button type="submit" className="col-span-2 inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-2 text-sm text-white md:col-span-1">
           <Icon name="check" size="md" />
           ثبت چک
         </button>
@@ -187,10 +200,47 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
                         className="rounded border border-border px-2 py-0.5 text-xs hover:border-accent"
                       >
                         <Icon name="wallet" size="md" />
-                        {CHEQUE_STATUS_LABEL[to]}
+                        {`تغییر وضعیت به «${CHEQUE_STATUS_LABEL[to]}»`}
                       </button>
                     ))}
                   </div>
+                  {replacing?.id === c.id && (
+                    <div className="mt-2 flex flex-col gap-2 rounded border border-border p-2">
+                      <label className="flex flex-col gap-1 text-xs text-text-muted">شمارهٔ چک جایگزین<input
+                        className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full"
+                       
+                        value={replacing.cheque_no}
+                        onChange={(e) => setReplacing({ ...replacing, cheque_no: e.target.value })}
+                      /></label>
+                      <label className="flex items-center gap-1 text-xs text-text-muted">
+                        سررسید چک جایگزین
+                        <JalaliDateInput
+                          value={replacing.due_date}
+                          onChange={(iso) => setReplacing({ ...replacing, due_date: iso })}
+                          aria-label="سررسید چک جایگزین"
+                        />
+                      </label>
+                      <div className="flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          disabled={!replacing.cheque_no.trim() || !replacing.due_date}
+                          onClick={() => void advance(c.id, "replaced", { cheque_no: replacing.cheque_no.trim(), due_date: replacing.due_date })}
+                          className="rounded bg-accent px-3 py-1 text-xs text-white disabled:opacity-50"
+                        >
+                          <Icon name="check" size="sm" />
+                          ثبت چک جایگزین
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReplacing(null)}
+                          className="rounded border border-border px-3 py-1 text-xs"
+                        >
+                          <Icon name="x" size="sm" />
+                          انصراف از جایگزینی چک
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })}

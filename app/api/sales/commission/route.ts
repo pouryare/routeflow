@@ -9,7 +9,8 @@ import {
   managerStatementFor,
   readManagerOverrides,
 } from "@/lib/managerCommissionLedger";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
+
 
 /** Who may see whose commission.
  *
@@ -43,14 +44,14 @@ export async function GET(req: NextRequest) {
     });
   }
 
-  const groupId = session.role === "owner" ? undefined : session.groupId;
+  const groupId = isOwner(session.role) ? undefined : session.groupId;
   const statements = allStatements(db, period, { groupId });
   const driverStatements = allDriverStatements(db, period, { groupId });
   // A manager's own override statement, or every manager's for the owner -- a manager
   // does not see another manager's override, the same "own group only" boundary their
   // فروشنده statements already draw.
   const managerStatements =
-    session.role === "owner"
+    isOwner(session.role)
       ? allManagerStatements(db, period)
       : session.role === "group_manager"
         ? [managerStatementFor(db, session.user.id, period)]
@@ -63,8 +64,8 @@ export async function GET(req: NextRequest) {
     statements,
     driver_statements: driverStatements,
     manager_statements: managerStatements,
-    rates: session.role === "owner" ? readRates(db, session.organizationId) : [],
-    driver_rates: session.role === "owner" ? readDriverRates(db, session.organizationId) : [],
-    manager_overrides: session.role === "owner" ? readManagerOverrides(db, session.organizationId) : [],
+    rates: isOwner(session.role) ? readRates(db, session.organizationId) : [],
+    driver_rates: isOwner(session.role) ? readDriverRates(db, session.organizationId) : [],
+    manager_overrides: isOwner(session.role) ? readManagerOverrides(db, session.organizationId) : [],
   });
 }

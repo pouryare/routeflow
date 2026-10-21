@@ -206,13 +206,18 @@ export function trialBalance(orgId: number): {
   const raw = getDb()
     .prepare(
       `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa, a.type,
-              a.normal_balance AS normalBalance,
-              COALESCE(SUM(CASE WHEN e.side = 'D' THEN e.amount_toman END), 0) AS debit,
-              COALESCE(SUM(CASE WHEN e.side = 'C' THEN e.amount_toman END), 0) AS credit
-         FROM ledger_entries e
-         JOIN accounts a ON a.id = e.account_id
-        WHERE e.organization_id = ?
-        GROUP BY a.id
+              a.normal_balance AS normalBalance, t.debit, t.credit
+         FROM (
+           /* Summed per account straight off the covering index, THEN joined to the chart: the
+              other way round looks the account up once per ledger entry. */
+           SELECT account_id,
+                  COALESCE(SUM(CASE WHEN side = 'D' THEN amount_toman END), 0) AS debit,
+                  COALESCE(SUM(CASE WHEN side = 'C' THEN amount_toman END), 0) AS credit
+             FROM ledger_entries
+            WHERE organization_id = ?
+            GROUP BY account_id
+         ) t
+         JOIN accounts a ON a.id = t.account_id
         ORDER BY a.code`
     )
     .all(orgId) as Array<{

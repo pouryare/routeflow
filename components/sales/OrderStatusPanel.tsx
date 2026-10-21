@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
-import { ACTION_LABEL, needsReason } from "@/lib/flows/orderAction";
+import { ACTION_LABEL, needsAsk } from "@/lib/flows/orderAction";
 import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import OrderActionFlow from "@/components/flows/OrderActionFlow";
 import {
@@ -58,7 +58,7 @@ export default function OrderStatusPanel({
   const actions = legalOrderActions(status as OrderStatus, role).filter((a) => a !== "flagCredit");
 
   function run(action: OrderAction) {
-    if (needsReason(action)) {
+    if (needsAsk(action)) {
       setAsk((a) => ({ key: (a?.key ?? 0) + 1, open: true, action }));
       return;
     }

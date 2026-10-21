@@ -1,5 +1,5 @@
 import { faNum } from "@/lib/format";
-import { STATUS_LABEL, STATUS_COLOR } from "@/lib/types";
+import { STATUS_LABEL, STATUS_TEXT } from "@/lib/types";
 import type { CoverageStatus } from "@/lib/db";
 import type { CoverageAnalytics } from "@/lib/repo/coverageAnalytics";
 import BarChart from "@/components/charts/BarChart";
@@ -43,7 +43,7 @@ export default function CoveragePanels({
             >
               <div
                 className="mono text-[length:var(--text-lg)] font-bold tabular-nums"
-                style={{ color: STATUS_COLOR[s] }}
+                style={{ color: STATUS_TEXT[s] }}
               >
                 {faNum(data.districtCounts[s] ?? 0)}
               </div>

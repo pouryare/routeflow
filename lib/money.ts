@@ -50,10 +50,15 @@ export function toToman(input: string): number | null {
   return roundToman(Number(out));
 }
 
+/** Ceiling for any single money value. Well past anything this business moves in one
+ *  entry, and far below 2^53: above that, sums stop being exact and `node:sqlite` throws when
+ *  it reads the value back, which turns one mistyped row into a permanently broken screen. */
+export const MAX_TOMAN = 1_000_000_000_000;
+
 /** Whether a value is safe to put in a `_toman` column. The guard that stops a REAL
  *  creeping in from a division or an average. */
 export function isToman(n: number): boolean {
-  return Number.isInteger(n);
+  return Number.isSafeInteger(n) && Math.abs(n) <= MAX_TOMAN;
 }
 
 /** The single rounding rule, so a line total and its reversal cannot disagree.

@@ -129,6 +129,11 @@ export function createProduct(
     notes?: string | null;
   }
 ): number {
+  const name = input.name.trim();
+  if (!name || name.length > 120) throw new TypeError("نام کالا باید بین ۱ و ۱۲۰ نویسه باشد");
+  if (!Number.isFinite(input.kg_per_base_unit) || input.kg_per_base_unit < 0 || input.kg_per_base_unit > 1000) {
+    throw new TypeError("وزن هر واحد باید بین صفر و ۱۰۰۰ کیلوگرم باشد (صفر یعنی وزن هنوز معلوم نیست)");
+  }
   const now = new Date().toISOString();
   db.prepare(
     `INSERT INTO products (name, sku, base_unit, kg_per_base_unit, notes, created_at, updated_at, organization_id)
@@ -150,6 +155,10 @@ export function createPackaging(
   db: DatabaseSync,
   input: { product_id: number; name: string; qty_per_pack: number; barcode?: string | null }
 ): number {
+  if (!input.name.trim() || input.name.length > 120) throw new TypeError("نام بسته‌بندی باید بین ۱ و ۱۲۰ نویسه باشد");
+  if (!Number.isInteger(input.qty_per_pack) || input.qty_per_pack < 1 || input.qty_per_pack > 100_000) {
+    throw new TypeError("تعداد در هر بسته باید عددی صحیح بین ۱ و ۱۰۰۰۰۰ باشد");
+  }
   db.prepare(
     "INSERT INTO packagings (product_id, name, qty_per_pack, barcode, created_at) VALUES (?, ?, ?, ?, ?)"
   ).run(

@@ -44,6 +44,7 @@ export default function LeadGeographicDensity({ locations }: { locations: SavedL
                 <Marker
                   key={l.id}
                   position={[l.lat, l.lng]}
+                  title={l.name}
                   icon={divIcon({ className: "", html: `<div style="background:${color};width:10px;height:10px;border-radius:50%;border:2px solid rgba(255,255,255,0.5)"></div>`, iconSize: [10, 10], iconAnchor: [5, 5] })}
                 >
                   <Popup>

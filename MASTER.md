@@ -154,7 +154,7 @@ Every figure below is computed, not eyeballed — see `scripts/check-contrast.mj
 | `--border-strong` | `#CDD4DE` | — | — | Emphasized borders |
 | `--text` | `#1A1F26` | 14.90 | 16.56 | Primary text |
 | `--text-muted` | `#5C6672` | 5.25 | 5.84 | Secondary text |
-| `--text-faint` | `#828A98` | 3.13 | 3.48 | **Non-text only** — see below |
+| `--text-faint` | `#656E7B` | 4.63 | 5.16 | Readable; close to `--text-muted` by design (was `#828A98`, 3.1:1, which failed for the 150+ labels that used it) |
 | `--accent` | `#0077BC` | 4.33 | 4.81 | Ocean. **Fills only** |
 | `--accent-text` | `#006EAE` | 4.92 | 5.47 | Accent *as text* — links, amounts due |
 | `--accent-ink` | `#FFFFFF` | 4.81 on accent | — | Text on an accent fill |
@@ -188,11 +188,10 @@ Every figure below is computed, not eyeballed — see `scripts/check-contrast.mj
 
 Four findings from computing this table rather than trusting the prototype:
 
-- **`--text-faint` is still non-text in light.** On the cool ground it clears only
-  ~3.1:1. Solved to 4.5 it collapses into `--text-muted` — the two roles stop being
-  distinguishable. So light's faint stays a **non-text** token (out-of-month day
-  numbers, placeholder glyphs, decorative separators), held to 3:1. Anything a reader
-  must actually read uses `--text-muted`.
+- **`--text-faint` is now text-safe in light (2026-10).** It was `#828A98`, 3.1:1 and documented
+  as non-text only, yet 150+ readable labels used it and failed. It is now `#656E7B` (4.63 on
+  the ground). The price is that faint and `--text-muted` sit close together; muted stays the
+  darker of the pair. Axe on the live pages is the arbiter, not this table.
 - **The accent still needs a text variant in light and not in dark.** `#0077BC` is a
   fine fill (white on it clears 4.81) but only ~4.33 as text on the cool ground.
   `--accent-text` (`#006EAE`) darkens it until it passes. Dark's `#3BA6F5` clears both
@@ -748,7 +747,7 @@ lands.
 - No component that branches on theme in JS.
 - No `--accent` carrying status, no status color carrying interaction.
 - No color as the only signal.
-- **No `--text-faint` on anything a reader must read** — it does not clear 4.5:1 in light.
+- **Prefer `--text-muted` for anything a reader must read**; `--text-faint` clears 4.5:1 now but only just. Status colours as text come from `--good/--warn/--crit` (or `STATUS_TEXT`), never the map's fill hex.
 - **No white text on the dark theme's accent fill** — it is 3.01:1. Use `--accent-ink`.
 - **No `box-shadow` on a `clip-path`ed element** — use `--card-drop`.
 - **No stagger delay left on an element while resetting its entrance** — see Tier 0.

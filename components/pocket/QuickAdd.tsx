@@ -68,10 +68,12 @@ export default function QuickAdd({
       {kind === "reminder" ? (
         <JalaliDateInput value={due} onChange={setDue} aria-label="تاریخ یادآوری" />
       ) : null}
-      <input
+      <label style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 12, color: "var(--muted)" }}>
+        {kind === "reminder" ? "متن یادآوری" : "متن یادداشت"}
+        <input
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder={kind === "reminder" ? "متن یادآوری…" : "متن یادداشت…"}
+        placeholder={kind === "reminder" ? "مثلاً: تماس با مدیر خرید" : "مثلاً: ساعت کاری عوض شده"}
         style={{
           fontFamily: "var(--fa)",
           fontSize: 12.5,
@@ -82,6 +84,7 @@ export default function QuickAdd({
           padding: "7px 9px",
         }}
       />
+      </label>
       <div style={{ display: "flex", gap: 8 }}>
         <button
           type="button"

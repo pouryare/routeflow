@@ -20,7 +20,7 @@ export const leadRunFlow: FlowConfig = {
       kind: "driver",
       q: "راننده را انتخاب کنید",
       sub: "مسیر برای این راننده ثبت می‌شود",
-      options: [{ id: "next", label: "ادامه", tone: "rec", next: "date" }],
+      options: [{ id: "next", label: "ادامه به سؤال بعد", tone: "rec", next: "date" }],
       skipable: false,
     },
     date: {
@@ -28,7 +28,7 @@ export const leadRunFlow: FlowConfig = {
       kind: "date",
       q: "تاریخ را انتخاب کنید",
       sub: "روز مسیر تحویل",
-      options: [{ id: "next", label: "ادامه", tone: "rec", next: "submit" }],
+      options: [{ id: "next", label: "ادامه به سؤال بعد", tone: "rec", next: "submit" }],
       skipable: false,
     },
     submit: {
@@ -38,7 +38,7 @@ export const leadRunFlow: FlowConfig = {
       sub: "اطلاعات را بررسی و ثبت کنید",
       // `save`, not `next`: it is what ends the flow and shows the `done` panel, so the
       // result -- saved or failed -- stays on screen instead of the sheet closing blind.
-      options: [{ id: "confirm", label: "ثبت و سپردن", tone: "rec", save: true }],
+      options: [{ id: "confirm", label: "ثبت مسیر و سپردن به راننده", tone: "rec", save: true }],
       skipable: false,
     },
     skip: { id: "skip", kind: "choice", q: "", sub: "", options: [] },

@@ -43,6 +43,9 @@ export const REWORDED: Rewording[] = [
     "فروش خالص منهای بهای تمام‌شدهٔ کالای همان سفارش‌ها (از قیمت خرید سری ساخت).",
   ),
   batch("kpi_definitions", "formula_fa", "فروش خالص − Σ (تعداد تحویل‌شده × بهای واحد سری ساخت)"),
+  // «سفارش جدید» became «سفارش تازه» (one name for a new order, in buttons and notices alike).
+  { table: "rules", column: "name", from: "اعلان: سفارش جدید", to: "اعلان: سفارش تازه" },
+  { table: "notification_types", column: "name_fa", from: "سفارش جدید در گروه", to: "سفارش تازه در گروه" },
   {
     table: "representative_onboarding_steps",
     column: "label_fa",

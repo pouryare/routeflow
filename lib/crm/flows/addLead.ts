@@ -58,7 +58,7 @@ export const addLeadFlow: FlowConfig = {
     },
     link: {
       id: "link", kind: "link", q: "لینک را بچسبانید", sub: "نام و مکان از روی لینک پر می‌شود",
-      options: [{ id: "ok", label: "ادامه", tone: "rec", next: "basics" }, { id: "nolink", label: "لینک ندارم", next: "basics" }],
+      options: [{ id: "ok", label: "ادامه به سؤال بعد", tone: "rec", next: "basics" }, { id: "nolink", label: "لینک ندارم", next: "basics" }],
     },
     here: {
       id: "here", kind: "pin", q: "الان جلوی همین کسب‌وکار هستید؟", sub: "مکان گوشی شما پین می‌شود؛ بعد می‌توانید جابه‌جایش کنید",
@@ -71,12 +71,12 @@ export const addLeadFlow: FlowConfig = {
         { id: "outside", label: "نام معرف را می‌نویسم", next: "refname" },
       ],
     },
-    refname: { id: "refname", kind: "input", q: "نام معرف", input: { field: "source_detail", placeholder: "نام معرف…" }, options: [{ id: "ok", label: "ادامه", next: "basics" }] },
-    other: { id: "other", kind: "input", q: "منبع چیست؟", input: { field: "source_detail", placeholder: "مثلاً: نمایشگاه صنایع غذایی" }, options: [{ id: "ok", label: "ادامه", next: "basics" }] },
+    refname: { id: "refname", kind: "input", q: "نام معرف", input: { field: "source_detail", placeholder: "نام معرف…" }, options: [{ id: "ok", label: "ادامه به سؤال بعد", next: "basics" }] },
+    other: { id: "other", kind: "input", q: "منبع چیست؟", input: { field: "source_detail", placeholder: "مثلاً: نمایشگاه صنایع غذایی" }, options: [{ id: "ok", label: "ادامه به سؤال بعد", next: "basics" }] },
     basics: {
       id: "basics", kind: "basics", q: "نام و تلفن",
       sub: (_c, s) => (s.acc.source && FOOD_APP_SOURCES.has(s.acc.source) ? "اگر تلفن ندارید خالی بگذارید — اول بازدید می‌شود" : "نام لازم است؛ تلفن اختیاری"),
-      options: [{ id: "ok", label: "ادامه", next: (_c, s) => (pinOf(s.values) ? "type" : "loc") }],
+      options: [{ id: "ok", label: "ادامه به سؤال بعد", next: (_c, s) => (pinOf(s.values) ? "type" : "loc") }],
     },
     loc: {
       id: "loc", kind: "choice", q: "کسب‌وکار کجاست؟", sub: "بدون مکان ثبت نمی‌شود — برای مسیر و محدوده لازم است",

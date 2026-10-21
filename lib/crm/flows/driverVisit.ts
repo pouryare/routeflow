@@ -28,14 +28,14 @@ export const driverVisitFlow: FlowConfig = {
     open: {
       id: "open", kind: "choice", q: "باز بود؟",
       options: [
-        { id: "yes", label: "بله", tone: "rec", next: "phone", set: { verification: "verified" } },
+        { id: "yes", label: "بله، باز بود", tone: "rec", next: "phone", set: { verification: "verified" } },
         { id: "shut", label: "بسته بود", sub: "بعداً دوباره سر می‌زنیم", save: true, set: { verification: "verified", outcome: "VISIT_CLOSED", next_title: "بازدید دوباره", next_kind: "verify_visit", next_assignee: "driver_pool", due: { kind: "in_days", days: 2, hour: 12 } } },
       ],
     },
     phone: {
       id: "phone", kind: "input", q: "شمارهٔ تماس گرفتید؟", sub: "بهتر است شمارهٔ مسئول خرید باشد",
       input: { field: "new_phone", placeholder: "09__ ___ ____", ltr: true, optional: true },
-      options: [{ id: "ok", label: "ادامه", tone: "rec", next: "who" }],
+      options: [{ id: "ok", label: "ادامه به سؤال بعد", tone: "rec", next: "who" }],
     },
     who: {
       id: "who", kind: "roles", q: "با چه کسی صحبت کردید؟", input: { field: "contact_name", placeholder: "نام (اختیاری)…", optional: true },

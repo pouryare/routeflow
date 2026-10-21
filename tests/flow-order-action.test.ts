@@ -61,3 +61,24 @@ describe("which actions ask why", () => {
     for (const a of actions) expect(ACTION_LABEL[a]).toBeTruthy();
   });
 });
+
+import { needsAsk, CONFIRM_ONLY, CONSEQUENCE } from "@/lib/flows/orderAction";
+
+describe("credit rejection asks once", () => {
+  const sure: FlowContext = { ...EMPTY_CONTEXT, entry: "order_action", vars: { action: "rejectCredit", action_label: "رد اعتبار", consequence: CONSEQUENCE.rejectCredit!, mode: "confirm", reasons: "ready" } };
+  it("opens on «are you sure», says what will happen, and saves on yes", () => {
+    expect(CONFIRM_ONLY).toEqual(["rejectCredit"]);
+    expect(needsAsk("rejectCredit")).toBe(true);
+    const v = viewStep(orderActionFlow, sure, startFlow(orderActionFlow, sure));
+    expect(v.id).toBe("sure");
+    expect(v.sub).toBe("سفارش متوقف می‌شود.");
+    expect(v.options[0].tone).toBe("bad");
+    const st = answerStep(orderActionFlow, sure, startFlow(orderActionFlow, sure), "yes");
+    expect(st.saved).toBe(true);
+    expect(actionBody("rejectCredit", st)).toEqual({ action: "rejectCredit", reason_code_id: null, note: null });
+  });
+  it("a plain forward step does not ask", () => {
+    expect(needsAsk("deliver")).toBe(false);
+    expect(needsAsk("passReview")).toBe(false);
+  });
+});

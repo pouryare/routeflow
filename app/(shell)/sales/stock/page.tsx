@@ -12,7 +12,7 @@ import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
+import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
 import { defaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
 import StockCountEntry from "@/components/flows/StockCountEntry";
 import ReceiveEntry from "@/components/flows/ReceiveEntry";
@@ -31,9 +31,9 @@ export default async function StockPage() {
 
   const db = getDb();
   const stock = advancedStockPosition(db);
-  const purchases = session.role === "owner" ? readPurchases(db, session.organizationId, 15) : [];
+  const purchases = isOwner(session.role) ? readPurchases(db, session.organizationId, 15) : [];
   const products =
-    session.role === "owner"
+    isOwner(session.role)
       ? (plain(
           db
             .prepare(
@@ -51,7 +51,7 @@ export default async function StockPage() {
   const expiring = expiringBatches(session.organizationId);
   /* Item 18: the batch list lives with the stock it makes up. The quarantine, release and
      recall actions stay on /sales/batches, for the roles that tab is open to. */
-  const canManageBatches = session.role === "owner" || session.role === "group_manager";
+  const canManageBatches = MANAGE_ROLES.includes(session.role);
   const batches = listBatchesWithProduct(session.organizationId).map((b) => ({
     id: b.id,
     batch_code: b.batch_code,
@@ -169,10 +169,10 @@ export default async function StockPage() {
         </p>
       )}
 
-      {(canCount || session.role === "owner") && (
+      {(canCount || isOwner(session.role)) && (
         <div className="flex flex-wrap gap-[var(--space-2)]">
           {canCount && <StockCountEntry rows={countRows} facility={{ id: warehouseId, name: warehouseName }} />}
-          {session.role === "owner" && (
+          {isOwner(session.role) && (
             <ReceiveEntry
               products={stock.map((r) => ({ id: r.product_id, name: r.name, base_unit: r.base_unit, avg_cost_toman: r.avg_cost_toman }))}
               suppliers={[...new Set(purchases.map((p) => p.supplier).filter((x): x is string => !!x))].slice(0, 6)}
@@ -183,15 +183,15 @@ export default async function StockPage() {
 
       {stock.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
-          هنوز کالایی ثبت نشده است.
+          هنوز کالایی ثبت نشده است. کالاها را از صفحهٔ «کالاها و قیمت‌ها» اضافه کنید.
         </p>
       ) : (
-        <InventoryBoard rows={rows} canEdit={session.role === "owner"} />
+        <InventoryBoard rows={rows} canEdit={isOwner(session.role)} />
       )}
 
       <BatchList rows={batches} canManage={canManageBatches} />
 
-      {session.role === "owner" && <PurchaseEntry products={products} />}
+      {isOwner(session.role) && <PurchaseEntry products={products} />}
 
       {purchases.length > 0 && (
         <section className="card p-[var(--space-4)]">

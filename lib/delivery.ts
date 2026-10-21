@@ -7,6 +7,7 @@
  *  reaching its real value for the first time.
  */
 
+import { refreshOrderFigures } from "./repo/orderFigures";
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "./db";
 import {
@@ -420,6 +421,7 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
   try {
     const setLine = db.prepare("UPDATE order_lines SET packs_delivered = ? WHERE id = ?");
     for (const line of input.lines) setLine.run(line.packs_delivered, line.line_id);
+    refreshOrderFigures(db, stop.order_id);
 
     // Re-read after writing, so the total is the delivered one rather than the ordered.
     const lines = stopLines(db, stop.order_id);

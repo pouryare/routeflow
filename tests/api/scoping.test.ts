@@ -509,10 +509,20 @@ describe("push/subscribe", () => {
   it("lets a driver register their device", async () => {
     const req = as(driverId, "delivery_driver", east, "http://localhost/api/push/subscribe", {
       method: "POST",
-      body: JSON.stringify({ endpoint: "https://push.example/1", keys: { p256dh: "a", auth: "b" } }),
+      body: JSON.stringify({ endpoint: "https://fcm.googleapis.com/fcm/send/abc123", keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4", auth: "tBHItJI5svbpez7KI4CCXg" } }),
       headers: { "Content-Type": "application/json" },
     });
     expect((await subscribePush(req)).status).toBe(200);
+  });
+  it("refuses an endpoint that is not a browser vendor's push service", async () => {
+    for (const endpoint of ["http://169.254.169.254/latest/meta-data/", "https://127.0.0.1/x", "https://push.example/1"]) {
+      const req = as(driverId, "delivery_driver", east, "http://localhost/api/push/subscribe", {
+        method: "POST",
+        body: JSON.stringify({ endpoint, keys: { p256dh: "BNcRdreALRFXTkOOUHK1EtK2wtaz5Ry4", auth: "tBHItJI5svbpez7KI4CCXg" } }),
+        headers: { "Content-Type": "application/json" },
+      });
+      expect((await subscribePush(req)).status, endpoint).toBe(400);
+    }
   });
   it("still refuses an anonymous device", async () => {
     const req = new NextRequest("http://localhost/api/push/subscribe", {

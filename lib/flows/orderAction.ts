@@ -41,16 +41,40 @@ export const REASON_DOMAIN: Partial<Record<OrderAction, ReasonDomain>> = {
 
 export const needsReason = (action: OrderAction): boolean => action in REASON_DOMAIN;
 
+/** Actions that end or reverse an order but have no list of reasons: the sheet asks once
+ *  («رد شود؟») instead of why. */
+export const CONFIRM_ONLY: OrderAction[] = ["rejectCredit"];
+
+/** Every action that must not fire from a single tap: it opens the sheet. The audit that added
+ *  `confirmAction` to this panel asked for exactly this; the sheet is the ask, and the 5 s undo
+ *  follows it. */
+export const needsAsk = (action: OrderAction): boolean => needsReason(action) || CONFIRM_ONLY.includes(action);
+
+/** What each of those does, said before it is done. */
+export const CONSEQUENCE: Partial<Record<OrderAction, string>> = {
+  cancel: "موجودی رزروشده آزاد می‌شود.",
+  returnOrder: "سفارش به‌عنوان مرجوعی ثبت می‌شود.",
+  failDelivery: "تحویل ناموفق ثبت می‌شود.",
+  rejectCredit: "سفارش متوقف می‌شود.",
+};
+
 export const orderActionFlow: FlowConfig = {
   id: "order_action",
-  start: () => "reason",
+  start: (ctx) => (ctx.vars.mode === "confirm" ? "sure" : "reason"),
   budget: { common: 1, longest: 1 },
   steps: {
+    sure: {
+      id: "sure",
+      kind: "choice",
+      q: "{action_label}؟",
+      sub: "{consequence}",
+      options: [{ id: "yes", label: "بله، انجام شود", tone: "bad", save: true }],
+    },
     reason: {
       id: "reason",
       kind: "choice",
       q: "چرا؟",
-      sub: "{action_label}",
+      sub: "{action_label} · {consequence}",
       options: (ctx: FlowContext): FlowOption[] => {
         if (ctx.vars.reasons === "loading") return [{ id: "wait", label: "در حال بارگذاری…", next: "reason" }];
         return [

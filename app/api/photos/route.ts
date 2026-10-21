@@ -10,8 +10,9 @@ import { MANAGE_ROLES } from "@/lib/roles";
 
 // photos is option 2: a photo is *of* a customer, district or facility, so it inherits
 // that row's group rather than carrying one of its own.
+// Reading is scoped by entityGroupFilter below; uploading stays with managers.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "p");
 

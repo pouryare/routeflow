@@ -1,3 +1,5 @@
+import { cache } from "react";
+import { isToman } from "@/lib/money";
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
 import { lineTotalToman, type LineSnapshot } from "@/lib/orderMath";
@@ -71,7 +73,7 @@ export interface RecordPaymentInput {
 
 export const paymentsRepo = makeRepo<PaymentRow>("payments", { tenant: true });
 
-const isWholeToman = (n: unknown): n is number => typeof n === "number" && Number.isInteger(n);
+const isWholeToman = (n: unknown): n is number => typeof n === "number" && isToman(n);
 
 interface OutstandingOrder {
   id: number;
@@ -247,6 +249,17 @@ function validateAllocations(
   return allocs;
 }
 
+/** A payment is recorded when the money arrives, so a date well in the future is a typo,
+ *  and one years back is almost certainly a wrong year. An unparseable string used to reach
+ *  the database and fail later as an empty 500. */
+function assertReasonableReceivedAt(receivedAt: unknown): void {
+  const t = typeof receivedAt === "string" ? Date.parse(receivedAt) : NaN;
+  const day = 86_400_000;
+  if (Number.isNaN(t) || t > Date.now() + day || t < Date.now() - 5 * 366 * day) {
+    throw new PaymentError("تاریخ دریافت معتبر نیست");
+  }
+}
+
 /** Insert a payment and its allocations inside a transaction the caller already owns.
  *  `recordDelivery` and the cheque path both need this so the money write joins their
  *  own atomic block. */
@@ -258,6 +271,7 @@ export function recordPaymentTxn(
   if (!isWholeToman(input.amount_toman) || input.amount_toman <= 0) {
     throw new PaymentError("مبلغ را به تومان، بدون اعشار و بیشتر از صفر وارد کنید");
   }
+  assertReasonableReceivedAt(input.received_at);
   const customer = db
     .prepare("SELECT organization_id FROM customers WHERE id = ?")
     .get(input.customer_id) as { organization_id: number | null } | undefined;
@@ -360,6 +374,55 @@ export function recordPayment(organizationId: number, input: RecordPaymentInput)
     db.exec("ROLLBACK");
     throw e;
   }
+}
+
+/** Payments a caller may see, narrowed beyond the organisation.
+ *
+ *  `groupIds` keeps payments whose customer sits in one of those groups; `salespersonId` keeps
+ *  payments the person received or whose customer they have sold to. Both can be given. The
+ *  route used to return every payment of the organisation to a salesperson, byte-identical to
+ *  the owner's view. */
+/** The group a customer belongs to, or `undefined` when there is no such customer in this
+ *  organisation. Lets a route refuse a write against another group's customer. */
+export function customerGroupOf(organizationId: number, customerId: number): { group_id: number | null } | undefined {
+  return paymentsRepo
+    .db()
+    .prepare("SELECT group_id FROM customers WHERE id = ? AND (organization_id = ? OR organization_id IS NULL)")
+    .get(customerId, organizationId) as { group_id: number | null } | undefined;
+}
+
+export function listPaymentsScoped(
+  organizationId: number,
+  scope: { groupIds?: number[]; salespersonId?: number; customer_id?: number }
+): PaymentRow[] {
+  const clauses = ["p.organization_id = ?"];
+  const params: (number | string)[] = [organizationId];
+  if (scope.customer_id !== undefined) {
+    clauses.push("p.customer_id = ?");
+    params.push(scope.customer_id);
+  }
+  if (scope.groupIds !== undefined) {
+    // A customer with no group yet is company-wide, the same rule tasks and alerts follow.
+    clauses.push(
+      scope.groupIds.length
+        ? `(c.group_id IS NULL OR c.group_id IN (${scope.groupIds.map(() => "?").join(", ")}))`
+        : "c.group_id IS NULL"
+    );
+    params.push(...scope.groupIds);
+  }
+  if (scope.salespersonId !== undefined) {
+    clauses.push(
+      `(p.received_by = ? OR EXISTS (SELECT 1 FROM orders o WHERE o.customer_id = p.customer_id AND o.organization_id = p.organization_id AND o.salesperson_user_id = ?))`
+    );
+    params.push(scope.salespersonId, scope.salespersonId);
+  }
+  return paymentsRepo
+    .db()
+    .prepare(
+      `SELECT p.* FROM payments p JOIN customers c ON c.id = p.customer_id
+        WHERE ${clauses.join(" AND ")} ORDER BY p.received_at DESC, p.id DESC`
+    )
+    .all(...(params as never[])) as unknown as PaymentRow[];
 }
 
 export function listPayments(
@@ -548,10 +611,19 @@ const ZERO_DEBT = (): CustomerDebt => ({
   bucket_30_plus: 0,
 });
 
+/** Asked once per database handle: migrations finish inside getDb(), so the column is either
+ *  there for the life of the handle or it is not, and re-reading the schema on every debt
+ *  lookup cost a PRAGMA per customer on the dashboard. */
+const openingBalanceColumn = new WeakMap<DatabaseSync, boolean>();
 function customersHasOpeningBalance(db: DatabaseSync): boolean {
-  return (
-    db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]
-  ).some((c) => c.name === "opening_balance_toman");
+  let has = openingBalanceColumn.get(db);
+  if (has === undefined) {
+    has = (db.prepare("PRAGMA table_info(customers)").all() as unknown as { name: string }[]).some(
+      (c) => c.name === "opening_balance_toman"
+    );
+    openingBalanceColumn.set(db, has);
+  }
+  return has;
 }
 
 function ageDays(nowISO: string, refISO: string): number {
@@ -641,43 +713,56 @@ export function customerDebtsForOrg(
     out.set(c.id, d);
   }
 
-  const orders = db
+  /* Order totals are summed in SQL. Each line is rounded to whole Toman BEFORE it is added,
+     exactly as lineTotalToman does (round half away from zero, on the delivered packs when
+     there are any and the ordered ones otherwise), so the sum is the same integer the
+     per-line JS arithmetic produced. Only the orders still owing anything come back to JS,
+     where the ageing buckets are applied -- a few thousand rows instead of every line the
+     organisation has ever delivered. tests/debts-aggregate.test.ts holds this equal to the
+     original row-by-row version. */
+  /* One pass: the per-order totals are materialised once, then read two ways -- a row per
+     customer (their delivered total) and a row per order that still owes something (for the
+     ageing buckets). kind 0 / kind 1 tells the two apart.
+
+     An order's total is read from orders.total_toman (lib/repo/orderFigures.ts). When that is
+     empty -- an order whose lines were changed by something that did not refill it -- it is summed
+     from the lines instead, each line rounded to whole Toman BEFORE it is added (round half away
+     from zero, on the delivered packs when there are any), exactly as lineTotalToman does. The
+     COALESCE only evaluates that subquery for the rows that need it. Either way the number is the
+     same integer; tests/debts-aggregate.test.ts and tests/order-figures.test.ts hold both paths
+     equal to the original row-by-row version. */
+  const rows = db
     .prepare(
-      `SELECT o.id, o.customer_id, o.order_date, o.delivered_at, o.paid_toman
-         FROM orders o
-         JOIN customers c ON c.id = o.customer_id
-        WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
+      `WITH ot AS MATERIALIZED (
+         SELECT o.customer_id AS customer_id, o.order_date AS order_date, o.delivered_at AS delivered_at,
+                o.paid_toman AS paid_toman,
+                COALESCE(
+                  o.total_toman,
+                  (SELECT COALESCE(SUM(CAST(ROUND(COALESCE(l.packs_delivered, l.packs_ordered) * l.unit_price_toman) AS INTEGER)), 0)
+                     FROM order_lines l WHERE l.order_id = o.id)
+                ) AS total
+           FROM orders o
+           JOIN customers c ON c.id = o.customer_id
+          WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})
+       )
+       SELECT 0 AS kind, customer_id, SUM(total) AS amount, NULL AS order_date, NULL AS delivered_at
+         FROM ot GROUP BY customer_id
+       UNION ALL
+       SELECT 1, customer_id, total - paid_toman, order_date, delivered_at
+         FROM ot WHERE total > paid_toman`
     )
     .all(organizationId) as unknown as {
-    id: number;
+    kind: number;
     customer_id: number;
-    order_date: string;
+    amount: number;
+    order_date: string | null;
     delivered_at: string | null;
-    paid_toman: number;
   }[];
-
-  const lineRows = db
-    .prepare(
-      `SELECT ol.order_id, ol.packs_ordered, ol.packs_delivered, ol.unit_price_toman,
-              ol.unit_cost_toman, ol.qty_per_pack, ol.kg_per_base_unit
-         FROM order_lines ol
-         JOIN orders o ON o.id = ol.order_id
-         JOIN customers c ON c.id = o.customer_id
-        WHERE c.organization_id = ? AND o.status IN (${sqlStatusList(FULFILLED_ORDER_STATUSES)})`
-    )
-    .all(organizationId) as unknown as (LineSnapshot & { order_id: number })[];
-  const totalByOrder = new Map<number, number>();
-  for (const l of lineRows) {
-    totalByOrder.set(l.order_id, (totalByOrder.get(l.order_id) ?? 0) + lineTotalToman(l));
-  }
-
-  for (const o of orders) {
-    const d = out.get(o.customer_id);
+  for (const r of rows) {
+    const d = out.get(r.customer_id);
     if (!d) continue;
-    const total = totalByOrder.get(o.id) ?? 0;
-    d.total += total;
-    const outstanding = Math.max(0, total - o.paid_toman);
-    if (outstanding > 0) bucketOf(d, ageDays(now, o.delivered_at ?? o.order_date), outstanding);
+    if (r.kind === 0) d.total += r.amount;
+    else bucketOf(d, ageDays(now, r.delivered_at ?? r.order_date!), r.amount);
   }
 
   const allocRows = db
@@ -696,6 +781,16 @@ export function customerDebtsForOrg(
 
   return out;
 }
+
+/** customerDebtsForOrg, memoised for the length of one server render.
+ *
+ *  The dashboard asks for the whole organisation's debt three times in one request -- the
+ *  stat tiles, the health overview and the action center's overdue bucket -- and each pass
+ *  walks every delivered order and line. React's cache() shares one result across those
+ *  calls inside a single RSC render and discards it afterwards; outside a render (route
+ *  handlers, scripts, tests) it simply calls through, so nothing can go stale. Callers must
+ *  treat the Map as read-only. */
+export const customerDebtsForOrgOnce = cache((organizationId: number) => customerDebtsForOrg(organizationId));
 
 export function voidPaymentTxn(
   db: DatabaseSync,

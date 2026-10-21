@@ -7,8 +7,9 @@ import { MANAGE_ROLES } from "@/lib/roles";
 
 // reminders is option 2: a reminder is *about* a customer or district, so it belongs to
 // whichever group owns that row. Joined, not denormalised -- see entityGroupFilter.
+// Reading is scoped by entityGroupFilter below; writes stay with managers.
 export async function GET(req: NextRequest) {
-  const guard = requireRole(req, MANAGE_ROLES);
+  const guard = requireRole(req, [...MANAGE_ROLES, "rep_manager", "phone_sales"]);
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "r");
 

@@ -178,6 +178,10 @@ export function run(ctx: SeedContext): void {
         by: driver,
         receiver_name: "تحویل گرفته شد",
       });
+      /* The real writer stamps delivery with the wall clock, but the seed is replaying history:
+       * left as is, every order "took" as long as it is old (a 552-day average lead time on
+       * the dashboard). Delivery happened on the order's own day. */
+      db.prepare(`UPDATE orders SET delivered_at = order_date WHERE id = ? AND delivered_at IS NOT NULL`).run(orderId);
       delivered++;
     }
 

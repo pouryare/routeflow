@@ -71,10 +71,12 @@ export function coverageAnalytics(
 ): CoverageAnalytics {
   // districts is shared reference data (no organization_id), so the org guard is dropped;
   // the group filter still applies, since which group holds a territory is per-organisation.
-  const f = groupFilter(session, "group_id", { shared: true });
+  const fd = groupFilter(session, "group_id", { shared: true });
+  // customers are per-organisation: they keep the organisation guard even though districts drop it.
+  const f = groupFilter(session);
   const districts = db
-    .prepare(`SELECT * FROM districts WHERE 1 = 1${f.sql}`)
-    .all(...f.params) as unknown as District[];
+    .prepare(`SELECT * FROM districts WHERE 1 = 1${fd.sql}`)
+    .all(...fd.params) as unknown as District[];
   const customers = db
     .prepare(`SELECT * FROM customers WHERE 1 = 1${f.sql}`)
     .all(...f.params) as unknown as Customer[];

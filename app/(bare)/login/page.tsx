@@ -1,5 +1,6 @@
 "use client";
 
+import { safeNextPath } from "@/lib/safeNext";
 import { useEffect, useRef, useState, Suspense } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -25,7 +26,7 @@ function LoginForm() {
     const next = params.get("next");
     if (next && !clearedRef.current) {
       setBounced(true);
-      nextPathRef.current = next;
+      nextPathRef.current = safeNextPath(next);
       clearedRef.current = true;
       // Remove ?next= from URL without triggering navigation
       const url = new URL(window.location.href);
@@ -85,25 +86,25 @@ function LoginForm() {
           )}
 
           <form onSubmit={onSubmit}>
-            <input
+            <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<input
               type="text"
               autoFocus
               autoComplete="username"
               value={username}
               onChange={(e) => setUsername(e.target.value)}
-              placeholder="نام کاربری"
+             
               dir="rtl"
               className="mb-[var(--space-3)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
-            />
-            <input
+            /></label>
+            <label className="flex flex-col gap-1 text-xs text-text-muted">رمز عبور<input
               type="password"
               autoComplete="current-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              placeholder="رمز عبور"
+             
               dir="rtl"
               className="mb-[var(--space-4)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
-            />
+            /></label>
             {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
             <button
               type="submit"
@@ -111,7 +112,7 @@ function LoginForm() {
               className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Icon name="logout" size="md" />
-              {loading ? "در حال ورود..." : "ورود"}
+              {loading ? "در حال ورود…" : "ورود به برنامه"}
             </button>
           </form>
         </div>

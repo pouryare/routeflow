@@ -107,6 +107,36 @@ describe("health repo", () => {
     expect(ids).not.toContain(westCust);
   });
 
+  it("the overview equals the per-customer computation, row for row", () => {
+    const db = getDb();
+    // steady: regular, partly paid, one complaint
+    const o1 = order(steady, iso(80), "DELIVERED", 4, 1000, 700, iso(80));
+    order(steady, iso(50), "DELIVERED", 6, 1200, 800, iso(50));
+    order(steady, iso(20), "DELIVERED", 5, 1100, 900, iso(20));
+    order(steady, iso(3), "CONFIRMED", 2, 1100, 900);
+    const pid = Number(
+      db.prepare("INSERT INTO payments (organization_id,customer_id,amount_toman,method,received_at,received_by,created_at) VALUES (1,?,2500,'CASH',?,?,?)").run(steady, iso(40), owner, iso(40)).lastInsertRowid
+    );
+    db.prepare("INSERT INTO payment_allocations (payment_id,order_id,amount_toman,created_at) VALUES (?,?,2500,?)").run(pid, o1, iso(40));
+    db.prepare("UPDATE customers SET credit_limit_toman = 9000 WHERE id = ?").run(steady);
+    db.prepare("INSERT INTO quality_complaints (organization_id,customer_id,status,reported_at,category,created_at) VALUES (1,?,'open',?,'other',?)").run(steady, iso(10), iso(10));
+    // lapsed: old, unpaid, over its limit
+    order(lapsed, iso(170), "DELIVERED", 10, 1000, 900, iso(170));
+    order(lapsed, iso(150), "DELIVERED", 10, 1000, 900, iso(150));
+    db.prepare("UPDATE customers SET credit_limit_toman = 15000 WHERE id = ?").run(lapsed);
+    // westCust has no orders at all
+
+    const rows = customersHealthOverview(session("owner", owner, null));
+    expect(rows.map((r) => r.customer_id).sort()).toEqual([steady, lapsed, westCust].sort());
+    for (const r of rows) {
+      const direct = customerHealthFor(1, r.customer_id);
+      expect({ score: r.score, band: r.band, reasons: r.reasons }, `customer ${r.customer_id}`).toEqual(direct);
+    }
+    // sorted ascending by score, as before
+    const scores = rows.map((r) => r.score);
+    expect(scores).toEqual([...scores].sort((a, b) => a - b));
+  });
+
   it("materialiseHealth writes a customer-scoped health_score snapshot", () => {
     order(steady, iso(10), "DELIVERED", 1, 1000, 800, iso(10));
     const written = materialiseHealth(1, PERIOD);

@@ -11,6 +11,7 @@ import { SkeletonLabel, SkeletonThumbs } from "@/components/Skeleton";
 import EmptyState from "@/components/EmptyState";
 import { faJalaliDate } from "@/lib/jalali";
 
+import { confirmAction } from "@/lib/confirm";
 interface PhotoItem {
   id: number;
   entity_type: "district" | "customer";
@@ -47,6 +48,7 @@ export default function GalleryPage() {
   useRunAfterMount(load);
 
   async function remove(id: number) {
+    if (!confirmAction("این عکس حذف شود؟")) return;
     await fetch(`/api/photos/${id}`, { method: "DELETE" });
     setLightbox(null);
     load();

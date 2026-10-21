@@ -41,7 +41,16 @@ export async function POST(req: NextRequest) {
   const role = body?.role as Role;
 
   if (!username) return NextResponse.json({ ok: false, error: "نام کاربری الزامی است" }, { status: 400 });
+  if (!/^[A-Za-z0-9._-]{3,40}$/.test(username)) {
+    return NextResponse.json(
+      { ok: false, error: "نام کاربری باید ۳ تا ۴۰ نویسه و فقط شامل حروف انگلیسی، عدد، نقطه، خط تیره یا زیرخط باشد" },
+      { status: 400 }
+    );
+  }
   if (!displayName) return NextResponse.json({ ok: false, error: "نام نمایشی الزامی است" }, { status: 400 });
+  if (displayName.length > 80) {
+    return NextResponse.json({ ok: false, error: "نام نمایشی حداکثر ۸۰ نویسه است" }, { status: 400 });
+  }
   if (password.length < MIN_PASSWORD) {
     return NextResponse.json({ ok: false, error: `رمز عبور باید حداقل ${MIN_PASSWORD} نویسه باشد` }, { status: 400 });
   }

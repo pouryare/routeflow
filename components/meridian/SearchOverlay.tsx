@@ -64,6 +64,9 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   const [remote, setRemote] = useState<Remote & { for: string }>({ ...NO_REMOTE, for: "" });
   const [recent] = useState<SearchHit[]>(readRecent);
   const [cursor, setCursor] = useState<{ i: number; for: string }>({ i: -1, for: "" });
+  /* The user whose account the person is about to act as. Nothing is sent until they tap the
+     confirm button below: acting as someone else writes records in that person's name. */
+  const [asking, setAsking] = useState<SearchHit | null>(null);
 
   /* The page behind must not scroll under the overlay. */
   useEffect(() => {
@@ -112,21 +115,24 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
   const active = cursor.for === listKey ? cursor.i : -1;
   const setActive = (i: number) => setCursor({ i, for: listKey });
 
+  const startViewingAs = (hit: SearchHit) => {
+    onClose();
+    void fetch("/api/admin/impersonate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: Number(hit.id.split(":")[1]) }),
+    }).then((r) => {
+      if (!r.ok) return;
+      router.push("/sales");
+      router.refresh();
+    });
+  };
+
   const choose = (hit: SearchHit) => {
     /* Login-As acts, it does not navigate: confirm, start it, reload into their view. It
        is never stored as a recent, so it cannot be re-run by a stray Enter later. */
     if (hit.kind === "user") {
-      if (!window.confirm(`برنامه را به‌جای «${hit.label}» ببینید؟ تا وقتی «بازگشت» را نزنید، هر کاری به نام او ثبت می‌شود.`)) return;
-      onClose();
-      void fetch("/api/admin/impersonate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: Number(hit.id.split(":")[1]) }),
-      }).then((r) => {
-        if (!r.ok) return;
-        router.push("/sales");
-        router.refresh();
-      });
+      setAsking(hit);
       return;
     }
     try { localStorage.setItem(RECENT_KEY, JSON.stringify(pushRecent(recent, hit))); } catch { /* per-viewer nicety only */ }
@@ -182,15 +188,31 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
             aria-expanded={flat.length > 0}
             aria-controls="sov-list"
             aria-activedescendant={active >= 0 ? optionId(active) : undefined}
-            placeholder="جستجوی صفحه، مشتری یا سفارش…"
+            placeholder="جستجوی صفحه، مشتری یا سفارش…" aria-label="جستجوی صفحه، مشتری یا سفارش"
             value={q}
             onChange={(e) => setQ(e.target.value)}
           />
-          <button type="button" className="sov__close" aria-label="بستن جستجو" onClick={onClose}>
+          <button type="button" className="sov__close sov__close--labelled" aria-label="بستن جستجو" onClick={onClose}>
             <Icon name="x" size="sm" />
+            <span>بستن جستجو</span>
           </button>
         </div>
 
+        {asking ? (
+          <div role="alertdialog" aria-label="ورود به‌جای کاربر" className="sov__list" style={{ display: "grid", gap: 10, padding: 16 }}>
+            <p style={{ margin: 0 }}>
+              برنامه را به‌جای «{asking.label}» ببینید؟ تا وقتی «بازگشت به حساب خودم» را نزنید، هر کاری که انجام دهید به نام او ثبت می‌شود.
+            </p>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => startViewingAs(asking)}>
+              <Icon name="check" size="md" />
+              دیدن برنامه به‌جای «{asking.label}»
+            </button>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setAsking(null)}>
+              <Icon name="x" size="md" />
+              انصراف از ورود به‌جای کاربر
+            </button>
+          </div>
+        ) : (
         <div id="sov-list" role="listbox" className="sov__list" aria-label="نتیجه‌ها">
           {sections.map((s, si) => (
             <div key={s.key} role="group" aria-label={SECTION[s.key]} className="sov__section">
@@ -223,6 +245,7 @@ function Panel({ onClose, tabs }: { onClose: () => void; tabs: AppTab[] }) {
             <p className="sov__empty">نام صفحه، مشتری یا شمارهٔ سفارش را بنویسید</p>
           ) : null}
         </div>
+        )}
       </motion.div>
     </motion.div>
   );

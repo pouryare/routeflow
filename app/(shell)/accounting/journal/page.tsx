@@ -4,9 +4,13 @@ import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { journalReport, listPeriods } from "@/lib/repo/reports";
+import Pager from "@/components/accounting/Pager";
 import { faNum } from "@/lib/format";
+import { pagingFor, requestedPage } from "@/lib/paging";
 
 export const dynamic = "force-dynamic";
+
+const PAGE_SIZE = 100;
 
 /** Every journal, newest first.
  *
@@ -20,11 +24,17 @@ export const dynamic = "force-dynamic";
 export default async function JournalPage({
   searchParams,
 }: {
-  searchParams: Promise<{ period?: string; source?: string }>;
+  searchParams: Promise<{ period?: string; source?: string; page?: string }>;
 }) {
-  const { period, source } = await searchParams;
+  const { period, source, page: pageParam } = await searchParams;
   const organizationId = await requireAccounting("/accounting/journal");
-  const report = journalReport(organizationId, { periodKey: period, sourceType: source });
+  const filter = { periodKey: period, sourceType: source };
+  let report = journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: (requestedPage(pageParam) - 1) * PAGE_SIZE });
+  const paging = pagingFor(pageParam, report.total, PAGE_SIZE);
+  // A page past the end is clamped to the last one, which needs one more read.
+  if (paging.page !== requestedPage(pageParam)) {
+    report = journalReport(organizationId, { ...filter, limit: PAGE_SIZE, offset: paging.offset });
+  }
   const periods = listPeriods(organizationId);
   const reversed = report.rows.filter((r) => r.reversedByJournalId !== null).length;
 
@@ -36,7 +46,7 @@ export default async function JournalPage({
       <PageHeader route="/accounting/journal" />
       <SectionHead
         title="دفتر روزنامه"
-        sub={`${faNum(report.rows.length)} سند${reversed ? ` — ${faNum(reversed)} سند ابطال‌شده` : ""}`}
+        sub={`${faNum(report.total)} سند${reversed ? ` — ${faNum(reversed)} سند ابطال‌شده${paging.pageCount > 1 ? " در این صفحه" : ""}` : ""}`}
         actions={
           <div className="flex flex-wrap gap-2 text-[length:var(--text-sm)]">
             <Link
@@ -51,7 +61,7 @@ export default async function JournalPage({
                 href={link(p.periodKey, "/accounting/journal", "period")}
                 className={`rounded-[var(--radius-sm)] border px-2 py-1 ${
                   period === p.periodKey
-                    ? "border-accent text-accent"
+                    ? "border-accent text-[var(--accent-text)]"
                     : "border-border"
                 }`}
               >
@@ -124,6 +134,7 @@ export default async function JournalPage({
           );
         })}
       </AcctTable>
+      <Pager base="/accounting/journal" params={{ period, source }} paging={paging} />
     </>
   );
 }

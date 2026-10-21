@@ -1672,7 +1672,7 @@ export default function CoverageMap({
               className="py-4"
             />
           ) : dormantCustomers.length === 0 ? (
-            <EmptyState icon="check" title="هیچ مشتری فعالی بیش از ۳۰ روز بدون خرید نیست" className="py-4" />
+            <EmptyState icon="check" title="همهٔ مشتریان فعال در ۳۰ روز گذشته خرید داشته‌اند" className="py-4" />
           ) : (
             <div className="flex max-h-72 flex-col gap-1.5 overflow-y-auto">
               {dormantCustomers.map(({ customer, days }) => (
@@ -1798,7 +1798,7 @@ export default function CoverageMap({
                       <span>
                         {corridorUncovered > 0
                           ? `${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
-                          : "منطقه نیازمند پوششی سر این راه نیست."}
+                          : "این مسیر از هیچ منطقهٔ بدون پوشش نمی‌گذرد."}
                       </span>
                       {!corridorRoute && !corridorRouting && (
                         <span className="mt-1 block text-warn">
@@ -2284,6 +2284,7 @@ export default function CoverageMap({
                 <Marker
                   key={c.id}
                   position={[c.lat as number, c.lng as number]}
+                  title={c.business_name}
                   icon={customerIcon(markerColor(c), false, shapedMarkers)}
                   eventHandlers={{ click: () => openCustomer(c) }}
                 />
@@ -2300,6 +2301,7 @@ export default function CoverageMap({
           {selectedCustomer?.lat && selectedCustomer?.lng && (
             <Marker
               position={[selectedCustomer.lat, selectedCustomer.lng]}
+              title={selectedCustomer.business_name}
               icon={customerIcon(markerColor(selectedCustomer), true, shapedMarkers)}
               zIndexOffset={900}
               eventHandlers={{ click: () => setSelectedCustomer(selectedCustomer) }}
@@ -2315,6 +2317,7 @@ export default function CoverageMap({
               <Marker
                 key={f.id}
                 position={[f.lat, f.lng]}
+                title={f.name}
                 icon={facilityIcon(f.kind, f.icon_key)}
                 zIndexOffset={1000}
               >
@@ -2363,6 +2366,7 @@ export default function CoverageMap({
             <Marker
               key={l.id}
               position={[l.lat, l.lng]}
+              title={l.name}
               icon={L.divIcon({
                 className: "",
                 html: `<div style="background:#2DE0E6;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(45,224,230,0.5)"></div>`,
@@ -2391,6 +2395,7 @@ export default function CoverageMap({
           {foundLocation && (
             <Marker
               position={[foundLocation.lat, foundLocation.lng]}
+              title={foundLocation.label}
               icon={foundLocationIcon()}
               eventHandlers={{ add: (e) => e.target.openPopup() }}
             >
@@ -2505,7 +2510,7 @@ export default function CoverageMap({
               </option>
             ))}
           </select>
-          {role === "owner" && groups.length > 0 && (
+          {(role === "owner" || role === "platform_owner") && groups.length > 0 && (
             <select
               value={bulkGroupChoice}
               onChange={(e) => setBulkGroupChoice(e.target.value)}

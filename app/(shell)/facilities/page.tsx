@@ -25,6 +25,7 @@ import CopyButton from "@/components/CopyButton";
 import { SkeletonLabel, SkeletonRows } from "@/components/Skeleton";
 import { Icon } from "@/components/meridian/Icon";
 
+import { confirmAction } from "@/lib/confirm";
 // Leaflet touches window on import, so the picker can't be server-rendered.
 const LocationPinPicker = dynamic(() => import("@/components/LocationPinPicker"), { ssr: false });
 
@@ -181,6 +182,7 @@ export default function FacilitiesPage() {
   }
 
   async function remove(id: number) {
+    if (!confirmAction("این مکان حذف شود؟ مسیرهایی که از آن شروع می‌شوند ممکن است تحت تأثیر قرار بگیرند.")) return;
     setBusyId(id);
     try {
       const res = await fetch(`/api/facilities/${id}`, { method: "DELETE" });
@@ -410,13 +412,14 @@ export default function FacilitiesPage() {
           {/* On a phone: kind, name, position. The form below stays from md up. */}
           <PlaceEntry onAdded={() => void load()} />
           <div className="hidden flex-wrap gap-2 md:flex">
-            <input
+            <label className="flex flex-col gap-1 text-xs text-text-muted">نام مکان<input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
-              placeholder="نام مکان"
-              className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent"
-            />
+             
+              className="min-w-40 flex-1 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] focus:border-accent w-full"
+            /></label>
             <select
+              aria-label="نوع مکان"
               value={newKind}
               onChange={(e) => {
                 const k = e.target.value as FacilityKind;

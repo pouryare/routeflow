@@ -227,9 +227,10 @@ export default function CustomerDetailPanel({
         <button
           onClick={handleClose}
           aria-label="بستن مشخصات مشتری"
-          className="grid shrink-0 place-items-center rounded-[var(--radius-sm)] p-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
+          className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
         >
           <Icon name="x" size="sm" />
+          <span className="text-[length:var(--text-xs)]">بستن مشخصات</span>
         </button>
       </div>
 

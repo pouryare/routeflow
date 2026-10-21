@@ -2,6 +2,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
 import {
   orderTransition,
+  ORDER_STATUS_LABEL,
   legalOrderActions,
   type OrderStatus,
   type OrderAction,
@@ -199,7 +200,7 @@ export function advanceOrder(
     const t = orderTransition(from, action);
     if (!t) {
       throw new OrderTransitionError(
-        `از وضعیت «${from}» این کار انجام نمی‌شود`,
+        `از وضعیت «${ORDER_STATUS_LABEL[from] ?? from}» این کار انجام نمی‌شود`,
         legalOrderActions(from, actor.role)
       );
     }

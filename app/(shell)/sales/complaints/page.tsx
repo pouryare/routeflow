@@ -7,7 +7,8 @@ import { readCustomers } from "@/lib/customers";
 import { readCatalogue } from "@/lib/catalogue";
 import ComplaintsPanel from "@/components/sales/ComplaintsPanel";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
+
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function ComplaintsPage() {
     <ComplaintsPanel
       customers={customers}
       products={products}
-      canManage={session.role === "owner" || session.role === "group_manager"}
+      canManage={MANAGE_ROLES.includes(session.role)}
     />    </>
   );
 }

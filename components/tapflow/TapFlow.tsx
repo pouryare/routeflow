@@ -3,6 +3,8 @@
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useRef, useState, type ReactNode } from "react";
 import { Icon } from "@/components/meridian/Icon";
+import { createPortal } from "react-dom";
+import { useSheetHost } from "@/components/meridian/useSheetHost";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useSwipeDismiss } from "@/components/useSwipeDismiss";
 import { answerStep, backStep, SKIP, viewStep } from "@/lib/crm/flows/machine";
@@ -63,18 +65,20 @@ export default function TapFlow(p: TapFlowProps) {
     p.onNavigate?.(url);
   };
 
-  return (
+  const host = useSheetHost();
+  return host ? createPortal(
     <>
       <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
-      <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tf-title" aria-hidden={!open}>
+      <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-labelledby="tf-title" aria-hidden={!open} inert={!open}>
         <div className="grab" />
         <div className="sheethead">
           <div>
             <h2 id="tf-title">{p.title}</h2>
             {p.subtitle ? <div className="s">{p.subtitle}</div> : null}
           </div>
-          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x" type="button" aria-label="بستن این فرم" onClick={onClose}>
+          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x x--labelled" type="button" aria-label="بستن فرم" onClick={onClose}>
             <Icon name="x" size="sm" />
+            <span>بستن فرم</span>
           </button>
         </div>
         <div className="tapflow" aria-live="polite">
@@ -113,8 +117,9 @@ export default function TapFlow(p: TapFlowProps) {
               )}
         </div>
       </div>
-    </>
-  );
+    </>,
+    host,
+  ) : null;
 }
 
 function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {

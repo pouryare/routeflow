@@ -56,6 +56,15 @@ export function isVanRole(role: Role): boolean {
  *  excluded — those ask "who does this job", not "who is in charge". */
 export const MANAGE_ROLES: Role[] = ["platform_owner", "owner", "group_manager"];
 
+/** Who works the pin pool (/leads) and the data behind it: places on the map nobody has decided
+ *  about yet, the lists they are filed into, and the runs built from them.
+ *
+ *  The managers, plus the rep manager, who looks after the sales reps and hands them work. Scope
+ *  is the same group scoping every manager gets (a rep manager sees the pins of their own group),
+ *  never an owner's organisation-wide view. DISTINCT from MANAGE_ROLES on purpose: widening
+ *  MANAGE_ROLES itself would hand a rep manager the accounting, cheques and batches too. */
+export const PIN_POOL_ROLES: Role[] = [...MANAGE_ROLES, "rep_manager"];
+
 /** Owner-only gates, plus the god key.
  *
  *  A DISTINCT constant from `MANAGE_ROLES`, and the distinction is load-bearing: a bare

@@ -782,7 +782,7 @@ export default function PlannerPage() {
             <input
               value={addQuery}
               onChange={(e) => setAddQuery(e.target.value)}
-              placeholder="نام مشتری یا سرنخ…"
+              placeholder="نام مشتری یا سرنخ…" aria-label="نام مشتری یا سرنخ"
               className="w-full rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-[length:var(--text-sm)] text-text outline-none transition-[border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-text-faint focus:border-accent"
             />
             {addCandidates.length > 0 && (
@@ -1027,13 +1027,13 @@ export default function PlannerPage() {
                   </div>
                 )}
                 <div
-                  className="print-stop flex items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
+                  className="print-stop flex flex-wrap items-center gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
                 >
                   <div className="no-print flex flex-col gap-0.5">
                     <button
                       onClick={() => move(p.id, -1)}
                       disabled={i === 0}
-                      aria-label="بالا"
+                      aria-label="انتقال توقف به بالا"
                       className="text-text-faint hover:text-text disabled:opacity-30"
                     >
                       <Icon name="arrow-up" size="sm" />
@@ -1041,13 +1041,13 @@ export default function PlannerPage() {
                     <button
                       onClick={() => move(p.id, 1)}
                       disabled={i === dayPlans.length - 1}
-                      aria-label="پایین"
+                      aria-label="انتقال توقف به پایین"
                       className="text-text-faint hover:text-text disabled:opacity-30"
                     >
                       <Icon name="arrow-down" size="sm" />
                     </button>
                   </div>
-                  <div className="flex-1 truncate text-[length:var(--text-sm)] text-text">
+                  <div className="min-w-0 flex-1 basis-32 truncate text-[length:var(--text-sm)] text-text">
                     {p.entity_type === "district" ? <Icon name="map" size="sm" /> : null}
                      {p.entity_type === "lead_location" ? <Icon name="map-pin" size="sm" className="text-accent" /> : null}{" "}
                     {p.label}
@@ -1061,7 +1061,7 @@ export default function PlannerPage() {
                   >
                     {STATUS_META[p.status].label}
                   </span>
-                  <div className="no-print flex shrink-0 flex-wrap justify-end gap-1">
+                  <div className="no-print flex w-full flex-wrap justify-end gap-1 sm:w-auto">
                     {p.lat !== null && p.lng !== null && (
                       <a
                         href={navigateUrl(navAppId, { lat: p.lat, lng: p.lng }, p.label)}

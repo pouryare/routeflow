@@ -9,6 +9,7 @@ import { Fragment, useCallback, useMemo, useState } from "react";
 import { faNum } from "@/lib/format";
 import { BATCH_STATUS_LABEL, BATCH_TRANSITIONS, type BatchStatus } from "@/lib/batchStates";
 
+import { confirmAction } from "@/lib/confirm";
 interface Product {
   id: number;
   name: string;
@@ -93,6 +94,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
   }
 
   async function setStatus(id: number, to: BatchStatus) {
+    // A recall raises a reminder for every customer who received the lot, and recalled is a dead end
+    // (it can only go to depleted), so it asks first; quarantine is reversible and does not.
+    if (to === "recalled" && !confirmAction("این سری ساخت فراخوان شود؟ برای همهٔ مشتریانی که آن را گرفته‌اند یادآور ثبت می‌شود و برگشت‌پذیر نیست.")) return;
     const res = await fetch(`/api/sales/batches/${id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
@@ -132,9 +136,9 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
             </option>
           ))}
         </select>
-        <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="کد سری ساخت (خودکار اگر خالی)" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} />
-        <input className="rounded border border-border bg-bg p-2 text-left font-mono text-sm" placeholder="مقدار دریافتی" inputMode="decimal" value={form.qty_received_base} onChange={(e) => setForm((f) => ({ ...f, qty_received_base: e.target.value }))} />
-        <input className="rounded border border-border bg-bg p-2 text-sm" placeholder="مرجع سری ساخت تأمین‌کننده" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} />
+        <label className="flex flex-col gap-1 text-xs text-text-muted">کد سری ساخت<input className="rounded border border-border bg-bg p-2 text-sm w-full" placeholder="خودکار اگر خالی" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">مقدار دریافتی<input className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full" inputMode="decimal" value={form.qty_received_base} onChange={(e) => setForm((f) => ({ ...f, qty_received_base: e.target.value }))} /></label>
+        <label className="flex flex-col gap-1 text-xs text-text-muted">مرجع سری ساخت تأمین‌کننده<input className="rounded border border-border bg-bg p-2 text-sm w-full" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} /></label>
         <label className="flex items-center gap-1 text-xs text-text-muted">
           تولید
           <JalaliDateInput value={form.produced_at} onChange={(iso) => setForm((f) => ({ ...f, produced_at: iso }))} aria-label="تاریخ تولید" />

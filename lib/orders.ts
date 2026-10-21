@@ -5,6 +5,8 @@
  *  six months as it did on the day it was taken. Commission is paid off these numbers.
  */
 
+import { MAX_LINES_PER_ORDER, MAX_NOTES_LENGTH, MAX_PACKS_PER_LINE, isValidPacks } from "./orderLimits";
+import { refreshOrderFigures } from "./repo/orderFigures";
 import type { DatabaseSync } from "node:sqlite";
 import { getDb } from "./db";
 import { resolvePrice, costBasisFor } from "./catalogue";
@@ -181,11 +183,53 @@ function snapshotLine(db: DatabaseSync, orderDate: string, input: LineInput) {
   };
 }
 
+/** order_date is when the slip was typed, so it can lag (offline devices) but not run far ahead. */
+const ORDER_DATE_MAX_PAST_DAYS = 366;
+const ORDER_DATE_MAX_FUTURE_DAYS = 2;
+
+function assertValidLines(lines: LineInput[]): void {
+  if (lines.length > MAX_LINES_PER_ORDER) {
+    throw new OrderError(`هر سفارش حداکثر ${MAX_LINES_PER_ORDER} قلم دارد`);
+  }
+  for (const line of lines) assertValidLine(line);
+}
+
+function assertValidLine(line: LineInput): void {
+  const positiveId = (n: unknown) => typeof n === "number" && Number.isInteger(n) && n > 0;
+  if (!positiveId(line.product_id) || !positiveId(line.packaging_id)) {
+    throw new OrderError("کالا یا بسته‌بندی نامعتبر است");
+  }
+  const packs = line.packs;
+  // A reversal is the one line that is meant to be negative; every other line is a positive count.
+  const ok = line.is_reversal ? isValidPacks(-packs) : isValidPacks(packs);
+  if (!ok) {
+    throw new OrderError(
+      line.is_reversal
+        ? "تعداد قلم برگشتی باید عددی منفی (حداکثر سه رقم اعشار) باشد"
+        : `تعداد بسته باید عددی مثبت (حداکثر سه رقم اعشار) و حداکثر ${MAX_PACKS_PER_LINE} باشد`
+    );
+  }
+}
+
+function assertValidOrderDate(orderDate: string): void {
+  const t = Date.parse(orderDate);
+  const day = 86_400_000;
+  const now = Date.now();
+  if (Number.isNaN(t) || t < now - ORDER_DATE_MAX_PAST_DAYS * day || t > now + ORDER_DATE_MAX_FUTURE_DAYS * day) {
+    throw new OrderError("تاریخ سفارش خارج از بازهٔ مجاز است");
+  }
+}
+
 export function createOrder(
   db: DatabaseSync,
   input: CreateOrderInput
 ): { id: number; order_no: string } {
   if (input.lines.length === 0) throw new OrderError("سفارش بدون قلم ثبت نمی‌شود");
+  assertValidLines(input.lines);
+  assertValidOrderDate(input.order_date);
+  if (input.notes != null && input.notes.length > MAX_NOTES_LENGTH) {
+    throw new OrderError(`یادداشت حداکثر ${MAX_NOTES_LENGTH} نویسه است`);
+  }
 
   const customer = db
     .prepare(
@@ -298,6 +342,7 @@ function insertLine(
     line.reverses_line_id ?? null,
     now
   );
+  refreshOrderFigures(db, orderId);
 }
 
 /** Adds a line to a draft. Refuses once the order is confirmed -- at that point the
@@ -307,6 +352,7 @@ export function addLine(db: DatabaseSync, orderId: number, line: LineInput): voi
     | { status: string; order_date: string }
     | undefined;
   if (!order) throw new OrderError("سفارش پیدا نشد");
+  assertValidLine(line);
   if (order.status !== "DRAFT") {
     throw new OrderError("سفارش تأییدشده ویرایش نمی‌شود؛ برای اصلاح، قلم برگشتی ثبت کنید");
   }

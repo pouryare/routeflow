@@ -18,8 +18,8 @@ import { ROLE_LABEL } from "@/lib/roles";
  *  Matching is matchesQuery, not SQL LIKE: LIKE does not fold ي/ی, ك/ک or Persian digits,
  *  and people type all three. */
 
-const CUSTOMER_ROLES: readonly string[] = ["owner", "group_manager"];
-const ORDER_ROLES: readonly string[] = ["owner", "group_manager", "phone_sales"];
+const CUSTOMER_ROLES: readonly string[] = ["platform_owner", "owner", "group_manager"];
+const ORDER_ROLES: readonly string[] = ["platform_owner", "owner", "group_manager", "phone_sales"];
 const DEFAULT_LIMIT = 6;
 /** Newest orders considered before matching. Search is for "that order from last week",
  *  not for archaeology; the orders page has filters for that. */
@@ -78,7 +78,7 @@ export function searchOrders(db: DatabaseSync, session: Session, q: string, limi
  *  owner, a platform owner, a deactivated account, themselves). lib/impersonation.ts is
  *  the rule; this only avoids offering what it would turn down. */
 export function searchUsers(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
-  if (session.role !== "owner" || tooShort(q)) return [];
+  if (!(session.role === "owner" || session.role === "platform_owner") || tooShort(q)) return [];
   const rows = db
     .prepare(
       `SELECT id, display_name, username, role FROM users

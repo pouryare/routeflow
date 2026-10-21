@@ -7,13 +7,14 @@ import { readCatalogue } from "@/lib/catalogue";
 import BatchesPanel from "@/components/sales/BatchesPanel";
 import PageHeader from "@/components/meridian/PageHeader";
 
+import { MANAGE_ROLES } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 
 export default async function BatchesPage() {
   const jar = await cookies();
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
-  if (session.role !== "owner" && session.role !== "group_manager") redirect("/sales");
+  if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
   const products = readCatalogue(getDb(), session.organizationId).map((p) => ({
     id: p.id,

@@ -1,5 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { makeRepo } from "./base";
+import { isDayWithin, isQuantity } from "@/lib/inputChecks";
+import { isToman } from "@/lib/money";
 import {
   BATCH_TRANSITIONS,
   canTransitionBatch,
@@ -54,6 +56,27 @@ export function createBatchTxn(
 ): number {
   if (!(input.qty_received_base > 0)) {
     throw new BatchError("مقدار دریافتی سری ساخت باید بزرگ‌تر از صفر باشد");
+  }
+  if (!isQuantity(input.qty_received_base, 1_000_000_000)) {
+    throw new BatchError("مقدار دریافتی سری ساخت معتبر نیست");
+  }
+  if (input.unit_cost_toman != null && (!isToman(input.unit_cost_toman) || input.unit_cost_toman < 0)) {
+    throw new BatchError("بهای هر واحد باید عدد صحیح تومان و غیرمنفی باشد");
+  }
+  if (input.produced_at != null && !isDayWithin(input.produced_at, 5 * 366, 1)) {
+    throw new BatchError("تاریخ تولید معتبر نیست");
+  }
+  if (input.expiry_date != null && !isDayWithin(input.expiry_date, 20 * 366, 100 * 366)) {
+    throw new BatchError("تاریخ انقضا معتبر نیست");
+  }
+  if (input.produced_at && input.expiry_date && input.expiry_date.slice(0, 10) < input.produced_at.slice(0, 10)) {
+    throw new BatchError("تاریخ انقضا نمی‌تواند پیش از تاریخ تولید باشد");
+  }
+  if (input.batch_code != null && input.batch_code.trim().length > 60) {
+    throw new BatchError("کد سری ساخت حداکثر ۶۰ نویسه است");
+  }
+  if (!db.prepare("SELECT 1 FROM products WHERE id = ? AND organization_id = ?").get(input.product_id, organizationId)) {
+    throw new BatchError("کالا پیدا نشد");
   }
   const now = new Date().toISOString();
   const producedAt = input.produced_at ?? null;

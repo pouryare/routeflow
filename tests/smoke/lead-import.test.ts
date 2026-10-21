@@ -47,7 +47,7 @@ describe("bulk lead import", () => {
        what makes this reliable on a cold dev server, where the first /api/me request pays
        a compile. */
     await page.getByText("افزودن از لینک").waitFor({ timeout: 60_000 });
-    await page.getByPlaceholder(/لینک یا نتیجه جستجوی گوگل‌مپس/).fill(`رستوران آزمایشی\n${EASY_LINK}`);
+    await page.getByPlaceholder(/لینک یا نتیجه جستجوی گوگل‌مپ/).fill(`رستوران آزمایشی\n${EASY_LINK}`);
     await page.getByRole("button", { name: "تجزیه" }).click();
 
     // The console replaces the paste box. Waiting for it is what proves the job started.

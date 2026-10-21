@@ -151,13 +151,23 @@ export function moveTask(
 
 export function listTasks(
   organizationId: number,
-  filter: { assignee?: number; role?: string; status?: string; limit?: number } = {}
+  filter: { assignee?: number; role?: string; status?: string; limit?: number; groupIds?: number[] } = {}
 ): TaskRow[] {
   const clauses = ["organization_id = ?"];
   const params: unknown[] = [organizationId];
   if (filter.assignee !== undefined) {
     clauses.push("assignee_user_id = ?");
     params.push(filter.assignee);
+  }
+  if (filter.groupIds !== undefined) {
+    // An ungrouped row is company-wide; a grouped one is visible only inside its group. An empty
+    // list therefore sees the company-wide rows and nothing more -- never "everything".
+    clauses.push(
+      filter.groupIds.length
+        ? `(group_id IS NULL OR group_id IN (${filter.groupIds.map(() => "?").join(", ")}))`
+        : "group_id IS NULL"
+    );
+    params.push(...filter.groupIds);
   }
   if (filter.role !== undefined) {
     clauses.push("role_hint = ?");
@@ -178,6 +188,50 @@ export function listTasks(
 
 /** Complete a task with an optional outcome; resolves any rule_runs tied to the same
  *  entity so the rule can fire again later. */
+/** Whether this person may complete, dismiss or move this task.
+ *
+ *  The routes only checked the organisation, so any signed-in role (a driver included) could close
+ *  anyone's task. Owners, the platform key and the rep manager act on any task of the organisation;
+ *  a group manager on their group's and the company-wide ones; everyone else on the tasks assigned
+ *  to them, plus unassigned ones that carry no role hint or their own. */
+export function canActOnTask(
+  actor: { role: string; userId: number; groupId: number | null },
+  row: Pick<TaskRow, "assignee_user_id" | "group_id" | "role_hint">
+): boolean {
+  if (actor.role === "owner" || actor.role === "platform_owner" || actor.role === "rep_manager") return true;
+  if (actor.role === "group_manager") return row.group_id === null || row.group_id === actor.groupId;
+  if (row.assignee_user_id !== null) return row.assignee_user_id === actor.userId;
+  return row.role_hint === null || row.role_hint === actor.role;
+}
+
+/** A task may be linked to a customer or an order. Both ends of the link must be given, the type
+ *  must be one of those two, and the row must belong to the caller's organisation: the route used
+ *  to store whatever type and id it was handed, including ids that exist nowhere or in another
+ *  tenant. Returns true when there is no link at all. */
+export function taskEntityValid(
+  organizationId: number,
+  entityType: unknown,
+  entityId: unknown
+): boolean {
+  if (entityType == null && entityId == null) return true;
+  if (typeof entityType !== "string" || typeof entityId !== "number" || !Number.isInteger(entityId)) return false;
+  const table = entityType === "customer" ? "customers" : entityType === "order" ? "orders" : null;
+  if (!table) return false;
+  return !!tasksRepo
+    .db()
+    .prepare(`SELECT 1 FROM ${table} WHERE id = ? AND organization_id = ?`)
+    .get(entityId, organizationId);
+}
+
+/** Whether `userId` is an active user of the organisation. */
+export function assigneeInOrg(organizationId: number, userId: number): boolean {
+  if (!Number.isInteger(userId)) return false;
+  return !!tasksRepo
+    .db()
+    .prepare("SELECT 1 FROM users WHERE id = ? AND organization_id = ? AND active = 1")
+    .get(userId, organizationId);
+}
+
 export function completeTask(
   organizationId: number,
   id: number,

@@ -16,6 +16,7 @@ import { isPlaced } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
 import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
+import { guardedOsrmRouter } from "@/lib/guardedRouter";
 
 export interface RouteStop {
   lat: number;
@@ -51,7 +52,9 @@ function RoutingLayer({
       onSummaryRef.current(null);
       return;
     }
+    const guarded = guardedOsrmRouter(L as unknown as WithRouting);
     const control = (L as unknown as WithRouting).Routing.control({
+      router: guarded.router,
       waypoints: route.map((s) => L.latLng(s.lat, s.lng)),
       routeWhileDragging: false,
       addWaypoints: false,
@@ -84,6 +87,7 @@ function RoutingLayer({
     control.on("routingerror", () => onSummaryRef.current(null));
     control.addTo(map);
     return () => {
+      guarded.dispose();
       control.remove();
     };
   }, [map, key, stopsRef, onSummaryRef]);
@@ -118,7 +122,7 @@ export default function PlannerRouteMap({
               the list is more urgent than a landmark. Without these the origin is
               invisible on the very map that routes from it. */}
           {facilities.filter(isPlaced).map((f) => (
-            <Marker key={f.id} position={[f.lat, f.lng]} icon={facilityIcon(f.kind, f.icon_key)} zIndexOffset={800}>
+            <Marker key={f.id} position={[f.lat, f.lng]} title={f.name} icon={facilityIcon(f.kind, f.icon_key)} zIndexOffset={800}>
               <Tooltip>{f.name}</Tooltip>
             </Marker>
           ))}
@@ -131,7 +135,7 @@ export default function PlannerRouteMap({
       </div>
       {summary && (
         <div className="flex items-center justify-between border-t border-border bg-surface px-3 py-2 font-mono text-[length:var(--text-xs)] text-text-muted">
-          <span>مسیر پیشنهادی روی جاده (OSRM)</span>
+          <span>مسیر پیشنهادی روی جاده</span>
           <span className="text-text">
             {faFixed(summary.distanceKm, 1)} کیلومتر · {faNum(summary.minutes)} دقیقه
           </span>
