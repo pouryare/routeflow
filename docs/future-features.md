@@ -1193,6 +1193,149 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F61. Backorders and partial fulfilment
+
+**What:** when stock covers only part of an order, ship what is available and track the rest as a backorder with its own promised date, a visible list, and automatic fulfilment when stock arrives.
+
+**Already in the app:** partial delivery exists. A driver can record a short delivery (`deliverPartial`), which moves the order to `PARTIALLY_DELIVERED`; when it is settled, the `spawnBackorder` effect (`lib/repo/deliveries.ts`) copies the shortfall (planned minus delivered per line) into a fresh `DRAFT` order at the original agreed price, which someone then has to confirm. Stock reservation also records a shortfall slice (a reservation with no batch) when stock is short at confirmation. Missing: a promised date for the backorder, a backorder list or badge, a link back to the parent order, automatic confirmation when stock is received, and telling the customer.
+
+**Why parked:** automatic fulfilment of a backorder competes with new orders for the same stock (who gets it first?); customers may no longer want the goods weeks later; prices must follow the rule already used (original price carried over).
+
+**Open questions**
+1. Priority when stock arrives: backorders before new orders, or first come first served?
+2. Expiry: a backorder not fulfilled in N days is cancelled or asked about.
+3. Does the customer choose between waiting, cancelling the short lines, or substituting?
+4. Shortage at confirmation (not at delivery): split the order immediately, or hold it?
+
+**Suggested first slice:** a "backorders" list built from the existing spawned drafts (note text and parent link), showing age and the stock now available, with a one-tap confirm when stock covers it.
+
+**Prerequisites:** the existing partial-delivery and reservation code; F44 and F64 touch the same order creation path.
+
+---
+
+## F62. Customer-specific product visibility
+
+**What:** hide products from customers or groups that don't buy them, so reps and customers see shorter, relevant lists.
+
+**Already in the app:** products have a global `active` flag. I found no per-customer or per-group visibility.
+
+**Why parked:** hiding the wrong product costs a sale; exceptions ("this customer wants it once a year") must be easy; the rules (by customer type, by region, by price group) need agreeing with sales.
+
+**Open questions**
+1. Hide by rule (customer type, group), by explicit list, or by purchase history (not bought in 12 months goes to "more")?
+2. Hidden or only moved down the list? Start with moved down, searchable.
+3. Does visibility apply to customer-facing catalogues (F23) as well as order entry?
+
+**Suggested first slice:** in order entry, show the customer's usual products first (from history, see F58) and the rest behind "all products". No hiding.
+
+**Prerequisites:** F58 for the usual-products signal.
+
+---
+
+## F63. Deposits and prepayments
+
+**What:** record advance payments from customers and apply them to later orders automatically, with the customer's credit visible at order entry.
+
+**Already in the app:** a payment can be split into allocations, and a slice with no order sits on the customer's account as an unallocated credit (`payment_allocations.order_id` NULL; `autoAllocateFIFO` fills the oldest unpaid delivered orders first and leaves the remainder on account). The chart of accounts has a prepayments account (1301). Missing: applying on-account credit automatically to a new order, showing the credit on the order and in the credit check, and a deposit requirement before an order (for example for custom or large orders).
+
+**Why parked:** on-account credit and credit limits interact (credit should offset exposure); refunds of unused deposits need a flow; accounting treatment of deposits versus on-account payments must be confirmed with the accountant.
+
+**Open questions**
+1. Apply on-account credit automatically at delivery, or let the cashier choose?
+2. Does the credit-approval check (limit versus balance) count unallocated credit?
+3. Deposit required: per customer type, per order size, per product?
+4. Refund path and approval (see F48).
+
+**Suggested first slice:** show the customer's on-account credit on the order page and in the payment screen, with a one-tap "apply to this order" that creates the allocation.
+
+**Prerequisites:** payments and allocations (exist); F46 shares the credit view.
+
+---
+
+## F64. Minimum order and delivery fee rules
+
+**What:** a minimum basket value (or quantity) per route or customer type, and a delivery fee charged below a threshold, applied at order entry.
+
+**Already in the app:** nothing I could find enforces a minimum order or a delivery fee (a search for minimum-order and delivery-fee terms found only an unrelated analytics metric).
+
+**Why parked:** hard minimums lose small customers who matter strategically; fees need a line on the invoice and a ledger account; rules differ by route length and customer type.
+
+**Open questions**
+1. Warn or block when below the minimum? Start with warn plus manager override.
+2. Fee: fixed, or by distance or zone?
+3. Free delivery above a threshold; are delivery fees taxable?
+4. Where does the fee appear: a separate order line with its own product code?
+
+**Suggested first slice:** a warning at order confirmation when the basket is below the route's minimum, with a reason picker when the rep proceeds. No fee yet.
+
+**Prerequisites:** none for the warning; the fee needs a decision on order-line representation.
+
+---
+
+## F65. Threshold-based price uplift
+
+**What:** raise the unit price automatically when a condition is met. Two readings, to be settled before building:
+
+- **Small-quantity uplift:** an item ordered below a quantity threshold gets a higher unit price (the opposite of a volume discount), to discourage tiny orders that cost more to deliver.
+- **Low-stock uplift:** an item whose stock falls below a threshold gets a price increase while it is scarce.
+
+**Already in the app:** prices are dated and insert-only (`product_prices.valid_from`, see F56), order lines freeze the price they were sold at (`unit_price_toman`, `price_id`), and a reorder point is computed per product (`lib/predict/inventory.ts`, see F11). No price rules or tiers by quantity or stock exist as far as I found.
+
+**Why parked:** automatic price changes surprise customers and reps, and may conflict with agreed prices, contracts (F44) and campaigns (F21); a low-stock uplift can look like profiteering and needs a cap; the price the customer was quoted must never change after the quote.
+
+**Open questions**
+1. Which reading applies, or both? This is the first thing to confirm.
+2. Uplift as a percentage or a fixed amount, with a cap?
+3. Which customers are exempt (contracts, tiers, reps' agreed prices)?
+4. Visible to the rep before confirming ("price includes small-order uplift") and recorded on the line?
+5. Approval above a threshold (F48)?
+
+**Suggested first slice:** a small-quantity uplift rule per product (quantity threshold, percentage, cap) shown as a separate labelled adjustment on the order line, off by default and exempting customers with agreed prices. Low-stock uplift only after that proves useful.
+
+**Prerequisites:** F56 for dated price handling; F64 for the small-order treatment; F48 for approvals.
+
+---
+
+## F66. Supplier order tracking (purchase orders)
+
+**What:** purchase orders with an expected date and a status (ordered, in transit, partly received, received), alerts for lateness, and receipt against the order.
+
+**Already in the app:** purchases are recorded as receipts only (`purchases` and `purchase_lines`: supplier, date, invoice number, base quantity and unit cost per line), with a suppliers repo and a payables page. There is no order before the receipt, no expected date and no status.
+
+**Why parked:** it needs a new document type that links to receipts, lead times per supplier (F11 wants them too), and partial receipts; ordering practice may be phone and WhatsApp, so people must actually enter the order.
+
+**Open questions**
+1. Does the order get entered by hand, or generated from F11 suggestions and confirmed?
+2. Partial receipt: close the order at receipt or keep the remainder open?
+3. Price on the order versus the invoice price at receipt: flag differences?
+4. Feeds supplier scorecards (F31) with promised dates.
+
+**Suggested first slice:** a purchase order with supplier, expected date and lines, a "receive against this order" action that pre-fills the existing receipt, and an overdue list.
+
+**Prerequisites:** the receive flow (TapFlow Phase 6); F11 and F31 build on it.
+
+---
+
+## F67. Friday weekly scorecard
+
+**What:** an automatic weekly summary for each manager and the owner, generated on Friday at the end of the Persian week (Saturday to Friday): orders, deliveries, collection, complaints, visits, targets, with the change from the previous week.
+
+**Already in the app:** the briefing panels (`lib/repo/briefing.ts`), KPI snapshots and health scores (`lib/repo/health.ts`, `kpi_snapshots`), targets, and a scheduled sweep with weekly recurrence rules (`weekly:<day>`, including `fri`, in `lib/tasks/recurrence.ts`). Notifications reach people through push and Telegram. There is no weekly digest.
+
+**Why parked:** Friday is the rest day, so a notification then must be quiet and useful rather than a work alert; numbers must match the screens people check; the scorecard design differs by role.
+
+**Open questions**
+1. Window: Saturday to Friday as the week, summarised on Friday evening, or delivered on Thursday night for use on Saturday morning? (I took "for Friday" to mean the week-end report; confirm.)
+2. Delivery: briefing card on the next working day, a Telegram message, or both?
+3. Which five numbers per role, and the comparison (last week, same week last year)?
+4. Quiet-hours rule: respect each person's quiet window (the notification code already has one).
+
+**Suggested first slice:** a "this week versus last" card on the owner and manager briefing, computed from existing KPI snapshots and shown from Friday on. Telegram digest second.
+
+**Prerequisites:** KPI snapshots and the briefing (exist).
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
