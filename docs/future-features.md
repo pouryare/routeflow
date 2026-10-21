@@ -1274,25 +1274,23 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F65. Threshold-based price uplift
+## F65. Small-quantity price uplift
 
-**What:** raise the unit price automatically when a condition is met. Two readings, to be settled before building:
+**What:** an item ordered below a quantity threshold gets a higher unit price (the opposite of a volume discount), to discourage tiny orders that cost more to pick, load and deliver. Confirmed meaning: the trigger is the quantity ordered, not the stock level.
 
-- **Small-quantity uplift:** an item ordered below a quantity threshold gets a higher unit price (the opposite of a volume discount), to discourage tiny orders that cost more to deliver.
-- **Low-stock uplift:** an item whose stock falls below a threshold gets a price increase while it is scarce.
+**Already in the app:** prices are dated and insert-only (`product_prices.valid_from`, see F56), and an order line freezes the price it was sold at (`unit_price_toman`, `price_id`), so an uplift can be stored on the line without touching the price list. No quantity-based price rules exist as far as I found.
 
-**Already in the app:** prices are dated and insert-only (`product_prices.valid_from`, see F56), order lines freeze the price they were sold at (`unit_price_toman`, `price_id`), and a reorder point is computed per product (`lib/predict/inventory.ts`, see F11). No price rules or tiers by quantity or stock exist as far as I found.
-
-**Why parked:** automatic price changes surprise customers and reps, and may conflict with agreed prices, contracts (F44) and campaigns (F21); a low-stock uplift can look like profiteering and needs a cap; the price the customer was quoted must never change after the quote.
+**Why parked:** an automatic price rise surprises customers and reps, and may conflict with agreed prices, contracts (F44) and campaigns (F21); the rule must be visible before the order is confirmed; the quoted price must never change afterwards.
 
 **Open questions**
-1. Which reading applies, or both? This is the first thing to confirm.
-2. Uplift as a percentage or a fixed amount, with a cap?
-3. Which customers are exempt (contracts, tiers, reps' agreed prices)?
-4. Visible to the rep before confirming ("price includes small-order uplift") and recorded on the line?
-5. Approval above a threshold (F48)?
+1. Threshold per product and packaging, per product category, or global? Counted in packs or base units?
+2. Uplift as a percentage or a fixed amount per unit, with a cap?
+3. Which customers are exempt (agreed prices, contracts, price tiers)?
+4. Shown as its own labelled adjustment on the line ("small-order uplift") so the rep and customer see why the unit price is higher, and recorded for reports.
+5. Approval or override by a manager when a rep waives it (F48)?
+6. Interaction with the minimum-order rule (F64): either raise the price or warn on the basket, not both for the same line.
 
-**Suggested first slice:** a small-quantity uplift rule per product (quantity threshold, percentage, cap) shown as a separate labelled adjustment on the order line, off by default and exempting customers with agreed prices. Low-stock uplift only after that proves useful.
+**Suggested first slice:** a per-product rule (threshold in packs, percentage uplift, cap) applied at order entry, shown as a separate labelled adjustment on the order line, off by default, exempting customers with an agreed price. A manager can waive it with a reason.
 
 **Prerequisites:** F56 for dated price handling; F64 for the small-order treatment; F48 for approvals.
 
@@ -1395,6 +1393,107 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a saved "dormant 45 days in my group" list that creates call tasks for the owning reps, with a one-line script and a "reordered within 14 days" count after.
 
 **Prerequisites:** F8 and F9 supply the "who is due or at risk" signals; the call-outcome flow.
+
+---
+
+## F71. Customer credit holds by rep
+
+**What:** a rep (or manager) places a temporary hold on a customer's new orders with a reason and an expiry (a dispute, a collection problem, a returned cheque under discussion), visible to everyone who takes orders for that customer, and released with one tap.
+
+**Already in the app:** an order that breaches the credit limit can be parked for approval (`PENDING_CREDIT`) and a rejected one lands in `ON_HOLD` until a manager or owner releases it (`releaseHold`). A customer has a lifecycle, and `blocked` can be reached from any state (it can only return to `active`). I did not verify who may set `blocked`, whether it stops order entry, or whether it can expire. Holds are therefore either per order or an open-ended block, with no temporary, reasoned customer-level hold.
+
+**Why parked:** a hold that a rep can place alone can also be abused or forgotten; it must expire or be reviewed; a hold on a customer who is mid-delivery needs a rule for orders already confirmed.
+
+**Open questions**
+1. Who can place a hold: the customer's rep, the group manager, both? Who can release?
+2. Expiry: a default (7 days) with a reminder before it lapses?
+3. Effect: warn at order entry, require a manager override, or block?
+4. Existing confirmed orders keep going; only new ones are affected?
+5. Record in the activity log and the audit trail (F27).
+
+**Suggested first slice:** a "hold" action on the customer with a reason and an expiry date, shown as a banner at order entry that asks for a manager override to proceed. No change to the lifecycle states.
+
+**Prerequisites:** the order state machine and customer lifecycle (exist); F48 for the override approval.
+
+---
+
+## F72. Duplicate order warning
+
+**What:** warn when a customer already has a near-identical open order (same products, close quantities, same or neighbouring day), which usually means a double entry, and offer to open that order instead.
+
+**Already in the app:** nothing I could find warns about a repeated order. The duplicate-customer tool (`lib/repo/crm/duplicates.ts`) is about customer records, not orders.
+
+**Why parked:** legitimate repeat orders (a big customer ordering twice a day) would be nagged; the "near-identical" definition affects both false alarms and missed duplicates; a warning at the wrong moment slows entry.
+
+**Open questions**
+1. Definition: same customer, an open order created within the last N hours, with at least X% of lines matching?
+2. Block or just ask ("open the existing one" / "this is a new order")?
+3. Does a confirmed "this is new" answer suppress the warning for that customer for a day?
+4. Include orders created by a different rep?
+
+**Suggested first slice:** at confirmation, if the same customer has another open order created in the last 24 hours with the same set of products, show one question with two buttons: open the existing order, or continue.
+
+**Prerequisites:** none; works with `orderQuickFlow` and the desktop order form.
+
+---
+
+## F73. Order edit history
+
+**What:** every change to an order after confirmation (quantities, prices, dates, address, notes) shown as a timeline with who changed it, when, and why, including what the old value was.
+
+**Already in the app:** `order_events` records each status transition of an order with the action, actor, reason code, note and time (`lib/repo/orders.ts`, with audit views in `lib/repo/journey.ts` and `lib/repo/why.ts`), and legacy orders get one synthetic create event. Order lines carry an `is_reversal` flag, which suggests corrections are posted as reversing lines. I did not confirm how a confirmed order is edited, and I found no field-level history (old and new values) for quantities, prices or dates.
+
+**Why parked:** it touches every write path that changes an order; the timeline must stay readable (group a multi-field edit into one entry); sensitive changes (price down, quantity up after delivery) deserve highlighting, which overlaps F27 and F48.
+
+**Open questions**
+1. Which fields are tracked: lines (product, quantity, price), dates, address, notes, discounts?
+2. Recorded in the same `order_events` table with a "field change" action, or a separate table?
+3. Required reason on edits after confirmation?
+4. Who can see it: the order's owner, managers, finance?
+
+**Suggested first slice:** record a before-and-after summary for line and date edits in `order_events` (action `edit`) and show it on the order page's existing timeline. Reason required after confirmation.
+
+**Prerequisites:** the order events table and timeline (exist); F27 and F48 build on it.
+
+---
+
+## F74. Rep daily wrap-up
+
+**What:** an end-of-day screen for a salesperson that collects the day's loose ends: calls and visits not logged, promises made, orders left in draft, tomorrow's first calls, and a one-tap "I'm done" that the manager can see.
+
+**Already in the app:** the day's start is covered: the briefing and `/sales/today` (decks for credit approvals and duplicates, action cards, suggestions) and the pocket view with today and week tiles. There is nothing for the close of the day.
+
+**Why parked:** an end-of-day ritual only works if it is short; it should draw from data already captured instead of asking for typing; a manager seeing who has not closed the day can feel like surveillance.
+
+**Open questions**
+1. Items: unlogged calls (from the phone log, which a PWA cannot read), draft orders, open promises (F50), tasks due today, tomorrow's plan?
+2. Time of day: a reminder at a fixed time, or on demand?
+3. Does "done" feed a daily score or only a note on the manager view?
+4. Tone: a checklist, not a report to fill.
+
+**Suggested first slice:** a "close the day" card on `/sales/today` that lists today's draft orders and overdue tasks with one-tap actions, plus tomorrow's first three tasks. No manager view yet.
+
+**Prerequisites:** tasks and orders (exist); F50 adds promises.
+
+---
+
+## F75. Offline product catalogue for reps
+
+**What:** the product list with packagings and prices cached on the phone so reps can browse and quote in basements and rural areas, with a freshness indicator ("prices as of 09:10").
+
+**Already in the app:** the sync pull (`/api/sync/pull`, `lib/repo/syncPull.ts`) sends the full catalogue (products, packagings and prices) to every signed-in role except the vendor account, and recent orders and customers to sales roles; the service worker caches the app shell, map tiles and map data (`public/sw.js`). I did not verify that the sales screens read the catalogue from the local copy when offline, and whether quoting works without a connection.
+
+**Why parked:** an offline quote must show that prices may be stale and must not be confirmed offline at an out-of-date price; the cache needs a refresh policy and a version stamp; storage use on low-end phones.
+
+**Open questions**
+1. Which screens use the local catalogue: a browse and price-lookup view only, or full order entry?
+2. Does an offline order confirm locally and sync later, or stay a draft until online (see F13)?
+3. Freshness display and a maximum age before a warning appears.
+4. Customer-specific prices and visibility (F56, F62) must also be available offline.
+
+**Suggested first slice:** a read-only "price list" screen on the phone that reads the already-synced catalogue and shows its last-sync time, working offline. Order entry offline later under F13.
+
+**Prerequisites:** the sync pull (exists); F13 for offline order entry.
 
 ---
 

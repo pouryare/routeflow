@@ -58,13 +58,17 @@
 
 - [x] Parked features F68–F70 added to `docs/future-features.md`: rep activity map, delivery instructions (per customer and per order note), segment campaigns; F17 now notes that receiver name, GPS and photo are already recorded on deliveries
 
+- [x] F65 narrowed to the confirmed meaning (small-quantity price uplift; the low-stock reading was dropped)
+- [x] Parked features F71–F75 added to `docs/future-features.md`: customer credit holds by rep, duplicate order warning, order edit history, rep daily wrap-up, offline product catalogue — each notes what already exists (order hold state, `order_events`, `/sales/today`, the sync pull of the catalogue)
+
 ## Not done / gaps
+- [ ] F71: who can set `blocked` and whether it stops order entry is not verified; F73: how confirmed orders are edited is not verified; F75: whether sales screens read the catalogue offline is not verified
 - [ ] F69: whether the driver stop card shows customer or order notes is not verified
 - [ ] F65: which reading of "under threshold" was meant (small quantity vs low stock) is unconfirmed; F67: assumed a Friday end-of-week report
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F70 are parked, not built (F9, F11, F17, F32, F33, F51, F52, F56, F58, F61, F63 partly exist)
+- [ ] F6–F75 are parked, not built (F9, F11, F17, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
