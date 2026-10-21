@@ -12,7 +12,9 @@ import GradientStat from "@/components/meridian/GradientStat";
 import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
+import { defaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
+import StockCountEntry from "@/components/flows/StockCountEntry";
 
 export const dynamic = "force-dynamic";
 
@@ -68,6 +70,21 @@ export default async function StockPage() {
         WHERE pu.purchase_date >= ?`
     )
     .get(monthFrom) as { n: number; total: number };
+
+  /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
+     also holds what is in the vans). The default facility is the warehouse. */
+  const canCount = MANAGE_ROLES.includes(session.role) && stock.length > 0;
+  const warehouseId = canCount ? defaultFacilityId(session.organizationId) : 0;
+  const warehouseOnHand = canCount ? onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
+  const warehouseName = canCount
+    ? ((db.prepare("SELECT name FROM facilities WHERE id = ?").get(warehouseId) as { name: string } | undefined)?.name ?? "انبار")
+    : "";
+  const countRows = stock.map((r) => ({
+    product_id: r.product_id,
+    name: r.name,
+    base_unit: r.base_unit,
+    expected: warehouseOnHand.get(r.product_id) ?? 0,
+  }));
 
   const rows = stock.map((r) => ({
     product_id: r.product_id,
@@ -150,6 +167,8 @@ export default async function StockPage() {
           {faNum(lowCount)} کالا به نقطهٔ سفارش نزدیک می‌شود -- وقت خوبی برای برنامه‌ریزی خرید بعدی است.
         </p>
       )}
+
+      {canCount && <StockCountEntry rows={countRows} facility={{ id: warehouseId, name: warehouseName }} />}
 
       {stock.length === 0 ? (
         <p className="rounded-[var(--radius-lg)] border border-dashed border-[var(--border)] p-[var(--space-6)] text-center text-[length:var(--text-sm)] text-[var(--text-muted)]">
