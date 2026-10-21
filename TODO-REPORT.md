@@ -89,17 +89,17 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 5: repeat-order quick flow on `/sales/orders/new`; order status actions (cancel/return/failure ask why, credit-reject asks once, everything else one tap + undo)
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
-- [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here)
+- [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
 - [ ] Nothing here has been run on a real phone (seeding needs network); covered by config tests and server-render tests
 - [ ] Flows are online-only except delivery (queued on the device); payments are not wired to the offline outbox
 - [ ] Hidden desk forms (`hidden md:…`) still count in the mobile audit; they need allowlist entries with reasons in Phase 10
 - [ ] Batch-level stock counts; van counts; complaint photos (no column)
-- [ ] `useIsNarrow` is false on first paint, so a phone can flash the desk control (fix is Phase B task B.2b)
+- [ ] Phone bar not seen on a device (safe-area, browser chrome overlap); `StickyAction` has no page using it yet
 
 ## Next steps
-1. Phase B: bottom tab bar per role, quick-action button, sticky action, detection-flash fix
-2. Phase C: keypad, smart pickers (recents), day chips
-3. Phase 9 expense entry; Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
+1. Phase C: keypad, smart pickers (recents), day chips
+2. Phase 9 expense entry; Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
 4. Phase 8 layout pass; then the design-rules document and its check script
