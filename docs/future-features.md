@@ -2462,6 +2462,86 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F124. Telegram bot for staff queries
+
+**What:** staff ask the company's linked Telegram bot for a customer's balance, an order's status, a product's stock or today's run, and get an answer limited to what their role and group may see, so a quick question never needs the app.
+
+**Already in the app:** each user can link their Telegram chat with a one-time code, and notifications go out through it (`lib/telegram.ts`, `lib/repo/telegramLink.ts`, `app/api/notifications/telegram-link`). A small long-polling worker handles the linking, with no inbound port or public address (`scripts/telegram-poll.ts`); it understands only the `/start <code>` link command and nothing else. The chat-to-user binding is exactly the identity a query bot needs.
+
+**Why parked:** answers leave the app, into a chat that may be forwarded or screenshotted, so the commands must be limited and the amounts shown carefully; the worker today imports almost nothing from the app and answering queries means giving it scoped read access; a lost phone with a linked chat becomes a data leak (see F107); free-text parsing in Persian is a further step, so start with fixed commands.
+
+**Open questions**
+1. Which commands first: balance of a customer, status of an order number, stock of a product, today's run and next stop?
+2. Read-only for now, with no actions through the bot (no approvals, no payments)?
+3. Find a customer by name or phone, with the same Persian normalisation as the search (`lib/persian.ts`)?
+4. Per-user opt-in and a log of what was asked (F110/F27).
+
+**Suggested first slice:** two read-only commands (`/balance <customer>` and `/order <number>`) answered through the worker with the user's real scope applied, a short answer, and a footer that says it is a snapshot. Everything else later.
+
+**Prerequisites:** the Telegram link and worker (exist); F107 for revoking a lost device.
+
+---
+
+## F125. Wallboard display
+
+**What:** a full-screen view for a warehouse or dispatch TV showing today's runs, loading progress, orders waiting, delays and exceptions, refreshed automatically, readable from across a room.
+
+**Already in the app:** the runs view already draws every run on one shared grid, showing runs in progress and recently finished (`components/sales/RunTimeline.tsx`), the briefing has panels for orders by state, unplanned orders and exceptions, and pages refresh after an action (`router.refresh()`). Nothing refreshes by itself on a timer, and there is no layout meant for a distant, always-on screen.
+
+**Why parked:** an unattended screen needs a way to sign in that is safe to leave on a wall (a view-only display key, not a person's session); data on a wall is visible to anyone in the room, so the content has to be chosen with that in mind; automatic refresh must be cheap for the server.
+
+**Open questions**
+1. Display key (a long random link for one screen) or a dedicated display user, and how it is revoked?
+2. Content by place: dispatch (runs, delays), warehouse (loading list, short items), sales floor (targets)?
+3. Refresh interval and a visible "last updated" mark so a frozen screen is noticed.
+4. No amounts or customer phone numbers on the wall, only names, counts and statuses.
+
+**Suggested first slice:** a read-only `/wall/dispatch` page, authenticated by a revocable display key, showing today's runs with progress and delays, auto-refreshing every 30 seconds with a clear "updated at" clock.
+
+**Prerequisites:** the run timeline (exists); F108 shares the "last updated" idea.
+
+---
+
+## F126. Organisation setup wizard
+
+**What:** for the platform owner (the vendor), a guided setup of a new customer organisation: company details, groups, first users with generated credentials, products, price list and first customers, with optional sample data to try the app.
+
+**Already in the app:** organisations are a table with name, slug, plan, active flag and contact details (`organizations`). New ones are created today by seed and migration scripts (`scripts/seed-demo-org.mjs`, the seed phases); I found no screen or API for creating an organisation. A helper generates readable usernames and passwords when a user is added (`lib/credentials.ts`), and the platform owner can switch between tenants (`/switch`). Every access by the vendor to another tenant's data is recorded (`lib/platformAccess.ts`).
+
+**Why parked:** tenant creation is the most sensitive operation in the system, because it must create every dependent record consistently (groups, roles, default accounts such as the chart of accounts, facilities, holidays) and never touch another tenant; it is rarely done, so the cost of a wizard is justified only when the vendor onboards customers regularly; failure halfway must roll back completely.
+
+**Open questions**
+1. All in one transaction, with sample data off by default?
+2. What defaults each new organisation starts with (chart of accounts, reason codes, notification types, roles)?
+3. Credentials handed over how: shown once and printed, or sent by the first-login reset (F109)?
+4. A checklist after creation: add logo, import customers, set targets.
+
+**Suggested first slice:** a platform-owner-only "new organisation" form that creates the organisation, its owner user and a default group in one transaction, using the same code the seed scripts already use, and shows the generated credentials once.
+
+**Prerequisites:** none; F127 adds limits, F109 the first-login reset.
+
+---
+
+## F127. Tenant usage and plan limits
+
+**What:** for the platform owner, per-organisation counts (users, active customers, orders per month, photo storage, messages) against limits for each plan, with warnings before a limit is reached.
+
+**Already in the app:** every organisation has a `plan` field (default "standard"), but nothing in the code reads it besides creating the row, so it has no effect today. Vendor reads of tenant data are logged. Usage numbers (users, orders, photos) can be counted from existing tables, and photo storage sits on disk under `data/photos`.
+
+**Why parked:** limits must be a commercial decision first; enforcement needs care (a hard stop on orders would hurt a customer more than the missed fee), so warn first; counting must stay cheap and not run on every request.
+
+**Open questions**
+1. Which limits: users, customers, orders per month, storage?
+2. Warn only, soft limit with a banner for the tenant owner, or hard limit? Start with warn the vendor.
+3. A nightly job that stores counts per organisation, with history for billing.
+4. Plan names and what each includes, defined in code or in a table the vendor edits?
+
+**Suggested first slice:** a platform-owner-only usage table (users, active customers, orders in the last 30 days, photo storage) computed on demand per organisation. No limits or warnings yet.
+
+**Prerequisites:** none; F126 creates organisations, F108 shows system health.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
