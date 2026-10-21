@@ -1094,6 +1094,105 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F56. Price list versioning and scheduled price changes
+
+**What:** price lists with effective dates, a visible history of what changed and when, the ability to schedule a price rise for a future date, and a report of which customers and orders a change affects.
+
+**Already in the app:** prices are already versioned in the data. `product_prices` is insert-only with a `valid_from` date per product and packaging (a price change is a new row, never an update, so old revenue does not move), and costs follow the same pattern in `product_costs`. Customers carry a `price_tier` field in the CRM. What I did not verify: whether the UI lets a manager schedule a future price, whether `price_tier` actually changes the price an order uses, and whether per-group price lists exist.
+
+**Why parked:** a scheduled change must apply to orders created after the date but not to ones already confirmed; customers with agreed prices (F44 contracts) must not be silently changed; announcing a rise to customers is a business step the app does not own.
+
+**Open questions**
+1. Per-customer-group price lists, or one list plus per-customer overrides?
+2. Does a price change apply by order date or delivery date?
+3. Approval for a rise or cut above a threshold (see F48)?
+4. A "what changes" preview: customers affected, margin before and after.
+
+**Suggested first slice:** a price history view per product from the existing rows, and a "new price from this date" form that inserts a future-dated row, with a preview of recent order volume affected.
+
+**Prerequisites:** none for the first slice; F48 for approvals, F21 for campaigns.
+
+---
+
+## F57. Delivery time windows
+
+**What:** each customer's preferred receiving hours, honoured by the route planner and shown to the driver, so a shop is not visited when it is closed or busy.
+
+**Already in the app:** customers have opening hours (`working_hours_json`, with `parseHours` and `nextOpenAt`), used to pick a good time for calls and visits (`lib/repo/crm/write.ts`) and shown on the driver's visit list (`lib/repo/crm/driverVisits.ts`). The route solver adapter (`lib/routing/vroom.ts`) accepts a per-stop `time_window`. I found no code that fills that window from the customer's hours when planning delivery runs, so opening hours currently inform visits, not routes.
+
+**Why parked:** hard windows can make a plan infeasible or much longer; opening hours are not the same as receiving hours (a shop may receive goods before opening); wrong or missing hours would silently distort plans.
+
+**Open questions**
+1. Separate "receiving window" from opening hours, or reuse opening hours?
+2. Hard constraint or soft preference with a penalty? Start soft.
+3. What happens to stops that cannot fit: flagged to the planner for a decision?
+4. Driver view: show the window on the stop card and warn when arriving outside it.
+
+**Suggested first slice:** pass opening hours as a soft time window to the solver for stops that have them, and show the window on the planner and driver stop cards. Receiving-specific hours later.
+
+**Prerequisites:** the solver adapter and customer hours (exist); F38 helps measure how often arrivals miss the window.
+
+---
+
+## F58. Order templates and favourites
+
+**What:** each customer's usual basket (or several named baskets) one tap away when starting an order, instead of retyping lines.
+
+**Already in the app:** the repeat-order flow in `lib/flows/orderQuick.ts` already offers "same as last time?": it picks the customer's latest repeatable order (`pickLastOrder`, skipping drafts, cancelled and returned orders) and rebuilds its lines priced from today's catalogue (`itemsFromLastOrder`). What is missing: a basket that is not just the last order (the usual one), named templates (weekly stock, weekend), and a "favourite products" row.
+
+**Why parked:** "usual" needs a definition (most frequent lines over the last N orders?); templates can go stale when products are discontinued or repackaged; a template must never pre-confirm an order.
+
+**Open questions**
+1. Automatic "usual basket" from history, saved templates by hand, or both?
+2. Handling of products out of stock or retired: drop with a notice, or substitute?
+3. Where do templates live: per customer, per group?
+4. Relationship to standing orders (F44): a template is a manual shortcut, a standing order generates drafts by itself.
+
+**Suggested first slice:** an "usual basket" suggestion computed from the customer's last five orders (lines present in at least three), shown beside "same as last time" in the existing flow.
+
+**Prerequisites:** `orderQuickFlow` (exists).
+
+---
+
+## F59. Salesperson handover
+
+**What:** when a salesperson leaves or changes role, hand their customers, open tasks, promises (F50) and leads to successors with a checklist, so nothing is orphaned.
+
+**Already in the app:** customers carry an `owner_user_id`; a rep can claim a customer from the group pool (an `owner_change` activity is recorded), and a reassign request exists (`/api/crm/reassign-request`, `requestReassign`). Users can be deactivated with a confirmation. There is no bulk handover and no check of what a leaving user still owns.
+
+**Why parked:** distributing customers fairly is a management decision (by district, by value, evenly); commission on past and future orders must follow clear rules; open tasks and promises need a new owner or they fall through.
+
+**Open questions**
+1. Who decides the split, and can it be proposed automatically (by district and current load)?
+2. Commission after handover: stays with the old owner until a date?
+3. Deactivation blocked while the user owns customers or open tasks, or allowed with a warning?
+4. Notify customers? Usually a rep makes a call, so a task for the new owner.
+
+**Suggested first slice:** a "what does this user own" summary on the deactivation screen (customers, open tasks, pending approvals) and a bulk reassign to one chosen successor, recorded in the activity log.
+
+**Prerequisites:** none; F27 audit trail records it.
+
+---
+
+## F60. Call-to-order shortcut
+
+**What:** from a logged or incoming call, start an order draft for that customer in two taps: customer already selected, usual basket suggested.
+
+**Already in the app:** after a call, the CRM flow already offers "register the order now" as the next step (`neg` step in `lib/crm/flows/afterCall.ts`), which opens the order page and creates a follow-up task. What is missing is the draft being pre-filled (customer, usual basket from F58), and the incoming-call case, which depends on telephony (F4).
+
+**Why parked:** an incoming-call trigger needs F4 (Wazo) first; a pre-filled draft must still be confirmed by a person; matching a caller to the right customer (shared numbers) needs care.
+
+**Open questions**
+1. Does the shortcut create a draft immediately or only open the order flow with the customer selected?
+2. Which basket is suggested: last order or usual basket (F58)?
+3. For an unknown caller: offer "add lead" instead of an order?
+
+**Suggested first slice:** pass the customer and the "same as last time" lines into `orderQuickFlow` from the existing post-call "register the order" option. Incoming calls wait for F4.
+
+**Prerequisites:** F58 for the usual basket; F4 for incoming calls.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).

@@ -51,10 +51,13 @@
 
 - [x] Parked features F49–F55 added to `docs/future-features.md`: cash-flow forecast, payment promise tracker, SLA and escalation, free samples tracking, product launch tracker, data quality dashboard, owner announcements — each notes what already exists (rule-engine escalation, CRM sample stage and flow, payables page, academy); F39 now notes the academy
 
+- [x] Parked features F56–F60 added to `docs/future-features.md`: price list versioning, delivery time windows, order templates, salesperson handover, call-to-order shortcut — each notes what already exists (insert-only dated prices, customer opening hours and solver time-window support, repeat-last-order flow, owner reassign, post-call order step)
+
 ## Not done / gaps
+- [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F55 are parked, not built (F9, F11, F32, F33, F51, F52 partly exist)
+- [ ] F6–F60 are parked, not built (F9, F11, F32, F33, F51, F52, F56, F58 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
