@@ -532,6 +532,120 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
+## F29. Sales pipeline and quotations
+
+**What:** quotes with an expiry date, follow-up reminders, a win/loss reason, and one-tap conversion of an accepted quote into an order draft.
+
+**Already in the app:** lead stages (`lib/crm/stage.ts`), tasks for follow-ups and `orderQuickFlow` for drafts. There is no quote document or quote state.
+
+**Why parked:** a quote is a price promise, so it must freeze prices and interact with credit, discounts (F21) and stock; expiry and re-quote rules need agreeing with sales.
+
+**Open questions**
+1. Does a quote reserve stock, or is it only a price promise?
+2. Validity period and what happens on expiry (auto-close, reminder)?
+3. Win/loss reasons: a short fixed list so the reports are usable.
+4. Is the quote a printable document the customer receives (PDF/message), or internal only?
+
+**Suggested first slice:** a quote as a draft order with an expiry date and a "won / lost + reason" close step, converted to an order with the quoted prices.
+
+**Prerequisites:** TapFlow Phase 5 (`orderQuickFlow`); F23 for the customer-facing document.
+
+---
+
+## F30. Van loading verification
+
+**What:** at loading, scan or tick each line so the van's contents are compared with the run's order lines. Missing, extra or wrong items are caught before the van leaves.
+
+**Why parked:** scanning needs barcodes or batch labels on goods (see F1 slice 1); a hard block at the gate slows departures, so it needs an override with a reason; partial loads must split stops sensibly.
+
+**Open questions**
+1. Scan every unit, every case, or tick per order line? Match to what the warehouse can do.
+2. Override rule: who can release a short-loaded van, and does the shortfall move to a later run?
+3. Does the check also record the batch loaded, giving recall tracing for free (F12)?
+
+**Suggested first slice:** a per-run loading checklist (tick each line, quantity confirmed), with a "short" reason when under-loaded. Scanning later.
+
+**Prerequisites:** run and `READY` state; F1 barcode slice for scanning.
+
+---
+
+## F31. Supplier scorecards and price history
+
+**What:** per-supplier delivery performance (late, short, damaged), and price history per supplier and product, to compare suppliers and spot price creep.
+
+**Already in the app:** `lib/repo/suppliers.ts` and batch receipts with `unit_cost_toman`. Receipts do not yet record a promised date, so lateness cannot be measured.
+
+**Why parked:** scorecards need a promised date and a received-condition entry at receipt; unfair scores damage supplier relations; units and pack sizes differ between suppliers.
+
+**Open questions**
+1. Capture at receipt: promised date, short quantity, damage note?
+2. Score formula: on-time rate, fill rate, quality rate; weights?
+3. Price comparison across pack sizes: normalise per unit?
+
+**Suggested first slice:** unit-cost history chart per product and supplier from existing batches, plus a "promised date" field on receipt to start collecting on-time data.
+
+**Prerequisites:** the receive flow (TapFlow Phase 6); F12 for quality data.
+
+---
+
+## F32. Margin analytics (customer, product, route)
+
+**What:** true profit per customer, product and route, including delivery cost, discounts, returns and bad debt, not just revenue.
+
+**Already in the app:** orders store `total_toman` and `cost_toman`; runs store planned and actual distance and duration. Delivery cost per run, discounts and bad-debt allocation are not yet attributed.
+
+**Why parked:** allocating shared costs (fuel, driver time, vehicle) to orders is a modelling decision; results can upset sales and drivers if shown carelessly; accuracy depends on the cost inputs being right.
+
+**Open questions**
+1. Delivery cost model: per km, per minute, per stop, or a blend? Where do the rates live?
+2. Is bad debt allocated to the customer when a cheque bounces or a balance is written off?
+3. Who sees margins: owner only, or managers per group?
+
+**Suggested first slice:** owner-only margin by customer and product from `total_toman` less `cost_toman`, then add a per-km delivery cost on runs.
+
+**Prerequisites:** stored order cost and total (exist); run distance (exists).
+
+---
+
+## F33. Seasonal and holiday planning
+
+**What:** before Nowruz, Ramadan, Yalda or a heat wave, forecast demand and capacity from last year's same period, and warn the planner of the stock and van shortfall.
+
+**Already in the app:** the holiday calendar (`listHolidaysForMonth`), weather forecasts on the schedule page, and order history. They are not yet combined into a seasonal forecast.
+
+**Why parked:** needs at least a year of clean history per product; holiday dates move on the Jalali/lunar calendar, so "same period last year" is not a fixed date range; weather effects differ per product.
+
+**Open questions**
+1. Index demand by day-of-holiday-period rather than calendar date?
+2. Which products are seasonal enough to bother with?
+3. Output: a planner banner ("expect +40% in two weeks") or a suggested purchase order (see F11)?
+
+**Suggested first slice:** a last-year-vs-now view of orders by product around each holiday, with a banner on the planner two weeks ahead.
+
+**Prerequisites:** order history; F11 for purchase suggestions.
+
+---
+
+## F34. Data export and backup self-service
+
+**What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
+
+**Already in the app:** `scripts/backup.mjs` makes backups from the command line.
+
+**Why parked:** a self-service restore can destroy current data, so it needs strong confirmation, a pre-restore snapshot and tenant isolation (an owner restores only their organisation); exports contain personal data, so access is limited and logged.
+
+**Open questions**
+1. Export formats: Excel/CSV per table, or a full archive?
+2. Restore scope: whole organisation only, or per table? Default: whole organisation, with a snapshot taken first.
+3. Where are backups stored, how long are they kept, and are they encrypted?
+4. Every export and restore goes into the audit trail (F27).
+
+**Suggested first slice:** owner-only CSV/Excel export of customers, orders and payments, plus a "last backup" status line. Restore stays an operator task for now.
+
+**Prerequisites:** F27 for logging; the backup script as the engine.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
