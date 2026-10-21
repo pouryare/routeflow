@@ -5,21 +5,13 @@ import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useCallback, useMemo, useState } from "react";
 import { faJalaliDateTime } from "@/lib/jalali";
+import ComplaintFlow from "@/components/flows/ComplaintFlow";
+import { CATEGORY_LABEL, SEVERITY_LABEL } from "@/lib/flows/complaint";
 
-const CATEGORY_LABEL: Record<string, string> = {
-  spoilage: "فساد",
-  packaging: "بسته‌بندی",
-  foreign_object: "جسم خارجی",
-  short_weight: "کسری وزن",
-  wrong_product: "کالای اشتباه",
-  other: "سایر",
-};
-const SEVERITY_LABEL: Record<string, string> = {
-  low: "کم",
-  medium: "متوسط",
-  high: "زیاد",
-  critical: "بحرانی",
-};
+/* Category and severity words live with the flow that also uses them. Widened to plain string
+   maps here because the rows below come from JSON, not from the server's unions. */
+const CATEGORY_TEXT: Record<string, string> = CATEGORY_LABEL;
+const SEVERITY_TEXT: Record<string, string> = SEVERITY_LABEL;
 const STATUS_LABEL: Record<string, string> = {
   open: "باز",
   investigating: "در حال بررسی",
@@ -63,6 +55,8 @@ export default function ComplaintsPanel({
   const [complaints, setComplaints] = useState<Complaint[] | null>(null);
   const [clusters, setClusters] = useState<Cluster[]>([]);
   const [error, setError] = useState<string | null>(null);
+  /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
+  const [flow, setFlow] = useState({ key: 0, open: false });
   const [form, setForm] = useState(() => {
     let customer_id = "";
     if (typeof window !== "undefined") {
@@ -71,6 +65,15 @@ export default function ComplaintsPanel({
     }
     return { customer_id, product_id: "", category: "spoilage", severity: "medium", description: "" };
   });
+
+  const flowCustomers = useMemo(
+    () => customers.map((c) => ({ id: c.id, business_name: c.business_name ?? c.name ?? "—" })),
+    [customers],
+  );
+  const flowProducts = useMemo(
+    () => products.map((p) => ({ id: p.id, name: p.name ?? p.business_name ?? "—" })),
+    [products],
+  );
 
   const label = useMemo(() => {
     const c = new Map(customers.map((x) => [x.id, x.business_name ?? x.name ?? "—"]));
@@ -133,7 +136,16 @@ export default function ComplaintsPanel({
         </div>
       )}
 
-      <form onSubmit={file} className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3">
+      <button
+        type="button"
+        onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
+        className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-3 text-base font-medium text-accent-ink md:hidden"
+      >
+        <Icon name="plus" size="md" />
+        ثبت شکایت جدید
+      </button>
+
+      <form onSubmit={file} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <select className="rounded border border-border bg-bg p-2 text-sm" value={form.customer_id} onChange={(e) => setForm((f) => ({ ...f, customer_id: e.target.value }))}>
           <option value="">— مشتری —</option>
           {customers.map((c) => (
@@ -151,14 +163,14 @@ export default function ComplaintsPanel({
           ))}
         </select>
         <select className="rounded border border-border bg-bg p-2 text-sm" value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}>
-          {Object.entries(CATEGORY_LABEL).map(([k, v]) => (
+          {Object.entries(CATEGORY_TEXT).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
             </option>
           ))}
         </select>
         <select className="rounded border border-border bg-bg p-2 text-sm" value={form.severity} onChange={(e) => setForm((f) => ({ ...f, severity: e.target.value }))}>
-          {Object.entries(SEVERITY_LABEL).map(([k, v]) => (
+          {Object.entries(SEVERITY_TEXT).map(([k, v]) => (
             <option key={k} value={k}>
               {v}
             </option>
@@ -194,8 +206,8 @@ export default function ComplaintsPanel({
               <tr key={c.id} className="border-b border-border last:border-0">
                 <td className="p-2">{label.customer(c.customer_id)}</td>
                 <td className="p-2">{label.product(c.product_id)}</td>
-                <td className="p-2">{CATEGORY_LABEL[c.category] ?? "نامشخص"}</td>
-                <td className="p-2">{SEVERITY_LABEL[c.severity] ?? "نامشخص"}</td>
+                <td className="p-2">{CATEGORY_TEXT[c.category] ?? "نامشخص"}</td>
+                <td className="p-2">{SEVERITY_TEXT[c.severity] ?? "نامشخص"}</td>
                 <td className="p-2">{STATUS_LABEL[c.status] ?? "نامشخص"}</td>
                 <td className="p-2">{faJalaliDateTime(c.reported_at)}</td>
                 {canManage && (
@@ -216,6 +228,18 @@ export default function ComplaintsPanel({
             ))}
           </tbody>
         </table>
+      )}
+      {flow.key > 0 && (
+        <ComplaintFlow
+          key={flow.key}
+          open={flow.open}
+          customers={flowCustomers}
+          products={flowProducts}
+          customerId={form.customer_id ? Number(form.customer_id) : undefined}
+          onRecorded={() => void load()}
+          onClose={() => setFlow((f) => ({ ...f, open: false }))}
+          onReopen={() => setFlow((f) => ({ ...f, open: true }))}
+        />
       )}
     </div>
   );

@@ -148,7 +148,7 @@ export function paymentChips(ctx: FlowContext, st: FlowState): string[] {
   const id = customerIdOf(ctx, st);
   const name = ctx.vars.customer ?? ctx.recentCustomers.find((c) => c.id === id)?.name ?? null;
   const m = methodOf(ctx, st);
-  const method = METHOD_LABEL[m] ?? m;
+  const method = METHOD_LABEL[m] ?? "نامشخص";
   return [
     ...(name ? [name] : []),
     `${method}: ${faToman(Number(st.values.amount))}`,

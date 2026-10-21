@@ -115,8 +115,8 @@ export function complaintChips(ctx: FlowContext, st: FlowState): string[] {
   return [
     ...(customer ? [customer] : []),
     product ? `کالا: ${product}` : "کالا: مشخص نیست",
-    CATEGORY_LABEL[st.values.category as ComplaintCategory] ?? st.values.category,
-    `شدت: ${SEVERITY_LABEL[st.values.severity as ComplaintSeverity] ?? st.values.severity}`,
+    CATEGORY_LABEL[st.values.category as ComplaintCategory] ?? "نامشخص",
+    `شدت: ${SEVERITY_LABEL[st.values.severity as ComplaintSeverity] ?? "نامشخص"}`,
     ...(p.description ? ["توضیح ثبت شد"] : []),
   ];
 }

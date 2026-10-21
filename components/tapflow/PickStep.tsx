@@ -6,10 +6,12 @@ import { normalizeSearch } from "@/lib/search/normalize";
 
 /** A searchable list for a step whose answer is "which one": a customer, a product. The tap
  *  on a row is the answer, so there is no confirm button. */
-export default function PickStep({ choices, optionId, submit, placeholder = "جستجو…" }: {
+export default function PickStep({ choices, optionId, extras = [], submit, placeholder = "جستجو…" }: {
   choices: { id: string; label: string }[];
   optionId: string;
-  submit: (optionId: string, value: string) => void;
+  /** Other ways forward that name no one -- «کالا مشخص نیست». Each submits with no value. */
+  extras?: { id: string; label: string }[];
+  submit: (optionId: string, value?: string) => void;
   placeholder?: string;
 }) {
   const [q, setQ] = useState("");
@@ -30,6 +32,12 @@ export default function PickStep({ choices, optionId, submit, placeholder = "ج�
         ))}
       </div>
       {more > 0 ? <p className="tf-note">برای دیدن بقیه نام را جستجو کنید</p> : null}
+      {extras.map((o) => (
+        <button key={o.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => submit(o.id)}>
+          <Icon name="arrow-left" size="md" />
+          {o.label}
+        </button>
+      ))}
     </div>
   );
 }

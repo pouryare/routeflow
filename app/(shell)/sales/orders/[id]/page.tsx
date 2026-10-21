@@ -17,7 +17,8 @@ import BentoStrip, {
   BentoTile,
   BentoGauge,
 } from "@/components/BentoStrip";
-import { isVanRole } from "@/lib/roles";
+import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
+import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
 import { readOrderDeliveryHistory } from "@/lib/repo/orderDeliveries";
 
 export const dynamic = "force-dynamic";
@@ -138,6 +139,23 @@ export default async function OrderDetailPage({
         status={order.status}
         role={session.role as OrderRole}
       />
+
+      {/* Same roles as POST /api/sales/complaints; offering the button to anyone else would
+          only lead to a refusal. A draft has not been sold, so there is nothing to complain about. */}
+      {order.status !== "DRAFT" && [...MANAGE_ROLES, "phone_sales"].includes(session.role) && (
+        <ComplaintFromOrder
+          orderId={order.id}
+          customerId={order.customer_id}
+          customerName={order.customer_name}
+          products={[
+            ...new Map(
+              order.lines
+                .filter((l) => !l.is_reversal)
+                .map((l) => [l.product_id, { id: l.product_id, name: l.product_name }] as const),
+            ).values(),
+          ]}
+        />
+      )}
 
       <table className="w-full border-collapse rounded-[var(--radius-lg)] text-[length:var(--text-sm)]">
         <thead>

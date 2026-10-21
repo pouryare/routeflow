@@ -51,3 +51,23 @@ describe("generic step bodies render inside TapFlow", () => {
     expect(h).toContain("کم کردن شیر");
   });
 });
+
+describe("pick step extras", () => {
+  it("renders the extra options as ways forward that name no one", () => {
+    const cfg: FlowConfig = {
+      id: "t", start: () => "s", budget: { common: 1, longest: 1 },
+      steps: {
+        s: {
+          id: "s", kind: "pick", q: "کدام؟",
+          choices: [{ id: "1", label: "شیر" }],
+          options: [{ id: "pick", label: "ادامه", save: true }, { id: "unknown", label: "کالا مشخص نیست", save: true }],
+        },
+      },
+    };
+    const h = renderToStaticMarkup(createElement(TapFlow, {
+      open: true, title: "t", config: cfg, ctx, state: startFlow(cfg, ctx), onState: () => {}, onSaved: () => {}, onClose: () => {},
+    }));
+    expect(h).toContain("شیر");
+    expect(h).toContain("کالا مشخص نیست");
+  });
+});

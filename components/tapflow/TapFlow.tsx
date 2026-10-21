@@ -131,7 +131,7 @@ function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }:
     const raw = view.input ? vars[view.input.field] : undefined;
     return <AmountStep prefill={raw ? Number(raw) : null} option={view.options[0]} label={view.input?.placeholder ?? "مبلغ"} submit={submit} />;
   }
-  if (view.kind === "pick") return <PickStep choices={view.choices} optionId={view.options[0].id} submit={submit} />;
+  if (view.kind === "pick") return <PickStep choices={view.choices} optionId={view.options[0].id} extras={view.options.slice(1)} submit={submit} />;
   if (view.kind === "stepper") return <StepperStep items={items} option={view.options[0]} submit={submit} />;
 
   if (pickFor) {
