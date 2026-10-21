@@ -1,6 +1,6 @@
 import {
   Truck, MapPin, Bell, User, Info, Search, ChevronLeft, ChevronRight, ChevronDown,
-  Plus, X, Check, TriangleAlert, Package, Calendar, CloudSun, Pencil, Trash2,
+  Plus, Minus, X, Check, TriangleAlert, Package, Calendar, CloudSun, Pencil, Trash2,
   Settings, LogOut, ExternalLink, Filter, Download, Printer, Star, StarOff, Clock,
   Compass, Satellite, Route, Map, Image, Building2, Receipt, FolderTree, Flame, GripVertical,
   ChartColumn, TrendingUp, Mountain, Handshake, Type, Link2, Wallet, Moon, Users,
@@ -34,6 +34,7 @@ export const ICONS = {
   "chevron-right": ChevronRight,
   "chevron-down": ChevronDown,
   plus: Plus,
+  minus: Minus,
   x: X,
   check: Check,
   warn: TriangleAlert,

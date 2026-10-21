@@ -13,7 +13,9 @@ import { expiringBatches, listBatchesWithProduct } from "@/lib/repo/batches";
 import BatchList from "@/components/sales/BatchList";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner, MANAGE_ROLES } from "@/lib/roles";
-
+import { defaultFacilityId, onHandByProduct } from "@/lib/repo/stock";
+import StockCountEntry from "@/components/flows/StockCountEntry";
+import ReceiveEntry from "@/components/flows/ReceiveEntry";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +71,21 @@ export default async function StockPage() {
         WHERE pu.purchase_date >= ?`
     )
     .get(monthFrom) as { n: number; total: number };
+
+  /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
+     also holds what is in the vans). The default facility is the warehouse. */
+  const canCount = MANAGE_ROLES.includes(session.role) && stock.length > 0;
+  const warehouseId = canCount ? defaultFacilityId(session.organizationId) : 0;
+  const warehouseOnHand = canCount ? onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
+  const warehouseName = canCount
+    ? ((db.prepare("SELECT name FROM facilities WHERE id = ?").get(warehouseId) as { name: string } | undefined)?.name ?? "انبار")
+    : "";
+  const countRows = stock.map((r) => ({
+    product_id: r.product_id,
+    name: r.name,
+    base_unit: r.base_unit,
+    expected: warehouseOnHand.get(r.product_id) ?? 0,
+  }));
 
   const rows = stock.map((r) => ({
     product_id: r.product_id,
@@ -150,6 +167,18 @@ export default async function StockPage() {
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--amber)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6" style={{ color: "var(--amber)" }}>
           {faNum(lowCount)} کالا به نقطهٔ سفارش نزدیک می‌شود -- وقت خوبی برای برنامه‌ریزی خرید بعدی است.
         </p>
+      )}
+
+      {(canCount || isOwner(session.role)) && (
+        <div className="flex flex-wrap gap-[var(--space-2)]">
+          {canCount && <StockCountEntry rows={countRows} facility={{ id: warehouseId, name: warehouseName }} />}
+          {isOwner(session.role) && (
+            <ReceiveEntry
+              products={stock.map((r) => ({ id: r.product_id, name: r.name, base_unit: r.base_unit, avg_cost_toman: r.avg_cost_toman }))}
+              suppliers={[...new Set(purchases.map((p) => p.supplier).filter((x): x is string => !!x))].slice(0, 6)}
+            />
+          )}
+        </div>
       )}
 
       {stock.length === 0 ? (

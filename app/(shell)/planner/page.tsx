@@ -1,5 +1,6 @@
 "use client";
 
+import VisitPlanEntry from "@/components/flows/VisitPlanEntry";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -775,7 +776,9 @@ export default function PlannerPage() {
           <h2 className="sechead__title mb-2">
             افزودن به برنامه
           </h2>
-          <div className="relative">
+          {/* On a phone: two taps, no keyboard. The search box stays from md up. */}
+          <VisitPlanEntry customers={customers} leads={leads} selectedDate={selectedDate} onAdded={loadWeek} />
+          <div className="relative hidden md:block">
             <input
               value={addQuery}
               onChange={(e) => setAddQuery(e.target.value)}

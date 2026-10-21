@@ -73,6 +73,7 @@ export function answerStep(cfg: FlowConfig, ctx: FlowContext, st: FlowState, opt
 
   const key = step.input?.field ?? stepId;
   const values = { ...st.values };
+  if (opt.put) Object.assign(values, opt.put);
   const has = value !== undefined && value !== "";
   if (has) values[key] = value as string;
   else if (step.kind === "input" && step.input && !step.input.optional) throw new FlowError(`${key} is required`);

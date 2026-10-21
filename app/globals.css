@@ -4826,6 +4826,15 @@ body {
 }
 .meridian .tapflow .tf-go:disabled { opacity: .4; cursor: not-allowed; }
 .meridian .tapflow .tf-skip { border: 0; background: none; color: var(--muted); font: inherit; font-size: 13px; cursor: pointer; padding: 6px; justify-self: center; }
+/* Generic step bodies (amount / pick / stepper): shared by every non-CRM flow. */
+.meridian .tapflow .tf-amount, .meridian .tapflow .tf-pick, .meridian .tapflow .tf-stepper, .meridian .tapflow .tf-date { display: grid; gap: 10px; }
+.meridian .tapflow .tf-amount .tf-input { font-size: 22px; text-align: center; }
+.meridian .tapflow .tf-stepper .tf-row {
+  display: grid; grid-template-columns: 1fr 76px auto 76px; align-items: center; gap: 8px; min-height: 54px;
+}
+.meridian .tapflow .tf-stepper .tf-row small { color: var(--muted); font-weight: 400; }
+.meridian .tapflow .tf-stepper .tf-row b { min-width: 2ch; text-align: center; font-variant-numeric: tabular-nums; }
+.meridian .tapflow .tf-stepper .tf-opt { flex-direction: row; align-items: center; justify-content: center; padding: 8px; font-size: 13px; }
 .meridian .tapflow .tf-card { display: grid; gap: 8px; padding: 12px; border-radius: var(--r-md); font-size: 13.5px; }
 .meridian .tapflow .tf-card.block { background: var(--crit-soft); border: 1px solid color-mix(in srgb, var(--crit) 40%, transparent); }
 .meridian .tapflow .tf-card.warn { background: var(--warn-soft); border: 1px solid color-mix(in srgb, var(--warn) 40%, transparent); }

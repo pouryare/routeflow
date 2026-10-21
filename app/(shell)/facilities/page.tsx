@@ -1,5 +1,6 @@
 "use client";
 
+import PlaceEntry from "@/components/flows/PlaceEntry";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -408,7 +409,9 @@ export default function FacilitiesPage() {
           <h2 className="sechead__title mb-3">
             افزودن مکان
           </h2>
-          <div className="flex flex-wrap gap-2">
+          {/* On a phone: kind, name, position. The form below stays from md up. */}
+          <PlaceEntry onAdded={() => void load()} />
+          <div className="hidden flex-wrap gap-2 md:flex">
             <label className="flex flex-col gap-1 text-xs text-text-muted">نام مکان<input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -471,7 +474,7 @@ export default function FacilitiesPage() {
           </div>
 
           {picker?.mode === "create" && (
-            <div className="mt-3">
+            <div className="mt-3 hidden md:block">
               <LocationPinPicker onCancel={() => setPicker(null)} onConfirm={createFacility} />
             </div>
           )}

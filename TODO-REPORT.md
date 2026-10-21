@@ -73,3 +73,33 @@ _Updated 2026-10-20. Details and measurements: `docs/perf/2026-10-20-baseline.md
 1. Decide whether the Graphify coupling check should block merges or be tuned (your call)
 2. (done) Re-seeded a smoke DB: average delivery time 0 days
 3. Cache line-level aggregates (product breakdown, fill rate) if the 2.4 s dashboard matters
+
+---
+
+# Mobile-first TapFlow rollout (branch `claude/beautiful-ptolemy-r2ndcr`)
+
+_Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapflow.md` and `…-interaction-patterns.md`; lessons log: `docs/superpowers/plans/mobile-first-lessons.md`; parked ideas: `docs/future-features.md`._
+
+## Done
+- [x] Planning: two plans (TapFlow rollout; interaction patterns + final design-rules doc), parked backlog (camera/OCR, voice, paste-to-parse)
+- [x] Phase 0: generic TapFlow layer (`put`, items, amount/pick/stepper/date bodies, `useFlowHost`, shared test helpers); mobile audit script + ratchet baseline (`npm run audit:mobile` / `check:mobile`)
+- [x] Phase 1: delivery at the door (2 taps common path; saved to the device queue first, 5 s undo)
+- [x] Phase 2: payments and cheques; Phase 3: complaints (also from an order page)
+- [x] Phase 4: task outcomes, reminders and notes; task delete uses undo instead of a second tap; board outcome sheet now works in the phone layout too
+- [x] Phase 5: repeat-order quick flow on `/sales/orders/new`; order status actions (cancel/return/failure ask why, credit-reject asks once, everything else one tap + undo)
+- [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
+- [x] Phase 7: customer lifecycle, visit-plan quick add, new place
+- [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here)
+
+## Not done / gaps
+- [ ] Nothing here has been run on a real phone (seeding needs network); covered by config tests and server-render tests
+- [ ] Flows are online-only except delivery (queued on the device); payments are not wired to the offline outbox
+- [ ] Hidden desk forms (`hidden md:…`) still count in the mobile audit; they need allowlist entries with reasons in Phase 10
+- [ ] Batch-level stock counts; van counts; complaint photos (no column)
+- [ ] `useIsNarrow` is false on first paint, so a phone can flash the desk control (fix is Phase B task B.2b)
+
+## Next steps
+1. Phase B: bottom tab bar per role, quick-action button, sticky action, detection-flash fix
+2. Phase C: keypad, smart pickers (recents), day chips
+3. Phase 9 expense entry; Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
+4. Phase 8 layout pass; then the design-rules document and its check script

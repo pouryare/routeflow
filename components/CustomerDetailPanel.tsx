@@ -2,7 +2,6 @@
 
 import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { friendlyError } from "@/lib/userMessage";
 import { useHydrated } from "@/lib/useHydrated";
 import { useRouter } from "next/navigation";
 import {
@@ -13,6 +12,7 @@ import {
   STATUS_COLOR,
 } from "@/lib/types";
 import { LIFECYCLE_TRANSITIONS } from "@/lib/customerLifecycle";
+import LifecycleFlow from "@/components/flows/LifecycleFlow";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { isPlaced } from "@/lib/facilityTypes";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
@@ -159,30 +159,11 @@ export default function CustomerDetailPanel({
   // An optimistic override for the moment between the PATCH and the parent's refetch.
   // null means "show whatever the customer prop says".
   const [pendingLifecycle, setPendingLifecycle] = useState<CustomerLifecycle | null>(null);
-  const [lifecycleBusy, setLifecycleBusy] = useState(false);
   const lifecycle: CustomerLifecycle = pendingLifecycle ?? customer.lifecycle;
 
-  const changeLifecycle = useCallback(
-    async (next: CustomerLifecycle) => {
-      if (next === lifecycle || lifecycleBusy) return;
-      setLifecycleBusy(true);
-      setPendingLifecycle(next); // optimistic
-      const res = await fetch(`/api/customers/${customer.id}/lifecycle`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lifecycle: next }),
-      });
-      setLifecycleBusy(false);
-      if (res.ok) {
-        onUpdated?.();
-      } else {
-        setPendingLifecycle(null);
-        const body = (await res.json().catch(() => null)) as { error?: string } | null;
-        toast(friendlyError(body?.error, "وضعیت مشتری تغییر نکرد؛ دوباره تلاش کنید"), "error");
-      }
-    },
-    [customer.id, lifecycle, lifecycleBusy, onUpdated, toast]
-  );
+  /* The move is chosen in the tap flow (its answers are the table's allowed moves). The pill
+     shows it at once, and goes back if the move is undone or refused. */
+  const [lifecycleFlow, setLifecycleFlow] = useState({ key: 0, open: false });
 
   const statusColor = customerLifecycleColor(lifecycle);
   const debt = debtTier(customer);
@@ -262,26 +243,15 @@ export default function CustomerDetailPanel({
 
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <StatusPill color={statusColor} label={LIFECYCLE_LABEL[lifecycle]} />
-        <label className="sr-only" htmlFor="lifecycle-select">
-          تغییر وضعیت مشتری
-        </label>
-        <select
-          id="lifecycle-select"
-          value=""
-          disabled={lifecycleBusy || LIFECYCLE_TRANSITIONS[lifecycle].length === 0}
-          onChange={(e) => {
-            const next = e.target.value as CustomerLifecycle;
-            if (next) void changeLifecycle(next);
-          }}
-          className="rounded-[var(--radius-sm)] border border-border bg-surface px-1.5 py-0.5 text-[length:var(--text-xs)] text-text-muted"
+        <button
+          type="button"
+          disabled={LIFECYCLE_TRANSITIONS[lifecycle].length === 0}
+          onClick={() => setLifecycleFlow((f) => ({ key: f.key + 1, open: true }))}
+          className="inline-flex min-h-[44px] items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border bg-surface px-3 text-[length:var(--text-xs)] text-text-muted disabled:opacity-50"
         >
-          <option value="">تغییر وضعیت…</option>
-          {LIFECYCLE_TRANSITIONS[lifecycle].map((s) => (
-            <option key={s} value={s}>
-              {LIFECYCLE_LABEL[s]}
-            </option>
-          ))}
-        </select>
+          <Icon name="repeat" size="sm" />
+          تغییر وضعیت
+        </button>
         <span className="font-mono text-[length:var(--text-xs)] text-text-faint">{customer.customer_code}</span>
         <div className="mr-auto flex items-center gap-1.5">
           {/* A link straight back to this customer on this map -- the thing you send
@@ -432,6 +402,17 @@ export default function CustomerDetailPanel({
         customerName={customer.business_name}
       />
       <HistoryTimeline entityType="customer" entityId={customer.id} />
+      {lifecycleFlow.key > 0 && (
+        <LifecycleFlow
+          key={lifecycleFlow.key}
+          open={lifecycleFlow.open}
+          customer={{ id: customer.id, name: customer.business_name, lifecycle: customer.lifecycle }}
+          onPending={setPendingLifecycle}
+          onUpdated={onUpdated}
+          onClose={() => setLifecycleFlow((f) => ({ ...f, open: false }))}
+          onReopen={() => setLifecycleFlow((f) => ({ ...f, open: true }))}
+        />
+      )}
     </div>
   );
 }

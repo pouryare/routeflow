@@ -12,6 +12,10 @@ import type { FlowConfig, FlowContext, FlowState, ResolvedOption, ResolvedStep }
 import { labelDue, resolveDue } from "@/lib/crm/due";
 import { nextOpenAt, type WorkingHours } from "@/lib/crm/hours";
 import { useChoiceFeedback } from "./useChoiceFeedback";
+import AmountStep from "./AmountStep";
+import PickStep from "./PickStep";
+import StepperStep from "./StepperStep";
+import type { FlowItem } from "@/lib/flows/item";
 
 export interface CustomStepApi { step: ResolvedStep; state: FlowState; submit: (optionId: string, value?: string) => void }
 
@@ -102,7 +106,7 @@ export default function TapFlow(p: TapFlowProps) {
                   {view.sub ? <p className="tf-sub">{view.sub}</p> : null}
                   {CUSTOM.has(view.kind)
                     ? p.renderCustom?.({ step: view, state: p.state, submit })
-                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} />}
+                    : <StepBody key={`${view.id}-${p.state.answers.length}`} view={view} submit={submit} hours={p.hours} onNavigate={navigate} navigateUrl={p.navigateUrl} vars={p.ctx.vars} items={p.ctx.items ?? []} />}
                   {view && (view.skipable || view.timeStep) ? (
                       <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-skip" onClick={() => submit(SKIP)}>
                         <Icon name="arrow-left" size="md" />
@@ -118,13 +122,33 @@ export default function TapFlow(p: TapFlowProps) {
   ) : null;
 }
 
-function StepBody({ view, submit, hours, onNavigate, navigateUrl }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string }) {
+function StepBody({ view, submit, hours, onNavigate, navigateUrl, vars, items }: { view: ResolvedStep; submit: (id: string, value?: string) => void; hours?: WorkingHours; onNavigate?: (url: string) => void; navigateUrl?: string; vars: Record<string, string>; items: FlowItem[] }) {
   const [text, setText] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
   const [pickFor, setPickFor] = useState<string | null>(null);
   const [date, setDate] = useState("");
   const feedback = useChoiceFeedback();
   const now = new Date().toISOString();
+
+  /* The generic kinds draw their own body, including the one option that moves on, so the
+     option grid and the shared text input below must not also render for them. */
+  if (view.kind === "amount") {
+    const raw = view.input ? vars[view.input.field] : undefined;
+    const unit = (view.input && vars[`${view.input.field}_unit`]) || view.input?.unit;
+    return (
+      <AmountStep
+        prefill={raw ? Number(raw) : null}
+        option={view.options[0]}
+        label={view.input?.placeholder ?? "مبلغ"}
+        unit={unit}
+        decimal={view.input?.decimal}
+        allowZero={view.input?.allowZero}
+        submit={submit}
+      />
+    );
+  }
+  if (view.kind === "pick") return <PickStep choices={view.choices} optionId={view.options[0].id} extras={view.options.slice(1)} submit={submit} />;
+  if (view.kind === "stepper") return <StepperStep items={items} option={view.options[0]} submit={submit} />;
 
   if (pickFor) {
     return (

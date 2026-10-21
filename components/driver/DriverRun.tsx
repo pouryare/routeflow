@@ -1,23 +1,15 @@
 "use client";
 
 import { useEffect, useState, useSyncExternalStore } from "react";
-import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import type { RunDetail, RunStop } from "@/lib/delivery";
 import { faToman, faNum } from "@/lib/format";
-import { faJalaliDate } from "@/lib/jalali";
-import { roundToman, toToman } from "@/lib/money";
-import { enqueue, dequeue, flush, queueSize, subscribe } from "@/lib/deliveryQueue";
+import { flush, queueSize, sendDelivery, subscribe } from "@/lib/deliveryQueue";
+import { buildReceipt } from "@/lib/deliveryReceipt";
+import DeliveryFlow from "@/components/flows/DeliveryFlow";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { ReceiptData } from "@/lib/receiptLayout";
-
-/** Split so the quantity box can be narrow. FIELD carries w-full, and a later w-24 in
- *  the class string does not beat it -- Tailwind resolves by CSS order, not by the
- *  order the classes are written, so the two collided and the row overlapped. */
-const FIELD_BASE =
-  "rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-3)] py-[var(--space-2)] text-[length:var(--text-base)] tabular-nums text-[var(--text)] outline-none focus:border-[var(--accent)]";
-const FIELD = `w-full ${FIELD_BASE}`;
 
 /** Online status as an external store rather than effect state.
  *
@@ -34,19 +26,11 @@ const subscribeOnline = (notify: () => void) => {
   };
 };
 
-function send(stopId: number, body: unknown) {
-  return fetch(`/api/driver/stops/${stopId}`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-}
-
 /** The round, one stop at a time.
  *
- *  Built for a phone held in one hand at a doorstep. The quantities default to what was
- *  ordered, so the common case -- everything handed over -- is one tap; adjusting is for
- *  the exception.
+ *  Built for a phone held in one hand at a doorstep. Recording a stop opens the delivery
+ *  tap flow (components/flows/DeliveryFlow.tsx): everything handed over and the full amount
+ *  collected is two taps; a shortfall asks only about the lines that were short.
  *
  *  Recording never blocks on the network. The delivery has already happened by the time
  *  the driver types it, so a weak signal must not be able to lose it: the write is
@@ -76,7 +60,7 @@ export default function DriverRun({
     // regained signal while the app was closed.
     if (!online) return;
     let cancelled = false;
-    void flush(send).then(({ sent }) => {
+    void flush(sendDelivery).then(({ sent }) => {
       if (sent > 0 && !cancelled) router.refresh();
     });
     return () => {
@@ -166,83 +150,15 @@ function StopCard({
   driverName: string;
   businessName: string;
 }) {
-  // Defaults to what was ordered: everything handed over is the common case, so it
-  // should need no typing at all.
-  const [packs, setPacks] = useState<Record<number, string>>(() =>
-    Object.fromEntries(
-      stop.lines.map((l) => [l.id, String(l.packs_delivered ?? l.packs_ordered)])
-    )
-  );
-  const [collected, setCollected] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const delivered = stop.lines.map((line) => ({
-    line,
-    packs: Number(packs[line.id] ?? 0),
-  }));
-  const total = delivered.reduce(
-    (sum, d) => sum + roundToman((Number.isFinite(d.packs) ? d.packs : 0) * d.line.unit_price_toman),
-    0
-  );
-  const collectedToman = collected.trim() === "" ? total : (toToman(collected) ?? 0);
+  /* The flow remounts per opening (the `key`), which is what gives each visit a fresh set of
+   * questions; `flowOpen` only slides the sheet in and out. */
+  const [flowOpen, setFlowOpen] = useState(false);
+  const [flowKey, setFlowKey] = useState(0);
   const done = stop.status !== "pending";
-
-  function receiptFor(collectedNow: number): ReceiptData {
-    return {
-      businessName,
-      orderNo: stop.order_no,
-      dateLabel: faJalaliDate(runDate),
-      customerName: stop.customer_name,
-      address: stop.address,
-      phone: stop.phone,
-      lines: delivered
-        .filter((d) => d.packs > 0)
-        .map((d) => ({
-          name: `${d.line.product_name} · ${d.line.packaging_name}`,
-          detail: `${faNum(d.packs)} بسته × ${faToman(d.line.unit_price_toman)}`,
-          amount: faToman(roundToman(d.packs * d.line.unit_price_toman)),
-        })),
-      totalLabel: faToman(total),
-      paidLabel: faToman(collectedNow),
-      dueLabel: collectedNow < total ? faToman(total - collectedNow) : null,
-      driverName,
-      footer: "با تشکر از خرید شما",
-    };
-  }
-
-  async function record() {
-    setBusy(true);
-    setError(null);
-    const body = {
-      lines: delivered.map((d) => ({ line_id: d.line.id, packs_delivered: d.packs })),
-      collected_toman: collectedToman,
-    };
-
-    // Queued first, then sent. If the request never completes -- no signal, the phone
-    // sleeping, the app closing -- the record of a delivery that already happened
-    // survives on the device rather than being lost between the two.
-    enqueue({ stopId: stop.id, body, recordedAt: new Date().toISOString() });
-
-    try {
-      const res = await send(stop.id, body);
-      if (res.ok) {
-        dequeue(stop.id);
-      } else if (res.status >= 400 && res.status < 500) {
-        dequeue(stop.id);
-        const json = await res.json().catch(() => ({}));
-        setError(friendlyError(json.error, "تحویل ثبت نشد. اطلاعات را بررسی کنید و دوباره تلاش کنید."));
-        return;
-      }
-    } catch {
-      // Stays queued. Nothing to tell the driver beyond the banner already showing.
-    } finally {
-      setBusy(false);
-    }
-
-    onPrint(receiptFor(collectedToman));
-    onRecorded();
-  }
+  const startFlow = () => {
+    setFlowKey((k) => k + 1);
+    setFlowOpen(true);
+  };
 
   return (
     <li className="rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)]">
@@ -306,63 +222,51 @@ function StopCard({
                     {line.packaging_name} · سفارش {faNum(line.packs_ordered)} بسته
                   </span>
                 </div>
-                <input
-                  aria-label={`تعداد تحویل ${line.product_name}`}
-                  className={`${FIELD_BASE} w-20 shrink-0 text-center`}
-                  value={packs[line.id] ?? ""}
-                  onChange={(e) => setPacks((p) => ({ ...p, [line.id]: e.target.value }))}
-                  inputMode="decimal"
-                  disabled={done}
-                />
+                {done && (
+                  <span className="shrink-0 tabular-nums text-[length:var(--text-sm)] text-[var(--text)]">
+                    تحویل {faNum(line.packs_delivered ?? line.packs_ordered)}
+                  </span>
+                )}
               </li>
             ))}
           </ul>
 
-          <div className="mt-[var(--space-4)] flex items-end gap-[var(--space-3)]">
-            <div className="flex-1">
-              <label className="mb-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                دریافتی (تومان)
-              </label>
-              <input
-                className={FIELD}
-                value={collected}
-                onChange={(e) => setCollected(e.target.value)}
-                inputMode="numeric"
-                placeholder={faToman(total)}
-                disabled={done}
-              />
-            </div>
-            <div className="text-left">
-              <span className="block text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                جمع تحویل
-              </span>
-              <strong className="block tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
-                {faToman(total)}
-              </strong>
-            </div>
+          <div className="mt-[var(--space-4)] flex items-end justify-between">
+            <span className="text-[length:var(--text-xs)] text-[var(--text-muted)]">
+              {done ? "دریافتی" : "جمع سفارش"}
+            </span>
+            <strong className="block tabular-nums text-[length:var(--text-base)] text-[var(--text)]">
+              {faToman(done ? stop.collected_toman : stop.total_toman)}
+            </strong>
           </div>
-
-          {error && (
-            <p className="mt-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--crit)]">
-              {error}
-            </p>
-          )}
 
           <div className="mt-[var(--space-4)] flex gap-[var(--space-2)]">
             {!done && (
               <button
                 type="button"
-                onClick={record}
-                disabled={busy}
-                className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink disabled:opacity-50"
+                onClick={startFlow}
+                className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink"
               >
                 <Icon name="check" size="md" />
-                {busy ? "در حال ثبت تحویل…" : "ثبت تحویل و چاپ رسید"}
+                ثبت تحویل این مشتری
               </button>
             )}
             <button
               type="button"
-              onClick={() => onPrint(receiptFor(stop.collected_toman || total))}
+              onClick={() =>
+                onPrint(
+                  buildReceipt({
+                    stop,
+                    packs: Object.fromEntries(
+                      stop.lines.map((l) => [l.id, l.packs_delivered ?? l.packs_ordered]),
+                    ),
+                    collectedToman: stop.collected_toman,
+                    runDate,
+                    driverName,
+                    businessName,
+                  }),
+                )
+              }
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-4)] py-[var(--space-3)] text-[length:var(--text-sm)] text-[var(--text-muted)]"
             >
               <Icon name="receipt" size="sm" />
@@ -370,6 +274,21 @@ function StopCard({
             </button>
           </div>
         </div>
+      )}
+
+      {flowKey > 0 && (
+        <DeliveryFlow
+          key={flowKey}
+          open={flowOpen}
+          stop={stop}
+          runDate={runDate}
+          driverName={driverName}
+          businessName={businessName}
+          onRecorded={onRecorded}
+          onPrint={onPrint}
+          onClose={() => setFlowOpen(false)}
+          onReopen={() => setFlowOpen(true)}
+        />
       )}
     </li>
   );

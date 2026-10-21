@@ -75,3 +75,33 @@ describe("checkFlow", () => {
     expect(checkFlow(broken, [{ ctx, values: {} }]).deadEnds.length).toBeGreaterThan(0);
   });
 });
+
+describe("generic flows: put + new kinds", () => {
+  const g: FlowConfig = {
+    id: "g", start: () => "a", budget: { common: 2, longest: 2 },
+    steps: {
+      a: { id: "a", kind: "choice", q: "؟", options: [{ id: "x", label: "ایکس", next: "b", put: { method: "CASH" } }] },
+      b: { id: "b", kind: "amount", q: "مبلغ", options: [{ id: "ok", label: "ثبت", save: true }] },
+    },
+  };
+  it("merges put into values and keeps a typed amount under the step id", () => {
+    let st = startFlow(g, EMPTY_CONTEXT);
+    st = answerStep(g, EMPTY_CONTEXT, st, "x");
+    expect(st.values.method).toBe("CASH");
+    st = answerStep(g, EMPTY_CONTEXT, st, "ok", "250000");
+    expect(st.saved).toBe(true);
+    expect(st.values.b).toBe("250000");
+    expect(st.values.method).toBe("CASH");
+  });
+  it("a typed value wins over put for the same key", () => {
+    const h: FlowConfig = {
+      id: "h", start: () => "a", budget: { common: 1, longest: 1 },
+      steps: { a: { id: "a", kind: "amount", q: "؟", input: { field: "amt", placeholder: "" }, options: [{ id: "ok", label: "ثبت", save: true, put: { amt: "1" } }] } },
+    };
+    const st = answerStep(h, EMPTY_CONTEXT, startFlow(h, EMPTY_CONTEXT), "ok", "500");
+    expect(st.values.amt).toBe("500");
+  });
+  it("items are optional on a context (CRM contexts are unchanged)", () => {
+    expect(EMPTY_CONTEXT.items).toBeUndefined();
+  });
+});

@@ -6,6 +6,7 @@ import { getDb, plain } from "@/lib/db";
 import { readCatalogue } from "@/lib/catalogue";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
 import OrderForm from "@/components/sales/OrderForm";
+import OrderQuickEntry from "@/components/flows/OrderQuickEntry";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole } from "@/lib/roles";
 
@@ -96,6 +97,11 @@ export default async function NewOrderPage({
   return (
     <>
     <PageHeader route="/sales/orders/new" />
+    <OrderQuickEntry
+      customers={customers}
+      products={products}
+      initialCustomerId={initialCustomerId}
+    />
     <OrderForm
       customers={customers}
       products={products}

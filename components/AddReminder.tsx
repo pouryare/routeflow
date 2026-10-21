@@ -4,6 +4,8 @@ import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { Icon } from "@/components/meridian/Icon";
 import { useState } from "react";
 import { useToast } from "./ToastProvider";
+import ReminderFlow from "@/components/flows/ReminderFlow";
+import { useIsNarrow } from "@/lib/useIsNarrow";
 
 export default function AddReminder({
   entityType,
@@ -19,6 +21,10 @@ export default function AddReminder({
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
   const toast = useToast();
+  /* On a phone the button opens the tap flow instead of the inline form. The flow stays mounted
+     after it closes so «بازگردانی ثبت» can reopen it; a new opening gets a new key. */
+  const narrow = useIsNarrow();
+  const [flow, setFlow] = useState({ key: 0, open: false });
 
   async function submit() {
     if (!dueDate || !message.trim()) return;
@@ -66,7 +72,7 @@ export default function AddReminder({
     <div className="mt-4 border-t border-border pt-3">
       {!open ? (
         <button
-          onClick={() => setOpen(true)}
+          onClick={() => (narrow ? setFlow((f) => ({ key: f.key + 1, open: true })) : setOpen(true))}
           className="font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
         >
           <Icon name="clock" size="sm" />
@@ -99,6 +105,17 @@ export default function AddReminder({
             </button>
           </div>
         </div>
+      )}
+      {flow.key > 0 && (
+        <ReminderFlow
+          key={flow.key}
+          open={flow.open}
+          kind="reminder"
+          entity={{ type: entityType, id: entityId }}
+          onAdded={() => onAdded?.()}
+          onClose={() => setFlow((f) => ({ ...f, open: false }))}
+          onReopen={() => setFlow((f) => ({ ...f, open: true }))}
+        />
       )}
     </div>
   );

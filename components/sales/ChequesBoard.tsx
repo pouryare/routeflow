@@ -8,6 +8,7 @@ import { Icon } from "@/components/meridian/Icon";
 import JalaliDateInput from "@/components/meridian/JalaliDateInput";
 import { useCallback, useMemo, useState } from "react";
 import { faToman } from "@/lib/format";
+import PaymentFlow from "@/components/flows/PaymentFlow";
 import { CHEQUE_STATUS_LABEL, CHEQUE_TRANSITIONS, type ChequeStatus } from "@/lib/chequeStates";
 
 interface Customer {
@@ -31,6 +32,8 @@ const COLUMNS: ChequeStatus[] = ["in_hand", "deposited", "bounced"];
 export default function ChequesBoard({ customers }: { customers: Customer[] }) {
   const [cheques, setCheques] = useState<Cheque[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /* Phone entry is the tap flow, remounted per opening; the form below stays from md up. */
+  const [flow, setFlow] = useState({ key: 0, open: false });
   const [form, setForm] = useState({
     customer_id: "",
     amount_toman: "",
@@ -119,7 +122,16 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
     <div dir="rtl" className="mx-auto flex max-w-5xl flex-col gap-6 p-4">
       <h1 className="text-lg font-bold text-text">چک‌ها</h1>
 
-      <form onSubmit={record} className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3">
+      <button
+        type="button"
+        onClick={() => setFlow((f) => ({ key: f.key + 1, open: true }))}
+        className="inline-flex items-center justify-center gap-[var(--space-2)] rounded bg-accent px-4 py-3 text-base font-medium text-accent-ink md:hidden"
+      >
+        <Icon name="plus" size="md" />
+        ثبت چک جدید
+      </button>
+
+      <form onSubmit={record} className="hidden gap-3 rounded-lg border border-border bg-surface p-4 md:grid md:grid-cols-3">
         <select
           className="rounded border border-border bg-bg p-2 text-sm"
           value={form.customer_id}
@@ -235,6 +247,17 @@ export default function ChequesBoard({ customers }: { customers: Customer[] }) {
           </div>
         ))}
       </div>
+      {flow.key > 0 && (
+        <PaymentFlow
+          key={flow.key}
+          open={flow.open}
+          customers={customers}
+          method="CHEQUE"
+          onRecorded={() => void load()}
+          onClose={() => setFlow((f) => ({ ...f, open: false }))}
+          onReopen={() => setFlow((f) => ({ ...f, open: true }))}
+        />
+      )}
     </div>
   );
 }
