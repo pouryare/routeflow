@@ -125,3 +125,11 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - `vitest` includes only `tests/**/*.test.ts`; write component tests with `createElement`, not JSX.
 - **Adoption keeps old data shapes.** The order form's delivery day stays `requestedMode`/`requestedDate`; chips only set them (picking a day = exact date, the «بدون تعهد» chip = soonest). No API change was needed.
 - Replacing a state-heavy search (query + matches) with `SmartPicker` deleted more code than it added; look for dead state and unused imports after each swap.
+
+## Phase 9 (expense entry)
+
+- **The plan promised fields the server doesn't have.** «supplier» and «photo» have no column on an expense. Supplier became the journal memo; photo is parked. Check the write path's columns before planning a step for them.
+- **Lists the engine didn't have a slot for.** Categories and suppliers are two different lists, so `FlowContext` got an optional `lists` record instead of overloading `items`/`products`.
+- **Method is required by the API but was missing from the plan.** The flow asks it last (it is also the save tap) and offers only the three methods that map to a cash or bank account.
+- **Zero amounts are blocked by the amount step, not the machine**; test the step's `allowZero`, not a thrown error.
+- Render tests of hosts that call `useRouter` need `vi.mock("next/navigation")`.

@@ -118,6 +118,8 @@ export interface FlowContext {
   recentCustomers: { id: number; name: string }[];
   /** Lines a non-CRM flow asks about (delivery lines, products). Optional so CRM contexts are unchanged. */
   items?: FlowItem[];
+  /** Named lists a non-CRM flow chooses from (expense categories, recent suppliers). Optional so CRM contexts are unchanged. */
+  lists?: Record<string, { id: number; label: string }[]>;
 }
 
 export const EMPTY_CONTEXT: FlowContext = {
