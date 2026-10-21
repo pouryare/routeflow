@@ -763,6 +763,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** demo seed scripts (`scripts/seed-demo-org.mjs`, `scripts/seed-demo-drivers.mjs`) build a demo organisation. There is no in-app training mode or guided tasks.
 
+**Also existing:** the sales academy (`/sales/academy`, `lib/repo/academy.ts`) offers lessons with per-user progress and objection cards, so written training content has a home already; what is missing is practising on safe data.
+
 **Why parked:** a sandbox must be completely isolated from real data, including notifications and messages (a practice order must never message a real customer); guided tasks need content in Persian per role; resetting the sandbox must be safe.
 
 **Open questions**
@@ -952,6 +954,143 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** one action only, a discount above a threshold on an order line, requesting approval from the group manager through the existing decision deck. Generalise after.
 
 **Prerequisites:** the decision deck and notifications; F27 for the audit record.
+
+---
+
+## F49. Cash-flow forecast
+
+**What:** expected inflows (cheques by due date, receivables by each customer's payment pattern) against outflows (supplier payables, payroll, rent) for the next 30–60 days, with a warning when a shortfall is coming.
+
+**Already in the app:** the inputs exist separately: cheques with due dates and statuses, payments and customer debts (`lib/repo/payments.ts`), a payables page (`/accounting/payables`), and the ledger and income statement under `/accounting`. Nothing combines them into a forward-looking view.
+
+**Why parked:** a forecast is only as good as the due dates and payment-behaviour assumptions; receivables rarely arrive on the due date, so the model needs each customer's actual delay (see F46); payroll and fixed costs may not be in the system yet.
+
+**Open questions**
+1. Which outflows are recorded today (supplier payables yes; payroll, rent, tax?) and which must be entered as recurring items?
+2. Inflow timing: on due date, or shifted by the customer's average delay?
+3. Show a best case and a worst case, or one line?
+4. Opening balance: from the ledger cash and bank accounts?
+
+**Suggested first slice:** a read-only weekly table for the next eight weeks: cheques due, payables due, and the resulting net, with no customer-delay modelling.
+
+**Prerequisites:** none for the first slice; F46 and F50 improve the inflow estimate.
+
+---
+
+## F50. Payment promise tracker
+
+**What:** record "the customer promised to pay on the 15th", follow up automatically if it isn't received, and track each customer's promise-kept rate.
+
+**Already in the app:** reminders and tasks with due dates (`AddReminder`, `lib/repo/tasks.ts`), and the credit-approval and payment flows. A promise is only a free-text task today: it has no amount, no link to the debt and no outcome.
+
+**Why parked:** a promise must tie to a debt and clear itself when a payment arrives; too many tracked promises become noise; the promise-kept rate must not be used to shame reps or customers.
+
+**Open questions**
+1. Fields: promised amount, date, customer, order or invoice, who recorded it.
+2. Auto-resolve when a matching payment is recorded (full or partial)?
+3. A broken promise creates what: a task for the rep, an alert for the manager?
+4. Does the kept-rate feed credit-risk scoring (F46) and the statement reminders (F18)?
+
+**Suggested first slice:** a "promise to pay" step in the call-outcome flow that creates a dated task linked to the customer's balance and marks it kept when a payment of at least that amount arrives.
+
+**Prerequisites:** payments and tasks (exist); F46 and F18 consume the result.
+
+---
+
+## F51. SLA and escalation rules
+
+**What:** response and resolution targets for things that wait on a person: a complaint unanswered for four hours, an order stuck in review for a day, a credit approval waiting too long. Breaches escalate to the next level and show on a compliance report.
+
+**Already in the app:** the rule engine (`lib/rules/engine.ts`, `lib/repo/rules.ts`) already supports escalation: a rule can carry `escalate_after_min` and `escalate_to_role`, and a fired rule that is past its window and neither escalated nor resolved is escalated (`isEscalatable`, with `rule_runs` bookkeeping). What is not clear is which standing SLAs are configured, and there is no breach report.
+
+**Why parked:** targets differ by role, group and time of day (nights and holidays); escalation messages are noisy if the targets are too tight; SLAs measure people, so wording and visibility need care.
+
+**Open questions**
+1. Which objects get an SLA first: complaints, orders in review, credit approvals, cheques due for a decision?
+2. Business hours and holidays: does the clock pause?
+3. Escalate to whom (the requester's manager, the owner)?
+4. A weekly breach report per team: who sees it?
+
+**Suggested first slice:** configure three escalation rules on existing events (unanswered complaint, order in review, credit approval pending) and add a small "overdue by SLA" count to the manager briefing. No new engine.
+
+**Prerequisites:** the existing rule engine and notification fan-out.
+
+---
+
+## F52. Free samples tracking
+
+**What:** samples given to prospects, their quantity and cost, and whether the prospect converted into a customer, to see the return on sampling.
+
+**Already in the app:** the CRM already treats a sample as a lead stage (`sample`, in `lib/crm/stage.ts`) and has a call outcome `REQUESTED_SAMPLE`, a follow-up kind `sample_delivery`, and a flow that asks which product, how much (for example one pack, five pieces) and when to deliver it (`sampleprod`, `sampleqty`, `samplewhen` in `lib/crm/flows/afterCall.ts`). The quantity is a label, not a stock or cost record, and conversion is not measured.
+
+**Why parked:** samples leave stock, so they need a stock movement and cost or the inventory drifts; "converted" needs a window and a definition (first order within 60 days?); a rep could game the rate by sampling only likely buyers.
+
+**Open questions**
+1. Does a sample create a stock movement at delivery (a new movement type) and a cost?
+2. Conversion window and definition.
+3. Sample budget per rep or group?
+
+**Suggested first slice:** turn the `sampleqty` label into a quantity and unit, create a stock movement when the `sample_delivery` task is done, and report samples per rep with conversion within 60 days.
+
+**Prerequisites:** stock movements (exist); the lead stage history.
+
+---
+
+## F53. New product launch tracker
+
+**What:** for a new product, which customers have tried it, who reordered, which regions or reps are lagging, and what to do next.
+
+**Why parked:** needs a definition of "launch" (a date range and target customers); adoption is only meaningful against a target list; a small customer count makes percentages misleading.
+
+**Open questions**
+1. A launch has a product, start date, target customer segment and a goal (for example 40% trial in 30 days)?
+2. Trial = first order of the product; repeat = second order within a window?
+3. Does the tracker create tasks for reps for customers who haven't tried it?
+4. Ties to samples (F52) and promotions (F21).
+
+**Suggested first slice:** a launch record (product, date, target group) and a table of trial and repeat counts per customer and rep from existing order lines. No tasks yet.
+
+**Prerequisites:** order lines (exist); F52 and F21 add samples and offers.
+
+---
+
+## F54. Data quality dashboard
+
+**What:** customers missing a location, phone number, district, owner or price group, with a completeness score per group and per rep, and one-tap fix tasks.
+
+**Already in the app:** customer health scoring (`lib/repo/health.ts`) is about customer performance, not record completeness. The duplicates tool covers repeated customers. The lead import and CRM flows validate on entry. There is no completeness view for existing records.
+
+**Why parked:** the right rules differ by customer type (a representative customer needs different fields from a direct one); a fix task for every gap floods the task board; location correctness (not just presence) is harder to check.
+
+**Open questions**
+1. Which fields are required per customer type?
+2. Is the score per record, per group, or per rep, and who sees it?
+3. Bulk fix tasks or a single "fix these ten" list?
+4. Do wrong-looking values count too (a location far outside the district, a phone with the wrong digit count)?
+
+**Suggested first slice:** a manager-only list of customers missing location, phone or district, with counts by group, linking to the existing customer edit flow.
+
+**Prerequisites:** none; F37 handles duplicates separately.
+
+---
+
+## F55. Owner announcements with read receipts
+
+**What:** a notice from the owner or a manager to all staff or one role (holiday hours, a policy change, a new price list), with a "read" confirmation and a view of who has not read it.
+
+**Already in the app:** the notification feed with unread counts and priority (`lib/repo/notifications.ts`), the academy of lessons and objection cards (`/sales/academy`, `lib/repo/academy.ts`, with per-user lesson progress), and push and Telegram channels. There is no authored announcement with read tracking.
+
+**Why parked:** an announcement is a push to everyone, so overuse trains people to ignore it; targeting by role and group needs scope checks; read receipts raise a fairness question.
+
+**Open questions**
+1. Audience: all, a role, a group, or named people?
+2. Must it be acknowledged (one tap) or just seen?
+3. Expiry and pinning: does it stay on the briefing until read?
+4. Persian text with simple formatting only, no attachments at first.
+
+**Suggested first slice:** a pinned announcement card on the briefing for a chosen role or group with an "understood" tap and a manager view of who has tapped. Push optional.
+
+**Prerequisites:** the briefing panels and notification fan-out.
 
 ---
 
