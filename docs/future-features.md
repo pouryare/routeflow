@@ -1617,6 +1617,47 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F82. Approval delegation while away
+
+**What:** a manager or owner who is on leave names a stand-in for order review, credit approvals and other approvals (see F48, F76), for a set period. Decisions are recorded as "approved by X on behalf of Y", and the delegation ends on its own.
+
+**Already in the app:** a person can hold several roles (`user_roles`, with `setRoles`, `usersWithRole` and `rolesFor` in `lib/repo/userRoles.ts`), and the code's rule is that "who can do X" is answered from that table, not from the primary role. So an approval can already be done by anyone holding the approving role, and order transitions accept an actor with several roles. What is missing is a time limit on a role grant, a way to say "I am away", and the "on behalf of" record. I also found no leave or absence state for users.
+
+**Why parked:** a lasting extra role is a security risk if nobody removes it; approving for someone else must be visible in the audit trail (F27); some approvals (credit increases, price cuts) may not be delegable; nested delegation (a stand-in delegating again) must be forbidden.
+
+**Open questions**
+1. Time-boxed role grant (start and end dates), or a separate delegation record that is checked at approval time? The record is safer: the stand-in never holds the role.
+2. Which approvals can be delegated: order review, credit approval, cheque decisions, price changes?
+3. Who may delegate: the approver themself, or the owner on their behalf?
+4. Notice to the delegator when something is approved in their name, and a morning summary when they return.
+
+**Suggested first slice:** a delegation record (from, to, start, end, approval kinds) that the approval check consults, "approved on behalf of" shown on the order timeline, and an automatic end. No change to who holds which role.
+
+**Prerequisites:** the multi-role model and the order state machine (exist); F27 and F48 build on it.
+
+---
+
+## F83. Payment terms and early-payment discounts
+
+**What:** each customer has agreed payment terms (cash, 15 days, 30 days, cheque dated N days) and an optional discount for paying early, such as 2% within 7 days. Terms set each order's due date, drive statements (F18) and reminders, and feed risk scoring (F46).
+
+**Already in the app:** debt is computed live from delivered orders minus payments and aged into three buckets (up to 7 days, 8 to 30 days, over 30 days) from the delivery date; the opening balance is always counted as over 30 days (`customerDebt`, `bucketOf` in `lib/repo/payments.ts`). Cheques have due dates, and customers can have a credit limit. There is no agreed term or due date on a customer or order, so "overdue" currently means "old", not "past its agreed date". I found no early-payment or cash discount fields.
+
+**Why parked:** a discount for early payment changes the amount owed, so it needs a clear rule on the invoice and in the ledger (and it interacts with F65's uplift and F21's campaigns); terms must be frozen on the order when it is created so later changes do not rewrite history; cheques dated in the future blur "paid" versus "promised" (see F50).
+
+**Open questions**
+1. Terms per customer, per customer group, or per order? Start per customer with a default per group.
+2. Due date counted from the delivery date or the invoice date?
+3. Early-payment discount: applied automatically when a payment arrives in the window, or offered and confirmed by the cashier?
+4. How are post-dated cheques treated against the due date?
+5. Tax and accounting treatment of the discount, to confirm with the accountant.
+
+**Suggested first slice:** a terms field on the customer (days), copied onto each order as a due date at creation, and an "overdue by terms" count next to the existing age buckets. No discount yet.
+
+**Prerequisites:** none for the first slice; F18, F46 and F50 consume the due dates; the discount needs the ledger decision.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
