@@ -8,7 +8,7 @@ import type { LeadRunStatus } from "@/lib/repo/leadRuns";
 /** Who is taking the route.
  *
  *  Not a dropdown: a manager is handing a day's work to a person, and a face they can
- *  recognise beats a closed <select> they have to open to read. The count of days each
+ *  recognise beats a closed dropdown they have to open to read. The count of days each
  *  driver already holds is on the card, so someone with a free week is visible before the
  *  calendar is ever opened rather than discovered by hunting through a month. */
 export default function DriverPicker({

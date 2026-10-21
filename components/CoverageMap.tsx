@@ -1,5 +1,7 @@
 "use client";
 
+import SmartPicker from "@/components/mobile/SmartPicker";
+import { ChipGroup } from "@/components/mobile/FilterChips";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -1519,16 +1521,17 @@ export default function CoverageMap({
             right={
               /* In the header rather than the body: changing the radius is how you
                  decide whether this section is worth opening at all. */
-              <select
-                value={nearbyRadiusKm}
-                onChange={(e) => setNearbyRadiusKm(Number(e.target.value))}
-                aria-label="شعاع جستجوی مشتریان نزدیک"
-                className="rounded-[var(--radius-sm)] border border-border bg-surface px-1.5 py-0.5 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-              >
-                <option value={1}>۱ کیلومتر</option>
-                <option value={2}>۲ کیلومتر</option>
-                <option value={5}>۵ کیلومتر</option>
-              </select>
+              <ChipGroup
+                group={{
+                  id: "nearby_radius",
+                  label: "شعاع جستجوی مشتریان نزدیک",
+                  mode: "single",
+                  neutral: "__none",
+                  value: String(nearbyRadiusKm),
+                  onChange: (v) => { if (v && v !== "__none") setNearbyRadiusKm(Number(v)); },
+                  options: [{ id: "1", label: "۱ کیلومتر" }, { id: "2", label: "۲ کیلومتر" }, { id: "5", label: "۵ کیلومتر" }],
+                }}
+              />
             }
           >
             {nearbyCustomers.length === 0 ? (
@@ -2508,32 +2511,25 @@ export default function CoverageMap({
           <span className="shrink-0 text-[length:var(--text-sm)] font-medium text-text">
             {bulkSelectedIds.size} منطقه انتخاب شده
           </span>
-          <select
+          <SmartPicker
+            scope="coverage-status"
+            label="وضعیت"
+            items={(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((st) => ({ id: st, label: STATUS_LABEL[st] }))}
             value={bulkStatusChoice}
-            onChange={(e) => setBulkStatusChoice(e.target.value as CoverageStatus | "")}
-            className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
-          >
-            <option value="">— بدون تغییر وضعیت —</option>
-            {(Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-              <option key={s} value={s}>
-                {STATUS_LABEL[s]}
-              </option>
-            ))}
-          </select>
+            onChange={(id) => setBulkStatusChoice(id as CoverageStatus | "")}
+            clearLabel="— بدون تغییر وضعیت —"
+            placeholder="— بدون تغییر وضعیت —"
+          />
           {(role === "owner" || role === "platform_owner") && groups.length > 0 && (
-            <select
+            <SmartPicker
+              scope="coverage-group"
+              label="گروه"
+              items={[...groups.map((g) => ({ id: String(g.id), label: g.name })), { id: "__ungroup__", label: "— خارج کردن از گروه —" }]}
               value={bulkGroupChoice}
-              onChange={(e) => setBulkGroupChoice(e.target.value)}
-              className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1.5 text-[length:var(--text-sm)] text-text outline-none focus:border-accent"
-            >
-              <option value="">— بدون تغییر گروه —</option>
-              {groups.map((g) => (
-                <option key={g.id} value={String(g.id)}>
-                  {g.name}
-                </option>
-              ))}
-              <option value="__ungroup__">— خارج کردن از گروه —</option>
-            </select>
+              onChange={setBulkGroupChoice}
+              clearLabel="— بدون تغییر گروه —"
+              placeholder="— بدون تغییر گروه —"
+            />
           )}
           <div className="mr-auto flex shrink-0 gap-2">
             <button

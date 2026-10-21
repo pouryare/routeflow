@@ -1,5 +1,6 @@
 "use client";
 
+import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCardDrag } from "@/components/board/useCardDrag";
 import RunPanel, { type RunStop } from "@/components/leads/RunPanel";
 import { Icon } from "@/components/meridian/Icon";
@@ -246,21 +247,19 @@ export default function RouteSection({
                   </div>
                 ))}
                 {unassignedLocations.length > 0 && (
-                  <select
-                    onChange={(e) => {
-                      const locId = Number(e.target.value);
-                      const loc = unassignedLocations.find((l) => l.id === locId);
-                      if (loc) addToDayGroup(i, loc);
-                      e.target.value = "";
-                    }}
-                    defaultValue=""
-                    className="mt-2 w-full rounded border border-border bg-bg px-2 py-1.5 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-                  >
-                    <option value="" disabled>افزودن مکان به این روز…</option>
-                    {unassignedLocations.map((loc) => (
-                      <option key={loc.id} value={loc.id}>{loc.name}</option>
-                    ))}
-                  </select>
+                  <div className="mt-2">
+                    <SmartPicker
+                      scope="lead-day-places"
+                      label="افزودن مکان به این روز"
+                      placeholder="افزودن مکان به این روز…"
+                      items={unassignedLocations.map((loc) => ({ id: String(loc.id), label: loc.name }))}
+                      value=""
+                      onChange={(id) => {
+                        const loc = unassignedLocations.find((l) => String(l.id) === id);
+                        if (loc) addToDayGroup(i, loc);
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             );
