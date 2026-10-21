@@ -1,0 +1,18 @@
+/** `iso` (YYYY-MM-DD) moved by `days`, as ISO. Calendar arithmetic in UTC so a daylight-saving
+ *  change can never turn "+30 days" into 29 or 31; the result is a date, not an instant. */
+export function addDaysIso(iso: string, days: number): string {
+  const [y, m, d] = iso.split("-").map(Number);
+  const t = new Date(Date.UTC(y, m - 1, d + days));
+  return t.toISOString().slice(0, 10);
+}
+
+/** The "how long until it's due" shortcuts a cheque's due date is almost always one of.
+ *  Offsets rather than named days: a cheque is post-dated by weeks or months, so the person
+ *  thinks "a month from now", not "the 12th". The full calendar stays one tap away. */
+export const DUE_PRESETS: { label: string; days: number }[] = [
+  { label: "یک هفته دیگر", days: 7 },
+  { label: "دو هفته دیگر", days: 14 },
+  { label: "یک ماه دیگر", days: 30 },
+  { label: "دو ماه دیگر", days: 60 },
+  { label: "سه ماه دیگر", days: 90 },
+];
