@@ -293,19 +293,14 @@ export default function OrderForm({
             <label className={LABEL} htmlFor="seller">
               فروشنده
             </label>
-            <select
-              id="seller"
-              className={FIELD}
+            <SmartPicker
+              scope="order-sellers"
+              label="فروشنده"
+              items={sellers.map((x) => ({ id: String(x.id), label: x.display_name }))}
               value={sellerId}
-              onChange={(e) => setSellerId(e.target.value)}
-            >
-              <option value="">—</option>
-              {sellers.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.display_name}
-                </option>
-              ))}
-            </select>
+              onChange={setSellerId}
+              clearLabel="بدون فروشنده"
+            />
           </div>
         )}
         <div>

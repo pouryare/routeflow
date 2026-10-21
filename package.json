@@ -17,7 +17,7 @@
     "dev:demo": "ROUTEFLOW_DB_PATH=./data/routeflow.demo.db next dev",
     "test:demo": "vitest run tests/seed-demo-deep.test.ts",
     "audit:mobile": "node scripts/mobile-audit.mjs",
-    "check:mobile": "node scripts/mobile-audit.mjs --check",
+    "check:mobile": "node scripts/check-mobile-rules.mjs",
     "typecheck": "next typegen && tsc --noEmit",
     "perf:smoke": "bash scripts/perf/ci-smoke.sh"
   },

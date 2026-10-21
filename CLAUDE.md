@@ -20,3 +20,7 @@ At the end of every reply, update `TODO-REPORT.md` at the repo root and show the
 - **Next steps** — numbered, in the order they will be worked.
 
 Keep it current: move items from Next steps to Done as they finish, add new gaps as they are found. Commit `TODO-REPORT.md` together with the work it describes.
+
+# UI work follows the mobile-first rules
+
+UI work follows `docs/mobile-first-principles.md` (and `docs/tap-flow-principles.md` for flows that record what just happened). Run `npm run check:mobile` before committing UI changes; it fails on a new `<select>`, native date, small tap target or confirm dialog, on a mobile component with no test, and on an allowlist entry without a written reason.

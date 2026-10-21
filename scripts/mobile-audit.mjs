@@ -60,8 +60,9 @@ function* walk(dir) {
   }
 }
 
-/** Totals over the tree, skipping files in the allowlist (desk-only surfaces, each with a
- *  written reason in scripts/mobile-allowlist.json). */
+/** Totals over the tree, skipping what the allowlist exempts (desk-only surfaces). Each entry is
+ *  `{ reason, rules? }` in scripts/mobile-allowlist.json: `reason` is required (a test enforces it),
+ *  `rules` limits the exemption to those counters (e.g. ["select"]) so the rest still ratchet. */
 export function auditTree() {
   const allow = fs.existsSync(ALLOW) ? JSON.parse(fs.readFileSync(ALLOW, "utf8")) : {};
   const total = Object.fromEntries(Object.keys(RULES).map((k) => [k, 0]));
@@ -69,8 +70,11 @@ export function auditTree() {
   for (const d of DIRS) {
     for (const f of walk(path.join(ROOT, d))) {
       const rel = path.relative(ROOT, f).split(path.sep).join("/");
-      if (allow[rel]) continue;
+      const entry = allow[rel];
+      // An entry with no `rules` list exempts the whole file; one with `rules` exempts only those.
+      if (entry && !entry.rules) continue;
       const c = countRules(fs.readFileSync(f, "utf8"));
+      for (const r of entry?.rules ?? []) c[r] = 0;
       for (const k of Object.keys(c)) total[k] += c[k];
       if (Object.values(c).some(Boolean)) files[rel] = c;
     }

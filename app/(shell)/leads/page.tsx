@@ -1,5 +1,6 @@
 "use client";
 
+import FilterChips from "@/components/mobile/FilterChips";
 import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useState, useMemo } from "react";
@@ -246,20 +247,27 @@ export default function LeadsPage() {
                   }
                 />
               )}
-              <select
-                value={sortMode}
-                onChange={(e) => setSortMode(e.target.value as SortMode)}
-                className="rounded-[var(--radius-sm)] border border-border bg-bg px-1.5 py-1 text-[length:var(--text-xs)] text-text-muted outline-none focus:border-accent"
-                aria-label="ترتیب"
-              >
-                <option value="nearest">نزدیک‌ترین</option>
-                <option value="score">امتیاز</option>
-                <option value="name">نام</option>
-                <option value="newest">تازه‌ترین</option>
-                <option value="status">وضعیت</option>
-                <option value="route">ترتیب مسیر</option>
-                <option value="priority">اولویت</option>
-              </select>
+              <FilterChips
+                groups={[
+                  {
+                    id: "sort",
+                    label: "ترتیب",
+                    mode: "single",
+                    neutral: "nearest",
+                    value: sortMode,
+                    onChange: (v) => setSortMode(v as SortMode),
+                    options: [
+                      { id: "nearest", label: "نزدیک‌ترین" },
+                      { id: "score", label: "امتیاز" },
+                      { id: "name", label: "نام" },
+                      { id: "newest", label: "تازه‌ترین" },
+                      { id: "status", label: "وضعیت" },
+                      { id: "route", label: "ترتیب مسیر" },
+                      { id: "priority", label: "اولویت" },
+                    ],
+                  },
+                ]}
+              />
             </div>
           </div>
 

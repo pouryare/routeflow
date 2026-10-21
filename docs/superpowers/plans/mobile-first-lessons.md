@@ -191,3 +191,11 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **A map first mounted inside a hidden pane has no size.** The planner keys the map by the visible pane so switching remounts it in a visible container.
 - **Toggling panes in place (`contents` / `hidden md:contents`) kept the diff to one file**; splitting a 1100-line page into components would have been a larger, riskier change for the same result.
 - **A sheet is CSS plus one hook.** The processing modal became a bottom sheet with a media query and `useSwipeDismiss`, no new component.
+
+## Phase 10 (rules and enforcement)
+
+- **Written before the gate was met, at the user's request, with the gap stated in the document.** No phone run was possible, so §5 says the budgets are targets; the allowlist leaves 10 dropdowns counted rather than exempting them to look finished.
+- **Allowlist per rule, not per file.** Exempting a whole file hides its other counts; `{ rules: ["select"], reason }` keeps text fields and tap targets ratcheting there.
+- **The check found its own gaps on first run:** three mobile components (ActionCard, KeypadField, SmartPicker) had no test naming them. A rule that is enforced finds the exceptions you forgot.
+- **`confirm()` as a function name is a false positive for a regex audit;** rename it rather than loosen the rule.
+- **Verified the check fails:** a scratch `<select>` made `check:mobile` exit 1 with the rule cited, then was removed.
