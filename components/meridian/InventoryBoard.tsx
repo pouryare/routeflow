@@ -1,5 +1,6 @@
 "use client";
 
+import KeypadField from "@/components/mobile/KeypadField";
 import { faJalaliDate } from "@/lib/jalali";
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -296,15 +297,14 @@ function ThresholdField({
 
   return (
     <span style={{ display: "flex", alignItems: "center", gap: 6 }}>
-      <input
-        type="text"
-        inputMode="decimal"
+      <KeypadField
+        label={field === "reorder_point" ? "نقطهٔ سفارش" : "سقف هدف"}
         value={value}
-        onChange={(e) => {
-          setValue(e.target.value);
+        decimal
+        onChange={(v) => {
+          setValue(v);
           setSaved(false);
         }}
-        placeholder="تنظیم‌نشده" aria-label={field === "reorder_point" ? "نقطهٔ سفارش" : "سقف هدف"}
       />
       {dirty ? (
         <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] stmore__save" disabled={busy} onClick={save}>

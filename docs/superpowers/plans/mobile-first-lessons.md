@@ -123,3 +123,5 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Own keypad changes test contracts.** Tests that looked for `value="800000"` on a text field now assert the readout and the key grid, and that no OS-keyboard field exists.
 - **Labels still can't be bare verbs.** «تأیید» alone fails the bare-verb test; «تأیید عدد».
 - `vitest` includes only `tests/**/*.test.ts`; write component tests with `createElement`, not JSX.
+- **Adoption keeps old data shapes.** The order form's delivery day stays `requestedMode`/`requestedDate`; chips only set them (picking a day = exact date, the «بدون تعهد» chip = soonest). No API change was needed.
+- Replacing a state-heavy search (query + matches) with `SmartPicker` deleted more code than it added; look for dead state and unused imports after each swap.

@@ -1,5 +1,6 @@
 "use client";
 
+import SmartPicker from "@/components/mobile/SmartPicker";
 import { useCallback, useEffect, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { REP_STAGE_TRANSITIONS, REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
@@ -137,18 +138,13 @@ export default function RepDefinitions() {
         <form onSubmit={create} className="flex flex-wrap items-end gap-3">
           <label className="flex flex-col gap-1 text-[length:var(--text-xs)] text-text-muted">
             مشتری عمده‌فروش
-            <select
+            <SmartPicker
+              scope="rep-customers"
+              label="مشتری عمده‌فروش"
+              items={candidates.map((c) => ({ id: String(c.id), label: `${c.business_name} (${c.customer_code})` }))}
               value={customerId}
-              onChange={(e) => setCustomerId(e.target.value)}
-              className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 text-text"
-            >
-              <option value="">انتخاب کنید…</option>
-              {candidates.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.business_name} ({c.customer_code})
-                </option>
-              ))}
-            </select>
+              onChange={setCustomerId}
+            />
           </label>
           <label className="flex flex-col gap-1 text-[length:var(--text-xs)] text-text-muted">
             کد نماینده

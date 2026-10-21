@@ -4,11 +4,13 @@ import { useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
-import { matchesQuery } from "@/lib/persian";
 import { faToman, faNum } from "@/lib/format";
 import { roundToman } from "@/lib/money";
 import { MAX_PACKS_PER_LINE, parsePacks } from "@/lib/orderLimits";
 import { Icon } from "@/components/meridian/Icon";
+import SmartPicker from "@/components/mobile/SmartPicker";
+import KeypadField from "@/components/mobile/KeypadField";
+import DayChips from "@/components/mobile/DayChips";
 import {
   resolveRequestedDay,
   requestedDayLabel,
@@ -79,7 +81,6 @@ export default function OrderForm({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [query, setQuery] = useState("");
   const [customerId, setCustomerId] = useState<number | null>(initialCustomerId);
   const [orderDate, setOrderDate] = useState(() => tehranTodayIso());
   /* Phase 1 (mixed-route planning): the day the customer ASKED for, which is a different
@@ -92,7 +93,7 @@ export default function OrderForm({
    * stored kind still remembers that the reader said "next week" rather than naming a day. */
   const [requestedMode, setRequestedMode] = useState<RequestedKind>("soonest");
   const [requestedDate, setRequestedDate] = useState("");
-  const [requestedWeeks, setRequestedWeeks] = useState("1");
+  const requestedWeeks = "1";
   const [sellerId, setSellerId] = useState("");
   const [notes, setNotes] = useState("");
 
@@ -102,15 +103,6 @@ export default function OrderForm({
   const [packs, setPacks] = useState("1");
 
   const customer = customers.find((c) => c.id === customerId) ?? null;
-
-  // normalisePersian under the hood, so «كترينگ» typed on one keyboard finds «کترینگ»
-  // stored from another. Without it the shop simply appears not to exist.
-  const matches = useMemo(() => {
-    if (!query.trim()) return customers.slice(0, 8);
-    return customers
-      .filter((c) => matchesQuery(`${c.business_name} ${c.customer_code}`, query))
-      .slice(0, 8);
-  }, [customers, query]);
 
   const product = products.find((p) => String(p.id) === pickProduct) ?? null;
   const packaging = product?.packagings.find((k) => String(k.id) === pickPackaging) ?? null;
@@ -242,7 +234,6 @@ export default function OrderForm({
               type="button"
               onClick={() => {
                 setCustomerId(null);
-                setQuery("");
               }}
               className="rounded-[var(--radius-md)] border border-[var(--border)] px-[var(--space-3)] py-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)] hover:border-[var(--border-strong)]"
             >
@@ -251,38 +242,14 @@ export default function OrderForm({
             </button>
           </div>
         ) : (
-          <>
-            <input
-              id="customer-search"
-              className={FIELD}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="نام یا کد مشتری…"
-              autoComplete="off"
-            />
-            <ul className="mt-[var(--space-2)] flex list-none flex-col gap-[2px] p-0">
-              {matches.map((c) => (
-                <li key={c.id}>
-                  <button
-                    type="button"
-                    onClick={() => setCustomerId(c.id)}
-                    className="w-full rounded-[var(--radius-sm)] px-[var(--space-2)] py-[var(--space-2)] text-right text-[length:var(--text-sm)] text-[var(--text-muted)] hover:bg-white/5 hover:text-[var(--text)]"
-                  >
-                    <Icon name="package" size="sm" />
-                    {c.business_name}
-                    <span className="ms-[var(--space-2)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
-                      {c.customer_code}
-                    </span>
-                  </button>
-                </li>
-              ))}
-              {matches.length === 0 && (
-                <li className="px-[var(--space-2)] py-[var(--space-2)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
-                  مشتری‌ای پیدا نشد
-                </li>
-              )}
-            </ul>
-          </>
+          <SmartPicker
+            scope="order-customers"
+            label="مشتری"
+            placeholder="نام یا کد مشتری…"
+            items={customers.map((c) => ({ id: String(c.id), label: `${c.business_name} · ${c.customer_code}` }))}
+            value=""
+            onChange={(id) => setCustomerId(Number(id))}
+          />
         )}
       </section>
 
@@ -292,38 +259,28 @@ export default function OrderForm({
             «تاریخ سفارش» is when the slip was written and stays exactly that. */}
         <div>
           <span className={LABEL}>روز تحویل خواسته‌شده</span>
-          <div className="flex gap-[var(--space-2)]">
-            <select
-              id="requested-mode"
-              className={FIELD}
-              value={requestedMode}
-              onChange={(e) => setRequestedMode(e.target.value as RequestedKind)}
-              aria-label="روز تحویل خواسته‌شده"
+          <div className="flex flex-col gap-[var(--space-2)]">
+            <button
+              type="button"
+              className={`daychip${requestedMode === "soonest" ? " daychip--on" : ""}`}
+              aria-pressed={requestedMode === "soonest"}
+              onClick={() => {
+                setRequestedMode("soonest");
+                setRequestedDate("");
+              }}
             >
-              <option value="soonest">{UNCOMMITTED_LABEL}</option>
-              <option value="exact_date">تاریخ مشخص</option>
-              <option value="week_offset">هفتهٔ بعد</option>
-            </select>
-            {requestedMode === "exact_date" && (
-              <JalaliDatePicker
-                id="requested-day"
-                label=""
-                value={requestedDate}
-                onChange={setRequestedDate}
-              />
-            )}
-            {requestedMode === "week_offset" && (
-              <input
-                id="requested-weeks"
-                type="number"
-                min={0}
-                max={52}
-                value={requestedWeeks}
-                onChange={(e) => setRequestedWeeks(e.target.value)}
-                aria-label="چند هفته بعد"
-                className={FIELD}
-              />
-            )}
+              <Icon name={requestedMode === "soonest" ? "check" : "calendar"} size="sm" />
+              {UNCOMMITTED_LABEL}
+            </button>
+            <DayChips
+              value={requestedMode === "exact_date" ? requestedDate : ""}
+              ariaLabel="روز تحویل خواسته‌شده"
+              skipHolidays
+              onChange={(iso) => {
+                setRequestedMode("exact_date");
+                setRequestedDate(iso);
+              }}
+            />
           </div>
           {resolvedRequestedDay !== null && (
             <p className="m-0 mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
@@ -403,47 +360,28 @@ export default function OrderForm({
         )}
 
         <div className="grid gap-[var(--space-2)] md:grid-cols-4">
-          <select
-            aria-label="کالا"
-            className={FIELD}
+          <SmartPicker
+            scope="order-products"
+            label="کالا"
+            items={products.map((p) => ({ id: String(p.id), label: p.name }))}
             value={pickProduct}
-            onChange={(e) => {
-              setPickProduct(e.target.value);
+            onChange={(id) => {
+              setPickProduct(id);
               setPickPackaging("");
             }}
-          >
-            <option value="">کالا…</option>
-            {products.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.name}
-              </option>
-            ))}
-          </select>
-
-          <select
-            aria-label="بسته‌بندی"
-            className={FIELD}
-            value={pickPackaging}
-            onChange={(e) => setPickPackaging(e.target.value)}
-            disabled={!product}
-          >
-            <option value="">بسته‌بندی…</option>
-            {product?.packagings.map((k) => (
-              <option key={k.id} value={k.id} disabled={k.price_toman === null}>
-                {k.name}
-                {k.price_toman === null ? " (بدون قیمت)" : ` — ${k.price_toman.toLocaleString("fa-IR")}`}
-              </option>
-            ))}
-          </select>
-
-          <input
-            aria-label="تعداد بسته"
-            className={FIELD}
-            value={packs}
-            onChange={(e) => setPacks(e.target.value)}
-            inputMode="decimal"
-            placeholder="تعداد بسته"
           />
+
+          <SmartPicker
+            scope="order-packagings"
+            label="بسته‌بندی"
+            items={(product?.packagings ?? [])
+              .filter((k) => k.price_toman !== null)
+              .map((k) => ({ id: String(k.id), label: `${k.name} — ${k.price_toman!.toLocaleString("fa-IR")}` }))}
+            value={pickPackaging}
+            onChange={setPickPackaging}
+          />
+
+          <KeypadField label="تعداد بسته" value={packs} onChange={setPacks} unit="بسته" decimal />
 
           <button
             type="button"

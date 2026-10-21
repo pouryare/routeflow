@@ -1,5 +1,7 @@
 "use client";
 
+import SmartPicker from "@/components/mobile/SmartPicker";
+import KeypadField from "@/components/mobile/KeypadField";
 import { tehranTodayIso, faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
@@ -124,20 +126,15 @@ export default function BatchesPanel({ products }: { products: Product[] }) {
       <h1 className="text-lg font-bold text-text">سری‌های ساخت</h1>
 
       <form onSubmit={create} className="grid grid-cols-2 gap-3 rounded-lg border border-border bg-surface p-4 md:grid-cols-3">
-        <select
-          className="rounded border border-border bg-bg p-2 text-sm"
+        <SmartPicker
+          scope="batch-products"
+          label="کالا"
+          items={products.map((p) => ({ id: String(p.id), label: p.name }))}
           value={form.product_id}
-          onChange={(e) => setForm((f) => ({ ...f, product_id: e.target.value }))}
-        >
-          <option value="">— کالا —</option>
-          {products.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))}
-        </select>
+          onChange={(id) => setForm((f) => ({ ...f, product_id: id }))}
+        />
         <label className="flex flex-col gap-1 text-xs text-text-muted">کد سری ساخت<input className="rounded border border-border bg-bg p-2 text-sm w-full" placeholder="خودکار اگر خالی" value={form.batch_code} onChange={(e) => setForm((f) => ({ ...f, batch_code: e.target.value }))} /></label>
-        <label className="flex flex-col gap-1 text-xs text-text-muted">مقدار دریافتی<input className="rounded border border-border bg-bg p-2 text-left font-mono text-sm w-full" inputMode="decimal" value={form.qty_received_base} onChange={(e) => setForm((f) => ({ ...f, qty_received_base: e.target.value }))} /></label>
+        <div className="flex flex-col gap-1 text-xs text-text-muted">مقدار دریافتی<KeypadField label="مقدار دریافتی" value={form.qty_received_base} onChange={(v) => setForm((f) => ({ ...f, qty_received_base: v }))} decimal /></div>
         <label className="flex flex-col gap-1 text-xs text-text-muted">مرجع سری ساخت تأمین‌کننده<input className="rounded border border-border bg-bg p-2 text-sm w-full" value={form.supplier_batch_ref} onChange={(e) => setForm((f) => ({ ...f, supplier_batch_ref: e.target.value }))} /></label>
         <label className="flex items-center gap-1 text-xs text-text-muted">
           تولید
