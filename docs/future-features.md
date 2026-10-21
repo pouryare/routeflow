@@ -1698,6 +1698,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F86. Manager coaching notes
+
+**What:** a private notebook per salesperson, kept by their manager: observations, agreed goals with review dates, and follow-ups after a coaching conversation. Visible to the manager and the owner, not to the rep unless the manager shares an entry.
+
+**Already in the app:** a per-user salesperson score exists in the health analysis (`salespersonScore` in `lib/analysis/health.ts`, assembled in `lib/repo/health.ts`), and revenue, weight and order targets per person (`lib/repo/targets.ts`). Note that the existing `/sales/reps` pages are for representatives (partner customers with onboarding stages and a health band, `lib/repo/representatives.ts`), not for the company's own salespeople, so they are not the place for this. There is no manager notebook, no goals with dates and no coaching follow-up.
+
+**Why parked:** private notes about people are sensitive (retention, access, who sees them if a manager leaves); notes can be unfair or become disputes; a coaching tool that feels like surveillance will not be used honestly.
+
+**Open questions**
+1. Who can read: the writing manager, the owner, or the rep too (shared entries only)?
+2. Structure: a free-text note with an optional goal and review date, or a fixed template (strength, to improve, agreed action)?
+3. Link to F41 (call and visit reviews): a reviewed call can be attached to a note.
+4. Retention and handover when a manager changes (F59).
+
+**Suggested first slice:** a manager-only note list on a salesperson's page with an optional goal and review date, a reminder task on the review date, and no sharing yet.
+
+**Prerequisites:** none; F41 and F59 connect to it.
+
+---
+
+## F87. Warehouse receiving appointments
+
+**What:** suppliers book a delivery time slot, and the warehouse sees the day's expected arrivals so it can staff unloading and clear space.
+
+**Already in the app:** purchases are recorded only at receipt (`purchases` and `purchase_lines`), with a receive flow for batches. There is no expected delivery, slot or arrival schedule. I found no appointment or dock concept in the code.
+
+**Why parked:** it only helps if suppliers actually announce arrivals; it needs the purchase-order record that does not exist yet (F66); a booking page for suppliers means external access, with its own login and scope.
+
+**Open questions**
+1. Booked by the warehouse after a phone call, or by the supplier through a link? Start internal.
+2. Slot length and capacity: one truck at a time, or several?
+3. Late and no-show handling, and feeding supplier scorecards (F31).
+4. Does an appointment link to a purchase order and prefill the receipt?
+
+**Suggested first slice:** a daily "expected arrivals" list built from purchase orders (F66) with an expected date and optional time, shown on the warehouse view. No supplier-facing booking.
+
+**Prerequisites:** F66 for the order record; F31 consumes the arrival data.
+
+---
+
+## F88. Staff expense reimbursement
+
+**What:** when a salesperson or driver pays a business cost from their own pocket (fuel, parking, a small repair), they log it with a receipt, a manager approves it, and the app tracks that the business owes the person and records the repayment.
+
+**Already in the app:** expenses can already be logged in a short tap flow (`lib/flows/expense.ts`, `ExpenseEntry`): category from the live chart of expense accounts, amount, optional supplier name, how it was paid, and an optional receipt photo, with posting to the ledger and reports of expenses by category and by who entered them (`/accounting/expenses`). The flow deliberately models money the business spent on the spot (cash, card machine, card to card); it does not model a person paying out of pocket and being repaid later. There is no approval step or amount owed to a person.
+
+**Why parked:** it adds a liability account per person and a repayment flow; approval limits and who approves; receipts are paper (F1 can read them later); mixing personal-pocket and business-cash expenses in one list must stay unambiguous.
+
+**Open questions**
+1. A new "paid by me" method on the existing flow that creates an amount owed, or a separate claim form?
+2. Approval: the group manager up to a limit, the owner above it (F48)?
+3. Repayment: marked paid in cash, bank transfer or together with salary? Posted to which accounts?
+4. Monthly statement per person and a clear "you are owed" figure.
+
+**Suggested first slice:** add a "paid from my pocket" choice to the existing expense flow that marks the expense as owed to the person, a manager approve or reject list, and a per-person owed balance. Repayment recorded by hand.
+
+**Prerequisites:** the expense flow and ledger postings (exist); F26 describes the field-expense side; F48 for approval limits.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
