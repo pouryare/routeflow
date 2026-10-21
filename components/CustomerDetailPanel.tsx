@@ -182,7 +182,10 @@ export default function CustomerDetailPanel({
     // First render after hydration: localStorage does not exist on the server.
     setOrientRestored(true);
     const saved = readSavedOrient();
+    /* No saved preference on a phone: start as the wide bottom panel, which is the only shape that
+       leaves the map usable at that width. A saved choice always wins. */
     if (saved) setOrient(saved);
+    else if (window.matchMedia("(max-width: 767px)").matches) setOrient("bottom");
   }
   function flip() {
     const next = orient === "side" ? "bottom" : "side";

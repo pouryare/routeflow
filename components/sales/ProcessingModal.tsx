@@ -8,6 +8,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import type { PipelineOrder } from "./OrderPipeline";
 import Avatar from "@/components/meridian/Avatar";
 import { Icon } from "@/components/meridian/Icon";
+import { useSwipeDismiss } from "@/components/useSwipeDismiss";
 
 
 const PAYMENT_LABEL = PAYMENT_STATUS_LABEL as Record<string, string>;
@@ -35,6 +36,8 @@ export default function ProcessingModal({
   busy?: boolean;
 }) {
   const sheet = useRef<HTMLDivElement | null>(null);
+  // On a phone the modal is a bottom sheet (CSS), so it closes the way every sheet does: swipe down.
+  useSwipeDismiss(sheet, "down", onClose, order !== null);
 
   useEffect(() => {
     if (!order) return;

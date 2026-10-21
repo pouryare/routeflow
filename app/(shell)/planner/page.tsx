@@ -146,6 +146,9 @@ export default function PlannerPage() {
   }, []);
 
   const [selectedDate, setSelectedDate] = useState(() => toDateStr(days[0]));
+  /* Below md the plan list and the route map are two panes behind a segmented control (one screen
+     of content at a time); from md up both show, as before. */
+  const [pane, setPane] = useState<"list" | "map">("list");
 
   // /planner?date=2026-08-24 -- "here is tomorrow's round".
   //
@@ -772,6 +775,22 @@ export default function PlannerPage() {
           })}
         </div>
 
+        <div className="no-print flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1 md:hidden" role="group" aria-label="نمایش برنامه">
+          {([["list", "فهرست برنامه", "calendar"], ["map", "نقشه مسیر", "map-pin"]] as const).map(([id, label, icon]) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={pane === id}
+              onClick={() => setPane(id)}
+              className={`inline-flex min-h-[44px] flex-1 items-center justify-center gap-2 rounded-[var(--radius-sm)] text-[length:var(--text-sm)] ${pane === id ? "bg-accent font-medium text-accent-ink" : "text-text-muted"}`}
+            >
+              <Icon name={icon} size="md" />
+              {label}
+            </button>
+          ))}
+        </div>
+
+        <div className={pane === "map" ? "hidden md:contents" : "contents"}>
         <section className="no-print rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4">
           <h2 className="sechead__title mb-2">
             افزودن به برنامه
@@ -1114,9 +1133,12 @@ export default function PlannerPage() {
             </>
           )}
         </section>
+        </div>
 
-        <div className="no-print">
-          <PlannerRouteMap stops={routeStops} facilities={facilities} />
+        {/* Keyed by the pane: a map first mounted inside a hidden pane has no size, so switching
+            to it remounts the map in a visible container instead of leaving a grey box. */}
+        <div className={`no-print ${pane === "list" ? "hidden md:block" : ""}`}>
+          <PlannerRouteMap key={pane} stops={routeStops} facilities={facilities} />
         </div>
       </div>
     </div>    </>
