@@ -1,5 +1,6 @@
 "use client";
 
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useCallback, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 
@@ -9,7 +10,6 @@ import { faJalaliDate } from "@/lib/jalali";
 import MonthGrid from "@/components/mobile/MonthGrid";
 import { LUNAR_OCCASIONS, isCommonOccasion } from "@/lib/holidayOccasions";
 
-import { confirmAction } from "@/lib/confirm";
 interface StoredHoliday {
   iso_date: string;
   title_fa: string;
@@ -71,23 +71,20 @@ export default function AdminHolidaysPage() {
     }
   }
 
-  async function remove(isoDate: string) {
-    if (!confirmAction("این تعطیلی حذف شود؟")) return;
-    setBusy(true);
-    try {
-      const res = await fetch(`/api/admin/holidays/${encodeURIComponent(isoDate)}`, {
-        method: "DELETE",
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || !data.ok) {
-        setError(friendlyError(data.error, "تعطیلی حذف نشد؛ دوباره تلاش کنید"));
-        return;
-      }
-      setError(null);
-      await load();
-    } finally {
-      setBusy(false);
-    }
+  /* Deleting a holiday is undone, not confirmed: the write is held for 5 s and «بازگردانی ثبت»
+     cancels it. */
+  const undoable = useUndoableAction();
+  function remove(isoDate: string, title: string) {
+    undoable.run({
+      message: `تعطیلی «${title}» حذف شد`,
+      send: async () => {
+        const res = await fetch(`/api/admin/holidays/${encodeURIComponent(isoDate)}`, { method: "DELETE" });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+        return res.ok && data.ok ? { ok: true } : { ok: false, error: data.error };
+      },
+      failure: "تعطیلی حذف نشد؛ دوباره تلاش کنید",
+      onDone: () => void load(),
+    });
   }
 
   return (
@@ -183,7 +180,7 @@ export default function AdminHolidaysPage() {
                   </span>
                   <button
                     type="button"
-                    onClick={() => void remove(r.iso_date)}
+                    onClick={() => remove(r.iso_date, r.title_fa)}
                     disabled={busy}
                     aria-label={`حذف ${r.title_fa}`}
                     className="flex cursor-pointer items-center gap-1 text-xs text-text-muted transition-colors hover:text-crit disabled:opacity-50"

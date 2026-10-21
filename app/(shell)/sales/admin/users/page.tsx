@@ -1,5 +1,6 @@
 "use client";
 
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { labelCells } from "@/lib/tableCards";
 import SmartPicker from "@/components/mobile/SmartPicker";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
@@ -12,7 +13,6 @@ import UserAddFlow from "@/components/flows/UserAddFlow";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
 
-import { confirmAction } from "@/lib/confirm";
 interface UserRow {
   id: number;
   username: string;
@@ -208,6 +208,7 @@ export default function AdminUsersPage() {
   const [form, setForm] = useState(EMPTY);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const undoable = useUndoableAction();
   /* The phone path: a tap flow that makes the credentials itself. The desk form below stays
      from md up, where typing a username and a password is comfortable. */
   const [addFlow, setAddFlow] = useState({ key: 0, open: false });
@@ -506,8 +507,17 @@ export default function AdminUsersPage() {
                         <button
                           type="button"
                           onClick={() => {
-                            if (u.active && !confirmAction(`حساب «${u.display_name}» غیرفعال شود؟ نشست‌های باز او همین الان بسته می‌شود.`)) return;
-                            void send(`/api/admin/users/${u.id}`, "PATCH", { active: !u.active });
+                            if (!u.active) {
+                              void send(`/api/admin/users/${u.id}`, "PATCH", { active: true });
+                              return;
+                            }
+                            /* Deactivating signs them out at once, so it says so and is held 5 s with
+                               «بازگردانی ثبت» instead of a dialog. */
+                            undoable.run({
+                              message: `حساب «${u.display_name}» غیرفعال شد؛ نشست‌های باز او بسته می‌شود`,
+                              send: async () => ((await send(`/api/admin/users/${u.id}`, "PATCH", { active: false })) ? { ok: true } : { ok: false }),
+                              failure: "حساب غیرفعال نشد؛ دوباره تلاش کنید",
+                            });
                           }}
                           className="cursor-pointer text-text-muted transition-colors hover:text-crit"
                         >

@@ -1,5 +1,6 @@
 "use client";
 
+import { useUndoableAction } from "@/components/tapflow/useUndoableAction";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { friendlyError } from "@/lib/userMessage";
 import { Icon } from "@/components/meridian/Icon";
@@ -9,7 +10,6 @@ import { faNum } from "@/lib/format";
 import { SkeletonLabel, SkeletonThumbs } from "./Skeleton";
 import EmptyState from "./EmptyState";
 
-import { confirmAction } from "@/lib/confirm";
 interface PhotoItem {
   id: number;
   file_stem: string;
@@ -64,17 +64,18 @@ export default function PhotoGallery({
     }
   }
 
-  async function remove(id: number) {
-    if (!confirmAction("این عکس حذف شود؟")) return;
-    try {
-      const res = await fetch(`/api/photos/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error();
-      toast("عکس حذف شد.", "info");
-      setLightbox(null);
-      load();
-    } catch {
-      toast("عکس حذف نشد؛ دوباره تلاش کنید", "error");
-    }
+  const undoable = useUndoableAction();
+  function remove(id: number) {
+    setLightbox(null);
+    undoable.run({
+      message: "عکس حذف شد",
+      send: async () => {
+        const res = await fetch(`/api/photos/${id}`, { method: "DELETE" });
+        return res.ok ? { ok: true } : { ok: false };
+      },
+      failure: "عکس حذف نشد؛ دوباره تلاش کنید",
+      onDone: () => load(),
+    });
   }
 
   return (
