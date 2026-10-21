@@ -102,4 +102,4 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 ## Next steps
 1. Phase C: keypad, smart pickers (recents), day chips
 2. Phase 9 expense entry; Phase D–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
-4. Phase 8 layout pass; then the design-rules document and its check script
+3. Phase 8 layout pass; then the design-rules document and its check script
