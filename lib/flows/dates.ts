@@ -16,3 +16,12 @@ export const DUE_PRESETS: { label: string; days: number }[] = [
   { label: "دو ماه دیگر", days: 60 },
   { label: "سه ماه دیگر", days: 90 },
 ];
+
+/** Reminders are for the next few days far more often than for a date on the calendar. */
+export const REMINDER_PRESETS: { label: string; days: number }[] = [
+  { label: "امروز", days: 0 },
+  { label: "فردا", days: 1 },
+  { label: "دو روز دیگر", days: 2 },
+  { label: "سه روز دیگر", days: 3 },
+  { label: "یک هفته دیگر", days: 7 },
+];

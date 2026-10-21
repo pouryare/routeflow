@@ -8,6 +8,8 @@ import type { Pocket as PocketData, PocketTeamMember } from "@/lib/repo/pocket";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
 import QuickAdd from "./QuickAdd";
+import ReminderFlow from "@/components/flows/ReminderFlow";
+import { useIsNarrow } from "@/lib/useIsNarrow";
 import AfterCallFlow from "@/components/crm/AfterCallFlow";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 import { tehranTodayIso } from "@/lib/jalali";
@@ -43,6 +45,15 @@ export default function Pocket({
   const [scopeId, setScopeId] = useState<number | null>(null);
   const [custId, setCustId] = useState<number | null>(null);
   const [quick, setQuick] = useState<"reminder" | "note" | null>(null);
+  /* On a phone the same two actions open the tap flow instead of the inline form. It stays
+     mounted after it closes (`open` false) so «بازگردانی ثبت» can reopen it with its answers;
+     a new opening gets a new key and so a fresh set of questions. */
+  const narrow = useIsNarrow();
+  const [qflow, setQflow] = useState<{ key: number; open: boolean; kind: "reminder" | "note" } | null>(null);
+  const openQuick = (kind: "reminder" | "note") => {
+    if (narrow) setQflow((f) => ({ key: (f?.key ?? 0) + 1, open: true, kind }));
+    else setQuick(kind);
+  };
   const [flow, setFlow] = useState<{ customerId: number; taskId: number; open: boolean } | null>(null);
 
   const refetch = useCallback(async (userId: number | null) => {
@@ -206,11 +217,11 @@ export default function Pocket({
       ) : null}
 
       <div className="acts" style={{ margin: "14px 0 8px" }}>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setQuick("reminder")}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("reminder")}>
           <Icon name="clock" size="md" />
           + ثبت یادآوری
         </button>
-        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => setQuick("note")}>
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => openQuick("note")}>
           <Icon name="plus" size="md" />
           + ثبت یادداشت
         </button>
@@ -224,6 +235,16 @@ export default function Pocket({
 
       {quick ? (
         <QuickAdd kind={quick} onClose={() => setQuick(null)} onAdded={() => void refetch(scopeId)} />
+      ) : null}
+      {qflow ? (
+        <ReminderFlow
+          key={qflow.key}
+          open={qflow.open}
+          kind={qflow.kind}
+          onAdded={() => void refetch(scopeId)}
+          onClose={() => setQflow((f) => (f ? { ...f, open: false } : f))}
+          onReopen={() => setQflow((f) => (f ? { ...f, open: true } : f))}
+        />
       ) : null}
 
       <div className="statrow" style={{ marginTop: 14 }}>
