@@ -34,7 +34,7 @@ describe("card components render", () => {
   it("summary cards: a list, the expenses card is a button, the rest are plain rows", () => {
     const out = renderToStaticMarkup(h(SummaryCards, { ariaLabel: "سود و زیان", cards: incomeStatementCards(is) }));
     expect(out).toContain("<ul");
-    expect(out.match(/<button/g)!.length).toBe(1);
+    expect(out.match(/<button[^>]*summarycard/g)!.length).toBe(1);
     expect(out).toContain("جمع هزینه‌ها");
   });
   it("carousel: one button per card with its own accessible name, and a dot per card", () => {
