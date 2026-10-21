@@ -317,6 +317,221 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
+## F17. Delivery proof and dispute handling
+
+**What:** every stop ends with proof: signature or recipient name, photo, GPS stamp and time. A dispute ("I never received it") opens a case that pulls up the proof, the stop's order lines and the driver's run.
+
+**Already in the app:** `photos` and `/api/photos`, and the photo step on the `DeliveryFlow` done screen. What is missing is a required-proof rule, a signature capture and the dispute case itself.
+
+**Why parked:** forcing proof slows drivers at the door; signatures on a small screen are hard; GPS can be off or wrong indoors; disputes need an owner and a resolution path (credit note, redelivery).
+
+**Open questions**
+1. Which proof is required: photo only, photo + name, or signature? Per customer type?
+2. What if proof cannot be captured (no signal, shy customer)? An explicit "no proof" reason, never a silent skip.
+3. Dispute outcomes: credit note, redelivery, rejected. Who decides?
+4. Retention period for photos and signatures.
+
+**Suggested first slice:** GPS and time stamp saved with the existing photo, a "no proof" reason when skipped, and a dispute button on the order that shows the stop's proof.
+
+**Prerequisites:** TapFlow `DeliveryFlow`, `photos`.
+
+---
+
+## F18. Customer statements and dunning
+
+**What:** auto-generated account statements (open invoices, cheques due, balance) and polite payment reminders by message, escalating by days overdue.
+
+**Why parked:** wording matters for Persian business relationships; wrong or duplicated reminders damage trust; message channels need provider accounts and consent (see F6); statements must reconcile with the ledger.
+
+**Open questions**
+1. Escalation ladder: days overdue and tone per step. Who approves the wording?
+2. Channel: SMS, Telegram, WhatsApp, or a printable PDF handed over by the salesperson?
+3. Pause rules: a customer with a promised date or a bounced cheque in dispute gets no reminder.
+4. Does a reminder also create a task for the salesperson (`tasks`)?
+
+**Suggested first slice:** a printable/shareable statement per customer and a manager-approved list of "reminders due today" that creates call tasks. No automatic sending.
+
+**Prerequisites:** payments, cheques and debts (exist); F10 helps keep balances current.
+
+---
+
+## F19. Salesperson earnings view and commission simulator
+
+**What:** show a rep "if you close these three orders you earn X", and let managers try a commission rule change on last month's data before applying it.
+
+**Already in the app:** the commission engine and `commission_rates` / `commission_payments`; payroll output must stay byte-identical, so the simulator must reuse the same calculation, not copy it.
+
+**Why parked:** showing earnings creates disputes when the number differs from payroll; a simulator that diverges from the real engine is worse than none.
+
+**Open questions**
+1. Show projected earnings to reps at all, or only to managers?
+2. Rule changes: simulate against which period, and is the result stored?
+3. Rounding and cutoff dates must match payroll exactly.
+
+**Suggested first slice:** a read-only "this month so far" earnings card from the real engine, then a manager-only "what if" that runs the same function with edited rates and shows the difference.
+
+**Prerequisites:** the commission engine's pure calculation function.
+
+---
+
+## F20. Daily visit route for salespeople
+
+**What:** a suggested daily visit route built from customers due for a call or visit (see F8), pending leads and overdue balances, ordered to minimise travel, with a one-tap start.
+
+**Already in the app:** `visit_plans` and the schedule page already hold planned visits on the calendar (`/sales/schedule`), and the routing engine orders delivery stops. What is missing is *building* the day's visit list automatically and ordering it for travel.
+
+**Why parked:** a good visit list weighs value, urgency and distance; reps will not follow a list that ignores what they know; the delivery optimiser assumes vans and capacity, not a person on foot or by motorbike.
+
+**Open questions**
+1. Inputs and weights: overdue balance, due reorder, lead stage, last visit age?
+2. Start and end point (home, office) and working hours per rep?
+3. Can the rep drag stops out and in, and does that feed back into the weights?
+
+**Suggested first slice:** "suggest my day" button that selects up to N due customers/leads in the rep's group, orders them by nearest-neighbour from the rep's last position, and writes `visit_plans` rows only on confirmation.
+
+**Prerequisites:** F8 for the "due" signal (a simple overdue/last-visit rule works first); `visit_plans`; routing helpers.
+
+---
+
+## F21. Promotion and campaign manager
+
+**What:** define a discount, bundle or expiry-driven offer for a group of customers with start/end dates, a margin floor and measured uplift afterwards.
+
+**Why parked:** pricing rules interact with credit, commission and invoicing; a campaign that sells below cost is a real loss; measuring uplift needs a baseline.
+
+**Open questions**
+1. Types: percentage, fixed price, buy-X-get-Y, near-expiry batch discount?
+2. Stacking rules between campaigns and customer-specific prices.
+3. Does commission use the discounted or the list price?
+4. Who may create a campaign, and is there an approval for low margin?
+
+**Suggested first slice:** near-expiry batch discount only (reads `batches` expiry, applies a fixed percentage on the order line, shows margin before confirm).
+
+**Prerequisites:** batch expiry data (exists); a decision on price storage per line.
+
+---
+
+## F22. Market and competitor price log
+
+**What:** reps record shelf prices seen in shops (with a photo), and the system shows where RouteFlow's prices sit above or below the market, per product and district.
+
+**Why parked:** data quality depends on reps entering it; competitor products must be matched to ours; stale prices mislead.
+
+**Open questions**
+1. How does a rep pick the competing product quickly (catalogue of competitor items, or free text with photo)?
+2. Which fields: product, brand, price, shop, date, photo?
+3. How old may a price be before it is hidden?
+
+**Suggested first slice:** a two-tap capture (our product, competitor price, optional photo) inside the visit flow and a per-product price-position view for managers.
+
+**Prerequisites:** the visit flow (`leadVisit`), `photos`; F1 can read price tags later.
+
+---
+
+## F23. Digital catalogue and price list
+
+**What:** a shareable catalogue or price list per customer group (photos, units, prices), sent through Telegram or WhatsApp or opened as a web page.
+
+**Why parked:** each group may see different prices, so a shared link must not leak another group's prices; keeping the list current when prices change; image sizes on weak connections.
+
+**Open questions**
+1. Public link with a secret token, or sign-in for customers (see the customer portal idea)?
+2. Does opening the list let the customer start an order draft?
+3. Expiry of shared links.
+
+**Suggested first slice:** a PDF/image export of the price list per customer group from `readCatalogue()`, shared manually by the salesperson.
+
+**Prerequisites:** product photos and per-group prices (check what exists first).
+
+---
+
+## F24. Driver pay and incentives
+
+**What:** pay or bonus per delivered stop, distance, on-time rate and fewer failures, reusing the commission engine's structure.
+
+**Why parked:** incentives change behaviour (drivers may skip hard stops or rush); the rules are a business and legal decision; the data must be trustworthy (see F6 and F17 for proof).
+
+**Open questions**
+1. Which measures count, and are they capped?
+2. How are failed deliveries that were not the driver's fault excluded?
+3. Is the result shown to the driver, and how often?
+
+**Suggested first slice:** a manager-only monthly summary per driver (stops, failures, on-time rate, km) with no pay calculation.
+
+**Prerequisites:** run and stop data (exists); the commission engine as a pattern.
+
+---
+
+## F25. Staff scheduling and attendance
+
+**What:** shifts, leave and check-in for drivers and warehouse staff, tied to route capacity so a planner sees how many vans can run tomorrow.
+
+**Why parked:** labour rules, shift swaps and leave approval are a product of their own; check-in by GPS raises privacy questions.
+
+**Open questions**
+1. Check-in method: a tap, a tap with location, or none (manager marks attendance)?
+2. Does an absent driver automatically reduce planned capacity and warn the planner?
+3. Leave types and approver.
+
+**Suggested first slice:** a per-day availability list for drivers that the planner can use when assigning runs, with no check-in.
+
+**Prerequisites:** run assignment and capacity (exist).
+
+---
+
+## F26. Field expenses and petty cash
+
+**What:** drivers and reps log expenses (fuel, parking, repairs) in two taps with a receipt photo, and the group manager approves; approved items post to the ledger.
+
+**Why parked:** needs the right expense categories and ledger accounts; approval flow and limits per role; receipts are paper (see F1).
+
+**Open questions**
+1. Categories and which ledger accounts they post to.
+2. Per-role spending limits and an approval threshold.
+3. Cash advance and reimbursement: tracked per person?
+
+**Suggested first slice:** a log-only expense form with a photo and category, an approve/reject list for managers, posting to the ledger only on approval.
+
+**Prerequisites:** `expenseFlow` (TapFlow), `photos`, the ledger.
+
+---
+
+## F27. Audit trail and anomaly detection
+
+**What:** a tamper-evident log of who changed what, plus alerts for odd patterns: many cancellations by one user, price edits after confirmation, large cash shortfalls, off-hours changes.
+
+**Already in the app:** `activity_log` records activity; a hash-chained, append-only trail and pattern rules are the new part.
+
+**Why parked:** a strict audit trail touches every write path; false alerts make people ignore the real ones; staff may feel watched.
+
+**Open questions**
+1. Which actions are audited (money, stock, status, permissions)?
+2. Tamper evidence: hash chain per organisation? Who can read it?
+3. Which five anomaly rules first, with what thresholds?
+
+**Suggested first slice:** a read-only "money and status changes" audit view for owners from `activity_log`, plus three simple rules (cancel rate, edit-after-confirm, cash variance) surfaced as exceptions on the briefing.
+
+**Prerequisites:** `activity_log`, the briefing exceptions panel.
+
+---
+
+## F28. Customer segmentation and loyalty
+
+**What:** tiers by volume and payment behaviour (for example gold, regular, watch), with perks such as faster credit approval, priority delivery slots or better terms.
+
+**Why parked:** perks that cost money need rules and limits; tiers visible to customers raise fairness questions; tiers must not be gamed.
+
+**Open questions**
+1. Tier inputs and window (last 90 days volume, on-time payment rate)?
+2. Which perks are real and affordable?
+3. Are tiers shown to customers or internal only? Start internal.
+
+**Suggested first slice:** an internal tier badge on the customer page computed from existing orders and payments, used only to sort the call list.
+
+**Prerequisites:** F9 shares the payment-behaviour inputs.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
