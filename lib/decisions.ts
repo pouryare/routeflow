@@ -47,3 +47,19 @@ export const CREDIT_CONSEQUENCE: Record<string, string> = {
   approved: "سفارش تأیید می‌شود و موجودی برایش رزرو می‌شود.",
   rejected: "سفارش متوقف می‌ماند تا لغو شود یا بدهی مشتری زیر سقف برگردد.",
 };
+
+/** Duplicate customers: merge folds one record into the other (its orders, payments and history move
+ *  across), «not the same» remembers that the pair was looked at and is not offered again. The
+ *  merge is the destructive answer, so its consequence is printed on the card. */
+export const DUP_CHOICES: DeckChoice[] = [
+  { id: "merge", label: "ادغام شود", tone: "bad" },
+  { id: "separate", label: "دو مشتری جدا هستند", tone: "good" },
+];
+
+export const dupRequest = (verdict: string, keepId: number, dropId: number) =>
+  verdict === "merge" ? { action: "merge", keep_id: keepId, drop_id: dropId } : { action: "separate", a_id: keepId, b_id: dropId };
+
+export const DUP_CONSEQUENCE: Record<string, string> = {
+  merge: "سفارش‌ها، پرداخت‌ها و سابقهٔ مشتریِ دوم به مشتریِ اول منتقل می‌شود.",
+  separate: "این دو دیگر به‌عنوان تکراری پیشنهاد نمی‌شوند.",
+};

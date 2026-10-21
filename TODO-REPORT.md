@@ -34,6 +34,8 @@
 
 - [x] Parked feature F5 added to `docs/future-features.md`: Persian text proofing (spellcheck attribute, normalisation, Hunspell, LLM check); notes existing `lib/persian.ts`
 
+- [x] F9 items built: order-card swipe, reminder push «انجام شد», planner map selection, expense receipt photo (own table, journal button), duplicates deck (merge / not-the-same, undo, ledger-safe)
+
 ## Not done / gaps
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
@@ -114,10 +116,10 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
-- [ ] Decided not to build, with reasons (docs/future-features.md F9): expense receipt photo, duplicates deck, swipe on order cards, planner map selection, reminder push buttons
+- [ ] Duplicates match on phone / Instagram only (no name matching or nightly job); pairs where both records own accounting lines are not offered because the ledger is immutable
+- [ ] `tests/playwrightExtract.test.ts` fails here only because the Chromium headless-shell binary is missing in this container
 - [ ] Not tried on a physical phone (you said to drop that); everything was run in an emulated 375px Chromium on demo data
 - [ ] Offline still covers only delivery, receipts, cheques, complaints, order drafts and new customers; reminders and notes need the network
 
 ## Next steps
-0. (in progress) Building the five F9 items you asked for: order-card swipe [done], reminder push buttons, planner map selection, expense receipt photo, duplicates deck; then merge
 1. Wait for CI on the final head, then merge PR #27 once with a merge commit

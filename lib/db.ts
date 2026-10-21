@@ -122,6 +122,7 @@ export const TENANT_TABLES = [
   "fiscal_periods",
   "journals",
   "expense_receipts",
+  "crm_not_duplicates",
   "ledger_entries",
   "suppliers",
 ] as const satisfies readonly string[];
@@ -1993,6 +1994,17 @@ export function getDb(): DatabaseSync {
     /* A photo of the paper behind an expense. Not in the photos table: that table is of a customer or a
        district and inherits its group from them, and an expense has neither. One receipt per
        journal; the files are the same avif/webp pair every photo has (lib/photos). */
+    /* Two customer records someone looked at and said are NOT the same business, so they are not
+       offered again. low_id < high_id: a pair is stored once. */
+    CREATE TABLE IF NOT EXISTS crm_not_duplicates (
+      organization_id INTEGER NOT NULL REFERENCES organizations(id),
+      low_id INTEGER NOT NULL,
+      high_id INTEGER NOT NULL,
+      decided_by INTEGER NOT NULL REFERENCES users(id),
+      decided_at TEXT NOT NULL,
+      PRIMARY KEY (organization_id, low_id, high_id)
+    );
+
     CREATE TABLE IF NOT EXISTS expense_receipts (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       organization_id INTEGER NOT NULL REFERENCES organizations(id),

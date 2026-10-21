@@ -1,5 +1,7 @@
 import { cookies } from "next/headers";
 import CreditDeckEntry from "@/components/flows/CreditDeckEntry";
+import DuplicatesDeckEntry from "@/components/flows/DuplicatesDeckEntry";
+import { duplicatePairs } from "@/lib/repo/crm/duplicates";
 import { pendingForDeck } from "@/lib/repo/creditApprovals";
 import ActionCards from "@/components/mobile/ActionCard";
 import { suggestionsFor } from "@/lib/repo/suggestions";
@@ -68,8 +70,9 @@ export default async function SalesTodayPage() {
       />
 
       {MANAGE_ROLES.includes(session.role) && (
-        <div className="mb-3 flex">
+        <div className="mb-3 flex flex-wrap gap-2">
           <CreditDeckEntry approvals={pendingForDeck(session.organizationId)} />
+          <DuplicatesDeckEntry pairs={duplicatePairs(session).map((p) => ({ ...p, keep: { ...p.keep }, drop: { ...p.drop } }))} />
         </div>
       )}
 

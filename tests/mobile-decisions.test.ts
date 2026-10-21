@@ -66,3 +66,12 @@ describe("credit approval verdicts", () => {
     for (const c of CREDIT_CHOICES) expect(CREDIT_CONSEQUENCE[c.id].length).toBeGreaterThan(10);
   });
 });
+
+describe("duplicate customers deck", () => {
+  it("maps a merge and a «not the same» to the request the route reads", async () => {
+    const { dupRequest, DUP_CHOICES } = await import("@/lib/decisions");
+    expect(dupRequest("merge", 5, 9)).toEqual({ action: "merge", keep_id: 5, drop_id: 9 });
+    expect(dupRequest("separate", 5, 9)).toEqual({ action: "separate", a_id: 5, b_id: 9 });
+    expect(DUP_CHOICES.find((c) => c.id === "merge")?.tone).toBe("bad");
+  });
+});

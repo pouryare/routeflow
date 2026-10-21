@@ -139,25 +139,22 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 ---
 
-## F8. Duplicate customers as a decision deck
+## F8. Duplicate customers as a decision deck — built
 
-**What:** a queue of likely duplicate businesses, each a card with the two records side by side and «ادغام» / «جدا هستند» / «بعداً».
+A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page is one card, «ادغام شود» or «دو مشتری جدا هستند», with the 5 s undo. `GET/POST /api/crm/businesses/duplicates`, `lib/repo/crm/duplicates.ts`. The record with more orders survives, except that the one owning accounting lines always does (the ledger is append-only, so a pair where both have lines is not offered). Merge re-points orders, payments, complaints, contacts, activities, reminders, visit plans, tasks, alerts and photos, and records the merge in the survivor's history. «جدا هستند» is remembered in `crm_not_duplicates`.
 
-**Why parked:** `GET /api/crm/businesses/dedupe` answers "does this candidate match anything" for one phone, name or position; there is no list of duplicate pairs and no merge operation. Both are real features (matching across the whole table, and re-pointing contacts, tasks, orders and history at the survivor) and need their own spec.
-
-**First slice:** a nightly pairing job that stores candidate pairs, then the deck with «جدا هستند» only (it needs no merge), then merge.
+**Still open:** matching by name/position only (phone and Instagram today); no nightly pairing job.
 
 ---
 
-## F9. Decided: not building now
+## F9. Decisions from the mobile-first rollout
 
-Decided during the mobile-first rollout (the owner delegated these calls):
-
-- **Expense receipt photo — no.** `photos.entity_type` is a database constraint (customer, district) and photos inherit a group from what they are of; an expense has neither. It needs a table rebuild, a different scoping rule and a retention decision, and belongs with F1 (camera). The supplier and a note go in the journal memo meanwhile.
-- **Skip a driver stop — built as «later».** No new state: the stop stays pending and moves to the end of the run (`deferStop`, `PATCH /api/driver/stops/:id {action:"defer"}`), with a swipe, a button and the 5 s undo.
-- **More offline writes — built for cheques and complaints.** Reminders and notes stay online-only (low value, and a lost reminder is visible at once).
-- **Reminder push buttons — no.** The notification carries the customer/district a reminder is about, not the reminder; fixing that changes how rules fan out. Revisit with per-event pushes.
-- **Duplicates deck, swipe on order cards, planner map selection — no.** See their entries above and in the rules document: no pair queue/merge exists, draft cards already use drag, and the planner map has no pool to pick from.
+- **Expense receipt photo — built.** Own table `expense_receipts` (one per journal), photo step in the expense flow, receipt button on the journal; kept off `photos` because that table's scoping is customer/district.
+- **Skip a driver stop — built as «later»** (`deferStop`, swipe, button, undo).
+- **Offline writes — cheques and complaints built.** Reminders and notes stay online-only.
+- **Reminder push buttons — built.** `notifications.ref_id` carries the reminder; a single-reminder push offers «انجام شد».
+- **Swipe on order cards — built** (draft cards on phones; drag stays for desktop).
+- **Planner map selection — built** (pick places from the map into the day).
 
 ---
 
