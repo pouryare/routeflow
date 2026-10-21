@@ -624,6 +624,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** orders store `total_toman` and `cost_toman`; runs store planned and actual distance and duration. Delivery cost per run, discounts and bad-debt allocation are not yet attributed.
 
+**Also existing:** `components/CostToServePanel.tsx` already shows revenue against straight-line distance from the dispatch site per customer, and reports how many sales rows failed to match a customer. It is a distance proxy, not a cost model.
+
 **Why parked:** allocating shared costs (fuel, driver time, vehicle) to orders is a modelling decision; results can upset sales and drivers if shown carelessly; accuracy depends on the cost inputs being right.
 
 **Open questions**
@@ -891,6 +893,65 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a rep-entered rating on the next visit (two taps, optional reason), low ratings creating a follow-up task. No automatic messages.
 
 **Prerequisites:** complaints repo; F6/F18 for automated delivery of the request.
+
+---
+
+## F46. Credit-risk scoring from payment behaviour
+
+**What:** a score and the top reasons per customer, built from days-late trend, bounced cheques and credit exposure, shown at the credit-approval step and on the customer page. Finishes the half of F9 that is not built.
+
+**Already in the app:** a per-customer credit limit and an approval queue. An order that breaches a direct customer's limit is parked in `credit_approvals` (`lib/repo/creditApprovals.ts`: pending, approved, rejected, expired, with the balance, limit, overage and a reason), and the approver decides. The check is balance against limit only; it knows nothing about how the customer pays. Churn scoring (`lib/repo/churn.ts`) is a separate, existing model.
+
+**Why parked:** a wrong score blocks a good customer or lets a bad one through; the approver must see *why*; few bounced cheques per customer means little data.
+
+**Open questions**
+1. Transparent rules (days late, bounced count, exposure over limit) or a learned model like churn? Start with rules.
+2. Advisory only, or can it suggest a lower limit or hold the order? Default: advisory.
+3. Window for "recent" behaviour, and per-group thresholds?
+4. Representatives who settle in cash are outside credit control; they should be skipped.
+
+**Suggested first slice:** a transparent score with the top three reasons shown on the existing credit-approval card, advisory only.
+
+**Prerequisites:** payments, cheques and customer debt (exist).
+
+---
+
+## F47. Customer 360 page
+
+**What:** one screen for a customer with orders, payments and balance, cheques, complaints, calls and visits, tasks, ratings, churn and credit risk, and next best action.
+
+**Already in the app:** the customer detail panel and page (`components/CustomerDetailPanel.tsx`, `/crm/[id]`) with the history timeline, purchase history, photos and reminders, plus the unified timeline (`lib/crm/timeline.ts`, kinds: activity, task, order, payment). Missing: cheques, complaints, balance and risk in the same place, and a clear "what to do next" line.
+
+**Why parked:** a page that shows everything shows nothing; the sections must differ by role (a driver needs the door and the balance, a manager needs risk); every section needs its own access check so no role sees more than it should.
+
+**Open questions**
+1. Which five facts sit at the top for each role?
+2. Is the timeline extended with cheques and complaints, or are they separate cards?
+3. Does the page propose one next action (call, collect, reorder) from F8 and F46, or only show data?
+
+**Suggested first slice:** add balance, open cheques and open complaints cards to the existing customer page, role-gated, with no new scoring.
+
+**Prerequisites:** none; F8 and F46 add the signals later.
+
+---
+
+## F48. Change approvals (second-person sign-off)
+
+**What:** price edits, discounts above a limit, credit-limit increases and similar sensitive changes need a second person's approval, with the reason recorded.
+
+**Already in the app:** only the credit-limit breach is approved this way (`credit_approvals`, with its own decision flow). There is no general approval request for price, discount or limit changes.
+
+**Why parked:** a generic approval engine touches every sensitive write path; too many approvals slow the business and people route around them; approvers need a quick decision screen (the decision deck is the pattern); who approves whom depends on roles and groups.
+
+**Open questions**
+1. Which actions need approval, and thresholds (discount over X%, price below cost, limit increase over Y)?
+2. Who approves: group manager, owner, or the next level up? What if the requester is the approver?
+3. Does the change wait (pending) or apply immediately and get reviewed afterwards?
+4. Expiry of unanswered requests, and a record in the audit trail (F27).
+
+**Suggested first slice:** one action only, a discount above a threshold on an order line, requesting approval from the group manager through the existing decision deck. Generalise after.
+
+**Prerequisites:** the decision deck and notifications; F27 for the audit record.
 
 ---
 
