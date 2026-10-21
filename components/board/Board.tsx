@@ -2,13 +2,14 @@
 
 import { Icon } from "@/components/meridian/Icon";
 import { TASK_KIND_TONE, taskKindLabel } from "@/lib/tasks/labels";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { faNum } from "@/lib/format";
 import type { Board as BoardData } from "@/lib/repo/board";
 import type { TaskCard } from "@/lib/repo/taskCard";
 import { lanesFor, movePatch, type BoardView } from "@/lib/tasks/lenses";
 import CustomerSheet from "@/components/meridian/CustomerSheet";
-import OutcomeChips from "@/components/today/OutcomeChips";
+import { useIsNarrow } from "@/lib/useIsNarrow";
+import OutcomeFlow from "@/components/flows/OutcomeFlow";
 import { useCardDrag } from "./useCardDrag";
 import BoardMobile from "./BoardMobile";
 import Avatar from "@/components/meridian/Avatar";
@@ -20,18 +21,6 @@ const WF_KINDS: { key: string; label: string }[] = [
   { key: "order", label: "سفارش" },
   { key: "visit", label: "بازدید" },
 ];
-
-function useIsNarrow(): boolean {
-  const [narrow, setNarrow] = useState(false);
-  useEffect(() => {
-    const mq = window.matchMedia("(max-width: 620px), (pointer: coarse)");
-    const on = () => setNarrow(mq.matches);
-    on();
-    mq.addEventListener("change", on);
-    return () => mq.removeEventListener("change", on);
-  }, []);
-  return narrow;
-}
 
 export default function Board({
   initialBoard,
@@ -47,7 +36,10 @@ export default function Board({
   const [board, setBoard] = useState<BoardData>(initialBoard);
   const [custId, setCustId] = useState<number | null>(null);
   const [menuId, setMenuId] = useState<number | null>(null);
-  const [outcomeFor, setOutcomeFor] = useState<{ cardId: number; toLane: string } | null>(null);
+  /* The card whose closing is waiting for an outcome. `key` remounts the sheet per ask so each
+     starts on its question; `open` only slides it in and out. */
+  const [outcomeFor, setOutcomeFor] = useState<{ cardId: number; toLane: string; key: number; open: boolean } | null>(null);
+  const outcomeKey = useRef(0);
   const [log, setLog] = useState<string>("");
   const narrow = useIsNarrow();
 
@@ -100,7 +92,8 @@ export default function Board({
       const patch = movePatch(card, view, toLane, new Date().toISOString());
       if (patch.status === "done" && card.kind === "outreach") {
         setMenuId(null);
-        setOutcomeFor({ cardId: card.id, toLane });
+        outcomeKey.current += 1;
+        setOutcomeFor({ cardId: card.id, toLane, key: outcomeKey.current, open: true });
         return;
       }
       void commitMove(card, toLane);
@@ -116,6 +109,7 @@ export default function Board({
   });
 
   const lanes = board.lanes;
+  const outcomeCard = outcomeFor ? lanes.flatMap((l) => l.cards).find((c) => c.id === outcomeFor.cardId) ?? null : null;
   const boardCls = `board${lanes.length >= 4 ? " pipe" : ""}`;
 
   const toolbar = (
@@ -286,41 +280,6 @@ export default function Board({
                       </button>
                     </div>
 
-                    {outcomeFor?.cardId === card.id ? (
-                      <div
-                        style={{
-                          marginTop: 8,
-                          borderTop: "1px dashed var(--line-2)",
-                          paddingTop: 8,
-                        }}
-                      >
-                        <div style={{ fontSize: 10.5, color: "var(--muted)", marginBottom: 5 }}>
-                          نتیجهٔ تماس؟
-                        </div>
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-                          <OutcomeChips
-                            onPick={(code) => void commitMove(card, outcomeFor.toLane, code)}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => void commitMove(card, outcomeFor.toLane)}
-                            style={{
-                              borderRadius: 999,
-                              padding: "2px 8px",
-                              fontSize: 10.5,
-                              border: 0,
-                              background: "none",
-                              color: "var(--faint)",
-                              cursor: "pointer",
-                            }}
-                          >
-                            <Icon name="info" size="md" />
-                            بدون نتیجه
-                          </button>
-                        </div>
-                      </div>
-                    ) : null}
-
                     {menuId === card.id ? (
                       <div
                         style={{
@@ -398,6 +357,21 @@ export default function Board({
       <div className="hint" aria-live="polite">
         {log ? <span>{log}</span> : <span>یک کارت را جابه‌جا کنید تا در هر سه نما هم‌گام شود.</span>}
       </div>
+
+      {outcomeFor && outcomeCard ? (
+        <OutcomeFlow
+          key={outcomeFor.key}
+          open={outcomeFor.open}
+          taskLabel={outcomeCard.title}
+          allowNone
+          decide={async (code) => {
+            await commitMove(outcomeCard, outcomeFor.toLane, code ?? undefined);
+            return { ok: true };
+          }}
+          onClose={() => setOutcomeFor((o) => (o ? { ...o, open: false } : o))}
+          onReopen={() => setOutcomeFor((o) => (o ? { ...o, open: true } : o))}
+        />
+      ) : null}
 
       <CustomerSheet customerId={custId} onClose={() => setCustId(null)} />
     </div>
