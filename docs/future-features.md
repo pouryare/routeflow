@@ -2602,6 +2602,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F131. Keyboard-first desk order entry
+
+**What:** for the person entering phone orders at a desk, order entry works with the keyboard alone: type a product code or the first letters, press Enter, type the quantity, press Enter for the next line, and a single key to save or submit.
+
+**Already in the app:** a desktop order form exists (`components/sales/OrderForm.tsx`, on `/sales/orders/new`) next to the phone tap flow (`OrderQuickEntry`). The shell has one global shortcut listener with a registry and a rule that it never fires while someone is typing in a field and never takes Enter, Escape or Tab, which belong to whatever has focus (`components/HotkeyProvider.tsx`, `lib/hotkeys.ts`). I found no Enter-to-add-line or code-first entry in the order form, so the keyboard flow depends on the mouse today.
+
+**Why parked:** the form must keep working on phones and for screen readers, so keyboard speed has to be additive; product search by code needs a fast, forgiving lookup (Persian digits, partial codes, packagings); a fast path that saves on a stray Enter risks accidental orders, so submit needs its own deliberate key.
+
+**Open questions**
+1. Product lookup by code or by name prefix, with Arabic and Persian letter and digit folding as in the global search?
+2. How pack choice works: default to the customer's usual packaging, or a second prompt?
+3. Which keys: Enter adds the line, a modifier plus Enter saves the draft, another submits?
+4. A visible key legend under the form, and the shortcut help dialog already in the shell.
+
+**Suggested first slice:** in the existing form, a code-or-name box that accepts Enter to add the matched product with the customer's last packaging, moves focus to quantity, and returns to the box after Enter. Submit stays a button.
+
+**Prerequisites:** the order form and the search matching helpers (exist); F58 for the usual packaging.
+
+---
+
+## F132. Order priority flag
+
+**What:** a one-tap urgent flag at order entry (and for a manager to set later), shown first in planning and clearly on the driver's stop, with an optional reason.
+
+**Already in the app:** this is partly built. Orders have a `priority` column (default `NORMAL`), and the route planner reads it and passes a numeric weight to the solver: `URGENT` 100, `KEY_ACCOUNT` 60, `NORMAL` 10, `FLEXIBLE` 1 (`lib/repo/routing.ts`), so the optimiser already prefers urgent deliveries. A requested delivery day left empty already means "as soon as possible" (the planning notes say there is deliberately no separate flag for it), and driver commission rates have an optional higher "urgent" rate per kilogram (`urgent_rate_per_kg_toman`). I could not find any screen or route that sets the priority value, so in practice every order stays `NORMAL`, and the driver stop card does not show it. I did not verify what feeds the urgent commission rate.
+
+**Why parked:** if reps can mark everything urgent the flag means nothing, so it needs a visible cost or a manager's approval; urgent deliveries should still respect capacity and may cost more (see F64's fee idea); the commission meaning of "urgent" must match the flag exactly.
+
+**Open questions**
+1. Who may set URGENT: any rep, or only managers? Is there a limit per day?
+2. Is KEY_ACCOUNT set automatically from customer tier (F28) rather than by hand?
+3. Does URGENT change commission (the urgent rate) and the delivery fee, and where is that shown?
+4. Driver view: a coloured tag on the stop and a short reason.
+
+**Suggested first slice:** a priority choice (normal, urgent) on order entry, stored in the existing column, shown as a tag in the order list, the planner and the driver stop card, with a reason when urgent. No automatic rules yet.
+
+**Prerequisites:** the existing priority column and solver weights; F64 and F28 relate.
+
+---
+
+## F133. Required training and completion tracking
+
+**What:** managers define which lessons are required for each role, and see per person which required lessons are done, overdue or missing, with a reminder to the person.
+
+**Already in the app:** the sales academy has a lesson manifest (slug, module, title, order, status; two modules so far: market and customer, and phone sales, under `content/academy`) and records when a user completes a lesson (`lesson_progress`, `markLessonDone` in `lib/repo/academy.ts`). Each person can see their own progress. There is no notion of a required lesson, no role mapping and no manager view.
+
+**Why parked:** required training needs content for every role (only sales has any), so the tracking would be empty for drivers and warehouse staff; a completion tick alone proves little, so a short check question after each lesson may be needed; reminders must not nag.
+
+**Open questions**
+1. Required set per role in the manifest (a `required_for` list) or edited by the owner?
+2. Deadline after hire date or after a lesson is published?
+3. Include a short quiz and a pass mark, or just completion?
+4. Who sees the tracking: the owner and the person's manager.
+
+**Suggested first slice:** a `required_for` list in the lesson manifest and a manager table of people versus required lessons (done, not done), with no reminders or quizzes.
+
+**Prerequisites:** the academy (exists); F84 and F112 relate for help and release notes content.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
