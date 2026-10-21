@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useLatest } from "@/lib/useLatest";
 import { useHydrated } from "@/lib/useHydrated";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
@@ -15,6 +15,7 @@ import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
+import { NEAREST_COUNTS, RADII_KM, nearestN, withinRadius } from "@/lib/mapSelect";
 import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 import { guardedOsrmRouter } from "@/lib/guardedRouter";
@@ -112,6 +113,16 @@ function RunRoute({ points, onSummary }: { points: [number, number][]; onSummary
   return null;
 }
 
+/** In circle mode, the next tap on the map (not on a pin) sets the centre. */
+function CentrePicker({ active, onPick }: { active: boolean; onPick: (lat: number, lng: number) => void }) {
+  useMapEvents({
+    click(e) {
+      if (active) onPick(e.latlng.lat, e.latlng.lng);
+    },
+  });
+  return null;
+}
+
 /** Keeps the map pointed at something useful without stealing it back afterwards.
  *
  *  Fits once, to whatever there is to see. Re-fitting on every change would yank the
@@ -145,6 +156,8 @@ export default function LeadsMap({
   navigateHref,
   selectedId,
   onSelect,
+  onAddMany,
+  onClear,
 }: {
   leads: LeadPoint[];
   /** The run in order, as [lat, lng] -- the origin first when there is a position. */
@@ -154,7 +167,18 @@ export default function LeadsMap({
   navigateHref: (lead: LeadPoint) => string;
   selectedId: number | null;
   onSelect: (id: number | null) => void;
+  /** Adds places to the run in one go; returns how many were new. Enables the selection tray. */
+  onAddMany?: (ids: number[]) => number;
+  /** Empties the run (the page offers its own undo). */
+  onClear?: () => void;
 }) {
+  /* Selection mode: tapping a pin adds or removes it from the run instead of opening its card,
+     and the tray offers «nearest N» and «inside a circle». The run IS the selection, so the
+     numbered badges on the pins show the order things were picked in. */
+  const [selecting, setSelecting] = useState(false);
+  const [circle, setCircle] = useState<{ lat: number; lng: number; km: number } | null>(null);
+  const [pickingCentre, setPickingCentre] = useState(false);
+  const [note, setNote] = useState<string | null>(null);
   const [summary, setSummary] = useState<RouteSummary | null>(null);
   const { position, status } = useMyPosition();
   /* Whether this has left the server render. Read through useSyncExternalStore rather than a
@@ -223,6 +247,14 @@ export default function LeadsMap({
           />
 
           <FitOnce points={allPoints} />
+          <CentrePicker
+            active={pickingCentre}
+            onPick={(lat, lng) => {
+              setCircle({ lat, lng, km: 3 });
+              setPickingCentre(false);
+            }}
+          />
+          {circle && <Circle center={[circle.lat, circle.lng]} radius={circle.km * 1000} interactive={false} pathOptions={{ color: "#2DE0E6", weight: 2, fillOpacity: 0.08 }} />}
           <RunRoute points={runPoints} onSummary={setSummary} />
 
           {leads.map((l) => (
@@ -233,11 +265,16 @@ export default function LeadsMap({
               icon={leadIcon(l.runIndex, l.id === selectedId)}
               zIndexOffset={l.runIndex !== null ? 700 : 500}
               eventHandlers={{
-                click: () => onSelect(l.id),
+                click: () => {
+                  if (selecting) {
+                    if (l.runIndex === null) onAddToRun(l.id);
+                    else onRemoveFromRun(l.id);
+                  } else onSelect(l.id);
+                },
                 popupclose: () => onSelect(null),
               }}
             >
-              <Popup>
+              {!selecting && <Popup>
                 <div dir="rtl" className="min-w-44 text-[length:var(--text-sm)] leading-6">
                   <p className="font-medium text-text">{l.name}</p>
                   {l.address && <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">{l.address}</p>}
@@ -275,7 +312,7 @@ export default function LeadsMap({
                     )}
                   </div>
                 </div>
-              </Popup>
+              </Popup>}
             </Marker>
           ))}
 
@@ -295,6 +332,110 @@ export default function LeadsMap({
           <FullscreenControl />
         </MapContainer>
       </div>
+
+      {onAddMany && (
+        <div className="flex flex-col gap-2 border-t border-border bg-surface px-3 py-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              aria-pressed={selecting}
+              onClick={() => {
+                setSelecting((v) => !v);
+                setPickingCentre(false);
+                setNote(null);
+              }}
+              className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-[length:var(--text-sm)] ${selecting ? "border-accent bg-accent text-accent-ink" : "border-border text-text"}`}
+            >
+              <Icon name={selecting ? "check" : "map-pin"} size="sm" />
+              {selecting ? "انتخاب با لمس روشن است" : "انتخاب مکان‌ها روی نقشه"}
+            </button>
+            {selecting && (
+              <span className="text-[length:var(--text-xs)] text-text-muted">
+                {faNum(runPoints.length - (position ? 1 : 0) > 0 ? runPoints.length - (position ? 1 : 0) : 0)} مکان در مسیر
+              </span>
+            )}
+          </div>
+          {selecting && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="ابزار انتخاب">
+              {NEAREST_COUNTS.map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  disabled={!position}
+                  onClick={() => {
+                    if (!position) return;
+                    const added = onAddMany(nearestN(leads, { lat: position.lat, lng: position.lng }, n));
+                    setNote(added > 0 ? `${faNum(added)} مکان به مسیر اضافه شد` : "همه‌شان از قبل در مسیر بودند");
+                  }}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 text-[length:var(--text-sm)] text-text disabled:opacity-40"
+                >
+                  <Icon name="map-pin" size="sm" />
+                  {`نزدیک‌ترین ${faNum(n)} مکان`}
+                </button>
+              ))}
+              <button
+                type="button"
+                aria-pressed={pickingCentre}
+                onClick={() => {
+                  setPickingCentre((v) => !v);
+                  setNote(null);
+                }}
+                className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-[length:var(--text-sm)] ${pickingCentre ? "border-accent text-accent" : "border-border text-text"}`}
+              >
+                <Icon name="target" size="sm" />
+                {pickingCentre ? "مرکز دایره را روی نقشه لمس کنید" : "انتخاب داخل دایره"}
+              </button>
+              {onClear && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClear();
+                    setCircle(null);
+                    setNote(null);
+                  }}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-border px-4 text-[length:var(--text-sm)] text-crit"
+                >
+                  <Icon name="trash" size="sm" />
+                  پاک کردن انتخاب
+                </button>
+              )}
+            </div>
+          )}
+          {selecting && circle && (
+            <div className="flex flex-wrap items-center gap-2" role="group" aria-label="شعاع دایره">
+              {RADII_KM.map((km) => (
+                <button
+                  key={km}
+                  type="button"
+                  aria-pressed={circle.km === km}
+                  onClick={() => setCircle({ ...circle, km })}
+                  className={`inline-flex min-h-[44px] items-center gap-2 rounded-full border px-4 text-[length:var(--text-sm)] ${circle.km === km ? "border-accent bg-accent text-accent-ink" : "border-border text-text"}`}
+                >
+                  <Icon name={circle.km === km ? "check" : "target"} size="sm" />
+                  {`${faNum(km)} کیلومتر`}
+                </button>
+              ))}
+              <button
+                type="button"
+                onClick={() => {
+                  const ids = withinRadius(leads, circle, circle.km);
+                  const added = onAddMany(ids);
+                  setNote(ids.length === 0 ? "مکانی داخل دایره نیست" : added > 0 ? `${faNum(added)} مکان به مسیر اضافه شد` : "همه‌شان از قبل در مسیر بودند");
+                }}
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full border border-accent bg-accent px-4 text-[length:var(--text-sm)] text-accent-ink"
+              >
+                <Icon name="plus" size="sm" />
+                {`افزودن مکان‌های داخل دایره`}
+              </button>
+            </div>
+          )}
+          {note && (
+            <p className="m-0 text-[length:var(--text-xs)] text-text-muted" role="status">
+              {note}
+            </p>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 border-t border-border bg-surface px-3 py-2 font-mono text-[length:var(--text-xs)] text-text-muted">
         <span>

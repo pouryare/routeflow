@@ -329,7 +329,7 @@ export default function LeadsPage() {
             openListName={activeList?.name ?? null}
           />
 
-          <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} />
+          <LeadsMap leads={mapLeads} runPoints={runPoints} onAddToRun={addToRun} onRemoveFromRun={removeFromRun} navigateHref={(l) => navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)} selectedId={selectedMapId} onSelect={setSelectedMapId} onAddMany={appendToRun} onClear={clearRun} />
 
           <CollapsibleSection title="تنظیمات" icon="settings" storageKey="leads_settings" keywords="مسیریابی برنامه گوگل نشان بلد ویز"><NavAppSetting /></CollapsibleSection>
         </div>

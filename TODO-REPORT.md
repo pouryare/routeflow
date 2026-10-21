@@ -90,6 +90,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Phase F (leads map): selection mode (tap pins to add/remove from the run, numbered in tap order), «نزدیک‌ترین ۵/۱۰/۲۰ مکان», circle tool (tap a centre, pick 1/3/5/10 km, add all inside), clear selection; helpers in `lib/mapSelect.ts`
 - [x] Phase E (partial): swipe rows (`lib/swipe.ts`, `SwipeRow`; every swipe ends in the 5 s undo and keeps a button) on tasks, cheques (deposit / bounce) and driver stops (record delivery); decision deck (`DecisionDeck`) for cheques due within a week and for open complaints, with undo on each verdict
 - [x] Phase D: filter chips + «فیلترها» sheet (no dropdowns), Persian-month periods (`lib/periods.ts`); used in payments (period, method, voided), inventory sort, customer salesperson filter. Audit: dropdowns 40→37, tiny targets 32→31
 - [x] Phase 9: expense entry flow (what for → amount → who it was paid to → how paid; 4 taps, today's date, 5 s undo) behind «ثبت هزینه» on `/accounting/expenses`
@@ -98,6 +99,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
+- [ ] Phase F left out: the planner page's map (it shows a fixed route, not a pool to pick from), dragging stops to reorder in the tray (the run list below the map still has move buttons), dragging the circle's radius (fixed steps instead); the map UI itself is not render-tested (Leaflet), only the helpers are
 - [ ] Phase E left out: credit-approvals deck (the list API has no customer/order names and the decision lives on the order page), CRM duplicates deck (request shape not verified), swipe on Pocket reminders and the order pipeline / board cards, long-press selection mode with bulk actions, skip-with-reason swipe on driver stops, swipe gestures inside the deck (a sheet already uses swipe-down)
 - [ ] Phase D: complaints, cheques and the order pipeline have no list filters today (their dropdowns are per-row status changes, handled by swipe rows in Phase E); accounting date ranges and the CRM view toolbar not converted; payments keep the two date fields for a custom range
 - [ ] Expense: no photo of the receipt (no column on an expense; parked as F1) and no supplier column (the name goes into the journal memo); only today's date, older expenses stay a desk job
@@ -111,5 +113,5 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [ ] Phone bar not seen on a device (safe-area, browser chrome overlap); `StickyAction` has no page using it yet
 
 ## Next steps
-1. Finish Phase E leftovers (credit approvals, duplicates, selection mode), then Phases F–I (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
+1. Phases G–I (automatic triggers, report cards, admin presets); Phase E leftovers (credit approvals, duplicates, selection mode) (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
 2. Phase 8 layout pass; then the design-rules document and its check script

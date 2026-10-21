@@ -150,3 +150,11 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Decks take a snapshot.** The board refreshes as verdicts land; the deck keeps the list it opened with so cards do not shuffle.
 - **The plan's "first queue" was not buildable as written.** Credit approvals have no screen and the list endpoint returns ids only; check the data a card needs before promising it.
 - The bare-verb test also applies to swipe labels («حذف» alone fails; «حذف این کار»).
+
+## Phase F (map select)
+
+- **The run already was the selection.** The leads page keeps a run (ordered list of places) and the map already numbered its pins; selection mode only changes what a pin tap does and adds bulk tools. No second selection state to keep in sync.
+- **The tray is below the map, not over it.** An overlay would cover the geolocate/zoom controls; a row under the map cannot.
+- **Bulk add returns how many were new**, so the tray can say «همه‌شان از قبل در مسیر بودند» instead of silently doing nothing.
+- **Fixed steps beat a drag for the radius** on a phone: four 44 px chips are quicker and more accurate than dragging a circle edge with a thumb.
+- Leaflet components are not render-tested here (they need a browser); the geometry lives in `lib/mapSelect.ts` so it is.
