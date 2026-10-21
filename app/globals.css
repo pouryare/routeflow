@@ -5275,3 +5275,32 @@ body {
 }
 .meridian .actioncard__primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
 .meridian .actioncard__later { color: var(--muted); }
+
+/* ---- report cards: carousel + drill sheet (components/mobile/KpiCarousel, DrillSheet) ---------- */
+.meridian .kpicarousel { display: none; }
+.meridian .kpicarousel__row { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 4px 2px 8px; scrollbar-width: none; }
+.meridian .kpicarousel__card {
+  display: grid; gap: 4px; padding: 14px; text-align: start;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); color: var(--text); font: inherit; cursor: pointer;
+}
+.meridian .kpicarousel__card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.meridian .kpicarousel__dots { display: flex; justify-content: center; gap: 6px; }
+.meridian .kpicarousel__dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--line); }
+.meridian .kpicarousel__dots i.on { background: var(--accent); }
+.meridian .drillsheet { display: grid; gap: 10px; padding: 0 16px 20px; }
+.meridian .summarycards { display: grid; gap: 10px; }
+.meridian .summarycard {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px; width: 100%;
+  border: 1px solid var(--line); border-radius: var(--r-lg); background: var(--card); color: var(--text); font: inherit; text-align: start; font-variant-numeric: tabular-nums;
+}
+.meridian .summarycard--strong { font-weight: 700; }
+.meridian .summarycard--total { border-color: var(--accent); }
+@media (max-width: 767.98px) {
+  .meridian .kpicarousel { display: block; }
+  .meridian .kpibar, .meridian .kpibar__detail { display: none; }
+}
+.meridian ul.kpicarousel__row, .meridian ul.summarycards { list-style: none; margin: 0; padding-inline: 2px; }
+.meridian .kpicarousel__item { flex: 0 0 80%; scroll-snap-align: center; display: flex; }
+.meridian .kpicarousel__item .kpicarousel__card { flex: 1 1 auto; }
+.meridian ul.summarycards > li.summarycard { display: flex; }
+.meridian ul.summarycards > li { display: block; }

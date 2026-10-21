@@ -168,3 +168,10 @@ Worst files: admin users (4 selects, 9 fields), CommissionEditor (5/5), Payments
 - **Per-device dismissal is a deliberate shortcut**: it needs no table or migration; the cost is that «الان نه» on a phone does not hide the card on the desk.
 - **The plan assumed per-event push notifications.** Pushes are one grouped digest, so there is no single item to hang a button on. Check how a channel is built before planning actions on it.
 - Repo smoke test on an empty database catches SQL typos in the new queries cheaply.
+
+## Phase H (report cards)
+
+- **The strip already was a card layout.** `KpiStrip` had a hero card and a bar with inline detail; the phone version only needed the bar swapped for a carousel and the detail moved to a sheet. Read the component before planning a new one.
+- **One markup, CSS decides the layout; JS decides behaviour.** Bar and carousel are both rendered and a media query hides one; only whether the drill opens as a sheet reads `useIsNarrow`, so there is no flash.
+- **Role and icon rules apply to new widgets too.** `role="list"` / `listitem` trip the no-role-literals test; use `<ul>/<li>`. A button that is a picture needs a recorded reason (or an icon) inside it.
+- **Totals keep the table's sign convention** (costs negative) so the card and the table can never disagree; a test pins it.

@@ -6,6 +6,10 @@ import WhyDrilldown, { type Rung } from "./WhyDrilldown";
 import Sparkline from "@/components/charts/Sparkline";
 import { Icon } from "@/components/meridian/Icon";
 import { DUR, EASE } from "@/lib/motion";
+import KpiCarousel from "@/components/mobile/KpiCarousel";
+import DrillSheet from "@/components/mobile/DrillSheet";
+import { useIsNarrow } from "@/lib/useIsNarrow";
+import { formatKpi, kpiDelta } from "@/lib/kpiCards";
 
 export interface KpiCard {
   metric: string;
@@ -21,37 +25,23 @@ export interface KpiCard {
   sample_size: number | null;
 }
 
-const RATIO = new Set([
-  "gross_margin",
-  "repeat_rate",
-  "collection_rate",
-  "on_time_delivery",
-  "fulfillment_rate",
-  "sample_conversion",
-]);
 const WHYABLE = new Set(["net_sales", "gross_profit", "orders"]);
 /** The metric that leads the section, large. Net sales is the number the owner opens the
  *  page for; the rest explain it. */
 const HERO = "net_sales";
 
-function show(metric: string, v: number | null): string {
-  if (v === null) return "—";
-  if (RATIO.has(metric)) return `${Math.round(v * 100).toLocaleString("fa-IR")}٪`;
-  return Math.round(v).toLocaleString("fa-IR");
-}
+const show = formatKpi;
 
 /** The change against last period, as a chip with an icon AND a colour (the colour alone
  *  fails for anyone who cannot tell the two hues apart, and on paper). Good or bad follows
  *  the metric's own direction: a rising return rate is not good news. */
 function DeltaChip({ c }: { c: KpiCard }) {
-  if (c.prev_value === null || c.value === null) return null;
-  const flat = Math.abs(c.delta_pct) < 0.0005;
-  const up = c.delta_pct > 0;
-  const good = flat ? null : (up ? "up" : "down") === c.direction;
+  const d = kpiDelta(c);
+  if (!d) return null;
   return (
-    <span className={`kpichip kpichip--${good === null ? "flat" : good ? "good" : "bad"}`}>
-      <Icon name={flat ? "dot" : up ? "arrow-up" : "arrow-down"} size="sm" />
-      {Math.abs(Math.round(c.delta_pct * 100)).toLocaleString("fa-IR")}٪
+    <span className={`kpichip kpichip--${d.good === null ? "flat" : d.good ? "good" : "bad"}`}>
+      <Icon name={d.dir === "flat" ? "dot" : d.dir === "up" ? "arrow-up" : "arrow-down"} size="sm" />
+      {d.text}
     </span>
   );
 }
@@ -76,6 +66,7 @@ export default function KpiStrip({
   trends?: Record<string, (number | null)[]>;
 }) {
   const reduce = useReducedMotion();
+  const narrow = useIsNarrow();
   const [open, setOpen] = useState<string | null>(null);
   const [why, setWhy] = useState<Record<string, Rung[] | "loading">>({});
 
@@ -99,6 +90,21 @@ export default function KpiStrip({
   const hero = cards.find((c) => c.metric === HERO) ?? cards[0];
   const rest = cards.filter((c) => c !== hero);
   const detail = cards.find((c) => c.metric === open) ?? null;
+
+  const detailBody = detail ? (
+    <>
+      <h3 className="sechead__title sechead__title--minor">{detail.title_fa}</h3>
+      {detail.definition_fa ? <p>{detail.definition_fa}</p> : null}
+      {detail.action_fa ? <p className="kpibar__action">{detail.action_fa}</p> : null}
+      {WHYABLE.has(detail.metric) ? (
+        <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => loadWhy(detail.metric)}>
+          <Icon name="help" size="sm" /> چرا؟
+        </button>
+      ) : null}
+      {why[detail.metric] === "loading" ? <p className="kpibar__action">در حال محاسبه…</p> : null}
+      {Array.isArray(why[detail.metric]) ? <WhyDrilldown chain={why[detail.metric] as Rung[]} /> : null}
+    </>
+  ) : null;
 
   return (
     <div className="kblock" dir="rtl">
@@ -163,6 +169,31 @@ export default function KpiStrip({
           ))}
         </div>
 
+        <KpiCarousel
+          ariaLabel="شاخص‌های کلیدی"
+          onOpen={toggle}
+          cards={rest.map((c) => ({
+            id: c.metric,
+            label: `${c.title_fa}: ${show(c.metric, c.value)}`,
+            body: (
+              <>
+                <span className="kpibar__k">{c.title_fa}</span>
+                <span className={`kpibar__v${c.value !== null && !c.on_track ? " kpibar__v--off" : ""}`}>{show(c.metric, c.value)}</span>
+                <span className="kpibar__meta">
+                  <DeltaChip c={c} />
+                  {c.target !== null ? <span>هدف {show(c.metric, c.target)}</span> : null}
+                </span>
+                <Sparkline values={series(c.metric)} height={28} />
+              </>
+            ),
+          }))}
+        />
+        {/* On a phone the breakdown opens in a sheet over the cards; from 768px it unfolds
+            under the bar as before (the bar and its detail are hidden below that by CSS). */}
+        <DrillSheet open={narrow && detail !== null} title={detail?.title_fa ?? ""} onClose={() => setOpen(null)}>
+          {detailBody}
+        </DrillSheet>
+
         <AnimatePresence initial={false}>
           {detail ? (
             <motion.div
@@ -174,16 +205,7 @@ export default function KpiStrip({
               exit={reduce ? undefined : { opacity: 0, y: -6 }}
               transition={{ duration: reduce ? 0 : DUR.base, ease: EASE.out }}
             >
-              <h3 className="sechead__title sechead__title--minor">{detail.title_fa}</h3>
-              {detail.definition_fa ? <p>{detail.definition_fa}</p> : null}
-              {detail.action_fa ? <p className="kpibar__action">{detail.action_fa}</p> : null}
-              {WHYABLE.has(detail.metric) ? (
-                <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => loadWhy(detail.metric)}>
-                  <Icon name="help" size="sm" /> چرا؟
-                </button>
-              ) : null}
-              {why[detail.metric] === "loading" ? <p className="kpibar__action">در حال محاسبه…</p> : null}
-              {Array.isArray(why[detail.metric]) ? <WhyDrilldown chain={why[detail.metric] as Rung[]} /> : null}
+              {detailBody}
             </motion.div>
           ) : null}
         </AnimatePresence>

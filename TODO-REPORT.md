@@ -90,6 +90,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase 6: shelf count (per-facility balance) and goods receiving (recorded as a purchase)
 - [x] Phase 7: customer lifecycle, visit-plan quick add, new place
 - [x] Merged `main` (82 commits) into the branch; `npm run typecheck` clean; only `playwrightExtract` fails (no browser here); PR #26 merged
+- [x] Phase H (partial): key indicators as a swipeable card row on phones (80 % wide, dots; the bar stays from 768px) with the breakdown («چرا؟») in a sheet; income statement as stacked section cards with expenses opening to their lines (table from 768px); number/delta formatting in `lib/kpiCards.ts`
 - [x] Phase G (partial): arriving within 150 m of a pending stop shows «به {name} رسیدید» with «ثبت تحویل» on the driver run (opens that stop's delivery flow); phone sales get up to 3 suggestion cards on `/sales/today` (churn risk → call; due to reorder → order) each with a one-line why and «الان نه» (hides for 7 days on this device)
 - [x] Phase F (leads map): selection mode (tap pins to add/remove from the run, numbered in tap order), «نزدیک‌ترین ۵/۱۰/۲۰ مکان», circle tool (tap a centre, pick 1/3/5/10 km, add all inside), clear selection; helpers in `lib/mapSelect.ts`
 - [x] Phase E (partial): swipe rows (`lib/swipe.ts`, `SwipeRow`; every swipe ends in the 5 s undo and keeps a button) on tasks, cheques (deposit / bounce) and driver stops (record delivery); decision deck (`DecisionDeck`) for cheques due within a week and for open complaints, with undo on each verdict
@@ -100,6 +101,7 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Phase B: bottom tab bar per role (derived from `appTabs`, drift-tested), «+ ثبت» quick actions (open the page's own flow via `?new=1`), sticky action, detection-flash fix (media-query board layout), bar clearance for the map / order form / sync badge
 
 ## Not done / gaps
+- [ ] Phase H left out: balance sheet and trial balance cards, KPI strips on `/sales/dashboard`, forecast and analytics pages beyond the shared strip, `ResponsiveTable` for long tables (Phase 8), period chips on the analysis pages
 - [ ] Phase G left out: acting from a push notification (pushes are one combined digest, not one per event, so there is no single item to attach «انجام شد» to; needs per-event pushes first); the map's customer geofence prompt is unchanged (arrival-to-delivery is on the driver run); lead arrival does not open the lead flow; suggestion dismissals are per device, not saved on the server; suggestions only for phone sales
 - [ ] Phase F left out: the planner page's map (it shows a fixed route, not a pool to pick from), dragging stops to reorder in the tray (the run list below the map still has move buttons), dragging the circle's radius (fixed steps instead); the map UI itself is not render-tested (Leaflet), only the helpers are
 - [ ] Phase E left out: credit-approvals deck (the list API has no customer/order names and the decision lives on the order page), CRM duplicates deck (request shape not verified), swipe on Pocket reminders and the order pipeline / board cards, long-press selection mode with bulk actions, skip-with-reason swipe on driver stops, swipe gestures inside the deck (a sheet already uses swipe-down)
@@ -115,5 +117,5 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [ ] Phone bar not seen on a device (safe-area, browser chrome overlap); `StickyAction` has no page using it yet
 
 ## Next steps
-1. Phases H–I (report cards, admin presets); Phase E leftovers (credit approvals, duplicates, selection mode) (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
+1. Phase I (admin presets); Phase E leftovers (credit approvals, duplicates, selection mode) (filters, swipe rows, decision decks, map select, auto-triggers, report cards, admin presets)
 2. Phase 8 layout pass; then the design-rules document and its check script
