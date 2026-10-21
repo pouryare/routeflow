@@ -353,6 +353,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** `photos` and `/api/photos`, and the photo step on the `DeliveryFlow` done screen. What is missing is a required-proof rule, a signature capture and the dispute case itself.
 
+**More already in the app:** a delivery entity records the receiver's name, the device GPS position and time, a photo path, and a signature path column (`receiver_name`, `gps_lat`, `gps_lng`, `device_time`, `photo_path`, `signature_path`); the order page shows the receiver and whether a photo exists (`lib/repo/orderDeliveries.ts`). I found no code that captures a signature (the column is only declared), and no required-proof rule or dispute case.
+
 **Why parked:** forcing proof slows drivers at the door; signatures on a small screen are hard; GPS can be off or wrong indoors; disputes need an owner and a resolution path (credit note, redelivery).
 
 **Open questions**
@@ -1333,6 +1335,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a "this week versus last" card on the owner and manager briefing, computed from existing KPI snapshots and shown from Friday on. Telegram digest second.
 
 **Prerequisites:** KPI snapshots and the briefing (exist).
+
+---
+
+## F68. Rep activity map
+
+**What:** where each rep went today and this week, what they visited and how long they stayed, from visit, call and order locations, for managers to coach and to check coverage.
+
+**Already in the app:** the map shows customers, leads and districts with coverage status, and the phone tracks its own position live (`MyPositionProvider`) for navigation and arrival prompts (see F38). Delivery stops record the device's GPS at the moment of the action (`gps_lat`, `gps_lng`, `device_time`). I found no stored position history for salespeople, so there is nothing yet to draw as a rep's day.
+
+**Why parked:** recording staff locations is a privacy and labour-law matter that needs a written policy and clear consent; continuous tracking drains batteries and is unreliable in a PWA (see F6 and F38); a map of movement can be read as surveillance and misused.
+
+**Open questions**
+1. Continuous trail, or only location at logged events (visit saved, call outcome, order created)? Event-only is far less intrusive.
+2. Retention: delete after 30 days?
+3. Who sees what: the rep sees their own, the manager sees their team's, the owner sees all?
+4. Working hours only, with an obvious on/off indicator for the rep?
+
+**Suggested first slice:** save the device location with each visit, call-outcome and order creation (event-only, with the rep's knowledge), and show a day map of those points for the rep and their manager. No continuous tracking.
+
+**Prerequisites:** the visit and call flows (exist); F6 and F38 share the position-handling decisions.
+
+---
+
+## F69. Delivery instructions (per customer and per order)
+
+**What:** standing instructions for each customer (gate code, parking spot, "ring twice", who receives, receiving hours, floor), and a one-off note on each order ("deliver before noon", "call on arrival"). Both appear on the driver's stop card, and the order note can be a quick pick from common phrases.
+
+**Already in the app:** customers have an address, a contact person and a free notes field; orders have a notes field (the repeat-order flow leaves it empty); a delivery stop has its own notes, which the driver writes when acting on it (`delivery_stops.notes`). I did not confirm that the driver's stop card shows the customer's or the order's notes, nor that order entry offers a place to type the order note.
+
+**Why parked:** free-text notes fill with noise, and gate codes are sensitive (they should be visible only to the driver on that run and not on shared screens); instructions that apply "always" versus "this time" must not be mixed; notes must survive a customer merge (F37).
+
+**Open questions**
+1. Structured fields (access code, floor, parking, receiver, best hours) plus a free-text line, or free text only? Structured is easier to read on a phone.
+2. Who may edit the standing instructions: rep, manager, or the driver with a suggestion that needs approval?
+3. Is an order note copied to the stop at planning time so a later edit does not reach a frozen run?
+4. Hide access codes from roles that don't deliver.
+
+**Suggested first slice:** show the customer's notes and the order's note on the driver stop card (read-only), and add a one-line order-note field with three quick-pick phrases to order entry. Structured fields next.
+
+**Prerequisites:** the driver stop card; order entry flow (`orderQuickFlow`); F57 for receiving hours.
+
+---
+
+## F70. Segment campaigns
+
+**What:** pick a segment (dormant for 45 days, bought product X, in district Y, owes more than Z), and generate a call list with a short script and a result to record per call, then measure the outcome.
+
+**Already in the app:** call lists and follow-ups (the briefing's `call_list` panel, tasks, call-outcome flows), lead lists and lead runs (`/leads`, `lib/repo/leadRuns.ts`) for planned visits to leads, and churn and health scores for who is at risk. There is no segment builder and no campaign record that ties a list, a script and results together.
+
+**Why parked:** segments built from many filters invite mistakes (everyone in the list is the wrong people); calling the same customers too often damages the relationship, so contact frequency needs a limit; results need a clear measure (reorder within 14 days).
+
+**Open questions**
+1. Filters first: last order date, product bought, district, balance, owner?
+2. A cap on how often one customer appears in campaigns?
+3. Script: free text with Persian rich fields, or tied to the objection cards in the academy?
+4. Outcome definition and window; report per campaign and per rep.
+
+**Suggested first slice:** a saved "dormant 45 days in my group" list that creates call tasks for the owning reps, with a one-line script and a "reordered within 14 days" count after.
+
+**Prerequisites:** F8 and F9 supply the "who is due or at risk" signals; the call-outcome flow.
 
 ---
 
