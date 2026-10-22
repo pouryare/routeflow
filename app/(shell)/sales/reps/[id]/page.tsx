@@ -3,7 +3,6 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
 import { repHealth, REP_HEALTH_BAND_FA } from "@/lib/repo/repHealth";
 import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
 import { repsRepo, listOnboarding } from "@/lib/repo/representatives";
@@ -19,7 +18,6 @@ export default async function RepDetail({ params }: { params: Promise<{ id: stri
   if (!session) redirect("/login");
   if (!(MANAGE_ROLES.includes(session.role) || session.role === "rep_manager")) redirect("/sales");
 
-  getDb();
   const id = Number((await params).id);
   const rep = repsRepo.get(session.organizationId, id);
   if (!rep) notFound();

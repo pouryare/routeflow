@@ -6,8 +6,7 @@ import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
 import { requireAccounting } from "@/lib/accountingGate";
 import { supplierStatement } from "@/lib/repo/reports";
-import { getDb } from "@/lib/db";
-import { getSupplier } from "@/lib/repo/suppliers";
+import { supplierOf } from "@/lib/repo/suppliers";
 import { faNum } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
@@ -28,7 +27,7 @@ export default async function SupplierStatementPage({
 
   const id = Number(supplierId);
   if (!Number.isInteger(id) || id <= 0) notFound();
-  const supplier = getSupplier(getDb(), organizationId, id);
+  const supplier = supplierOf(organizationId, id);
   if (!supplier) notFound();
 
   const rows = supplierStatement(organizationId, id);
