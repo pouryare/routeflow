@@ -4,8 +4,7 @@ import fs from "node:fs/promises";
 import { encodeImage, AVATAR_MAX_EDGE } from "@/lib/imagePipeline";
 import { ensureAvatarDir, avatarPaths, removeAvatarFiles } from "@/lib/avatarStore";
 import { requireRole } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { userInOrg, setAvatar, readAvatarStem } from "@/lib/repo/avatars";
+import { avatarUserInOrg, setAvatar, readAvatarStem } from "@/lib/repo/avatars";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** 8MB. A phone portrait is 2–4MB; a 20MB phone panorama is a mistake, not a portrait. */
@@ -41,8 +40,7 @@ export async function POST(req: NextRequest) {
 
   // Tenant-scoped, same rule as the admin PATCH: an owner administers their own
   // organisation's staff and no one else's. A cross-tenant id reads as "not found".
-  const db = getDb();
-  if (!userInOrg(db, userId, guard.session.organizationId)) {
+  if (!avatarUserInOrg(userId, guard.session.organizationId)) {
     return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
   }
 
@@ -72,8 +70,8 @@ export async function POST(req: NextRequest) {
   // Read the PREVIOUS stem first: after setAvatar the old one is unrecoverable from the row,
   // and it is the only record that those two files are now garbage. Doing it in this order
   // also means a failure above leaves the old photograph still serving.
-  const previousStem = readAvatarStem(db, userId);
-  setAvatar(db, userId, `/api/users/${userId}/avatar`, stem);
+  const previousStem = readAvatarStem(userId, guard.session.organizationId);
+  setAvatar(userId, guard.session.organizationId, `/api/users/${userId}/avatar`, stem);
 
   // Only now that the row points at the new files is it safe to drop the old ones. A
   // re-upload used to strand two files per upload, forever. Failures here are swallowed by

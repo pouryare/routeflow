@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { groupManagerInOrg } from "@/lib/repo/orgRefs";
-import { setManagerOverride } from "@/lib/managerCommissionLedger";
+import { addManagerOverride } from "@/lib/repo/routeAdapters";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only. A مدیر گروه's incentive is set by the owner, the same "payroll is not
@@ -31,7 +30,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ شروع نرخ معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
   const rawId = body?.manager_user_id;
   const managerId = rawId === undefined || rawId === null ? null : Number(rawId);
 
@@ -42,7 +40,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const id = setManagerOverride(db, {
+  const id = addManagerOverride({
     manager_user_id: managerId,
     override_pct: pct,
     valid_from: validFrom,

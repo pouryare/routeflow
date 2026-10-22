@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
-import { setRate } from "@/lib/commissionLedger";
-import { setDriverRate } from "@/lib/driverCommissionLedger";
+import { addDriverRate, addSalesRate } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -47,7 +45,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ شروع نرخ معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
   // Whoever the rate is for must be this company's: an id alone reaches every tenant's staff.
   const organizationId = orgScopeId(guard.session);
 
@@ -63,7 +60,7 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ ok: false, error: "این حساب راننده نیست" }, { status: 400 });
       }
     }
-    const id = setDriverRate(db, {
+    const id = addDriverRate({
       driver_user_id: driverId,
       rate_per_kg_toman: rate,
       valid_from: validFrom,
@@ -95,7 +92,7 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const id = setRate(db, {
+  const id = addSalesRate({
     salesperson_user_id: personId,
     rate_per_kg_toman: rate,
     urgent_rate_per_kg_toman: urgent,

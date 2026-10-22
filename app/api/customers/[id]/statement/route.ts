@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
-import { readOrders } from "@/lib/orders";
+import { ordersIn } from "@/lib/repo/routeAdapters";
 import { listPayments, customerDebt } from "@/lib/repo/payments";
 import { getScopedCustomer } from "@/lib/repo/customers";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -15,14 +14,13 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/customers/[i
 
   const { id } = await ctx.params;
   const customerId = Number(id);
-  const db = getDb();
 
   const customer = getScopedCustomer(guard.session.organizationId, customerId);
   if (!customer || !canReachGroup(guard.session, customer.group_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  const orders = readOrders(db, orderFilter(guard.session), { customerId });
+  const orders = ordersIn(orderFilter(guard.session), { customerId });
   const payments = listPayments(guard.session.organizationId, { customer_id: customerId });
   const debt = customerDebt(guard.session.organizationId, customerId);
 

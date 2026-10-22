@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
 import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
-import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
+import { OrderError, type LineInput } from "@/lib/orders";
+import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { isRequestedKind, type RequestedKind } from "@/lib/requestedDay";
 import {
   LeadPromotionError,
@@ -35,7 +35,7 @@ export async function GET(req: NextRequest) {
   const status = url.searchParams.get("status");
 
   const scope = orderFilter(guard.session);
-  const orders = readOrders(getDb(), scope, {
+  const orders = ordersIn(scope, {
     customerId: customerId ? Number(customerId) : undefined,
     status: status ?? undefined,
     limit: Number(url.searchParams.get("limit") ?? 200),
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   // Additive, and only when a customer is named: what that shop habitually buys is the
   // question the map's customer panel asks, and it is meaningless across all customers.
   const products = customerId
-    ? productMixFor(getDb(), scope, Number(customerId))
+    ? orderMixIn(scope, Number(customerId))
     : [];
 
   return NextResponse.json({ ok: true, orders, products });
@@ -104,7 +104,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "سفارش بدون قلم ثبت نمی‌شود" }, { status: 400 });
   }
 
-  const db = getDb();
 
   // Rule 1: a lead becomes a customer when it buys. Until this existed, a pin could not
   // receive an order at all -- the route required a customers.id and a lead lives in
@@ -169,7 +168,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const order = createOrder(db, {
+    const order = placeOrder({
       customer_id: customer.id,
       order_date: orderDate,
       requested_day: requestedDay,

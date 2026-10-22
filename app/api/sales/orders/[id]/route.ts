@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, orgScopeId } from "@/lib/session";
 import { orderVisible } from "@/lib/repo/ordersAccess";
 import { packagingOfProduct, productInOrg } from "@/lib/repo/catalogueAdmin";
-import { readOrder, confirmOrder, addLine, OrderError } from "@/lib/orders";
+import { OrderError } from "@/lib/orders";
+import { addLineTo, confirmOrderById, orderById } from "@/lib/repo/routeAdapters";
 
 /* Was ["owner","group_manager","phone_sales"] — NARROWER than its twin in orders/route.ts,
  * which admits both van roles. So a van role could create an order and then be refused
@@ -32,7 +32,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const id = Number((await ctx.params).id);
   if (!visible(guard.session, id)) return notFound();
 
-  const order = readOrder(getDb(), id);
+  const order = orderById(id);
   if (!order) return notFound();
   return NextResponse.json({ ok: true, order });
 }
@@ -54,7 +54,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
   try {
     if (body?.status === "confirmed") {
-      confirmOrder(getDb(), id);
+      confirmOrderById(id);
       return NextResponse.json({ ok: true });
     }
 
@@ -64,7 +64,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
       if (!productInOrg(Number(line.product_id), orgScopeId(guard.session)) || !packagingOfProduct(Number(line.packaging_id), Number(line.product_id))) {
         return NextResponse.json({ ok: false, error: "کالا یا بسته‌بندی پیدا نشد" }, { status: 400 });
       }
-      addLine(getDb(), id, {
+      addLineTo(id, {
         product_id: Number(line.product_id),
         packaging_id: Number(line.packaging_id),
         packs: Number(line.packs),

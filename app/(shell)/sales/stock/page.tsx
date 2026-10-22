@@ -2,9 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orgScopeId } from "@/lib/session";
-import { getDb } from "@/lib/db";
 import { activeProducts, facilityName } from "@/lib/repo/stockPageView";
-import { advancedStockPosition, monthPurchaseTotals, readPurchases } from "@/lib/purchases";
+import { monthPurchasesIn, purchasesIn, stockPositionIn } from "@/lib/repo/routeAdapters";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
@@ -30,9 +29,8 @@ export default async function StockPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
-  const stock = advancedStockPosition(db, orgScopeId(session));
-  const purchases = isOwner(session.role) ? readPurchases(db, session.organizationId, 15) : [];
+  const stock = stockPositionIn(orgScopeId(session));
+  const purchases = isOwner(session.role) ? purchasesIn(session.organizationId, 15) : [];
   const products = isOwner(session.role) ? activeProducts(session.organizationId) : [];
 
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
@@ -56,7 +54,7 @@ export default async function StockPage() {
 
   const today = toJalali(new Date().toISOString())!;
   const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
-  const monthPurchases = monthPurchaseTotals(db, orgScopeId(session), monthFrom);
+  const monthPurchases = monthPurchasesIn(orgScopeId(session), monthFrom);
 
   /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
      also holds what is in the vans). The default facility is the warehouse. */

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, groupFilter } from "@/lib/session";
 import { customerVisible } from "@/lib/repo/ordersAccess";
-import { readCustomerSummary } from "@/lib/customerSummary";
+import { customerSummaryIn } from "@/lib/repo/routeAdapters";
 
 const CAN_SEE = ["platform_owner", "owner", "group_manager", "phone_sales"] as const;
 
@@ -23,13 +22,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     return NextResponse.json({ ok: false, error: "شناسه معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
   const visible = customerVisible(groupFilter(guard.session), id);
   if (!visible) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }
 
-  const summary = readCustomerSummary(db, orderFilter(guard.session), id);
+  const summary = customerSummaryIn(orderFilter(guard.session), id);
   if (!summary) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }

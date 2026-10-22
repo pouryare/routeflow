@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { readImpersonationTarget } from "@/lib/repo/impersonation";
+import { impersonationTarget } from "@/lib/repo/routeAdapters";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseSessionToken } from "@/lib/auth";
 import { getSessionFromCookies, requireRole } from "@/lib/session";
 import { emitEvent } from "@/lib/repo/events";
@@ -25,7 +24,7 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => null)) as { user_id?: unknown } | null;
   const targetId = Number(body?.user_id);
 
-  const target = readImpersonationTarget(getDb(), targetId);
+  const target = impersonationTarget(targetId);
   const refusal = impersonationRefusal(
     { id: guard.session.user.id, role: guard.session.role, organization_id: guard.session.organizationId, active: guard.session.user.active },
     target,

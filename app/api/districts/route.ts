@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { districtsSignature, insertCustomDistrict } from "@/lib/repo/districtsAdmin";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { geometryVersion } from "@/lib/districtGeometry";
-import { readDistrictProperties } from "@/lib/districts";
+import { districtPropertiesIn } from "@/lib/repo/routeAdapters";
 import { requireRole, scopeGroupIds } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -21,7 +20,7 @@ export async function GET(req: NextRequest) {
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { version: geometryVersion(), districts: readDistrictProperties(getDb(), scope) });
+  return etagJson(req, tag, { version: geometryVersion(), districts: districtPropertiesIn(scope) });
 }
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];

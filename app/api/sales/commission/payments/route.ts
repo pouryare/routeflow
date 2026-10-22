@@ -1,10 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
-import { recordPayment } from "@/lib/commissionLedger";
-import { recordDriverPayment } from "@/lib/driverCommissionLedger";
-import { recordManagerPayment } from "@/lib/managerCommissionLedger";
+import { payDriver, payManager, paySales } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -51,7 +48,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ پرداخت معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
   const rawId =
     kind === "driver" ? body?.driver_user_id : kind === "manager" ? body?.manager_user_id : body?.salesperson_user_id;
   const personId = Number(rawId);
@@ -73,10 +69,10 @@ export async function POST(req: NextRequest) {
 
   const id =
     kind === "driver"
-      ? recordDriverPayment(db, { driver_user_id: personId, ...shared })
+      ? payDriver({ driver_user_id: personId, ...shared })
       : kind === "manager"
-        ? recordManagerPayment(db, { manager_user_id: personId, ...shared })
-        : recordPayment(db, { salesperson_user_id: personId, ...shared });
+        ? payManager({ manager_user_id: personId, ...shared })
+        : paySales({ salesperson_user_id: personId, ...shared });
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

@@ -1,5 +1,6 @@
 import { userInOrg } from "./organizations";
-import type { DatabaseSync } from "node:sqlite";
+import { getDb } from "@/lib/db";
+import { orgClause } from "@/lib/orgScope";
 
 /** The three reads and one write the avatar routes need.
  *
@@ -8,9 +9,12 @@ import type { DatabaseSync } from "node:sqlite";
  *  the upload route and the admin PATCH must agree about who an owner may act on, and two
  *  copies of the same WHERE clause is how they eventually stop agreeing. */
 
-/** The file stem behind a person's avatar, or null when they have no photo. */
-export function readAvatarStem(db: DatabaseSync, userId: number): string | null | undefined {
-  const row = db.prepare("SELECT avatar_stem FROM users WHERE id = ?").get(userId) as
+/** The file stem behind a person's avatar, or null when they have no photo. Only people of this
+ *  company (`organizationId` null = every company, platform owner only): a face is not shared across
+ *  tenants, and an id alone reaches every tenant's staff. */
+export function readAvatarStem(userId: number, organizationId: number | null): string | null | undefined {
+  const org = orgClause("organization_id", organizationId);
+  const row = getDb().prepare(`SELECT avatar_stem FROM users WHERE id = ?${org.sql}`).get(userId, ...org.params) as
     | { avatar_stem: string | null }
     | undefined;
   // `undefined` (no such user) and `null` (a real user with no photo) are different
@@ -18,22 +22,25 @@ export function readAvatarStem(db: DatabaseSync, userId: number): string | null 
   return row?.avatar_stem;
 }
 
-// The upload route's only authorisation-relevant read; the query itself lives with the tenants.
-export { userInOrg };
+/** Is this person of this company? The upload route's only authorisation-relevant read; the query lives with the tenants. */
+export function avatarUserInOrg(userId: number, organizationId: number): boolean {
+  return userInOrg(getDb(), userId, organizationId);
+}
 
 /** Point a user at their freshly uploaded avatar.
  *
  *  avatar_url is the ROUTE and avatar_stem the FILE; both are written together so there is
  *  no state where the route resolves to a stem that does not exist. */
 export function setAvatar(
-  db: DatabaseSync,
   userId: number,
+  organizationId: number,
   avatarUrl: string,
   stem: string,
 ): void {
-  db.prepare("UPDATE users SET avatar_url = ?, avatar_stem = ? WHERE id = ?").run(
+  getDb().prepare("UPDATE users SET avatar_url = ?, avatar_stem = ? WHERE id = ? AND organization_id = ?").run(
     avatarUrl,
     stem,
     userId,
+    organizationId,
   );
 }

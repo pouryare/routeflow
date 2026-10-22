@@ -1,7 +1,6 @@
 import { NextRequest } from "next/server";
-import { getDb } from "@/lib/db";
 import { customerListSignature } from "@/lib/repo/customerList";
-import { readCustomers } from "@/lib/customers";
+import { customersIn } from "@/lib/repo/routeAdapters";
 import { orgScopeId, requireRole, scopeGroupIds } from "@/lib/session";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -24,6 +23,6 @@ export async function GET(req: NextRequest) {
   if (cached) return cached;
 
   return etagJson(req, tag, {
-    customers: readCustomers(getDb(), scope, { organizationId: guard.session.organizationId }),
+    customers: customersIn(scope, { organizationId: guard.session.organizationId }),
   });
 }

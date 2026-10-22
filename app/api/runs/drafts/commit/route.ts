@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-import { readRunDrafts, commitDraft } from "@/lib/repo/runDrafts";
+import { commitDraftFor, draftsOf } from "@/lib/repo/routeAdapters";
 import { commitState } from "@/components/sales/DayLaneBoard";
 
 /** Turns one draft into a real run. ONE lane, never all of them.
@@ -25,11 +24,10 @@ export async function POST(req: NextRequest) {
 
   const orgId = guard.session.organizationId;
   const userId = guard.session.user.id;
-  const db = getDb();
 
   // Resolved through the reader, which scopes by user. The id in the body is a lookup key,
   // not a permission.
-  const draft = readRunDrafts(db, orgId, userId).find((d) => d.id === body.draftId);
+  const draft = draftsOf(orgId, userId).find((d) => d.id === body.draftId);
   if (!draft) {
     return NextResponse.json({ ok: false, error: "پیش‌نویس پیدا نشد" }, { status: 404 });
   }
@@ -56,7 +54,7 @@ export async function POST(req: NextRequest) {
 
   try {
     // The run and the draft's removal share one transaction, inside lib/repo/. See commitDraft.
-    const runId = commitDraft(db, {
+    const runId = commitDraftFor({
       draftId: draft.id,
       organizationId: orgId,
       userId,

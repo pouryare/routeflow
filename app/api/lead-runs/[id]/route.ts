@@ -1,12 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import {
-  LeadRunError,
-  readLeadRun,
-  updateLeadRun,
-  type LeadRunStatus,
-} from "@/lib/repo/leadRuns";
+import { LeadRunError, type LeadRunStatus } from "@/lib/repo/leadRuns";
+import { runById, updateRunFor } from "@/lib/repo/leadRunsApi";
 import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 
 /** One run: read it, or change who it belongs to / when / what is on it.
@@ -24,8 +19,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/lead-runs/[i
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
-  const db = getDb();
-  const run = readLeadRun(db, id, guard.session.organizationId);
+  const run = runById(id, guard.session.organizationId);
   // A driver may read only their own run. 404, not 403: a 403 would confirm it exists.
   if (!run) return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   if (isVanRole(guard.session.role) && run.driver_user_id !== guard.session.user.id) {
@@ -40,12 +34,11 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-runs/
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
-  const db = getDb();
   const session = guard.session;
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
   if (!body) return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
 
-  const existing = readLeadRun(db, id, session.organizationId);
+  const existing = runById(id, session.organizationId);
   if (!existing) return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   if (isVanRole(session.role) && existing.driver_user_id !== session.user.id) {
     return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
@@ -69,7 +62,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/lead-runs/
   }
 
   try {
-    const run = updateLeadRun(db, session, id, {
+    const run = updateRunFor(session, id, {
       driver_user_id: body.driver_user_id === undefined ? undefined : Number(body.driver_user_id),
       run_date: body.run_date,
       status: body.status as LeadRunStatus | undefined,

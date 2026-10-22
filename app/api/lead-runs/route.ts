@@ -1,14 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, plain } from "@/lib/db";
+import { plain } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import {
-  LeadRunError,
-  assignableDrivers,
-  createOrReuseLeadRun,
-  readScopedLeadRuns,
-  readLeadRunAssignments,
-  readTodaysLeadRun,
-} from "@/lib/repo/leadRuns";
+import { LeadRunError } from "@/lib/repo/leadRuns";
+import { assignmentsFor, createRunFor, driversFor, runsFor, todaysRun } from "@/lib/repo/leadRunsApi";
 import { isVanRole, PIN_POOL_ROLES } from "@/lib/roles";
 import { tehranTodayIso } from "@/lib/jalali";
 
@@ -25,25 +19,24 @@ import { tehranTodayIso } from "@/lib/jalali";
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...PIN_POOL_ROLES, "field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
-  const db = getDb();
   const session = guard.session;
   const url = new URL(req.url);
 
   if (isVanRole(session.role)) {
-    const run = readTodaysLeadRun(db, session.user.id, session.organizationId, tehranTodayIso());
+    const run = todaysRun(session.user.id, session.organizationId, tehranTodayIso());
     return NextResponse.json({ ok: true, run });
   }
 
   // The dropdown's options, so the manager does not have to know who the drivers are.
   if (url.searchParams.get("drivers") === "1") {
-    return NextResponse.json({ ok: true, drivers: assignableDrivers(db, session) });
+    return NextResponse.json({ ok: true, drivers: driversFor(session) });
   }
   // The leads page's phone book: who currently holds which lead. A query branch rather than
   // its own route so the role check and the scoping live in one place, matching `drivers`.
   if (url.searchParams.get("assignments") === "1") {
-    return NextResponse.json({ ok: true, assignments: readLeadRunAssignments(db, session) });
+    return NextResponse.json({ ok: true, assignments: assignmentsFor(session) });
   }
-  return NextResponse.json({ ok: true, runs: plain(readScopedLeadRuns(db, session)) });
+  return NextResponse.json({ ok: true, runs: plain(runsFor(session)) });
 }
 
 export async function POST(req: NextRequest) {
@@ -65,7 +58,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const result = createOrReuseLeadRun(getDb(), guard.session, {
+    const result = createRunFor(guard.session, {
       driver_user_id: Number(body.driver_user_id),
       run_date: body.run_date,
       location_ids: (body.location_ids as unknown[]).map(Number),

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, readLeadLists } from "@/lib/db";
+import { leadListsIn } from "@/lib/repo/routeAdapters";
 import { createLeadList } from "@/lib/repo/leadListsAdmin";
 import { groupFilter, requireRole, scopeGroupIds } from "@/lib/session";
 import { PIN_POOL_ROLES } from "@/lib/roles";
@@ -11,7 +11,7 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
-  return NextResponse.json({ ok: true, lists: readLeadLists(getDb(), scopeGroupIds(guard.session)) });
+  return NextResponse.json({ ok: true, lists: leadListsIn(scopeGroupIds(guard.session)) });
 }
 
 interface NewListInput {

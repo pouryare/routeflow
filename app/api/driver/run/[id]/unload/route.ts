@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { reconcileUnload, pendingUnload, runOwnedBy, DISPOSITIONS, type Disposition } from "@/lib/repo/unload";
+import { reconcileUnload, DISPOSITIONS, type Disposition } from "@/lib/repo/unload";
+import { runOwnedByDriver, unloadOf } from "@/lib/repo/routeAdapters";
 import { StockError } from "@/lib/repo/stock";
 import { vanFacilityFor } from "@/lib/repo/vanStock";
 
@@ -23,13 +23,12 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   const orgId = guard.session.organizationId;
 
   // The run must belong to this driver. Checked here rather than trusting the id in the
   // URL, and answered as 404 so another driver's run is indistinguishable from one that
   // does not exist.
-  const owned = runOwnedBy(db, runId, guard.session.user.id, orgId);
+  const owned = runOwnedByDriver(runId, guard.session.user.id, orgId);
   if (!owned) {
     return NextResponse.json({ ok: false, error: "مسیر پیدا نشد" }, { status: 404 });
   }
@@ -52,7 +51,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     );
   }
 
-  const unload = pendingUnload(db, runId);
+  const unload = unloadOf(runId);
   if (!unload) {
     return NextResponse.json(
       { ok: false, error: "تخلیه‌ای برای این مسیر ثبت نشده است" },

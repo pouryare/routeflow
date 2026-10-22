@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind, getDb } from "@/lib/db";
+import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind } from "@/lib/db";
 import { facilitiesSignature, insertFacility, resolveRestore } from "@/lib/repo/facilitiesAdmin";
-import { readFacilities } from "@/lib/facilities";
+import { facilitiesIn } from "@/lib/repo/routeAdapters";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { isValidCoord } from "@/lib/geoLinks";
 import { groupFilterWithShared, orgScopeId, requireRole, scopeGroupIds } from "@/lib/session";
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { facilities: readFacilities(getDb(), scope) });
+  return etagJson(req, tag, { facilities: facilitiesIn(scope) });
 }
 
 interface NewFacilityInput {
