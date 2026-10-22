@@ -2,9 +2,9 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, orderFilter, groupFilter } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
-import { readOrders, type OrderSummary } from "@/lib/orders";
+import { getSessionFromCookies, type Session } from "@/lib/session";
+import { ordersListFor, journeyFor } from "@/lib/repo/ordersView";
+import type { OrderSummary } from "@/lib/orders";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import type { PocketDoc, PocketStatus } from "@/components/meridian/PocketCard";
@@ -12,10 +12,6 @@ import OrdersPockets, { type PocketRow } from "@/components/meridian/OrdersPocke
 import OrderPipeline, { type PipelineOrder } from "@/components/sales/OrderPipeline";
 import OrderSpine from "@/components/sales/OrderSpine";
 import OrderFunnel from "@/components/sales/OrderFunnel";
-import { readJourney, buildJourney } from "@/lib/orderJourney";
-import { eventsByStep } from "@/lib/orderEvents";
-import { buildFunnel } from "@/lib/orderFunnel";
-import { readOrderEvents, readFunnelRows } from "@/lib/repo/journey";
 import {
   ORDER_STATUS_LABEL,
   PAYMENT_STATUS_LABEL,
@@ -27,7 +23,6 @@ import PageHeader from "@/components/meridian/PageHeader";
 import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
 import { oneOf, one, type SearchParams } from "@/lib/viewParam";
 import { isVanRole } from "@/lib/roles";
-import type { DatabaseSync } from "node:sqlite";
 
 export const dynamic = "force-dynamic";
 
@@ -221,28 +216,20 @@ function BoardView({ orders, onARun }: { orders: OrderSummary[]; onARun: Set<num
  *  `oneOf(params, VIEWS, "")` still resolves the outer view. Two params both called
  *  `view` would collide, and the reader takes the first, silently losing the mode. */
 function JourneyView({
-  db,
-  scope,
+  session,
   orders,
   mode,
   askedOrderId,
 }: {
-  db: DatabaseSync;
-  scope: { sql: string; params: number[] };
+  session: Session;
   orders: OrderSummary[];
   mode: "one" | "all";
   askedOrderId: number | undefined;
 }) {
-  /* Chosen from the list this session can already see, so the journey cannot be used to
-     probe for an order in another group by its id — the scope decision stays in
-     orderFilter and is not re-derived here. */
-  const focus = orders.find((o) => o.id === askedOrderId) ?? orders[0];
-  const journey = mode === "one" && focus ? readJourney(db, focus.id) : null;
-  const nodes = journey ? buildJourney(journey) : [];
+  /* The journey and the funnel are chosen from, and scoped like, the list this session can
+     already see (see journeyFor), so neither can be used to probe for an order it hides. */
+  const { focus, journey, nodes, events, funnel } = journeyFor(session, orders, mode, askedOrderId);
   const current = nodes.find((n) => n.state === "current");
-  const events = journey && focus ? eventsByStep(readOrderEvents(db, focus.id)) : null;
-  /* The same scope as the list above: the funnel cannot count an order the list hides. */
-  const funnel = mode === "all" ? buildFunnel(readFunnelRows(db, scope)) : null;
   const keep = focus ? `&order=${focus.id}` : "";
 
   return (
@@ -353,40 +340,13 @@ export default async function OrdersPage({
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
   const params = (await searchParams) as SearchParams;
   const view: OrdersView = oneOf(params, VIEWS, "");
   const customerParam = one(params, "customer");
   const orderParam = one(params, "order");
   const customerId = customerParam !== undefined && /^\d+$/.test(customerParam) ? Number(customerParam) : undefined;
 
-  const scope = groupFilter(session);
-  const focused =
-    customerId === undefined
-      ? null
-      : (db
-          .prepare(`SELECT id, business_name FROM customers WHERE id = ?${scope.sql}`)
-          .get(customerId, ...scope.params) as { id: number; business_name: string } | undefined) ??
-        null;
-
-  const orderScope = orderFilter(session);
-  const orders = readOrders(db, orderScope, { limit: 100, customerId: focused?.id });
-
-  // Which of these are already loaded onto a van. One query for the page rather than one
-  // per row.
-  const onARun = new Set(
-    (
-      plain(
-        db
-          .prepare(
-            `SELECT DISTINCT order_id FROM delivery_stops WHERE order_id IN (${
-              orders.map(() => "?").join(",") || "NULL"
-            })`
-          )
-          .all(...orders.map((o) => o.id))
-      ) as unknown as { order_id: number }[]
-    ).map((r) => r.order_id)
-  );
+  const { focused, orders, onARun } = ordersListFor(session, { customerId });
 
   const mode = one(params, "mode") === "all" ? "all" : "one";
   const askedOrderId = orderParam !== undefined && /^\d+$/.test(orderParam) ? Number(orderParam) : undefined;
@@ -398,7 +358,7 @@ export default async function OrdersPage({
       {view === "board" ? (
         <BoardView orders={orders} onARun={onARun} />
       ) : view === "journey" ? (
-        <JourneyView db={db} scope={orderScope} orders={orders} mode={mode} askedOrderId={askedOrderId} />
+        <JourneyView session={session} orders={orders} mode={mode} askedOrderId={askedOrderId} />
       ) : (
         <ListView orders={orders} onARun={onARun} focused={focused} />
       )}
