@@ -1,7 +1,6 @@
 "use client";
 
 import SmartPicker from "@/components/mobile/SmartPicker";
-import { ChipGroup } from "@/components/mobile/FilterChips";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -67,6 +66,10 @@ import { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import { useToast } from "./ToastProvider";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
+import DueRemindersSection, { type DueReminder } from "@/components/coverage/DueRemindersSection";
+import NearbyCustomersSection from "@/components/coverage/NearbyCustomersSection";
+import PinnedCustomersSection from "@/components/coverage/PinnedCustomersSection";
+import RecentCustomersSection from "@/components/coverage/RecentCustomersSection";
 import MapSitesSection, { CORRIDOR_WIDTHS } from "@/components/coverage/MapSitesSection";
 import MapLegendSection from "@/components/coverage/MapLegendSection";
 import MapSettingsSection from "@/components/coverage/MapSettingsSection";
@@ -126,15 +129,6 @@ const NextStopBar = dynamic(() => import("./NextStopBar"), { ssr: false });
 const ShortcutHelp = dynamic(() => import("./ShortcutHelp"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
-
-interface DueReminder {
-  id: number;
-  entity_type: "district" | "customer";
-  entity_id: number;
-  due_date: string;
-  message: string;
-  label: string;
-}
 
 /** The groups this viewer may see -- for the territory colour mode and the bulk assign
  *  control. An owner gets every group; a manager gets only their own, which is the only
@@ -1151,139 +1145,13 @@ export default function CoverageMap({
           </p>
         )}
 
-        {dueReminders.length > 0 && (
-          <CollapsibleSection
-            title="یادآوری‌های امروز" icon="bell"
-            count={dueReminders.length}
-            defaultOpen
-          >
-            <div className="flex flex-col gap-1.5">
-              {dueReminders.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-start gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
-                >
-                  <button
-                    onClick={() => openReminderEntity(r)}
-                    className="flex-1 text-right text-[length:var(--text-sm)] text-text hover:text-accent"
-                  >
-                    <Icon name="clock" size="sm" />
-                    <div className="font-medium">{r.label}</div>
-                    <div className="text-[length:var(--text-xs)] text-text-muted">{r.message}</div>
-                  </button>
-                  <button
-                    onClick={() => resolveReminder(r.id)}
-                    aria-label="انجام شد"
-                    className="shrink-0 text-good hover:opacity-80"
-                  >
-                    <Icon name="check" size="sm" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+        <DueRemindersSection dueReminders={dueReminders} openReminderEntity={openReminderEntity} resolveReminder={resolveReminder} />
 
-        {myPosition && (
-          <CollapsibleSection
-            title="مشتریان نزدیک" icon="map-pin"
-            count={nearbyCustomers.length}
-            defaultOpen
-            right={
-              /* In the header rather than the body: changing the radius is how you
-                 decide whether this section is worth opening at all. */
-              <ChipGroup
-                group={{
-                  id: "nearby_radius",
-                  label: "شعاع جستجوی مشتریان نزدیک",
-                  mode: "single",
-                  neutral: "__none",
-                  value: String(nearbyRadiusKm),
-                  onChange: (v) => { if (v && v !== "__none") setNearbyRadiusKm(Number(v)); },
-                  options: [{ id: "1", label: "۱ کیلومتر" }, { id: "2", label: "۲ کیلومتر" }, { id: "5", label: "۵ کیلومتر" }],
-                }}
-              />
-            }
-          >
-            {nearbyCustomers.length === 0 ? (
-              <p className="text-[length:var(--text-xs)] text-text-faint">مشتری‌ای در این شعاع پیدا نشد.</p>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {nearbyCustomers.map(({ customer, km }) => (
-                  <button
-                    key={customer.id}
-                    onClick={() => flyToCustomer(customer)}
-                    className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-                  >
-                    <Icon name="map-pin" size="md" />
-                    <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
-                    <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-accent">
-                      {formatDistanceKm(km)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
-        )}
+        <NearbyCustomersSection myPosition={myPosition} nearbyCustomers={nearbyCustomers} nearbyRadiusKm={nearbyRadiusKm} setNearbyRadiusKm={setNearbyRadiusKm} flyToCustomer={flyToCustomer} />
 
-        {pinnedCustomers.length > 0 && (
-          <CollapsibleSection title="سنجاق‌شده" icon="star" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
-            <div className="flex flex-col gap-1.5">
-              {pinnedCustomers.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface px-2 py-2"
-                >
-                  <button
-                    onClick={() => flyToCustomer(c)}
-                    className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {c.business_name}
-                  </button>
-                  <button
-                    onClick={() => togglePinned(c.id)}
-                    aria-label={`برداشتن سنجاق ${c.business_name}`}
-                    title="برداشتن سنجاق"
-                    className="shrink-0 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-crit"
-                  >
-                    <Icon name="star" size="sm" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+        <PinnedCustomersSection pinnedCustomers={pinnedCustomers} flyToCustomer={flyToCustomer} togglePinned={togglePinned} />
 
-        {recentCustomers.length > 0 && (
-          <CollapsibleSection title="اخیراً دیده‌شده" icon="clock" count={recentCustomers.length} storageKey="recent">
-            <div className="flex flex-col gap-1.5">
-              {recentCustomers.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface px-2 py-2"
-                >
-                  <button
-                    onClick={() => flyToCustomer(c)}
-                    className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {c.business_name}
-                  </button>
-                  <button
-                    onClick={() => togglePinned(c.id)}
-                    aria-label={`سنجاق کردن ${c.business_name}`}
-                    title="سنجاق کردن"
-                    className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
-                  >
-                    <Icon name="star" size="sm" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+        <RecentCustomersSection recentCustomers={recentCustomers} flyToCustomer={flyToCustomer} togglePinned={togglePinned} />
 
         <CustomerFilters
           salespeople={salespeople}
