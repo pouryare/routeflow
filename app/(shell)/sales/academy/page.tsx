@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+
 import { listObjectionCards, academyManifest, lessonProgress } from "@/lib/repo/academy";
 import AcademyPath from "@/components/sales/AcademyPath";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -14,7 +14,6 @@ export default async function AcademyPage() {
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
 
-  getDb();
   const cards = listObjectionCards(session.organizationId).sort((a, b) =>
     a.outcome_code.localeCompare(b.outcome_code)
   );

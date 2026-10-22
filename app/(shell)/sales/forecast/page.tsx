@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+
 import { demandBoard, newestForecastAt } from "@/lib/repo/forecast";
 import { churnBoard } from "@/lib/repo/churn";
 import { resolvedCapacityFactorsFor, learnedCapacityCounts } from "@/lib/repo/capacityLearning";
@@ -23,7 +23,6 @@ export default async function ForecastPage() {
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  getDb();
   const org = session.organizationId;
 
   const entries = demandBoard(org);

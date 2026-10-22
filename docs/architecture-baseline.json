@@ -1,6 +1,6 @@
 {
   "importCycles": 1,
-  "dbImportsOutsideLib": 88,
+  "dbImportsOutsideLib": 72,
   "dbModuleLines": 149,
   "unscopedTenantSelects": 13,
   "agentLitterFiles": 0

@@ -4,7 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { homePathFor, isVanRole } from "@/lib/roles";
 import NotAVanNotice from "@/components/meridian/NotAVanNotice";
-import { getDb } from "@/lib/db";
+
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import BriefingHero from "@/components/today/BriefingHero";
@@ -36,7 +36,6 @@ export default async function TodayPage() {
     redirect(homePathFor(session.role));
   }
 
-  getDb();
   const data = todayFor(session);
 
   return (

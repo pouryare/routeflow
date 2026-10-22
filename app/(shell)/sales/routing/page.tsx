@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+
 import { listVehicles } from "@/lib/repo/routing";
 import RoutingPlanner from "@/components/sales/RoutingPlanner";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -16,7 +16,6 @@ export default async function RoutingPage() {
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  getDb();
   const vehicles = listVehicles(session.organizationId, false);
   const names: Record<number, string> = {};
   for (const v of vehicles) names[v.id] = v.plate ? `${v.name} (${v.plate})` : v.name;
