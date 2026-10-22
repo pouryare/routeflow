@@ -40,9 +40,11 @@ describe("the dashboard streams its slow sections", () => {
   });
 
   it("still gates the cost-bearing sections by role, in the read and not just the markup", () => {
-    // The commission gate moved with the read: moneyFor() skips the driver and manager ledgers
-    // for a seller, so that is where the role check must live.
-    const money = readFileSync("lib/repo/dashboardView.ts", "utf8");
+    // The commission gate moved with the read: commissionStatementsFor() (which moneyFor() calls,
+    // and the commission page and API share) skips the driver and manager ledgers for a seller,
+    // so that is where the role check must live.
+    const money = readFileSync("lib/repo/commissionView.ts", "utf8");
+    expect(readFileSync("lib/repo/dashboardView.ts", "utf8")).toContain("commissionStatementsFor(");
     const stock = readFileSync("components/dashboard/StockSection.tsx", "utf8");
     expect(money).toMatch(/phone_sales/);
     expect(page + stock).toMatch(/phone_sales/);

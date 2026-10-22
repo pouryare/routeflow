@@ -3,14 +3,14 @@ import type { Session } from "@/lib/session";
 import { orgScopeId } from "@/lib/session";
 import { salesDashboard, fillRateByDriver, type SalesDashboard } from "@/lib/dashboard";
 import { stockPosition, type StockRow } from "@/lib/purchases";
-import { allStatements, statementFor, type Statement } from "@/lib/commissionLedger";
-import { allDriverStatements, type DriverStatement } from "@/lib/driverCommissionLedger";
-import { allManagerStatements, managerStatementFor, type ManagerStatement } from "@/lib/managerCommissionLedger";
+import type { Statement } from "@/lib/commissionLedger";
+import type { DriverStatement } from "@/lib/driverCommissionLedger";
+import type { ManagerStatement } from "@/lib/managerCommissionLedger";
+import { commissionStatementsFor } from "@/lib/repo/commissionView";
 import { toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { orderFilter } from "@/lib/session";
 import { orderKg, orderTotalToman } from "@/lib/orderMath";
 import { linesByOrder } from "@/lib/repo/orderLines";
-import { isOwner } from "@/lib/roles";
 
 /* What the dashboard page and its streamed sections read, as functions of the SESSION. The page
  * and the section components used to open the database themselves (`getDb()`, then pass the
@@ -28,32 +28,15 @@ export interface MoneyFigures {
   managerCommission: ManagerStatement[];
 }
 
-/** This Jalali month's commission statements for «بدهی و پورسانت». A فروشنده gets only their own
- *  statement and none of the driver or manager ledgers (the reads are skipped, not just hidden);
- *  a group manager sees their group's people plus their own override; an owner sees everyone in
- *  their organisation. */
+/** This Jalali month's commission statements for «بدهی و پورسانت», as far as the caller may see
+ *  them (see commissionStatementsFor). */
 export function moneyFor(session: Session): MoneyFigures {
-  const db = getDb();
   const today = toJalali(new Date().toISOString())!;
-  const period = {
+  const { statements, driverStatements, managerStatements } = commissionStatementsFor(session, {
     from: jalaliToIsoDate(today.jy, today.jm, 1),
     to: jalaliToIsoDate(today.jy, today.jm, today.jd),
-  };
-  const groupId = isOwner(session.role) ? undefined : session.groupId;
-  const organizationId = orgScopeId(session);
-
-  const commission =
-    session.role === "phone_sales"
-      ? [statementFor(db, session.user.id, period)]
-      : allStatements(db, period, { groupId, organizationId });
-  const driverCommission =
-    session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId, organizationId });
-  const managerCommission = isOwner(session.role)
-    ? allManagerStatements(db, period, organizationId)
-    : session.role === "group_manager"
-      ? [managerStatementFor(db, session.user.id, period)]
-      : [];
-  return { commission, driverCommission, managerCommission };
+  });
+  return { commission: statements, driverCommission: driverStatements, managerCommission: managerStatements };
 }
 
 export interface StockFigures {

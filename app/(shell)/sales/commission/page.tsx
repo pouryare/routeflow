@@ -3,18 +3,15 @@ import { listPlans } from "@/lib/repo/commissionTiers";
 import { latestPlans } from "@/lib/commission/copyPlan";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, orgScopeId } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
-import { statementFor, allStatements, readRates } from "@/lib/commissionLedger";
-import { allDriverStatements, readDriverRates } from "@/lib/driverCommissionLedger";
-import { allManagerStatements, managerStatementFor, readManagerOverrides } from "@/lib/managerCommissionLedger";
+import { getSessionFromCookies } from "@/lib/session";
+import { commissionStatementsFor, commissionPeopleFor, commissionRatesFor } from "@/lib/repo/commissionView";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import CommissionEditor from "@/components/sales/CommissionEditor";
 import Avatar from "@/components/meridian/Avatar";
 import EarnerCard from "@/components/meridian/EarnerCard";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole, VAN_ROLES, isOwner } from "@/lib/roles";
+import { isVanRole, isOwner } from "@/lib/roles";
 
 
 export const dynamic = "force-dynamic";
@@ -43,66 +40,9 @@ export default async function CommissionPage() {
     to: jalaliToIsoDate(today.jy, today.jm, today.jd),
   };
 
-  const db = getDb();
-  const groupId = isOwner(session.role) ? undefined : session.groupId;
-
-  const statements =
-    session.role === "phone_sales"
-      ? [statementFor(db, session.user.id, period)]
-      : allStatements(db, period, { groupId, organizationId: orgScopeId(session) });
-
-  // A فروشنده sees only their own figures -- someone else's earnings, driver or
-  // manager, are none of their business, the same boundary their own statement draws.
-  const driverStatements = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId, organizationId: orgScopeId(session) });
-  const managerStatements =
-    isOwner(session.role)
-      ? allManagerStatements(db, period, orgScopeId(session))
-      : session.role === "group_manager"
-        ? [managerStatementFor(db, session.user.id, period)]
-        : [];
-
-  /* The salesperson's name, from the same stale-vocabulary bug as the drivers below:
-     this read `role = 'salesperson'`, which matched nobody after lib/db.ts:3219 renamed
-     that role to `phone_sales`. The commission seller's list was empty for the same
-     reason and the same length of time. */
-  const sellers =
-    isOwner(session.role)
-      ? (plain(
-          db
-            .prepare("SELECT id, display_name FROM users WHERE role = 'phone_sales' AND active = 1 ORDER BY display_name")
-            .all()
-        ) as unknown as { id: number; display_name: string }[])
-      : [];
-  /* Same bug as the run planner's driver list, in the same shape: `role = 'driver'`
-     matched nobody after the rename, so the manager-overrides picker was empty. The van
-     roles, inlined from the one list that defines them. See tests/van-role-dropdown.test.ts. */
-  const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
-  const drivers =
-    isOwner(session.role)
-      ? (plain(
-          db
-            .prepare(
-              `SELECT id, display_name FROM users
-                WHERE role IN (${vanRoleList}) AND active = 1
-                ORDER BY display_name`
-            )
-            .all()
-        ) as unknown as { id: number; display_name: string }[])
-      : [];
-  const managers =
-    isOwner(session.role)
-      ? (plain(
-          db
-            .prepare("SELECT id, display_name FROM users WHERE role = 'group_manager' AND active = 1 ORDER BY display_name")
-            .all()
-        ) as unknown as { id: number; display_name: string }[])
-      : [];
-
-  const rates = isOwner(session.role) ? readRates(db, session.organizationId).slice(0, 12) : [];
-  const driverRates =
-    isOwner(session.role) ? readDriverRates(db, session.organizationId).slice(0, 12) : [];
-  const managerOverrides =
-    isOwner(session.role) ? readManagerOverrides(db, session.organizationId).slice(0, 12) : [];
+  const { statements, driverStatements, managerStatements } = commissionStatementsFor(session, period);
+  const { sellers, drivers, managers } = commissionPeopleFor(session);
+  const { rates, driverRates, managerOverrides } = commissionRatesFor(session, { limit: 12 });
 
   return (
     <>

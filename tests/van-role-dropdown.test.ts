@@ -60,7 +60,7 @@ describe("the van-role dropdown queries", () => {
        literals. Spelling them would also satisfy the behavioural test and would drift
        the next time a van role is added — which is the failure this whole task is about. */
     for (const file of [
-      "app/(shell)/sales/commission/page.tsx",
+      "lib/repo/commissionView.ts", // the commission page's pickers moved here
       "app/(shell)/sales/schedule/page.tsx",
     ]) {
       const src = readFileSync(file, "utf8");
