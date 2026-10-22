@@ -1,12 +1,7 @@
-import { orgScopeId, type Session } from "@/lib/session";
+import type { Session } from "@/lib/session";
 import { yieldToEventLoop } from "@/lib/yieldToEventLoop";
-import { getDb } from "@/lib/db";
-import { allStatements, statementFor } from "@/lib/commissionLedger";
-import { allDriverStatements } from "@/lib/driverCommissionLedger";
-import { allManagerStatements, managerStatementFor } from "@/lib/managerCommissionLedger";
+import { moneyFor } from "@/lib/repo/dashboardView";
 import { faToman } from "@/lib/format";
-import { toJalali, jalaliToIsoDate } from "@/lib/jalali";
-import { isOwner } from "@/lib/roles";
 import BarChart from "@/components/charts/BarChart";
 import DonutChart from "@/components/charts/DonutChart";
 import CollapsibleSection from "@/components/CollapsibleSection";
@@ -23,27 +18,7 @@ const empty = EMPTY_CHART;
 
 export default async function MoneySection({ session, debt }: { session: Session; debt: { d0_7: number; d8_30: number; over_30: number } }) {
   await yieldToEventLoop();
-  const db = getDb();
-  const today = toJalali(new Date().toISOString())!;
-  const period = {
-    from: jalaliToIsoDate(today.jy, today.jm, 1),
-    to: jalaliToIsoDate(today.jy, today.jm, today.jd),
-  };
-  const groupId = isOwner(session.role) ? undefined : session.groupId;
-
-  const commission =
-    session.role === "phone_sales"
-      ? [statementFor(db, session.user.id, period)]
-      : allStatements(db, period, { groupId, organizationId: orgScopeId(session) });
-  // A فروشنده sees none of this -- someone else's earnings, driver or manager, are
-  // none of their business, the same boundary /sales/commission itself draws.
-  const driverCommission = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId, organizationId: orgScopeId(session) });
-  const managerCommission =
-    isOwner(session.role)
-      ? allManagerStatements(db, period, orgScopeId(session))
-      : session.role === "group_manager"
-        ? [managerStatementFor(db, session.user.id, period)]
-        : [];
+  const { commission, driverCommission, managerCommission } = moneyFor(session);
   const owedTotal =
     commission.reduce((sum, c) => sum + c.owed_toman, 0) +
     driverCommission.reduce((sum, c) => sum + c.owed_toman, 0) +
