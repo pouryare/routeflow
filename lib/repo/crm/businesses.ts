@@ -1,4 +1,5 @@
 import { getDb } from "@/lib/db";
+import { isOwner } from "@/lib/roles";
 import { canSeeBusiness, crmFilter, isCrmManager, type Session } from "@/lib/session";
 import { resolveDue } from "@/lib/crm/due";
 import type { FlowContext } from "@/lib/crm/flows/types";
@@ -161,7 +162,7 @@ export function addLeadContext(session: Session): FlowContext {
   const manager = isCrmManager(session.role);
   let reps: FlowContext["reps"] = [];
   if (manager) {
-    const byGroup = session.role === "owner" || session.role === "platform_owner" ? "" : " AND u.group_id = ?";
+    const byGroup = isOwner(session.role) ? "" : " AND u.group_id = ?";
     const params: number[] = [session.organizationId, ...(byGroup ? [session.groupId ?? -1] : [])];
     reps = db
       .prepare(`SELECT u.id, u.display_name AS name,

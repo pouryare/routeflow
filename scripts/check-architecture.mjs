@@ -16,6 +16,8 @@
 //   unscopedTenantSelects SELECTs on a tenant table that name no organization_id, use no scope
 //                         fragment (`${x.sql}`) and are not a keyed lookup: the shape of the
 //                         cross-tenant reads fixed on 2026-10-22
+//   rawRoleChecks         `role === "x"` / `role !== "x"` comparisons in app/ and lib/repo: a role set belongs in
+//                         lib/roles (isOwner, isVanRole, MANAGE_ROLES), where adding a role updates it once
 //   agentLitterFiles      tracked files of another tool's workspace (.zoocode*, superpowers-cline)
 import fs from "node:fs";
 import path from "node:path";
@@ -153,6 +155,9 @@ export function measure() {
       && /import\s*\{[^}]*\bgetDb\b[^}]*\}\s*from\s*["']@\/lib\/db["']/.test(fs.readFileSync(path.join(ROOT, f), "utf8")),
   );
   const unscoped = unscopedTenantSelects(files, tenantTables());
+  const rawRoles = files
+    .filter((f) => f.startsWith("app/") || f.startsWith("lib/repo/"))
+    .reduce((n, f) => n + (fs.readFileSync(path.join(ROOT, f), "utf8").match(/\brole\s*(?:===|!==)\s*["']/g) ?? []).length, 0);
   let litter = [];
   try {
     litter = execFileSync("git", ["ls-files", ".zoocode", ".zoocodeules", "superpowers-cline"], { cwd: ROOT, encoding: "utf8" })
@@ -165,6 +170,7 @@ export function measure() {
       dbImportsOutsideLib: dbImports.length,
       dbModuleLines: dbLines,
       unscopedTenantSelects: unscoped.length,
+      rawRoleChecks: rawRoles,
       agentLitterFiles: litter.length,
     },
     detail: { cycles: groups, dbImports, unscoped },
