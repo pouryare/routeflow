@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies } from "@/lib/session";
+import { getSessionFromCookies, orgScopeId } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { advancedStockPosition, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
@@ -30,7 +30,7 @@ export default async function StockPage() {
   if (isVanRole(session.role)) redirect("/driver");
 
   const db = getDb();
-  const stock = advancedStockPosition(db);
+  const stock = advancedStockPosition(db, orgScopeId(session));
   const purchases = isOwner(session.role) ? readPurchases(db, session.organizationId, 15) : [];
   const products =
     isOwner(session.role)

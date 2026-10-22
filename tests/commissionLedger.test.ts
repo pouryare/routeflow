@@ -74,7 +74,7 @@ beforeAll(() => {
       .run("شرق", "east", "#0ff", now).lastInsertRowid
   );
   const user = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.nazanin = Number(user.run("nazanin", "نازنین", "phone_sales", ctx.group, now).lastInsertRowid);
@@ -211,14 +211,14 @@ describe("statementFor", () => {
 
 describe("allStatements", () => {
   it("returns a row per salesperson", () => {
-    const rows = allStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" });
+    const rows = allStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, { organizationId: 1 });
     const names = rows.map((r) => r.display_name);
     expect(names).toContain("نازنین");
     expect(names).toContain("یاسمین");
   });
 
   it("does not include drivers or managers", () => {
-    const rows = allStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" });
+    const rows = allStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, { organizationId: 1 });
     expect(rows.map((r) => r.display_name)).not.toContain("راننده");
     expect(rows.map((r) => r.display_name)).not.toContain("مالک");
   });
@@ -226,7 +226,7 @@ describe("allStatements", () => {
   it("agrees with the individual statement", () => {
     const db = getDb();
     const period = { from: "2026-01-01", to: "2026-12-29" };
-    const row = allStatements(db, period).find((r) => r.salesperson_user_id === ctx.nazanin)!;
+    const row = allStatements(db, period, { organizationId: 1 }).find((r) => r.salesperson_user_id === ctx.nazanin)!;
     const one = statementFor(db, ctx.nazanin, period);
     expect(row.accrued_toman).toBe(one.accrued_toman);
     expect(row.owed_toman).toBe(one.owed_toman);

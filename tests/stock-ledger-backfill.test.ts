@@ -95,7 +95,7 @@ describe("backfillStockLedger", () => {
     const outMoves = db.prepare("SELECT COALESCE(SUM(base_qty),0) n FROM stock_movements WHERE kind='DELIVERY_OUT'").get() as { n: number };
     expect(outMoves.n).toBe(-70);
 
-    const pos = stockPosition(db).find((r) => r.product_id === prod)!;
+    const pos = stockPosition(db, 1).find((r) => r.product_id === prod)!;
     expect(pos.on_hand).toBe(30);
 
     // idempotent

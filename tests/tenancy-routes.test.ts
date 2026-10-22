@@ -42,15 +42,11 @@ const PUBLIC_BY_DESIGN: Record<string, string> = {
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };
 
-/** Reads that DO hand org A's owner org B's rows today, as "METHOD route". Found by this very
- *  test on its first run (2026-10-22). The list is a ratchet in both directions: a new leak
- *  fails the test, and so does fixing one without deleting its line here. */
-const KNOWN_LEAKS: Record<string, string> = {
-  "GET admin/groups/route.ts": "SELECT ... FROM groups g has no organization filter: every tenant's group names and counts",
-  "GET admin/impersonatable/route.ts": "readImpersonatable(db) lists every active user of every tenant, not just the caller's",
-  "GET sales/stock/route.ts": "stockPosition(db) reads products and stock_movements of all tenants",
-  "GET sales/commission/route.ts": "allManagerStatements(db) lists every tenant's group managers and their commission",
-};
+/** Reads that DO hand org A's owner org B's rows today, as "METHOD route". Empty since the four
+ *  the first run of this test found (groups, impersonatable, stock, commission) were fixed on
+ *  2026-10-22. The list is a ratchet in both directions: a new leak fails the test, and so does
+ *  fixing one without deleting its line here. */
+const KNOWN_LEAKS: Record<string, string> = {};
 
 const MARK = "LEAKMARK_B";
 
@@ -184,6 +180,20 @@ beforeAll(async () => {
 
   const db = getDb();
   ({ a, b } = seedTwoOrgs(db));
+  /* The fixture ships owners and managers only. The commission and stock readers also walk
+     sellers, drivers and field reps, so org B gets one of each (and A none: if A's owner sees
+     them, they came from B). */
+  for (const role of ["phone_sales", "delivery_driver", "field_rep"] as const) {
+    const id = Number(
+      db
+        .prepare(
+          `INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id)
+           VALUES (?, 'x:y', ?, ?, ?, 1, '2026-01-01T00:00:00.000Z', 2)`
+        )
+        .run(`b-${role}`, `${role} b`, role, b.groupId).lastInsertRowid
+    );
+    db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
+  }
   markB(db);
   aOwnerCookie = `${COOKIE_NAME}=${createSessionToken({ uid: a.ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "A" })}`;
 

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { orgClause } from "@/lib/orgScope";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** Fixed palette rather than free-form colour input.
@@ -32,13 +33,14 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
+  const org = orgClause("g.organization_id", orgScopeId(guard.session));
   const groups = getDb()
     .prepare(
       `SELECT g.*, (SELECT COUNT(*) FROM districts d WHERE d.group_id = g.id) AS district_count,
               (SELECT COUNT(*) FROM users u WHERE u.group_id = g.id AND u.active = 1) AS user_count
-       FROM groups g ORDER BY g.name`
+       FROM groups g WHERE 1 = 1${org.sql} ORDER BY g.name`
     )
-    .all() as unknown as Record<string, unknown>[];
+    .all(...org.params) as unknown as Record<string, unknown>[];
 
   return NextResponse.json({ ok: true, groups, palette: GROUP_PALETTE });
 }

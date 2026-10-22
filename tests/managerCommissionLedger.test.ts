@@ -73,7 +73,7 @@ beforeAll(() => {
   ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
 
   const user = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.eastManager = Number(user.run("me", "مدیر شرق", "group_manager", ctx.east, now).lastInsertRowid);
@@ -136,7 +136,7 @@ describe("managerStatementFor", () => {
     const orphan = Number(
       db
         .prepare(
-          "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, 'group_manager', NULL, 1, ?)"
+          "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, 'group_manager', NULL, 1, ?, 1)"
         )
         .run("orphan", "مدیر بی‌گروه", now).lastInsertRowid
     );
@@ -169,7 +169,7 @@ describe("managerStatementFor", () => {
 
 describe("allManagerStatements", () => {
   it("returns a row per مدیر گروه", () => {
-    const rows = allManagerStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" });
+    const rows = allManagerStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, 1);
     const names = rows.map((r) => r.display_name);
     expect(names).toContain("مدیر شرق");
     expect(names).toContain("مدیر غرب");

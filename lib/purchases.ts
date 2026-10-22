@@ -13,6 +13,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { movingAverageCost, stockAfter } from "./stockMath";
 import { isToman } from "./money";
+import { orgClause } from "./orgScope";
 import { createBatchTxn } from "./repo/batches";
 import { recordMovementsTxn, defaultFacilityId } from "./repo/stock";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "./orderStateMachine";
@@ -227,7 +228,8 @@ export interface StockRow {
   negative: boolean;
 }
 
-export function stockPosition(db: DatabaseSync): StockRow[] {
+export function stockPosition(db: DatabaseSync, organizationId: number | null): StockRow[] {
+  const org = orgClause("p.organization_id", organizationId);
   // Phase 2: on-hand is the sum of the signed movement ledger. purchased_qty /
   // delivered_qty stay in the shape callers expect, split by sign. stockAfter still
   // holds: purchased - delivered = SUM(base_qty).
@@ -239,10 +241,10 @@ export function stockPosition(db: DatabaseSync): StockRow[] {
               -COALESCE((SELECT SUM(m.base_qty) FROM stock_movements m
                           WHERE m.product_id = p.id AND m.base_qty < 0), 0) AS delivered_qty
          FROM products p
-        WHERE p.active = 1
+        WHERE p.active = 1${org.sql}
         ORDER BY p.name`
     )
-    .all() as unknown as Omit<StockRow, "on_hand" | "value_toman" | "negative">[];
+    .all(...org.params) as unknown as Omit<StockRow, "on_hand" | "value_toman" | "negative">[];
 
   return rows.map((row) => {
     const onHand = stockAfter({ purchased: row.purchased_qty, delivered: row.delivered_qty });
@@ -296,8 +298,10 @@ export interface AdvancedStockRow extends StockRow {
  *  the dashboard's plain stock bar chart has no use for a driver's worth of extra
  *  columns and three more queries it would otherwise pay for on every render.
  */
-export function advancedStockPosition(db: DatabaseSync): AdvancedStockRow[] {
-  const base = stockPosition(db);
+export function advancedStockPosition(db: DatabaseSync, organizationId: number | null): AdvancedStockRow[] {
+  /* Only `base` needs the scope: every map below is keyed by product id and read back only for
+     a product `base` returned, so another tenant's rows are never looked up. */
+  const base = stockPosition(db, organizationId);
 
   const thresholds = db
     .prepare("SELECT id, reorder_point, target_stock FROM products WHERE active = 1")

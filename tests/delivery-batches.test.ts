@@ -153,7 +153,7 @@ describe("recordDelivery FEFO stock", () => {
       collected_toman: 0,
       by: driver,
     });
-    const pos = stockPosition(db).find((r) => r.product_id === product)!;
+    const pos = stockPosition(db, 1).find((r) => r.product_id === product)!;
     expect(pos.on_hand).toBe(75); // 115 purchased - 40 delivered
     expect(onHand(1, { product_id: product })).toBe(75);
   });

@@ -1,7 +1,7 @@
 import { tehranTodayIso } from "@/lib/jalali";
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
 import { statementFor, allStatements, readRates } from "@/lib/commissionLedger";
 import { allDriverStatements, readDriverRates } from "@/lib/driverCommissionLedger";
 import {
@@ -45,14 +45,14 @@ export async function GET(req: NextRequest) {
   }
 
   const groupId = isOwner(session.role) ? undefined : session.groupId;
-  const statements = allStatements(db, period, { groupId });
-  const driverStatements = allDriverStatements(db, period, { groupId });
+  const statements = allStatements(db, period, { groupId, organizationId: orgScopeId(session) });
+  const driverStatements = allDriverStatements(db, period, { groupId, organizationId: orgScopeId(session) });
   // A manager's own override statement, or every manager's for the owner -- a manager
   // does not see another manager's override, the same "own group only" boundary their
   // فروشنده statements already draw.
   const managerStatements =
     isOwner(session.role)
-      ? allManagerStatements(db, period)
+      ? allManagerStatements(db, period, orgScopeId(session))
       : session.role === "group_manager"
         ? [managerStatementFor(db, session.user.id, period)]
         : [];

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
 import { stockPosition, readPurchases } from "@/lib/purchases";
 import { expiringBatches } from "@/lib/repo/batches";
 import { stockLevels } from "@/lib/repo/stock";
@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
   // Phase 2: soonest expiry per product + a company-wide expiring count.
   // Phase 3: reserved (claimed by confirmed orders) and available-to-promise.
   const levelByProduct = new Map(stockLevels(org).map((l) => [l.product_id, l]));
-  const stock = stockPosition(db).map((row) => {
+  const stock = stockPosition(db, orgScopeId(guard.session)).map((row) => {
     const lvl = levelByProduct.get(row.product_id);
     return {
       ...row,

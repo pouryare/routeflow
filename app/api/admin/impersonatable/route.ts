@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { readImpersonatable } from "@/lib/repo/impersonation";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
 import { logPlatformAccess } from "@/lib/platformAccess";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -19,7 +19,7 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const db = getDb();
-  const users = readImpersonatable(db);
+  const users = readImpersonatable(db, orgScopeId(guard.session));
 
   // A platform_owner only; logPlatformAccess returns immediately for anyone else, so
   // this is not a per-row cost for an ordinary owner.

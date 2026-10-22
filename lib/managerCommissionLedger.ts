@@ -13,6 +13,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { effectiveAt } from "./pricing";
 import { allStatements, type Period } from "./commissionLedger";
 import { roundToman } from "./money";
+import { orgClause } from "./orgScope";
 
 export interface ManagerOverrideRow {
   id: number;
@@ -137,18 +138,18 @@ export function managerStatementFor(
 ): ManagerStatement {
   const person = db
     .prepare(
-      `SELECT u.id, u.display_name, u.group_id, g.name AS group_name
+      `SELECT u.id, u.display_name, u.group_id, u.organization_id, g.name AS group_name
          FROM users u LEFT JOIN groups g ON g.id = u.group_id
         WHERE u.id = ?`
     )
     .get(managerId) as
-    | { id: number; display_name: string; group_id: number | null; group_name: string | null }
+    | { id: number; display_name: string; group_id: number | null; organization_id: number; group_name: string | null }
     | undefined;
 
   // A manager with no group has no team to earn a share of -- zero rather than a group
   // sum error, the same "empty means nothing" rule allStatements enforces.
   const periodOrders =
-    person?.group_id == null ? [] : allStatements(db, period, { groupId: person.group_id }).flatMap((s) => s.orders);
+    person?.group_id == null ? [] : allStatements(db, period, { groupId: person.group_id, organizationId: person.organization_id }).flatMap((s) => s.orders);
   const groupAccrued = periodOrders.reduce((total, o) => total + o.accrual_toman, 0);
 
   const overrides = db
@@ -183,7 +184,7 @@ export function managerStatementFor(
     person?.group_id == null
       ? 0
       : roundToman(
-          allStatements(db, { from: "0000-01-01", to: "9999-12-31" }, { groupId: person.group_id })
+          allStatements(db, { from: "0000-01-01", to: "9999-12-31" }, { groupId: person.group_id, organizationId: person.organization_id })
             .flatMap((s) => s.orders)
             .reduce((total, o) => {
               const r = overrideFor(overrides, managerId, o.order_date);
@@ -207,9 +208,10 @@ export function managerStatementFor(
   };
 }
 
-export function allManagerStatements(db: DatabaseSync, period: Period): ManagerStatement[] {
+export function allManagerStatements(db: DatabaseSync, period: Period, organizationId: number | null): ManagerStatement[] {
+  const org = orgClause("organization_id", organizationId);
   const people = db
-    .prepare("SELECT id FROM users WHERE role = 'group_manager' ORDER BY display_name")
-    .all() as unknown as { id: number }[];
+    .prepare(`SELECT id FROM users WHERE role = 'group_manager'${org.sql} ORDER BY display_name`)
+    .all(...org.params) as unknown as { id: number }[];
   return people.map((person) => managerStatementFor(db, person.id, period));
 }

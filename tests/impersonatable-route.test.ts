@@ -44,18 +44,18 @@ beforeAll(() => {
 
 describe("readImpersonatable", () => {
   it("lists users from every organisation, not just the caller's", () => {
-    const rows = readImpersonatable(getDb());
+    const rows = readImpersonatable(getDb(), null);
     const orgs = new Set(rows.map((r) => r.organization_id));
     expect(orgs.has(8)).toBe(true);
     expect(orgs.has(9)).toBe(true);
   });
 
   it("never offers a deactivated account", () => {
-    expect(readImpersonatable(getDb()).map((r) => r.id)).not.toContain(12);
+    expect(readImpersonatable(getDb(), null).map((r) => r.id)).not.toContain(12);
   });
 
   it("carries the fields the switcher renders", () => {
-    const r = readImpersonatable(getDb())[0];
+    const r = readImpersonatable(getDb(), null)[0];
     expect(r).toHaveProperty("organization_name");
     expect(r).toHaveProperty("display_name");
     expect(r).toHaveProperty("role");
@@ -64,7 +64,7 @@ describe("readImpersonatable", () => {
 
   it("carries the FULL role set, so a dual-hat person is not reduced to one hat", () => {
     setRoles(5, ["field_rep", "delivery_driver"]);
-    const row = readImpersonatable(getDb()).find((r) => r.id === 5)!;
+    const row = readImpersonatable(getDb(), null).find((r) => r.id === 5)!;
     expect(row.roles.sort()).toEqual(["delivery_driver", "field_rep"]);
   });
 });

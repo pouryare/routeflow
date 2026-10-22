@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { orgClause } from "../orgScope";
 
 /** The one read the Login-As route needs: the user an owner asked to act as.
  *
@@ -49,17 +50,18 @@ export type ImpersonatableUser = {
  *  Deactivated accounts are excluded, and so are deactivated ORGANISATIONS: offering one
  *  would mint a session that dies on the very next request, and the founder would blame
  *  the app for it. */
-export function readImpersonatable(db: DatabaseSync): ImpersonatableUser[] {
+export function readImpersonatable(db: DatabaseSync, organizationId: number | null): ImpersonatableUser[] {
+  const org = orgClause("u.organization_id", organizationId);
   const rows = db
     .prepare(
       `SELECT u.id, u.display_name, u.role, u.group_id, u.organization_id, u.active,
               o.name AS organization_name
          FROM users u
          JOIN organizations o ON o.id = u.organization_id
-        WHERE u.active = 1 AND o.active = 1
+        WHERE u.active = 1 AND o.active = 1${org.sql}
         ORDER BY o.name, u.display_name`
     )
-    .all() as Array<Omit<ImpersonatableUser, "roles">>;
+    .all(...org.params) as Array<Omit<ImpersonatableUser, "roles">>;
 
   // One grouped pass rather than a query per row: N+1 here is N queries per switcher open.
   const byUser = new Map<number, string[]>();

@@ -510,6 +510,12 @@ export function orgFilter(
   return { sql: ` AND ${column} = ?`, params: [session.organizationId] };
 }
 
+/** The organisation id to hand a reader that takes one (see `orgClause`): the caller's own,
+ *  or null for a platform_owner, who reads across tenants. Same rule as `orgFilter`. */
+export function orgScopeId(session: Session): number | null {
+  return session.role === "platform_owner" ? null : session.organizationId;
+}
+
 /** Whether this session may touch a row belonging to the given organisation. Use before
  *  any write that names an organization_id. */
 export function canReachOrg(session: Session, organizationId: number | null): boolean {
