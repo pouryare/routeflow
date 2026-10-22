@@ -228,3 +228,9 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] Searched the web and ranked 7 options (reply above); nothing installed
 - Not done / gaps: ranking rests on search snippets and aggregator pages, not on reading each repo; star counts unverified; no skill was run against this repo
 - Next steps: 1. run `/security-review` on the open branch; 2. decide whether to read and try Trail of Bits `static-analysis` (Semgrep failed here earlier on a Python conflict)
+
+## Architecture audit, Phase 1 (2026-10-22)
+- [x] Inventory written: `docs/architecture-audit-2026-10-22.md` (structure, 15 import cycles, `lib/db.ts` 5,840 lines with a 2,800-line `getDb`, tenancy by convention, 36 high-complexity and 96 over-long functions, committed agent litter `.zoocode*`, 5 dead files, 86 unused exports)
+- [x] Checked healthy areas: tsc and eslint clean, 0.24 % duplication, 212 `requireRole` calls, no client-to-server value imports
+- Not done / gaps: no code changed (Phase 1 is read-only); 107 un-scoped tenant statements are unverified candidates, not confirmed leaks; no third-party skill installed (npm analysers sufficed); Semgrep/CodeQL not run
+- Next steps (waiting for your go): 1. Step 0 guardrails (tenancy test, schema snapshot, tests for untested repo files, madge/knip reports); 2. remove agent litter and dead files; 3. move row types out of `db.ts` and break cycles; 4. split `lib/db.ts`; 5. one data-access layer; 6. decompose big units; 7. consolidate commission/map families; 8. ratchet checks
