@@ -13,35 +13,56 @@ function correction(session: Session, id: number, org: number, note: string, ver
   getDb().prepare(`INSERT INTO activities (organization_id,customer_id,user_id,type,note,verification_to,occurred_at,created_at)
     VALUES (?,?,?,?,?,?,?,?)`).run(org, id, session.user.id, verified ? "verification" : "correction", note, verified ? "verified" : null, now, now);
 }
-export function updateBusinessFields(session: Session, id: number, raw: unknown): void {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new CrmError(400, "اطلاعات نامعتبر است");
-  const input = raw as Record<string, unknown>;
-  const allowed = ["business_name", "phone", "secondary_phone", "whatsapp", "address", "area_label", "business_type", "price_tier", "working_hours", "website", "instagram", "maps_url", "lat", "lng"];
-  if (!Object.keys(input).length || Object.keys(input).some(k => !allowed.includes(k))) throw new CrmError(400, "فیلد نامعتبر است");
-  const values: Record<string, string | number | null> = {};
-  if ("lat" in input || "lng" in input) {
-    const { lat, lng } = input;
-    if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new CrmError(400, "مختصات موقعیت معتبر نیست");
-    values.lat = lat; values.lng = lng; values.location_precision = "exact";
+type Values = Record<string, string | number | null>;
+type Input = Record<string, unknown>;
+
+const ALLOWED_FIELDS = ["business_name", "phone", "secondary_phone", "whatsapp", "address", "area_label", "business_type", "price_tier", "working_hours", "website", "instagram", "maps_url", "lat", "lng"];
+
+function isHttpUrl(text: string): boolean {
+  try {
+    return ["http:", "https:"].includes(new URL(text).protocol);
+  } catch {
+    return false;
   }
+}
+
+function parseCoordinates(input: Input, values: Values): void {
+  if (!("lat" in input || "lng" in input)) return;
+  const { lat, lng } = input;
+  if (typeof lat !== "number" || typeof lng !== "number" || !Number.isFinite(lat) || !Number.isFinite(lng) || Math.abs(lat) > 90 || Math.abs(lng) > 180) throw new CrmError(400, "مختصات موقعیت معتبر نیست");
+  values.lat = lat; values.lng = lng; values.location_precision = "exact";
+}
+
+function parseTextFields(input: Input, values: Values): void {
   for (const key of ["business_name", "address", "area_label", "website"] as const) {
     if (!(key in input)) continue;
     const v = input[key];
     if (v !== null && (typeof v !== "string" || v.length > 500)) throw new CrmError(400, "متن نامعتبر است");
     values[key] = typeof v === "string" ? v.trim() || null : null;
     if (key === "business_name" && (!values[key] || String(values[key]).length < 2)) throw new CrmError(400, "نام کسب‌وکار را وارد کنید");
-    if (key === "website" && values[key]) {
-      try { if (!["http:", "https:"].includes(new URL(String(values[key])).protocol)) throw new Error(); }
-      catch { throw new CrmError(400, "نشانی وب معتبر نیست"); }
-    }
+    if (key === "website" && values[key] && !isHttpUrl(String(values[key]))) throw new CrmError(400, "نشانی وب معتبر نیست");
   }
+}
+
+/** A phone as stored (leading zero) plus its normalised form; null when blank. Throws on junk. */
+function phoneOf(v: unknown): { stored: string | null; norm: string | null } {
+  if (v !== null && typeof v !== "string") throw new CrmError(400, "شماره تلفن معتبر نیست");
+  const p = typeof v === "string" && v.trim() ? normPhone(v) : null;
+  if (typeof v === "string" && v.trim() && !p) throw new CrmError(400, "شماره تلفن معتبر نیست");
+  return { stored: p ? `0${p}` : null, norm: p };
+}
+
+function parsePhones(input: Input, values: Values): void {
   if ("phone" in input) {
-    const v = input.phone;
-    if (v !== null && typeof v !== "string") throw new CrmError(400, "شماره تلفن معتبر نیست");
-    const p = typeof v === "string" && v.trim() ? normPhone(v) : null;
-    if (typeof v === "string" && v.trim() && !p) throw new CrmError(400, "شماره تلفن معتبر نیست");
-    values.phone = p ? `0${p}` : null; values.phone_norm = p;
+    const { stored, norm } = phoneOf(input.phone);
+    values.phone = stored; values.phone_norm = norm;
   }
+  for (const key of ["secondary_phone", "whatsapp"] as const) {
+    if (key in input) values[key] = phoneOf(input[key]).stored;
+  }
+}
+
+function parseLinks(input: Input, values: Values): void {
   if ("instagram" in input) {
     const v = input.instagram;
     if (v !== null && typeof v !== "string") throw new CrmError(400, "آدرس صفحهٔ اینستاگرام معتبر نیست");
@@ -53,19 +74,13 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
     const v = input.maps_url;
     if (v !== null && typeof v !== "string") throw new CrmError(400, "لینک نقشه معتبر نیست");
     if (typeof v === "string" && v.trim()) {
-      try { if (!["http:", "https:"].includes(new URL(v.trim()).protocol)) throw new Error(); }
-      catch { throw new CrmError(400, "لینک نقشه معتبر نیست"); }
+      if (!isHttpUrl(v.trim())) throw new CrmError(400, "لینک نقشه معتبر نیست");
       values.maps_url = v.trim().slice(0, 500);
     } else values.maps_url = null;
   }
-  for (const key of ["secondary_phone", "whatsapp"] as const) {
-    if (!(key in input)) continue;
-    const v = input[key];
-    if (v !== null && typeof v !== "string") throw new CrmError(400, "شماره تلفن معتبر نیست");
-    const p = typeof v === "string" && v.trim() ? normPhone(v) : null;
-    if (typeof v === "string" && v.trim() && !p) throw new CrmError(400, "شماره تلفن معتبر نیست");
-    values[key] = p ? `0${p}` : null;
-  }
+}
+
+function parseClassification(input: Input, values: Values): void {
   if ("business_type" in input) {
     if (!isOneOf(BUSINESS_TYPES, input.business_type)) throw new CrmError(400, "نوع کسب‌وکار نامعتبر است");
     values.business_type = input.business_type; values.customer_type = customerTypeFor(input.business_type);
@@ -78,6 +93,25 @@ export function updateBusinessFields(session: Session, id: number, raw: unknown)
     if (input.working_hours !== null && !isWorkingHours(input.working_hours)) throw new CrmError(400, "ساعت کاری نامعتبر است");
     values.working_hours_json = input.working_hours === null ? null : JSON.stringify(input.working_hours);
   }
+}
+
+/** Validates the edit of a business's own fields and returns the columns to set. Pure: no lookups, so
+ *  every rule can be read and tested apart from the transaction that applies it. */
+export function parseBusinessFields(raw: unknown): Values {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) throw new CrmError(400, "اطلاعات نامعتبر است");
+  const input = raw as Input;
+  if (!Object.keys(input).length || Object.keys(input).some((k) => !ALLOWED_FIELDS.includes(k))) throw new CrmError(400, "فیلد نامعتبر است");
+  const values: Values = {};
+  parseCoordinates(input, values);
+  parseTextFields(input, values);
+  parsePhones(input, values);
+  parseLinks(input, values);
+  parseClassification(input, values);
+  return values;
+}
+
+export function updateBusinessFields(session: Session, id: number, raw: unknown): void {
+  const values = parseBusinessFields(raw);
   const db = getDb();
   db.exec("BEGIN IMMEDIATE");
   try {
