@@ -12,14 +12,14 @@ import { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
 import Link from "next/link";
-import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup } from "react-leaflet";
 /* This app carries its own DistrictFeature shape, which is not structurally the
    GeoJsonObject react-leaflet declares. Casting to GeoJSONProps' own field types says
    exactly which boundary is being crossed; `as any` said nothing and switched off
    checking for the rest of the prop as well. */
 import type { GeoJSONProps } from "react-leaflet";
-import { LatLngBounds, divIcon, geoJSON } from "leaflet";
-import type { DivIcon, Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
+import { geoJSON } from "leaflet";
+import type { Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
@@ -43,7 +43,6 @@ import {
   distanceColor,
   DISTANCE_BANDS,
   isCustomerColorMode,
-  shapeForColor,
   type DistrictColorMode,
   districtGroupColor,
   isDistrictColorMode,
@@ -104,13 +103,17 @@ import { Icon } from "@/components/meridian/Icon";
 import MapWorklist from "./MapWorklist";
 import { buildWorklist, type Bounds } from "@/lib/mapWorklist";
 import { MAP_FOCUS_EVENT } from "@/lib/searchModel";
-import { MAP_PIN_SVG } from "@/components/meridian/icon-map";
+import { } from "@/components/meridian/icon-map";
 
 // Everything below is reachable only after an interaction -- opening a customer, opening
 // a district, expanding the import panel, switching the heatmap on -- or carries a
 // library the first paint doesn't need (leaflet.heat, leaflet.fullscreen and their CSS).
 // Splitting them out keeps that weight off the chunk that has to arrive before the map
 // can draw anything. CoverageMap is itself ssr:false, so none of these need an SSR pass.
+import { readStoredView, linkTargetView, writeStoredView } from "@/components/coverage/mapViewStore";
+import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
+import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon, foundLocationIcon, otherFacilityDistance } from "@/components/coverage/mapParts";
+
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
 /* MapLibre and its Leaflet bridge are ~250KB: loaded only once a vector basemap is
    actually chosen, so the raster styles -- including the default -- cost nothing. */
@@ -123,111 +126,6 @@ const ShortcutHelp = dynamic(() => import("./ShortcutHelp"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
 
-const VIEW_KEY = "coverage_view";
-
-/** Where this browser was left. A driver works one district for days at a time, and the
- *  map used to re-fit to every customer in the province on each load. */
-function readStoredView(): MapView | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(VIEW_KEY);
-    if (!raw) return null;
-    const v = JSON.parse(raw) as Partial<MapView>;
-    if (typeof v.lat !== "number" || typeof v.lng !== "number" || typeof v.zoom !== "number") return null;
-    return { lat: v.lat, lng: v.lng, zoom: v.zoom };
-  } catch {
-    // Unparseable or storage blocked -- fall back to fitting, which is the old behaviour.
-    return null;
-  }
-}
-
-/** The opening view implied by a link that names a target but no position.
- *
- *  Computing it here, before the map is constructed, is what lets `?c=42` open *on* the
- *  customer instead of drawing Tehran and then flying away from it. Districts use the
- *  centroid already carried on their properties row, so this works before any polygon
- *  geometry has been fetched.
- *
- *  Zoom levels: 15 puts a shop in its street, 13 fits a neighbourhood. */
-function linkTargetView(
-  link: { customerId?: number; districtId?: number },
-  customers: CustomerRow[],
-  districts: DistrictProperties[]
-): MapView | null {
-  if (link.customerId !== undefined) {
-    const c = customers.find((x) => x.id === link.customerId);
-    if (c && c.lat !== null && c.lng !== null) return { lat: c.lat, lng: c.lng, zoom: 15 };
-  }
-  if (link.districtId !== undefined) {
-    const d = districts.find((x) => x.id === link.districtId);
-    if (d && d.centroid_lat !== null && d.centroid_lng !== null) {
-      return { lat: d.centroid_lat, lng: d.centroid_lng, zoom: 13 };
-    }
-  }
-  return null;
-}
-
-function writeStoredView(v: MapView): void {
-  try {
-    localStorage.setItem(VIEW_KEY, JSON.stringify(v));
-  } catch {
-    // Private mode. The map still works, it just won't remember.
-  }
-}
-
-/** Map geometry colours.
- *
- *  These cannot be `var(--map-stroke-major)`: the map runs with `preferCanvas`, and
- *  Leaflet writes the value straight onto a canvas 2D context, where var() is just an
- *  unrecognised string and the path silently draws black. So the value has to be a real
- *  hex by the time Leaflet sees it.
- *
- *  It is still defined in CSS -- app/globals.css, per accent theme, per skin -- and read
- *  back out here with getComputedStyle. Ten themes times two skins times two grounds is
- *  forty palettes; duplicating those in TypeScript would guarantee the stylesheet and the
- *  map disagreed within a release. One definition, resolved at the point of use.
- *
- *  The fallbacks are the shipping terracotta, and they matter: getComputedStyle returns
- *  "" for a property that has not been applied yet, which on the very first paint would
- *  otherwise hand Leaflet an empty string. */
-const MAP_INK_FALLBACK = {
-  light: { strokeMajor: "#6B5B4C", strokeMinor: "#8A7A69", selected: "#C0532B", boundary: "#998876", unknown: "#7D7166" },
-  dark:  { strokeMajor: "#9A8A78", strokeMinor: "#8A7A69", selected: "#E8734A", boundary: "#6E6055", unknown: "#7D7166" },
-} as const;
-
-export interface MapInk {
-  strokeMajor: string;
-  strokeMinor: string;
-  selected: string;
-  boundary: string;
-  /** The fill for a district whose coverage is unknown -- 429 of 439 of them, so this is
-   *  the colour the map mostly IS, and the reason the theme has to reach it. */
-  unknown: string;
-}
-
-/** Resolves the map ink for a ground out of the live stylesheet.
- *
- *  `ground` and not the page skin: the strokes sit on the basemap, so a cream basemap
- *  needs dark strokes whatever the surrounding UI is doing. The dark set is read by
- *  temporarily asking for the dark-skin values -- see useMapInk, which does this by
- *  reading from an element that carries the right attributes rather than by guessing. */
-function readMapInk(el: HTMLElement | null, ground: "light" | "dark"): MapInk {
-  const fb = MAP_INK_FALLBACK[ground];
-  if (!el || typeof window === "undefined") return { ...fb };
-  const cs = getComputedStyle(el);
-  const get = (name: string, fallback: string) => {
-    const v = cs.getPropertyValue(name).trim();
-    return v || fallback;
-  };
-  return {
-    strokeMajor: get("--map-stroke-major", fb.strokeMajor),
-    strokeMinor: get("--map-stroke-minor", fb.strokeMinor),
-    selected: get("--map-selected", fb.selected),
-    boundary: get("--map-boundary", fb.boundary),
-    unknown: get("--map-unknown", fb.unknown),
-  };
-}
-
 // Three presets rather than a slider: this gets used one-handed in a moving vehicle,
 // where a slider thumb is unusable.
 const CORRIDOR_WIDTHS = [2, 5, 10];
@@ -239,151 +137,6 @@ interface DueReminder {
   due_date: string;
   message: string;
   label: string;
-}
-
-const toBounds = (b: LatLngBounds): Bounds => ({
-  south: b.getSouth(),
-  west: b.getWest(),
-  north: b.getNorth(),
-  east: b.getEast(),
-});
-
-/** Reports the visible area once on mount and again whenever the map settles, for the
- *  sidebar's worklist (lib/mapWorklist.ts). */
-function BoundsReporter({ onBounds }: { onBounds: (b: Bounds) => void }) {
-  const map = useMapEvents({ moveend: () => onBounds(toBounds(map.getBounds())) });
-  useEffect(() => {
-    onBounds(toBounds(map.getBounds()));
-  }, [map, onBounds]);
-  return null;
-}
-
-function DebugMapExpose() {
-  const map = useMap();
-  useEffect(() => {
-    if (process.env.NODE_ENV !== "production") {
-      (window as unknown as { __leafletMap?: unknown }).__leafletMap = map;
-    }
-  }, [map]);
-  return null;
-}
-
-/** Publishes the map's zoom upward so the "auto" precision mode can pick a tier.
- *  Deliberately only listens to zoomend, not zoom: the intermediate values during a
- *  pinch or a flyTo would thrash the tier and re-fetch geometry mid-gesture. */
-function ZoomWatcher({ onZoom }: { onZoom: (zoom: number) => void }) {
-  const map = useMapEvents({
-    zoomend: () => onZoom(map.getZoom()),
-  });
-  return null;
-}
-
-/** The opening view when nothing else has said where to look. Skipped entirely when the
- *  URL carries a view or a target, or when this browser remembers where it was left --
- *  fitting to all customers would throw away the thing the user actually asked for. */
-/** Publishes the map's position after every gesture. moveend covers zooming too --
- *  Leaflet fires a move for a zoom -- so one listener is enough, and it fires once at the
- *  end of a pan rather than continuously through it. */
-function ViewWatcher({ onView }: { onView: (v: MapView) => void }) {
-  const map = useMapEvents({
-    moveend: () => {
-      const c = map.getCenter();
-      onView({ lat: c.lat, lng: c.lng, zoom: map.getZoom() });
-    },
-  });
-  return null;
-}
-
-function FitToCustomers({ customers, enabled }: { customers: CustomerRow[]; enabled: boolean }) {
-  const map = useMap();
-  const fitted = useRef(false);
-  useEffect(() => {
-    if (!enabled || fitted.current) return;
-    const pts = customers.filter((c) => c.lat && c.lng).map((c) => [c.lat as number, c.lng as number] as [number, number]);
-    if (pts.length === 0) return;
-    fitted.current = true;
-    if (pts.length === 1) {
-      map.setView(pts[0], 13);
-    } else {
-      const bounds = pts.reduce((b, p) => b.extend(p), new LatLngBounds(pts[0], pts[0]));
-      map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
-    }
-  }, [customers, map, enabled]);
-  return null;
-}
-
-// Leaflet icons are stateless factories -- one instance can back every marker that
-// looks alike -- so these are built once per distinct appearance and shared. Building
-// them inline instead meant 135 fresh divIcons on every render of this component (a
-// sidebar toggle, a color-mode switch, a GPS fix), each one forcing Leaflet to tear
-// down and rebuild that marker's DOM.
-const iconCache = new Map<string, DivIcon>();
-
-// Only the selected marker pulses. Two infinite CSS animations on every customer meant
-// a few hundred of them running forever once clustering disengages at zoom 16, which
-// the compositor pays for continuously on a phone -- and a map where everything pulses
-// communicates nothing anyway.
-function customerIcon(color: string, selected: boolean, shaped: boolean): DivIcon {
-  const shape = shaped ? shapeForColor(color) : "diamond";
-  const key = `${color}|${selected}|${shape}`;
-  const cached = iconCache.get(key);
-  if (cached) return cached;
-
-  const pings = selected
-    ? `<span class="customer-marker__ping" aria-hidden="true" style="animation-delay:0ms"></span>
-      <span class="customer-marker__ping" aria-hidden="true" style="animation-delay:var(--pulse-stagger)"></span>`
-    : "";
-  const icon = divIcon({
-    className: "",
-    html: `<div class="customer-marker customer-marker--${shape}${selected ? " customer-marker--selected" : ""}" style="--marker-color:${color}">
-      ${pings}<span class="customer-marker__diamond"></span>
-    </div>`,
-    iconSize: [14, 14],
-    iconAnchor: [7, 7],
-  });
-  iconCache.set(key, icon);
-  return icon;
-}
-
-// Cluster bubbles reuse the accent hue (identity-neutral -- a cluster mixes every
-// status/debt/salesperson color underneath it, so it can't commit to one) rather than
-// any div in MASTER.md's reserved status palette.
-function clusterIcon(cluster: { getChildCount: () => number }) {
-  const count = cluster.getChildCount();
-  const size = count < 10 ? 30 : count < 50 ? 36 : 44;
-  return divIcon({
-    className: "",
-    html: `<div class="cluster-marker" style="width:${size}px;height:${size}px;">${faNum(count)}</div>`,
-    iconSize: [size, size],
-  });
-}
-
-function foundLocationIcon() {
-  return divIcon({
-    className: "",
-    html: `<div class="found-location-marker">${MAP_PIN_SVG}</div>`,
-    iconSize: [26, 26],
-    iconAnchor: [13, 26],
-  });
-}
-
-/** Straight-line distance from one site to the nearest other one -- the popup's
- *  "N km from the warehouse" line. Takes the list rather than closing over it, since
- *  the sites now arrive as a prop and can change while the map is open. */
-function otherFacilityDistance(
-  f: FacilityRow,
-  all: FacilityRow[]
-): { other: FacilityRow; km: number } | null {
-  // Both ends need a position, so an unplaced facility is not a candidate to measure to.
-  // `self` is a const on purpose: TypeScript resets narrowing on a mutable binding inside a
-  // closure, so passing `f` directly to the callback below loses the isPlaced proof.
-  if (!isPlaced(f)) return null;
-  const self = f;
-  const others = all.filter(isPlaced).filter((x) => x.id !== self.id);
-  if (others.length === 0) return null;
-  return others
-    .map((other) => ({ other, km: distanceKm(self, other) }))
-    .sort((a, b) => a.km - b.km)[0];
 }
 
 /** The groups this viewer may see -- for the territory colour mode and the bulk assign

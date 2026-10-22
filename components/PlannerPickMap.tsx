@@ -1,15 +1,15 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
+import { MapContainer, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { Icon } from "@/components/meridian/Icon";
 import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { faNum } from "@/lib/format";
-import { QUIET_TILES } from "@/lib/mapLayers";
 import { NEAREST_COUNTS, nearestN, toggle } from "@/lib/mapSelect";
+import QuietTileLayer from "@/components/map/QuietTileLayer";
 
 export interface PickCandidate {
   /** "c12" for a customer, "l5" for a saved lead place (the same keys VisitPlanFlow uses). */
@@ -79,7 +79,7 @@ export default function PlannerPickMap({
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
       <div className="h-72 w-full">
         <MapContainer center={centre} zoom={12} className="h-full w-full">
-          <TileLayer url={QUIET_TILES.url} attribution={QUIET_TILES.attribution} className="tiles-quiet" maxZoom={QUIET_TILES.maxZoom} />
+          <QuietTileLayer />
           {candidates.map((c) => {
             const order = pickedSet.has(c.key) ? picked.indexOf(c.key) + 1 : null;
             return (

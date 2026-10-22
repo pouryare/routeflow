@@ -8,8 +8,7 @@
  *  that sum a second way.
  */
 
-import { orgOfUser } from "./repo/userOrg";
-import { insertCommissionPayment } from "./repo/commissionPayments";
+import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayments";
 import type { DatabaseSync } from "node:sqlite";
 import { effectiveAt } from "./pricing";
 import { allStatements, type Period } from "./commissionLedger";
@@ -65,22 +64,7 @@ export function setManagerOverride(
   if (!Number.isFinite(input.override_pct) || input.override_pct < 0 || input.override_pct > 100) {
     throw new TypeError(`درصد پورسانت مدیر باید بین ۰ و ۱۰۰ باشد: ${input.override_pct}`);
   }
-  return Number(
-    db
-      .prepare(
-        `INSERT INTO manager_commission_overrides (manager_user_id, override_pct, valid_from, created_by, created_at,
-                                                   organization_id)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        input.manager_user_id ?? null,
-        input.override_pct,
-        input.valid_from.slice(0, 10),
-        input.created_by ?? null,
-        new Date().toISOString(),
-        orgOfUser(db, input.manager_user_id, input.created_by)
-      ).lastInsertRowid
-  );
+  return insertDatedRate(db, "manager", input.manager_user_id, input.override_pct, input);
 }
 
 export function recordManagerPayment(

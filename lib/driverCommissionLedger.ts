@@ -13,8 +13,7 @@ import type { DatabaseSync } from "node:sqlite";
 import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
 import { isToman } from "./money";
-import { orgOfUser } from "./repo/userOrg";
-import { insertCommissionPayment } from "./repo/commissionPayments";
+import { insertCommissionPayment, insertDatedRate } from "./repo/commissionPayments";
 import type { Period } from "./commissionLedger";
 import { orgClause } from "./orgScope";
 
@@ -50,22 +49,7 @@ export function setDriverRate(
   if (!isToman(input.rate_per_kg_toman)) {
     throw new TypeError("نرخ پورسانت راننده را به تومان و بدون اعشار وارد کنید");
   }
-  return Number(
-    db
-      .prepare(
-        `INSERT INTO driver_commission_rates (driver_user_id, rate_per_kg_toman, valid_from, created_by, created_at,
-                                              organization_id)
-         VALUES (?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        input.driver_user_id ?? null,
-        input.rate_per_kg_toman,
-        input.valid_from.slice(0, 10),
-        input.created_by ?? null,
-        new Date().toISOString(),
-        orgOfUser(db, input.driver_user_id, input.created_by)
-      ).lastInsertRowid
-  );
+  return insertDatedRate(db, "driver", input.driver_user_id, input.rate_per_kg_toman, input);
 }
 
 export function recordDriverPayment(

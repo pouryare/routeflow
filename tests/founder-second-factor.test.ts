@@ -9,7 +9,7 @@ process.env.SESSION_SECRET = "test-secret-".padEnd(40, "x");
 
 const { getDb } = await import("@/lib/db");
 const { hashPassword, createSessionToken, COOKIE_NAME } = await import("@/lib/auth");
-const { totpAt, stepAt, base32Decode } = await import("@/lib/totp");
+const { totpAt, stepAt } = await import("@/lib/totp");
 const { NextRequest } = await import("next/server");
 const { POST: login } = await import("@/app/api/login/route");
 const { POST: secondStep } = await import("@/app/api/login/second-factor/route");
