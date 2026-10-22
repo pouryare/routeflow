@@ -34,17 +34,22 @@ describe("the orders host serves three views", () => {
     expect(host, "the journey view also carries the funnel").toContain("OrderFunnel");
   });
 
+  // The reads moved out of the page into lib/repo/ordersView.ts (ordersListFor); the page asks once.
+  const view = read("lib/repo/ordersView.ts");
+
   it("reads orders ONCE, not once per view", () => {
     // Three pages, one table, one reader function. If the host grows a second
-    // readOrders call the consolidation has only changed the URLs.
-    expect(host.match(/readOrders\(/g) ?? []).toHaveLength(1);
+    // ordersListFor / readOrders call the consolidation has only changed the URLs.
+    expect(host.match(/ordersListFor\(/g) ?? []).toHaveLength(1);
+    expect(host).not.toMatch(/readOrders\(/);
+    expect(view.match(/readOrders\(/g) ?? []).toHaveLength(1);
   });
 
   it("all three views use the same limit", () => {
     // 100 / 60 / 60 meant the two quieter pages silently truncated. 100 is the one that
-    // was not truncating, so it is the one the host uses.
-    expect(host).toMatch(/limit:\s*100\b/);
-    expect(host).not.toMatch(/limit:\s*60\b/);
+    // was not truncating, so it is the one the list uses.
+    expect(view).toMatch(/limit:\s*100\b/);
+    expect(view).not.toMatch(/limit:\s*60\b/);
   });
 
   it("still carries the tab strip", () => {

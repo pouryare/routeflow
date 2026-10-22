@@ -111,7 +111,10 @@ function importGraph(files) {
 
 function tenantTables() {
   const db = fs.readFileSync(path.join(ROOT, "lib", "database", "tenantTables.ts"), "utf8");
-  return [...db.match(/TENANT_TABLES\s*=\s*\[([\s\S]*?)\]/)[1].matchAll(/"(\w+)"/g)].map((x) => x[1]);
+  const listed = [...db.match(/TENANT_TABLES\s*=\s*\[([\s\S]*?)\]/)[1].matchAll(/"(\w+)"/g)].map((x) => x[1]);
+  /* `users` carries organization_id but is not in TENANT_TABLES (it is created before the tenancy sweep),
+     and two cross-tenant reads came from unscoped `FROM users` queries. */
+  return [...new Set([...listed, "users"])];
 }
 
 /** SELECT statements that look cross-tenant (see the header). Each: { file, line, sql }. */
