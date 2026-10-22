@@ -382,6 +382,18 @@ export function advancedStockPosition(db: DatabaseSync, organizationId: number |
   });
 }
 
+/** This month's purchase count and value for one organisation (the انبار page header). */
+export function monthPurchaseTotals(db: DatabaseSync, organizationId: number | null, monthFrom: string): { n: number; total: number } {
+  const org = orgClause("pu.organization_id", organizationId);
+  return db
+    .prepare(
+      `SELECT COUNT(DISTINCT pu.id) AS n, COALESCE(SUM(pl.base_qty * pl.unit_cost_toman), 0) AS total
+         FROM purchases pu LEFT JOIN purchase_lines pl ON pl.purchase_id = pu.id
+        WHERE pu.purchase_date >= ?${org.sql}`
+    )
+    .get(monthFrom, ...org.params) as { n: number; total: number };
+}
+
 export interface PurchaseSummary {
   id: number;
   supplier: string | null;

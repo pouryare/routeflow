@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind, getDb } from "@/lib/db";
 import { readFacility } from "@/lib/facilities";
 import { isValidCoord } from "@/lib/geoLinks";
-import { canReachGroup, requireRole } from "@/lib/session";
+import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
+import { orgClause } from "@/lib/orgScope";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 interface PatchInput {
@@ -168,7 +169,8 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
 
   // Every distance in the app is measured from a site. Deleting the last one would
   // leave nothing to measure from, so it is refused rather than handled downstream.
-  const total = (db.prepare("SELECT COUNT(*) c FROM facilities").get() as { c: number }).c;
+  const orgOnly = orgClause("organization_id", orgScopeId(guard.session));
+  const total = (db.prepare(`SELECT COUNT(*) c FROM facilities WHERE 1 = 1${orgOnly.sql}`).get(...orgOnly.params) as { c: number }).c;
   if (total <= 1) {
     return NextResponse.json({ ok: false, error: "آخرین مکان را نمی‌توان حذف کرد" }, { status: 400 });
   }

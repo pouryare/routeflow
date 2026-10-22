@@ -83,7 +83,7 @@ describe("district is derived from coordinates", () => {
     db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('ناحیه','nahiye',?,1)").run(NOW);
     const gid = Number((db.prepare("SELECT id FROM groups WHERE slug = 'nahiye'").get() as { id: number }).id);
     db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(gid, east);
-    recomputeCustomerGroups(db);
+    recomputeCustomerGroups(db, 1);
     const row = db.prepare("SELECT group_id FROM customers WHERE id = ?").get(cid) as { group_id: number | null };
     expect(row.group_id).toBe(gid);
   });

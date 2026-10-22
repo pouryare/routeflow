@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orgScopeId } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
-import { advancedStockPosition, readPurchases } from "@/lib/purchases";
+import { advancedStockPosition, monthPurchaseTotals, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
@@ -64,13 +64,7 @@ export default async function StockPage() {
 
   const today = toJalali(new Date().toISOString())!;
   const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
-  const monthPurchases = db
-    .prepare(
-      `SELECT COUNT(DISTINCT pu.id) AS n, COALESCE(SUM(pl.base_qty * pl.unit_cost_toman), 0) AS total
-         FROM purchases pu LEFT JOIN purchase_lines pl ON pl.purchase_id = pu.id
-        WHERE pu.purchase_date >= ?`
-    )
-    .get(monthFrom) as { n: number; total: number };
+  const monthPurchases = monthPurchaseTotals(db, orgScopeId(session), monthFrom);
 
   /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
      also holds what is in the vans). The default facility is the warehouse. */
