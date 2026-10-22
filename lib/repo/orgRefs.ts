@@ -49,3 +49,10 @@ export function findCustomerInOrg(id: number, organizationId: number | null): { 
     | { id: number; group_id: number | null }
     | undefined;
 }
+
+/** A group manager of this company, by the primary role column (manager overrides are keyed to it). */
+export function groupManagerInOrg(userId: number, organizationId: number | null): boolean {
+  if (!Number.isInteger(userId)) return false;
+  const org = orgClause("organization_id", organizationId);
+  return !!getDb().prepare(`SELECT 1 FROM users WHERE id = ? AND role = 'group_manager'${org.sql}`).get(userId, ...org.params);
+}

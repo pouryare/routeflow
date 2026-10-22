@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, orgScopeId } from "@/lib/session";
+import { orderVisible } from "@/lib/repo/ordersAccess";
 import { packagingOfProduct, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { readOrder, confirmOrder, addLine, OrderError } from "@/lib/orders";
 
@@ -17,11 +18,7 @@ const CAN_SELL = ["platform_owner", "owner", "group_manager", "phone_sales", "fi
  *  version of this bug is a list that hides a row and a detail page that shows it.
  */
 function visible(session: Parameters<typeof orderFilter>[0], orderId: number): boolean {
-  const scope = orderFilter(session);
-  const row = getDb()
-    .prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`)
-    .get(orderId, ...scope.params);
-  return row !== undefined;
+  return orderVisible(orderFilter(session), orderId);
 }
 
 /* A function, not a module-level response: a Response body can be read once, so the second request

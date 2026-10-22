@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { requireRole, orderFilter, groupFilter } from "@/lib/session";
+import { customerVisible } from "@/lib/repo/ordersAccess";
 import { readCustomerSummary } from "@/lib/customerSummary";
 
 const CAN_SEE = ["platform_owner", "owner", "group_manager", "phone_sales"] as const;
@@ -23,10 +24,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   }
 
   const db = getDb();
-  const seen = groupFilter(guard.session);
-  const visible = db
-    .prepare(`SELECT id FROM customers WHERE id = ?${seen.sql}`)
-    .get(id, ...seen.params);
+  const visible = customerVisible(groupFilter(guard.session), id);
   if (!visible) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { orgScopeId, requireRole } from "@/lib/session";
-import { inOrg } from "@/lib/repo/orgRefs";
+import { groupManagerInOrg } from "@/lib/repo/orgRefs";
 import { setManagerOverride } from "@/lib/managerCommissionLedger";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -36,8 +36,7 @@ export async function POST(req: NextRequest) {
   const managerId = rawId === undefined || rawId === null ? null : Number(rawId);
 
   if (managerId !== null) {
-    const isManager = inOrg("users", managerId, orgScopeId(guard.session)) &&
-      !!db.prepare("SELECT id FROM users WHERE id = ? AND role = 'group_manager'").get(managerId);
+    const isManager = groupManagerInOrg(managerId, orgScopeId(guard.session));
     if (!isManager) {
       return NextResponse.json({ ok: false, error: "این حساب مدیر گروه نیست" }, { status: 400 });
     }
