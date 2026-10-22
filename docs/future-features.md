@@ -4,6 +4,8 @@ Ideas that would remove the most manual entry on a phone but are ambitious or ri
 
 Every item must end in a **confirmation tap flow** (`docs/tap-flow-principles.md`): the machine proposes, the person confirms with one tap, and the usual 5 s undo applies. Nothing the machine reads is saved without that confirmation.
 
+**Numbering and roadmap.** Entries F1–F5 and F35–F37 predate the larger brainstorm; F6–F34 and F38–F145 follow. Three later entries were first numbered F35–F37 by mistake and clashed with the earlier ones, so they are now F146 (dashboard builder), F147 (document templates) and F148 (duplicate customer upgrade). A prioritised view of every entry, grouped by theme, with dependencies, overlaps and first slices, is in `docs/roadmap.md`.
+
 Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambitious live in `docs/superpowers/plans/2026-10-20-mobile-first-interaction-patterns.md`.
 
 ---
@@ -686,7 +688,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F35. Role-based dashboard builder
+## F146. Role-based dashboard builder
 
 **What:** managers and owners choose which panels appear on their briefing and in what order, without a developer.
 
@@ -705,7 +707,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F36. Document templates (invoices, delivery notes, statements)
+## F147. Document templates (invoices, delivery notes, statements)
 
 **What:** invoices, delivery notes and statements with the company's logo, wording, numbering and layout, editable by the owner and printable or shareable as PDF.
 
@@ -723,7 +725,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F37. Duplicate customer detection upgrade (fuzzy match, preview, undo)
+## F148. Duplicate customer detection upgrade (fuzzy match, preview, undo)
 
 **What:** find customers entered twice even when phone and Instagram differ, show exactly what a merge will move, and allow an undo within a window.
 
@@ -1076,7 +1078,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** a manager-only list of customers missing location, phone or district, with counts by group, linking to the existing customer edit flow.
 
-**Prerequisites:** none; F37 handles duplicates separately.
+**Prerequisites:** none; F148 handles duplicates separately.
 
 ---
 
@@ -1366,7 +1368,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** customers have an address, a contact person and a free notes field; orders have a notes field (the repeat-order flow leaves it empty); a delivery stop has its own notes, which the driver writes when acting on it (`delivery_stops.notes`). I did not confirm that the driver's stop card shows the customer's or the order's notes, nor that order entry offers a place to type the order note.
 
-**Why parked:** free-text notes fill with noise, and gate codes are sensitive (they should be visible only to the driver on that run and not on shared screens); instructions that apply "always" versus "this time" must not be mixed; notes must survive a customer merge (F37).
+**Why parked:** free-text notes fill with noise, and gate codes are sensitive (they should be visible only to the driver on that run and not on shared screens); instructions that apply "always" versus "this time" must not be mixed; notes must survive a customer merge (F148).
 
 **Open questions**
 1. Structured fields (access code, floor, parking, receiver, best hours) plus a free-text line, or free text only? Structured is easier to read on a phone.
@@ -1553,7 +1555,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 1. Propose-and-approve, or auto-accept when the driver's position is within a few hundred metres of the old pin?
 2. Use the device position at the moment of the tap, or let the driver drag a pin on the map?
 3. Who approves: the customer's rep, the group manager, or the dispatcher?
-4. Keep the history of pins (with F37 duplicate and merge tools in mind).
+4. Keep the history of pins (with F148 duplicate and merge tools in mind).
 
 **Suggested first slice:** a "location is wrong here" button on the stop card that sends the current device position as a proposed correction to the rep, who accepts or rejects it with one tap. The accepted pin updates the customer.
 
@@ -2008,7 +2010,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** the receipt handed over at the door is built from one stop's numbers (`lib/deliveryReceipt.ts`, `lib/receiptLayout.ts`) and printed from the delivery flow ("print receipt") and from done stops; the planner and report pages have print buttons (`components/PrintButton.tsx`). That is the customer's copy after delivery. There is no pre-printed note per stop for the run and no multi-page print.
 
-**Why parked:** print layout for many pages needs page breaks that work on common printers; right-to-left Persian text and Jalali dates must print correctly; the format is a document design (see F36 on templates).
+**Why parked:** print layout for many pages needs page breaks that work on common printers; right-to-left Persian text and Jalali dates must print correctly; the format is a document design (see F147 on templates).
 
 **Open questions**
 1. Printed at loading time as a packing and handover note, or as a paper backup of the route sheet?
@@ -2018,7 +2020,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** a "print all notes" button on a ready run that renders the existing receipt layout for each stop in order, separated by page breaks, with a cover summary. No new template editor.
 
-**Prerequisites:** the receipt builder and print button (exist); F36 later for owner-editable templates.
+**Prerequisites:** the receipt builder and print button (exist); F147 later for owner-editable templates.
 
 ---
 
@@ -2318,7 +2320,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** a pure, tested `amountInWords` function for whole toman up to billions, shown on the delivery receipt and the payment confirmation line. Other documents later.
 
-**Prerequisites:** none; F36 (templates) and F18 (statements) can reuse it.
+**Prerequisites:** none; F147 (templates) and F18 (statements) can reuse it.
 
 ---
 
@@ -2438,7 +2440,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
 
-**Prerequisites:** none; F37 duplicates and F98 search could later include them.
+**Prerequisites:** none; F148 duplicates and F98 search could later include them.
 
 ---
 
@@ -2459,6 +2461,446 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Suggested first slice:** a "save this view" on the orders and payments lists that stores the current filters, columns and sort as a named report, reopens it from a menu and exports it as CSV. No grouping or sharing yet.
 
 **Prerequisites:** the scoped list endpoints (exist); F14 shares the safe-query layer.
+
+---
+
+## F124. Telegram bot for staff queries
+
+**What:** staff ask the company's linked Telegram bot for a customer's balance, an order's status, a product's stock or today's run, and get an answer limited to what their role and group may see, so a quick question never needs the app.
+
+**Already in the app:** each user can link their Telegram chat with a one-time code, and notifications go out through it (`lib/telegram.ts`, `lib/repo/telegramLink.ts`, `app/api/notifications/telegram-link`). A small long-polling worker handles the linking, with no inbound port or public address (`scripts/telegram-poll.ts`); it understands only the `/start <code>` link command and nothing else. The chat-to-user binding is exactly the identity a query bot needs.
+
+**Why parked:** answers leave the app, into a chat that may be forwarded or screenshotted, so the commands must be limited and the amounts shown carefully; the worker today imports almost nothing from the app and answering queries means giving it scoped read access; a lost phone with a linked chat becomes a data leak (see F107); free-text parsing in Persian is a further step, so start with fixed commands.
+
+**Open questions**
+1. Which commands first: balance of a customer, status of an order number, stock of a product, today's run and next stop?
+2. Read-only for now, with no actions through the bot (no approvals, no payments)?
+3. Find a customer by name or phone, with the same Persian normalisation as the search (`lib/persian.ts`)?
+4. Per-user opt-in and a log of what was asked (F110/F27).
+
+**Suggested first slice:** two read-only commands (`/balance <customer>` and `/order <number>`) answered through the worker with the user's real scope applied, a short answer, and a footer that says it is a snapshot. Everything else later.
+
+**Prerequisites:** the Telegram link and worker (exist); F107 for revoking a lost device.
+
+---
+
+## F125. Wallboard display
+
+**What:** a full-screen view for a warehouse or dispatch TV showing today's runs, loading progress, orders waiting, delays and exceptions, refreshed automatically, readable from across a room.
+
+**Already in the app:** the runs view already draws every run on one shared grid, showing runs in progress and recently finished (`components/sales/RunTimeline.tsx`), the briefing has panels for orders by state, unplanned orders and exceptions, and pages refresh after an action (`router.refresh()`). Nothing refreshes by itself on a timer, and there is no layout meant for a distant, always-on screen.
+
+**Why parked:** an unattended screen needs a way to sign in that is safe to leave on a wall (a view-only display key, not a person's session); data on a wall is visible to anyone in the room, so the content has to be chosen with that in mind; automatic refresh must be cheap for the server.
+
+**Open questions**
+1. Display key (a long random link for one screen) or a dedicated display user, and how it is revoked?
+2. Content by place: dispatch (runs, delays), warehouse (loading list, short items), sales floor (targets)?
+3. Refresh interval and a visible "last updated" mark so a frozen screen is noticed.
+4. No amounts or customer phone numbers on the wall, only names, counts and statuses.
+
+**Suggested first slice:** a read-only `/wall/dispatch` page, authenticated by a revocable display key, showing today's runs with progress and delays, auto-refreshing every 30 seconds with a clear "updated at" clock.
+
+**Prerequisites:** the run timeline (exists); F108 shares the "last updated" idea.
+
+---
+
+## F126. Organisation setup wizard
+
+**What:** for the platform owner (the vendor), a guided setup of a new customer organisation: company details, groups, first users with generated credentials, products, price list and first customers, with optional sample data to try the app.
+
+**Already in the app:** organisations are a table with name, slug, plan, active flag and contact details (`organizations`). New ones are created today by seed and migration scripts (`scripts/seed-demo-org.mjs`, the seed phases); I found no screen or API for creating an organisation. A helper generates readable usernames and passwords when a user is added (`lib/credentials.ts`), and the platform owner can switch between tenants (`/switch`). Every access by the vendor to another tenant's data is recorded (`lib/platformAccess.ts`).
+
+**Why parked:** tenant creation is the most sensitive operation in the system, because it must create every dependent record consistently (groups, roles, default accounts such as the chart of accounts, facilities, holidays) and never touch another tenant; it is rarely done, so the cost of a wizard is justified only when the vendor onboards customers regularly; failure halfway must roll back completely.
+
+**Open questions**
+1. All in one transaction, with sample data off by default?
+2. What defaults each new organisation starts with (chart of accounts, reason codes, notification types, roles)?
+3. Credentials handed over how: shown once and printed, or sent by the first-login reset (F109)?
+4. A checklist after creation: add logo, import customers, set targets.
+
+**Suggested first slice:** a platform-owner-only "new organisation" form that creates the organisation, its owner user and a default group in one transaction, using the same code the seed scripts already use, and shows the generated credentials once.
+
+**Prerequisites:** none; F127 adds limits, F109 the first-login reset.
+
+---
+
+## F127. Tenant usage and plan limits
+
+**What:** for the platform owner, per-organisation counts (users, active customers, orders per month, photo storage, messages) against limits for each plan, with warnings before a limit is reached.
+
+**Already in the app:** every organisation has a `plan` field (default "standard"), but nothing in the code reads it besides creating the row, so it has no effect today. Vendor reads of tenant data are logged. Usage numbers (users, orders, photos) can be counted from existing tables, and photo storage sits on disk under `data/photos`.
+
+**Why parked:** limits must be a commercial decision first; enforcement needs care (a hard stop on orders would hurt a customer more than the missed fee), so warn first; counting must stay cheap and not run on every request.
+
+**Open questions**
+1. Which limits: users, customers, orders per month, storage?
+2. Warn only, soft limit with a banner for the tenant owner, or hard limit? Start with warn the vendor.
+3. A nightly job that stores counts per organisation, with history for billing.
+4. Plan names and what each includes, defined in code or in a table the vendor edits?
+
+**Suggested first slice:** a platform-owner-only usage table (users, active customers, orders in the last 30 days, photo storage) computed on demand per organisation. No limits or warnings yet.
+
+**Prerequisites:** none; F126 creates organisations, F108 shows system health.
+
+---
+
+## F128. Read-only auditor role
+
+**What:** an external accountant or auditor gets read access to the accounting pages and reports (and nothing else), cannot change anything, and the access has an expiry date.
+
+**Already in the app:** there are seven fixed roles (platform owner, owner, group manager, representative manager, phone sales, field rep, delivery driver; `lib/roles.ts`). The accounting pages have their own authoritative gate: the whole-organisation reports (trial balance, balance sheet, income statement, payables, suppliers) are owner-only, and a group manager can read only the journal and the expense report, because they post to them (`lib/accountingGate.ts`). Users can hold several roles (`user_roles`). No role is read-only, and no account has an expiry.
+
+**Why parked:** a new role touches every role list and gate in the code (each one fails open or closed depending on how it is written, as the roles file itself warns); the proxy also keeps its own coarse tab and bundle gating; read-only has to be enforced on the server for every write route, not just hidden in the interface; an auditor sees the whole organisation's money, so the access must be logged.
+
+**Open questions**
+1. A new role value, or an owner-granted flag on an existing account with the "read-only" behaviour layered in the shared gates?
+2. Which pages: accounting only, or also orders, payments and stock reports?
+3. Expiry date on the account and an automatic sign-out at that time (token version, see F107).
+4. Everything the auditor opens goes to the access log (like the vendor's cross-tenant log in `lib/platformAccess.ts`).
+
+**Suggested first slice:** an expiring "accounting read-only" access flag, enforced in the accounting gate for read pages and by refusing every write route for that account, with each page view logged. No other pages.
+
+**Prerequisites:** F107 for ending sessions at expiry; F110 for the access log.
+
+---
+
+## F129. Approval chains
+
+**What:** configure who approves what in sequence or in parallel (rep, then manager, then owner) for the approval types in F48, F76 and F82, with limits by amount and a clear status for the requester.
+
+**Already in the app:** approvals exist as separate single-step decisions: an order waits for a manager to pass review, a credit-limit breach goes to a manager or owner for one decision with a reason (`credit_approvals`), and cheques and complaints have quick decision decks. Who may act is written into the order state machine per transition (`lib/orderStateMachine.ts`). There is no configurable chain, no second approver, and no amount-based routing.
+
+**Why parked:** a chain is a workflow engine in small, and workflow engines grow without limit; the existing single-step flows work and are tested, so a generic layer must wrap them rather than replace them; delegation (F82) and the inbox (F102) must understand chains; every added step slows the business.
+
+**Open questions**
+1. Which three approval types get a chain first (large orders, discounts, credit increases)?
+2. Fixed shapes only (one approver, approver plus owner above a limit) instead of a free designer?
+3. What happens when an approver is away (F82) or the request waits too long (F51)?
+4. Requester view: "waiting for Ali, then the owner", and a way to withdraw the request.
+
+**Suggested first slice:** one amount-based rule for credit approvals: above a stated limit the decision needs the owner after the group manager, shown as two steps on the existing credit-approval card. No designer.
+
+**Prerequisites:** the existing credit-approval flow; F48, F76, F82 and F102 consume it later.
+
+---
+
+## F130. Rule builder screen
+
+**What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
+
+**Already in the app:** a rule engine runs event rules and daily sweeps: a rule has a trigger, a flat list of conditions, an action (task, alert or notify), a cooldown and an optional escalation after N minutes to a role (`lib/rules/engine.ts`, `lib/repo/rules.ts`, `rules` and `rule_runs` tables). The default rules ship in the database and an organisation can override one: the existing rules API lets an owner turn a rule on or off and change its cooldown, nothing more (`setTenantRuleOverride`), and a button on the day page runs the sweep on demand. Creating a rule, changing its conditions, action or escalation has no screen or API.
+
+**Why parked:** a free rule designer can create rules that spam or loop (a task rule that triggers another rule); the engine intentionally supports only a flat AND list of conditions, so the form must stay inside that; rules reach into other people's task lists and notifications, so who may edit them matters.
+
+**Open questions**
+1. Edit only from a menu of known triggers, condition fields and operators, never free text or code?
+2. A "dry run" that shows who would be affected before saving a rule?
+3. Limits: a maximum number of firings per day per rule, with an automatic pause and an alert when exceeded.
+4. Who edits: owner only; managers can switch rules on or off for their group.
+
+**Suggested first slice:** a rules list for the owner showing each rule, its recent firings and its on/off and cooldown (already supported by the API), plus editing the escalation window and target role. Creating new rules later.
+
+**Prerequisites:** the rule engine and overrides (exist); F51 uses the escalation settings.
+
+---
+
+## F131. Keyboard-first desk order entry
+
+**What:** for the person entering phone orders at a desk, order entry works with the keyboard alone: type a product code or the first letters, press Enter, type the quantity, press Enter for the next line, and a single key to save or submit.
+
+**Already in the app:** a desktop order form exists (`components/sales/OrderForm.tsx`, on `/sales/orders/new`) next to the phone tap flow (`OrderQuickEntry`). The shell has one global shortcut listener with a registry and a rule that it never fires while someone is typing in a field and never takes Enter, Escape or Tab, which belong to whatever has focus (`components/HotkeyProvider.tsx`, `lib/hotkeys.ts`). I found no Enter-to-add-line or code-first entry in the order form, so the keyboard flow depends on the mouse today.
+
+**Why parked:** the form must keep working on phones and for screen readers, so keyboard speed has to be additive; product search by code needs a fast, forgiving lookup (Persian digits, partial codes, packagings); a fast path that saves on a stray Enter risks accidental orders, so submit needs its own deliberate key.
+
+**Open questions**
+1. Product lookup by code or by name prefix, with Arabic and Persian letter and digit folding as in the global search?
+2. How pack choice works: default to the customer's usual packaging, or a second prompt?
+3. Which keys: Enter adds the line, a modifier plus Enter saves the draft, another submits?
+4. A visible key legend under the form, and the shortcut help dialog already in the shell.
+
+**Suggested first slice:** in the existing form, a code-or-name box that accepts Enter to add the matched product with the customer's last packaging, moves focus to quantity, and returns to the box after Enter. Submit stays a button.
+
+**Prerequisites:** the order form and the search matching helpers (exist); F58 for the usual packaging.
+
+---
+
+## F132. Order priority flag
+
+**What:** a one-tap urgent flag at order entry (and for a manager to set later), shown first in planning and clearly on the driver's stop, with an optional reason.
+
+**Already in the app:** this is partly built. Orders have a `priority` column (default `NORMAL`), and the route planner reads it and passes a numeric weight to the solver: `URGENT` 100, `KEY_ACCOUNT` 60, `NORMAL` 10, `FLEXIBLE` 1 (`lib/repo/routing.ts`), so the optimiser already prefers urgent deliveries. A requested delivery day left empty already means "as soon as possible" (the planning notes say there is deliberately no separate flag for it), and driver commission rates have an optional higher "urgent" rate per kilogram (`urgent_rate_per_kg_toman`). I could not find any screen or route that sets the priority value, so in practice every order stays `NORMAL`, and the driver stop card does not show it. I did not verify what feeds the urgent commission rate.
+
+**Why parked:** if reps can mark everything urgent the flag means nothing, so it needs a visible cost or a manager's approval; urgent deliveries should still respect capacity and may cost more (see F64's fee idea); the commission meaning of "urgent" must match the flag exactly.
+
+**Open questions**
+1. Who may set URGENT: any rep, or only managers? Is there a limit per day?
+2. Is KEY_ACCOUNT set automatically from customer tier (F28) rather than by hand?
+3. Does URGENT change commission (the urgent rate) and the delivery fee, and where is that shown?
+4. Driver view: a coloured tag on the stop and a short reason.
+
+**Suggested first slice:** a priority choice (normal, urgent) on order entry, stored in the existing column, shown as a tag in the order list, the planner and the driver stop card, with a reason when urgent. No automatic rules yet.
+
+**Prerequisites:** the existing priority column and solver weights; F64 and F28 relate.
+
+---
+
+## F133. Required training and completion tracking
+
+**What:** managers define which lessons are required for each role, and see per person which required lessons are done, overdue or missing, with a reminder to the person.
+
+**Already in the app:** the sales academy has a lesson manifest (slug, module, title, order, status; two modules so far: market and customer, and phone sales, under `content/academy`) and records when a user completes a lesson (`lesson_progress`, `markLessonDone` in `lib/repo/academy.ts`). Each person can see their own progress. There is no notion of a required lesson, no role mapping and no manager view.
+
+**Why parked:** required training needs content for every role (only sales has any), so the tracking would be empty for drivers and warehouse staff; a completion tick alone proves little, so a short check question after each lesson may be needed; reminders must not nag.
+
+**Open questions**
+1. Required set per role in the manifest (a `required_for` list) or edited by the owner?
+2. Deadline after hire date or after a lesson is published?
+3. Include a short quiz and a pass mark, or just completion?
+4. Who sees the tracking: the owner and the person's manager.
+
+**Suggested first slice:** a `required_for` list in the lesson manifest and a manager table of people versus required lessons (done, not done), with no reminders or quizzes.
+
+**Prerequisites:** the academy (exists); F84 and F112 relate for help and release notes content.
+
+---
+
+## F134. Profit and loss by group
+
+**What:** each group's revenue, cost of goods, delivery cost and allocated overheads for a period, to compare groups on real profit and see which are worth growing.
+
+**Already in the app:** the income statement is whole-organisation, for a period, with revenue less cost of goods less expenses (`incomeStatement` in `lib/repo/reports.ts`, `/accounting/income-statement`, owner-only). The ledger is double-entry: a journal has a period key, memo and source, and its lines carry an account, a side, an amount and optional customer and supplier (`lib/repo/ledger.ts`). Orders, runs, customers and tasks all carry a group, but journal lines have no group dimension; expenses are reported by who entered them, which is accountability and not allocation (`expensesByEnterer`). Group-level cost can be derived for revenue and cost of goods through the source order, but not for expenses.
+
+**Why parked:** a group P&L depends on how shared costs are allocated (rent, owner's salary, vehicles), and that is a management choice that can be argued about; adding a group to every journal line is a ledger change that must be backfilled; group managers must not see other groups' figures.
+
+**Open questions**
+1. Group dimension on journal lines (backfilled from the source order or the enterer's group), or computed at report time from the sources?
+2. Allocation of overheads: by revenue share, by headcount, or hand-entered percentages per period?
+3. Include delivery cost per run (vehicle cost per kilometre, driver pay) from the run records?
+4. Who sees what: the owner sees all groups; each group manager sees only their own.
+
+**Suggested first slice:** an owner-only table of revenue, cost of goods and gross profit by group for a period, derived from delivered orders' groups, with no expenses or allocation. Overheads second.
+
+**Prerequisites:** none for the first slice; F32 margin analytics shares the cost inputs.
+
+---
+
+## F135. Manager ride-along visits
+
+**What:** schedule and record joint visits between a manager and a salesperson: which customer, who came, what was observed and what was agreed, with the notes feeding coaching (F86) and the visit quality review (F41).
+
+**Already in the app:** the visit calendar (`visit_plans`) holds planned visits with a date, a status (planned, done, skipped), an order and a purpose (first visit, sample, delivery, collect; `lib/tripPurpose.ts`), pointing at a district, customer, facility or lead location. Visits and calls are logged as activities on the customer timeline. A planned visit has no participants and no notes of its own, so a joint visit cannot be recorded as one.
+
+**Why parked:** coaching notes about a person are sensitive (see F86); a manager's presence changes what a visit is for, so it needs its own purpose and not a hidden flag; the calendar rows would need a participant list and a note field, which touches the visit-plan table and its API.
+
+**Open questions**
+1. A new purpose ("joint visit") plus a second participant field on the visit plan, or a separate record linked to the visit?
+2. What the manager records: a short observation list (opening, needs discovery, closing, next step) with a free note?
+3. Visible to the salesperson, or private to the manager (see F86)?
+4. How it appears on the customer timeline: as a normal visit with a "joint" tag.
+
+**Suggested first slice:** a "joint visit" purpose with a second participant on the visit plan and a free-text coaching note visible to the manager only, linked to the salesperson's note list (F86). No observation checklist.
+
+**Prerequisites:** the visit plan table and calendar (exist); F86 for the private notes.
+
+---
+
+## F136. Message template editor
+
+**What:** the owner edits the wording of messages from a screen: the notifications staff receive, the titles of tasks that rules create, and, once customer messaging exists (F79, F18, F120), the messages customers receive. Placeholders for names, numbers and amounts are filled in automatically, and a preview shows the result.
+
+**Already in the app:** notification wording is written in code: a table of templates keyed by notification type, each a function from the event's data to a Persian title and body (`TEMPLATES` and `renderNotification` in `lib/repo/notifications.ts`). The database holds a catalogue of notification types (name, category, priority, default channels, active), which an organisation can override, but not their wording (`notification_types`, tenant rows win over the shared defaults). Rule-created tasks carry a title and a role hint inside the rule's action data, set in the seeded default rules (`rules.action_json`). There is no screen to change any of this text, and customers receive no messages from the app yet.
+
+**Why parked:** a message that fills in names and amounts must keep working when the owner edits it, so placeholders need a fixed, validated list per type; a typo in a template should not be able to break delivery of every notification of that type; Persian text with right-to-left punctuation and digits needs a preview that matches what Telegram and push actually show.
+
+**Open questions**
+1. Which texts are editable first: staff notification titles and bodies, or rule-created task titles?
+2. Stored as overrides per organisation next to the catalogue, with the shipped wording as the fallback and a "restore default" action?
+3. Placeholder set per type, shown next to the editor, with an error if one is missing or unknown.
+4. Language: Persian only for now; other languages would need a locale per organisation (not in scope).
+
+**Suggested first slice:** per-organisation title and body overrides for existing notification types, with a placeholder list, a live preview and a restore-default button; if an override is invalid at send time, fall back to the shipped text and log it. Task titles and customer messages later.
+
+**Prerequisites:** the notification catalogue and renderer (exist); F79, F18 and F120 add customer-facing templates.
+
+---
+
+## F137. Lead source return on spend
+
+**What:** record what each lead source costs (flyers, ads, trade-show stands, referral rewards, a rep's time on field visits) and compare it with the customers and revenue each source produced, to decide where to spend more.
+
+**Already in the app:** every lead has a source chosen from a fixed list of nine: Google Maps, Google search, Snappfood, Tapsi Food, Instagram, referral, existing customer, field visit and other, with a source detail and link, and the id of the customer who referred it (`LEAD_SOURCES` in `lib/crm/vocab.ts`; `source_code`, `source_detail`, `source_url` and `referred_by_customer_id` on the customer). Leads that are lost carry one of fourteen lost reasons. Conversion to a customer and the revenue of that customer are in the data, so counts and revenue per source can be derived. Spend per source is not recorded anywhere.
+
+**Why parked:** the source list is fixed and coarse (a flyer campaign has no entry), so cost tracking needs campaign-level sources; attributing revenue to a source is only fair over a long window; costs such as a rep's time need an agreed allocation; the figures can be small and noisy.
+
+**Open questions**
+1. Add campaigns under a source (for example "Instagram: October ads") with a start date, end date and cost?
+2. Revenue window: first 90 days of a converted customer, or lifetime?
+3. Include referral rewards paid, and the referrer's name (already stored) in the same report?
+4. Who sees it: the owner, and managers for their group.
+
+**Suggested first slice:** a source report with leads, converted customers, revenue in the first 90 days and conversion rate per existing source, from current data. Spend entry comes after.
+
+**Prerequisites:** none for the first slice; F85 (order source) and F28 (tiers) complement it.
+
+---
+
+## F138. Off-site backup copy
+
+**What:** copy each nightly backup to storage away from the server, encrypted, check that the copy can be read, and alert the owner if a night's backup or copy fails.
+
+**Already in the app:** a nightly backup script takes a consistent snapshot of the database (SQLite's own serialize, safe in WAL mode) and a tarball of the photos directory, into a local folder (`COVERAGE_BACKUP_DIR` or `backups/`), and deletes anything older than 14 days (`scripts/backup.mjs`). Its own header says that real protection against disk failure needs the files copied off the machine and that the script deliberately does not do it. I found no integrity check or test restore, no encryption and no failure alert, and the backup folder sits on the same machine.
+
+**Why parked:** it needs somewhere to copy to (object storage, another server, a drive) and credentials for it, which is an operations decision; data in the backup includes customer and money records, so the copy must be encrypted, with the key kept away from the same machine; a restore has to be rehearsed or the backup proves nothing.
+
+**Open questions**
+1. Destination: S3-compatible storage, SFTP to a second server, or a rotating external drive?
+2. Encryption: a key held by the owner, never stored beside the backups?
+3. Verification: open the copied database read-only and run an integrity check, then record the result.
+4. Alert: a Telegram message to the owner if a backup or copy failed or is older than 36 hours (see F108).
+
+**Suggested first slice:** after the local backup, run an integrity check on the new snapshot and write a status file with the time and result that the status page (F108) can read; add an optional step that copies the encrypted files to a configured destination. Restore rehearsal documented.
+
+**Prerequisites:** F108 for the status display; F34 for restore tooling.
+
+---
+
+## F139. Third-party carrier shipments
+
+**What:** send goods to distant towns through an intercity carrier instead of a company van, recording the carrier, waybill number, cost, expected arrival and delivery confirmation, tracked like a run.
+
+**Already in the app:** deliveries are made on runs by company drivers with vehicles, each stop having a delivery status, proof fields and a payment. Coverage zones exist for towns outside the city, loaded from map boundaries by a setup script (`scripts/seed-outer-towns.ts`), but they describe where customers are, not how goods reach them. I found no carrier, waybill or shipment concept anywhere in the code.
+
+**Why parked:** a carrier shipment has a different lifecycle (handed over, in transit, arrived, collected) and a different money flow (freight paid by sender or receiver, sometimes cash on arrival); proof of delivery comes from a third party; the order state machine would need a way to treat a handover as delivered or in transit.
+
+**Open questions**
+1. Model it as a special kind of run with one stop, or as its own shipment record linked to the order?
+2. Who pays freight (company, customer, split) and how it appears on the order and in the ledger?
+3. Delivery confirmation: customer phone call, photo of the signed waybill, carrier tracking number?
+4. Insurance and loss claims handled outside the app at first.
+
+**Suggested first slice:** a shipment record linked to an order (carrier name, waybill number, freight cost, who pays, handed-over time, arrival confirmed time and photo of the waybill) with a status list, and an order state for "shipped by carrier". No tracking integration.
+
+**Prerequisites:** the order state machine and photo storage (exist); F17 for the proof model.
+
+---
+
+## F140. Company asset register
+
+**What:** a register of the company's own equipment (phones, tablets, Bluetooth printers, scales, scanners, laptops) with serial number, purchase date, condition and who holds it, plus a return check when a person leaves or changes role.
+
+**Already in the app:** facilities (warehouses, vans, shops and other places), vehicles with capacity and cost per kilometre, and photos attached to records exist. Staff use phones, receipt printers (Bluetooth) and, later, scanners and scales, but none of it is recorded. I found no asset or equipment table.
+
+**Why parked:** a register is only useful if someone keeps it up to date; the high-value items to track are few (printers, scales, tablets), so it should start small; assets lent to customers (coolers, racks) are a separate and harder case and are not part of this.
+
+**Open questions**
+1. Which categories to include first (devices, printers, scales, tools)?
+2. Assignment to a person with a start date, and a handback with a condition note and photo?
+3. Link to deactivation (F59/F107): leaving staff show their assets on the deactivation screen.
+4. Service and warranty dates with reminders.
+
+**Suggested first slice:** a list of assets with type, serial number, holder and condition, an assign and return action, and the person's assets shown on the user's admin page. No depreciation or service dates.
+
+**Prerequisites:** none; F59 and F107 can read it.
+
+---
+
+## F141. Survey builder
+
+**What:** the owner builds short surveys for customers or staff (a few questions with choices, ratings or short text), sends them to a segment, and sees the answers summarised, with the option of turning a low score into a follow-up task.
+
+**Already in the app:** customers can file complaints with a category and severity (`ComplaintFlow`), reps record call outcomes and visit intel (size, current supplier, best visit time), and a star-rating control exists for scoring places on a few criteria (`components/StarRating.tsx`, used for lead locations). There is no survey definition, no way to send questions to people, and no store for answers.
+
+**Why parked:** it needs a way to reach customers (F79, F18 and F120 channel work); response rates are low and biased; survey answers about people (staff, reps) are sensitive; it overlaps with the one-tap delivery rating idea (F45), so the two must share the response store.
+
+**Open questions**
+1. Audience: staff first (no customer channel needed), customers later?
+2. Question types: single choice, rating 1–5, short text, yes/no?
+3. Anonymous or named, and who sees raw answers?
+4. Answers feed customer and rep views (F47, F86) or stay in a survey report only?
+
+**Suggested first slice:** an internal staff pulse survey (up to five questions) delivered as a card on the briefing, answered in a tap, with an owner-only summary. Customer surveys after a channel exists.
+
+**Prerequisites:** none for the staff version; F45 and F79 for customers.
+
+---
+
+## F142. Snooze for alerts and tasks
+
+**What:** "remind me in an hour / this afternoon / tomorrow" on a notification or a task, instead of dismissing or ignoring it.
+
+**Already in the app:** the notification feed has unread counts and mark-as-read (`lib/repo/notifications.ts`), reminders and tasks have due dates and statuses (open, done, dismissed), and the map's arrival prompt has its own snooze for a stop the driver waved away (`lib/arrival.ts`, `components/GeofenceWatcher.tsx`). Push notifications can carry one action button. A general snooze for notifications or tasks does not exist.
+
+**Why parked:** snoozing is dangerous for critical alerts (a failed delivery should not be easy to ignore), so priority must limit it; a snoozed notification must come back at the right time even if the phone is off; it adds a state to the feed and the task board.
+
+**Open questions**
+1. Which items can be snoozed: low and normal priority only, with critical and high items never?
+2. Choices: 1 hour, this afternoon, tomorrow morning, next week?
+3. For a task, snooze moves the due date; for a notification, it hides it and re-delivers it.
+4. Limit the number of snoozes per item so something is not pushed off forever.
+
+**Suggested first slice:** a snooze action on tasks and reminders that moves the due date by a chosen amount (one hour, tomorrow 9:00) and records the snooze count. Notifications later.
+
+**Prerequisites:** none; the push-action pattern could offer "snooze 1 h" as a button.
+
+---
+
+## F143. Approve from Telegram
+
+**What:** approval requests arrive in the manager's linked Telegram chat with approve and reject buttons; a tap applies the same permission checks as the app, records who decided, and edits the message to show the outcome.
+
+**Already in the app:** push notifications can carry a one-tap action button for a notification about exactly one thing (a cheque due soon moves to its next state; a due reminder is marked done), run by the service worker with the signed-in cookie and limited to relative API paths (`lib/pushActions.ts`). Telegram currently only sends and edits plain text messages (`sendTelegram`, `editTelegram` in `lib/telegram.ts`), with no buttons, and the polling worker understands only the `/start <code>` link command (`scripts/telegram-poll.ts`). Credit approvals and order reviews have decision screens in the app but no one-tap action from outside it.
+
+**Why parked:** a button in a chat is authenticated by the Telegram account, not by the app's session, so each tap must be checked against the linked user, their role and the exact item, and be safe against replays and forwarded messages; the worker would need access to the approval functions; an accidental tap on a money decision needs an undo or a confirm step.
+
+**Open questions**
+1. Which approvals first: credit approvals (single decision, money at risk) or low-risk ones (reminders, complaint triage)?
+2. Confirmation step for money decisions (a second tap) or a short undo window?
+3. Callback data signed and single-use, with an expiry, so an old message cannot be replayed.
+4. Record the decision with a "decided in Telegram" tag in the audit trail (F27).
+
+**Suggested first slice:** buttons on the reminder-due and cheque-due Telegram messages that match the existing push actions, handled by the worker through the same API functions, with signed single-use callbacks. Money approvals after that proves safe.
+
+**Prerequisites:** the Telegram link and worker (exist); F124 shares the worker's scoped access; F82 and F102 relate.
+
+---
+
+## F144. Failure, cancellation, return and delay reason reports
+
+**What:** counts and trends of failed deliveries, cancelled orders, returns, delays and lost leads, grouped by reason, customer, route, driver, group and period, with a plain "what is the biggest cause this month" line.
+
+**Already in the app:** the capture half exists. Reasons are kept in a table by area (failed delivery, delayed delivery, order cancel, order return) with shipped defaults and per-organisation overrides (`reason_codes`). The order action sheet requires a reason for cancel, return and failed delivery (`lib/flows/orderAction.ts`: `REASON_DOMAIN`, `needsReason`), and the reason is stored on the order's history entry (`order_events.reason_code_id`) and on the stop (failure and delay reasons); the order page's timeline shows it. Lost leads store one of fourteen lost reasons (`lost_reason_code`). I found no query that counts or groups by reason anywhere. The "why did sales change" analysis (`lib/repo/why.ts`) splits a change in sales by territory, salesperson and funnel stage, not by reason.
+
+**Why parked:** counts of reasons are only as honest as the choices people make in the sheet ("other" becomes the favourite), so the report should show how often each reason is used and how often "other" is chosen; driver-level views can be unfair when a cause is upstream; group managers must see only their own group.
+
+**Open questions**
+1. One report with tabs per area (failures, cancellations, returns, delays, lost leads), each grouped by reason first?
+2. Breakdowns: by customer, route, driver, product and week, with a minimum count before a bucket is shown?
+3. Cost: the value of orders lost or returned per reason, not just counts.
+4. Targets: an alert when a reason doubles against the previous period (links to F51).
+
+**Suggested first slice:** an owner report for the last 90 days with the four order areas grouped by reason (count, value, share of "other"), group-scoped for managers, from existing data. Lead reasons and breakdowns later.
+
+**Prerequisites:** none; F42 (complaint analytics) and F12 (returns) share the presentation.
+
+---
+
+## F145. Counter sales and customer pickup
+
+**What:** orders where the customer collects from the warehouse, and walk-in cash sales at the counter, handled without a delivery run: pick, pay and hand over at one place, with stock moved out and the payment recorded at the moment.
+
+**Already in the app:** every order reaches delivered through the delivery machinery: the state machine moves an order from confirmed to planned, ready, out for delivery and then delivered, and only a driver or the system can mark it delivered (`lib/orderStateMachine.ts`). Stock reservation is consumed when the order is delivered, and payment at the door is recorded on the stop. There is no pickup path and no walk-in sale; an order for a customer who collects goods still has to be planned onto a run.
+
+**Why parked:** the state machine is the spine of stock, commission, credit and reporting, so a second path must be added as new edges with the same effects, not as a bypass; commission and the "delivered" statistics must treat a counter sale correctly (no driver, no distance); a walk-in sale may have no customer record, which several parts assume exists.
+
+**Open questions**
+1. Model as an order flag (`pickup`) that gives it a short path (confirmed to handed over), or as its own order type?
+2. Who can hand over: warehouse staff with a new action, with the payment recorded in the same step?
+3. Walk-in cash sale to an unnamed customer: one shared "walk-in" customer per organisation, or require a name or phone?
+4. Commission: credited to the salesperson who took the order, with no driver commission.
+
+**Suggested first slice:** a "customer pickup" flag on order entry that skips planning and lets a warehouse user mark the order handed over, recording the payment received, consuming the reservation and closing it. No walk-in anonymous sale yet.
+
+**Prerequisites:** the order state machine and stock reservation (exist); F63 (prepayments) relates for payment on pickup.
 
 ---
 

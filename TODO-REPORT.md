@@ -97,7 +97,32 @@
 
 - [x] Parked feature F123 added to `docs/future-features.md`: report builder with saved reports — notes the fixed report pages and CSV export, and that the sidebar customer lists are per-browser shortcuts, not saved queries
 
+- [x] Parked features F124–F127 added to `docs/future-features.md`: Telegram bot for staff queries, wallboard display, organisation setup wizard, tenant usage and plan limits — each notes what already exists (a Telegram link worker that understands only /start, the run timeline grid, organisations created only by scripts, an unused plan column)
+
+- [x] Parked features F128–F130 added to `docs/future-features.md`: read-only auditor role, approval chains, rule builder screen — each notes what already exists (seven fixed roles and an accounting gate, single-step approvals, a rule engine where owners can only toggle a rule and change its cooldown)
+
+- [x] Parked features F131–F133 added to `docs/future-features.md`: keyboard-first desk order entry, order priority flag, required training and completion tracking — each notes what already exists
+- [x] Checked your point on order priority (F132): you were right, it is partly built — `orders.priority` exists and the route planner turns URGENT/KEY_ACCOUNT/NORMAL/FLEXIBLE into solver weights (100/60/10/1); what is missing is any screen that sets it and any display on the driver stop card
+
+- [x] Parked features F134–F135 added to `docs/future-features.md`: profit and loss by group, manager ride-along visits — each notes what already exists (whole-organisation income statement with no group dimension on journal lines; visit plans with no participants or notes)
+- [x] Found that accounting period locking already exists in the ledger (`fiscal_periods`, closed periods refuse postings); I had wrongly listed it earlier as a new idea
+
+- [x] Parked feature F136 added to `docs/future-features.md`: message template editor — notes that wording lives in code, the database catalogue holds only type settings, and rule task titles live in seeded rule data
+
+- [x] Parked features F137–F139 added to `docs/future-features.md`: lead source return on spend, off-site backup copy, third-party carrier shipments — each notes what already exists (nine lead sources with referrer and lost reasons, a local nightly backup script with 14-day rotation, no carrier concept)
+- [x] Found that referrer tracking already exists on customers (`referred_by_customer_id`); I had suggested referral tracking earlier as new
+
+- [x] Parked features F140–F143 added to `docs/future-features.md`: company asset register, survey builder, snooze for alerts and tasks, approve from Telegram — each notes what already exists (push action buttons for cheque and reminder notifications, text-only Telegram messages, no snooze outside the map arrival prompt)
+
+- [x] Parked features F144–F145 added to `docs/future-features.md`: reason reports (capture already exists, aggregation does not), counter sales and customer pickup (the order state machine has no pickup path)
+- [x] Corrected a mistake of mine: my previous reply said F144 had been added and pushed, but I had only investigated; it is written and pushed now
+
+- [x] Fixed an ID clash in `docs/future-features.md`: my F35–F37 duplicated three earlier entries; they are now F146 (dashboard builder), F147 (document templates) and F148 (duplicate customer upgrade), with references updated
+
+- [x] Wrote `docs/roadmap.md`: all 148 entries grouped into 11 themes with size estimates, a quick-wins list, foundations, overlap groups, a suggested order in waves, decisions needed, already-partly-built entries, and claims not yet verified (table columns generated from the future-features file; the grouping and sizes are my judgement)
+
 ## Not done / gaps
+- [ ] F132: what feeds the urgent driver commission rate, and whether anything sets the priority value, is not verified
 - [ ] F102: whether orders in review appear in a decision deck is not verified
 - [ ] F97: whether run planning fills the vehicle on each run is not confirmed (a code comment says runs carry no vehicle, but the column exists)
 - [ ] F71: who can set `blocked` and whether it stops order entry is not verified; F73: how confirmed orders are edited is not verified; F75: whether sales screens read the catalogue offline is not verified
@@ -106,7 +131,7 @@
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F123 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
+- [ ] F6–F145 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
