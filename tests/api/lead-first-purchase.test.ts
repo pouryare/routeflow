@@ -43,7 +43,7 @@ beforeAll(() => {
   // kg_per_base_unit is payroll input -- commission is paid per kilogram -- so an order
   // line freezes it. A product without one would make the order's accrual meaningless.
   productId = Number(
-    db.prepare("INSERT INTO products (name, sku, kg_per_base_unit, created_at, updated_at) VALUES ('کره', 'K1', 0.01, ?, ?)")
+    db.prepare("INSERT INTO products (name, sku, kg_per_base_unit, created_at, updated_at, organization_id) VALUES ('کره', 'K1', 0.01, ?, ?, 1)")
       .run(now, now).lastInsertRowid
   );
   packagingId = Number(

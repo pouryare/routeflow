@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, groupFilter, orderFilter, type Session } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
+import { getSessionFromCookies, type Session } from "@/lib/session";
+import { planViewData, runsViewData } from "@/lib/repo/scheduleView";
 import { faJalaliDate, toJalali, jalaliToIsoDate, jalaliMonthGrid, jalaliMonthLength } from "@/lib/jalali";
 import { monthConditions, worstCondition, CONDITION_LABEL } from "@/lib/weather/calendarForecast";
 import { snapshotsInRange } from "@/lib/repo/weather";
@@ -16,11 +16,8 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { Icon } from "@/components/meridian/Icon";
 import ViewTabs, { type ViewTab } from "@/components/meridian/ViewTabs";
 import { oneOf, type SearchParams } from "@/lib/viewParam";
-import { isVanRole, VAN_ROLES } from "@/lib/roles";
+import { isVanRole } from "@/lib/roles";
 import RunsViewClient from "@/components/sales/RunsViewClient";
-import { readPlannableOrders } from "@/lib/repo/dayPlan";
-import { readRunDrafts } from "@/lib/repo/runDrafts";
-import type { DatabaseSync } from "node:sqlite";
 import type { ReactNode } from "react";
 
 export const dynamic = "force-dynamic";
@@ -109,75 +106,8 @@ function ScheduleChrome({ view, children }: { view: DayView; children: ReactNode
  *  DRAFTS are read here and passed down rather than fetched in the browser, because a draft
  *  is private to one user and that is a server-side fact — never something the client is
  *  trusted to have filtered. */
-function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
-  const userScope = groupFilter(session);
-
-  const vanRoleList = VAN_ROLES.map((r) => `'${r}'`).join(", ");
-  const drivers = plain(
-    db
-      .prepare(
-        `SELECT id, display_name FROM users
-          WHERE role IN (${vanRoleList}) AND active = 1${userScope.sql}
-          ORDER BY display_name`,
-      )
-      .all(...userScope.params),
-  ) as unknown as { id: number; display_name: string }[];
-
-  // Real runs. stop_count comes from runStops on the client side so the load and the unload
-  // are counted; the query here only supplies what the lane header shows.
-  const runScope = groupFilter(session, "dr.group_id");
-  const runs = plain(
-    db
-      .prepare(
-        `SELECT dr.id, dr.run_date, dr.status, dr.driver_user_id, dr.group_id,
-                u.display_name AS driver_name,
-                COALESCE(SUM(ds.collected_toman), 0) AS collected_toman
-           FROM delivery_runs dr
-           JOIN users u ON u.id = dr.driver_user_id
-           LEFT JOIN delivery_stops ds ON ds.run_id = dr.id
-          WHERE 1 = 1${runScope.sql}
-          GROUP BY dr.id
-          ORDER BY dr.run_date DESC, dr.id DESC
-          LIMIT 30`,
-      )
-      .all(...runScope.params),
-  ) as unknown as {
-    id: number;
-    run_date: string;
-    status: string;
-    driver_user_id: number;
-    group_id: number | null;
-    driver_name: string;
-    collected_toman: number;
-  }[];
-
-  // Kilograms per run, from the frozen order_lines. A van fills by weight; the old timeline
-  // counted money, which is the number a manager reads when they should be reading load.
-  const kgRows = plain(
-    db
-      .prepare(
-        `SELECT ds.run_id,
-                COALESCE(SUM(ol.packs_ordered * (p.kg_per_base_unit * ol.qty_per_pack)), 0) AS kg
-           FROM delivery_stops ds
-           JOIN delivery_runs dr ON dr.id = ds.run_id
-           JOIN orders o ON o.id = ds.order_id
-           JOIN order_lines ol ON ol.order_id = o.id
-           JOIN products p ON p.id = ol.product_id
-          WHERE 1 = 1${runScope.sql}
-          GROUP BY ds.run_id`,
-      )
-      .all(...runScope.params),
-  ) as unknown as { run_id: number; kg: number }[];
-  const kgByRun = new Map(kgRows.map((r) => [r.run_id, Number(r.kg)]));
-
-  /* Confirmed orders that are not on any run — the pool the board draws.
-     Read ONCE and passed down, so the map's pins and the lanes' cards cannot disagree: they
-     are literally the same array. The old board re-read this separately, which is how a card
-     and a pin for the same order could end up saying different things. */
-  const plannable = readPlannableOrders(db, orderFilter(session));
-
-  // Scoped to THIS user on the server. See the note above: privacy is a server fact.
-  const drafts = readRunDrafts(db, session.organizationId, session.user.id);
+function RunsView({ session }: { session: Session }) {
+  const { drivers, runs, kgByRun, plannable, drafts } = runsViewData(session);
 
   return (
     <RunsViewClient
@@ -207,10 +137,7 @@ function RunsView({ db, session }: { db: DatabaseSync; session: Session }) {
  *  every test asking "does this page have a header?" reported green. Symmetry with RunsView
  *  is the fix — two views, two components, one place that renders the chrome.
  */
-function PlanView({ db, session }: { db: DatabaseSync; session: Session }) {
-  // Qualified: the runs query joins delivery_runs to users, and for an owner this
-  // fragment filters on organization_id -- a column both tables carry.
-  const scope = groupFilter(session, "r.group_id");
+function PlanView({ session }: { session: Session }) {
   const today = toJalali(new Date().toISOString())!;
   const grid = jalaliMonthGrid(today.jy, today.jm);
 
@@ -218,44 +145,7 @@ function PlanView({ db, session }: { db: DatabaseSync; session: Session }) {
   const from = jalaliToIsoDate(today.jy, today.jm, 1);
   const to = jalaliToIsoDate(today.jy, today.jm, grid.days.length);
 
-  const runs = plain(
-    db
-      .prepare(
-        `SELECT r.id, r.run_date, r.status,
-                COALESCE(u.display_name, 'بدون راننده') AS driver,
-                (SELECT COUNT(*) FROM delivery_stops s WHERE s.run_id = r.id) AS stops
-           FROM delivery_runs r
-           LEFT JOIN users u ON u.id = r.driver_user_id
-          WHERE r.run_date >= ? AND r.run_date <= ?${scope.sql}
-          ORDER BY r.run_date, r.id`
-      )
-      .all(from, to, ...scope.params)
-  ) as unknown as { id: number; run_date: string; status: string; driver: string; stops: number }[];
-
-  /* Planned visits, with what each is FOR. Joined to the customer so the rail can name
-     the shop rather than an id — a plan that says "visit #418" is not a plan anyone can
-     follow out of the door. */
-  const visits = plain(
-    db
-      .prepare(
-        `SELECT v.id, v.planned_date, v.status, v.purpose, v.entity_type, v.entity_id,
-                COALESCE(c.business_name, d.name, 'بدون نام') AS who,
-                c.city AS where_
-           FROM visit_plans v
-           LEFT JOIN customers c ON v.entity_type = 'customer' AND c.id = v.entity_id
-           LEFT JOIN districts d ON v.entity_type = 'district' AND d.id = v.entity_id
-          WHERE v.planned_date >= ? AND v.planned_date <= ?
-          ORDER BY v.planned_date, v.sort_order, v.id`
-      )
-      .all(from, to)
-  ) as unknown as {
-    id: number;
-    planned_date: string;
-    status: string;
-    purpose: string | null;
-    who: string;
-    where_: string | null;
-  }[];
+  const { runs, visits } = planViewData(session, from, to);
 
   // Which day-of-month carries work, for the calendar dots.
   const marks: Record<number, string[]> = {};
@@ -371,8 +261,6 @@ export default async function SchedulePage({
      delivery-run planner. The gate is now the page's own, and it must stay. */
   if (view === "runs" && session.role === "phone_sales") redirect("/sales");
 
-  const db = getDb();
-
   /* ONE return, and the chrome is ABOVE the choice of view.
    *
    *  This is the shape /sales/orders already uses for its three views, and it is the whole
@@ -382,9 +270,9 @@ export default async function SchedulePage({
   return (
     <ScheduleChrome view={view}>
       {view === "runs" ? (
-        <RunsView db={db} session={session} />
+        <RunsView session={session} />
       ) : (
-        <PlanView db={db} session={session} />
+        <PlanView session={session} />
       )}
     </ScheduleChrome>
   );

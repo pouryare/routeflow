@@ -66,7 +66,7 @@ describe("the day host serves two views", () => {
        Comments are stripped, and deliberately: the fix's own comment has to name the old
        predicate to explain the bug, and a test that forbids a string must not forbid
        the sentence explaining why it was removed. */
-    const code = host
+    const code = read("lib/repo/scheduleView.ts")
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .split("\n")
       .filter((l) => !/^\s*\/\//.test(l))

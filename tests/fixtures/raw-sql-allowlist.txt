@@ -1,6 +1,3 @@
-app/(shell)/report/page.tsx
-app/(shell)/sales/schedule/page.tsx
-app/(shell)/sales/stock/page.tsx
 lib/catalogue.ts
 lib/commissionLedger.ts
 lib/customerSummary.ts

@@ -2,7 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orgScopeId } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
+import { getDb } from "@/lib/db";
+import { activeProducts, facilityName } from "@/lib/repo/stockPageView";
 import { advancedStockPosition, monthPurchaseTotals, readPurchases } from "@/lib/purchases";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
@@ -32,16 +33,7 @@ export default async function StockPage() {
   const db = getDb();
   const stock = advancedStockPosition(db, orgScopeId(session));
   const purchases = isOwner(session.role) ? readPurchases(db, session.organizationId, 15) : [];
-  const products =
-    isOwner(session.role)
-      ? (plain(
-          db
-            .prepare(
-              "SELECT id, name, base_unit FROM products WHERE active = 1 AND organization_id = ? ORDER BY name"
-            )
-            .all(session.organizationId)
-        ) as unknown as { id: number; name: string; base_unit: string }[])
-      : [];
+  const products = isOwner(session.role) ? activeProducts(session.organizationId) : [];
 
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
   const critCount = stock.filter((r) => r.status === "crit").length;
@@ -72,7 +64,7 @@ export default async function StockPage() {
   const warehouseId = canCount ? defaultFacilityId(session.organizationId) : 0;
   const warehouseOnHand = canCount ? onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
   const warehouseName = canCount
-    ? ((db.prepare("SELECT name FROM facilities WHERE id = ?").get(warehouseId) as { name: string } | undefined)?.name ?? "انبار")
+    ? (facilityName(warehouseId, orgScopeId(session)) ?? "انبار")
     : "";
   const countRows = stock.map((r) => ({
     product_id: r.product_id,
