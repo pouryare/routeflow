@@ -271,3 +271,5 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Merge PR #45 once CI is green, then continue step 4 route by route.
 2. Remaining routes and pages (report, schedule, stock, map, driver, suppliers, reps/[id]) into `lib/repo`.
 3. Founder 2/3-step login (F106), steps 5-7.
+
+- [x] Facilities routes now use `lib/repo/facilitiesAdmin.ts`; the list's ETag signature is per company (route files with direct DB access 63 → 62).
