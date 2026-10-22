@@ -1,11 +1,25 @@
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 
-/** The source of the database layer as ONE string: lib/db.ts (getDb) followed by every file in
- *  lib/database/ (seeds, backfills, rebuilds, types), in name order. A few guard tests read the
- *  schema code as text; splitting lib/db.ts into lib/database/ must not blind them. */
+/** Every .ts file under a directory, depth first, in name order. */
+function tsFiles(dir: string): string[] {
+  return readdirSync(dir)
+    .sort()
+    .flatMap((name) => {
+      const p = path.join(dir, name);
+      return statSync(p).isDirectory() ? tsFiles(p) : name.endsWith(".ts") ? [p] : [];
+    });
+}
+
+/** The source of the database layer as ONE string: lib/db.ts (getDb), then the base schema, then
+ *  everything else under lib/database/ (migration eras in order, backfills, rebuilds, seeds, types).
+ *  That is the order the code ran in when it was one file, and a few guard tests depend on it (for
+ *  example "the first CREATE TABLE users is the live CHECK"). They read the schema code as text,
+ *  so splitting lib/db.ts must not blind them. */
 export function dbLayerSource(root = process.cwd()): string {
   const dir = path.join(root, "lib", "database");
-  const parts = readdirSync(dir).filter((f) => f.endsWith(".ts")).sort();
-  return [readFileSync(path.join(root, "lib", "db.ts"), "utf8"), ...parts.map((f) => readFileSync(path.join(dir, f), "utf8"))].join("\n");
+  const schema = path.join(dir, "schema.ts");
+  return [path.join(root, "lib", "db.ts"), schema, ...tsFiles(dir).filter((f) => f !== schema)]
+    .map((f) => readFileSync(f, "utf8"))
+    .join("\n");
 }

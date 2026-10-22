@@ -1,4 +1,5 @@
 import { describe, it, expect, afterAll, beforeAll } from "vitest";
+import { dbLayerSource } from "./helpers/dbLayerSource";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
@@ -88,7 +89,7 @@ describe("a role name the union retired", () => {
     // The failure repeats only if the two lists are allowed to drift again. This reads the
     // RETIRED set off the users.role CHECK itself, so widening that constraint with a name
     // that has no ROLE_LABEL entry turns this red — which is the point.
-    const ddl = fs.readFileSync(path.join(process.cwd(), "lib", "db.ts"), "utf8");
+    const ddl = dbLayerSource(); // lib/db.ts plus lib/database/*.ts (the base schema moved there)
     const usersCheck = ddl.match(
       /role TEXT NOT NULL DEFAULT 'group_manager'\s*\n\s*CHECK \(role IN \(([^)]*)\)/
     );
