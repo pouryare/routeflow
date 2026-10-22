@@ -119,8 +119,11 @@ describe("pullSince", () => {
     expect(second.rows.filter((r) => r.table === "orders")).toEqual([]);
   });
 
-  it("surfaces a tombstone recorded after the watermark", () => {
+  it("surfaces a tombstone recorded after the watermark", async () => {
     const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null);
+    // The watermark is the newest change seen and the filter is strict (`>`), so a tombstone
+    // stamped in the same millisecond would be missed; make sure the clock has moved on.
+    await new Promise((r) => setTimeout(r, 5));
     tombstone(1, "order_line", 999);
     const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
     expect(second.tombstones.map((t) => t.entity_id)).toContain(999);
