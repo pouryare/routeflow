@@ -56,3 +56,36 @@ export function insertCommissionPayment(
       ).lastInsertRowid
   );
 }
+
+const RATE_KINDS = {
+  driver: { table: "driver_commission_rates", person: "driver_user_id", value: "rate_per_kg_toman" },
+  manager: { table: "manager_commission_overrides", person: "manager_user_id", value: "override_pct" },
+} as const;
+
+/** A dated rate row (insert-only: changing a rate is a new row, so last month's statement cannot be restated
+ *  by editing a cell). `personId` null is the company-wide default. The table and columns come from the
+ *  fixed RATE_KINDS map; the validation of the value stays with each ledger, which knows its unit. */
+export function insertDatedRate(
+  db: DatabaseSync,
+  kind: keyof typeof RATE_KINDS,
+  personId: number | null | undefined,
+  value: number,
+  input: { valid_from: string; created_by?: number | null }
+): number {
+  const { table, person, value: valueColumn } = RATE_KINDS[kind];
+  return Number(
+    db
+      .prepare(
+        `INSERT INTO ${table} (${person}, ${valueColumn}, valid_from, created_by, created_at, organization_id)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      )
+      .run(
+        personId ?? null,
+        value,
+        input.valid_from.slice(0, 10),
+        input.created_by ?? null,
+        new Date().toISOString(),
+        orgOfUser(db, personId, input.created_by)
+      ).lastInsertRowid
+  );
+}
