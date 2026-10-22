@@ -38,10 +38,10 @@ export function maybeNotifySlowJob(organizationId: number, jobId: number, total:
   const eventId = Number(
     getDb()
       .prepare(
-        `INSERT INTO events (organization_id, kind, entity_type, entity_id, occurred_at, metadata_json)
-         VALUES (?, 'lead_import.slow', 'lead_import_job', ?, ?, ?)`
+        `INSERT INTO events (organization_id, kind, entity_type, entity_id, occurred_at, metadata_json, created_at)
+         VALUES (?, 'lead_import.slow', 'lead_import_job', ?, ?, ?, ?)`
       )
-      .run(organizationId, jobId, now, JSON.stringify({ job_id: jobId, total })).lastInsertRowid
+      .run(organizationId, jobId, now, JSON.stringify({ job_id: jobId, total }), now).lastInsertRowid
   );
 
   return fanOutNotifications(
