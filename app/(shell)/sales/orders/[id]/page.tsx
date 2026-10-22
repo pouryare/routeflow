@@ -2,9 +2,8 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import { redirect, notFound } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, orderFilter } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { readOrder } from "@/lib/orders";
+import { getSessionFromCookies } from "@/lib/session";
+import { orderPageFor } from "@/lib/repo/ordersView";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { buildMapLink } from "@/lib/deepLink";
@@ -19,7 +18,6 @@ import BentoStrip, {
 } from "@/components/BentoStrip";
 import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
 import ComplaintFromOrder from "@/components/flows/ComplaintFromOrder";
-import { readOrderDeliveryHistory } from "@/lib/repo/orderDeliveries";
 
 export const dynamic = "force-dynamic";
 
@@ -48,24 +46,9 @@ export default async function OrderDetailPage({
   if (isVanRole(session.role)) redirect("/driver");
 
   const id = Number((await params).id);
-  const db = getDb();
-
-  // The same scope fragment the list and the API use. An order in another group is a
-  // 404 here too, not a page that renders with an error -- otherwise the existence of
-  // the row leaks through the difference.
-  const scope = orderFilter(session);
-  const visible = db
-    .prepare(`SELECT o.id FROM orders o WHERE o.id = ?${scope.sql}`)
-    .get(id, ...scope.params);
-  if (!visible) notFound();
-
-  const order = readOrder(db, id);
-  if (!order) notFound();
-
-  /* Every attempt at delivering THIS order, oldest first. It lived on a cross-order page
-     at /sales/deliveries, which answered "what happened recently" and not "what happened
-     to this" — and this page had no trace of it. */
-  const attempts = readOrderDeliveryHistory(db, session.organizationId, order.id);
+  const page = orderPageFor(session, id);
+  if (!page) notFound();
+  const { order, attempts } = page;
 
   return (
     <div className="flex flex-col gap-[var(--space-4)]">

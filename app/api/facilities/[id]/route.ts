@@ -1,9 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind, getDb } from "@/lib/db";
-import { readFacility } from "@/lib/facilities";
+import { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor, FacilityKind } from "@/lib/db";
+import { deleteFacility, findOwnFacility, updateFacility } from "@/lib/repo/facilitiesAdmin";
 import { isValidCoord } from "@/lib/geoLinks";
 import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
-import { orgClause } from "@/lib/orgScope";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 interface PatchInput {
@@ -35,11 +34,11 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
     return NextResponse.json({ ok: false, error: "بدنه درخواست نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   // kind is read here, not just for the 404 check, because an icon_key PATCH has to be
-  // validated against the kind the row will have AFTER this request -- which is the
-  // requested kind when the request carries one.
-  const exists = db.prepare("SELECT id, group_id, kind FROM facilities WHERE id = ?").get(idNum) as
+  // validated against the kind the row will have AFTER this request. The company is part of
+  // the lookup: an id alone reaches every tenant's sites.
+  const organizationId = orgScopeId(guard.session);
+  const exists = findOwnFacility(idNum, organizationId) as
     | { id: number; group_id: number | null; kind: FacilityKind }
     | undefined;
   // 404 rather than 403 for another group's site, for the same reason as districts:
@@ -48,7 +47,6 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
 
-  const now = new Date().toISOString();
   const sets: string[] = [];
   const values: (string | number | null)[] = [];
 
@@ -121,23 +119,10 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
     return NextResponse.json({ ok: false, error: "چیزی برای به‌روزرسانی ارسال نشده است" }, { status: 400 });
   }
 
-  // Both statements run inside one transaction so a failure between them cannot leave
-  // the table with zero origins (or two). See spec §1.1 for why this is enforced in the
-  // write path rather than by a partial unique index.
-  db.exec("BEGIN");
+  // Column changes and the origin move run in one transaction (spec §1.1).
   try {
-    if (sets.length > 0) {
-      sets.push("updated_at = ?");
-      values.push(now);
-      db.prepare(`UPDATE facilities SET ${sets.join(", ")} WHERE id = ?`).run(...values, idNum);
-    }
-    if (body.is_default_origin === true) {
-      db.prepare("UPDATE facilities SET is_default_origin = 0, updated_at = ? WHERE is_default_origin = 1").run(now);
-      db.prepare("UPDATE facilities SET is_default_origin = 1, updated_at = ? WHERE id = ?").run(now, idNum);
-    }
-    db.exec("COMMIT");
+    updateFacility(idNum, organizationId, sets, values, body.is_default_origin === true);
   } catch (e) {
-    db.exec("ROLLBACK");
     const msg = e instanceof Error ? e.message : "خطا در به‌روزرسانی مکان";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
@@ -155,44 +140,20 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
-  // The whole row, not just the flag: it is handed back to the caller so the delete can
-  // be undone from the toast. Read before the DELETE, obviously -- afterwards there is
-  // nothing left to describe.
-  const row = readFacility(db, idNum);
-  const owning = db.prepare("SELECT group_id FROM facilities WHERE id = ?").get(idNum) as
-    | { group_id: number | null }
-    | undefined;
-  if (!row || !owning || !canReachGroup(guard.session, owning.group_id)) {
-    return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
-  }
-
-  // Every distance in the app is measured from a site. Deleting the last one would
-  // leave nothing to measure from, so it is refused rather than handled downstream.
-  const orgOnly = orgClause("organization_id", orgScopeId(guard.session));
-  const total = (db.prepare(`SELECT COUNT(*) c FROM facilities WHERE 1 = 1${orgOnly.sql}`).get(...orgOnly.params) as { c: number }).c;
-  if (total <= 1) {
-    return NextResponse.json({ ok: false, error: "آخرین مکان را نمی‌توان حذف کرد" }, { status: 400 });
-  }
-
-  const now = new Date().toISOString();
-  db.exec("BEGIN");
+  // Every distance in the app is measured from a site, so the last one cannot go; the whole row
+  // comes back so the delete can be undone from the toast.
+  let result;
   try {
-    db.prepare("DELETE FROM facilities WHERE id = ?").run(idNum);
-    // Deleting the origin promotes a replacement in the same transaction -- preferring a
-    // home base, then the oldest remaining site -- so the app is never left without one.
-    if (row.is_default_origin === 1) {
-      db.prepare(
-        `UPDATE facilities SET is_default_origin = 1, updated_at = ?
-         WHERE id = (SELECT id FROM facilities ORDER BY CASE kind WHEN 'home' THEN 0 ELSE 1 END, id LIMIT 1)`
-      ).run(now);
-    }
-    db.exec("COMMIT");
+    result = deleteFacility(idNum, orgScopeId(guard.session), (g) => canReachGroup(guard.session, g));
   } catch (e) {
-    db.exec("ROLLBACK");
     const msg = e instanceof Error ? e.message : "خطا در حذف مکان";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
+  if (!result.ok) {
+    return result.reason === "last"
+      ? NextResponse.json({ ok: false, error: "آخرین مکان را نمی‌توان حذف کرد" }, { status: 400 })
+      : NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
+  }
 
-  return NextResponse.json({ ok: true, deleted: row });
+  return NextResponse.json({ ok: true, deleted: result.deleted });
 }

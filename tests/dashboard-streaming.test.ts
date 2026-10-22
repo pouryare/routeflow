@@ -34,15 +34,33 @@ describe("the dashboard streams its slow sections", () => {
   });
 
   it("no longer runs the slow reads inline in the page", () => {
-    for (const call of ["allStatements(", "allDriverStatements(", "allManagerStatements(", "stockPosition(", "fillRateByDriver(", "kpiBoard(", "actionCenterFor(", "customersHealthOverview("]) {
+    for (const call of ["allStatements(", "allDriverStatements(", "allManagerStatements(", "stockPosition(", "fillRateByDriver(", "moneyFor(", "stockFor(", "kpiBoard(", "actionCenterFor(", "customersHealthOverview("]) {
       expect(page, call).not.toContain(call);
     }
   });
 
   it("still gates the cost-bearing sections by role, in the read and not just the markup", () => {
-    const money = readFileSync("components/dashboard/MoneySection.tsx", "utf8");
+    // The commission gate moved with the read: commissionStatementsFor() (which moneyFor() calls,
+    // and the commission page and API share) skips the driver and manager ledgers for a seller,
+    // so that is where the role check must live.
+    const money = readFileSync("lib/repo/commissionView.ts", "utf8");
+    expect(readFileSync("lib/repo/dashboardView.ts", "utf8")).toContain("commissionStatementsFor(");
     const stock = readFileSync("components/dashboard/StockSection.tsx", "utf8");
     expect(money).toMatch(/phone_sales/);
     expect(page + stock).toMatch(/phone_sales/);
+  });
+
+  it("keeps the heavy reads inside the streamed sections, behind the session-scoped view functions", () => {
+    expect(readFileSync("components/dashboard/MoneySection.tsx", "utf8")).toContain("moneyFor(session)");
+    expect(readFileSync("components/dashboard/StockSection.tsx", "utf8")).toContain("stockFor(session)");
+  });
+
+  it("no dashboard file opens the database: they call lib/repo/dashboardView and friends with the session", () => {
+    const files = ["app/(shell)/sales/dashboard/page.tsx", ...["DeepAnalysisSection", "MoneySection", "StockSection"].map((n) => `components/dashboard/${n}.tsx`)];
+    for (const f of files) {
+      const src = readFileSync(f, "utf8");
+      expect(src, f).not.toMatch(/from\s+["']@\/lib\/db["']/);
+      expect(src, f).not.toMatch(/\bgetDb\(/);
+    }
   });
 });

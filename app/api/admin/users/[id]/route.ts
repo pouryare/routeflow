@@ -6,15 +6,15 @@ import { OWNER_ROLES } from "@/lib/roles";
 
 const MIN_PASSWORD = 8;
 
-/** Would this change leave the app with no active owner?
+/** Would this change leave this organisation with no active owner? (Another company's owners do not count.)
  *
  *  The only way back from that is scripts/create-user.mjs over SSH, so it is worth one
  *  extra query on every account edit. */
 function wouldStrandTheApp(db: ReturnType<typeof getDb>, target: UserRow, becomingNonOwner: boolean): boolean {
   if (target.role !== "owner" || !target.active || !becomingNonOwner) return false;
   const { n } = db
-    .prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND active = 1 AND id != ?")
-    .get(target.id) as { n: number };
+    .prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND active = 1 AND id != ? AND organization_id = ?")
+    .get(target.id, target.organization_id) as { n: number };
   return n === 0;
 }
 

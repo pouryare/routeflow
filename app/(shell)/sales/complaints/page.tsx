@@ -1,10 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, scopeGroupIds } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { readCustomers } from "@/lib/customers";
-import { readCatalogue } from "@/lib/catalogue";
+import { customersFor, catalogueFor } from "@/lib/repo/sessionReads";
+import { getSessionFromCookies } from "@/lib/session";
 import ComplaintsPanel from "@/components/sales/ComplaintsPanel";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, MANAGE_ROLES } from "@/lib/roles";
@@ -18,12 +16,11 @@ export default async function ComplaintsPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
-  const customers = readCustomers(db, scopeGroupIds(session)).map((c) => ({
+  const customers = customersFor(session).map((c) => ({
     id: c.id,
     business_name: c.business_name,
   }));
-  const products = readCatalogue(db, session.organizationId).map((p) => ({ id: p.id, name: p.name }));
+  const products = catalogueFor(session).map((p) => ({ id: p.id, name: p.name }));
 
   return (
     <>

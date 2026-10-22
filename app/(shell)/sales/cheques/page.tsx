@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, scopeGroupIds } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { readCustomers } from "@/lib/customers";
+import { customersFor } from "@/lib/repo/sessionReads";
+import { getSessionFromCookies } from "@/lib/session";
 import ChequesBoard from "@/components/sales/ChequesBoard";
 import PageHeader from "@/components/meridian/PageHeader";
 
@@ -16,7 +15,7 @@ export default async function ChequesPage() {
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  const customers = readCustomers(getDb(), scopeGroupIds(session)).map((c) => ({
+  const customers = customersFor(session).map((c) => ({
     id: c.id,
     business_name: c.business_name,
     customer_code: c.customer_code,

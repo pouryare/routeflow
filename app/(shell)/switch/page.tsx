@@ -4,6 +4,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
 import AccountSwitcher from "@/components/meridian/AccountSwitcher";
+import ActingCompany from "@/components/meridian/ActingCompany";
 import PageHeader from "@/components/meridian/PageHeader";
 
 export const dynamic = "force-dynamic";
@@ -27,6 +28,8 @@ export default async function SwitchPage() {
       <p className="mt-[var(--space-1)] text-[length:var(--text-sm)] text-[var(--text-muted)]">
         هر کاری که اینجا انجام دهید به نام آن شخص ثبت می‌شود.
       </p>
+      {/* The founder's account only: pick a company to act in (reads and writes), or all of them. */}
+      {session.role === "platform_owner" && session.actorId === undefined ? <ActingCompany /> : null}
       <AccountSwitcher variant="page" />
     </div>
   );

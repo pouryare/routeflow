@@ -48,6 +48,10 @@ export interface SessionClaims {
   /** Set only while an owner is acting as this user (Login-As, lib/impersonation.ts): the
    *  owner's user id. lib/session.ts re-validates it on every request. */
   act?: number;
+  /** Acting company: set only on a platform_owner's token, by /api/admin/acting-org. A positive id
+   *  makes the session behave as that company's owner (lib/session.ts re-validates it on every
+   *  request); absent means "all companies", the platform_owner's default. */
+  ao?: number;
 }
 
 /** Token shape: "<base64url(JSON claims)>.<hmac-sha256 of that same base64url string>".

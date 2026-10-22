@@ -2,7 +2,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+
 import { boardFor } from "@/lib/repo/board";
 import { getPrefs } from "@/lib/repo/prefs";
 import Board from "@/components/board/Board";
@@ -20,7 +20,6 @@ export default async function TasksBoardPage() {
   if (!["owner", "group_manager", "rep_manager", "platform_owner"].includes(session.role)) {
     redirect("/sales");
   }
-  getDb();
 
   const prefs = getPrefs(session.user.id);
   const view: BoardView = prefs.board_default_view ?? "status";

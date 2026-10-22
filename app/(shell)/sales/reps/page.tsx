@@ -4,7 +4,7 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+
 import { repsOverview, REP_HEALTH_BAND_FA } from "@/lib/repo/repHealth";
 import { faJalaliDate } from "@/lib/jalali";
 import { REP_STAGE_LABEL, type RepStage } from "@/lib/repStages";
@@ -36,7 +36,6 @@ export default async function RepsPage({
   if (!session) redirect("/login");
   if (!(MANAGE_ROLES.includes(session.role) || session.role === "rep_manager")) redirect("/sales");
 
-  getDb();
   const canDefine = isOwner(session.role) || session.role === "rep_manager";
   const mode = canDefine && one((await searchParams).view) === "define" ? "define" : "perform";
   const reps = repsOverview(session.organizationId);

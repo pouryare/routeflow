@@ -1,5 +1,7 @@
 import ImpersonationBanner from "@/components/meridian/ImpersonationBanner";
 import RoleBanner from "@/components/meridian/RoleBanner";
+import ActingCompanyBanner from "@/components/meridian/ActingCompanyBanner";
+import { organizationName } from "@/lib/repo/organizations";
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
@@ -56,6 +58,10 @@ export default async function AppHeader() {
           asRole={roleLabel(session.role)}
         />
       ) : null}
+      {/* The founder acting in ONE company: reads and writes are that company's, so say so on every
+          page, loudly, with the way back. Never shown for anyone else (actingOrg is only ever set
+          for a platform_owner). */}
+      {session.actingOrg ? <ActingCompanyBanner name={organizationName(session.actingOrg) ?? String(session.actingOrg)} /> : null}
       {/* Which world they are in. Both can be true at once — a driver impersonated by the
           founder is in a state neither banner alone describes — so they stack rather than
           replace one another. Each renders nothing for a single-role person. */}

@@ -8,7 +8,7 @@ import { suggestionsFor } from "@/lib/repo/suggestions";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
+
 import { todayFor } from "@/lib/repo/briefing";
 import Briefing from "@/components/today/Briefing";
 import BriefingHero from "@/components/today/BriefingHero";
@@ -30,7 +30,6 @@ export default async function SalesTodayPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  getDb();
   const data = todayFor(session);
 
   return (

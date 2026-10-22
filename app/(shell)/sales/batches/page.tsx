@@ -1,9 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
+import { catalogueFor } from "@/lib/repo/sessionReads";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { readCatalogue } from "@/lib/catalogue";
 import BatchesPanel from "@/components/sales/BatchesPanel";
 import PageHeader from "@/components/meridian/PageHeader";
 
@@ -16,7 +15,7 @@ export default async function BatchesPage() {
   if (!session) redirect("/login");
   if (!MANAGE_ROLES.includes(session.role)) redirect("/sales");
 
-  const products = readCatalogue(getDb(), session.organizationId).map((p) => ({
+  const products = catalogueFor(session).map((p) => ({
     id: p.id,
     name: p.name,
     base_unit: p.base_unit,

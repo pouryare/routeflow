@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { createGroup, listGroups } from "@/lib/repo/groupsAdmin";
 import { orgScopeId, requireRole } from "@/lib/session";
-import { orgClause } from "@/lib/orgScope";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** Fixed palette rather than free-form colour input.
@@ -33,14 +32,7 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
-  const org = orgClause("g.organization_id", orgScopeId(guard.session));
-  const groups = getDb()
-    .prepare(
-      `SELECT g.*, (SELECT COUNT(*) FROM districts d WHERE d.group_id = g.id) AS district_count,
-              (SELECT COUNT(*) FROM users u WHERE u.group_id = g.id AND u.active = 1) AS user_count
-       FROM groups g WHERE 1 = 1${org.sql} ORDER BY g.name`
-    )
-    .all(...org.params) as unknown as Record<string, unknown>[];
+  const groups = listGroups(orgScopeId(guard.session));
 
   return NextResponse.json({ ok: true, groups, palette: GROUP_PALETTE });
 }
@@ -59,15 +51,9 @@ export async function POST(req: NextRequest) {
   }
   const color = GROUP_PALETTE.includes(body?.color ?? "") ? body!.color! : GROUP_PALETTE[0];
 
-  const db = getDb();
-  const organizationId = guard.session.user.organization_id;
   try {
-    const result = db
-      .prepare(
-        "INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES (?, ?, ?, 1, ?, ?)"
-      )
-      .run(name, uniqueSlug(db, slugify(name), organizationId), color, new Date().toISOString(), organizationId);
-    return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
+    const id = createGroup(guard.session.organizationId, name, slugify(name), color);
+    return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     // A duplicate name is a thing the owner did, not a server fault -- 409 so the form can
@@ -77,21 +63,4 @@ export async function POST(req: NextRequest) {
     }
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
-}
-
-/** Two different names can slugify to the same string ("گروه شرق" and "گروه-شرق"), and
- *  slug is UNIQUE per organisation, so a collision would surface as a duplicate-name
- *  error the owner cannot act on. Suffix instead.
- *
- *  Scoped to this organisation only: a slug taken by a different tenant is not a
- *  collision here, and treating it as one would leak that the other tenant's slug
- *  exists at all. */
-function uniqueSlug(db: ReturnType<typeof getDb>, base: string, organizationId: number): string {
-  const taken = db.prepare("SELECT 1 FROM groups WHERE slug = ? AND organization_id = ?");
-  if (!taken.get(base, organizationId)) return base;
-  for (let n = 2; n < 100; n++) {
-    const candidate = `${base}-${n}`;
-    if (!taken.get(candidate, organizationId)) return candidate;
-  }
-  return `${base}-${Date.now().toString(36)}`;
 }

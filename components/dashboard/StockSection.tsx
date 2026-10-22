@@ -1,8 +1,6 @@
-import { orgScopeId, type Session } from "@/lib/session";
+import type { Session } from "@/lib/session";
 import { yieldToEventLoop } from "@/lib/yieldToEventLoop";
-import { getDb } from "@/lib/db";
-import { fillRateByDriver } from "@/lib/dashboard";
-import { stockPosition } from "@/lib/purchases";
+import { stockFor } from "@/lib/repo/dashboardView";
 import { faNum, faToman } from "@/lib/format";
 import BarChart from "@/components/charts/BarChart";
 import CollapsibleSection from "@/components/CollapsibleSection";
@@ -16,12 +14,9 @@ const empty = EMPTY_CHART;
 export default async function StockSection({ session }: { session: Session }) {
   await yieldToEventLoop();
   if (session.role === "phone_sales") return null;
-  const db = getDb();
-  const stock = stockPosition(db, orgScopeId(session));
+  const { stock, drivers } = stockFor(session);
   const stockValue = stock.reduce((sum, r) => sum + r.value_toman, 0);
   const negatives = stock.filter((r) => r.negative);
-
-  const drivers = fillRateByDriver(db, session);
 
   return (
         <CollapsibleSection title="انبار و تحویل" icon="package" storageKey="dash-stock">

@@ -4,8 +4,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { salesDashboard, jalaliMonthKey } from "@/lib/dashboard";
+import { jalaliMonthKey } from "@/lib/dashboard";
+import { dashboardFor } from "@/lib/repo/dashboardView";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import { movingAverage } from "@/lib/chartScale";
@@ -41,8 +41,7 @@ export default async function DashboardPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
-  const d = salesDashboard(db, session);
+  const d = dashboardFor(session);
 
   const today = toJalali(new Date().toISOString())!;
   const period = {
@@ -58,7 +57,7 @@ export default async function DashboardPage() {
      handed them the aggregate by the back door -- so the read itself is skipped, not
      just the markup. One clock for the whole section, so its day boundaries agree. */
   const coverageNow = new Date();
-  const coverage = session.role === "phone_sales" ? null : coverageAnalytics(session, coverageNow, db);
+  const coverage = session.role === "phone_sales" ? null : coverageAnalytics(session, coverageNow);
 
   const newThisMonth = d.new_customers_by_month.find((p) => p.key === jalaliMonthKey(period.to))?.value ?? 0;
 
