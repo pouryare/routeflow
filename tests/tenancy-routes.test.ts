@@ -143,18 +143,31 @@ function around(text: string): string {
   return text.slice(Math.max(0, i - 70), i + MARK.length).replace(/\s+/g, " ");
 }
 
-function req(method: Method, url: string, cookie?: string) {
+/** Bodies a write is tried with. An empty body usually dies at validation before the handler looks
+ *  anything up, which is how a missing organisation check on a PATCH went unseen: the net sent
+ *  `{}`, got a 400, and never reached the UPDATE. The second body names the fields most handlers
+ *  accept, so a handler that does not check the row's organisation actually writes. */
+const BODIES: Record<string, unknown>[] = [
+  {},
+  {
+    name: "LEAK", display_name: "LEAK", title: "LEAK", label: "LEAK", note: "LEAK", notes: "LEAK", address: "LEAK",
+    phone: "09120000000", active: false, status: "cancelled", color: "#2DE0E6", amount_toman: 1, price_toman: 1,
+    quantity: 1, qty: 1, lat: 35.7, lng: 51.4, role: "phone_sales", group_id: null, password: "leakleakleak1",
+  },
+];
+
+function req(method: Method, url: string, cookie?: string, body: Record<string, unknown> = {}) {
   const headers: Record<string, string> = {};
   if (cookie) headers.cookie = cookie;
   const init: { method: Method; headers: Record<string, string>; body?: string } = { method, headers };
   if (method !== "GET") {
     headers["Content-Type"] = "application/json";
-    init.body = "{}";
+    init.body = JSON.stringify(body);
   }
   return new NextRequest(`http://localhost${url}`, init);
 }
 
-async function call(r: RouteInfo, method: Method, value: string, cookie?: string): Promise<{ status: number; text: string } | null> {
+async function call(r: RouteInfo, method: Method, value: string, cookie?: string, body: Record<string, unknown> = {}): Promise<{ status: number; text: string } | null> {
   const handler = modules.get(r.rel)?.[method];
   if (!handler) return null;
   const params: Record<string, string> = {};
@@ -164,7 +177,7 @@ async function call(r: RouteInfo, method: Method, value: string, cookie?: string
     url = url.replace(`{${p}}`, value);
   }
   try {
-    const res = await handler(req(method, url, cookie), { params: Promise.resolve(params) });
+    const res = await handler(req(method, url, cookie, body), { params: Promise.resolve(params) });
     return { status: res.status, text: await res.text() };
   } catch (e) {
     /* A handler that throws instead of answering is a 500 to the client. It is not a leak, so
@@ -194,6 +207,10 @@ beforeAll(async () => {
     );
     db.prepare("INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (?, ?)").run(id, role);
   }
+  /* Rows that can actually be changed or deleted: a group with no users (a group with members
+     refuses deletion for a different reason) and a second facility (the last one is protected). */
+  db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES ('empty b', 'empty-b', '#2DE0E6', 1, '2026-01-01', 2)").run();
+  db.prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES ('wh-b2', 'warehouse', 'second b', 35, 51, '2026-01-01', 2, '2026-01-01')").run();
   markB(db);
   aOwnerCookie = `${COOKIE_NAME}=${createSessionToken({ uid: a.ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "A" })}`;
 
@@ -247,25 +264,29 @@ describe("tenancy net over every api route", () => {
   }, 300_000);
 
   it("an owner of org A writing with org B's ids changes nothing of B's, and gets nothing of B's back", async () => {
-    const before = fingerprintOrgB();
+    let before = fingerprintOrgB();
     const leaks: string[] = [];
     const touched: string[] = [];
     for (const r of routes) {
       for (const m of ["POST", "PUT", "PATCH", "DELETE"] as const) {
         const values = r.params.length ? candidateIds : ["0"];
         for (const v of values) {
-          const out = await call(r, m, v, aOwnerCookie);
-          if (!out) continue;
-          if (out.text.includes(MARK)) leaks.push(`${m} ${r.template.replace(/\{\w+\}/g, v)} (${out.status}) …${around(out.text)}`);
-          if (fingerprintOrgB() !== before) {
-            touched.push(`${m} ${r.template.replace(/\{\w+\}/g, v)} (${out.status})`);
-            return expect({ leaks, touched }).toEqual({ leaks: [], touched: [] });
+          for (const body of BODIES) {
+            const out = await call(r, m, v, aOwnerCookie, body);
+            if (!out) continue;
+            const at = `${m} ${r.template.replace(/\{\w+\}/g, v)} (${out.status})`;
+            if (out.text.includes(MARK)) leaks.push(`${at} …${around(out.text)}`);
+            const after = fingerprintOrgB();
+            if (after !== before) {
+              touched.push(`${at} with ${Object.keys(body).length ? "a full body" : "an empty body"}`);
+              before = after; // keep going: report every route that writes, not only the first
+            }
           }
         }
       }
     }
     expect({ leaks, touched }).toEqual({ leaks: [], touched: [] });
-  }, 600_000);
+  }, 900_000);
 
   it("a caller with no cookie is refused by every route except the ones public by design", async () => {
     const open: string[] = [];

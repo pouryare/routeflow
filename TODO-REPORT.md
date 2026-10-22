@@ -256,3 +256,18 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 3. Step 5: decompose oversized functions and components
 4. Step 6: merge the parallel commission and map families; role sets into one place
 5. Step 7: stricter blocking checks
+
+## Cross-tenant writes found by the stronger write net (2026-10-22)
+
+**Done**
+- [x] Write probe now sends a full body as well as `{}`, and org B has an empty group and a second facility, so writes actually reach the UPDATE/DELETE.
+- [x] Fixed: admin groups PATCH/DELETE and facilities PATCH (also default-origin clearing and DELETE's replacement origin) acted on any company's rows; now scoped to the caller's company.
+
+**Not done / gaps**
+- [ ] `tests/playwrightExtract.test.ts` "shares one browser instance" fails with and without these changes (pre-existing, not investigated).
+- [ ] Both routes still open the DB directly; SQL moves to `lib/repo` as step 4 continues.
+
+**Next steps**
+1. Merge PR #45 once CI is green, then continue step 4 route by route.
+2. Remaining routes and pages (report, schedule, stock, map, driver, suppliers, reps/[id]) into `lib/repo`.
+3. Founder 2/3-step login (F106), steps 5-7.

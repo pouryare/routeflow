@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db";
 import { recomputeCustomerGroups } from "@/lib/groups";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
+import { orgClause } from "@/lib/orgScope";
 import { OWNER_ROLES } from "@/lib/roles";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
@@ -16,7 +17,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
   }
 
   const db = getDb();
-  const existing = db.prepare("SELECT id FROM groups WHERE id = ?").get(groupId);
+  // The group must belong to the caller's company: an id alone reaches every tenant's groups.
+  const own = orgClause("organization_id", orgScopeId(guard.session));
+  const existing = db.prepare(`SELECT id FROM groups WHERE id = ?${own.sql}`).get(groupId, ...own.params);
   if (!existing) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 404 });
   }
@@ -50,7 +53,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
 
   values.push(groupId);
   try {
-    db.prepare(`UPDATE groups SET ${sets.join(", ")} WHERE id = ?`).run(...(values as never[]));
+    db.prepare(`UPDATE groups SET ${sets.join(", ")} WHERE id = ?${own.sql}`).run(...(values as never[]), ...own.params);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     if (msg.includes("UNIQUE")) {
@@ -73,7 +76,9 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
   }
 
   const db = getDb();
-  const existing = db.prepare("SELECT id FROM groups WHERE id = ?").get(groupId);
+  // The group must belong to the caller's company: an id alone reaches every tenant's groups.
+  const own = orgClause("organization_id", orgScopeId(guard.session));
+  const existing = db.prepare(`SELECT id FROM groups WHERE id = ?${own.sql}`).get(groupId, ...own.params);
   if (!existing) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 404 });
   }
@@ -97,7 +102,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
     db.prepare("UPDATE saved_locations SET group_id = NULL WHERE group_id = ?").run(groupId);
     db.prepare("UPDATE lead_lists SET group_id = NULL WHERE group_id = ?").run(groupId);
     db.prepare("UPDATE facilities SET group_id = NULL WHERE group_id = ?").run(groupId);
-    db.prepare("DELETE FROM groups WHERE id = ?").run(groupId);
+    db.prepare(`DELETE FROM groups WHERE id = ?${own.sql}`).run(groupId, ...own.params);
     db.exec("COMMIT");
   } catch (e) {
     db.exec("ROLLBACK");

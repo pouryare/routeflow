@@ -143,7 +143,7 @@ describe("DELETE /api/admin/groups/[id]", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const gid = Number(
-      db.prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)")
+      db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, 1)")
         .run("گروه موقت", "temp", now).lastInsertRowid
     );
     const did = Number(

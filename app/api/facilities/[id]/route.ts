@@ -39,7 +39,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
   // kind is read here, not just for the 404 check, because an icon_key PATCH has to be
   // validated against the kind the row will have AFTER this request -- which is the
   // requested kind when the request carries one.
-  const exists = db.prepare("SELECT id, group_id, kind FROM facilities WHERE id = ?").get(idNum) as
+  const own = orgClause("organization_id", orgScopeId(guard.session));
+  const exists = db.prepare(`SELECT id, group_id, kind FROM facilities WHERE id = ?${own.sql}`).get(idNum, ...own.params) as
     | { id: number; group_id: number | null; kind: FacilityKind }
     | undefined;
   // 404 rather than 403 for another group's site, for the same reason as districts:
@@ -129,10 +130,13 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/facilities
     if (sets.length > 0) {
       sets.push("updated_at = ?");
       values.push(now);
-      db.prepare(`UPDATE facilities SET ${sets.join(", ")} WHERE id = ?`).run(...values, idNum);
+      db.prepare(`UPDATE facilities SET ${sets.join(", ")} WHERE id = ?${own.sql}`).run(...values, idNum, ...own.params);
     }
     if (body.is_default_origin === true) {
-      db.prepare("UPDATE facilities SET is_default_origin = 0, updated_at = ? WHERE is_default_origin = 1").run(now);
+      // One default origin per company, so clearing must not reach another company's.
+      const row = db.prepare("SELECT organization_id FROM facilities WHERE id = ?").get(idNum) as { organization_id: number | null };
+      const mine = orgClause("organization_id", row.organization_id);
+      db.prepare(`UPDATE facilities SET is_default_origin = 0, updated_at = ? WHERE is_default_origin = 1${mine.sql}`).run(now, ...mine.params);
       db.prepare("UPDATE facilities SET is_default_origin = 1, updated_at = ? WHERE id = ?").run(now, idNum);
     }
     db.exec("COMMIT");
@@ -159,9 +163,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
   // The whole row, not just the flag: it is handed back to the caller so the delete can
   // be undone from the toast. Read before the DELETE, obviously -- afterwards there is
   // nothing left to describe.
+  const own = orgClause("organization_id", orgScopeId(guard.session));
   const row = readFacility(db, idNum);
-  const owning = db.prepare("SELECT group_id FROM facilities WHERE id = ?").get(idNum) as
-    | { group_id: number | null }
+  const owning = db.prepare(`SELECT group_id, organization_id FROM facilities WHERE id = ?${own.sql}`).get(idNum, ...own.params) as
+    | { group_id: number | null; organization_id: number | null }
     | undefined;
   if (!row || !owning || !canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
@@ -176,6 +181,8 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
   }
 
   const now = new Date().toISOString();
+  // The replacement origin comes from the row's own company, not from whichever site has the lowest id.
+  const mine = orgClause("organization_id", owning.organization_id);
   db.exec("BEGIN");
   try {
     db.prepare("DELETE FROM facilities WHERE id = ?").run(idNum);
@@ -184,8 +191,8 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/facilitie
     if (row.is_default_origin === 1) {
       db.prepare(
         `UPDATE facilities SET is_default_origin = 1, updated_at = ?
-         WHERE id = (SELECT id FROM facilities ORDER BY CASE kind WHEN 'home' THEN 0 ELSE 1 END, id LIMIT 1)`
-      ).run(now);
+         WHERE id = (SELECT id FROM facilities WHERE 1 = 1${mine.sql} ORDER BY CASE kind WHEN 'home' THEN 0 ELSE 1 END, id LIMIT 1)`
+      ).run(now, ...mine.params);
     }
     db.exec("COMMIT");
   } catch (e) {
