@@ -211,13 +211,23 @@ beforeAll(async () => {
      refuses deletion for a different reason) and a second facility (the last one is protected). */
   db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES ('empty b', 'empty-b', '#2DE0E6', 1, '2026-01-01', 2)").run();
   db.prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES ('wh-b2', 'warehouse', 'second b', 35, 51, '2026-01-01', 2, '2026-01-01')").run();
+  /* An ungrouped list: an owner reaches ungrouped rows by group alone, so only the company check keeps it out. */
+  db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES ('b list', NULL, '2026-01-01', '2026-01-01', 2)").run();
   markB(db);
   aOwnerCookie = `${COOKIE_NAME}=${createSessionToken({ uid: a.ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "A" })}`;
 
   const bIds = Object.entries(b)
     .filter(([k, v]) => k !== "orgId" && typeof v === "number" && v > 0)
     .map(([, v]) => String(v));
-  candidateIds = [...new Set([...bIds, "999999"])];
+  /* Plus the id of every company-B row in every tenant table, so a handler keyed on any of them is tried. */
+  const orgTables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[])
+    .map((t) => t.name)
+    .filter((name) => {
+      const cols = (db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).map((c) => c.name);
+      return cols.includes("organization_id") && cols.includes("id");
+    });
+  const rowIds = orgTables.flatMap((t) => (db.prepare(`SELECT id FROM "${t}" WHERE organization_id = 2 LIMIT 20`).all() as { id: number }[]).map((r) => String(r.id)));
+  candidateIds = [...new Set([...bIds, ...rowIds, "999999"])];
 
   for (const r of routes) {
     if (UNPROBEABLE[r.rel]) continue;
