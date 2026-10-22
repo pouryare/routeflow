@@ -1,7 +1,6 @@
 "use client";
 
 import SmartPicker from "@/components/mobile/SmartPicker";
-import { ChipGroup } from "@/components/mobile/FilterChips";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useRunAfterMount } from "@/lib/useRunAfterMount";
 import { useEffect, useMemo, useRef, useState, useCallback } from "react";
@@ -11,8 +10,7 @@ import type { ComponentProps } from "react";
 import { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Pane } from "react-leaflet";
 /* This app carries its own DistrictFeature shape, which is not structurally the
    GeoJsonObject react-leaflet declares. Casting to GeoJSONProps' own field types says
    exactly which boundary is being crossed; `as any` said nothing and switched off
@@ -20,35 +18,11 @@ import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popu
 import type { GeoJSONProps } from "react-leaflet";
 import { geoJSON } from "leaflet";
 import type { Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import MarkerClusterGroup from "react-leaflet-cluster";
+import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, CustomerRow, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
 import {
-  DistrictCollection,
-  DistrictFeature,
-  DistrictGeometryMap,
-  DistrictProperties,
-  DistrictPropertiesResponse,
-  CustomerRow,
-  CoverageStatus,
-  STATUS_COLOR,
-  STATUS_LABEL,
-  CustomerColorMode,
-  customerLifecycleColor,
-  debtColor,
-  salespersonColor,
-  inactivityColor,
-  daysSinceLastPurchase,
-  distanceColor,
-  DISTANCE_BANDS,
-  isCustomerColorMode,
-  type DistrictColorMode,
-  districtGroupColor,
-  isDistrictColorMode,
-} from "@/lib/types";
-import {
-  PRECISION_AUTO_ZOOM,
   PrecisionMode,
   PrecisionTier,
   geometryUrl,
@@ -58,16 +32,27 @@ import {
 import type { Role } from "@/lib/db";
 import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
-import StatusPill from "./StatusPill";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
-import NavAppSetting, { useNavApp } from "./NavAppSetting";
-import { navigateUrl } from "@/lib/navApps";
+import { useNavApp } from "./NavAppSetting";
 import { useToast } from "./ToastProvider";
-import { distanceKm, formatDistanceKm } from "@/lib/geo";
+import { distanceKm } from "@/lib/geo";
+import DueRemindersSection, { type DueReminder } from "@/components/coverage/DueRemindersSection";
+import NearbyCustomersSection from "@/components/coverage/NearbyCustomersSection";
+import PinnedCustomersSection from "@/components/coverage/PinnedCustomersSection";
+import RecentCustomersSection from "@/components/coverage/RecentCustomersSection";
+import FacilityMarkers from "@/components/coverage/FacilityMarkers";
+import LeadMarkers from "@/components/coverage/LeadMarkers";
+import FoundLocationMarker from "@/components/coverage/FoundLocationMarker";
+import { useMapShortcuts } from "@/components/coverage/useMapShortcuts";
+import CustomerColourSection from "@/components/coverage/CustomerColourSection";
+import CorridorBandLayer from "@/components/coverage/CorridorBandLayer";
+import MapSitesSection, { CORRIDOR_WIDTHS } from "@/components/coverage/MapSitesSection";
+import MapLegendSection from "@/components/coverage/MapLegendSection";
+import MapSettingsSection from "@/components/coverage/MapSettingsSection";
 import { useCorridor } from "@/components/coverage/useCorridor";
 import {
   BASEMAP_KEY,
@@ -87,17 +72,15 @@ import {
 } from "@/lib/mapLayers";
 import LayersPanel, { LayerHint, LayersControl } from "./LayersPanel";
 import TrafficZoneLayer, { useTrafficZones } from "./TrafficZoneLayer";
-import { FACILITY_COLOR, FACILITY_LABEL, isPlaced, pickOrigin, FacilityRow } from "@/lib/facilityTypes";
-import { facilityIcon, facilityMarkerHtml } from "./facilityIcon";
+import { isPlaced, pickOrigin, FacilityRow } from "@/lib/facilityTypes";
 import { useSwipeDismiss } from "./useSwipeDismiss";
 import DataFreshness from "./DataFreshness";
 import EmptyState from "./EmptyState";
 import { newestSync } from "@/lib/freshness";
 import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
-import { copyText, coordText } from "@/lib/clipboard";
+import { copyText } from "@/lib/clipboard";
 import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
-import CopyButton from "./CopyButton";
 import { Icon } from "@/components/meridian/Icon";
 import MapWorklist from "./MapWorklist";
 import { buildWorklist, type Bounds } from "@/lib/mapWorklist";
@@ -111,7 +94,7 @@ import { } from "@/components/meridian/icon-map";
 // can draw anything. CoverageMap is itself ssr:false, so none of these need an SSR pass.
 import { readStoredView, linkTargetView, writeStoredView } from "@/components/coverage/mapViewStore";
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
-import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon, foundLocationIcon, otherFacilityDistance } from "@/components/coverage/mapParts";
+import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon } from "@/components/coverage/mapParts";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
 /* MapLibre and its Leaflet bridge are ~250KB: loaded only once a vector basemap is
@@ -124,19 +107,6 @@ const NextStopBar = dynamic(() => import("./NextStopBar"), { ssr: false });
 const ShortcutHelp = dynamic(() => import("./ShortcutHelp"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
-
-// Three presets rather than a slider: this gets used one-handed in a moving vehicle,
-// where a slider thumb is unusable.
-const CORRIDOR_WIDTHS = [2, 5, 10];
-
-interface DueReminder {
-  id: number;
-  entity_type: "district" | "customer";
-  entity_id: number;
-  due_date: string;
-  message: string;
-  label: string;
-}
 
 /** The groups this viewer may see -- for the territory colour mode and the bulk assign
  *  control. An owner gets every group; a manager gets only their own, which is the only
@@ -268,58 +238,10 @@ export default function CoverageMap({
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   useSwipeDismiss(asideRef, "right", closeSidebar, sidebarOpen);
 
-  /** Keyboard shortcuts, for the half of this app's life that happens at a desk.
-   *
-   *  Every one is a single unmodified key, which is only safe because of the guard
-   *  below: without it, typing a customer's name into the search box would toggle the
-   *  sidebar on every "s". */
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = e.target as HTMLElement | null;
-      const tag = el?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
-
-      switch (e.key) {
-        case "/":
-          e.preventDefault();
-          searchInputRef.current?.focus();
-          break;
-        case "s":
-        case "S":
-          setSidebarOpen((v) => !v);
-          break;
-        case "f":
-        case "F":
-          e.preventDefault();
-          // Opening the sidebar and focusing its filter are one action: the box does not
-          // exist to be focused while the panel is shut.
-          setSidebarOpen(true);
-          window.setTimeout(() => sectionFilterRef.current?.focus(), 50);
-          break;
-        case "g":
-        case "G":
-          if (myPosition) mapRef.current?.flyTo([myPosition.lat, myPosition.lng], 16, { duration: 1 });
-          else {
-            toast("هنوز موقعیتی دریافت نشده", "info");
-            retryPosition();
-          }
-          break;
-        case "?":
-        case "؟":
-          setShowShortcuts(true);
-          break;
-        case "Escape":
-          // Innermost first: Escape should peel one layer, not clear the screen.
-          if (showShortcuts) setShowShortcuts(false);
-          else if (selectedCustomer) setSelectedCustomer(null);
-          else if (sidebarOpen) setSidebarOpen(false);
-          break;
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showShortcuts, selectedCustomer, sidebarOpen, toast, myPosition, retryPosition]);
+  useMapShortcuts({
+    searchInputRef, sectionFilterRef, mapRef, myPosition, retryPosition, toast,
+    showShortcuts, setShowShortcuts, selectedCustomer, setSelectedCustomer, sidebarOpen, setSidebarOpen,
+  });
 
   const [districtsVersion, setDistrictsVersion] = useState(0);
   const loadDistricts = useCallback(async () => {
@@ -1153,139 +1075,13 @@ export default function CoverageMap({
           </p>
         )}
 
-        {dueReminders.length > 0 && (
-          <CollapsibleSection
-            title="یادآوری‌های امروز" icon="bell"
-            count={dueReminders.length}
-            defaultOpen
-          >
-            <div className="flex flex-col gap-1.5">
-              {dueReminders.map((r) => (
-                <div
-                  key={r.id}
-                  className="flex items-start gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2"
-                >
-                  <button
-                    onClick={() => openReminderEntity(r)}
-                    className="flex-1 text-right text-[length:var(--text-sm)] text-text hover:text-accent"
-                  >
-                    <Icon name="clock" size="sm" />
-                    <div className="font-medium">{r.label}</div>
-                    <div className="text-[length:var(--text-xs)] text-text-muted">{r.message}</div>
-                  </button>
-                  <button
-                    onClick={() => resolveReminder(r.id)}
-                    aria-label="انجام شد"
-                    className="shrink-0 text-good hover:opacity-80"
-                  >
-                    <Icon name="check" size="sm" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+        <DueRemindersSection dueReminders={dueReminders} openReminderEntity={openReminderEntity} resolveReminder={resolveReminder} />
 
-        {myPosition && (
-          <CollapsibleSection
-            title="مشتریان نزدیک" icon="map-pin"
-            count={nearbyCustomers.length}
-            defaultOpen
-            right={
-              /* In the header rather than the body: changing the radius is how you
-                 decide whether this section is worth opening at all. */
-              <ChipGroup
-                group={{
-                  id: "nearby_radius",
-                  label: "شعاع جستجوی مشتریان نزدیک",
-                  mode: "single",
-                  neutral: "__none",
-                  value: String(nearbyRadiusKm),
-                  onChange: (v) => { if (v && v !== "__none") setNearbyRadiusKm(Number(v)); },
-                  options: [{ id: "1", label: "۱ کیلومتر" }, { id: "2", label: "۲ کیلومتر" }, { id: "5", label: "۵ کیلومتر" }],
-                }}
-              />
-            }
-          >
-            {nearbyCustomers.length === 0 ? (
-              <p className="text-[length:var(--text-xs)] text-text-faint">مشتری‌ای در این شعاع پیدا نشد.</p>
-            ) : (
-              <div className="flex flex-col gap-1.5">
-                {nearbyCustomers.map(({ customer, km }) => (
-                  <button
-                    key={customer.id}
-                    onClick={() => flyToCustomer(customer)}
-                    className="flex w-full items-center justify-between gap-2 rounded-[var(--radius-md)] border border-border bg-surface px-3 py-2 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent"
-                  >
-                    <Icon name="map-pin" size="md" />
-                    <span className="truncate text-[length:var(--text-sm)] text-text">{customer.business_name}</span>
-                    <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-accent">
-                      {formatDistanceKm(km)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            )}
-          </CollapsibleSection>
-        )}
+        <NearbyCustomersSection myPosition={myPosition} nearbyCustomers={nearbyCustomers} nearbyRadiusKm={nearbyRadiusKm} setNearbyRadiusKm={setNearbyRadiusKm} flyToCustomer={flyToCustomer} />
 
-        {pinnedCustomers.length > 0 && (
-          <CollapsibleSection title="سنجاق‌شده" icon="star" count={pinnedCustomers.length} storageKey="pinned" defaultOpen>
-            <div className="flex flex-col gap-1.5">
-              {pinnedCustomers.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface px-2 py-2"
-                >
-                  <button
-                    onClick={() => flyToCustomer(c)}
-                    className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {c.business_name}
-                  </button>
-                  <button
-                    onClick={() => togglePinned(c.id)}
-                    aria-label={`برداشتن سنجاق ${c.business_name}`}
-                    title="برداشتن سنجاق"
-                    className="shrink-0 text-accent transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-crit"
-                  >
-                    <Icon name="star" size="sm" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+        <PinnedCustomersSection pinnedCustomers={pinnedCustomers} flyToCustomer={flyToCustomer} togglePinned={togglePinned} />
 
-        {recentCustomers.length > 0 && (
-          <CollapsibleSection title="اخیراً دیده‌شده" icon="clock" count={recentCustomers.length} storageKey="recent">
-            <div className="flex flex-col gap-1.5">
-              {recentCustomers.map((c) => (
-                <div
-                  key={c.id}
-                  className="flex items-center gap-1 rounded-[var(--radius-md)] border border-border bg-surface px-2 py-2"
-                >
-                  <button
-                    onClick={() => flyToCustomer(c)}
-                    className="min-w-0 flex-1 truncate text-right text-[length:var(--text-sm)] text-text transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {c.business_name}
-                  </button>
-                  <button
-                    onClick={() => togglePinned(c.id)}
-                    aria-label={`سنجاق کردن ${c.business_name}`}
-                    title="سنجاق کردن"
-                    className="shrink-0 text-text-faint transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-accent"
-                  >
-                    <Icon name="star" size="sm" />
-                  </button>
-                </div>
-              ))}
-            </div>
-          </CollapsibleSection>
-        )}
+        <RecentCustomersSection recentCustomers={recentCustomers} flyToCustomer={flyToCustomer} togglePinned={togglePinned} />
 
         <CustomerFilters
           salespeople={salespeople}
@@ -1295,51 +1091,7 @@ export default function CoverageMap({
           filteredCount={filteredCustomers.length}
         />
 
-        <CollapsibleSection title="رنگ‌بندی مشتریان" icon="palette" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
-            {/* Five modes no longer fit a single row at sidebar width on a phone, so this
-                is a grid rather than a flex row -- the fifth would otherwise squeeze the
-                other four into unreadable slivers. */}
-            <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-              {(
-                [
-                  ["status", "وضعیت"],
-                  ["debt", "بدهی"],
-                  ["phone_sales", "فروشنده"],
-                  ["inactivity", "رکود"],
-                  ["distance", "فاصله"],
-                ] as [CustomerColorMode, string][]
-              ).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setColorMode(mode)}
-                  disabled={mode === "distance" && !colourOrigin}
-                  className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
-                    colorMode === mode
-                      ? "bg-accent font-medium text-accent-ink"
-                      : "text-text-muted hover:bg-white/5 hover:text-text"
-                  }`}
-                >
-                  <Icon name="map-pin" size="sm" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Without this the map is unreadable in distance mode -- the legend below
-                explains district colours only, and the same three hues mean something
-                entirely different on the markers. */}
-            {colorMode === "distance" && colourOrigin && (
-              <div className="mt-2 flex flex-col gap-1.5">
-                <p className="font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-                  فاصله از {colourOrigin.name} — خط مستقیم
-                </p>
-                {DISTANCE_BANDS.map((band) => (
-                  <StatusPill key={band.label} color={band.color} label={band.label} shaped={shapedMarkers} />
-                ))}
-              </div>
-            )}
-        </CollapsibleSection>
-
+<CustomerColourSection colorMode={colorMode} setColorMode={setColorMode} colourOrigin={colourOrigin} shapedMarkers={shapedMarkers} />
         {/* Always present, unlike before: a section that disappears when it is empty
             cannot be distinguished from a section that is broken, and "no dormant
             customers" is itself worth knowing. The count in the heading answers it
@@ -1413,147 +1165,8 @@ export default function CoverageMap({
 
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}
-        <CollapsibleSection title="تأسیسات ما" icon="building" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
-            <div className="flex flex-col gap-1">
-              {initialFacilities.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => isPlaced(f) && flyToFacility(f)}
-                  className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
-                >
-                  <Icon name="map-pin" size="md" />
-                  <span
-                    className="shrink-0"
-                    aria-hidden="true"
-                    dangerouslySetInnerHTML={{
-                      __html: facilityMarkerHtml(f.icon_key, f.kind),
-                    }}
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
-                    {f.notes && (
-                      <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.notes}</span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {placedFacilities.length === 2 && (
-              <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-                {formatDistanceKm(distanceKm(placedFacilities[0], placedFacilities[1]))} فاصله مستقیم بین دو انبار
-              </p>
-            )}
-
-            {/* Feature 3. Lives under the sites section because the corridor is a property
-                of the sites, not a separate map layer the user has to connect back to them. */}
-            {corridorEnds && (
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[length:var(--text-sm)] text-text">کریدور بین انبارها</span>
-                  {!corridorOn && <LayerHint onOpen={() => setLayersOpen(true)} what="کریدور" compact />}
-                </div>
-
-                {corridorOn && (
-                  <>
-                    <div className="mt-2 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                      {CORRIDOR_WIDTHS.map((km) => (
-                        <button
-                          key={km}
-                          onClick={() => {
-                            setCorridorWidthKm(km);
-                            localStorage.setItem("coverage_corridor_km", String(km));
-                          }}
-                          className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                            corridorWidthKm === km
-                              ? "bg-accent font-medium text-accent-ink"
-                              : "text-text-muted hover:bg-white/5 hover:text-text"
-                          }`}
-                        >
-                          <Icon name="route" size="sm" />
-                          {km} کیلومتر
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                      <span>
-                        مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} (
-                        {formatDistanceKm(corridorRoute ? corridorRoute.km : corridorEnds.km)}
-                        {corridorRoute ? "، روی جاده" : corridorRouting ? "، در حال مسیریابی…" : "، خط مستقیم"}
-                        ).
-                      </span>{" "}
-                      <span>
-                        {corridorUncovered > 0
-                          ? `${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
-                          : "این مسیر از هیچ منطقهٔ بدون پوشش نمی‌گذرد."}
-                      </span>
-                      {!corridorRoute && !corridorRouting && (
-                        <span className="mt-1 block text-warn">
-                          مسیریاب در دسترس نبود — نوار روی خط مستقیم بین دو نقطه کشیده شده، نه روی جاده.
-                        </span>
-                      )}
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-        </CollapsibleSection>
-
-        <CollapsibleSection title="راهنمای رنگ مناطق" icon="map" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
-            {/* One meaning at a time. The fill cannot say both "needs coverage" and
-                "belongs to گروه غرب" at once without an amber district being ambiguous,
-                so the mode switches and the legend below switches with it. Hidden
-                entirely when there are no groups yet -- a switch with one option is
-                just clutter. */}
-            {groups.length > 0 && (
-              <div className="mb-2 grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                {(
-                  [
-                    ["status", "وضعیت پوشش"],
-                    ["group", "گروه"],
-                  ] as [DistrictColorMode, string][]
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => setDistrictColorMode(mode)}
-                    className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                      districtColorMode === mode
-                        ? "bg-accent font-medium text-accent-ink"
-                        : "text-text-muted hover:bg-white/5 hover:text-text"
-                    }`}
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              {districtColorMode === "group" ? (
-                <>
-                  {groups.map((g) => (
-                    <StatusPill
-                      key={g.id}
-                      color={g.color ?? STATUS_COLOR.unknown}
-                      label={g.name}
-                      shaped={shapedMarkers}
-                    />
-                  ))}
-                  <StatusPill color={STATUS_COLOR.unknown} label="بدون گروه" shaped={shapedMarkers} />
-                </>
-              ) : (
-                (Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-                  <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} shaped={shapedMarkers} />
-                ))
-              )}
-            </div>
-            <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-              {bulkMode
-                ? "روی چند منطقه کلیک کنید تا انتخاب شوند، سپس از نوار پایین صفحه تغییر را روی همه اعمال کنید."
-                : "برای تغییر وضعیت یک منطقه، روی آن در نقشه کلیک کنید."}
-            </p>
-        </CollapsibleSection>
-
+<MapSitesSection initialFacilities={initialFacilities} placedFacilities={placedFacilities} flyToFacility={flyToFacility} corridorEnds={corridorEnds} corridorOn={corridorOn} corridorWidthKm={corridorWidthKm} setCorridorWidthKm={setCorridorWidthKm} corridorRoute={corridorRoute} corridorRouting={corridorRouting} corridorUncovered={corridorUncovered} setLayersOpen={setLayersOpen} />
+<MapLegendSection groups={groups} districtColorMode={districtColorMode} setDistrictColorMode={setDistrictColorMode} shapedMarkers={shapedMarkers} bulkMode={bulkMode} />
         {/* Switching it on lives in the layers panel with every other layer; how it is
             weighted is a property of the layer, and belongs next to the data it weights. */}
         <CollapsibleSection title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
@@ -1572,225 +1185,15 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی گوگل نشان بلد ویز">
-          <div className="flex flex-col gap-4">
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">ثبت خودکار بازدید (GPS)</span>
-                <p className="text-[length:var(--text-xs)] text-text-faint">وقتی نزدیک مشتری هستید پیشنهاد ثبت بازدید نمایش داده می‌شود</p>
-              </div>
-              <button
-                onClick={() => setGeofenceOn((v) => !v)}
-                role="switch"
-                aria-checked={geofenceOn}
-                aria-label="ثبت خودکار بازدید"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  geofenceOn ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="plus" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: geofenceOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            {/* A sub-option, not a sibling switch: it rides the same permission, the same
-                position stream and the same battery cost as the toggle above, and
-                presenting it as independent would imply otherwise. */}
-            {geofenceOn && (
-              <label className="mt-2 flex items-start gap-2 text-[length:var(--text-xs)] leading-5 text-text-muted">
-                <input
-                  type="checkbox"
-                  checked={facilityGeofenceOn}
-                  onChange={(e) => {
-                    setFacilityGeofenceOn(e.target.checked);
-                    localStorage.setItem("coverage_geofence_sites", e.target.checked ? "1" : "0");
-                  }}
-                  className="mt-0.5 accent-[color:var(--accent)]"
-                />
-                <span>
-                  ثبت حضور در انبارها و مبدأ
-                  <span className="block text-text-faint">
-                    رسیدن به انبار یا مبدأ هم ثبت می‌شود — مبنای گزارش ساعت کاری روزانه
-                  </span>
-                </span>
-              </label>
-            )}
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">حالت رانندگی</span>
-                <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
-                  متن و دکمه‌ها بزرگ‌تر می‌شوند — برای استفاده با یک دست داخل خودرو
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !driverMode;
-                  setDriverMode(next);
-                  localStorage.setItem("coverage_driver_mode", next ? "1" : "0");
-                }}
-                role="switch"
-                aria-checked={driverMode}
-                aria-label="حالت رانندگی"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  driverMode ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="minimize" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: driverMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">نشانگرهای شکل‌دار</span>
-                <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
-                  به جای تکیه بر رنگ سبز/نارنجی/قرمز، هر وضعیت شکل خودش را می‌گیرد — دایره، مثلث، مربع
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !shapedMarkers;
-                  setShapedMarkers(next);
-                  localStorage.setItem("coverage_shaped_markers", next ? "1" : "0");
-                }}
-                role="switch"
-                aria-checked={shapedMarkers}
-                aria-label="نشانگرهای شکل‌دار"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  shapedMarkers ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="maximize" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: shapedMarkers ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">نوار توقف بعدی</span>
-                <p className="text-[length:var(--text-xs)] text-text-faint">
-                  توقف بعدی برنامه امروز را پایین نقشه نشان می‌دهد
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !nextStopOn;
-                  setNextStopOn(next);
-                  localStorage.setItem("coverage_nextstop_off", next ? "0" : "1");
-                }}
-                role="switch"
-                aria-checked={nextStopOn}
-                aria-label="نوار توقف بعدی"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  nextStopOn ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="layers" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: nextStopOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">انتخاب چندتایی مناطق</span>
-                <p className="text-[length:var(--text-xs)] text-text-faint">برای ویرایش‌های گروهی روی دسکتاپ</p>
-              </div>
-              <button
-                onClick={() => {
-                    /* Leaving bulk mode drops the selection. Said at the click rather
-                       than in an effect on [bulkMode]: an effect renders once with the
-                       stale selection still highlighted and then again without it, which
-                       is what react-hooks/set-state-in-effect is about. This is the only
-                       place bulkMode changes. */
-                    if (bulkMode) setBulkSelectedIds(new Set());
-                    setBulkMode((v) => !v);
-                  }}
-                role="switch"
-                aria-checked={bulkMode}
-                aria-label="حالت انتخاب چندتایی مناطق"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  bulkMode ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="locate" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: bulkMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div>
-
-              {/* Phase 2 moved every notification control — subscribing this device, quiet
-                  hours, and the per-type opt-in matrix — to one screen. A toggle here would
-                  only ever be a third of that story. */}
-              <Link
-                href="/settings/notifications"
-                className="flex items-center justify-between gap-2 text-[length:var(--text-sm)] text-text hover:text-accent"
-              >
-                <span>تنظیمات اعلان‌ها</span>
-                <Icon name="arrow-up-right" size="sm" />
-              </Link>
-
-            </div>
-
-            <NavAppSetting />
-
-            <div>
-
-              <p className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
-                دقت مرز مناطق
-              </p>
-
-              <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                {(
-                  [
-                    ["auto", "خودکار"],
-                    ["low", "سریع"],
-                    ["high", "دقیق"],
-                  ] as [PrecisionMode, string][]
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => setPrecisionMode(mode)}
-                    className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                      precisionMode === mode
-                        ? "bg-accent font-medium text-accent-ink"
-                        : "text-text-muted hover:bg-white/5 hover:text-text"
-                    }`}
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                {precisionMode === "auto"
-                  ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${faNum(PRECISION_AUTO_ZOOM)} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
-                  : precisionMode === "low"
-                    ? "همیشه مرزهای ساده‌شده — سبک‌ترین حالت برای اینترنت ضعیف."
-                    : "همیشه مرزهای کامل — دقیق‌تر ولی سنگین‌تر."}
-              </p>
-
-            </div>
-
-          </div>
-        </CollapsibleSection>
+        <MapSettingsSection
+          geofenceOn={geofenceOn} setGeofenceOn={setGeofenceOn}
+          facilityGeofenceOn={facilityGeofenceOn} setFacilityGeofenceOn={setFacilityGeofenceOn}
+          driverMode={driverMode} setDriverMode={setDriverMode}
+          shapedMarkers={shapedMarkers} setShapedMarkers={setShapedMarkers}
+          nextStopOn={nextStopOn} setNextStopOn={setNextStopOn}
+          bulkMode={bulkMode} setBulkMode={setBulkMode} clearBulkSelection={() => setBulkSelectedIds(new Set())}
+          precisionMode={precisionMode} setPrecisionMode={setPrecisionMode} activeTier={activeTier}
+        />
 
         {/* Last in the panel on purpose: a driver never needs this, and it would be
             competing with the things they do. */}
@@ -1908,34 +1311,7 @@ export default function CoverageMap({
           {/* Feature 3 + 14b: the band, and the dashed line down its middle that makes it
               read as a route rather than an arbitrary rectangle. Non-interactive so it
               never swallows a click meant for a district underneath. */}
-          {corridorOn && corridorEnds && corridorBand.length > 0 && (
-            <>
-              {/* A 7% fill and a half-opacity edge were tuned against a near-black
-                  ground; over a cream basemap the band all but disappears. Same colour,
-                  carried harder -- the corridor still reads as one thing on both. */}
-              <Polygon
-                positions={corridorBand}
-                interactive={false}
-                pathOptions={{
-                  color: FACILITY_COLOR,
-                  weight: 1,
-                  opacity: activeBasemap.ground === "light" ? 0.75 : 0.5,
-                  fillColor: FACILITY_COLOR,
-                  fillOpacity: activeBasemap.ground === "light" ? 0.13 : 0.07,
-                }}
-              />
-              <Polyline
-                positions={corridorPath.map((p) => [p.lat, p.lng] as [number, number])}
-                interactive={false}
-                pathOptions={{
-                  color: FACILITY_COLOR,
-                  weight: 2,
-                  opacity: activeBasemap.ground === "light" ? 0.9 : 0.75,
-                  dashArray: "8 6",
-                }}
-              />
-            </>
-          )}
+        <CorridorBandLayer corridorOn={corridorOn} corridorEnds={corridorEnds} corridorBand={corridorBand} corridorPath={corridorPath} lightGround={activeBasemap.ground === "light"} />
 
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} />}
 
@@ -1997,112 +1373,11 @@ export default function CoverageMap({
           {/* Outside the cluster group and lifted above it: these two are landmarks the
               rest of the map is read against, so they must never be swallowed into a
               customer bubble or hidden behind a blip that happens to overlap them. */}
-          {layers.facilities && placedFacilities.map((f) => {
-            const rel = otherFacilityDistance(f, placedFacilities);
-            return (
-              <Marker
-                key={f.id}
-                position={[f.lat, f.lng]}
-                title={f.name}
-                icon={facilityIcon(f.kind, f.icon_key)}
-                zIndexOffset={1000}
-              >
-                <Popup>
-                  <div dir="rtl" className="text-[length:var(--text-sm)] leading-6">
-                    <p className="font-medium text-text">{f.name}</p>
-                    <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">
-                      {FACILITY_LABEL[f.kind]}
-                    </p>
-                    {f.address && (
-                      <p className="mt-1.5 text-[length:var(--text-xs)] text-text-muted">{f.address}</p>
-                    )}
-                    <p className="mt-1.5 flex items-center gap-2 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
-                      <span dir="ltr">{coordText(f.lat, f.lng)}</span>
-                      <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />
-                    </p>
-                    {rel && (
-                      <p className="mt-1 text-[length:var(--text-xs)] text-text-faint">
-                        {formatDistanceKm(rel.km)} تا {rel.other.name} (خط مستقیم)
-                      </p>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                      <a
-                        href={navigateUrl(navAppId, { lat: f.lat, lng: f.lng }, f.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[length:var(--text-xs)] text-accent hover:underline"
-                      >
-                        مسیریابی <Icon name="external-link" size="sm" />
-                      </a>
-                      <Link
-                        href={`/facilities?f=${f.id}`}
-                        className="text-[length:var(--text-xs)] text-accent hover:underline"
-                      >
-                        ویرایش این مکان ←
-                      </Link>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+          {layers.facilities && <FacilityMarkers placedFacilities={placedFacilities} navAppId={navAppId} />}
 
-          {/* Lead markers — prospect locations on the map */}
-          {initialLeads.map((l) => (
-            <Marker
-              key={l.id}
-              position={[l.lat, l.lng]}
-              title={l.name}
-              icon={L.divIcon({
-                className: "",
-                html: `<div style="background:#2DE0E6;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(45,224,230,0.5)"></div>`,
-                iconSize: [12, 12],
-                iconAnchor: [6, 6],
-              })}
-              zIndexOffset={900}
-            >
-              <Popup>
-                <div dir="rtl" className="text-[length:var(--text-sm)]">
-                  <p className="font-medium text-text">{l.name}</p>
-                  <p className="mt-1 text-[length:var(--text-xs)] text-text-muted">مکان پیشنهادی</p>
-                  <a
-                    href={navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[length:var(--text-xs)] text-accent hover:underline"
-                  >
-                    مسیریابی <Icon name="external-link" size="sm" />
-                  </a>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          <LeadMarkers initialLeads={initialLeads} navAppId={navAppId} />
 
-          {foundLocation && (
-            <Marker
-              position={[foundLocation.lat, foundLocation.lng]}
-              title={foundLocation.label}
-              icon={foundLocationIcon()}
-              eventHandlers={{ add: (e) => e.target.openPopup() }}
-            >
-              <Popup>
-                <div dir="rtl" className="text-[length:var(--text-sm)]">
-                  <p className="mb-1 font-medium text-text">{foundLocation.label}</p>
-                  <p className="flex items-center gap-2 font-mono text-[length:var(--text-xs)] text-text-muted">
-                    <span dir="ltr">{coordText(foundLocation.lat, foundLocation.lng)}</span>
-                    <CopyButton value={coordText(foundLocation.lat, foundLocation.lng)} what="کپی مختصات" />
-                  </p>
-                  <button
-                    onClick={() => setFoundLocation(null)}
-                    className="mt-2 text-[length:var(--text-xs)] text-accent hover:underline"
-                  >
-                    <Icon name="trash" size="sm" />
-                    حذف نشانگر
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          )}
+          {foundLocation && <FoundLocationMarker foundLocation={foundLocation} onClear={() => setFoundLocation(null)} />}
 
           <FitToCustomers
             customers={customers}

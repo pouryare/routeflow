@@ -318,3 +318,8 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 **Done**: ran the real production build in a headless Chromium (login, /map, /planner, /sales/payments, /sales/schedule, /sales/stock, /leads): no page errors, the map draws. The corridor computation moved out of CoverageMap into `components/coverage/useCorridor.ts` and was re-checked the same way.
 **Not done**: CoverageMap is still ~2,000 lines, mostly the JSX return (sidebar sections and layers) that shares dozens of state values; splitting it is a prop-plumbing job to do one section at a time with this browser check after each. PlannerPage, PaymentsPanel, SearchBox likewise. Second login step stays off.
 **Next steps**: 1. merge this PR. 2. split CoverageMap's sidebar sections into components, one per commit, browser-checked.
+
+## Big screens split, browser-checked (2026-10-22)
+**Done**: CoverageMap 2,158 -> 1,384 lines, PlannerPage 1,019 -> 782, PaymentsPanel 580 -> 465, SearchBox 532 -> 416, by moving their markup into sub-components and their self-contained logic into hooks; every step was built and checked in a real headless browser. The architecture ratchet is re-based (74 functions over 150 lines: a few split-out pieces are still just over the line, e.g. the 163-line settings section).
+**Not done / gaps**: what is left in those four files is state and handlers; the receipts table in PaymentsPanel and the PlannerPage handlers stay inline. Second login step is off, as asked. `playwrightExtract` needs the 1234 Chromium build (this container has 1194).
+**Next steps**: 1. merge when CI is green. 2. keep lowering the ratchet numbers as files are touched.

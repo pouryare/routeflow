@@ -198,3 +198,11 @@ Behaviour-preserving, one module per commit, existing tests as the net (source-t
 - Components: `CoverageMap` view store, map ink and map parts moved to `components/coverage/`; `SearchBox` storage/geocoder helpers to `components/searchbox/`; `PaymentsPanel` arithmetic to `lib/paymentsView.ts`; planner page helpers to `lib/plannerView.ts` and `components/planner/RestockHint.tsx`. The big component functions themselves (CoverageMap 2,158 lines, PlannerPage 1,019, PaymentsPanel 580, SearchBox 532) are still single functions: splitting their hook bodies needs browser checks that were not possible here.
 - Step 6: the three commission payment inserts and the driver/manager dated-rate inserts share `lib/repo/commissionPayments.ts`; `QuietTileLayer` is shared by the leads, planner and import maps; `isOwner` replaces the owner-or-platform_owner comparisons.
 - Step 7: the ratchet now also blocks growth in raw role comparisons (57), functions over 150 lines (73) and unused exports (223, via knip, now a devDependency).
+
+## The big screens, split (2026-10-22, fourth pass; each step checked in a real browser build)
+A headless Chromium turned out to be usable here (`/opt/pw-browsers/chromium_headless_shell-1194`), so each extraction was followed by a production build and a scripted check (login, /map with sidebar sections and the driver-mode switch, /planner with a plan and "done", /sales/payments, search results and the empty-result path).
+- `CoverageMap` 2,158 → 1,384 lines: `useCorridor`, `useMapShortcuts`, and components for the settings, sites, legend, colour, reminders, nearby, pinned and recent sidebar sections, the corridor band and the facility, lead and found-location markers (all under `components/coverage/`).
+- `PlannerPage` 1,019 → 782: `PlanOriginPanel`, `PlanDayList`, `RestockHint`, `lib/plannerView.ts`.
+- `PaymentsPanel` 580 → 465: `PaymentTotalsCards`, `AllocationEditor`, `lib/paymentsView.ts`.
+- `SearchBox` 532 → 416: `SearchRecent`, `SearchFavorites`, `SearchResultsBody`, storage helpers.
+What remains in those four is the state and handlers (hooks), which is what is left once the markup is out; it is not worth splitting further without a concrete reason.
