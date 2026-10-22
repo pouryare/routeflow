@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
-import { getDb, Photo } from "@/lib/db";
+import { findPhoto } from "@/lib/repo/photosAdmin";
 import { photoFilePath } from "@/lib/photos";
 import { canReachEntity, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -18,8 +18,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/photos/[id]/
   }
   const format = new URL(req.url).searchParams.get("format") === "avif" ? "avif" : "webp";
 
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM photos WHERE id = ?").get(photoId) as Photo | undefined;
+  const row = findPhoto(photoId);
   if (row && !canReachEntity(guard.session, row.entity_type, row.entity_id)) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }

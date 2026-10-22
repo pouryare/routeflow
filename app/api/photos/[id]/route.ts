@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
-import { getDb, Photo } from "@/lib/db";
+import { deletePhoto, findPhoto } from "@/lib/repo/photosAdmin";
 import { photoFilePath } from "@/lib/photos";
 import { canReachEntity, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -14,15 +14,14 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/photos/[i
   if (!Number.isInteger(photoId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
-  const db = getDb();
-  const row = db.prepare("SELECT * FROM photos WHERE id = ?").get(photoId) as Photo | undefined;
+  const row = findPhoto(photoId);
   if (row && !canReachEntity(guard.session, row.entity_type, row.entity_id)) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
   if (!row) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
-  db.prepare("DELETE FROM photos WHERE id = ?").run(photoId);
+  deletePhoto(photoId);
   await Promise.all([
     fs.unlink(photoFilePath(row.file_stem, "avif")).catch(() => {}),
     fs.unlink(photoFilePath(row.file_stem, "webp")).catch(() => {}),
