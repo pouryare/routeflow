@@ -3,9 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb } from "@/lib/db";
-import { readCatalogue, costBasisFor } from "@/lib/catalogue";
-import { companyRatePerKg } from "@/lib/repo/commissionRates";
+import { catalogueFor } from "@/lib/repo/sessionReads";
+import { priceHistoryFor, ownerCostingFor } from "@/lib/repo/productsView";
 import { faToman } from "@/lib/format";
 import CatalogueEditor from "@/components/sales/CatalogueEditor";
 import ProductsView from "@/components/meridian/ProductsView";
@@ -28,10 +27,7 @@ export default async function ProductsPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
-  const products = readCatalogue(db, session.organizationId, {
-    includeInactive: isOwner(session.role),
-  });
+  const products = catalogueFor(session, { includeInactive: isOwner(session.role) });
 
   /* ONE date for the whole page. The drawer resolves cost and commission against it, and
      the drawer resolves the price against it too -- three separate effective-dated series
@@ -39,26 +35,7 @@ export default async function ProductsPage() {
      midnight rollover mid-render would make them disagree. */
   const today = tehranTodayIso();
 
-  const allPriceRows = db
-    .prepare(
-      `SELECT pp.id, pp.product_id, pp.packaging_id, pp.price_toman, pp.valid_from,
-              p.name AS product_name, pk.name AS packaging_name, u.display_name AS by_name
-         FROM product_prices pp
-         JOIN products p ON p.id = pp.product_id
-         LEFT JOIN packagings pk ON pk.id = pp.packaging_id
-         LEFT JOIN users u ON u.id = pp.created_by
-        ORDER BY pp.valid_from DESC, pp.id DESC`
-    )
-    .all() as unknown as {
-    id: number;
-    product_id: number;
-    packaging_id: number | null;
-    price_toman: number;
-    valid_from: string;
-    product_name: string;
-    packaging_name: string | null;
-    by_name: string | null;
-  }[];
+  const allPriceRows = priceHistoryFor(session);
 
   const priceRows = allPriceRows.slice(0, 10);
 
@@ -78,6 +55,9 @@ export default async function ProductsPage() {
       {}
     )
   ).filter((s) => s.rows.length >= 2);
+
+  // The owner's costing inputs are read only for an owner: cost never reaches anyone else.
+  const costing = isOwner(session.role) ? ownerCostingFor(session, products, today) : null;
 
   return (
     <>
@@ -108,7 +88,7 @@ export default async function ProductsPage() {
 
       {isOwner(session.role) && (
         <CatalogueEditor
-          companyRatePerKg={companyRatePerKg(db, session.organizationId, today)}
+          companyRatePerKg={costing!.companyRatePerKg}
           products={products.map((p) => {
             /* The drawer's cost basis, resolved through the SAME `costBasisFor` the order
                line snapshots. Resolving it here rather than in the component is what keeps
@@ -119,8 +99,7 @@ export default async function ProductsPage() {
                through as `cost_method: null` rather than as a cost of 0, because the
                forward solve would otherwise return a confident price built from overheads
                alone for a product whose real cost was never entered. */
-            const packagingId = p.packagings[0]?.id ?? null;
-            const basis = costBasisFor(db, p.id, packagingId, today);
+            const basis = costing!.basisByProduct.get(p.id) ?? null;
             return {
               id: p.id,
               name: p.name,
