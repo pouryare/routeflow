@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
-import { createPackaging } from "@/lib/catalogue";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { addPackaging, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OWNER_ROLES } from "@/lib/roles";
 
 export async function POST(req: NextRequest) {
@@ -31,14 +30,13 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const db = getDb();
-  const product = db.prepare("SELECT id FROM products WHERE id = ?").get(productId);
-  if (!product) {
+  // The product must be this company's: an id alone reaches every tenant's catalogue.
+  if (!productInOrg(productId, orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
   try {
-    const id = createPackaging(db, {
+    const id = addPackaging({
       product_id: productId,
       name,
       qty_per_pack: qty,
