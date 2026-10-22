@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
  * "someone removed a guarantee while the page still looked finished". A rendered snapshot
  * would not notice a totals card quietly starting to count voided money.
  */
-const panel = readFileSync("components/sales/PaymentsPanel.tsx", "utf8") + "\n" + readFileSync("lib/paymentsView.ts", "utf8"); // the screen and its extracted arithmetic
+const panel = readFileSync("components/sales/PaymentsPanel.tsx", "utf8") + "\n" + readFileSync("lib/paymentsView.ts", "utf8") + "\n" + readFileSync("components/sales/AllocationEditor.tsx", "utf8") + "\n" + readFileSync("components/sales/PaymentTotalsCards.tsx", "utf8"); // the screen and its extracted arithmetic
 const route = readFileSync("app/api/payments/[id]/route.ts", "utf8");
 
 describe("the payments screen", () => {
