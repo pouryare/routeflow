@@ -21,6 +21,10 @@ export interface Session {
   organizationId: number;
   /** The owner acting as this user (Login-As), or undefined for an ordinary session. */
   actorId?: number;
+  /** A platform_owner's acting company: a positive id means "behave as the owner of that company"
+   *  (`organizationId` is then that company's, too); null means all companies. Always null for
+   *  every other role (absent is the same as null). */
+  actingOrg?: number | null;
   /** Whether this person HOLDS a role, whatever their active one. Reads the same array as
    *  `.roles`, so the two tiers can never disagree about what someone is. */
   hasRole(role: Role): boolean;
@@ -89,13 +93,23 @@ export function getSessionFromCookies(token: string | undefined | null): Session
      role falls back to the primary, which is also the answer for an empty set. */
   const role: Role = roles.includes(claims.role as Role) ? (claims.role as Role) : (user.role as Role);
 
+  /* Acting company. Honoured only for a platform_owner whose active role is platform_owner, outside
+     Login-As (an impersonated session is exactly the target's, nothing more), and only while the
+     company exists and is active. Anything else falls back to "all companies". */
+  let actingOrg: number | null = null;
+  if (role === "platform_owner" && actorId === undefined && Number.isInteger(claims.ao) && (claims.ao as number) > 0) {
+    const org = getDb().prepare("SELECT id FROM organizations WHERE id = ? AND active = 1").get(claims.ao as number) as { id: number } | undefined;
+    if (org) actingOrg = org.id;
+  }
+
   return {
     user,
     role,
     roles,
     groupId: user.group_id,
-    organizationId: user.organization_id,
+    organizationId: actingOrg ?? user.organization_id,
     actorId,
+    actingOrg,
     hasRole: (r: Role) => roles.includes(r),
   };
 }
@@ -117,6 +131,14 @@ export function requireRole(req: NextRequest, roles: Role[]): Guard {
   return { ok: true, session };
 }
 
+/** A platform_owner acting in one company is that company's OWNER for every scope decision below
+ *  (its groups, its orders, its customers, its users), and `session.organizationId` is already the
+ *  company's. With no acting company the role is unchanged and "all" still means every company. The
+ *  role gates elsewhere (OWNER_ROLES, MANAGE_ROLES) read `session.role` and are not affected. */
+export function scopeView(session: Session): Session {
+  return session.role === "platform_owner" && (session.actingOrg ?? null) !== null ? { ...session, role: "owner" } : session;
+}
+
 /** "all" for a platform_owner; otherwise the groups this session may read.
  *
  *  An owner used to return "all", which was right when there was one company in the
@@ -131,6 +153,7 @@ export function requireRole(req: NextRequest, roles: Role[]): Guard {
  *  "nothing", never as "everything".
  */
 export function scopeGroupIds(session: Session): number[] | "all" {
+  session = scopeView(session);
   if (session.role === "platform_owner") return "all";
 
   if (session.role === "owner") {
@@ -175,6 +198,7 @@ export function groupFilter(
   column = "group_id",
   opts: { shared?: boolean } = {},
 ): { sql: string; params: number[] } {
+  session = scopeView(session);
   const scope = scopeGroupIds(session);
   if (scope === "all") return { sql: "", params: [] };
   // Shared reference data has no tenant boundary, so the caller sees the whole set. Only the
@@ -210,6 +234,7 @@ export function groupFilter(
  *  Read-only. Writes still go through canReachGroup, so a manager can see the shared
  *  warehouse but cannot rename or delete it. */
 export function groupFilterWithShared(session: Session, column = "group_id"): { sql: string; params: number[] } {
+  session = scopeView(session);
   if (session.role === "platform_owner") return { sql: "", params: [] };
 
   // Reuses whatever table alias `column` carries (e.g. "f.group_id") so the organisation
@@ -254,6 +279,7 @@ export function entityGroupFilter(
   session: Session,
   alias: string
 ): { joins: string; sql: string; params: number[] } {
+  session = scopeView(session);
   const joins = `
      LEFT JOIN customers _ec ON ${alias}.entity_type = 'customer' AND _ec.id = ${alias}.entity_id
      LEFT JOIN districts _ed ON ${alias}.entity_type = 'district' AND _ed.id = ${alias}.entity_id
@@ -337,6 +363,7 @@ export function isCrmManager(role: Role): boolean {
  *
  *  Never an empty fragment for a scoped role: an empty fragment widens to everything. */
 export function crmFilter(session: Session, alias = "c"): { sql: string; params: number[] } {
+  session = scopeView(session);
   const a = alias ? `${alias}.` : "";
   switch (session.role) {
     case "platform_owner":
@@ -363,6 +390,7 @@ export function crmFilter(session: Session, alias = "c"): { sql: string; params:
 export interface BusinessScopeRow { owner_user_id: number | null; group_id: number | null; organization_id: number }
 
 export function canSeeBusiness(session: Session, row: BusinessScopeRow): boolean {
+  session = scopeView(session);
   if (session.role === "platform_owner") return true;
   if (row.organization_id !== session.organizationId) return false;
   if (session.role === "owner") return true;
@@ -380,6 +408,7 @@ export function canWriteBusiness(session: Session, row: BusinessScopeRow): boole
 }
 
 export function orderFilter(session: Session, alias = "o"): { sql: string; params: number[] } {
+  session = scopeView(session);
   if (session.role === "platform_owner") return { sql: "", params: [] };
 
   if (session.role === "owner") {
@@ -446,6 +475,7 @@ export function canReachEntity(
   entityType: string,
   entityId: number
 ): boolean {
+  session = scopeView(session);
   if (session.role === "platform_owner") return true;
 
   const table = entityType === "customer" ? "customers" : entityType === "district" ? "districts" : entityType === "facility" ? "facilities" : entityType === "lead" || entityType === "lead_location" ? "saved_locations" : null;
@@ -475,6 +505,7 @@ export function canReachEntity(
  *  should not -- see the comment on the facilities write routes, which can show a
  *  manager the shared depot but must not let them rename or move it. */
 export function canReachGroup(session: Session, groupId: number | null): boolean {
+  session = scopeView(session);
   const scope = scopeGroupIds(session);
   if (scope === "all") return true;
   if (groupId === null) return session.role === "owner";
@@ -486,6 +517,7 @@ export function canReachGroup(session: Session, groupId: number | null): boolean
  *  owner / platform_owner over anyone in their org, a group / rep manager over a user
  *  whose group is in their scope. A salesperson or driver reaches only themselves. */
 export function canReachUser(session: Session, userId: number): boolean {
+  session = scopeView(session);
   if (userId === session.user.id) return true;
   if (session.role === "phone_sales" || isVanRole(session.role)) return false;
   const u = getDb()
@@ -506,6 +538,7 @@ export function orgFilter(
   session: Session,
   column = "organization_id"
 ): { sql: string; params: number[] } {
+  session = scopeView(session);
   if (session.role === "platform_owner") return { sql: "", params: [] };
   return { sql: ` AND ${column} = ?`, params: [session.organizationId] };
 }
@@ -513,12 +546,13 @@ export function orgFilter(
 /** The organisation id to hand a reader that takes one (see `orgClause`): the caller's own,
  *  or null for a platform_owner, who reads across tenants. Same rule as `orgFilter`. */
 export function orgScopeId(session: Session): number | null {
-  return session.role === "platform_owner" ? null : session.organizationId;
+  return session.role === "platform_owner" && (session.actingOrg ?? null) === null ? null : session.organizationId;
 }
 
 /** Whether this session may touch a row belonging to the given organisation. Use before
  *  any write that names an organization_id. */
 export function canReachOrg(session: Session, organizationId: number | null): boolean {
+  session = scopeView(session);
   if (session.role === "platform_owner") return true;
   if (organizationId === null) return false;
   return organizationId === session.organizationId;
