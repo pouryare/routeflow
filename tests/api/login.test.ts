@@ -2,6 +2,8 @@ import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import fs from "node:fs";
 import path from "node:path";
 import os from "node:os";
+import crypto from "node:crypto";
+import { vi } from "vitest";
 
 const testDbPath = path.join(os.tmpdir(), `coverage-test-login-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
 process.env.ROUTEFLOW_DB_PATH = testDbPath;
@@ -39,6 +41,35 @@ describe("POST /api/login", () => {
     const data = await res.json();
     expect(data.ok).toBe(true);
     expect(res.headers.get("set-cookie")).toContain(`${COOKIE_NAME}=`);
+  });
+
+  it("pays the same password-hash cost for an unknown, a deactivated and a wrong-password login (no timing tell)", async () => {
+    getDb()
+      .prepare("INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES ('gone', ?, 'x', 'owner', NULL, 0, ?)")
+      .run(hashPassword("gone-pass"), new Date().toISOString());
+    const spy = vi.spyOn(crypto, "scryptSync");
+    const attempt = async (username: string, password: unknown, ip: string) => {
+      spy.mockClear();
+      const res = await POST(
+        new NextRequest("http://localhost/api/login", {
+          method: "POST",
+          body: JSON.stringify({ username, password }),
+          headers: { "Content-Type": "application/json", "x-forwarded-for": ip },
+        })
+      );
+      return { status: res.status, body: await res.json(), kdf: spy.mock.calls.length };
+    };
+    const unknown = await attempt("nobody-here", "whatever", "9.9.8.1");
+    const deactivated = await attempt("gone", "gone-pass", "9.9.8.2");
+    const wrong = await attempt("limiter", "wrong", "9.9.8.3");
+    const noPassword = await attempt("nobody-here", undefined, "9.9.8.4");
+    spy.mockRestore();
+    for (const r of [unknown, deactivated, wrong, noPassword]) {
+      expect(r.status).toBe(401);
+      expect(r.kdf, "every refusal pays one scrypt").toBe(1);
+    }
+    expect(unknown.body).toEqual(wrong.body);
+    expect(deactivated.body).toEqual(wrong.body);
   });
 
   it("rejects a wrong password", async () => {

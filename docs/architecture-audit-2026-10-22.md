@@ -68,3 +68,64 @@ Principle: each step is its own commit, behaviour-preserving, full `vitest` + `t
 - Whether the 15 cycles are type-only (madge reports 31 warnings; bundler ordering was not exercised).
 - Knip results exclude dynamic imports and string-built paths; "unused" means "no static reference".
 - Semgrep/CodeQL were not run (Semgrep failed earlier here; CodeQL needs a build database). Third-party *skills* were not installed: the npm analysers were enough for an inventory, and I do not run unreviewed skill scripts in this repo.
+
+---
+
+# Step 1.B: Trail of Bits scan and the guardrails (added 2026-10-22, later the same day)
+
+## What ran
+
+Source: [trailofbits/skills](https://github.com/trailofbits/skills), cloned read-only into a scratch directory and read before use; nothing from it was added to this repo. Where a skill's own script exists it was used; where the skill is a method it was followed by hand (this session cannot install a plugin).
+
+| Skill | How it ran | Result |
+|---|---|---|
+| `static-analysis/semgrep` | its `run-scans.sh`, Semgrep 1.182.1 via `uv`, `--metrics=off`, OSS engine (no Pro licence, so no cross-file taint). 10 scans, 0 failed: `p/security-audit`, `p/secrets`, `p/javascript`, `p/typescript`, `p/react`, `p/nodejs`, `p/github-actions`, plus Trail of Bits' and elttam's rule repos, over 1,241 files | 3 findings in total, none in app code (below). `p/nextjs` matched 0 files: the skill reports it under `coveredNothing`. |
+| `static-analysis/codeql` | **could not run**: the CodeQL bundle is a GitHub release download and the sandbox proxy answers 403 for it | not covered |
+| `variant-analysis` | method followed by hand from the known cross-tenant read | 8 more real instances (below) |
+| `insecure-defaults` | its seed patterns grepped over `app/ lib/ components/ scripts/ deploy/`, each hit read | no fail-open defaults (details below) |
+| `sharp-edges` | JavaScript/auth checklist applied to the login, session, upload, fetch and HTML-injection surfaces | 3 findings (below) |
+| `supply-chain-risk-auditor` | its `collect.py` + `render.py` over `package.json` and `package-lock.json` | no advisory on any of 39 direct dependencies; 2 transitive build-time-only advisories (`braces`, `vite`); repository-archive and maintenance criteria not assessable (GitHub API blocked) |
+| `agentic-actions-auditor` | not applicable: `.github/workflows/ci.yml` runs no AI agent action | n/a |
+| `entry-point-analyzer`, `building-secure-contracts`, `c-review`, `rust-review`, and the rest | not applicable to a TypeScript web app | n/a |
+
+## Semgrep: the three findings
+1. `.zoocodeules/workflows/webapp-testing/scripts/with_server.py:71`: `subprocess.Popen(..., shell=True)` in the committed agent-tool folder (not app code; goes away with that folder in step 2).
+2. and 3. `.github/workflows/ci.yml:21,24`: `actions/checkout@v4` and `actions/setup-node@v4` use mutable tags. Informational; pin to commit SHAs when convenient.
+
+The scanner finding almost nothing in 938 TypeScript files is itself a result: this codebase's real defects are authorisation logic (who may see whose rows), which pattern matchers cannot see.
+
+## Cross-tenant reads: found, fixed, and now guarded
+The new guardrail `tests/tenancy-routes.test.ts` calls every exported handler of all 158 routes as the owner of organisation A with organisation B's ids, and a second pass with no cookie. Its first run found four routes; variant analysis (`scripts/check-architecture.mjs` lists the remaining candidates) found four more. All eight are fixed, each with a test that fails on the old code.
+
+| # | Where | What leaked or broke | Severity |
+|---|---|---|---|
+| 1 | `GET /api/admin/groups` | every tenant's group names and member counts | medium |
+| 2 | `GET /api/admin/impersonatable` | every active user of every tenant (names, roles, organisation) to any owner | medium |
+| 3 | `GET /api/sales/stock`, انبار page, dashboard stock section | other tenants' products, stock levels and average cost | medium |
+| 4 | `GET /api/sales/commission`, commission page, dashboard money section | other tenants' managers' commission statements; sellers' and drivers' too (the fixture had none, so the guardrail fixture now has them) | high (money) |
+| 5 | `/map` page, `readLeadPins` | every tenant's lead pins (name and coordinates) wherever they fell inside a visible district | medium |
+| 6 | انبار page header | this month's purchase count and value summed across tenants | low-medium |
+| 7 | `groupForPoint`, `recomputeCustomerGroups` | a customer of tenant B standing in a district tenant A claimed was assigned A's group (so A's manager saw B's customer), and any tenant's territory edit regrouped every tenant's customers | high (cross-tenant write) |
+| 8 | `DELETE /api/facilities/[id]` | the "cannot delete the last facility" guard counted every tenant's facilities | low |
+
+Root cause: tenancy is enforced by each query remembering `organization_id`; `orgFilter` existed in `lib/session.ts` but nothing used it. The fix makes the organisation a **required parameter** (`orgClause` in `lib/orgScope.ts`, `orgScopeId(session)` gives `null` only for a platform_owner), so forgetting it is now a type error. Districts are shared geography but each is claimed by one group of one organisation, which is a modelling limit worth revisiting in step 4 (two companies cannot both hold the same district).
+
+Remaining candidates, reviewed and left: the four `COUNT(*)/MAX(updated_at)` cache fingerprints in the customers, facilities, locations and payments GET routes (another tenant's activity invalidates this tenant's ETag; no content leaks), and `SELECT * FROM commission_rates` in the three statement functions (rows are matched by salesperson, so other tenants' rows are never used; worth scoping in step 4).
+
+## Other findings from the skills
+| Severity | Finding | Status |
+|---|---|---|
+| medium | **Server-side request forgery in the maps-link importer.** `lib/resolveMapsLink.ts` allow-lists only the FIRST host. Later redirect hops are checked only by `isPrivateOrLocalHost`, a string test that misses `::ffff:7f00:1` and DNS names that resolve to private addresses; and `lib/playwrightExtract.ts` drives Chromium with `page.goto(url)` and **no request interception**, so a redirect from an allow-listed host (an open redirect on one of those domains) sends the server's browser anywhere, internal network included. Needs an authenticated user and an open redirect on an allowed domain. | **open**: proposed fix is `context.route("**/*", ...)` rejecting any non-allow-listed or private/resolved-private host, and re-applying the allow-list on every hop. |
+| low-medium | **Login timing reveals which usernames exist**: an unknown or deactivated account skipped the password hash, so it answered in microseconds while a real account took tens of ms, defeating the identical error message. | **fixed** in `app/api/login/route.ts` (every refusal pays one scrypt), tested. |
+| low | `SESSION_SECRET` is accepted at any length (the code only rejects an unset value). | open: require ≥ 32 characters at startup. |
+| low | `slow-import` notice: `maybeNotifySlowJob` inserted an events row without the NOT NULL `created_at`, so the first poll after 60 s of an import returned HTTP 500 and the notice was lost; **fixed**. Separately, `recipientsFor` has no branch for `lead_import.slow`, so it reaches nobody. | crash fixed; recipients are a product decision. |
+| low | A fresh database lacks three indexes that the second boot creates (`idx_facilities_kind`, `idx_purchases_date`, `idx_saved_locations_name`): a later rebuild migration drops them. | pinned by `tests/schema-snapshot.test.ts` (`FIRST_BOOT_MISSING`); fix with the step 3 db split. |
+
+Checked and fine (not assumed): `SESSION_SECRET` fails closed when unset; session tokens are HMAC-SHA256, verified with `timingSafeEqual` before the JSON is parsed, with a server-side `token_version` for revocation; passwords use scrypt with a per-user salt; no `eval`, `child_process`, or `new RegExp(userInput)`; every `dangerouslySetInnerHTML` renders a fixed lookup table keyed by an allow-listed `icon_key`; the cookie is `httpOnly`, `sameSite=lax`, `secure` in production; photo and avatar file names are generated server-side. The only default secrets are in demo/preview/CI scripts and are labelled "not for production".
+
+## Guardrails now in the repo (step 1)
+- `tests/tenancy-routes.test.ts`: cross-tenant and anonymous probe over every route (picks up new routes by directory walk; `KNOWN_LEAKS` and `PUBLIC_BY_DESIGN` are explicit, empty or reasoned, and ratchet both ways).
+- `tests/tenancy-owner-readers.test.ts`, `tests/tenancy-variants.test.ts`: the readers server components call directly.
+- `tests/schema-snapshot.test.ts` + `tests/__snapshots__/`: the schema and seeded row counts a fresh `getDb()` builds, and a second-boot idempotence check. This is the proof obligation for splitting `lib/db.ts`.
+- `tests/repo-small-modules.test.ts`: the nine `lib/repo` modules that had no test.
+- `scripts/check-architecture.mjs` (`npm run check:architecture`, in CI): import cycles (value imports), direct `getDb` imports in routes and pages, `lib/db.ts` size, unscoped-looking tenant SELECTs, tracked agent-tool files. Baseline in `docs/architecture-baseline.json`; each number may only fall.

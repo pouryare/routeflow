@@ -229,8 +229,31 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - Not done / gaps: ranking rests on search snippets and aggregator pages, not on reading each repo; star counts unverified; no skill was run against this repo
 - Next steps: 1. run `/security-review` on the open branch; 2. decide whether to read and try Trail of Bits `static-analysis` (Semgrep failed here earlier on a Python conflict)
 
-## Architecture audit, Phase 1 (2026-10-22)
-- [x] Inventory written: `docs/architecture-audit-2026-10-22.md` (structure, 15 import cycles, `lib/db.ts` 5,840 lines with a 2,800-line `getDb`, tenancy by convention, 36 high-complexity and 96 over-long functions, committed agent litter `.zoocode*`, 5 dead files, 86 unused exports)
-- [x] Checked healthy areas: tsc and eslint clean, 0.24 % duplication, 212 `requireRole` calls, no client-to-server value imports
-- Not done / gaps: no code changed (Phase 1 is read-only); 107 un-scoped tenant statements are unverified candidates, not confirmed leaks; no third-party skill installed (npm analysers sufficed); Semgrep/CodeQL not run
-- Next steps (waiting for your go): 1. Step 0 guardrails (tenancy test, schema snapshot, tests for untested repo files, madge/knip reports); 2. remove agent litter and dead files; 3. move row types out of `db.ts` and break cycles; 4. split `lib/db.ts`; 5. one data-access layer; 6. decompose big units; 7. consolidate commission/map families; 8. ratchet checks
+## Architecture audit: step 1 guardrails + Trail of Bits scan (2026-10-22)
+Full write-up: `docs/architecture-audit-2026-10-22.md` (Phase 1 inventory, then "Step 1.B").
+
+### Done
+- [x] Phase 1 inventory (read-only), then your go on step 1
+- [x] Guardrail: `tests/tenancy-routes.test.ts` calls all 158 routes as org A against org B's ids, and anonymously
+- [x] It found 4 cross-tenant reads; variant analysis found 4 more (8 total, incl. a cross-tenant WRITE in territory regrouping and commission figures); all fixed with tests that fail on the old code; organisation is now a required parameter (`lib/orgScope.ts`)
+- [x] Guardrail: schema + seed snapshot and second-boot idempotence test (found 3 indexes missing on first boot; pinned)
+- [x] Guardrail: tests for the 9 untested `lib/repo` modules (found and fixed a 500 in the slow-import poll)
+- [x] Guardrail: `npm run check:architecture` ratchet, wired into CI (4 value-import cycles, 88 route/page db imports, `db.ts` 5,841 lines, 13 unscoped-looking SELECTs, 166 agent-tool files)
+- [x] Trail of Bits scan: Semgrep (10 scans, 3 findings, none in app code), variant-analysis, insecure-defaults, sharp-edges, supply-chain-risk-auditor (no advisory on any direct dependency); login timing leak fixed
+- [x] Full unit suite green (519 files, 4,250 tests at the last full run; new files verified separately)
+
+### Not done / gaps
+- [ ] **SSRF in the maps-link importer** (Chromium follows redirects with no request interception; later hops not allow-listed): open, fix proposed
+- [ ] CodeQL did not run (GitHub release download blocked here); Semgrep ran without Pro, so no cross-file taint
+- [ ] `lead_import.slow` notice reaches nobody (no recipient rule): needs your decision on who gets it
+- [ ] `SESSION_SECRET` has no minimum length; CI actions use mutable tags; transitive `vite` and `braces` advisories (build-time only)
+- [ ] The tenancy net only sees text columns of org B it marked, and only the owner role of A; it does not render server components (those are covered by direct reader tests and the ratchet)
+- [ ] Two companies cannot both claim the same district (shared geography, one group per district): a modelling limit for step 4
+- [ ] Earlier gaps still open: see the sections above
+
+### Next steps
+1. Your call on the SSRF fix (I recommend doing it next, it is small) and on who gets the slow-import notice
+2. Step 2 housekeeping: remove `.zoocode*`, `superpowers-cline` (166 files) and the 5 dead files; archive one-off scripts and stale docs
+3. Step 3: move row types out of `lib/db.ts` and break the real cycles; then split `lib/db.ts` against the schema snapshot
+4. Step 4: one data-access layer (every query takes a scope)
+5. Steps 5 to 8 as in the audit doc
