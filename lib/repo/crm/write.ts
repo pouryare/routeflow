@@ -136,6 +136,44 @@ function replayOr400(cfg: FlowConfig, ctx: FlowContext, answers: FlowAnswer[]): 
 
 const emitAll = (org: number, events: EventInput[]) => { for (const e of events) emitEvent(org, e); };
 
+/** The contact this activity is with: an existing one named by the flow, or a new one created from its answers. */
+function resolveContact(
+  db: DatabaseSync, session: Session,
+  c: { org: number; customerId: number; acc: FlowSet; st: FlowState; at: string },
+): number | null {
+  const { org, customerId, acc, st, at } = c;
+  let contactId: number | null = null;
+  if (acc.contact_id) {
+    if (!db.prepare("SELECT 1 FROM contacts WHERE id = ? AND customer_id = ?").get(acc.contact_id, customerId)) throw new CrmError(400, "مخاطب نامعتبر است");
+    contactId = acc.contact_id;
+  } else if (acc.contact_role) {
+    const hasPrimary = !!db.prepare("SELECT 1 FROM contacts WHERE customer_id = ? AND is_primary = 1 AND active = 1").get(customerId);
+    contactId = Number(db.prepare(`INSERT INTO contacts (organization_id, customer_id, name, role, is_primary, is_decider, created_by, created_at, updated_at)
+                                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(org, customerId, st.values.contact_name?.trim() || null, acc.contact_role, hasPrimary ? 0 : 1, isDecider(acc.contact_role) ? 1 : 0, session.user.id, at, at).lastInsertRowid);
+  }
+
+  return contactId;
+}
+
+/** What the visit changes on the business itself: phone, name, pin, and whether it is closed or lost. */
+function applyCustomerUpdates(
+  db: DatabaseSync,
+  c: { customerId: number; at: string; acc: FlowSet; st: FlowState; newPhone: string | null; newName: string | undefined; contactId: number | null; driverPos: FlowWriteInput["driverPos"] },
+): void {
+  const { customerId, at, acc, st, newPhone, newName, contactId, driverPos: pos } = c;
+  if (newPhone) {
+    db.prepare("UPDATE customers SET phone = ?, phone_norm = ? WHERE id = ?").run(`0${newPhone}`, newPhone, customerId);
+    if (contactId) db.prepare("UPDATE contacts SET phone = ?, phone_norm = ? WHERE id = ? AND phone_norm IS NULL").run(`0${newPhone}`, newPhone, contactId);
+  }
+  if (newName) db.prepare("UPDATE customers SET business_name = ? WHERE id = ?").run(newName, customerId);
+  const moved = parsePin(st.values.movedpin);
+  if (moved) setLocation(db, customerId, moved.lat, moved.lng, moved.precision);
+  if (pos && acc.verification === "verified" && Number.isFinite(pos.lat) && Number.isFinite(pos.lng) && pos.accuracy <= 60) setLocation(db, customerId, pos.lat, pos.lng, "exact");
+  if (acc.invalid) db.prepare("UPDATE customers SET closed_at = ?, lost_reason_code = COALESCE(?, lost_reason_code) WHERE id = ?").run(at, acc.lost_reason ?? null, customerId);
+  else if (acc.lost_reason) db.prepare("UPDATE customers SET lost_reason_code = ? WHERE id = ?").run(acc.lost_reason, customerId);
+}
+
 export function applyFlow(session: Session, input: FlowWriteInput): FlowWriteResult {
   const db = getDb();
   const core = loadCore(db, input.customerId);
@@ -180,29 +218,10 @@ export function applyFlowCore(
       events.push({ ...base, kind: "lead.claimed" });
     }
 
-    let contactId: number | null = null;
-    if (acc.contact_id) {
-      if (!db.prepare("SELECT 1 FROM contacts WHERE id = ? AND customer_id = ?").get(acc.contact_id, customerId)) throw new CrmError(400, "مخاطب نامعتبر است");
-      contactId = acc.contact_id;
-    } else if (acc.contact_role) {
-      const hasPrimary = !!db.prepare("SELECT 1 FROM contacts WHERE customer_id = ? AND is_primary = 1 AND active = 1").get(customerId);
-      contactId = Number(db.prepare(`INSERT INTO contacts (organization_id, customer_id, name, role, is_primary, is_decider, created_by, created_at, updated_at)
-                                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-        .run(org, customerId, st.values.contact_name?.trim() || null, acc.contact_role, hasPrimary ? 0 : 1, isDecider(acc.contact_role) ? 1 : 0, session.user.id, at, at).lastInsertRowid);
-    }
+    const contactId = resolveContact(db, session, { org, customerId, acc, st, at });
 
-    if (newPhone) {
-      db.prepare("UPDATE customers SET phone = ?, phone_norm = ? WHERE id = ?").run(`0${newPhone}`, newPhone, customerId);
-      if (contactId) db.prepare("UPDATE contacts SET phone = ?, phone_norm = ? WHERE id = ? AND phone_norm IS NULL").run(`0${newPhone}`, newPhone, contactId);
-    }
     const newName = st.values.new_name?.trim();
-    if (newName) db.prepare("UPDATE customers SET business_name = ? WHERE id = ?").run(newName, customerId);
-    const moved = parsePin(st.values.movedpin);
-    if (moved) setLocation(db, customerId, moved.lat, moved.lng, moved.precision);
-    const pos = input.driverPos;
-    if (pos && acc.verification === "verified" && Number.isFinite(pos.lat) && Number.isFinite(pos.lng) && pos.accuracy <= 60) setLocation(db, customerId, pos.lat, pos.lng, "exact");
-    if (acc.invalid) db.prepare("UPDATE customers SET closed_at = ?, lost_reason_code = COALESCE(?, lost_reason_code) WHERE id = ?").run(at, acc.lost_reason ?? null, customerId);
-    else if (acc.lost_reason) db.prepare("UPDATE customers SET lost_reason_code = ? WHERE id = ?").run(acc.lost_reason, customerId);
+    applyCustomerUpdates(db, { customerId, at, acc, st, newPhone, newName, contactId, driverPos: input.driverPos });
 
     const outcome: OutcomeCode | null = acc.outcome ?? (acc.contact_role ? "TALKED" : null);
     if (input.taskId) {
