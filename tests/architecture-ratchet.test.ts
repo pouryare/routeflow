@@ -45,5 +45,5 @@ describe("measure", () => {
       ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "importCycles", "longFunctions", "rawRoleChecks", "unscopedTenantSelects", "unusedExports"].sort(),
     );
     for (const v of Object.values(totals)) expect(Number.isFinite(v)).toBe(true);
-  });
+  }, 120_000); // measures the whole tree: it parses every source file and runs knip
 });
