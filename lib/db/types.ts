@@ -3,7 +3,6 @@
  * still re-exports all of this (`export * from "./db/types"`), so no import site changes. */
 import type { Role } from "../roles";
 import type { CustomerLifecycle, CustomerType } from "../types";
-import type { FacilityKind } from "../facilityTypes";
 
 export type CoverageStatus = "visited" | "needs_coverage" | "not_allowed" | "unknown";
 
