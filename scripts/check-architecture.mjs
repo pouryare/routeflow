@@ -118,7 +118,7 @@ function tenantTables() {
 export function unscopedTenantSelects(files, tenants) {
   const out = [];
   for (const f of files) {
-    if (f === "lib/db.ts") continue;
+    if (f === "lib/db.ts" || f.startsWith("lib/database/")) continue;
     const src = fs.readFileSync(path.join(ROOT, f), "utf8");
     const re = /prepare\(\s*(`[^`]*`|"[^"\n]*")/g;
     let m;

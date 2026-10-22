@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { dbLayerSource } from "./helpers/dbLayerSource";
 
 /** A migration may not DELETE from a table a live foreign key points at, unguarded.
  *
@@ -16,7 +16,7 @@ import { readFileSync } from "node:fs";
  *  the FK's table. The second half is the one that matters — it is the fold's own fix,
  *  and it makes the DELETE conditional rather than merely present.
  */
-const SRC = readFileSync("lib/db.ts", "utf8");
+const SRC = dbLayerSource(); // lib/db.ts plus lib/database/*.ts
 
 /** Strips comments, so a file's own explanation of the rule is not read as breaking it.
  *  The fold's comment NAMES the cascade it guards against; without this strip the

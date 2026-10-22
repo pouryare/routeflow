@@ -1,6 +1,6 @@
 /* Row and domain types shared across the app. They were declared in lib/db.ts, which made every
  * importer of a type depend on the 5,800-line module that also opens the database. lib/db.ts
- * still re-exports all of this (`export * from "./db/types"`), so no import site changes. */
+ * still re-exports all of this (`export * from "./database/types"`), so no import site changes. */
 import type { Role } from "../roles";
 import type { CustomerLifecycle, CustomerType } from "../types";
 

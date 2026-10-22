@@ -1,7 +1,7 @@
 /* The system-default rows a database is seeded with on every boot (reason codes, capacity factors,
  * rules, notification types, objection cards, KPI definitions, seasonal factors, churn model) and
  * the seed functions that write them. Moved out of lib/db.ts, which re-exports all of it
- * (`export * from "./db/seeds"`), so no import site changes. Every function takes the connection;
+ * (`export * from "./database/seeds"`), so no import site changes. Every function takes the connection;
  * none of them opens one. */
 import type { DatabaseSync } from "node:sqlite";
 import { polygonCentroid } from "../simplify";
