@@ -14,6 +14,7 @@ import { driverRateFor, type DriverRateRow } from "./driverCommission";
 import { accrualToman } from "./commission";
 import { isToman } from "./money";
 import { orgOfUser } from "./repo/userOrg";
+import { insertCommissionPayment } from "./repo/commissionPayments";
 import type { Period } from "./commissionLedger";
 import { orgClause } from "./orgScope";
 
@@ -79,29 +80,7 @@ export function recordDriverPayment(
     created_by?: number | null;
   }
 ): number {
-  if (!isToman(input.amount_toman)) {
-    throw new TypeError("مبلغ پرداخت را به تومان و بدون اعشار وارد کنید");
-  }
-  return Number(
-    db
-      .prepare(
-        `INSERT INTO driver_commission_payments (driver_user_id, amount_toman, paid_on,
-                                                  period_from, period_to, notes, created_by, created_at,
-                                                  organization_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        input.driver_user_id,
-        input.amount_toman,
-        input.paid_on.slice(0, 10),
-        input.period_from?.slice(0, 10) ?? null,
-        input.period_to?.slice(0, 10) ?? null,
-        input.notes ?? null,
-        input.created_by ?? null,
-        new Date().toISOString(),
-        orgOfUser(db, input.driver_user_id, input.created_by)
-      ).lastInsertRowid
-  );
+  return insertCommissionPayment(db, "driver", input.driver_user_id, input, true);
 }
 
 export function readDriverRates(
