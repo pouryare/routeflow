@@ -20,14 +20,17 @@ afterAll(() => {
 type ReqInit = NonNullable<ConstructorParameters<typeof NextRequest>[1]>;
 
 // `west` exists so the fixture has more than one group, but no assertion names it.
-let east = 0, ownerId = 0, eastMgrId = 0;
+let east = 0, ownerId = 0, eastMgrId = 0, foreignGroup = 0;
 
 beforeAll(() => {
   const db = getDb();
   const now = new Date().toISOString();
-  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at) VALUES (?, ?, 1, ?)");
-  east = Number(g.run("شرق", "east", now).lastInsertRowid);
-  g.run("غرب", "west", now);
+  db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
+  // Stamped with their company: group lookups are tenant-scoped, so an unstamped row would be unreachable.
+  const g = db.prepare("INSERT INTO groups (name, slug, active, created_at, organization_id) VALUES (?, ?, 1, ?, ?)");
+  east = Number(g.run("شرق", "east", now, 1).lastInsertRowid);
+  g.run("غرب", "west", now, 1);
+  foreignGroup = Number(g.run("بیگانه", "foreign", now, 2).lastInsertRowid);
 
   // organization_id matters: the admin routes are tenant-scoped, and the session `as()`
   // mints carries oid 1. Production rows always have it (getDb backfills any NULL to 1 on
@@ -52,6 +55,13 @@ const json = (method: string, payload: unknown): ReqInit =>
   ({ method, body: JSON.stringify(payload), headers: { "Content-Type": "application/json" } });
 
 describe("POST /api/admin/users", () => {
+  it("refuses a group that belongs to another company", async () => {
+    const res = await createUser(as(ownerId, "owner", null, URL_NEW,
+      json("POST", { username: "stray", password: "pw-123456", display_name: "x", role: "delivery_driver", group_id: foreignGroup })));
+    expect(res.status).toBe(400);
+    expect(getDb().prepare("SELECT 1 FROM users WHERE username = 'stray'").get()).toBeUndefined();
+  });
+
   it("creates an account with a role and a group", async () => {
     const res = await createUser(as(ownerId, "owner", null, URL_NEW,
       json("POST", { username: "newdrv", password: "pw-123456", display_name: "راننده نو", role: "delivery_driver", group_id: east, staff_code: "DRV2" })));

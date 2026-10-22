@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, ROLES, type Role, type UserRow } from "@/lib/db";
+import { ROLES, type Role, type UserRow } from "@/lib/db";
+import { groupExists } from "@/lib/repo/groupsAdmin";
+import { deactivateUser, findUserInOrg, otherActiveOwners, updateUser, usernameTakenInOrg } from "@/lib/repo/usersAdmin";
 import { hashPassword } from "@/lib/auth";
 import { requireRole } from "@/lib/session";
 import { OWNER_ROLES } from "@/lib/roles";
@@ -10,12 +12,9 @@ const MIN_PASSWORD = 8;
  *
  *  The only way back from that is scripts/create-user.mjs over SSH, so it is worth one
  *  extra query on every account edit. */
-function wouldStrandTheApp(db: ReturnType<typeof getDb>, target: UserRow, becomingNonOwner: boolean): boolean {
+function wouldStrandTheApp(target: UserRow, becomingNonOwner: boolean): boolean {
   if (target.role !== "owner" || !target.active || !becomingNonOwner) return false;
-  const { n } = db
-    .prepare("SELECT COUNT(*) AS n FROM users WHERE role = 'owner' AND active = 1 AND id != ? AND organization_id = ?")
-    .get(target.id, target.organization_id) as { n: number };
-  return n === 0;
+  return otherActiveOwners(target.id, target.organization_id) === 0;
 }
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/users/[id]">) {
@@ -28,13 +27,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   // Tenant-scoped: an owner administers their own organisation's staff and no one else's.
-  // A cross-tenant id now reads as "not found" rather than becoming an editable row --
-  // which from Phase 2 on would include rebinding that user's telegram delivery address.
-  const target = db
-    .prepare("SELECT * FROM users WHERE id = ? AND organization_id = ?")
-    .get(userId, guard.session.organizationId) as UserRow | undefined;
+  // A cross-tenant id reads as "not found" rather than becoming an editable row.
+  const target = findUserInOrg(userId, guard.session.organizationId);
   if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
 
   const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
@@ -68,9 +63,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
     const username = typeof body.username === "string" ? body.username.trim() : "";
     if (!username) return NextResponse.json({ ok: false, error: "نام کاربری الزامی است" }, { status: 400 });
     // Check for duplicate username within the same organization
-    const existing = db
-      .prepare("SELECT 1 FROM users WHERE username = ? AND organization_id = ? AND id != ?")
-      .get(username, guard.session.organizationId, userId);
+    const existing = usernameTakenInOrg(username, guard.session.organizationId, userId);
     if (existing) return NextResponse.json({ ok: false, error: "نام کاربری تکراری است" }, { status: 409 });
     sets.push("username = ?");
     values.push(username);
@@ -90,7 +83,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
         { status: 400 }
       );
     }
-    if (wouldStrandTheApp(db, target, nextRole !== "owner")) {
+    if (wouldStrandTheApp(target, nextRole !== "owner")) {
       return NextResponse.json(
         { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },
         { status: 409 }
@@ -103,7 +96,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
 
   if (body?.group_id !== undefined) {
     const groupId = Number.isInteger(body.group_id) ? (body.group_id as number) : null;
-    if (groupId !== null && !db.prepare("SELECT 1 FROM groups WHERE id = ?").get(groupId)) {
+    if (groupId !== null && !groupExists(groupId, guard.session.organizationId)) {
       return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 400 });
     }
     sets.push("group_id = ?");
@@ -173,7 +166,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
 
   if (body?.active !== undefined) {
     const active = body.active ? 1 : 0;
-    if (!active && wouldStrandTheApp(db, target, true)) {
+    if (!active && wouldStrandTheApp(target, true)) {
       return NextResponse.json(
         { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },
         { status: 409 }
@@ -189,9 +182,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/user
   }
   if (bumpVersion) sets.push("token_version = token_version + 1");
 
-  values.push(userId);
   try {
-    db.prepare(`UPDATE users SET ${sets.join(", ")} WHERE id = ?`).run(...(values as never[]));
+    updateUser(userId, guard.session.organizationId, sets, values);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
@@ -210,23 +202,18 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/use
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   // Same tenant scoping as PATCH -- deactivating is at least as consequential as editing.
-  const target = db
-    .prepare("SELECT * FROM users WHERE id = ? AND organization_id = ?")
-    .get(userId, guard.session.organizationId) as UserRow | undefined;
+  const target = findUserInOrg(userId, guard.session.organizationId);
   if (!target) return NextResponse.json({ ok: false, error: "کاربر پیدا نشد" }, { status: 404 });
 
-  if (wouldStrandTheApp(db, target, true)) {
+  if (wouldStrandTheApp(target, true)) {
     return NextResponse.json(
       { ok: false, error: "این تنها مالک فعال است. اول یک مالک دیگر بسازید." },
       { status: 409 }
     );
   }
 
-  // Deactivate, never delete. activity_log.changed_by_user_id points at this row, and
-  // history that says who did what is worth more than a tidy table. The bump is what
-  // actually ends their session.
-  db.prepare("UPDATE users SET active = 0, token_version = token_version + 1 WHERE id = ?").run(userId);
+  // Deactivate, never delete; the token bump is what actually ends their session.
+  deactivateUser(userId, guard.session.organizationId);
   return NextResponse.json({ ok: true, deactivated: true });
 }
