@@ -2,9 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
 import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
 import { productInOrg } from "@/lib/repo/catalogueAdmin";
-import { OrderError, type LineInput } from "@/lib/orders";
+import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
-import { isRequestedKind, type RequestedKind } from "@/lib/requestedDay";
+import { parseOrderRequest } from "@/lib/orderRequest";
 import {
   LeadPromotionError,
   promoteLeadToCustomer,
@@ -67,43 +67,9 @@ export async function POST(req: NextRequest) {
     lines?: unknown;
   } | null;
 
-  const orderDate = typeof body?.order_date === "string" ? body.order_date : "";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(orderDate) || Number.isNaN(Date.parse(orderDate))) {
-    return NextResponse.json({ ok: false, error: "تاریخ سفارش معتبر نیست" }, { status: 400 });
-  }
-
-  /* Phase 1 (mixed-route planning): the day the customer asked for, which is NOT order_date —
-     one is when the slip was typed, the other is when the goods should go.
-     Absent or null is the NORMAL state, not an error: it means «در اولین فرصت», nobody has
-     committed this order to a day, and it is the day-splitter's raw material. So validation
-     is on SHAPE, and an unparseable string is refused rather than coerced to null — silently
-     turning "2026-13-45" into "uncommitted" would lose a commitment nobody could see. */
-  const requestedDay =
-    body?.requested_day == null ? null : String(body.requested_day);
-  if (requestedDay !== null) {
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(requestedDay) || Number.isNaN(Date.parse(requestedDay))) {
-      return NextResponse.json({ ok: false, error: "تاریخ خواسته‌شده معتبر نیست" }, { status: 400 });
-    }
-  }
-  const requestedKindRaw = body?.requested_kind;
-  const requestedKind = requestedKindRaw == null ? null : String(requestedKindRaw);
-  /* Only a SENT kind is validated. Absent or null is the normal state and must pass —
-     refusing it would reject every caller written before this field existed, which is the
-     whole class of bug this repo calls a gate that fails OPEN or CLOSED on its own terms.
-     An unrecognised string IS refused: "tomorrow-ish" is not a delivery day and guessing
-     which kind it meant is how a commitment silently changes shape. */
-  if (requestedKind !== null && !isRequestedKind(requestedKind)) {
-    return NextResponse.json({ ok: false, error: "نوع تاریخ معتبر نیست" }, { status: 400 });
-  }
-  /* A day with no kind is read as an exact date: the calendar was the control used, and it
-     names a day the reader picked rather than a week they described. */
-  const kind: RequestedKind = requestedKind ?? (requestedDay === null ? "soonest" : "exact_date");
-
-  const lines = Array.isArray(body?.lines) ? (body.lines as LineInput[]) : [];
-  if (lines.length === 0) {
-    return NextResponse.json({ ok: false, error: "سفارش بدون قلم ثبت نمی‌شود" }, { status: 400 });
-  }
-
+  const parsed = parseOrderRequest(body);
+  if (!parsed.ok) return NextResponse.json({ ok: false, error: parsed.error }, { status: 400 });
+  const { orderDate, requestedDay, kind, lines } = parsed;
 
   // Rule 1: a lead becomes a customer when it buys. Until this existed, a pin could not
   // receive an order at all -- the route required a customers.id and a lead lives in
