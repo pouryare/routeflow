@@ -2722,6 +2722,66 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F137. Lead source return on spend
+
+**What:** record what each lead source costs (flyers, ads, trade-show stands, referral rewards, a rep's time on field visits) and compare it with the customers and revenue each source produced, to decide where to spend more.
+
+**Already in the app:** every lead has a source chosen from a fixed list of nine: Google Maps, Google search, Snappfood, Tapsi Food, Instagram, referral, existing customer, field visit and other, with a source detail and link, and the id of the customer who referred it (`LEAD_SOURCES` in `lib/crm/vocab.ts`; `source_code`, `source_detail`, `source_url` and `referred_by_customer_id` on the customer). Leads that are lost carry one of fourteen lost reasons. Conversion to a customer and the revenue of that customer are in the data, so counts and revenue per source can be derived. Spend per source is not recorded anywhere.
+
+**Why parked:** the source list is fixed and coarse (a flyer campaign has no entry), so cost tracking needs campaign-level sources; attributing revenue to a source is only fair over a long window; costs such as a rep's time need an agreed allocation; the figures can be small and noisy.
+
+**Open questions**
+1. Add campaigns under a source (for example "Instagram: October ads") with a start date, end date and cost?
+2. Revenue window: first 90 days of a converted customer, or lifetime?
+3. Include referral rewards paid, and the referrer's name (already stored) in the same report?
+4. Who sees it: the owner, and managers for their group.
+
+**Suggested first slice:** a source report with leads, converted customers, revenue in the first 90 days and conversion rate per existing source, from current data. Spend entry comes after.
+
+**Prerequisites:** none for the first slice; F85 (order source) and F28 (tiers) complement it.
+
+---
+
+## F138. Off-site backup copy
+
+**What:** copy each nightly backup to storage away from the server, encrypted, check that the copy can be read, and alert the owner if a night's backup or copy fails.
+
+**Already in the app:** a nightly backup script takes a consistent snapshot of the database (SQLite's own serialize, safe in WAL mode) and a tarball of the photos directory, into a local folder (`COVERAGE_BACKUP_DIR` or `backups/`), and deletes anything older than 14 days (`scripts/backup.mjs`). Its own header says that real protection against disk failure needs the files copied off the machine and that the script deliberately does not do it. I found no integrity check or test restore, no encryption and no failure alert, and the backup folder sits on the same machine.
+
+**Why parked:** it needs somewhere to copy to (object storage, another server, a drive) and credentials for it, which is an operations decision; data in the backup includes customer and money records, so the copy must be encrypted, with the key kept away from the same machine; a restore has to be rehearsed or the backup proves nothing.
+
+**Open questions**
+1. Destination: S3-compatible storage, SFTP to a second server, or a rotating external drive?
+2. Encryption: a key held by the owner, never stored beside the backups?
+3. Verification: open the copied database read-only and run an integrity check, then record the result.
+4. Alert: a Telegram message to the owner if a backup or copy failed or is older than 36 hours (see F108).
+
+**Suggested first slice:** after the local backup, run an integrity check on the new snapshot and write a status file with the time and result that the status page (F108) can read; add an optional step that copies the encrypted files to a configured destination. Restore rehearsal documented.
+
+**Prerequisites:** F108 for the status display; F34 for restore tooling.
+
+---
+
+## F139. Third-party carrier shipments
+
+**What:** send goods to distant towns through an intercity carrier instead of a company van, recording the carrier, waybill number, cost, expected arrival and delivery confirmation, tracked like a run.
+
+**Already in the app:** deliveries are made on runs by company drivers with vehicles, each stop having a delivery status, proof fields and a payment. Coverage zones exist for towns outside the city, loaded from map boundaries by a setup script (`scripts/seed-outer-towns.ts`), but they describe where customers are, not how goods reach them. I found no carrier, waybill or shipment concept anywhere in the code.
+
+**Why parked:** a carrier shipment has a different lifecycle (handed over, in transit, arrived, collected) and a different money flow (freight paid by sender or receiver, sometimes cash on arrival); proof of delivery comes from a third party; the order state machine would need a way to treat a handover as delivered or in transit.
+
+**Open questions**
+1. Model it as a special kind of run with one stop, or as its own shipment record linked to the order?
+2. Who pays freight (company, customer, split) and how it appears on the order and in the ledger?
+3. Delivery confirmation: customer phone call, photo of the signed waybill, carrier tracking number?
+4. Insurance and loss claims handled outside the app at first.
+
+**Suggested first slice:** a shipment record linked to an order (carrier name, waybill number, freight cost, who pays, handed-over time, arrival confirmed time and photo of the waybill) with a status list, and an order state for "shipped by carrier". No tracking integration.
+
+**Prerequisites:** the order state machine and photo storage (exist); F17 for the proof model.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
