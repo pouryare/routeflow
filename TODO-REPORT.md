@@ -273,3 +273,8 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 3. Founder 2/3-step login (F106), steps 5-7.
 
 - [x] Facilities routes now use `lib/repo/facilitiesAdmin.ts`; the list's ETag signature is per company (route files with direct DB access 63 → 62).
+
+## Status after merging PR #45 (2026-10-22)
+**Done**: steps 1-3 and step 4 part 1 merged (route/page files opening the DB: 88 -> 62); founder full access; cross-company write fixes in groups and facilities.
+**Not done / gaps**: about 57 API routes and the report, schedule, stock, map, driver, suppliers and `sales/reps/[id]` pages still open the DB; `playwrightExtract` "shares one browser instance" fails on base (uninvestigated); founder 2/3-step login (F106); steps 5-7.
+**Next steps**: 1. users / districts / lead-lists routes into `lib/repo`. 2. remaining pages. 3. founder login hardening. 4. steps 5-7.
