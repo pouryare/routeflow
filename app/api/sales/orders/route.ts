@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
+import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
+import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
+import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
 import { isRequestedKind, type RequestedKind } from "@/lib/requestedDay";
 import {
@@ -130,9 +132,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const customer = db
-    .prepare("SELECT id, group_id FROM customers WHERE id = ?")
-    .get(promotion ? promotion.customerId : Number(body?.customer_id)) as { id: number; group_id: number | null } | undefined;
+  // The customer must be this company's: a customer with no group is reachable by group alone.
+  const customer = findCustomerInOrg(promotion ? promotion.customerId : Number(body?.customer_id), orgScopeId(session));
 
   // 404 rather than 403 for a customer in another group -- a 403 would confirm the row
   // exists, which is the thing being withheld. Same rule as everywhere else here.
@@ -154,19 +155,17 @@ export async function POST(req: NextRequest) {
   // organisation who can actually sell. Before, any user id was accepted -- including one from
   // another tenant -- which attached the order's commission to a stranger.
   if (salespersonId !== null) {
-    const seller = Number.isInteger(salespersonId)
-      ? db
-          .prepare(
-            `SELECT 1 FROM users u JOIN user_roles r ON r.user_id = u.id
-              WHERE u.id = ? AND u.organization_id = ? AND u.active = 1
-                AND r.role IN (${CAN_SELL.map(() => "?").join(", ")})`
-          )
-          .get(salespersonId, session.organizationId, ...CAN_SELL)
-      : undefined;
+    const seller = activeUserWithRoleInOrg(salespersonId, CAN_SELL, session.organizationId);
     if (!seller) {
       if (promotion) unpromoteLead(session.organizationId, promotion);
       return NextResponse.json({ ok: false, error: "فروشندهٔ انتخاب‌شده معتبر نیست" }, { status: 400 });
     }
+  }
+
+  // And every product on it, for the same reason.
+  if (!lines.every((line) => productInOrg(Number(line.product_id), orgScopeId(session)))) {
+    if (promotion) unpromoteLead(session.organizationId, promotion);
+    return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 400 });
   }
 
   try {
