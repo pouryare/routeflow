@@ -270,6 +270,239 @@ export function applyMutations(
   return out;
 }
 
+/** What every offline operation needs to run: the company and person it is applied for, the roles that
+ *  person holds, and the queued mutation itself. */
+interface MutationContext {
+  db: DatabaseSync;
+  organizationId: number;
+  userId: number;
+  roles: readonly OrderRole[];
+  primary: OrderRole;
+  mut: IncomingMutation;
+  resolved: Resolved;
+  actorId?: number;
+  p: Record<string, unknown>;
+  deviceTime: () => string;
+}
+
+function apply_order_draftCreate(c: MutationContext): MutationResult {
+  const { db, organizationId, userId, mut, p, deviceTime } = c;
+  // A queued order is only as trustworthy as the ids on it: the customer and every product
+  // must be this company's, exactly as POST /api/sales/orders insists.
+  const lines = (p.lines as { product_id?: unknown }[] | undefined) ?? [];
+  if (
+    !inOrg("customers", Number(p.customer_id), organizationId) ||
+    !lines.every((l) => inOrg("products", Number(l.product_id), organizationId))
+  ) {
+    return { status: "failed", error: "مشتری یا کالا پیدا نشد" };
+  }
+  const res = createOrder(db, {
+    customer_id: Number(p.customer_id),
+    order_date: String(p.order_date ?? deviceTime()),
+    created_by: userId,
+    organization_id: organizationId,
+    salesperson_user_id: (p.salesperson_user_id as number | null) ?? null,
+    notes: (p.notes as string | null) ?? null,
+    client_uuid: mut.client_uuid,
+    lines: (p.lines as never[]) ?? [],
+  });
+  return { status: "applied", server_id: res.id };
+}
+
+function apply_order_draftEdit(c: MutationContext): MutationResult {
+  const { db, organizationId, resolved, p } = c;
+  const orderId = resolveRef(db, organizationId, p.order_ref as string, resolved);
+  if (orderId === undefined) return { status: "failed", error: "سفارش وابسته هنوز اعمال نشده" };
+  addLine(db, orderId, p.line as never);
+  return { status: "applied", server_id: orderId };
+}
+
+function apply_order_submit(c: MutationContext): MutationResult {
+  const { db, organizationId, userId, roles, primary, resolved, actorId, p } = c;
+  const orderId =
+    resolveRef(db, organizationId, p.order_ref as string, resolved) ??
+    (p.order_id as number | undefined);
+  if (orderId === undefined) return { status: "failed", error: "سفارش وابسته هنوز اعمال نشده" };
+  const before = db
+    .prepare("SELECT status FROM orders WHERE id = ? AND organization_id = ?")
+    .get(orderId, organizationId) as { status: string } | undefined;
+  if (!before) return { status: "failed", error: "سفارش پیدا نشد" };
+  if (isTerminal(before.status)) return { status: "conflict", reason: "سفارش پیش‌تر بسته شده بود" };
+  submitOrder(organizationId, orderId, { id: userId, role: primary, roles, actorId });
+  return { status: "applied", server_id: orderId };
+}
+
+function apply_delivery_start(c: MutationContext): MutationResult {
+  const { db, organizationId, userId, roles, primary, resolved, actorId, p } = c;
+  const orderId =
+    resolveRef(db, organizationId, p.order_ref as string, resolved) ??
+    (p.order_id as number | undefined);
+  if (orderId === undefined) return { status: "failed", error: "سفارش پیدا نشد" };
+  advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles, actorId });
+  return { status: "applied", server_id: orderId };
+}
+
+function apply_delivery_complete(c: MutationContext): MutationResult {
+  const { db, organizationId, userId, resolved, p, deviceTime } = c;
+  const deliveryId =
+    resolveRef(db, organizationId, p.delivery_ref as string, resolved) ??
+    (p.delivery_id as number | undefined);
+  if (deliveryId === undefined) return { status: "failed", error: "تحویل پیدا نشد" };
+  const link = db
+    .prepare(
+      "SELECT d.order_id, o.status, o.customer_id FROM deliveries d JOIN orders o ON o.id = d.order_id WHERE d.id = ? AND d.organization_id = ?"
+    )
+    .get(deliveryId, organizationId) as
+    | { order_id: number; status: string; customer_id: number }
+    | undefined;
+  if (!link) return { status: "failed", error: "تحویل پیدا نشد" };
+  if (isTerminal(link.status)) {
+    reminder(
+      db,
+      link.customer_id,
+      `تحویل آفلاین برای سفارش ${link.order_id} که سرور آن را بسته بود — بررسی کنید`
+    );
+    return { status: "conflict", reason: "سفارش روی سرور بسته یا لغو شده بود" };
+  }
+  completeDelivery(organizationId, deliveryId, { id: userId }, {
+    outcome: (p.outcome as "delivered" | "partial" | "failed") ?? "delivered",
+    lines: (p.lines as never[]) ?? undefined,
+    fail_reason_id: (p.fail_reason_id as number | null) ?? null,
+    receiver_name: (p.receiver_name as string | null) ?? null,
+    gps_lat: (p.gps_lat as number | null) ?? null,
+    gps_lng: (p.gps_lng as number | null) ?? null,
+    collected_toman: (p.collected_toman as number | undefined) ?? 0,
+    device_time: deviceTime(),
+    notes: (p.notes as string | null) ?? null,
+  });
+  return { status: "applied", server_id: deliveryId };
+}
+
+function apply_payment_record(c: MutationContext): MutationResult {
+  const { db, organizationId, userId, mut, resolved, p, deviceTime } = c;
+  const orderRef = resolveRef(db, organizationId, p.order_ref as string, resolved);
+  const allocations = (p.allocations as { order_id: number | null; amount_toman: number }[] | undefined)?.map(
+    (a) => ({
+      order_id: a.order_id === null ? null : (orderRef ?? a.order_id),
+      amount_toman: a.amount_toman,
+    })
+  );
+  const id = recordPayment(organizationId, {
+    customer_id: Number(p.customer_id),
+    amount_toman: Number(p.amount_toman),
+    method: (p.method as never) ?? "CASH",
+    received_at: String(p.received_at ?? deviceTime()),
+    received_by: userId,
+    delivery_stop_id: (p.delivery_stop_id as number | null) ?? null,
+    note: (p.note as string | null) ?? null,
+    client_uuid: mut.client_uuid,
+    allocations,
+    allow_overpay: p.allow_overpay === true,
+  });
+  return { status: "applied", server_id: id };
+}
+
+function apply_cheque_record(c: MutationContext): MutationResult {
+  const { organizationId, userId, roles, p, deviceTime } = c;
+  /* A cheque received with no signal is a fact. Same rules as POST /api/cheques: managers only,
+     the same bounds on the number, the dates and the note; the sync ledger (client_uuid) makes a
+     re-sent mutation a no-op. */
+  if (!roles.some((r) => r === "owner" || r === "group_manager")) {
+    return { status: "failed", error: "اجازهٔ ثبت چک ندارید" };
+  }
+  const chequeNo = boundedText(p.cheque_no, 40);
+  const bank = p.bank_name == null ? null : boundedText(p.bank_name, 80);
+  const note = p.note == null ? null : boundedText(p.note, 2000);
+  const due = String(p.due_date ?? "");
+  const received = String(p.received_at ?? deviceTime());
+  if (
+    !Number(p.customer_id) || !isToman(Number(p.amount_toman)) || Number(p.amount_toman) <= 0 || !chequeNo ||
+    (p.bank_name != null && bank === null) || (p.note != null && note === null) ||
+    !isDayWithin(due, 366, 5 * 366) || !isTimestampWithin(received, 5 * 366, 1)
+  ) {
+    return { status: "failed", error: "اطلاعات چک معتبر نیست" };
+  }
+  const out = recordChequePayment(organizationId, {
+    customer_id: Number(p.customer_id),
+    amount_toman: Number(p.amount_toman),
+    cheque_no: chequeNo,
+    bank_name: bank,
+    due_date: due,
+    received_at: received,
+    received_by: userId,
+    note,
+  });
+  return { status: "applied", server_id: out.cheque_id };
+}
+
+function apply_complaint_record(c: MutationContext): MutationResult {
+  const { organizationId, userId, roles, p } = c;
+  if (!roles.some((r) => r === "owner" || r === "group_manager" || r === "phone_sales")) {
+    return { status: "failed", error: "اجازهٔ ثبت شکایت ندارید" };
+  }
+  if (!COMPLAINT_CATEGORIES.includes(p.category as ComplaintCategory)) {
+    return { status: "failed", error: "دستهٔ شکایت نامعتبر است" };
+  }
+  const description = typeof p.description === "string" ? p.description.trim() || null : null;
+  if (description !== null && description.length > 2000) {
+    return { status: "failed", error: "شرح شکایت حداکثر ۲۰۰۰ نویسه است" };
+  }
+  const id = fileComplaint(organizationId, {
+    customer_id: (p.customer_id as number | null) ?? null,
+    order_id: (p.order_id as number | null) ?? null,
+    product_id: (p.product_id as number | null) ?? null,
+    batch_id: (p.batch_id as number | null) ?? null,
+    reported_by: userId,
+    category: p.category as ComplaintCategory,
+    severity: COMPLAINT_SEVERITIES.includes(p.severity as ComplaintSeverity) ? (p.severity as ComplaintSeverity) : undefined,
+    description,
+  });
+  return { status: "applied", server_id: id };
+}
+
+function apply_customer_capture(c: MutationContext): MutationResult {
+  const { db, organizationId, mut, p } = c;
+  // A group named by the device must be this company's: an id alone reaches every tenant's groups.
+  if (p.group_id != null && !inOrg("groups", Number(p.group_id), organizationId)) {
+    return { status: "failed", error: "گروه پیدا نشد" };
+  }
+  const now = new Date().toISOString();
+  const id = Number(
+    db
+      .prepare(
+        `INSERT INTO customers (customer_code, business_name, contact_person, phone, address,
+                                lat, lng, lifecycle, client_uuid, synced_at, group_id, organization_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)`
+      )
+      .run(
+        `OFF-${mut.client_uuid.slice(0, 8)}`,
+        String(p.business_name ?? "مشتری تازه"),
+        (p.contact_person as string | null) ?? null,
+        (p.phone as string | null) ?? null,
+        (p.address as string | null) ?? null,
+        (p.lat as number | null) ?? null,
+        (p.lng as number | null) ?? null,
+        mut.client_uuid,
+        now,
+        (p.group_id as number | null) ?? null,
+        organizationId
+      ).lastInsertRowid
+  );
+  return { status: "applied", server_id: id };
+}
+
+const HANDLERS: Partial<Record<OfflineOp, (c: MutationContext) => MutationResult>> = {
+  "order.draftCreate": apply_order_draftCreate,
+  "order.draftEdit": apply_order_draftEdit,
+  "order.submit": apply_order_submit,
+  "delivery.start": apply_delivery_start,
+  "delivery.complete": apply_delivery_complete,
+  "payment.record": apply_payment_record,
+  "cheque.record": apply_cheque_record,
+  "complaint.record": apply_complaint_record,
+  "customer.capture": apply_customer_capture,
+};
+
 function applyOne(
   db: DatabaseSync,
   organizationId: number,
@@ -284,205 +517,8 @@ function applyOne(
   const p = mut.payload;
   const deviceTime = () => toServerTime(mut.occurred_at, mut.clock_skew_ms);
 
-  switch (mut.op) {
-    case "order.draftCreate": {
-      // A queued order is only as trustworthy as the ids on it: the customer and every product
-      // must be this company's, exactly as POST /api/sales/orders insists.
-      const lines = (p.lines as { product_id?: unknown }[] | undefined) ?? [];
-      if (
-        !inOrg("customers", Number(p.customer_id), organizationId) ||
-        !lines.every((l) => inOrg("products", Number(l.product_id), organizationId))
-      ) {
-        return { status: "failed", error: "مشتری یا کالا پیدا نشد" };
-      }
-      const res = createOrder(db, {
-        customer_id: Number(p.customer_id),
-        order_date: String(p.order_date ?? deviceTime()),
-        created_by: userId,
-        organization_id: organizationId,
-        salesperson_user_id: (p.salesperson_user_id as number | null) ?? null,
-        notes: (p.notes as string | null) ?? null,
-        client_uuid: mut.client_uuid,
-        lines: (p.lines as never[]) ?? [],
-      });
-      return { status: "applied", server_id: res.id };
-    }
-
-    case "order.draftEdit": {
-      const orderId = resolveRef(db, organizationId, p.order_ref as string, resolved);
-      if (orderId === undefined) return { status: "failed", error: "سفارش وابسته هنوز اعمال نشده" };
-      addLine(db, orderId, p.line as never);
-      return { status: "applied", server_id: orderId };
-    }
-
-    case "order.submit": {
-      const orderId =
-        resolveRef(db, organizationId, p.order_ref as string, resolved) ??
-        (p.order_id as number | undefined);
-      if (orderId === undefined) return { status: "failed", error: "سفارش وابسته هنوز اعمال نشده" };
-      const before = db
-        .prepare("SELECT status FROM orders WHERE id = ? AND organization_id = ?")
-        .get(orderId, organizationId) as { status: string } | undefined;
-      if (!before) return { status: "failed", error: "سفارش پیدا نشد" };
-      if (isTerminal(before.status)) return { status: "conflict", reason: "سفارش پیش‌تر بسته شده بود" };
-      submitOrder(organizationId, orderId, { id: userId, role: primary, roles, actorId });
-      return { status: "applied", server_id: orderId };
-    }
-
-    case "delivery.start": {
-      const orderId =
-        resolveRef(db, organizationId, p.order_ref as string, resolved) ??
-        (p.order_id as number | undefined);
-      if (orderId === undefined) return { status: "failed", error: "سفارش پیدا نشد" };
-      advanceOrder(organizationId, orderId, "startRoute", { id: userId, role: primary, roles, actorId });
-      return { status: "applied", server_id: orderId };
-    }
-
-    case "delivery.complete": {
-      const deliveryId =
-        resolveRef(db, organizationId, p.delivery_ref as string, resolved) ??
-        (p.delivery_id as number | undefined);
-      if (deliveryId === undefined) return { status: "failed", error: "تحویل پیدا نشد" };
-      const link = db
-        .prepare(
-          "SELECT d.order_id, o.status, o.customer_id FROM deliveries d JOIN orders o ON o.id = d.order_id WHERE d.id = ? AND d.organization_id = ?"
-        )
-        .get(deliveryId, organizationId) as
-        | { order_id: number; status: string; customer_id: number }
-        | undefined;
-      if (!link) return { status: "failed", error: "تحویل پیدا نشد" };
-      if (isTerminal(link.status)) {
-        reminder(
-          db,
-          link.customer_id,
-          `تحویل آفلاین برای سفارش ${link.order_id} که سرور آن را بسته بود — بررسی کنید`
-        );
-        return { status: "conflict", reason: "سفارش روی سرور بسته یا لغو شده بود" };
-      }
-      completeDelivery(organizationId, deliveryId, { id: userId }, {
-        outcome: (p.outcome as "delivered" | "partial" | "failed") ?? "delivered",
-        lines: (p.lines as never[]) ?? undefined,
-        fail_reason_id: (p.fail_reason_id as number | null) ?? null,
-        receiver_name: (p.receiver_name as string | null) ?? null,
-        gps_lat: (p.gps_lat as number | null) ?? null,
-        gps_lng: (p.gps_lng as number | null) ?? null,
-        collected_toman: (p.collected_toman as number | undefined) ?? 0,
-        device_time: deviceTime(),
-        notes: (p.notes as string | null) ?? null,
-      });
-      return { status: "applied", server_id: deliveryId };
-    }
-
-    case "payment.record": {
-      const orderRef = resolveRef(db, organizationId, p.order_ref as string, resolved);
-      const allocations = (p.allocations as { order_id: number | null; amount_toman: number }[] | undefined)?.map(
-        (a) => ({
-          order_id: a.order_id === null ? null : (orderRef ?? a.order_id),
-          amount_toman: a.amount_toman,
-        })
-      );
-      const id = recordPayment(organizationId, {
-        customer_id: Number(p.customer_id),
-        amount_toman: Number(p.amount_toman),
-        method: (p.method as never) ?? "CASH",
-        received_at: String(p.received_at ?? deviceTime()),
-        received_by: userId,
-        delivery_stop_id: (p.delivery_stop_id as number | null) ?? null,
-        note: (p.note as string | null) ?? null,
-        client_uuid: mut.client_uuid,
-        allocations,
-        allow_overpay: p.allow_overpay === true,
-      });
-      return { status: "applied", server_id: id };
-    }
-
-    case "cheque.record": {
-      /* A cheque received with no signal is a fact. Same rules as POST /api/cheques: managers only,
-         the same bounds on the number, the dates and the note; the sync ledger (client_uuid) makes a
-         re-sent mutation a no-op. */
-      if (!roles.some((r) => r === "owner" || r === "group_manager")) {
-        return { status: "failed", error: "اجازهٔ ثبت چک ندارید" };
-      }
-      const chequeNo = boundedText(p.cheque_no, 40);
-      const bank = p.bank_name == null ? null : boundedText(p.bank_name, 80);
-      const note = p.note == null ? null : boundedText(p.note, 2000);
-      const due = String(p.due_date ?? "");
-      const received = String(p.received_at ?? deviceTime());
-      if (
-        !Number(p.customer_id) || !isToman(Number(p.amount_toman)) || Number(p.amount_toman) <= 0 || !chequeNo ||
-        (p.bank_name != null && bank === null) || (p.note != null && note === null) ||
-        !isDayWithin(due, 366, 5 * 366) || !isTimestampWithin(received, 5 * 366, 1)
-      ) {
-        return { status: "failed", error: "اطلاعات چک معتبر نیست" };
-      }
-      const out = recordChequePayment(organizationId, {
-        customer_id: Number(p.customer_id),
-        amount_toman: Number(p.amount_toman),
-        cheque_no: chequeNo,
-        bank_name: bank,
-        due_date: due,
-        received_at: received,
-        received_by: userId,
-        note,
-      });
-      return { status: "applied", server_id: out.cheque_id };
-    }
-
-    case "complaint.record": {
-      if (!roles.some((r) => r === "owner" || r === "group_manager" || r === "phone_sales")) {
-        return { status: "failed", error: "اجازهٔ ثبت شکایت ندارید" };
-      }
-      if (!COMPLAINT_CATEGORIES.includes(p.category as ComplaintCategory)) {
-        return { status: "failed", error: "دستهٔ شکایت نامعتبر است" };
-      }
-      const description = typeof p.description === "string" ? p.description.trim() || null : null;
-      if (description !== null && description.length > 2000) {
-        return { status: "failed", error: "شرح شکایت حداکثر ۲۰۰۰ نویسه است" };
-      }
-      const id = fileComplaint(organizationId, {
-        customer_id: (p.customer_id as number | null) ?? null,
-        order_id: (p.order_id as number | null) ?? null,
-        product_id: (p.product_id as number | null) ?? null,
-        batch_id: (p.batch_id as number | null) ?? null,
-        reported_by: userId,
-        category: p.category as ComplaintCategory,
-        severity: COMPLAINT_SEVERITIES.includes(p.severity as ComplaintSeverity) ? (p.severity as ComplaintSeverity) : undefined,
-        description,
-      });
-      return { status: "applied", server_id: id };
-    }
-
-    case "customer.capture": {
-      const now = new Date().toISOString();
-      const id = Number(
-        db
-          .prepare(
-            `INSERT INTO customers (customer_code, business_name, contact_person, phone, address,
-                                    lat, lng, lifecycle, client_uuid, synced_at, group_id, organization_id)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'lead', ?, ?, ?, ?)`
-          )
-          .run(
-            `OFF-${mut.client_uuid.slice(0, 8)}`,
-            String(p.business_name ?? "مشتری تازه"),
-            (p.contact_person as string | null) ?? null,
-            (p.phone as string | null) ?? null,
-            (p.address as string | null) ?? null,
-            (p.lat as number | null) ?? null,
-            (p.lng as number | null) ?? null,
-            mut.client_uuid,
-            now,
-            (p.group_id as number | null) ?? null,
-            organizationId
-          ).lastInsertRowid
-      );
-      return { status: "applied", server_id: id };
-    }
-
-    // claims never reach the outbox; if one is smuggled in, refuse it here too.
-    case "order.approve":
-    case "order.plan":
-    case "order.freeze":
-    case "credit.decide":
-      return { status: "failed", error: "این کنش آفلاین اعمال نمی‌شود" };
-  }
+  const handler = HANDLERS[mut.op];
+  // claims never reach the outbox; if one is smuggled in (approve, plan, freeze, credit decision), refuse it here too.
+  if (!handler) return { status: "failed", error: "این کنش آفلاین اعمال نمی‌شود" };
+  return handler({ db, organizationId, userId, roles, primary, mut, resolved, actorId, p, deviceTime });
 }
