@@ -4,6 +4,8 @@ Ideas that would remove the most manual entry on a phone but are ambitious or ri
 
 Every item must end in a **confirmation tap flow** (`docs/tap-flow-principles.md`): the machine proposes, the person confirms with one tap, and the usual 5 s undo applies. Nothing the machine reads is saved without that confirmation.
 
+**Numbering and roadmap.** Entries F1–F5 and F35–F37 predate the larger brainstorm; F6–F34 and F38–F145 follow. Three later entries were first numbered F35–F37 by mistake and clashed with the earlier ones, so they are now F146 (dashboard builder), F147 (document templates) and F148 (duplicate customer upgrade). A prioritised view of every entry, grouped by theme, with dependencies, overlaps and first slices, is in `docs/roadmap.md`.
+
 Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambitious live in `docs/superpowers/plans/2026-10-20-mobile-first-interaction-patterns.md`.
 
 ---
@@ -686,7 +688,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F35. Role-based dashboard builder
+## F146. Role-based dashboard builder
 
 **What:** managers and owners choose which panels appear on their briefing and in what order, without a developer.
 
@@ -705,7 +707,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F36. Document templates (invoices, delivery notes, statements)
+## F147. Document templates (invoices, delivery notes, statements)
 
 **What:** invoices, delivery notes and statements with the company's logo, wording, numbering and layout, editable by the owner and printable or shareable as PDF.
 
@@ -723,7 +725,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
-## F37. Duplicate customer detection upgrade (fuzzy match, preview, undo)
+## F148. Duplicate customer detection upgrade (fuzzy match, preview, undo)
 
 **What:** find customers entered twice even when phone and Instagram differ, show exactly what a merge will move, and allow an undo within a window.
 
@@ -1076,7 +1078,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** a manager-only list of customers missing location, phone or district, with counts by group, linking to the existing customer edit flow.
 
-**Prerequisites:** none; F37 handles duplicates separately.
+**Prerequisites:** none; F148 handles duplicates separately.
 
 ---
 
@@ -1366,7 +1368,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** customers have an address, a contact person and a free notes field; orders have a notes field (the repeat-order flow leaves it empty); a delivery stop has its own notes, which the driver writes when acting on it (`delivery_stops.notes`). I did not confirm that the driver's stop card shows the customer's or the order's notes, nor that order entry offers a place to type the order note.
 
-**Why parked:** free-text notes fill with noise, and gate codes are sensitive (they should be visible only to the driver on that run and not on shared screens); instructions that apply "always" versus "this time" must not be mixed; notes must survive a customer merge (F37).
+**Why parked:** free-text notes fill with noise, and gate codes are sensitive (they should be visible only to the driver on that run and not on shared screens); instructions that apply "always" versus "this time" must not be mixed; notes must survive a customer merge (F148).
 
 **Open questions**
 1. Structured fields (access code, floor, parking, receiver, best hours) plus a free-text line, or free text only? Structured is easier to read on a phone.
@@ -1553,7 +1555,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 1. Propose-and-approve, or auto-accept when the driver's position is within a few hundred metres of the old pin?
 2. Use the device position at the moment of the tap, or let the driver drag a pin on the map?
 3. Who approves: the customer's rep, the group manager, or the dispatcher?
-4. Keep the history of pins (with F37 duplicate and merge tools in mind).
+4. Keep the history of pins (with F148 duplicate and merge tools in mind).
 
 **Suggested first slice:** a "location is wrong here" button on the stop card that sends the current device position as a proposed correction to the rep, who accepts or rejects it with one tap. The accepted pin updates the customer.
 
@@ -2008,7 +2010,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Already in the app:** the receipt handed over at the door is built from one stop's numbers (`lib/deliveryReceipt.ts`, `lib/receiptLayout.ts`) and printed from the delivery flow ("print receipt") and from done stops; the planner and report pages have print buttons (`components/PrintButton.tsx`). That is the customer's copy after delivery. There is no pre-printed note per stop for the run and no multi-page print.
 
-**Why parked:** print layout for many pages needs page breaks that work on common printers; right-to-left Persian text and Jalali dates must print correctly; the format is a document design (see F36 on templates).
+**Why parked:** print layout for many pages needs page breaks that work on common printers; right-to-left Persian text and Jalali dates must print correctly; the format is a document design (see F147 on templates).
 
 **Open questions**
 1. Printed at loading time as a packing and handover note, or as a paper backup of the route sheet?
@@ -2018,7 +2020,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** a "print all notes" button on a ready run that renders the existing receipt layout for each stop in order, separated by page breaks, with a cover summary. No new template editor.
 
-**Prerequisites:** the receipt builder and print button (exist); F36 later for owner-editable templates.
+**Prerequisites:** the receipt builder and print button (exist); F147 later for owner-editable templates.
 
 ---
 
@@ -2318,7 +2320,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** a pure, tested `amountInWords` function for whole toman up to billions, shown on the delivery receipt and the payment confirmation line. Other documents later.
 
-**Prerequisites:** none; F36 (templates) and F18 (statements) can reuse it.
+**Prerequisites:** none; F147 (templates) and F18 (statements) can reuse it.
 
 ---
 
@@ -2438,7 +2440,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Suggested first slice:** owner-defined text and choice fields (up to ten), stored as values in a separate table keyed by customer and field, editable on the customer page and shown as columns in the customer list. No flow integration.
 
-**Prerequisites:** none; F37 duplicates and F98 search could later include them.
+**Prerequisites:** none; F148 duplicates and F98 search could later include them.
 
 ---
 

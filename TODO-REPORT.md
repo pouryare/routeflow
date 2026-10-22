@@ -117,6 +117,8 @@
 - [x] Parked features F144–F145 added to `docs/future-features.md`: reason reports (capture already exists, aggregation does not), counter sales and customer pickup (the order state machine has no pickup path)
 - [x] Corrected a mistake of mine: my previous reply said F144 had been added and pushed, but I had only investigated; it is written and pushed now
 
+- [x] Fixed an ID clash in `docs/future-features.md`: my F35–F37 duplicated three earlier entries; they are now F146 (dashboard builder), F147 (document templates) and F148 (duplicate customer upgrade), with references updated
+
 ## Not done / gaps
 - [ ] F132: what feeds the urgent driver commission rate, and whether anything sets the priority value, is not verified
 - [ ] F102: whether orders in review appear in a decision deck is not verified
