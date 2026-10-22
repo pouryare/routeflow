@@ -9,6 +9,7 @@
  */
 
 import { orgOfUser } from "./repo/userOrg";
+import { insertCommissionPayment } from "./repo/commissionPayments";
 import type { DatabaseSync } from "node:sqlite";
 import { effectiveAt } from "./pricing";
 import { allStatements, type Period } from "./commissionLedger";
@@ -94,26 +95,7 @@ export function recordManagerPayment(
     created_by?: number | null;
   }
 ): number {
-  return Number(
-    db
-      .prepare(
-        `INSERT INTO manager_commission_payments (manager_user_id, amount_toman, paid_on,
-                                                   period_from, period_to, notes, created_by, created_at,
-                                                   organization_id)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`
-      )
-      .run(
-        input.manager_user_id,
-        input.amount_toman,
-        input.paid_on.slice(0, 10),
-        input.period_from?.slice(0, 10) ?? null,
-        input.period_to?.slice(0, 10) ?? null,
-        input.notes ?? null,
-        input.created_by ?? null,
-        new Date().toISOString(),
-        orgOfUser(db, input.manager_user_id, input.created_by)
-      ).lastInsertRowid
-  );
+  return insertCommissionPayment(db, "manager", input.manager_user_id, input, false);
 }
 
 export function readManagerOverrides(

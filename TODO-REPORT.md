@@ -298,3 +298,13 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Merge PR #46 when CI is green.
 2. Step 5 remainder, one module per commit with tests first.
 3. Step 6, then step 7 extras.
+
+## Status after merging PR #46 (2026-10-22)
+**Done**: step 4 finished (no route, page or component opens the database); ~20 more cross-company holes closed; founder second login step; user PATCH validation extracted.
+**Not done / gaps**: step 5 remainder (syncMutations, crm/write+fields, delivery.ts, orders POST, CoverageMap, planner, PaymentsPanel, SearchBox); step 6 (commission ledger base, shared map base, role-set constants + lint rule); step 7 extras; the founder's second step is off until turned on at /switch; `playwrightExtract` needs a Chromium build; two companies cannot claim the same district.
+**Next steps**: 1. turn on the second step. 2. step 5 remainder, one module per commit. 3. step 6. 4. step 7 extras.
+
+## Steps 5-7: small, safe pieces (2026-10-22, PR after #46)
+**Done**: new-order request validation extracted (`lib/orderRequest.ts`, tested); the three commission payment inserts (seller, driver, manager) now share `lib/repo/commissionPayments.ts`; owner-or-platform_owner checks use `isOwner`; raw `role ===` comparisons are now a ratcheted metric (57, may only fall). The founder's second login step stays OFF as you asked.
+**Not done**: step 5 big pieces (syncMutations, crm/write+fields, delivery.ts, CoverageMap, planner, PaymentsPanel, SearchBox); step 6 map base and the commission readers/statements; step 7 max function length and unused exports. These are large, behaviour-sensitive refactors of UI and money code that I did not want to rush without browser checks.
+**Next steps**: 1. merge this PR when CI is green. 2. pick one big piece at a time (suggest `delivery.ts` then `syncMutations`), tests first.

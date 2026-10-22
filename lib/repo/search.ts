@@ -6,7 +6,7 @@ import { faDigits } from "@/lib/format";
 import { buildMapLink } from "@/lib/deepLink";
 import { ORDER_STATUS_LABEL, type OrderStatus } from "@/lib/orderStateMachine";
 import { MIN_REMOTE_QUERY, type SearchHit } from "@/lib/searchModel";
-import { ROLE_LABEL } from "@/lib/roles";
+import { ROLE_LABEL, isOwner } from "@/lib/roles";
 
 /** The server half of the search overlay (components/meridian/SearchOverlay.tsx).
  *
@@ -78,7 +78,7 @@ export function searchOrders(db: DatabaseSync, session: Session, q: string, limi
  *  owner, a platform owner, a deactivated account, themselves). lib/impersonation.ts is
  *  the rule; this only avoids offering what it would turn down. */
 export function searchUsers(db: DatabaseSync, session: Session, q: string, limit = DEFAULT_LIMIT): SearchHit[] {
-  if (!(session.role === "owner" || session.role === "platform_owner") || tooShort(q)) return [];
+  if (!(isOwner(session.role)) || tooShort(q)) return [];
   const rows = db
     .prepare(
       `SELECT id, display_name, username, role FROM users

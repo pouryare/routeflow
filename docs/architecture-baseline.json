@@ -3,5 +3,6 @@
   "dbImportsOutsideLib": 0,
   "dbModuleLines": 149,
   "unscopedTenantSelects": 10,
+  "rawRoleChecks": 57,
   "agentLitterFiles": 0
 }

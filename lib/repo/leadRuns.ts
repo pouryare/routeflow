@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { isOwner } from "@/lib/roles";
 import { getDb } from "@/lib/db";
 import { canReachGroup, type Session } from "@/lib/session";
 import { nextActionFor, visitOutcomeLabel } from "@/lib/crm/leadDesire";
@@ -111,7 +112,7 @@ export function readDriverLeadRuns(conn: DatabaseSync, driverUserId: number, org
 /** Runs a manager may see: their group's, or the whole organisation for an owner. */
 export function readScopedLeadRuns(conn: DatabaseSync, session: Session): LeadRun[] {
   const org = session.organizationId;
-  const all = session.role === "owner" || session.role === "platform_owner";
+  const all = isOwner(session.role);
   const rows = conn
     .prepare(`SELECT ${RUN_COLS} FROM delivery_runs r LEFT JOIN users u ON u.id = r.driver_user_id
                WHERE r.organization_id = ? ${all ? "" : "AND r.group_id = ?"}
@@ -148,7 +149,7 @@ export function readTodaysLeadRun(conn: DatabaseSync, driverUserId: number, orgI
  *  unfinished routes. That is a data anomaly rather than a case to model; picking the newest
  *  is at least deterministic, and no extra rule is needed for it. */
 export function readLeadRunAssignments(conn: DatabaseSync, session: Session): LeadRunAssignment[] {
-  const all = session.role === "owner" || session.role === "platform_owner";
+  const all = isOwner(session.role);
   const rows = conn
     .prepare(`SELECT s.location_id, r.id AS run_id, r.run_date, u.display_name AS driver_name
                 FROM lead_run_stops s
@@ -277,7 +278,7 @@ export function isOnDriversRun(driverUserId: number, orgId: number, locationId: 
 
 /** Drivers this manager may assign a route to. Feeds the dropdown. */
 export function assignableDrivers(conn: DatabaseSync, session: Session): Array<{ id: number; name: string; group_id: number | null; avatar_url: string | null }> {
-  const all = session.role === "owner" || session.role === "platform_owner";
+  const all = isOwner(session.role);
   // Everyone HOLDING either van role, whoever their primary. An empty dropdown here is silent:
   // no error, just a route nobody can be handed — and a `role IN (...)` test cannot see a
   // delivery driver who also visits shops, which is the person most likely to.

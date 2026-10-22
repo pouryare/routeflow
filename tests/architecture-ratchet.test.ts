@@ -42,7 +42,7 @@ describe("measure", () => {
   it("returns a number for every metric the baseline records", () => {
     const { totals } = measure();
     expect(Object.keys(totals).sort()).toEqual(
-      ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "importCycles", "unscopedTenantSelects"].sort(),
+      ["agentLitterFiles", "dbImportsOutsideLib", "dbModuleLines", "importCycles", "rawRoleChecks", "unscopedTenantSelects"].sort(),
     );
     for (const v of Object.values(totals)) expect(Number.isFinite(v)).toBe(true);
   });

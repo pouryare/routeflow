@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { listAlerts, resolveAlert, AlertError } from "@/lib/repo/alerts";
-import { MANAGE_ROLES } from "@/lib/roles";
+import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales", "rep_manager"]);
@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
   const session = guard.session;
   // Owners and the platform key see the whole organisation; everyone else sees their own
   // group's alerts and the company-wide ones.
-  const wide = session.role === "owner" || session.role === "platform_owner";
+  const wide = isOwner(session.role);
   return NextResponse.json({
     ok: true,
     alerts: listAlerts(session.organizationId, {
