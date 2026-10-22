@@ -119,6 +119,8 @@
 
 - [x] Fixed an ID clash in `docs/future-features.md`: my F35–F37 duplicated three earlier entries; they are now F146 (dashboard builder), F147 (document templates) and F148 (duplicate customer upgrade), with references updated
 
+- [x] Wrote `docs/roadmap.md`: all 148 entries grouped into 11 themes with size estimates, a quick-wins list, foundations, overlap groups, a suggested order in waves, decisions needed, already-partly-built entries, and claims not yet verified (table columns generated from the future-features file; the grouping and sizes are my judgement)
+
 ## Not done / gaps
 - [ ] F132: what feeds the urgent driver commission rate, and whether anything sets the priority value, is not verified
 - [ ] F102: whether orders in review appear in a decision deck is not verified
