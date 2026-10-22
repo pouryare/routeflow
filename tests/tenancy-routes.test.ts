@@ -179,6 +179,7 @@ const bodiesFor = (candidate: string, usedFields: string[]): Record<string, unkn
   const filler = {
     entity_type: "customer", valid_from: "2026-01-01", planned_date: "2026-01-01", due_date: "2026-01-01",
     location_ids: [id], ids: [id], items: [{ product_id: id, qty: 1 }],
+    mutations: [{ client_uuid: `leak-${id}`, op: "order.draftCreate", occurred_at: "2026-01-01T00:00:00.000Z", clock_skew_ms: 0, payload: { customer_id: id, order_date: "2026-01-01", lines: [{ product_id: id, packaging_id: id, packs: 1 }] } }],
     lines: [{ product_id: id, packaging_id: id, packs: 1, base_qty: 1, unit_cost_toman: 1 }], purchase_date: "2026-01-01", order_date: "2026-01-01",
     name: "LEAK", display_name: "LEAK", title: "LEAK", label: "LEAK", note: "LEAK", notes: "LEAK", address: "LEAK",
     phone: "09120000000", active: false, status: "cancelled", color: "#2DE0E6", amount_toman: 1, price_toman: 1,
