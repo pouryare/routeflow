@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { deleteReminder, reminderEntity, setReminderResolved } from "@/lib/repo/remindersAdmin";
 import { canReachEntity, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -21,15 +21,11 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/reminders/
   if (typeof resolved !== "boolean") {
     return NextResponse.json({ ok: false, error: "پارامتر نامعتبر" }, { status: 400 });
   }
-  const db = getDb();
-  const owning = db.prepare("SELECT entity_type, entity_id FROM reminders WHERE id = ?").get(reminderId) as
-    | { entity_type: string; entity_id: number }
-    | undefined;
+  const owning = reminderEntity(reminderId);
   if (!owning || !canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
     return NextResponse.json({ ok: false, error: "یادآوری پیدا نشد" }, { status: 404 });
   }
-  const result = db.prepare("UPDATE reminders SET resolved = ? WHERE id = ?").run(resolved ? 1 : 0, reminderId);
-  if (result.changes === 0) {
+  if (!setReminderResolved(reminderId, resolved)) {
     return NextResponse.json({ ok: false, error: "یادآوری پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });
@@ -44,13 +40,10 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/reminders
   if (!Number.isInteger(reminderId)) {
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر" }, { status: 400 });
   }
-  const db = getDb();
-  const owning = db.prepare("SELECT entity_type, entity_id FROM reminders WHERE id = ?").get(reminderId) as
-    | { entity_type: string; entity_id: number }
-    | undefined;
+  const owning = reminderEntity(reminderId);
   if (!owning || !canReachEntity(guard.session, owning.entity_type, owning.entity_id)) {
     return NextResponse.json({ ok: false, error: "یادآوری پیدا نشد" }, { status: 404 });
   }
-  db.prepare("DELETE FROM reminders WHERE id = ?").run(reminderId);
+  deleteReminder(reminderId);
   return NextResponse.json({ ok: true });
 }
