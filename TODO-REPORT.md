@@ -216,3 +216,9 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 
 ## Next steps
 1. Wait for CI on the final head, then merge PR #27 once with a merge commit
+
+## CI notification triage (2026-10-22)
+- [x] CI #84 (main): flaky `sync-pull` tombstone test (same-millisecond tie with strict `>` watermark) — test now waits 5 ms; main CI #96 already green
+- [x] CI #67, #49, #25, #20, #1: old runs on superseded branches (mobile-first / inspiring-einstein), already merged via later green runs; nothing to fix
+- Not done / gaps: the same-ms tie could in principle affect a real device pull (tombstone in the same ms as the watermark); not changed, as it needs a decision on `>=` vs `>`
+- Next steps: 1. decide on watermark inclusivity
