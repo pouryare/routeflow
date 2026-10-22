@@ -1,12 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
-import {
-  commitDaySplit,
-  laneTargetsAreReachable,
-  type CommitLane,
-} from "@/lib/repo/dayPlan";
+import type { CommitLane } from "@/lib/repo/dayPlan";
+import { commitPlan } from "@/lib/repo/salesWrites";
 
 /** Commits a day-split proposal — the button the split panel was missing.
  *
@@ -47,18 +43,10 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const db = getDb();
-  // A lane the caller cannot reach is dropped rather than refused: their screen never showed it.
-  const lanes = laneTargetsAreReachable(db, wanted, guard.session.organizationId);
-
-  if (lanes.length === 0) {
+  const result = commitPlan(wanted, guard.session.user.id, guard.session.organizationId);
+  if (!result) {
     return NextResponse.json({ ok: false, error: "چیزی برای ثبت نبود" }, { status: 400 });
   }
-
-  const result = commitDaySplit(db, lanes, {
-    userId: guard.session.user.id,
-    organizationId: guard.session.organizationId,
-  });
 
   /* The refused list is part of the answer, not an error. A plan of thirty where two orders sat
      on a frozen route succeeded as far as it could, and the manager needs to know which two to
