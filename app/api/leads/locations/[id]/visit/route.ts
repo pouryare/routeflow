@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { canReachGroup, requireRole } from "@/lib/session";
+import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
 import { leadVisitFlow } from "@/lib/crm/flows/leadVisit";
 import { applyLeadVisit } from "@/lib/repo/crm/write";
 import { isOnDriversRun } from "@/lib/repo/leadRuns";
@@ -17,8 +16,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/leads/locati
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
-  const db = getDb();
-  const loc = readLeadLocation(db, id);
+  const loc = readLeadLocation(id, orgScopeId(guard.session));
   if (!loc || !canReachGroup(guard.session, loc.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
@@ -45,8 +43,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
   const id = Number((await ctx.params).id);
   if (!Number.isInteger(id)) return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
 
-  const db = getDb();
-  const loc = readLeadLocation(db, id);
+  const loc = readLeadLocation(id, orgScopeId(guard.session));
   if (!loc || !canReachGroup(guard.session, loc.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
@@ -56,7 +53,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/leads/locat
 
   // A driver may only record against a stop on their own run. A manager is not bound by one.
   // The query is in lib/repo/leadRuns.ts: raw SQL does not live in a route.
-  if (isVanRole(guard.session.role) && !isOnDriversRun(db, guard.session.user.id, guard.session.organizationId, id)) {
+  if (isVanRole(guard.session.role) && !isOnDriversRun(guard.session.user.id, guard.session.organizationId, id)) {
     return NextResponse.json({ ok: false, error: "این توقف در مسیر شما نیست" }, { status: 403 });
   }
 

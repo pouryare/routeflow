@@ -274,6 +274,8 @@ export function applyLeadVisit(
   // A pin with no organisation cannot be written to in a multi-tenant table at all, so it is
   // refused here rather than papered over with a cast further down.
   if (!loc || loc.organization_id === null) throw new CrmError(404, "مکان پیدا نشد");
+  // And it must be the caller's company's: an id alone reaches every tenant's pins.
+  if (session.role !== "platform_owner" && loc.organization_id !== session.organizationId) throw new CrmError(404, "مکان پیدا نشد");
 
   const ctx: FlowContext = {
     entry: "driver_visit",

@@ -137,6 +137,8 @@ function markB(db: ReturnType<typeof getDb>) {
     ["users", "display_name"],
     ["groups", "name"],
     ["facilities", "name"],
+    ["saved_locations", "name"],
+    ["lead_lists", "name"],
     ["tasks", "title"],
     ["alerts", "title"],
     ["rules", "name"],
