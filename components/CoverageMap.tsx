@@ -10,8 +10,7 @@ import type { ComponentProps } from "react";
 import { useAccent } from "@/components/AccentPicker";
 import { useTheme } from "@/components/ThemeToggle";
 import dynamic from "next/dynamic";
-import Link from "next/link";
-import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popup } from "react-leaflet";
+import { MapContainer, TileLayer, GeoJSON, Marker, Pane } from "react-leaflet";
 /* This app carries its own DistrictFeature shape, which is not structurally the
    GeoJsonObject react-leaflet declares. Casting to GeoJSONProps' own field types says
    exactly which boundary is being crossed; `as any` said nothing and switched off
@@ -19,33 +18,10 @@ import { MapContainer, TileLayer, GeoJSON, Marker, Pane, Polygon, Polyline, Popu
 import type { GeoJSONProps } from "react-leaflet";
 import { geoJSON } from "leaflet";
 import type { Layer, LeafletMouseEvent, Map as LeafletMap } from "leaflet";
-import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import MarkerClusterGroup from "react-leaflet-cluster";
-import {
-  DistrictCollection,
-  DistrictFeature,
-  DistrictGeometryMap,
-  DistrictProperties,
-  DistrictPropertiesResponse,
-  CustomerRow,
-  CoverageStatus,
-  STATUS_COLOR,
-  STATUS_LABEL,
-  CustomerColorMode,
-  customerLifecycleColor,
-  debtColor,
-  salespersonColor,
-  inactivityColor,
-  daysSinceLastPurchase,
-  distanceColor,
-  DISTANCE_BANDS,
-  isCustomerColorMode,
-  type DistrictColorMode,
-  districtGroupColor,
-  isDistrictColorMode,
-} from "@/lib/types";
+import { DistrictCollection, DistrictFeature, DistrictGeometryMap, DistrictProperties, DistrictPropertiesResponse, CustomerRow, CoverageStatus, STATUS_COLOR, STATUS_LABEL, CustomerColorMode, customerLifecycleColor, debtColor, salespersonColor, inactivityColor, daysSinceLastPurchase, distanceColor, isCustomerColorMode, type DistrictColorMode, districtGroupColor, isDistrictColorMode } from "@/lib/types";
 import {
   PrecisionMode,
   PrecisionTier,
@@ -56,20 +32,23 @@ import {
 import type { Role } from "@/lib/db";
 import CollapsibleSection, { SectionFilterContext } from "./CollapsibleSection";
 import CustomerFilters from "./CustomerFilters";
-import StatusPill from "./StatusPill";
 import SearchBox from "./SearchBox";
 import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
 import { useNavApp } from "./NavAppSetting";
-import { navigateUrl } from "@/lib/navApps";
 import { useToast } from "./ToastProvider";
-import { distanceKm, formatDistanceKm } from "@/lib/geo";
+import { distanceKm } from "@/lib/geo";
 import DueRemindersSection, { type DueReminder } from "@/components/coverage/DueRemindersSection";
 import NearbyCustomersSection from "@/components/coverage/NearbyCustomersSection";
 import PinnedCustomersSection from "@/components/coverage/PinnedCustomersSection";
 import RecentCustomersSection from "@/components/coverage/RecentCustomersSection";
+import FacilityMarkers from "@/components/coverage/FacilityMarkers";
+import LeadMarkers from "@/components/coverage/LeadMarkers";
+import FoundLocationMarker from "@/components/coverage/FoundLocationMarker";
+import CustomerColourSection from "@/components/coverage/CustomerColourSection";
+import CorridorBandLayer from "@/components/coverage/CorridorBandLayer";
 import MapSitesSection, { CORRIDOR_WIDTHS } from "@/components/coverage/MapSitesSection";
 import MapLegendSection from "@/components/coverage/MapLegendSection";
 import MapSettingsSection from "@/components/coverage/MapSettingsSection";
@@ -92,17 +71,15 @@ import {
 } from "@/lib/mapLayers";
 import LayersPanel, { LayerHint, LayersControl } from "./LayersPanel";
 import TrafficZoneLayer, { useTrafficZones } from "./TrafficZoneLayer";
-import { FACILITY_COLOR, FACILITY_LABEL, isPlaced, pickOrigin, FacilityRow } from "@/lib/facilityTypes";
-import { facilityIcon } from "./facilityIcon";
+import { isPlaced, pickOrigin, FacilityRow } from "@/lib/facilityTypes";
 import { useSwipeDismiss } from "./useSwipeDismiss";
 import DataFreshness from "./DataFreshness";
 import EmptyState from "./EmptyState";
 import { newestSync } from "@/lib/freshness";
 import { faNum } from "@/lib/format";
 import { MapView, buildMapLink, absoluteMapLink, parseMapLink, replaceUrlQuery } from "@/lib/deepLink";
-import { copyText, coordText } from "@/lib/clipboard";
+import { copyText } from "@/lib/clipboard";
 import { PINNED_KEY, RECENT_KEY, addRecent, pruneIds, readIds, toggleId, writeIds } from "@/lib/customerLists";
-import CopyButton from "./CopyButton";
 import { Icon } from "@/components/meridian/Icon";
 import MapWorklist from "./MapWorklist";
 import { buildWorklist, type Bounds } from "@/lib/mapWorklist";
@@ -116,7 +93,7 @@ import { } from "@/components/meridian/icon-map";
 // can draw anything. CoverageMap is itself ssr:false, so none of these need an SSR pass.
 import { readStoredView, linkTargetView, writeStoredView } from "@/components/coverage/mapViewStore";
 import { MAP_INK_FALLBACK, MapInk, readMapInk } from "@/components/coverage/mapInk";
-import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon, foundLocationIcon, otherFacilityDistance } from "@/components/coverage/mapParts";
+import { BoundsReporter, DebugMapExpose, ZoomWatcher, ViewWatcher, FitToCustomers, customerIcon, clusterIcon } from "@/components/coverage/mapParts";
 
 const HeatmapLayer = dynamic(() => import("./HeatmapLayer"), { ssr: false });
 /* MapLibre and its Leaflet bridge are ~250KB: loaded only once a vector basemap is
@@ -1161,51 +1138,7 @@ export default function CoverageMap({
           filteredCount={filteredCustomers.length}
         />
 
-        <CollapsibleSection title="رنگ‌بندی مشتریان" icon="palette" storageKey="colour" keywords="وضعیت بدهی فروشنده رکود فاصله">
-            {/* Five modes no longer fit a single row at sidebar width on a phone, so this
-                is a grid rather than a flex row -- the fifth would otherwise squeeze the
-                other four into unreadable slivers. */}
-            <div className="grid grid-cols-3 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-              {(
-                [
-                  ["status", "وضعیت"],
-                  ["debt", "بدهی"],
-                  ["phone_sales", "فروشنده"],
-                  ["inactivity", "رکود"],
-                  ["distance", "فاصله"],
-                ] as [CustomerColorMode, string][]
-              ).map(([mode, label]) => (
-                <button
-                  key={mode}
-                  onClick={() => setColorMode(mode)}
-                  disabled={mode === "distance" && !colourOrigin}
-                  className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] disabled:opacity-40 ${
-                    colorMode === mode
-                      ? "bg-accent font-medium text-accent-ink"
-                      : "text-text-muted hover:bg-white/5 hover:text-text"
-                  }`}
-                >
-                  <Icon name="map-pin" size="sm" />
-                  {label}
-                </button>
-              ))}
-            </div>
-
-            {/* Without this the map is unreadable in distance mode -- the legend below
-                explains district colours only, and the same three hues mean something
-                entirely different on the markers. */}
-            {colorMode === "distance" && colourOrigin && (
-              <div className="mt-2 flex flex-col gap-1.5">
-                <p className="font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-                  فاصله از {colourOrigin.name} — خط مستقیم
-                </p>
-                {DISTANCE_BANDS.map((band) => (
-                  <StatusPill key={band.label} color={band.color} label={band.label} shaped={shapedMarkers} />
-                ))}
-              </div>
-            )}
-        </CollapsibleSection>
-
+<CustomerColourSection colorMode={colorMode} setColorMode={setColorMode} colourOrigin={colourOrigin} shapedMarkers={shapedMarkers} />
         {/* Always present, unlike before: a section that disappears when it is empty
             cannot be distinguished from a section that is broken, and "no dormant
             customers" is itself worth knowing. The count in the heading answers it
@@ -1425,34 +1358,7 @@ export default function CoverageMap({
           {/* Feature 3 + 14b: the band, and the dashed line down its middle that makes it
               read as a route rather than an arbitrary rectangle. Non-interactive so it
               never swallows a click meant for a district underneath. */}
-          {corridorOn && corridorEnds && corridorBand.length > 0 && (
-            <>
-              {/* A 7% fill and a half-opacity edge were tuned against a near-black
-                  ground; over a cream basemap the band all but disappears. Same colour,
-                  carried harder -- the corridor still reads as one thing on both. */}
-              <Polygon
-                positions={corridorBand}
-                interactive={false}
-                pathOptions={{
-                  color: FACILITY_COLOR,
-                  weight: 1,
-                  opacity: activeBasemap.ground === "light" ? 0.75 : 0.5,
-                  fillColor: FACILITY_COLOR,
-                  fillOpacity: activeBasemap.ground === "light" ? 0.13 : 0.07,
-                }}
-              />
-              <Polyline
-                positions={corridorPath.map((p) => [p.lat, p.lng] as [number, number])}
-                interactive={false}
-                pathOptions={{
-                  color: FACILITY_COLOR,
-                  weight: 2,
-                  opacity: activeBasemap.ground === "light" ? 0.9 : 0.75,
-                  dashArray: "8 6",
-                }}
-              />
-            </>
-          )}
+        <CorridorBandLayer corridorOn={corridorOn} corridorEnds={corridorEnds} corridorBand={corridorBand} corridorPath={corridorPath} lightGround={activeBasemap.ground === "light"} />
 
           {heatmapOn && <HeatmapLayer customers={filteredCustomers} weightByDebt={heatmapByDebt} />}
 
@@ -1514,112 +1420,11 @@ export default function CoverageMap({
           {/* Outside the cluster group and lifted above it: these two are landmarks the
               rest of the map is read against, so they must never be swallowed into a
               customer bubble or hidden behind a blip that happens to overlap them. */}
-          {layers.facilities && placedFacilities.map((f) => {
-            const rel = otherFacilityDistance(f, placedFacilities);
-            return (
-              <Marker
-                key={f.id}
-                position={[f.lat, f.lng]}
-                title={f.name}
-                icon={facilityIcon(f.kind, f.icon_key)}
-                zIndexOffset={1000}
-              >
-                <Popup>
-                  <div dir="rtl" className="text-[length:var(--text-sm)] leading-6">
-                    <p className="font-medium text-text">{f.name}</p>
-                    <p className="mt-0.5 text-[length:var(--text-xs)] text-text-muted">
-                      {FACILITY_LABEL[f.kind]}
-                    </p>
-                    {f.address && (
-                      <p className="mt-1.5 text-[length:var(--text-xs)] text-text-muted">{f.address}</p>
-                    )}
-                    <p className="mt-1.5 flex items-center gap-2 text-right font-mono text-[length:var(--text-xs)] text-text-faint">
-                      <span dir="ltr">{coordText(f.lat, f.lng)}</span>
-                      <CopyButton value={coordText(f.lat, f.lng)} what="کپی مختصات" />
-                    </p>
-                    {rel && (
-                      <p className="mt-1 text-[length:var(--text-xs)] text-text-faint">
-                        {formatDistanceKm(rel.km)} تا {rel.other.name} (خط مستقیم)
-                      </p>
-                    )}
-                    <div className="mt-2 flex flex-wrap items-center gap-3">
-                      <a
-                        href={navigateUrl(navAppId, { lat: f.lat, lng: f.lng }, f.name)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[length:var(--text-xs)] text-accent hover:underline"
-                      >
-                        مسیریابی <Icon name="external-link" size="sm" />
-                      </a>
-                      <Link
-                        href={`/facilities?f=${f.id}`}
-                        className="text-[length:var(--text-xs)] text-accent hover:underline"
-                      >
-                        ویرایش این مکان ←
-                      </Link>
-                    </div>
-                  </div>
-                </Popup>
-              </Marker>
-            );
-          })}
+          {layers.facilities && <FacilityMarkers placedFacilities={placedFacilities} navAppId={navAppId} />}
 
-          {/* Lead markers — prospect locations on the map */}
-          {initialLeads.map((l) => (
-            <Marker
-              key={l.id}
-              position={[l.lat, l.lng]}
-              title={l.name}
-              icon={L.divIcon({
-                className: "",
-                html: `<div style="background:#2DE0E6;width:12px;height:12px;border-radius:50%;border:2px solid rgba(255,255,255,0.6);box-shadow:0 0 6px rgba(45,224,230,0.5)"></div>`,
-                iconSize: [12, 12],
-                iconAnchor: [6, 6],
-              })}
-              zIndexOffset={900}
-            >
-              <Popup>
-                <div dir="rtl" className="text-[length:var(--text-sm)]">
-                  <p className="font-medium text-text">{l.name}</p>
-                  <p className="mt-1 text-[length:var(--text-xs)] text-text-muted">مکان پیشنهادی</p>
-                  <a
-                    href={navigateUrl(navAppId, { lat: l.lat, lng: l.lng }, l.name)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-[length:var(--text-xs)] text-accent hover:underline"
-                  >
-                    مسیریابی <Icon name="external-link" size="sm" />
-                  </a>
-                </div>
-              </Popup>
-            </Marker>
-          ))}
+          <LeadMarkers initialLeads={initialLeads} navAppId={navAppId} />
 
-          {foundLocation && (
-            <Marker
-              position={[foundLocation.lat, foundLocation.lng]}
-              title={foundLocation.label}
-              icon={foundLocationIcon()}
-              eventHandlers={{ add: (e) => e.target.openPopup() }}
-            >
-              <Popup>
-                <div dir="rtl" className="text-[length:var(--text-sm)]">
-                  <p className="mb-1 font-medium text-text">{foundLocation.label}</p>
-                  <p className="flex items-center gap-2 font-mono text-[length:var(--text-xs)] text-text-muted">
-                    <span dir="ltr">{coordText(foundLocation.lat, foundLocation.lng)}</span>
-                    <CopyButton value={coordText(foundLocation.lat, foundLocation.lng)} what="کپی مختصات" />
-                  </p>
-                  <button
-                    onClick={() => setFoundLocation(null)}
-                    className="mt-2 text-[length:var(--text-xs)] text-accent hover:underline"
-                  >
-                    <Icon name="trash" size="sm" />
-                    حذف نشانگر
-                  </button>
-                </div>
-              </Popup>
-            </Marker>
-          )}
+          {foundLocation && <FoundLocationMarker foundLocation={foundLocation} onClear={() => setFoundLocation(null)} />}
 
           <FitToCustomers
             customers={customers}
