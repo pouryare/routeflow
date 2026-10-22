@@ -112,6 +112,8 @@
 - [x] Parked features F137–F139 added to `docs/future-features.md`: lead source return on spend, off-site backup copy, third-party carrier shipments — each notes what already exists (nine lead sources with referrer and lost reasons, a local nightly backup script with 14-day rotation, no carrier concept)
 - [x] Found that referrer tracking already exists on customers (`referred_by_customer_id`); I had suggested referral tracking earlier as new
 
+- [x] Parked features F140–F143 added to `docs/future-features.md`: company asset register, survey builder, snooze for alerts and tasks, approve from Telegram — each notes what already exists (push action buttons for cheque and reminder notifications, text-only Telegram messages, no snooze outside the map arrival prompt)
+
 ## Not done / gaps
 - [ ] F132: what feeds the urgent driver commission rate, and whether anything sets the priority value, is not verified
 - [ ] F102: whether orders in review appear in a decision deck is not verified
@@ -122,7 +124,7 @@
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F139 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
+- [ ] F6–F143 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe

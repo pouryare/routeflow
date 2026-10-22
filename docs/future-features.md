@@ -2782,6 +2782,86 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F140. Company asset register
+
+**What:** a register of the company's own equipment (phones, tablets, Bluetooth printers, scales, scanners, laptops) with serial number, purchase date, condition and who holds it, plus a return check when a person leaves or changes role.
+
+**Already in the app:** facilities (warehouses, vans, shops and other places), vehicles with capacity and cost per kilometre, and photos attached to records exist. Staff use phones, receipt printers (Bluetooth) and, later, scanners and scales, but none of it is recorded. I found no asset or equipment table.
+
+**Why parked:** a register is only useful if someone keeps it up to date; the high-value items to track are few (printers, scales, tablets), so it should start small; assets lent to customers (coolers, racks) are a separate and harder case and are not part of this.
+
+**Open questions**
+1. Which categories to include first (devices, printers, scales, tools)?
+2. Assignment to a person with a start date, and a handback with a condition note and photo?
+3. Link to deactivation (F59/F107): leaving staff show their assets on the deactivation screen.
+4. Service and warranty dates with reminders.
+
+**Suggested first slice:** a list of assets with type, serial number, holder and condition, an assign and return action, and the person's assets shown on the user's admin page. No depreciation or service dates.
+
+**Prerequisites:** none; F59 and F107 can read it.
+
+---
+
+## F141. Survey builder
+
+**What:** the owner builds short surveys for customers or staff (a few questions with choices, ratings or short text), sends them to a segment, and sees the answers summarised, with the option of turning a low score into a follow-up task.
+
+**Already in the app:** customers can file complaints with a category and severity (`ComplaintFlow`), reps record call outcomes and visit intel (size, current supplier, best visit time), and a star-rating control exists for scoring places on a few criteria (`components/StarRating.tsx`, used for lead locations). There is no survey definition, no way to send questions to people, and no store for answers.
+
+**Why parked:** it needs a way to reach customers (F79, F18 and F120 channel work); response rates are low and biased; survey answers about people (staff, reps) are sensitive; it overlaps with the one-tap delivery rating idea (F45), so the two must share the response store.
+
+**Open questions**
+1. Audience: staff first (no customer channel needed), customers later?
+2. Question types: single choice, rating 1–5, short text, yes/no?
+3. Anonymous or named, and who sees raw answers?
+4. Answers feed customer and rep views (F47, F86) or stay in a survey report only?
+
+**Suggested first slice:** an internal staff pulse survey (up to five questions) delivered as a card on the briefing, answered in a tap, with an owner-only summary. Customer surveys after a channel exists.
+
+**Prerequisites:** none for the staff version; F45 and F79 for customers.
+
+---
+
+## F142. Snooze for alerts and tasks
+
+**What:** "remind me in an hour / this afternoon / tomorrow" on a notification or a task, instead of dismissing or ignoring it.
+
+**Already in the app:** the notification feed has unread counts and mark-as-read (`lib/repo/notifications.ts`), reminders and tasks have due dates and statuses (open, done, dismissed), and the map's arrival prompt has its own snooze for a stop the driver waved away (`lib/arrival.ts`, `components/GeofenceWatcher.tsx`). Push notifications can carry one action button. A general snooze for notifications or tasks does not exist.
+
+**Why parked:** snoozing is dangerous for critical alerts (a failed delivery should not be easy to ignore), so priority must limit it; a snoozed notification must come back at the right time even if the phone is off; it adds a state to the feed and the task board.
+
+**Open questions**
+1. Which items can be snoozed: low and normal priority only, with critical and high items never?
+2. Choices: 1 hour, this afternoon, tomorrow morning, next week?
+3. For a task, snooze moves the due date; for a notification, it hides it and re-delivers it.
+4. Limit the number of snoozes per item so something is not pushed off forever.
+
+**Suggested first slice:** a snooze action on tasks and reminders that moves the due date by a chosen amount (one hour, tomorrow 9:00) and records the snooze count. Notifications later.
+
+**Prerequisites:** none; the push-action pattern could offer "snooze 1 h" as a button.
+
+---
+
+## F143. Approve from Telegram
+
+**What:** approval requests arrive in the manager's linked Telegram chat with approve and reject buttons; a tap applies the same permission checks as the app, records who decided, and edits the message to show the outcome.
+
+**Already in the app:** push notifications can carry a one-tap action button for a notification about exactly one thing (a cheque due soon moves to its next state; a due reminder is marked done), run by the service worker with the signed-in cookie and limited to relative API paths (`lib/pushActions.ts`). Telegram currently only sends and edits plain text messages (`sendTelegram`, `editTelegram` in `lib/telegram.ts`), with no buttons, and the polling worker understands only the `/start <code>` link command (`scripts/telegram-poll.ts`). Credit approvals and order reviews have decision screens in the app but no one-tap action from outside it.
+
+**Why parked:** a button in a chat is authenticated by the Telegram account, not by the app's session, so each tap must be checked against the linked user, their role and the exact item, and be safe against replays and forwarded messages; the worker would need access to the approval functions; an accidental tap on a money decision needs an undo or a confirm step.
+
+**Open questions**
+1. Which approvals first: credit approvals (single decision, money at risk) or low-risk ones (reminders, complaint triage)?
+2. Confirmation step for money decisions (a second tap) or a short undo window?
+3. Callback data signed and single-use, with an expiry, so an old message cannot be replayed.
+4. Record the decision with a "decided in Telegram" tag in the audit trail (F27).
+
+**Suggested first slice:** buttons on the reminder-due and cheque-due Telegram messages that match the existing push actions, handled by the worker through the same API functions, with signed single-use callbacks. Money approvals after that proves safe.
+
+**Prerequisites:** the Telegram link and worker (exist); F124 shares the worker's scoped access; F82 and F102 relate.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
