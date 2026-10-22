@@ -5,11 +5,14 @@ import { friendlyError } from "@/lib/userMessage";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { CustomerRow, DistrictFeature } from "@/lib/types";
 import { matchesQuery } from "@/lib/persian";
+import SearchRecent from "@/components/searchbox/SearchRecent";
+import SearchFavorites from "@/components/searchbox/SearchFavorites";
+import SearchResultsBody from "@/components/searchbox/SearchResultsBody";
 import { Icon } from "@/components/meridian/Icon";
 
-import { COORD_RE, FAV_KEY, Favorite, GeoResult, SORT_OPTIONS, URL_RE, addFavorite, clearAllRecent, detectInputType, getGeoProvider, isFavorite, loadFavorites, loadRecent, pushRecent, removeFavorite, removeRecent } from "@/components/searchbox/searchBoxStore";
+import { COORD_RE, Favorite, GeoResult, SORT_OPTIONS, URL_RE, addFavorite, clearAllRecent, detectInputType, getGeoProvider, isFavorite, loadFavorites, loadRecent, pushRecent, removeFavorite, removeRecent } from "@/components/searchbox/searchBoxStore";
 
-type Result =
+export type Result =
   | { kind: "customer"; customer: CustomerRow }
   | { kind: "district"; district: DistrictFeature };
 
@@ -417,129 +420,13 @@ export default function SearchBox({
               )}
             </div>
           {/* Recent searches — shown when input is empty */}
-          {!trimmed && recentSearches.length > 0 && (
-            <div className="border-b border-border px-3 py-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="flex items-center gap-1 text-[length:var(--text-xs)] text-text-faint font-medium"><Icon name="clock" size="sm" /> Recent</span>
-                <button onClick={() => { clearAllRecent(); setRecentSearches([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">
-                <Icon name="x" size="sm" />
-                Clear all</button>
-              </div>
-              {recentSearches.map((r, i) => (
-                <button key={i} onClick={() => { changeQuery(r); setOpen(true); }} className="mapsearch__opt">
-                  <Icon name="clock" size="sm" />
-                  <span className="mapsearch__label">{r}</span>
-                  <button onClick={(e) => { e.stopPropagation(); removeRecent(r); setRecentSearches(loadRecent()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove recent"><Icon name="x" size="sm" /></button>
-                </button>
-              ))}
-            </div>
-          )}
+          {!trimmed && <SearchRecent recentSearches={recentSearches} setRecentSearches={setRecentSearches} changeQuery={changeQuery} setOpen={setOpen} />}
+
           {/* Favorites — shown when input is empty */}
-          {!trimmed && favorites.length > 0 && (
-            <div className="border-b border-border px-3 py-2">
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="flex items-center gap-1 text-[length:var(--text-xs)] text-text-faint font-medium"><Icon name="star" size="sm" /> Favorites</span>
-                <button onClick={() => { localStorage.removeItem(FAV_KEY); setFavorites([]); }} className="text-[length:var(--text-xs)] text-accent hover:underline">
-                <Icon name="x" size="sm" />
-                Clear all</button>
-              </div>
-              {favorites.map((f) => (
-                <button key={f.id} onClick={() => { changeQuery(f.label); setOpen(true); }} className="mapsearch__opt">
-                  <Icon name="star" size="sm" />
-                  <span className="mapsearch__label">{f.label}</span>
-                  <button onClick={(e) => { e.stopPropagation(); removeFavorite(f.id); setFavorites(loadFavorites()); }} className="text-text-faint hover:text-crit text-[length:var(--text-xs)]" aria-label="remove favorite"><Icon name="x" size="sm" /></button>
-                </button>
-              ))}
-            </div>
-          )}
-          {trimmed && !hideResults && (
-          isUrl ? (
-            <div className="p-2">
-              <button
-                onClick={decodeLink}
-                disabled={linkLoading}
-                className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink disabled:opacity-60"
-              >
-                {linkLoading ? "در حال شناسایی لینک…" : <><Icon name="link" size="sm" /> نمایش این لینک روی نقشه</>}
-              </button>
-              {linkError && <p className="mt-2 px-1 text-[length:var(--text-xs)] text-crit">{linkError}</p>}
-              <p className="mt-2 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                گوگل‌مپ، نشان، بلد و ویز پشتیبانی می‌شوند
-              </p>
-            </div>
-          ) : inputType === "coord" && coordMatch ? (
-            <div className="p-2">
-              <button
-                onClick={goToCoords}
-                className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-2 text-[length:var(--text-sm)] font-medium text-accent-ink"
-              >
-                <Icon name="map-pin" size="sm" /> نمایش مختصات روی نقشه
-                <span className="block text-[length:var(--text-xs)] text-accent/60 font-mono">{coordMatch[1]}, {coordMatch[2]}</span>
-              </button>
-            </div>
-          ) : inputType === "address" && trimmed.length >= 2 ? null : geoResults !== null ? (
-            geoResults.length > 0 ? (
-              geoResults.map((r, i) => (
-                <button
-                  key={i}
-                  onClick={() => selectGeoResult(r)}
-                  className="mapsearch__opt"
-                >
-                  <Icon name="map-pin" size="sm" />
-                  <span className="mapsearch__label">{r.label}</span>
-                </button>
-              ))
-            ) : (
-              <p className="px-3 py-2 text-[length:var(--text-sm)] text-text-faint">آدرسی پیدا نشد</p>
-            )
-          ) : results.length > 0 ? (
-            results.map((r, i) => (
-              <button
-                key={i}
-                onClick={() => select(r)}
-                className="mapsearch__opt"
-              >
-                {r.kind === "customer" ? (
-                  <>
-                    <Icon name="building" size="sm" />
-                    <span className="mapsearch__label">{r.customer.business_name}</span>
-                    <span className="shrink-0 font-mono text-[length:var(--text-xs)] text-text-faint">
-                      {r.customer.customer_code}
-                    </span>
-                  </>
-                ) : (
-                  <>
-                    <Icon name="map" size="sm" />
-                    <span className="mapsearch__label">{r.district.properties.name}</span>
-                    <span className="shrink-0 text-[length:var(--text-xs)] text-text-faint">
-                      {r.district.properties.parent_name ?? ""}
-                    </span>
-                  </>
-                )}
-                <button onClick={(e) => { e.stopPropagation(); toggleFavorite(r); }} className="shrink-0 text-[length:var(--text-xs)] text-text-faint hover:text-accent" aria-label="save favorite">
-                  <Icon name="star" size="sm" filled={isFavorite(r.kind === "customer" ? `cust_${r.customer.customer_code}` : `dist_${r.district.properties.name}`)} />
-                </button>
-              </button>
-            ))
-          ) : (
-            <div className="p-2">
-              <p className="px-1 pb-2 text-[length:var(--text-sm)] text-text-faint">نتیجه‌ای یافت نشد</p>
-              <button
-                onClick={runGeosearch}
-                disabled={geoLoading}
-                className="inline-flex items-center justify-center gap-[var(--space-2)] w-full rounded-[var(--radius-sm)] border border-border px-3 py-2 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent hover:text-accent disabled:opacity-60"
-              >
-                {geoLoading ? (
-                  "در حال جستجو…"
-                ) : (
-                  <>
-                    <Icon name="search" size="sm" /> جستجوی «{trimmed}» به‌عنوان آدرس
-                  </>
-                )}
-              </button>
-            </div>
-          )
-          )}
+          {!trimmed && <SearchFavorites favorites={favorites} setFavorites={setFavorites} changeQuery={changeQuery} setOpen={setOpen} />}
+
+          {trimmed && !hideResults && <SearchResultsBody trimmed={trimmed} isUrl={isUrl} decodeLink={decodeLink} linkLoading={linkLoading} linkError={linkError} inputType={inputType} coordMatch={coordMatch} goToCoords={goToCoords} geoResults={geoResults} selectGeoResult={selectGeoResult} results={results} select={select} toggleFavorite={toggleFavorite} runGeosearch={runGeosearch} geoLoading={geoLoading} />}
+
         </div>
       )}
       </>

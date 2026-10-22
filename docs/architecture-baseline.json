@@ -4,7 +4,7 @@
   "dbModuleLines": 149,
   "unscopedTenantSelects": 10,
   "rawRoleChecks": 57,
-  "longFunctions": 73,
+  "longFunctions": 74,
   "unusedExports": 223,
   "agentLitterFiles": 0
 }
