@@ -48,7 +48,6 @@ import {
   isDistrictColorMode,
 } from "@/lib/types";
 import {
-  PRECISION_AUTO_ZOOM,
   PrecisionMode,
   PrecisionTier,
   geometryUrl,
@@ -64,10 +63,13 @@ import LocateControl from "./LocateControl";
 import MyLocationMarker from "./MyLocationMarker";
 import { useMyPosition } from "./MyPositionProvider";
 import GeofenceWatcher from "./GeofenceWatcher";
-import NavAppSetting, { useNavApp } from "./NavAppSetting";
+import { useNavApp } from "./NavAppSetting";
 import { navigateUrl } from "@/lib/navApps";
 import { useToast } from "./ToastProvider";
 import { distanceKm, formatDistanceKm } from "@/lib/geo";
+import MapSitesSection, { CORRIDOR_WIDTHS } from "@/components/coverage/MapSitesSection";
+import MapLegendSection from "@/components/coverage/MapLegendSection";
+import MapSettingsSection from "@/components/coverage/MapSettingsSection";
 import { useCorridor } from "@/components/coverage/useCorridor";
 import {
   BASEMAP_KEY,
@@ -88,7 +90,7 @@ import {
 import LayersPanel, { LayerHint, LayersControl } from "./LayersPanel";
 import TrafficZoneLayer, { useTrafficZones } from "./TrafficZoneLayer";
 import { FACILITY_COLOR, FACILITY_LABEL, isPlaced, pickOrigin, FacilityRow } from "@/lib/facilityTypes";
-import { facilityIcon, facilityMarkerHtml } from "./facilityIcon";
+import { facilityIcon } from "./facilityIcon";
 import { useSwipeDismiss } from "./useSwipeDismiss";
 import DataFreshness from "./DataFreshness";
 import EmptyState from "./EmptyState";
@@ -124,10 +126,6 @@ const NextStopBar = dynamic(() => import("./NextStopBar"), { ssr: false });
 const ShortcutHelp = dynamic(() => import("./ShortcutHelp"), { ssr: false });
 
 const TEHRAN_CENTER: [number, number] = [35.7, 51.55];
-
-// Three presets rather than a slider: this gets used one-handed in a moving vehicle,
-// where a slider thumb is unusable.
-const CORRIDOR_WIDTHS = [2, 5, 10];
 
 interface DueReminder {
   id: number;
@@ -1413,147 +1411,8 @@ export default function CoverageMap({
 
         {/* The two silhouettes are repeated here at marker size, not described in words:
             the legend's job is to teach the shape the user will actually look for. */}
-        <CollapsibleSection title="تأسیسات ما" icon="building" storageKey="sites" keywords="انبار مبدأ خانه کریدور depot">
-            <div className="flex flex-col gap-1">
-              {initialFacilities.map((f) => (
-                <button
-                  key={f.id}
-                  onClick={() => isPlaced(f) && flyToFacility(f)}
-                  className="flex items-center gap-2.5 rounded-[var(--radius-sm)] px-1.5 py-1.5 text-right transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5"
-                >
-                  <Icon name="map-pin" size="md" />
-                  <span
-                    className="shrink-0"
-                    aria-hidden="true"
-                    dangerouslySetInnerHTML={{
-                      __html: facilityMarkerHtml(f.icon_key, f.kind),
-                    }}
-                  />
-                  <span className="min-w-0">
-                    <span className="block truncate text-[length:var(--text-sm)] text-text">{f.name}</span>
-                    {f.notes && (
-                      <span className="block truncate text-[length:var(--text-xs)] text-text-faint">{f.notes}</span>
-                    )}
-                  </span>
-                </button>
-              ))}
-            </div>
-            {placedFacilities.length === 2 && (
-              <p className="mt-2 font-mono text-[length:var(--text-xs)] leading-5 text-text-faint">
-                {formatDistanceKm(distanceKm(placedFacilities[0], placedFacilities[1]))} فاصله مستقیم بین دو انبار
-              </p>
-            )}
-
-            {/* Feature 3. Lives under the sites section because the corridor is a property
-                of the sites, not a separate map layer the user has to connect back to them. */}
-            {corridorEnds && (
-              <div className="mt-3 border-t border-border pt-3">
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[length:var(--text-sm)] text-text">کریدور بین انبارها</span>
-                  {!corridorOn && <LayerHint onOpen={() => setLayersOpen(true)} what="کریدور" compact />}
-                </div>
-
-                {corridorOn && (
-                  <>
-                    <div className="mt-2 flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                      {CORRIDOR_WIDTHS.map((km) => (
-                        <button
-                          key={km}
-                          onClick={() => {
-                            setCorridorWidthKm(km);
-                            localStorage.setItem("coverage_corridor_km", String(km));
-                          }}
-                          className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 font-mono text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                            corridorWidthKm === km
-                              ? "bg-accent font-medium text-accent-ink"
-                              : "text-text-muted hover:bg-white/5 hover:text-text"
-                          }`}
-                        >
-                          <Icon name="route" size="sm" />
-                          {km} کیلومتر
-                        </button>
-                      ))}
-                    </div>
-                    <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                      <span>
-                        مسیر {corridorEnds.a.name} تا {corridorEnds.b.name} (
-                        {formatDistanceKm(corridorRoute ? corridorRoute.km : corridorEnds.km)}
-                        {corridorRoute ? "، روی جاده" : corridorRouting ? "، در حال مسیریابی…" : "، خط مستقیم"}
-                        ).
-                      </span>{" "}
-                      <span>
-                        {corridorUncovered > 0
-                          ? `${faNum(corridorUncovered)} منطقه نیازمند پوشش سر این راه است.`
-                          : "این مسیر از هیچ منطقهٔ بدون پوشش نمی‌گذرد."}
-                      </span>
-                      {!corridorRoute && !corridorRouting && (
-                        <span className="mt-1 block text-warn">
-                          مسیریاب در دسترس نبود — نوار روی خط مستقیم بین دو نقطه کشیده شده، نه روی جاده.
-                        </span>
-                      )}
-                    </p>
-                  </>
-                )}
-              </div>
-            )}
-        </CollapsibleSection>
-
-        <CollapsibleSection title="راهنمای رنگ مناطق" icon="map" storageKey="legend" keywords="وضعیت پوشش رنگ گروه محدوده legend">
-            {/* One meaning at a time. The fill cannot say both "needs coverage" and
-                "belongs to گروه غرب" at once without an amber district being ambiguous,
-                so the mode switches and the legend below switches with it. Hidden
-                entirely when there are no groups yet -- a switch with one option is
-                just clutter. */}
-            {groups.length > 0 && (
-              <div className="mb-2 grid grid-cols-2 gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                {(
-                  [
-                    ["status", "وضعیت پوشش"],
-                    ["group", "گروه"],
-                  ] as [DistrictColorMode, string][]
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => setDistrictColorMode(mode)}
-                    className={`rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                      districtColorMode === mode
-                        ? "bg-accent font-medium text-accent-ink"
-                        : "text-text-muted hover:bg-white/5 hover:text-text"
-                    }`}
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            <div className="flex flex-col gap-1.5">
-              {districtColorMode === "group" ? (
-                <>
-                  {groups.map((g) => (
-                    <StatusPill
-                      key={g.id}
-                      color={g.color ?? STATUS_COLOR.unknown}
-                      label={g.name}
-                      shaped={shapedMarkers}
-                    />
-                  ))}
-                  <StatusPill color={STATUS_COLOR.unknown} label="بدون گروه" shaped={shapedMarkers} />
-                </>
-              ) : (
-                (Object.keys(STATUS_LABEL) as CoverageStatus[]).map((s) => (
-                  <StatusPill key={s} color={STATUS_COLOR[s]} label={STATUS_LABEL[s]} shaped={shapedMarkers} />
-                ))
-              )}
-            </div>
-            <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-              {bulkMode
-                ? "روی چند منطقه کلیک کنید تا انتخاب شوند، سپس از نوار پایین صفحه تغییر را روی همه اعمال کنید."
-                : "برای تغییر وضعیت یک منطقه، روی آن در نقشه کلیک کنید."}
-            </p>
-        </CollapsibleSection>
-
+<MapSitesSection initialFacilities={initialFacilities} placedFacilities={placedFacilities} flyToFacility={flyToFacility} corridorEnds={corridorEnds} corridorOn={corridorOn} corridorWidthKm={corridorWidthKm} setCorridorWidthKm={setCorridorWidthKm} corridorRoute={corridorRoute} corridorRouting={corridorRouting} corridorUncovered={corridorUncovered} setLayersOpen={setLayersOpen} />
+<MapLegendSection groups={groups} districtColorMode={districtColorMode} setDistrictColorMode={setDistrictColorMode} shapedMarkers={shapedMarkers} bulkMode={bulkMode} />
         {/* Switching it on lives in the layers panel with every other layer; how it is
             weighted is a property of the layer, and belongs next to the data it weights. */}
         <CollapsibleSection title="نقشه حرارتی" icon="flame" storageKey="heatmap" keywords="تراکم بدهی heatmap لایه">
@@ -1572,225 +1431,15 @@ export default function CoverageMap({
             )}
         </CollapsibleSection>
 
-        <CollapsibleSection title="تنظیمات" icon="settings" storageKey="settings" keywords="GPS موقعیت ژئوفنس اعلان نوتیفیکیشن دقت مرز انتخاب گروهی توقف بعدی شکل کوررنگی رنگ نابینایی رانندگی بزرگ درشت مسیریابی گوگل نشان بلد ویز">
-          <div className="flex flex-col gap-4">
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">ثبت خودکار بازدید (GPS)</span>
-                <p className="text-[length:var(--text-xs)] text-text-faint">وقتی نزدیک مشتری هستید پیشنهاد ثبت بازدید نمایش داده می‌شود</p>
-              </div>
-              <button
-                onClick={() => setGeofenceOn((v) => !v)}
-                role="switch"
-                aria-checked={geofenceOn}
-                aria-label="ثبت خودکار بازدید"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  geofenceOn ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="plus" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: geofenceOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            {/* A sub-option, not a sibling switch: it rides the same permission, the same
-                position stream and the same battery cost as the toggle above, and
-                presenting it as independent would imply otherwise. */}
-            {geofenceOn && (
-              <label className="mt-2 flex items-start gap-2 text-[length:var(--text-xs)] leading-5 text-text-muted">
-                <input
-                  type="checkbox"
-                  checked={facilityGeofenceOn}
-                  onChange={(e) => {
-                    setFacilityGeofenceOn(e.target.checked);
-                    localStorage.setItem("coverage_geofence_sites", e.target.checked ? "1" : "0");
-                  }}
-                  className="mt-0.5 accent-[color:var(--accent)]"
-                />
-                <span>
-                  ثبت حضور در انبارها و مبدأ
-                  <span className="block text-text-faint">
-                    رسیدن به انبار یا مبدأ هم ثبت می‌شود — مبنای گزارش ساعت کاری روزانه
-                  </span>
-                </span>
-              </label>
-            )}
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">حالت رانندگی</span>
-                <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
-                  متن و دکمه‌ها بزرگ‌تر می‌شوند — برای استفاده با یک دست داخل خودرو
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !driverMode;
-                  setDriverMode(next);
-                  localStorage.setItem("coverage_driver_mode", next ? "1" : "0");
-                }}
-                role="switch"
-                aria-checked={driverMode}
-                aria-label="حالت رانندگی"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  driverMode ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="minimize" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: driverMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">نشانگرهای شکل‌دار</span>
-                <p className="text-[length:var(--text-xs)] leading-5 text-text-faint">
-                  به جای تکیه بر رنگ سبز/نارنجی/قرمز، هر وضعیت شکل خودش را می‌گیرد — دایره، مثلث، مربع
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !shapedMarkers;
-                  setShapedMarkers(next);
-                  localStorage.setItem("coverage_shaped_markers", next ? "1" : "0");
-                }}
-                role="switch"
-                aria-checked={shapedMarkers}
-                aria-label="نشانگرهای شکل‌دار"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  shapedMarkers ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="maximize" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: shapedMarkers ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">نوار توقف بعدی</span>
-                <p className="text-[length:var(--text-xs)] text-text-faint">
-                  توقف بعدی برنامه امروز را پایین نقشه نشان می‌دهد
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  const next = !nextStopOn;
-                  setNextStopOn(next);
-                  localStorage.setItem("coverage_nextstop_off", next ? "0" : "1");
-                }}
-                role="switch"
-                aria-checked={nextStopOn}
-                aria-label="نوار توقف بعدی"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  nextStopOn ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="layers" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: nextStopOn ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div className="flex items-center justify-between gap-2">
-              <div>
-                <span className="text-[length:var(--text-sm)] text-text">انتخاب چندتایی مناطق</span>
-                <p className="text-[length:var(--text-xs)] text-text-faint">برای ویرایش‌های گروهی روی دسکتاپ</p>
-              </div>
-              <button
-                onClick={() => {
-                    /* Leaving bulk mode drops the selection. Said at the click rather
-                       than in an effect on [bulkMode]: an effect renders once with the
-                       stale selection still highlighted and then again without it, which
-                       is what react-hooks/set-state-in-effect is about. This is the only
-                       place bulkMode changes. */
-                    if (bulkMode) setBulkSelectedIds(new Set());
-                    setBulkMode((v) => !v);
-                  }}
-                role="switch"
-                aria-checked={bulkMode}
-                aria-label="حالت انتخاب چندتایی مناطق"
-                className={`relative h-6 w-11 shrink-0 rounded-full border transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                  bulkMode ? "border-accent bg-accent" : "border-border bg-surface"
-                }`}
-              >
-                <Icon name="locate" size="md" />
-                <span
-                  className="absolute top-0.5 h-4 w-4 rounded-full bg-[color:var(--bg)] transition-[right,left] duration-[var(--dur-base)] ease-[var(--ease-out)]"
-                  style={{ right: bulkMode ? "calc(100% - 1.25rem)" : "0.125rem" }}
-                />
-              </button>
-            </div>
-
-            <div>
-
-              {/* Phase 2 moved every notification control — subscribing this device, quiet
-                  hours, and the per-type opt-in matrix — to one screen. A toggle here would
-                  only ever be a third of that story. */}
-              <Link
-                href="/settings/notifications"
-                className="flex items-center justify-between gap-2 text-[length:var(--text-sm)] text-text hover:text-accent"
-              >
-                <span>تنظیمات اعلان‌ها</span>
-                <Icon name="arrow-up-right" size="sm" />
-              </Link>
-
-            </div>
-
-            <NavAppSetting />
-
-            <div>
-
-              <p className="mb-2 font-mono text-[length:var(--text-xs)] uppercase tracking-wide text-text-faint">
-                دقت مرز مناطق
-              </p>
-
-              <div className="flex gap-1 rounded-[var(--radius-md)] border border-border bg-surface p-1">
-                {(
-                  [
-                    ["auto", "خودکار"],
-                    ["low", "سریع"],
-                    ["high", "دقیق"],
-                  ] as [PrecisionMode, string][]
-                ).map(([mode, label]) => (
-                  <button
-                    key={mode}
-                    onClick={() => setPrecisionMode(mode)}
-                    className={`flex-1 rounded-[var(--radius-sm)] px-0.5 py-1.5 text-[length:var(--text-xs)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] ${
-                      precisionMode === mode
-                        ? "bg-accent font-medium text-accent-ink"
-                        : "text-text-muted hover:bg-white/5 hover:text-text"
-                    }`}
-                  >
-                    <Icon name="map-pin" size="sm" />
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="mt-2 text-[length:var(--text-xs)] leading-5 text-text-faint">
-                {precisionMode === "auto"
-                  ? `خودکار: در بزرگ‌نمایی کم مرزهای ساده‌شده و سبک، از بزرگ‌نمایی ${faNum(PRECISION_AUTO_ZOOM)} به بالا مرزهای کامل. (اکنون: ${activeTier === "high" ? "دقیق" : "سریع"})`
-                  : precisionMode === "low"
-                    ? "همیشه مرزهای ساده‌شده — سبک‌ترین حالت برای اینترنت ضعیف."
-                    : "همیشه مرزهای کامل — دقیق‌تر ولی سنگین‌تر."}
-              </p>
-
-            </div>
-
-          </div>
-        </CollapsibleSection>
+        <MapSettingsSection
+          geofenceOn={geofenceOn} setGeofenceOn={setGeofenceOn}
+          facilityGeofenceOn={facilityGeofenceOn} setFacilityGeofenceOn={setFacilityGeofenceOn}
+          driverMode={driverMode} setDriverMode={setDriverMode}
+          shapedMarkers={shapedMarkers} setShapedMarkers={setShapedMarkers}
+          nextStopOn={nextStopOn} setNextStopOn={setNextStopOn}
+          bulkMode={bulkMode} setBulkMode={setBulkMode} clearBulkSelection={() => setBulkSelectedIds(new Set())}
+          precisionMode={precisionMode} setPrecisionMode={setPrecisionMode} activeTier={activeTier}
+        />
 
         {/* Last in the panel on purpose: a driver never needs this, and it would be
             competing with the things they do. */}
