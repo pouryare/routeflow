@@ -43,6 +43,9 @@ CREATE INDEX idx_driver_commission_payments_person ON driver_commission_payments
 -- index idx_driver_commission_rates_lookup on driver_commission_rates
 CREATE INDEX idx_driver_commission_rates_lookup ON driver_commission_rates(driver_user_id, valid_from);
 
+-- index idx_facilities_kind on facilities
+CREATE INDEX idx_facilities_kind ON facilities(kind);
+
 -- index idx_lead_list_items_list on lead_list_items
 CREATE INDEX idx_lead_list_items_list ON lead_list_items(list_id, sort_order);
 
@@ -91,6 +94,9 @@ CREATE INDEX idx_purchase_lines_product ON purchase_lines(product_id);
 -- index idx_purchase_lines_purchase on purchase_lines
 CREATE INDEX idx_purchase_lines_purchase ON purchase_lines(purchase_id);
 
+-- index idx_purchases_date on purchases
+CREATE INDEX idx_purchases_date ON purchases(purchase_date);
+
 -- index idx_reminders_due on reminders
 CREATE INDEX idx_reminders_due ON reminders(resolved, due_date);
 
@@ -111,6 +117,9 @@ CREATE INDEX idx_sales_customer ON sales(customer_name, sale_date);
 
 -- index idx_sales_product on sales
 CREATE INDEX idx_sales_product ON sales(customer_name, product_name);
+
+-- index idx_saved_locations_name on saved_locations
+CREATE INDEX idx_saved_locations_name ON saved_locations(name);
 
 -- index idx_visit_plans_date on visit_plans
 CREATE INDEX idx_visit_plans_date ON visit_plans(planned_date);

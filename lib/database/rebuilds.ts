@@ -15,6 +15,19 @@ import type { DatabaseSync } from "node:sqlite";
  *  Foreign keys are suspended for the copy. With them on, DROP TABLE would either fail
  *  or cascade into whatever references this table, depending on the pragma, and neither
  *  is what a rename wants -- the schema those referents see is unchanged either way. */
+/** The CREATE INDEX statements of every index on a table that was created by hand (not the ones
+ *  SQLite makes for UNIQUE and PRIMARY KEY). DROP TABLE takes a table's indexes with it, so a
+ *  rebuild that copies a table into a replacement has to put them back; before this existed, a
+ *  fresh database booted without three indexes that only the NEXT boot's CREATE INDEX IF NOT
+ *  EXISTS restored. */
+export function indexStatementsOf(db: DatabaseSync, table: string): string[] {
+  return (
+    db
+      .prepare("SELECT sql FROM sqlite_master WHERE type = 'index' AND tbl_name = ? AND sql IS NOT NULL ORDER BY name")
+      .all(table) as unknown as { sql: string }[]
+  ).map((r) => r.sql);
+}
+
 export function rebuildForTenantUnique(
   db: DatabaseSync,
   table: string,
@@ -30,6 +43,7 @@ export function rebuildForTenantUnique(
     .map((c) => `"${c.name}"`)
     .join(", ");
 
+  const indexes = indexStatementsOf(db, table);
   db.exec("PRAGMA foreign_keys = OFF;");
   try {
     db.exec(`
@@ -39,6 +53,7 @@ export function rebuildForTenantUnique(
       DROP TABLE ${table};
       ALTER TABLE ${table}_tn_new RENAME TO ${table};
     `);
+    for (const sql of indexes) db.exec(sql);
   } finally {
     db.exec("PRAGMA foreign_keys = ON;");
   }

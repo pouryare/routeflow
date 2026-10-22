@@ -3,6 +3,7 @@
  * events, reminder tasks, folded lead pins). Each is idempotent. Moved out of lib/db.ts unchanged;
  * lib/db.ts re-exports the public ones (`export * from "./database/backfills"`). */
 import type { DatabaseSync } from "node:sqlite";
+import { indexStatementsOf } from "./rebuilds";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "../orderStateMachine";
 import { postJournal } from "../repo/ledgerCore";
 
@@ -277,6 +278,7 @@ export function migratePurchaseSuppliers(db: DatabaseSync): void {
   if (cols.some((c) => c.name === "supplier_id")) return; // already migrated
 
   const now = new Date().toISOString();
+  const purchaseIndexes = indexStatementsOf(db, "purchases");
   db.exec("PRAGMA foreign_keys = OFF");
   try {
     db.exec(`
@@ -298,6 +300,7 @@ export function migratePurchaseSuppliers(db: DatabaseSync): void {
       DROP TABLE purchases;
       ALTER TABLE purchases_tn_new RENAME TO purchases;
     `);
+    for (const sql of purchaseIndexes) db.exec(sql);
     /* OR IGNORE against ux_suppliers_org_name, and the name is TRIM'd because two
        spellings with stray whitespace are the same vendor far more often than not. */
     db.prepare(
