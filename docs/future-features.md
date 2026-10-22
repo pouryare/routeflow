@@ -2702,6 +2702,26 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F136. Message template editor
+
+**What:** the owner edits the wording of messages from a screen: the notifications staff receive, the titles of tasks that rules create, and, once customer messaging exists (F79, F18, F120), the messages customers receive. Placeholders for names, numbers and amounts are filled in automatically, and a preview shows the result.
+
+**Already in the app:** notification wording is written in code: a table of templates keyed by notification type, each a function from the event's data to a Persian title and body (`TEMPLATES` and `renderNotification` in `lib/repo/notifications.ts`). The database holds a catalogue of notification types (name, category, priority, default channels, active), which an organisation can override, but not their wording (`notification_types`, tenant rows win over the shared defaults). Rule-created tasks carry a title and a role hint inside the rule's action data, set in the seeded default rules (`rules.action_json`). There is no screen to change any of this text, and customers receive no messages from the app yet.
+
+**Why parked:** a message that fills in names and amounts must keep working when the owner edits it, so placeholders need a fixed, validated list per type; a typo in a template should not be able to break delivery of every notification of that type; Persian text with right-to-left punctuation and digits needs a preview that matches what Telegram and push actually show.
+
+**Open questions**
+1. Which texts are editable first: staff notification titles and bodies, or rule-created task titles?
+2. Stored as overrides per organisation next to the catalogue, with the shipped wording as the fallback and a "restore default" action?
+3. Placeholder set per type, shown next to the editor, with an error if one is missing or unknown.
+4. Language: Persian only for now; other languages would need a locale per organisation (not in scope).
+
+**Suggested first slice:** per-organisation title and body overrides for existing notification types, with a placeholder list, a live preview and a restore-default button; if an override is invalid at send time, fall back to the shipped text and log it. Task titles and customer messages later.
+
+**Prerequisites:** the notification catalogue and renderer (exist); F79, F18 and F120 add customer-facing templates.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).

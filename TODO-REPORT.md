@@ -107,6 +107,8 @@
 - [x] Parked features F134–F135 added to `docs/future-features.md`: profit and loss by group, manager ride-along visits — each notes what already exists (whole-organisation income statement with no group dimension on journal lines; visit plans with no participants or notes)
 - [x] Found that accounting period locking already exists in the ledger (`fiscal_periods`, closed periods refuse postings); I had wrongly listed it earlier as a new idea
 
+- [x] Parked feature F136 added to `docs/future-features.md`: message template editor — notes that wording lives in code, the database catalogue holds only type settings, and rule task titles live in seeded rule data
+
 ## Not done / gaps
 - [ ] F132: what feeds the urgent driver commission rate, and whether anything sets the priority value, is not verified
 - [ ] F102: whether orders in review appear in a decision deck is not verified
@@ -117,7 +119,7 @@
 - [ ] F56: whether the UI can schedule future prices and whether `price_tier` changes order prices is not verified; F57: no caller found that feeds customer hours to the solver as a time window
 - [ ] F4 (Wazo) is parked, not built: needs a Wazo server and a carrier/trunk decision first
 - [ ] F5 (Persian proofing) is parked, not built; normalisation applies to search only, not to stored text
-- [ ] F6–F135 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
+- [ ] F6–F136 are parked, not built (F9, F11, F13, F15, F17, F26, F32, F33, F51, F52, F56, F58, F61, F63, F71, F73, F75, F76, F80, F81, F82, F83, F84, F88, F89, F90, F92, F93, F97, F99, F100, F101, F102, F104, F105, F107, F108, F109, F111, F113 partly exist)
 - [ ] Semgrep never ran (Python dependency conflict)
 - [ ] Vector basemaps (maplibre-gl 6) cannot be rendered offline here; module shape verified only. Smoke suite (needs Chromium + server) not runnable in this container
 - [ ] 16 contrast nodes remain (faint-on-sunk tint, one hover label, one accent-fill label); two selects and one link-in-text still unlabelled/unstyled for axe
