@@ -36,6 +36,8 @@ export interface ImportJobRow {
   duplicate_count: number;
   added_count: number;
   notified_at: string | null;
+  /** The user who pasted the links; null for a job created before this was recorded. */
+  created_by: number | null;
   created_at: string;
   finished_at: string | null;
 }
@@ -62,15 +64,16 @@ const db = (): DatabaseSync => getDb();
 export function createJob(
   organizationId: number,
   groupId: number | null,
-  total: number
+  total: number,
+  createdBy: number | null = null
 ): number {
   return Number(
     db()
       .prepare(
-        `INSERT INTO lead_import_jobs (organization_id, group_id, status, stage, total, created_at)
-         VALUES (?, ?, 'running', 'parse', ?, ?)`
+        `INSERT INTO lead_import_jobs (organization_id, group_id, status, stage, total, created_by, created_at)
+         VALUES (?, ?, 'running', 'parse', ?, ?, ?)`
       )
-      .run(organizationId, groupId, total, new Date().toISOString()).lastInsertRowid
+      .run(organizationId, groupId, total, createdBy, new Date().toISOString()).lastInsertRowid
   );
 }
 

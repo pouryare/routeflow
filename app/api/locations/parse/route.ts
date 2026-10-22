@@ -33,7 +33,8 @@ export async function POST(req: NextRequest) {
   const jobId = importRepo.createJob(
     guard.session.organizationId,
     guard.session.groupId,
-    items.length
+    items.length,
+    guard.session.user.id
   );
   importRepo.addItems(guard.session.organizationId, jobId, items);
 

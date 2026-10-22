@@ -322,28 +322,41 @@ describe("crm/http", () => {
 describe("leadImportNotify.maybeNotifySlowJob", () => {
   const eventsFor = (org: number, job: number) =>
     (getDb().prepare("SELECT COUNT(*) AS n FROM events WHERE organization_id = ? AND kind = 'lead_import.slow' AND entity_id = ?").get(org, job) as { n: number }).n;
+  const noticesFor = (user: number) =>
+    (getDb().prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND type_code = 'lead_import.slow'").get(user) as { n: number }).n;
 
-  it("notifies once per job: the second poll claims nothing and writes nothing", () => {
-    const job = createJob(1, a.groupId, 500);
-    const first = maybeNotifySlowJob(1, job, 500);
-    /* KNOWN GAP, pinned: recipientsFor() (lib/repo/notifications.ts) has no branch for
-       'lead_import.slow', so the fan-out finds nobody and nothing is delivered. The module's own
-       comment says it tells "the tenant's managers"; who exactly is a product decision. When
-       that branch is added this becomes > 0 and the line below is the one to change. */
-    expect(first).toBe(0);
+  it("tells the person who pasted the links, once per job", () => {
+    const job = createJob(1, a.groupId, 500, a.managerId);
+    expect(maybeNotifySlowJob(1, job, 500)).toBe(1);
+    expect(noticesFor(a.managerId)).toBe(1);
+    expect(noticesFor(a.ownerId)).toBe(0); // nobody else is told
     expect(eventsFor(1, job)).toBe(1);
     expect(getDb().prepare("SELECT code FROM notification_types WHERE organization_id = 1 AND code = 'lead_import.slow'").get()).toBeTruthy();
+    // The second poll claims nothing and writes nothing.
+    expect(maybeNotifySlowJob(1, job, 500)).toBe(0);
+    expect(eventsFor(1, job)).toBe(1);
+    expect(noticesFor(a.managerId)).toBe(1);
+  });
+
+  it("has nobody to tell for a job that recorded no starter (created before the column existed)", () => {
+    const job = createJob(1, a.groupId, 500);
     expect(maybeNotifySlowJob(1, job, 500)).toBe(0);
     expect(eventsFor(1, job)).toBe(1);
   });
 
-  it.todo("delivers the slow-import notice to the job's managers (needs a recipientsFor branch)");
-
   it("will not claim another organisation's job", () => {
-    const job = createJob(2, b.groupId, 100);
+    const job = createJob(2, b.groupId, 100, b.ownerId);
     expect(maybeNotifySlowJob(1, job, 100)).toBe(0);
     expect(eventsFor(1, job)).toBe(0);
     expect(eventsFor(2, job)).toBe(0);
+    expect(noticesFor(b.ownerId)).toBe(0);
     expect((getDb().prepare("SELECT notified_at FROM lead_import_jobs WHERE id = ?").get(job) as { notified_at: string | null }).notified_at).toBeNull();
+  });
+
+  it("notifies the starter inside their own organisation, and nobody in another", () => {
+    const job = createJob(2, b.groupId, 100, b.ownerId);
+    expect(maybeNotifySlowJob(2, job, 100)).toBe(1);
+    expect(noticesFor(b.ownerId)).toBe(1);
+    expect(noticesFor(a.ownerId)).toBe(0);
   });
 });
