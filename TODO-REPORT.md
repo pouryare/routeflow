@@ -298,3 +298,8 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Merge PR #46 when CI is green.
 2. Step 5 remainder, one module per commit with tests first.
 3. Step 6, then step 7 extras.
+
+## Status after merging PR #46 (2026-10-22)
+**Done**: step 4 finished (no route, page or component opens the database); ~20 more cross-company holes closed; founder second login step; user PATCH validation extracted.
+**Not done / gaps**: step 5 remainder (syncMutations, crm/write+fields, delivery.ts, orders POST, CoverageMap, planner, PaymentsPanel, SearchBox); step 6 (commission ledger base, shared map base, role-set constants + lint rule); step 7 extras; the founder's second step is off until turned on at /switch; `playwrightExtract` needs a Chromium build; two companies cannot claim the same district.
+**Next steps**: 1. turn on the second step. 2. step 5 remainder, one module per commit. 3. step 6. 4. step 7 extras.
