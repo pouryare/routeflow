@@ -1,0 +1,620 @@
+-- index idx_activity_entity on activity_log
+CREATE INDEX idx_activity_entity ON activity_log(entity_type, entity_id, created_at);
+
+-- index idx_commission_payments_person on commission_payments
+CREATE INDEX idx_commission_payments_person ON commission_payments(salesperson_user_id, paid_on);
+
+-- index idx_commission_rates_lookup on commission_rates
+CREATE INDEX idx_commission_rates_lookup ON commission_rates(salesperson_user_id, valid_from);
+
+-- index idx_commission_tiers_lookup on commission_tiers
+CREATE INDEX idx_commission_tiers_lookup ON commission_tiers(salesperson_user_id, valid_from);
+
+-- index idx_commission_tiers_org on commission_tiers
+CREATE INDEX idx_commission_tiers_org ON commission_tiers(organization_id, valid_from);
+
+-- index idx_customers_business_name on customers
+CREATE INDEX idx_customers_business_name ON customers(business_name);
+
+-- index idx_deliveries_order on deliveries
+CREATE INDEX idx_deliveries_order ON deliveries(order_id, seq);
+
+-- index idx_deliveries_stop on deliveries
+CREATE INDEX idx_deliveries_stop ON deliveries(route_stop_id);
+
+-- index idx_delivery_lines_delivery on delivery_lines
+CREATE INDEX idx_delivery_lines_delivery ON delivery_lines(delivery_id);
+
+-- index idx_delivery_runs_driver on delivery_runs
+CREATE INDEX idx_delivery_runs_driver ON delivery_runs(driver_user_id, run_date);
+
+-- index idx_delivery_stops_order on delivery_stops
+CREATE INDEX idx_delivery_stops_order ON delivery_stops(order_id);
+
+-- index idx_delivery_stops_run on delivery_stops
+CREATE INDEX idx_delivery_stops_run ON delivery_stops(run_id, sort_order);
+
+-- index idx_districts_name on districts
+CREATE INDEX idx_districts_name ON districts(name);
+
+-- index idx_driver_commission_payments_person on driver_commission_payments
+CREATE INDEX idx_driver_commission_payments_person ON driver_commission_payments(driver_user_id, paid_on);
+
+-- index idx_driver_commission_rates_lookup on driver_commission_rates
+CREATE INDEX idx_driver_commission_rates_lookup ON driver_commission_rates(driver_user_id, valid_from);
+
+-- index idx_lead_list_items_list on lead_list_items
+CREATE INDEX idx_lead_list_items_list ON lead_list_items(list_id, sort_order);
+
+-- index idx_lead_run_stops_run on lead_run_stops
+CREATE INDEX idx_lead_run_stops_run ON lead_run_stops(run_id, sort_order);
+
+-- index idx_manager_commission_payments_person on manager_commission_payments
+CREATE INDEX idx_manager_commission_payments_person ON manager_commission_payments(manager_user_id, paid_on);
+
+-- index idx_manager_overrides_lookup on manager_commission_overrides
+CREATE INDEX idx_manager_overrides_lookup ON manager_commission_overrides(manager_user_id, valid_from);
+
+-- index idx_order_events_order on order_events
+CREATE INDEX idx_order_events_order ON order_events(order_id, id);
+
+-- index idx_order_lines_order on order_lines
+CREATE INDEX idx_order_lines_order ON order_lines(order_id);
+
+-- index idx_order_lines_product on order_lines
+CREATE INDEX idx_order_lines_product ON order_lines(product_id);
+
+-- index idx_orders_customer on orders
+CREATE INDEX idx_orders_customer ON orders(customer_id, order_date);
+
+-- index idx_orders_salesperson on orders
+CREATE INDEX idx_orders_salesperson ON orders(salesperson_user_id, order_date);
+
+-- index idx_orders_scope on orders
+CREATE INDEX idx_orders_scope ON orders(group_id, status, order_date);
+
+-- index idx_packagings_product on packagings
+CREATE INDEX idx_packagings_product ON packagings(product_id);
+
+-- index idx_photos_entity on photos
+CREATE INDEX idx_photos_entity ON photos(entity_type, entity_id, taken_at);
+
+-- index idx_product_costs_lookup on product_costs
+CREATE INDEX idx_product_costs_lookup ON product_costs(product_id, packaging_id, valid_from);
+
+-- index idx_product_prices_lookup on product_prices
+CREATE INDEX idx_product_prices_lookup ON product_prices(product_id, packaging_id, valid_from);
+
+-- index idx_purchase_lines_product on purchase_lines
+CREATE INDEX idx_purchase_lines_product ON purchase_lines(product_id);
+
+-- index idx_purchase_lines_purchase on purchase_lines
+CREATE INDEX idx_purchase_lines_purchase ON purchase_lines(purchase_id);
+
+-- index idx_reminders_due on reminders
+CREATE INDEX idx_reminders_due ON reminders(resolved, due_date);
+
+-- index idx_run_draft_stops_draft on run_draft_stops
+CREATE INDEX idx_run_draft_stops_draft ON run_draft_stops(draft_id, seq);
+
+-- index idx_run_drafts_user on run_drafts
+CREATE INDEX idx_run_drafts_user ON run_drafts(organization_id, user_id);
+
+-- index idx_run_facility_stops_run on run_facility_stops
+CREATE INDEX idx_run_facility_stops_run ON run_facility_stops(run_id, role);
+
+-- index idx_run_unload_lines_run on run_unload_lines
+CREATE INDEX idx_run_unload_lines_run ON run_unload_lines(run_id);
+
+-- index idx_sales_customer on sales
+CREATE INDEX idx_sales_customer ON sales(customer_name, sale_date);
+
+-- index idx_sales_product on sales
+CREATE INDEX idx_sales_product ON sales(customer_name, product_name);
+
+-- index idx_visit_plans_date on visit_plans
+CREATE INDEX idx_visit_plans_date ON visit_plans(planned_date);
+
+-- index ix_activities_customer on activities
+CREATE INDEX ix_activities_customer ON activities(customer_id, occurred_at, id);
+
+-- index ix_alerts_open on alerts
+CREATE INDEX ix_alerts_open ON alerts(organization_id, severity, resolved_at);
+
+-- index ix_alloc_order on payment_allocations
+CREATE INDEX ix_alloc_order ON payment_allocations(order_id);
+
+-- index ix_alloc_payment on payment_allocations
+CREATE INDEX ix_alloc_payment ON payment_allocations(payment_id, amount_toman);
+
+-- index ix_batches_product on batches
+CREATE INDEX ix_batches_product ON batches(organization_id, product_id, expiry_date);
+
+-- index ix_batches_purchase_line on batches
+CREATE INDEX ix_batches_purchase_line ON batches(purchase_line_id);
+
+-- index ix_cheques_status on cheques
+CREATE INDEX ix_cheques_status ON cheques(organization_id, status, due_date);
+
+-- index ix_complaints_batch on quality_complaints
+CREATE INDEX ix_complaints_batch ON quality_complaints(organization_id, batch_id, reported_at);
+
+-- index ix_contacts_customer on contacts
+CREATE INDEX ix_contacts_customer ON contacts(customer_id);
+
+-- index ix_contacts_phone on contacts
+CREATE INDEX ix_contacts_phone ON contacts(organization_id, phone_norm);
+
+-- index ix_customers_client_uuid on customers
+CREATE UNIQUE INDEX ix_customers_client_uuid ON customers(client_uuid) WHERE client_uuid IS NOT NULL;
+
+-- index ix_customers_instagram on customers
+CREATE INDEX ix_customers_instagram ON customers(organization_id, instagram);
+
+-- index ix_customers_next_task on customers
+CREATE INDEX ix_customers_next_task ON customers(next_task_id);
+
+-- index ix_customers_owner on customers
+CREATE INDEX ix_customers_owner ON customers(organization_id, owner_user_id);
+
+-- index ix_customers_phone_norm on customers
+CREATE INDEX ix_customers_phone_norm ON customers(organization_id, phone_norm);
+
+-- index ix_deleted_rows_since on deleted_rows
+CREATE INDEX ix_deleted_rows_since ON deleted_rows(organization_id, deleted_at);
+
+-- index ix_deliveries_client_uuid on deliveries
+CREATE UNIQUE INDEX ix_deliveries_client_uuid ON deliveries(client_uuid) WHERE client_uuid IS NOT NULL;
+
+-- index ix_districts_code on districts
+CREATE UNIQUE INDEX ix_districts_code ON districts(code) WHERE code IS NOT NULL;
+
+-- index ix_dlb_batch on delivery_line_batches
+CREATE INDEX ix_dlb_batch ON delivery_line_batches(batch_id);
+
+-- index ix_dlb_line on delivery_line_batches
+CREATE INDEX ix_dlb_line ON delivery_line_batches(order_line_id);
+
+-- index ix_dlb_stop on delivery_line_batches
+CREATE INDEX ix_dlb_stop ON delivery_line_batches(delivery_stop_id);
+
+-- index ix_events_recent on events
+CREATE INDEX ix_events_recent ON events(organization_id, kind, occurred_at);
+
+-- index ix_forecasts_read on forecasts
+CREATE INDEX ix_forecasts_read ON forecasts(organization_id, entity_type, metric, target_period);
+
+-- index ix_journals_org_period on journals
+CREATE INDEX ix_journals_org_period ON journals(organization_id, period_key, id);
+
+-- index ix_journals_reverses on journals
+CREATE INDEX ix_journals_reverses ON journals(reverses_journal_id);
+
+-- index ix_journals_source on journals
+CREATE INDEX ix_journals_source ON journals(source_type, source_id);
+
+-- index ix_kpi_snapshots_read on kpi_snapshots
+CREATE INDEX ix_kpi_snapshots_read ON kpi_snapshots(organization_id, period, metric, scope_type);
+
+-- index ix_lead_import_items_job on lead_import_items
+CREATE INDEX ix_lead_import_items_job ON lead_import_items(job_id, ordinal);
+
+-- index ix_lead_import_items_saved on lead_import_items
+CREATE INDEX ix_lead_import_items_saved ON lead_import_items(saved_location_id);
+
+-- index ix_lead_import_jobs_active on lead_import_jobs
+CREATE INDEX ix_lead_import_jobs_active ON lead_import_jobs(organization_id, status);
+
+-- index ix_ledger_entries_account on ledger_entries
+CREATE INDEX ix_ledger_entries_account ON ledger_entries(account_id, id);
+
+-- index ix_ledger_entries_customer on ledger_entries
+CREATE INDEX ix_ledger_entries_customer ON ledger_entries(customer_id, id);
+
+-- index ix_ledger_entries_journal on ledger_entries
+CREATE INDEX ix_ledger_entries_journal ON ledger_entries(journal_id);
+
+-- index ix_ledger_entries_org_account on ledger_entries
+CREATE INDEX ix_ledger_entries_org_account ON ledger_entries(organization_id, account_id, side, amount_toman);
+
+-- index ix_ledger_entries_supplier on ledger_entries
+CREATE INDEX ix_ledger_entries_supplier ON ledger_entries(supplier_id, id);
+
+-- index ix_lva_location on lead_visit_activities
+CREATE INDEX ix_lva_location ON lead_visit_activities(organization_id, location_id);
+
+-- index ix_notification_deliveries on notification_deliveries
+CREATE INDEX ix_notification_deliveries ON notification_deliveries(user_id, channel, flushed_at);
+
+-- index ix_notifications_feed on notifications
+CREATE INDEX ix_notifications_feed ON notifications(organization_id, user_id, read_at, created_at);
+
+-- index ix_notifications_group on notifications
+CREATE INDEX ix_notifications_group ON notifications(user_id, group_key);
+
+-- index ix_orders_client_uuid on orders
+CREATE UNIQUE INDEX ix_orders_client_uuid ON orders(client_uuid) WHERE client_uuid IS NOT NULL;
+
+-- index ix_orders_org_customer_date on orders
+CREATE INDEX ix_orders_org_customer_date ON orders(organization_id, customer_id, order_date, status);
+
+-- index ix_payments_client_uuid on payments
+CREATE UNIQUE INDEX ix_payments_client_uuid ON payments(client_uuid) WHERE client_uuid IS NOT NULL;
+
+-- index ix_payments_customer on payments
+CREATE INDEX ix_payments_customer ON payments(organization_id, customer_id, received_at);
+
+-- index ix_payments_stop on payments
+CREATE INDEX ix_payments_stop ON payments(delivery_stop_id);
+
+-- index ix_rule_runs_live on rule_runs
+CREATE INDEX ix_rule_runs_live ON rule_runs(organization_id, rule_id, entity_id, resolved_at);
+
+-- index ix_stock_mv on stock_movements
+CREATE INDEX ix_stock_mv ON stock_movements (organization_id, product_id, batch_id, facility_id, occurred_at);
+
+-- index ix_stock_product_qty on stock_movements
+CREATE INDEX ix_stock_product_qty ON stock_movements(product_id, organization_id, base_qty);
+
+-- index ix_stock_ref on stock_movements
+CREATE INDEX ix_stock_ref ON stock_movements(ref_type, ref_id, kind);
+
+-- index ix_stock_res_open on stock_reservations
+CREATE INDEX ix_stock_res_open ON stock_reservations(product_id, batch_id) WHERE released_at IS NULL;
+
+-- index ix_stock_res_order on stock_reservations
+CREATE INDEX ix_stock_res_order ON stock_reservations(order_id);
+
+-- index ix_sync_mutations_recent on sync_mutations
+CREATE INDEX ix_sync_mutations_recent ON sync_mutations(organization_id, received_at);
+
+-- index ix_task_recurrences_active on task_recurrences
+CREATE INDEX ix_task_recurrences_active ON task_recurrences(organization_id, active);
+
+-- index ix_tasks_open on tasks
+CREATE INDEX ix_tasks_open ON tasks(organization_id, assignee_user_id, status, due_at);
+
+-- index ux_activities_client_uuid on activities
+CREATE UNIQUE INDEX ux_activities_client_uuid ON activities(organization_id, client_uuid) WHERE client_uuid IS NOT NULL;
+
+-- index ux_customers_lead_location on customers
+CREATE UNIQUE INDEX ux_customers_lead_location ON customers(organization_id, lead_location_id) WHERE lead_location_id IS NOT NULL;
+
+-- index ux_expense_receipts_journal on expense_receipts
+CREATE UNIQUE INDEX ux_expense_receipts_journal ON expense_receipts(journal_id);
+
+-- index ux_journals_org_seq on journals
+CREATE UNIQUE INDEX ux_journals_org_seq ON journals(organization_id, seq);
+
+-- index ux_lva_client_uuid on lead_visit_activities
+CREATE UNIQUE INDEX ux_lva_client_uuid ON lead_visit_activities(organization_id, location_id, client_uuid) WHERE client_uuid IS NOT NULL;
+
+-- index ux_suppliers_org_name on suppliers
+CREATE UNIQUE INDEX ux_suppliers_org_name ON suppliers(organization_id, name);
+
+-- table accounts
+CREATE TABLE accounts ( id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL UNIQUE, name_fa TEXT NOT NULL, name_en TEXT NOT NULL, type TEXT NOT NULL CHECK (type IN ('ASSET','LIABILITY','EQUITY','REVENUE','EXPENSE')), parent_id INTEGER REFERENCES accounts(id), is_postable INTEGER NOT NULL DEFAULT 1 CHECK (is_postable IN (0,1)), normal_balance TEXT NOT NULL CHECK (normal_balance IN ('DEBIT','CREDIT')), is_system INTEGER NOT NULL DEFAULT 0 CHECK (is_system IN (0,1)), active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)) );
+
+-- table activities
+CREATE TABLE activities ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), user_id INTEGER REFERENCES users(id), contact_id INTEGER REFERENCES contacts(id), type TEXT NOT NULL, outcome_code TEXT, attempt_no INTEGER, phone_used TEXT, note TEXT, answers_json TEXT, contact_status_to TEXT, stage_to TEXT, verification_to TEXT, signal TEXT, attempt INTEGER NOT NULL DEFAULT 0, miss INTEGER NOT NULL DEFAULT 0, talked INTEGER NOT NULL DEFAULT 0, completed_task_id INTEGER, next_task_id INTEGER, corrects_activity_id INTEGER REFERENCES activities(id), client_uuid TEXT, occurred_at TEXT NOT NULL, created_at TEXT NOT NULL );
+
+-- table activity_log
+CREATE TABLE activity_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')), entity_id INTEGER NOT NULL, event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned')), old_value TEXT, new_value TEXT, note TEXT, changed_by TEXT, created_at TEXT NOT NULL , changed_by_user_id INTEGER REFERENCES users(id), impersonated_by INTEGER REFERENCES users(id));
+
+-- table alerts
+CREATE TABLE alerts ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), severity TEXT NOT NULL CHECK (severity IN ('critical', 'warning', 'opportunity')), category TEXT NOT NULL, title TEXT NOT NULL, entity_type TEXT, entity_id INTEGER, group_id INTEGER REFERENCES groups(id), created_at TEXT NOT NULL, resolved_at TEXT, resolved_by INTEGER REFERENCES users(id) );
+
+-- table app_meta
+CREATE TABLE app_meta ( key TEXT PRIMARY KEY, value TEXT );
+
+-- table batches
+CREATE TABLE batches ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), product_id INTEGER NOT NULL REFERENCES products(id), batch_code TEXT NOT NULL, supplier_batch_ref TEXT, purchase_line_id INTEGER REFERENCES purchase_lines(id), produced_at TEXT, expiry_date TEXT, qty_received_base REAL NOT NULL, unit_cost_toman INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'quarantined', 'recalled', 'expired', 'depleted')), notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (organization_id, product_id, batch_code) );
+
+-- table capacity_factors
+CREATE TABLE capacity_factors ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), condition_code TEXT NOT NULL, stop_factor REAL NOT NULL DEFAULT 1, service_time_factor REAL NOT NULL DEFAULT 1, speed_factor REAL NOT NULL DEFAULT 1, max_duration_factor REAL NOT NULL DEFAULT 1, note_fa TEXT, active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, learned_stop_factor REAL, learned_speed_factor REAL, learned_service_time_factor REAL, learned_max_duration_factor REAL, learned_n INTEGER NOT NULL DEFAULT 0, UNIQUE (organization_id, condition_code) );
+
+-- table cheques
+CREATE TABLE cheques ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), amount_toman INTEGER NOT NULL, cheque_no TEXT NOT NULL, bank_name TEXT, due_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'in_hand' CHECK (status IN ('issued', 'in_hand', 'deposited', 'cleared', 'bounced', 'replaced', 'cancelled')), received_at TEXT NOT NULL, received_by INTEGER NOT NULL REFERENCES users(id), deposited_at TEXT, cleared_at TEXT, bounced_at TEXT, replaced_by_cheque_id INTEGER REFERENCES cheques(id), note TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (organization_id, customer_id, cheque_no) );
+
+-- table churn_models
+CREATE TABLE churn_models ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), weights_json TEXT NOT NULL, n_obs INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, UNIQUE (organization_id) );
+
+-- table churn_scores
+CREATE TABLE churn_scores ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), probability REAL NOT NULL, band TEXT NOT NULL CHECK (band IN ('low', 'watch', 'high')), reason_fa TEXT, computed_at TEXT NOT NULL, UNIQUE (organization_id, customer_id) );
+
+-- table commission_payments
+CREATE TABLE commission_payments ( id INTEGER PRIMARY KEY AUTOINCREMENT, salesperson_user_id INTEGER NOT NULL REFERENCES users(id), amount_toman INTEGER NOT NULL, paid_on TEXT NOT NULL, period_from TEXT, period_to TEXT, notes TEXT, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
+
+-- table commission_rates
+CREATE TABLE commission_rates ( id INTEGER PRIMARY KEY AUTOINCREMENT, salesperson_user_id INTEGER REFERENCES users(id), rate_per_kg_toman INTEGER NOT NULL, /* For فوری deliveries. Null means the ordinary rate applies to those too. */ urgent_rate_per_kg_toman INTEGER, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
+
+-- table commission_tiers
+CREATE TABLE commission_tiers ( id INTEGER PRIMARY KEY AUTOINCREMENT, salesperson_user_id INTEGER REFERENCES users(id), organization_id INTEGER NOT NULL REFERENCES organizations(id), mode TEXT NOT NULL DEFAULT 'marginal' CHECK (mode IN ('marginal', 'accelerator', 'cliff')), metric TEXT NOT NULL DEFAULT 'kg' CHECK (metric IN ('kg', 'volume_m3', 'revenue_toman', 'margin_toman', 'orders')), from_value REAL NOT NULL, to_value REAL, rate_type TEXT NOT NULL CHECK (rate_type IN ('flat', 'pct')), rate_value REAL NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table contacts
+CREATE TABLE contacts ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), name TEXT, role TEXT NOT NULL DEFAULT 'OTHER', phone TEXT, phone_norm TEXT, whatsapp TEXT, is_primary INTEGER NOT NULL DEFAULT 0, is_decider INTEGER NOT NULL DEFAULT 0, best_time TEXT, note TEXT, active INTEGER NOT NULL DEFAULT 1, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL, updated_at TEXT NOT NULL );
+
+-- table credit_approvals
+CREATE TABLE credit_approvals ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), order_id INTEGER NOT NULL REFERENCES orders(id), requested_by INTEGER NOT NULL REFERENCES users(id), requested_at TEXT NOT NULL, customer_balance_toman INTEGER NOT NULL, credit_limit_toman INTEGER, overage_toman INTEGER NOT NULL, status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','rejected','expired')), decided_by INTEGER REFERENCES users(id), decided_at TEXT, reason TEXT );
+
+-- table crm_not_duplicates
+CREATE TABLE crm_not_duplicates ( organization_id INTEGER NOT NULL REFERENCES organizations(id), low_id INTEGER NOT NULL, high_id INTEGER NOT NULL, decided_by INTEGER NOT NULL REFERENCES users(id), decided_at TEXT NOT NULL, PRIMARY KEY (organization_id, low_id, high_id) );
+
+-- table customer_tags
+CREATE TABLE customer_tags ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), tag TEXT NOT NULL, created_at TEXT NOT NULL, UNIQUE (customer_id, tag) );
+
+-- table customers
+CREATE TABLE "customers" ( id INTEGER PRIMARY KEY AUTOINCREMENT, customer_code TEXT NOT NULL, business_name TEXT NOT NULL, contact_person TEXT, phone TEXT, address TEXT, city TEXT, province TEXT, lat REAL, lng REAL, salesperson TEXT, notes TEXT, synced_at TEXT NOT NULL, last_purchase_date TEXT, group_id INTEGER REFERENCES groups(id), credit_limit_toman INTEGER, organization_id INTEGER REFERENCES organizations(id), customer_type TEXT CHECK (customer_type IN ('RESTAURANT','HOTEL','CATERING','CAFE','RETAIL','WHOLESALE','OTHER')), lifecycle TEXT NOT NULL DEFAULT 'lead' CHECK (lifecycle IN ('lead','qualified','sampled','active','dormant','lost','blocked')), parent_customer_id INTEGER REFERENCES customers(id), payment_terms_days INTEGER NOT NULL DEFAULT 0, hard_credit_block INTEGER NOT NULL DEFAULT 0, qualified_at TEXT, first_order_at TEXT, opening_balance_toman INTEGER NOT NULL DEFAULT 0, lead_location_id INTEGER REFERENCES saved_locations(id), client_uuid TEXT, owner_user_id INTEGER REFERENCES users(id), business_type TEXT, secondary_phone TEXT, whatsapp TEXT, instagram TEXT, website TEXT, phone_norm TEXT, size_band TEXT, price_tier TEXT, working_hours_json TEXT, location_precision TEXT, maps_url TEXT, rating_potential INTEGER, rating_volume INTEGER, rating_ease INTEGER, district_id INTEGER, area_label TEXT, source_code TEXT, source_detail TEXT, source_url TEXT, referred_by_customer_id INTEGER, verification TEXT, contact_status TEXT, sales_stage TEXT, temperature TEXT, temperature_manual INTEGER NOT NULL DEFAULT 0, attempt_count INTEGER NOT NULL DEFAULT 0, consecutive_misses INTEGER NOT NULL DEFAULT 0, last_activity_at TEXT, last_contacted_at TEXT, next_task_id INTEGER, lost_reason_code TEXT, merged_into_id INTEGER, closed_at TEXT, supply_channel TEXT, visit_window TEXT, visit_note TEXT, uses_products_json TEXT, UNIQUE (organization_id, customer_code) );
+
+-- table deleted_rows
+CREATE TABLE deleted_rows ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), entity_type TEXT NOT NULL, entity_id INTEGER NOT NULL, deleted_at TEXT NOT NULL );
+
+-- table deliveries
+CREATE TABLE deliveries ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), order_id INTEGER NOT NULL REFERENCES orders(id), seq INTEGER NOT NULL DEFAULT 1, status TEXT NOT NULL DEFAULT 'PLANNED' CHECK (status IN ('PLANNED', 'ASSIGNED', 'LOADED', 'IN_TRANSIT', 'DELIVERED', 'PARTIAL', 'FAILED', 'RETURNED', 'CANCELLED')), route_stop_id INTEGER REFERENCES delivery_stops(id), planned_date TEXT, planned_arrival TEXT, actual_arrival TEXT, completed_at TEXT, fail_reason_id INTEGER REFERENCES reason_codes(id), delay_reason_id INTEGER REFERENCES reason_codes(id), receiver_name TEXT, signature_path TEXT, photo_path TEXT, gps_lat REAL, gps_lng REAL, collected_toman INTEGER NOT NULL DEFAULT 0, payment_id INTEGER REFERENCES payments(id), device_time TEXT, notes TEXT, created_at TEXT NOT NULL, client_uuid TEXT, UNIQUE (order_id, seq) );
+
+-- table delivery_line_batches
+CREATE TABLE delivery_line_batches ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), delivery_stop_id INTEGER NOT NULL REFERENCES delivery_stops(id), order_line_id INTEGER NOT NULL REFERENCES order_lines(id), batch_id INTEGER REFERENCES batches(id), base_qty REAL NOT NULL, created_at TEXT NOT NULL , delivery_id INTEGER REFERENCES deliveries(id));
+
+-- table delivery_lines
+CREATE TABLE delivery_lines ( id INTEGER PRIMARY KEY AUTOINCREMENT, delivery_id INTEGER NOT NULL REFERENCES deliveries(id) ON DELETE CASCADE, order_line_id INTEGER NOT NULL REFERENCES order_lines(id), qty_planned REAL NOT NULL DEFAULT 0, qty_delivered REAL NOT NULL DEFAULT 0, qty_returned REAL NOT NULL DEFAULT 0 );
+
+-- table delivery_runs
+CREATE TABLE "delivery_runs" ( id INTEGER PRIMARY KEY AUTOINCREMENT, driver_user_id INTEGER NOT NULL REFERENCES users(id), group_id INTEGER REFERENCES groups(id), run_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'ready', 'in_progress', 'done')), started_at TEXT, finished_at TEXT, notes TEXT, created_by INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL, updated_at TEXT NOT NULL, /* Phase 2: which kind of day this is. 'mixed' means it carries BOTH delivery stops (delivery_stops) and visit stops (lead_run_stops) — the state a driver who delivers and visits in one loop actually produces, and the reason the two tables were folded. Stated here rather than only in a migration so a FRESH database has it too; the default is correct for every row that is not a fold. */ kind TEXT NOT NULL DEFAULT 'delivery_only' CHECK (kind IN ('delivery_only', 'mixed')), organization_id INTEGER REFERENCES organizations(id), vehicle_id INTEGER REFERENCES vehicles(id), route_template_id INTEGER REFERENCES route_templates(id), planned_distance_km REAL, actual_distance_km REAL, planned_duration_min INTEGER, actual_duration_min INTEGER, capacity_stops INTEGER, weather_json TEXT, optimisation_json TEXT, frozen_at TEXT, UNIQUE (driver_user_id, run_date) );
+
+-- table delivery_stops
+CREATE TABLE delivery_stops ( id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE, order_id INTEGER NOT NULL REFERENCES orders(id), sort_order INTEGER NOT NULL DEFAULT 0, status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'delivered', 'refused', 'skipped')), collected_toman INTEGER NOT NULL DEFAULT 0, delivered_at TEXT, delivered_by INTEGER REFERENCES users(id), notes TEXT, created_at TEXT NOT NULL, UNIQUE (run_id, order_id) );
+
+-- table districts
+CREATE TABLE districts ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, level TEXT NOT NULL CHECK (level IN ('mantaghe', 'mahalle')), parent_name TEXT, boundary_geojson TEXT NOT NULL, coverage_status TEXT NOT NULL DEFAULT 'unknown' CHECK (coverage_status IN ('visited', 'needs_coverage', 'not_allowed', 'unknown')), notes TEXT, is_custom INTEGER NOT NULL DEFAULT 0, updated_at TEXT NOT NULL, assigned_to TEXT, group_id INTEGER REFERENCES groups(id), centroid_lat REAL, centroid_lng REAL, code TEXT, parent_no INTEGER, UNIQUE(name, level, parent_name) );
+
+-- table driver_commission_payments
+CREATE TABLE driver_commission_payments ( id INTEGER PRIMARY KEY AUTOINCREMENT, driver_user_id INTEGER NOT NULL REFERENCES users(id), amount_toman INTEGER NOT NULL, paid_on TEXT NOT NULL, period_from TEXT, period_to TEXT, notes TEXT, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
+
+-- table driver_commission_rates
+CREATE TABLE driver_commission_rates ( id INTEGER PRIMARY KEY AUTOINCREMENT, driver_user_id INTEGER REFERENCES users(id), rate_per_kg_toman INTEGER NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
+
+-- table events
+CREATE TABLE events ( id INTEGER PRIMARY KEY AUTOINCREMENT, /* No FK on any reference: an append-only bus must outlive the rows it mentions, and deleting a user or an order must not cascade-break the history. */ organization_id INTEGER NOT NULL, kind TEXT NOT NULL, entity_type TEXT, entity_id INTEGER, actor_user_id INTEGER, metadata_json TEXT, occurred_at TEXT NOT NULL, created_at TEXT NOT NULL , impersonated_by INTEGER REFERENCES users(id));
+
+-- table expense_receipts
+CREATE TABLE expense_receipts ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), journal_id INTEGER NOT NULL REFERENCES journals(id), file_stem TEXT NOT NULL UNIQUE, created_by INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table facilities
+CREATE TABLE "facilities" ( id INTEGER PRIMARY KEY AUTOINCREMENT, slug TEXT NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('warehouse', 'factory', 'van', 'home', 'office', 'shop', 'cold_storage', 'parking', 'other')), name TEXT NOT NULL, /* The icon is the person's choice, not the kind's. It used to be derived from the kind, which meant a kind could only ever look like one thing, and adding a kind retroactively changed what every existing place of that kind looked like. NULL until chosen; the UI falls back to the kind's first option. */ icon_key TEXT, address TEXT, /* Nullable, matching the other two facilities DDL copies -- see the long comment on * facilities.lat. This rebuild is the one that bites: it re-creates the table on * every tenant bootstrap, so a NOT NULL here puts the constraint straight back for * anyone whose data survives the rebuild. */ lat REAL, lng REAL, maps_url TEXT, notes TEXT, is_default_origin INTEGER NOT NULL DEFAULT 0, owner_username TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, group_id INTEGER REFERENCES groups(id), organization_id INTEGER REFERENCES organizations(id), UNIQUE (organization_id, slug) );
+
+-- table fiscal_periods
+CREATE TABLE fiscal_periods ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), period_key TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open','closed')), closed_at TEXT, closed_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL, UNIQUE (organization_id, period_key) );
+
+-- table forecast_models
+CREATE TABLE forecast_models ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), entity_type TEXT NOT NULL CHECK (entity_type IN ('org', 'group', 'product')), entity_id INTEGER NOT NULL DEFAULT 0, metric TEXT NOT NULL CHECK (metric IN ('demand_base_units', 'demand_toman')), method TEXT NOT NULL DEFAULT 'seasonal_naive', level REAL, trend REAL, alpha REAL NOT NULL DEFAULT 0.4, beta REAL NOT NULL DEFAULT 0.15, n_obs INTEGER NOT NULL DEFAULT 0, mae REAL, last_period TEXT, updated_at TEXT NOT NULL, UNIQUE (organization_id, entity_type, entity_id, metric) );
+
+-- table forecasts
+CREATE TABLE forecasts ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), entity_type TEXT NOT NULL, entity_id INTEGER NOT NULL DEFAULT 0, metric TEXT NOT NULL, target_period TEXT NOT NULL, horizon INTEGER NOT NULL, yhat REAL NOT NULL, yhat_lo REAL NOT NULL, yhat_hi REAL NOT NULL, method TEXT NOT NULL, computed_at TEXT NOT NULL, UNIQUE (organization_id, entity_type, entity_id, metric, target_period) );
+
+-- table groups
+CREATE TABLE "groups" ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT NOT NULL, color TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, organization_id INTEGER REFERENCES organizations(id), UNIQUE (organization_id, name), UNIQUE (organization_id, slug) );
+
+-- table holidays
+CREATE TABLE holidays ( iso_date TEXT PRIMARY KEY, title_fa TEXT NOT NULL, kind TEXT NOT NULL DEFAULT 'official' CHECK (kind IN ('official', 'commemorative')), /* True for a row an owner entered — i.e. one lib/holidays.ts cannot compute. Kept * for the admin screen's "these need confirming each year" hint. */ is_lunar INTEGER NOT NULL DEFAULT 0, note TEXT, created_at TEXT NOT NULL );
+
+-- table journals
+CREATE TABLE journals ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), seq INTEGER NOT NULL, posted_at TEXT NOT NULL, period_key TEXT NOT NULL, memo TEXT, source_type TEXT NOT NULL CHECK (source_type IN ('PAYMENT','CHEQUE','SALE','PURCHASE','SUPPLIER_PAYMENT','EXPENSE','OPENING','MANUAL','REVERSAL')), source_id INTEGER, reverses_journal_id INTEGER REFERENCES journals(id), created_by INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table kpi_definitions
+CREATE TABLE kpi_definitions ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), metric TEXT NOT NULL, title_fa TEXT NOT NULL, definition_fa TEXT NOT NULL, formula_fa TEXT NOT NULL, owner_role TEXT NOT NULL, benchmark_fa TEXT, frequency TEXT NOT NULL CHECK (frequency IN ('daily', 'weekly', 'monthly')), action_fa TEXT NOT NULL, tier INTEGER NOT NULL DEFAULT 1, direction TEXT NOT NULL DEFAULT 'up' CHECK (direction IN ('up', 'down')), updated_at TEXT NOT NULL, UNIQUE (organization_id, metric) );
+
+-- table kpi_snapshots
+CREATE TABLE kpi_snapshots ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), metric TEXT NOT NULL, scope_type TEXT NOT NULL CHECK (scope_type IN ('org', 'group', 'salesperson', 'driver', 'customer', 'product', 'representative')), scope_id INTEGER NOT NULL DEFAULT 0, period TEXT NOT NULL, value REAL NOT NULL, numerator REAL, denominator REAL, sample_size INTEGER, computed_at TEXT NOT NULL, UNIQUE (organization_id, metric, scope_type, scope_id, period) );
+
+-- table lead_import_items
+CREATE TABLE lead_import_items ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), job_id INTEGER NOT NULL REFERENCES lead_import_jobs(id) ON DELETE CASCADE, /* Position in the paste. The panel renders rows in this order and never re-sorts, so the list does not reflow while the user is watching it. */ ordinal INTEGER NOT NULL, name TEXT NOT NULL DEFAULT '', maps_url TEXT NOT NULL, lat REAL, lng REAL, address TEXT, resolved_url TEXT, resolution TEXT NOT NULL DEFAULT 'unresolved' CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')), status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'resolving', 'done', 'unresolved', 'duplicate', 'skipped')), duplicate_of TEXT CHECK (duplicate_of IN ('location', 'customer', 'batch')), duplicate_name TEXT, /* The saved_locations row this item became, so undo is a scoped delete that cannot reach anything the job did not create. */ saved_location_id INTEGER REFERENCES saved_locations(id), UNIQUE (job_id, ordinal) );
+
+-- table lead_import_jobs
+CREATE TABLE lead_import_jobs ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), group_id INTEGER REFERENCES groups(id), status TEXT NOT NULL DEFAULT 'running' CHECK (status IN ('running', 'done', 'cancelled')), stage TEXT NOT NULL DEFAULT 'parse' CHECK (stage IN ('parse', 'fast', 'browser', 'nominatim', 'finish')), total INTEGER NOT NULL DEFAULT 0, done_count INTEGER NOT NULL DEFAULT 0, unresolved_count INTEGER NOT NULL DEFAULT 0, duplicate_count INTEGER NOT NULL DEFAULT 0, added_count INTEGER NOT NULL DEFAULT 0, /* Set once, the first time a poll notices the job has outlived the 60s threshold, so three open tabs produce one notification rather than three. */ notified_at TEXT, created_at TEXT NOT NULL, finished_at TEXT );
+
+-- table lead_list_items
+CREATE TABLE lead_list_items ( id INTEGER PRIMARY KEY AUTOINCREMENT, list_id INTEGER NOT NULL REFERENCES lead_lists(id) ON DELETE CASCADE, location_id INTEGER NOT NULL REFERENCES saved_locations(id) ON DELETE CASCADE, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE (list_id, location_id) );
+
+-- table lead_lists
+CREATE TABLE lead_lists ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, created_at TEXT NOT NULL, updated_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id), group_id INTEGER REFERENCES groups(id));
+
+-- table lead_run_stops
+CREATE TABLE lead_run_stops ( id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE, location_id INTEGER NOT NULL REFERENCES saved_locations(id) ON DELETE CASCADE, sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, UNIQUE (run_id, location_id) );
+
+-- table lead_visit_activities
+CREATE TABLE lead_visit_activities ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), location_id INTEGER NOT NULL REFERENCES saved_locations(id), user_id INTEGER REFERENCES users(id), outcome_code TEXT, answers_json TEXT, client_uuid TEXT, created_at TEXT NOT NULL );
+
+-- table ledger_entries
+CREATE TABLE ledger_entries ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), journal_id INTEGER NOT NULL REFERENCES journals(id), account_id INTEGER NOT NULL REFERENCES accounts(id), side TEXT NOT NULL CHECK (side IN ('D','C')), amount_toman INTEGER NOT NULL CHECK (amount_toman > 0), customer_id INTEGER REFERENCES customers(id), supplier_id INTEGER, memo TEXT, created_at TEXT NOT NULL );
+
+-- table lesson_progress
+CREATE TABLE lesson_progress ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER NOT NULL REFERENCES users(id), lesson_slug TEXT NOT NULL, completed_at TEXT NOT NULL, UNIQUE (organization_id, user_id, lesson_slug) );
+
+-- table manager_commission_overrides
+CREATE TABLE manager_commission_overrides ( id INTEGER PRIMARY KEY AUTOINCREMENT, manager_user_id INTEGER REFERENCES users(id), override_pct REAL NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
+
+-- table manager_commission_payments
+CREATE TABLE manager_commission_payments ( id INTEGER PRIMARY KEY AUTOINCREMENT, manager_user_id INTEGER NOT NULL REFERENCES users(id), amount_toman INTEGER NOT NULL, paid_on TEXT NOT NULL, period_from TEXT, period_to TEXT, notes TEXT, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
+
+-- table notification_channels
+CREATE TABLE notification_channels ( user_id INTEGER NOT NULL, channel TEXT NOT NULL CHECK (channel IN ('push', 'telegram')), enabled INTEGER NOT NULL DEFAULT 1, quiet_start TEXT, quiet_end TEXT, critical_breaks_quiet INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, PRIMARY KEY (user_id, channel) );
+
+-- table notification_deliveries
+CREATE TABLE notification_deliveries ( id INTEGER PRIMARY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, channel TEXT NOT NULL CHECK (channel IN ('push', 'telegram')), flushed_at TEXT NOT NULL, notification_ids_json TEXT NOT NULL, provider_ref TEXT, target TEXT );
+
+-- table notification_prefs
+CREATE TABLE notification_prefs ( user_id INTEGER NOT NULL, type_code TEXT NOT NULL, channel TEXT NOT NULL CHECK (channel IN ('push', 'telegram')), enabled INTEGER NOT NULL, updated_at TEXT NOT NULL, PRIMARY KEY (user_id, type_code, channel) );
+
+-- table notification_types
+CREATE TABLE notification_types ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), code TEXT NOT NULL, name_fa TEXT NOT NULL, category TEXT NOT NULL, directedness TEXT NOT NULL CHECK (directedness IN ('directed', 'ambient')), priority TEXT NOT NULL CHECK (priority IN ('CRITICAL', 'HIGH', 'NORMAL', 'LOW')), group_scope TEXT NOT NULL CHECK (group_scope IN ('entity', 'type_day')), active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, default_push INTEGER NOT NULL DEFAULT 0, default_telegram INTEGER NOT NULL DEFAULT 0, UNIQUE (organization_id, code) );
+
+-- table notifications
+CREATE TABLE notifications ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL, user_id INTEGER NOT NULL, type_code TEXT NOT NULL, title_fa TEXT NOT NULL, body_fa TEXT, entity_type TEXT, entity_id INTEGER, group_key TEXT NOT NULL, priority TEXT NOT NULL, created_at TEXT NOT NULL, seen_at TEXT, read_at TEXT, source_event_id INTEGER, source_rule_run_id INTEGER , push_flushed_at TEXT, tg_flushed_at TEXT, ref_id INTEGER);
+
+-- table objection_cards
+CREATE TABLE objection_cards ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), outcome_code TEXT NOT NULL, customer_type TEXT, title_fa TEXT NOT NULL, script_fa TEXT NOT NULL, module_slug TEXT, active INTEGER NOT NULL DEFAULT 1, updated_at TEXT NOT NULL, UNIQUE (organization_id, outcome_code, customer_type) );
+
+-- table order_events
+CREATE TABLE order_events ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE, from_status TEXT, to_status TEXT NOT NULL, action TEXT NOT NULL, actor_user_id INTEGER REFERENCES users(id), reason_code_id INTEGER REFERENCES reason_codes(id), note TEXT, device_time TEXT, created_at TEXT NOT NULL , impersonated_by INTEGER REFERENCES users(id));
+
+-- table order_lines
+CREATE TABLE order_lines ( id INTEGER PRIMARY KEY AUTOINCREMENT, order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id), packaging_id INTEGER NOT NULL REFERENCES packagings(id), packs_ordered REAL NOT NULL, /* Null until the driver confirms. Zero is a real answer -- the customer refused the line at the door -- and is not the same thing as null. */ packs_delivered REAL, unit_price_toman INTEGER NOT NULL, unit_cost_toman INTEGER NOT NULL DEFAULT 0, qty_per_pack REAL NOT NULL, kg_per_base_unit REAL NOT NULL, /* Which price row this was read from, so "why was it charged that?" has an answer rather than an inference. */ price_id INTEGER REFERENCES product_prices(id), is_reversal INTEGER NOT NULL DEFAULT 0, reverses_line_id INTEGER REFERENCES order_lines(id), created_at TEXT NOT NULL );
+
+-- table orders
+CREATE TABLE "orders" ( id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT NOT NULL, customer_id INTEGER NOT NULL REFERENCES customers(id), group_id INTEGER REFERENCES groups(id), salesperson_user_id INTEGER REFERENCES users(id), status TEXT NOT NULL DEFAULT 'DRAFT' CHECK (status IN ('DRAFT', 'PENDING_REVIEW', 'PENDING_CREDIT', 'ON_HOLD', 'CONFIRMED', 'PLANNED', 'READY', 'OUT_FOR_DELIVERY', 'DELIVERED', 'PARTIALLY_DELIVERED', 'DELIVERY_FAILED', 'CLOSED', 'CANCELLED', 'RETURNED')), order_type TEXT NOT NULL DEFAULT 'SALE', priority TEXT NOT NULL DEFAULT 'NORMAL', offline INTEGER NOT NULL DEFAULT 0, order_date TEXT NOT NULL, delivered_at TEXT, payment_status TEXT NOT NULL DEFAULT 'unpaid' CHECK (payment_status IN ('unpaid', 'partial', 'paid')), paid_toman INTEGER NOT NULL DEFAULT 0, credit_override_by INTEGER REFERENCES users(id), credit_hold INTEGER NOT NULL DEFAULT 0, notes TEXT, created_by INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL, updated_at TEXT NOT NULL, organization_id INTEGER REFERENCES organizations(id), requested_day TEXT, requested_kind TEXT CHECK (requested_kind IN ('soonest', 'week_offset', 'exact_date')), client_uuid TEXT, kg_total REAL, total_toman INTEGER, cost_toman INTEGER, UNIQUE (organization_id, order_no) );
+
+-- table organizations
+CREATE TABLE organizations ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, slug TEXT UNIQUE NOT NULL, plan TEXT NOT NULL DEFAULT 'standard', active INTEGER NOT NULL DEFAULT 1, contact_name TEXT, contact_phone TEXT, created_at TEXT NOT NULL );
+
+-- table packagings
+CREATE TABLE packagings ( id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, name TEXT NOT NULL, qty_per_pack REAL NOT NULL, barcode TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, UNIQUE (product_id, name) );
+
+-- table payment_allocations
+CREATE TABLE payment_allocations ( id INTEGER PRIMARY KEY AUTOINCREMENT, payment_id INTEGER NOT NULL REFERENCES payments(id) ON DELETE CASCADE, order_id INTEGER REFERENCES orders(id), amount_toman INTEGER NOT NULL, created_at TEXT NOT NULL );
+
+-- table payments
+CREATE TABLE payments ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), amount_toman INTEGER NOT NULL, method TEXT NOT NULL CHECK (method IN ('CASH', 'POS', 'CARD_TO_CARD', 'CHEQUE', 'CREDIT_NOTE', 'OTHER')), received_at TEXT NOT NULL, received_by INTEGER NOT NULL REFERENCES users(id), reference TEXT, receipt_photo_stem TEXT, /* Set iff method = 'CHEQUE'. No FK: the cheques table is created by a later migration and SQLite cannot add the constraint afterwards -- the link is enforced in lib/repo/cheques.ts. */ cheque_id INTEGER, /* Set when the payment is the cash a driver collected at a delivery stop. It makes recordDelivery idempotent: a retried sync finds the existing row for the stop instead of stacking a second one. */ delivery_stop_id INTEGER REFERENCES delivery_stops(id), note TEXT, voided_at TEXT, voided_by INTEGER REFERENCES users(id), void_reason TEXT, created_at TEXT NOT NULL , client_uuid TEXT);
+
+-- table photos
+CREATE TABLE "photos" ( id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'payment')), entity_id INTEGER NOT NULL, file_stem TEXT UNIQUE NOT NULL, caption TEXT, taken_at TEXT NOT NULL, created_at TEXT NOT NULL );
+
+-- table platform_access_log
+CREATE TABLE platform_access_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, platform_user_id INTEGER NOT NULL REFERENCES users(id), organization_id INTEGER NOT NULL REFERENCES organizations(id), path TEXT NOT NULL, occurred_at TEXT NOT NULL );
+
+-- table product_costs
+CREATE TABLE product_costs ( id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, packaging_id INTEGER REFERENCES packagings(id) ON DELETE CASCADE, method TEXT NOT NULL CHECK (method IN ('weighted_average', 'landed')), cost_toman INTEGER NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table product_prices
+CREATE TABLE product_prices ( id INTEGER PRIMARY KEY AUTOINCREMENT, product_id INTEGER NOT NULL REFERENCES products(id) ON DELETE CASCADE, /* Null means the price covers every packaging of the product -- the common case when a product is sold one way. */ packaging_id INTEGER REFERENCES packagings(id) ON DELETE CASCADE, price_toman INTEGER NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table products
+CREATE TABLE "products" ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, sku TEXT, base_unit TEXT NOT NULL DEFAULT 'عدد', kg_per_base_unit REAL NOT NULL DEFAULT 0, avg_cost_toman INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, reorder_point REAL, target_stock REAL, shelf_life_days INTEGER, organization_id INTEGER REFERENCES organizations(id), volume_m3_per_base_unit REAL, UNIQUE (organization_id, sku) );
+
+-- table purchase_lines
+CREATE TABLE purchase_lines ( id INTEGER PRIMARY KEY AUTOINCREMENT, purchase_id INTEGER NOT NULL REFERENCES purchases(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id), base_qty REAL NOT NULL, unit_cost_toman INTEGER NOT NULL, created_at TEXT NOT NULL );
+
+-- table purchases
+CREATE TABLE "purchases" ( id INTEGER PRIMARY KEY AUTOINCREMENT, supplier TEXT, supplier_id INTEGER REFERENCES suppliers(id), purchase_date TEXT NOT NULL, invoice_no TEXT, notes TEXT, created_by INTEGER NOT NULL REFERENCES users(id), created_at TEXT NOT NULL, organization_id INTEGER );
+
+-- table push_subscriptions
+CREATE TABLE push_subscriptions ( id INTEGER PRIMARY KEY AUTOINCREMENT, endpoint TEXT UNIQUE NOT NULL, p256dh TEXT NOT NULL, auth TEXT NOT NULL, created_at TEXT NOT NULL , user_id INTEGER);
+
+-- table quality_complaints
+CREATE TABLE quality_complaints ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER REFERENCES customers(id), order_id INTEGER REFERENCES orders(id), product_id INTEGER REFERENCES products(id), batch_id INTEGER REFERENCES batches(id), reported_at TEXT NOT NULL, reported_by INTEGER REFERENCES users(id), category TEXT NOT NULL CHECK (category IN ('spoilage', 'packaging', 'foreign_object', 'short_weight', 'wrong_product', 'other')), severity TEXT NOT NULL DEFAULT 'medium' CHECK (severity IN ('low', 'medium', 'high', 'critical')), description TEXT, status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'investigating', 'resolved', 'dismissed')), resolution TEXT, resolved_at TEXT, resolved_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table reason_codes
+CREATE TABLE reason_codes ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), domain TEXT NOT NULL CHECK (domain IN ('delivery_fail', 'delivery_delay', 'order_cancel', 'order_return')), code TEXT NOT NULL, label_fa TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, UNIQUE (organization_id, domain, code) );
+
+-- table reminders
+CREATE TABLE reminders ( id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer')), entity_id INTEGER NOT NULL, due_date TEXT NOT NULL, message TEXT NOT NULL, resolved INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL );
+
+-- table representative_onboarding_steps
+CREATE TABLE representative_onboarding_steps ( id INTEGER PRIMARY KEY AUTOINCREMENT, representative_id INTEGER NOT NULL REFERENCES representative_profiles(id) ON DELETE CASCADE, step_code TEXT NOT NULL, label_fa TEXT NOT NULL, required INTEGER NOT NULL DEFAULT 1, sort_order INTEGER NOT NULL DEFAULT 0, completed_at TEXT, completed_by INTEGER REFERENCES users(id), notes TEXT, UNIQUE (representative_id, step_code) );
+
+-- table representative_profiles
+CREATE TABLE representative_profiles ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), rep_code TEXT NOT NULL, manager_user_id INTEGER REFERENCES users(id), contract_signed_at TEXT, contract_expires_at TEXT, exclusivity_territory_id INTEGER REFERENCES districts(id), stage TEXT NOT NULL DEFAULT 'prospect' CHECK (stage IN ('prospect','qualified','negotiating','documents','approved','onboarding','active','dormant','terminated')), activated_at TEXT, first_order_at TEXT, credit_terms_days INTEGER NOT NULL DEFAULT 0, discount_tier TEXT, monthly_target_kg REAL, monthly_target_toman INTEGER, health_score REAL, health_computed_at TEXT, notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (organization_id, customer_id), UNIQUE (organization_id, rep_code) );
+
+-- table route_schedules
+CREATE TABLE route_schedules ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), route_template_id INTEGER NOT NULL REFERENCES route_templates(id) ON DELETE CASCADE, day_of_week INTEGER NOT NULL, start_time TEXT, end_time TEXT, cutoff_time TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, UNIQUE (route_template_id, day_of_week) );
+
+-- table route_templates
+CREATE TABLE route_templates ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), code TEXT NOT NULL, name TEXT NOT NULL, territory_id INTEGER REFERENCES districts(id), default_driver_id INTEGER REFERENCES users(id), default_vehicle_id INTEGER REFERENCES vehicles(id), max_stops INTEGER, max_weight_kg REAL, max_volume_m3 REAL, max_duration_min INTEGER, service_time_min INTEGER NOT NULL DEFAULT 8, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (organization_id, code) );
+
+-- table rule_runs
+CREATE TABLE rule_runs ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), rule_id INTEGER NOT NULL REFERENCES rules(id), entity_type TEXT, entity_id INTEGER, fired_at TEXT NOT NULL, cooldown_until TEXT NOT NULL, task_id INTEGER REFERENCES tasks(id), alert_id INTEGER REFERENCES alerts(id), escalated_at TEXT, resolved_at TEXT );
+
+-- table rules
+CREATE TABLE rules ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), code TEXT NOT NULL, name TEXT NOT NULL, trigger_kind TEXT NOT NULL, condition_json TEXT, action_kind TEXT NOT NULL CHECK (action_kind IN ('task', 'alert', 'notify')), action_json TEXT, cooldown_min INTEGER NOT NULL DEFAULT 1440, escalate_after_min INTEGER, escalate_to_role TEXT, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, UNIQUE (organization_id, code) );
+
+-- table run_draft_stops
+CREATE TABLE run_draft_stops ( id INTEGER PRIMARY KEY AUTOINCREMENT, draft_id INTEGER NOT NULL REFERENCES run_drafts(id) ON DELETE CASCADE, order_id INTEGER NOT NULL REFERENCES orders(id), seq INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, /* An order may be dragged into at most one lane on one board. Mirrors * delivery_stops' own guard, for the same reason. */ UNIQUE (draft_id, order_id) );
+
+-- table run_drafts
+CREATE TABLE run_drafts ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER NOT NULL REFERENCES users(id), driver_user_id INTEGER REFERENCES users(id), run_date TEXT, created_by_suggest INTEGER NOT NULL DEFAULT 0, manual_edits INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL, updated_at TEXT NOT NULL );
+
+-- table run_facility_stops
+CREATE TABLE run_facility_stops ( id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE, facility_id INTEGER NOT NULL REFERENCES facilities(id), role TEXT NOT NULL CHECK (role IN ('load', 'unload')), status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'done')), done_at TEXT, done_by INTEGER REFERENCES users(id), notes TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, /* One load and one unload per run. Not an accident of the schema: a second unload destination is a decision the manager has not been asked to make yet, and a second load is a data-entry mistake. */ UNIQUE (run_id, role) );
+
+-- table run_unload_lines
+CREATE TABLE run_unload_lines ( id INTEGER PRIMARY KEY AUTOINCREMENT, run_id INTEGER NOT NULL REFERENCES delivery_runs(id) ON DELETE CASCADE, product_id INTEGER NOT NULL REFERENCES products(id), disposition TEXT NOT NULL CHECK (disposition IN ('returned', 'damaged', 'expired', 'discarded', 'lost', 'sample')), qty_base INTEGER NOT NULL, note TEXT, occurred_at TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table sales
+CREATE TABLE sales ( id INTEGER PRIMARY KEY AUTOINCREMENT, order_no TEXT, sale_date TEXT NOT NULL, customer_name TEXT NOT NULL, product_name TEXT, qty REAL, amount REAL NOT NULL DEFAULT 0, payment_status TEXT, shipping_status TEXT, imported_at TEXT NOT NULL );
+
+-- table saved_locations
+CREATE TABLE "saved_locations" ( id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL, maps_url TEXT NOT NULL, address TEXT, lat REAL, lng REAL, resolution TEXT NOT NULL DEFAULT 'unresolved' CHECK (resolution IN ('direct', 'pluscode', 'browser', 'nominatim', 'manual', 'unresolved')), notes TEXT, created_at TEXT NOT NULL, status TEXT, updated_at TEXT, rating_potential INTEGER, rating_volume INTEGER, rating_ease INTEGER, group_id INTEGER REFERENCES groups(id), organization_id INTEGER REFERENCES organizations(id), visit_outcome TEXT, UNIQUE (organization_id, maps_url) );
+
+-- table seasonal_factors
+CREATE TABLE seasonal_factors ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER REFERENCES organizations(id), kind TEXT NOT NULL CHECK (kind IN ('month', 'dow')), idx INTEGER NOT NULL, factor REAL NOT NULL DEFAULT 1, note_fa TEXT, updated_at TEXT NOT NULL, UNIQUE (organization_id, kind, idx) );
+
+-- table stock_movements
+CREATE TABLE stock_movements ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), facility_id INTEGER NOT NULL REFERENCES facilities(id), product_id INTEGER NOT NULL REFERENCES products(id), batch_id INTEGER REFERENCES batches(id), base_qty REAL NOT NULL, kind TEXT NOT NULL CHECK (kind IN ('PURCHASE_IN', 'TRANSFER_OUT', 'TRANSFER_IN', 'DELIVERY_OUT', 'SAMPLE_OUT', 'RETURN_IN', 'ADJUSTMENT', 'COUNT', 'WRITE_OFF')), ref_type TEXT, ref_id INTEGER, occurred_at TEXT NOT NULL, created_by INTEGER REFERENCES users(id), notes TEXT, created_at TEXT NOT NULL );
+
+-- table stock_reservations
+CREATE TABLE stock_reservations ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), order_id INTEGER NOT NULL REFERENCES orders(id) ON DELETE CASCADE, order_line_id INTEGER NOT NULL REFERENCES order_lines(id), product_id INTEGER NOT NULL REFERENCES products(id), batch_id INTEGER REFERENCES batches(id), base_qty REAL NOT NULL, released_at TEXT, created_at TEXT NOT NULL );
+
+-- table suppliers
+CREATE TABLE suppliers ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), name TEXT NOT NULL, phone TEXT, notes TEXT, active INTEGER NOT NULL DEFAULT 1 CHECK (active IN (0,1)), created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL );
+
+-- table sync_mutations
+CREATE TABLE sync_mutations ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), client_uuid TEXT NOT NULL, user_id INTEGER REFERENCES users(id), device_id TEXT, op TEXT NOT NULL, payload_json TEXT NOT NULL, occurred_at TEXT NOT NULL, clock_skew_ms INTEGER NOT NULL DEFAULT 0, received_at TEXT NOT NULL, applied_at TEXT, status TEXT NOT NULL DEFAULT 'received' CHECK (status IN ('received', 'applied', 'duplicate', 'conflict', 'failed')), result_json TEXT, error TEXT, UNIQUE (organization_id, client_uuid) );
+
+-- table targets
+CREATE TABLE targets ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER REFERENCES users(id), group_id INTEGER REFERENCES groups(id), period TEXT NOT NULL, metric TEXT NOT NULL CHECK (metric IN ('revenue_toman', 'kg', 'orders')), target_value REAL NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL, UNIQUE (organization_id, user_id, group_id, period, metric) );
+
+-- table task_recurrences
+CREATE TABLE task_recurrences ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), title TEXT NOT NULL, kind TEXT NOT NULL, assignee_user_id INTEGER REFERENCES users(id), role_hint TEXT, group_id INTEGER REFERENCES groups(id), entity_type TEXT, entity_id INTEGER, priority TEXT NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('CRITICAL', 'HIGH', 'NORMAL', 'LOW')), rrule TEXT NOT NULL, active INTEGER NOT NULL DEFAULT 1, last_spawned_on TEXT, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL, updated_at TEXT NOT NULL );
+
+-- table tasks
+CREATE TABLE tasks ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), assignee_user_id INTEGER REFERENCES users(id), role_hint TEXT, group_id INTEGER REFERENCES groups(id), kind TEXT NOT NULL, title TEXT NOT NULL, entity_type TEXT, entity_id INTEGER, due_at TEXT, priority TEXT NOT NULL DEFAULT 'NORMAL' CHECK (priority IN ('CRITICAL', 'HIGH', 'NORMAL', 'LOW')), status TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'done', 'dismissed')), outcome_code TEXT, outcome_note TEXT, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL, done_at TEXT , stage TEXT, started_at TEXT);
+
+-- table user_roles
+CREATE TABLE user_roles ( user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, role TEXT NOT NULL, PRIMARY KEY (user_id, role) );
+
+-- table users
+CREATE TABLE users ( id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, display_name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'group_manager' CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'phone_sales', 'field_rep', 'delivery_driver', 'salesperson', 'driver')), group_id INTEGER REFERENCES groups(id), organization_id INTEGER REFERENCES organizations(id), staff_code TEXT, phone TEXT, active INTEGER NOT NULL DEFAULT 1, token_version INTEGER NOT NULL DEFAULT 0, location_consent_at TEXT, created_at TEXT NOT NULL , telegram_chat_id TEXT, telegram_link_nonce TEXT, avatar_url TEXT, avatar_stem TEXT, prefs_json TEXT);
+
+-- table vehicles
+CREATE TABLE vehicles ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), plate TEXT, name TEXT NOT NULL, driver_default_id INTEGER REFERENCES users(id), max_weight_kg REAL, max_volume_m3 REAL, max_stops INTEGER, has_refrigeration INTEGER NOT NULL DEFAULT 0, cost_per_km_toman INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, facility_id INTEGER REFERENCES facilities(id), UNIQUE (organization_id, plate) );
+
+-- table visit_plans
+CREATE TABLE visit_plans ( id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')), entity_id INTEGER NOT NULL, planned_date TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'planned' CHECK (status IN ('planned', 'done', 'skipped')), sort_order INTEGER NOT NULL DEFAULT 0, created_at TEXT NOT NULL , purpose TEXT);
+
+-- table weather_snapshots
+CREATE TABLE weather_snapshots ( id INTEGER PRIMARY KEY AUTOINCREMENT, lat_r REAL NOT NULL, lng_r REAL NOT NULL, forecast_date TEXT NOT NULL, temp_min REAL, temp_max REAL, precip_prob INTEGER, precip_mm REAL, snow_mm REAL, wind_kmh REAL, gust_kmh REAL, visibility_m INTEGER, weather_code INTEGER, fetched_at TEXT NOT NULL, raw_json TEXT, UNIQUE (lat_r, lng_r, forecast_date) );
+
+-- trigger accounts_no_delete on accounts
+CREATE TRIGGER accounts_no_delete BEFORE DELETE ON accounts BEGIN SELECT RAISE(ABORT, 'accounts is append-only: deactivate an account, do not delete it'); END;
+
+-- trigger activities_no_delete on activities
+CREATE TRIGGER activities_no_delete BEFORE DELETE ON activities BEGIN SELECT RAISE(ABORT, 'activities is append-only'); END;
+
+-- trigger activities_no_update on activities
+CREATE TRIGGER activities_no_update BEFORE UPDATE ON activities BEGIN SELECT RAISE(ABORT, 'activities is append-only'); END;
+
+-- trigger journals_no_delete on journals
+CREATE TRIGGER journals_no_delete BEFORE DELETE ON journals BEGIN SELECT RAISE(ABORT, 'journals is append-only'); END;
+
+-- trigger journals_no_update on journals
+CREATE TRIGGER journals_no_update BEFORE UPDATE ON journals BEGIN SELECT RAISE(ABORT, 'journals is append-only'); END;
+
+-- trigger ledger_entries_no_delete on ledger_entries
+CREATE TRIGGER ledger_entries_no_delete BEFORE DELETE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger_entries is append-only'); END;
+
+-- trigger ledger_entries_no_update on ledger_entries
+CREATE TRIGGER ledger_entries_no_update BEFORE UPDATE ON ledger_entries BEGIN SELECT RAISE(ABORT, 'ledger_entries is append-only'); END;
+
+-- trigger order_lines_void_figures_delete on order_lines
+CREATE TRIGGER order_lines_void_figures_delete AFTER DELETE ON order_lines BEGIN UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL WHERE id = OLD.order_id; END;
+
+-- trigger order_lines_void_figures_insert on order_lines
+CREATE TRIGGER order_lines_void_figures_insert AFTER INSERT ON order_lines BEGIN UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL WHERE id = NEW.order_id; END;
+
+-- trigger order_lines_void_figures_update on order_lines
+CREATE TRIGGER order_lines_void_figures_update AFTER UPDATE ON order_lines BEGIN UPDATE orders SET kg_total = NULL, total_toman = NULL, cost_toman = NULL WHERE id IN (OLD.order_id, NEW.order_id); END;
+
+-- trigger user_roles_after_insert on users
+CREATE TRIGGER user_roles_after_insert AFTER INSERT ON users BEGIN INSERT OR IGNORE INTO user_roles (user_id, role) VALUES (NEW.id, NEW.role); END;
+
+-- trigger user_roles_after_update on users
+CREATE TRIGGER user_roles_after_update AFTER UPDATE OF role ON users WHEN (SELECT COUNT(*) FROM user_roles WHERE user_id = NEW.id) <= 1 AND EXISTS (SELECT 1 FROM user_roles WHERE user_id = NEW.id AND role = OLD.role) BEGIN UPDATE user_roles SET role = NEW.role WHERE user_id = NEW.id; END;
