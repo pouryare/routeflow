@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { recomputeCustomerGroups } from "@/lib/groups";
+import { deleteGroup, groupExists, groupMemberCount, updateGroup } from "@/lib/repo/groupsAdmin";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
-import { orgClause } from "@/lib/orgScope";
 import { OWNER_ROLES } from "@/lib/roles";
 
 export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/groups/[id]">) {
@@ -16,11 +14,9 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   // The group must belong to the caller's company: an id alone reaches every tenant's groups.
-  const own = orgClause("organization_id", orgScopeId(guard.session));
-  const existing = db.prepare(`SELECT id FROM groups WHERE id = ?${own.sql}`).get(groupId, ...own.params);
-  if (!existing) {
+  const organizationId = orgScopeId(guard.session);
+  if (!groupExists(groupId, organizationId)) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 404 });
   }
 
@@ -51,9 +47,8 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/admin/grou
     return NextResponse.json({ ok: false, error: "چیزی برای ذخیره نیست" }, { status: 400 });
   }
 
-  values.push(groupId);
   try {
-    db.prepare(`UPDATE groups SET ${sets.join(", ")} WHERE id = ?${own.sql}`).run(...(values as never[]), ...own.params);
+    updateGroup(groupId, organizationId, sets, values);
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     if (msg.includes("UNIQUE")) {
@@ -75,11 +70,9 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
   // The group must belong to the caller's company: an id alone reaches every tenant's groups.
-  const own = orgClause("organization_id", orgScopeId(guard.session));
-  const existing = db.prepare(`SELECT id FROM groups WHERE id = ?${own.sql}`).get(groupId, ...own.params);
-  if (!existing) {
+  const organizationId = orgScopeId(guard.session);
+  if (!groupExists(groupId, organizationId)) {
     return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 404 });
   }
 
@@ -87,7 +80,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
   // with a group_id pointing at nothing -- scopeGroupIds would still return that id, so
   // every query would match zero rows and the account would silently see an empty app
   // rather than an error anyone could diagnose.
-  const { n } = db.prepare("SELECT COUNT(*) AS n FROM users WHERE group_id = ?").get(groupId) as { n: number };
+  const n = groupMemberCount(groupId);
   if (n > 0) {
     return NextResponse.json(
       { ok: false, error: `این گروه ${n} کاربر دارد. اول آن‌ها را به گروه دیگری منتقل کنید.` },
@@ -95,22 +88,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
     );
   }
 
-  db.exec("BEGIN");
-  try {
-    // Territory returns to unclaimed rather than following the group into oblivion.
-    db.prepare("UPDATE districts SET group_id = NULL WHERE group_id = ?").run(groupId);
-    db.prepare("UPDATE saved_locations SET group_id = NULL WHERE group_id = ?").run(groupId);
-    db.prepare("UPDATE lead_lists SET group_id = NULL WHERE group_id = ?").run(groupId);
-    db.prepare("UPDATE facilities SET group_id = NULL WHERE group_id = ?").run(groupId);
-    db.prepare(`DELETE FROM groups WHERE id = ?${own.sql}`).run(groupId, ...own.params);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
-
-  // Its customers are now in nobody's territory; the cache has to say so.
-  const regrouped = recomputeCustomerGroups(db, orgScopeId(guard.session));
+  const regrouped = deleteGroup(groupId, organizationId);
 
   return NextResponse.json({ ok: true, regrouped });
 }

@@ -265,7 +265,7 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 
 **Not done / gaps**
 - [ ] `tests/playwrightExtract.test.ts` "shares one browser instance" fails with and without these changes (pre-existing, not investigated).
-- [ ] Both routes still open the DB directly; SQL moves to `lib/repo` as step 4 continues.
+- [x] Admin groups routes now use `lib/repo/groupsAdmin.ts` (route files with direct DB access 65 → 63). Facilities routes still open the DB directly.
 
 **Next steps**
 1. Merge PR #45 once CI is green, then continue step 4 route by route.
