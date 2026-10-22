@@ -2,7 +2,7 @@
 
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
-import { ChipGroup, type FilterGroup, isActive, neutralOf } from "@/components/mobile/FilterChips";
+import { ChipGroup, type FilterGroup, isActive, neutralOf } from "@/components/mobile/ChipGroup";
 
 /** The filters that do not earn a place in the row: the same chip groups, stacked, in a sheet.
  *  Changes apply as they are tapped (the list behind updates), so «نمایش نتایج» only closes. */

@@ -35,3 +35,24 @@ describe("filter chips", () => {
     expect(renderToStaticMarkup(h(FilterChips, { groups: [single] }))).not.toContain("فیلترها");
   });
 });
+
+/* ChipGroup.tsx holds the primitives FilterChips and FilterSheet share (it was split out to break
+ * an import cycle); FilterChips re-exports them, so existing importers are unaffected. */
+describe("ChipGroup (shared by FilterChips and FilterSheet)", () => {
+  it("is the same module FilterChips re-exports", async () => {
+    const direct = await import("@/components/mobile/ChipGroup");
+    const viaChips = await import("@/components/mobile/FilterChips");
+    expect(viaChips.ChipGroup).toBe(direct.ChipGroup);
+    expect(viaChips.isActive).toBe(direct.isActive);
+    expect(viaChips.neutralOf).toBe(direct.neutralOf);
+  });
+  it("renders one pressed-state button per option, wrapping only when asked", async () => {
+    const { ChipGroup } = await import("@/components/mobile/ChipGroup");
+    const out = renderToStaticMarkup(h(ChipGroup, { group: single }));
+    expect(out.match(/<button/g)).toHaveLength(2);
+    expect(out).toContain('aria-pressed="true"');
+    expect(out).toContain('aria-pressed="false"');
+    expect(out).not.toContain("filterchips__group--wrap");
+    expect(renderToStaticMarkup(h(ChipGroup, { group: single, wrap: true }))).toContain("filterchips__group--wrap");
+  });
+});

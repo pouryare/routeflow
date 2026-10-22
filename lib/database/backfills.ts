@@ -4,10 +4,7 @@
  * lib/db.ts re-exports the public ones (`export * from "./database/backfills"`). */
 import type { DatabaseSync } from "node:sqlite";
 import { FULFILLED_ORDER_STATUSES, sqlStatusList } from "../orderStateMachine";
-/* ledger.ts imports getDb from lib/db.ts, which imports this file. ESM resolves it because neither module calls
-   the other at evaluation time -- getDb and postJournal are both functions, so the cycle
-   is inert. A lazy require() would be the wrong fix and does not exist in ESM. */
-import { postJournal } from "../repo/ledger";
+import { postJournal } from "../repo/ledgerCore";
 
 /** Phase 1: before this deploy, a delivery stamped `orders.paid_toman` directly. After
  *  it, that column is a cache recomputed from `payment_allocations` -- so every legacy
