@@ -70,7 +70,7 @@ export async function POST(req: NextRequest) {
   const db = getDb();
   // 404, not 403: a reminder posted against another group's customer must not confirm
   // that the customer exists.
-  if (!canReachEntity(guard.session, db, entity_type, entity_id)) {
+  if (!canReachEntity(guard.session, entity_type, entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 

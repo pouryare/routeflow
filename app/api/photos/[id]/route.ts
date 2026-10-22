@@ -16,7 +16,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/photos/[i
   }
   const db = getDb();
   const row = db.prepare("SELECT * FROM photos WHERE id = ?").get(photoId) as Photo | undefined;
-  if (row && !canReachEntity(guard.session, db, row.entity_type, row.entity_id)) {
+  if (row && !canReachEntity(guard.session, row.entity_type, row.entity_id)) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }
   if (!row) {

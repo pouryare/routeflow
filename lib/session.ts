@@ -471,12 +471,12 @@ export function orderFilter(session: Session, alias = "o"): { sql: string; param
  *  is shared -- but only within that same organisation. */
 export function canReachEntity(
   session: Session,
-  db: ReturnType<typeof getDb>,
   entityType: string,
   entityId: number
 ): boolean {
   session = scopeView(session);
   if (session.role === "platform_owner") return true;
+  const db = getDb();
 
   const table = entityType === "customer" ? "customers" : entityType === "district" ? "districts" : entityType === "facility" ? "facilities" : entityType === "lead" || entityType === "lead_location" ? "saved_locations" : null;
   if (!table) return false;

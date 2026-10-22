@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
-  if (!canReachEntity(guard.session, db, body.entity_type, body.entity_id)) {
+  if (!canReachEntity(guard.session, body.entity_type, body.entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 

@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
 
   const now = new Date().toISOString();
   const db = getDb();
-  if (!canReachEntity(guard.session, db, entityType, entityId)) {
+  if (!canReachEntity(guard.session, entityType, entityId)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
