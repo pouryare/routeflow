@@ -356,6 +356,315 @@ export interface DeliveryInput {
   device_time?: string | null;
 }
 
+/** Everything the steps of one door event share. Built once by recordDelivery and handed to each step. */
+interface DoorContext {
+  db: DatabaseSync;
+  stopId: number;
+  stop: {
+    id: number;
+    run_id: number;
+    order_id: number;
+    status: string;
+    customer_id: number;
+    order_no: string;
+    organization_id: number;
+    customer_name: string;
+    driver_user_id: number;
+  };
+  input: DeliveryInput;
+  byId: Map<number, { id: number; packs_ordered: number; product_id: number; qty_per_pack: number }>;
+  now: string;
+  orgId: number;
+  stockOrgId: number;
+  nothingTaken: boolean;
+  someShort: boolean;
+  total: number;
+  statusNow: () => OrderStatus;
+}
+
+function debitVan(c: DoorContext): void {
+  const { stop, input, byId } = c;
+  /* The van's balance leaves the van HERE, and only here.
+   *
+   * deliverFromVan was written for this and had no caller, so goods loaded in the morning
+   * and delivered at noon were never tracked as having left -- which is why the end-of-day
+   * reconciliation had nothing true to compare against.
+   *
+   * The condition is PER LINE and PER QUANTITY, not "the delivery succeeded". That is the
+   * whole point: a refused stop writes no deliveries row, its goods never left, and the
+   * `qty > 0` test is false for every line so nothing fires. A partial delivers 4 of 10 and
+   * only 4 leaves. Tying this to the stop's status instead would debit the van for goods
+   * that are still sitting on it.
+   *
+   * Skipped and pending stops never reach here at all.
+   *
+   * A driver with no van on file gets a null facility and no movement -- NOT a throw. Their
+   * delivery is real and must still be recorded; the missing van is a separate problem for
+   * somebody else to notice, and failing the door event over it would lose the delivery. */
+  const vanFacility = vanFacilityFor(stop.organization_id, stop.driver_user_id);
+  if (vanFacility !== null) {
+    for (const line of input.lines) {
+      const target = byId.get(line.line_id);
+      if (!target) continue; // already rejected above; unreachable
+      const packs = line.packs_delivered * target.qty_per_pack;
+      if (packs > 0) {
+        deliverFromVan(stop.organization_id, {
+          facilityId: vanFacility,
+          productId: target.product_id,
+          qty: packs,
+          actorId: input.by,
+        });
+      }
+    }
+  }
+}
+
+function advanceDoorOrder(c: DoorContext): void {
+  const { db, stop, input, orgId, nothingTaken, someShort, statusNow } = c;
+  const sys = { id: input.by, role: "system" as const };
+  let st = statusNow();
+  if (st === "CONFIRMED") {
+    advanceOrder(orgId, stop.order_id, "plan", sys, { db });
+    st = "PLANNED";
+  }
+  if (st === "PLANNED") {
+    advanceOrder(orgId, stop.order_id, "freeze", sys, { db });
+    st = "READY";
+  }
+  if (st === "READY") {
+    advanceOrder(orgId, stop.order_id, "startRoute", sys, { db });
+    st = "OUT_FOR_DELIVERY";
+  }
+  if (st === "OUT_FOR_DELIVERY") {
+    const action = nothingTaken ? "failDelivery" : someShort ? "deliverPartial" : "deliver";
+    advanceOrder(
+      orgId,
+      stop.order_id,
+      action,
+      { id: input.by, role: "delivery_driver" },
+      { db, reason_code_id: nothingTaken ? input.fail_reason_id ?? null : null }
+    );
+    if (nothingTaken) {
+      // Phase 7: a failed delivery is a rule trigger.
+      tryEmitEvent(
+        orgId,
+        {
+          kind: "delivery.failed",
+          entity_type: "order",
+          entity_id: stop.order_id,
+          actor_user_id: input.by,
+          metadata: { customer_id: stop.customer_id, fail_reason_id: input.fail_reason_id ?? null },
+        },
+        db
+      );
+    } else {
+      // Phase 1 notifications: a partial OR full delivery is its own event, so both
+      // order actions (deliver / deliverPartial) feed one notification type without the
+      // feed rules special-casing two verbs. Best-effort, joins this transaction.
+      tryEmitEvent(
+        orgId,
+        {
+          kind: "delivery.succeeded",
+          entity_type: "order",
+          entity_id: stop.order_id,
+          actor_user_id: input.by,
+          metadata: {
+            customer_id: stop.customer_id,
+            customer_name: stop.customer_name,
+            order_no: stop.order_no,
+            partial: someShort,
+          },
+        },
+        db
+      );
+    }
+  }
+}
+
+function settleDoorPayment(c: DoorContext): void {
+  const { db, stopId, stop, input, now, nothingTaken, total } = c;
+  // Cash handed over at the door is a real payment now, not a number stamped onto the
+  // order. recordPaymentTxn writes the ledger row, allocates it to this order (the
+  // overpay slice, if any, lands on the customer's account), and recomputes
+  // orders.paid_toman + payment_status from the allocation -- same figures as before,
+  // now with a row behind them.
+  //
+  // Keyed to the stop so a retried sync converges rather than stacking: an existing,
+  // non-voided door payment for this stop with the same amount is left alone; a
+  // different amount voids the old row and writes a fresh one.
+  const priorDoorPayment = db
+    .prepare(
+      "SELECT id, amount_toman FROM payments WHERE delivery_stop_id = ? AND voided_at IS NULL"
+    )
+    .get(stopId) as { id: number; amount_toman: number } | undefined;
+
+  const wantPayment = !nothingTaken && input.collected_toman > 0;
+  const alreadyRight =
+    priorDoorPayment && wantPayment && priorDoorPayment.amount_toman === input.collected_toman;
+
+  if (priorDoorPayment && !alreadyRight) {
+    voidPaymentTxn(db, stop.organization_id, priorDoorPayment.id, input.by, "بازثبت تحویل");
+  }
+
+  if (wantPayment && !alreadyRight) {
+    const onOrder = Math.min(input.collected_toman, total);
+    const allocations: { order_id: number | null; amount_toman: number }[] = [
+      { order_id: stop.order_id, amount_toman: onOrder },
+    ];
+    if (input.collected_toman > total) {
+      allocations.push({ order_id: null, amount_toman: input.collected_toman - total });
+    }
+    recordPaymentTxn(db, stop.organization_id, {
+      customer_id: stop.customer_id,
+      amount_toman: input.collected_toman,
+      method: "CASH",
+      received_at: now,
+      received_by: input.by,
+      delivery_stop_id: stopId,
+      note: "دریافت درِ محل",
+      allocations,
+      // The cash in the driver's hand is the authoritative figure; never let a
+      // cap check roll back a delivery that actually happened.
+      allow_overpay: true,
+    });
+  } else if (!wantPayment) {
+    // A retry that now collects nothing (or refuses the stop) must also clear the
+    // cache the earlier attempt set.
+    recomputeOrderPaymentTxn(db, stop.organization_id, stop.order_id);
+  }
+}
+
+function drawDeliveredStock(c: DoorContext): void {
+  const { db, stopId, input, byId, now, stockOrgId, nothingTaken } = c;
+  // Phase 2: draw the delivered quantity from stock, FEFO. The DELIVERY_OUT movements
+  // and delivery_line_batches rows this writes are machine-generated within this one
+  // atomic delivery record and carry no independent history -- so a retried sync just
+  // deletes and re-writes them, converging like the payment above.
+  const facilityId = defaultFacilityId(stockOrgId);
+  db.prepare(
+    "DELETE FROM stock_movements WHERE ref_type = 'delivery_stop' AND ref_id = ? AND kind = 'DELIVERY_OUT'"
+  ).run(stopId);
+  db.prepare("DELETE FROM delivery_line_batches WHERE delivery_stop_id = ?").run(stopId);
+
+  const insDlb = db.prepare(
+    `INSERT INTO delivery_line_batches
+       (organization_id, delivery_stop_id, order_line_id, batch_id, base_qty, created_at)
+     VALUES (?, ?, ?, ?, ?, ?)`
+  );
+  if (!nothingTaken) {
+    for (const line of input.lines) {
+      if (!(line.packs_delivered > 0)) continue;
+      const ol = byId.get(line.line_id)!;
+      const baseQty = line.packs_delivered * ol.qty_per_pack;
+      for (const a of allocateFEFO(stockOrgId, ol.product_id, baseQty, facilityId)) {
+        recordMovementsTxn(db, stockOrgId, [
+          {
+            facility_id: facilityId,
+            product_id: ol.product_id,
+            batch_id: a.batch_id,
+            base_qty: -a.base_qty,
+            kind: "DELIVERY_OUT",
+            ref_type: "delivery_stop",
+            ref_id: stopId,
+            occurred_at: now,
+            created_by: input.by,
+          },
+        ]);
+        insDlb.run(stockOrgId, stopId, line.line_id, a.batch_id, a.base_qty, now);
+      }
+    }
+  }
+}
+
+function recogniseRevenue(c: DoorContext): void {
+  const { db, stopId, stop, input, now, stockOrgId, nothingTaken } = c;
+  /* Revenue and cost, recognised when the goods MOVE -- not on the order, and not on the
+     payment (which posts its own Dr cash / Cr AR journal). The two are separate journals
+     because the cash arriving and the goods moving are separate events, and recognising
+     revenue on payment is wrong even when the numbers happen to agree.
+
+     Inside this transaction, using the caller's db. postJournal opens NOTHING of its own,
+     and a nested BEGIN throws in SQLite -- this is the crash Task 2 spent a mutation
+     proving, and this is the call site it would have hit first.
+
+     Revenue uses lineTotalToman / lineCostToman, which both read effectivePacks, so a
+     PARTIAL delivery recognises only the partial amount.
+
+     Cost is the FROZEN ol.unit_cost_toman, not a live lookup. lib/orders.ts:140-166 is
+     explicit that the cost lookup "happens once, at sale, and the ANSWER is frozen onto
+     the line so a deliberate correction later cannot rewrite what the books already hold"
+     -- and the plan for this task proposed re-resolving cost live via effectiveCost /
+     avgCostFor, which would let a purchase arriving today restate yesterday's cost of
+     goods. That is precisely the drift the codebase went out of its way to prevent.
+
+     unit_cost_toman DEFAULTs to 0, which is how "never purchased, so nothing is known" is
+     recorded. So one line at zero means the WHOLE cost is unknown, and revenue posts
+     alone -- a partial cost that silently excluded one line's real cost would be worse
+     than no cost at all. */
+  if (!nothingTaken) {
+    const orderLines = stopLines(db, stop.order_id);
+    let revenueToman = 0;
+    let costToman = 0;
+    let costKnown = true;
+    for (const line of orderLines) {
+      revenueToman += line.total_toman;
+      if (line.unit_cost_toman > 0) costToman += lineCostToman(line);
+      else costKnown = false;
+    }
+    postDeliveryRecognition(db, {
+      organizationId: stockOrgId,
+      deliveryStopId: stopId,
+      customerId: stop.customer_id,
+      deliveredAt: now,
+      deliveredBy: input.by,
+      revenueToman: sumToman([revenueToman]),
+      costToman: costKnown && costToman > 0 ? sumToman([costToman]) : null,
+    });
+  }
+}
+
+function syncDeliveryEntity(c: DoorContext): void {
+  const { db, stopId, stop, input, byId, now, stockOrgId, nothingTaken, someShort } = c;
+  // Phase 3 (M6): keep the deliveries entity in step. Server owns actual_arrival /
+  // completed_at -- input.device_time is stored beside them, never trusted as the time.
+  let delivery = deliveryForStop(stockOrgId, stopId, db);
+  if (!delivery) {
+    planDelivery(stockOrgId, stop.order_id, { route_stop_id: stopId, db });
+    delivery = deliveryForStop(stockOrgId, stopId, db);
+  }
+  if (delivery) {
+    const dStatus = nothingTaken ? "FAILED" : someShort ? "PARTIAL" : "DELIVERED";
+    db.prepare(
+      `UPDATE deliveries
+          SET status = ?, actual_arrival = COALESCE(actual_arrival, ?), completed_at = ?,
+              collected_toman = ?, fail_reason_id = ?, receiver_name = COALESCE(?, receiver_name),
+              gps_lat = COALESCE(?, gps_lat), gps_lng = COALESCE(?, gps_lng),
+              device_time = COALESCE(?, device_time), notes = COALESCE(?, notes)
+        WHERE id = ?`
+    ).run(
+      dStatus,
+      now,
+      now,
+      input.collected_toman,
+      nothingTaken ? input.fail_reason_id ?? null : null,
+      input.receiver_name ?? null,
+      input.gps_lat ?? null,
+      input.gps_lng ?? null,
+      input.device_time ?? null,
+      input.notes ?? null,
+      delivery.id
+    );
+    const dlSet = db.prepare(
+      "UPDATE delivery_lines SET qty_delivered = ? WHERE delivery_id = ? AND order_line_id = ?"
+    );
+    for (const line of input.lines) {
+      const ol = byId.get(line.line_id)!;
+      dlSet.run(line.packs_delivered * ol.qty_per_pack, delivery.id, line.line_id);
+    }
+  }
+}
+
+
 /** Records what happened at one door.
  *
  *  Everything moves together in a transaction: the delivered quantities, the stop's
@@ -430,39 +739,13 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     const someShort =
       !nothingTaken && lines.some((l) => (l.packs_delivered ?? 0) < l.packs_ordered);
 
-    /* The van's balance leaves the van HERE, and only here.
-     *
-     * deliverFromVan was written for this and had no caller, so goods loaded in the morning
-     * and delivered at noon were never tracked as having left -- which is why the end-of-day
-     * reconciliation had nothing true to compare against.
-     *
-     * The condition is PER LINE and PER QUANTITY, not "the delivery succeeded". That is the
-     * whole point: a refused stop writes no deliveries row, its goods never left, and the
-     * `qty > 0` test is false for every line so nothing fires. A partial delivers 4 of 10 and
-     * only 4 leaves. Tying this to the stop's status instead would debit the van for goods
-     * that are still sitting on it.
-     *
-     * Skipped and pending stops never reach here at all.
-     *
-     * A driver with no van on file gets a null facility and no movement -- NOT a throw. Their
-     * delivery is real and must still be recorded; the missing van is a separate problem for
-     * somebody else to notice, and failing the door event over it would lose the delivery. */
-    const vanFacility = vanFacilityFor(stop.organization_id, stop.driver_user_id);
-    if (vanFacility !== null) {
-      for (const line of input.lines) {
-        const target = byId.get(line.line_id);
-        if (!target) continue; // already rejected above; unreachable
-        const packs = line.packs_delivered * target.qty_per_pack;
-        if (packs > 0) {
-          deliverFromVan(stop.organization_id, {
-            facilityId: vanFacility,
-            productId: target.product_id,
-            qty: packs,
-            actorId: input.by,
-          });
-        }
-      }
-    }
+    const orgId = stop.organization_id || 1;
+    const stockOrgId = orgId;
+    const statusNow = (): OrderStatus =>
+      (db.prepare("SELECT status FROM orders WHERE id = ?").get(stop.order_id) as { status: OrderStatus }).status;
+    const ctx: DoorContext = { db, stopId, stop, input, byId, now, orgId, stockOrgId, nothingTaken, someShort, total, statusNow };
+
+    debitVan(ctx);
 
     const stopStatus = nothingTaken ? "refused" : "delivered";
     db.prepare(
@@ -476,239 +759,15 @@ export function recordDelivery(db: DatabaseSync, stopId: number, input: Delivery
     // 'system' -- each still lands its own order_events row -- then fire the real
     // outcome as the driver. A retried sync finds the order already past
     // OUT_FOR_DELIVERY and fires nothing.
-    const orgId = stop.organization_id || 1;
-    const statusNow = (): OrderStatus =>
-      (db.prepare("SELECT status FROM orders WHERE id = ?").get(stop.order_id) as { status: OrderStatus }).status;
-    const sys = { id: input.by, role: "system" as const };
-    let st = statusNow();
-    if (st === "CONFIRMED") {
-      advanceOrder(orgId, stop.order_id, "plan", sys, { db });
-      st = "PLANNED";
-    }
-    if (st === "PLANNED") {
-      advanceOrder(orgId, stop.order_id, "freeze", sys, { db });
-      st = "READY";
-    }
-    if (st === "READY") {
-      advanceOrder(orgId, stop.order_id, "startRoute", sys, { db });
-      st = "OUT_FOR_DELIVERY";
-    }
-    if (st === "OUT_FOR_DELIVERY") {
-      const action = nothingTaken ? "failDelivery" : someShort ? "deliverPartial" : "deliver";
-      advanceOrder(
-        orgId,
-        stop.order_id,
-        action,
-        { id: input.by, role: "delivery_driver" },
-        { db, reason_code_id: nothingTaken ? input.fail_reason_id ?? null : null }
-      );
-      if (nothingTaken) {
-        // Phase 7: a failed delivery is a rule trigger.
-        tryEmitEvent(
-          orgId,
-          {
-            kind: "delivery.failed",
-            entity_type: "order",
-            entity_id: stop.order_id,
-            actor_user_id: input.by,
-            metadata: { customer_id: stop.customer_id, fail_reason_id: input.fail_reason_id ?? null },
-          },
-          db
-        );
-      } else {
-        // Phase 1 notifications: a partial OR full delivery is its own event, so both
-        // order actions (deliver / deliverPartial) feed one notification type without the
-        // feed rules special-casing two verbs. Best-effort, joins this transaction.
-        tryEmitEvent(
-          orgId,
-          {
-            kind: "delivery.succeeded",
-            entity_type: "order",
-            entity_id: stop.order_id,
-            actor_user_id: input.by,
-            metadata: {
-              customer_id: stop.customer_id,
-              customer_name: stop.customer_name,
-              order_no: stop.order_no,
-              partial: someShort,
-            },
-          },
-          db
-        );
-      }
-    }
+    advanceDoorOrder(ctx);
 
-    // Cash handed over at the door is a real payment now, not a number stamped onto the
-    // order. recordPaymentTxn writes the ledger row, allocates it to this order (the
-    // overpay slice, if any, lands on the customer's account), and recomputes
-    // orders.paid_toman + payment_status from the allocation -- same figures as before,
-    // now with a row behind them.
-    //
-    // Keyed to the stop so a retried sync converges rather than stacking: an existing,
-    // non-voided door payment for this stop with the same amount is left alone; a
-    // different amount voids the old row and writes a fresh one.
-    const priorDoorPayment = db
-      .prepare(
-        "SELECT id, amount_toman FROM payments WHERE delivery_stop_id = ? AND voided_at IS NULL"
-      )
-      .get(stopId) as { id: number; amount_toman: number } | undefined;
+    settleDoorPayment(ctx);
 
-    const wantPayment = !nothingTaken && input.collected_toman > 0;
-    const alreadyRight =
-      priorDoorPayment && wantPayment && priorDoorPayment.amount_toman === input.collected_toman;
+    drawDeliveredStock(ctx);
 
-    if (priorDoorPayment && !alreadyRight) {
-      voidPaymentTxn(db, stop.organization_id, priorDoorPayment.id, input.by, "بازثبت تحویل");
-    }
+    recogniseRevenue(ctx);
 
-    if (wantPayment && !alreadyRight) {
-      const onOrder = Math.min(input.collected_toman, total);
-      const allocations: { order_id: number | null; amount_toman: number }[] = [
-        { order_id: stop.order_id, amount_toman: onOrder },
-      ];
-      if (input.collected_toman > total) {
-        allocations.push({ order_id: null, amount_toman: input.collected_toman - total });
-      }
-      recordPaymentTxn(db, stop.organization_id, {
-        customer_id: stop.customer_id,
-        amount_toman: input.collected_toman,
-        method: "CASH",
-        received_at: now,
-        received_by: input.by,
-        delivery_stop_id: stopId,
-        note: "دریافت درِ محل",
-        allocations,
-        // The cash in the driver's hand is the authoritative figure; never let a
-        // cap check roll back a delivery that actually happened.
-        allow_overpay: true,
-      });
-    } else if (!wantPayment) {
-      // A retry that now collects nothing (or refuses the stop) must also clear the
-      // cache the earlier attempt set.
-      recomputeOrderPaymentTxn(db, stop.organization_id, stop.order_id);
-    }
-
-    // Phase 2: draw the delivered quantity from stock, FEFO. The DELIVERY_OUT movements
-    // and delivery_line_batches rows this writes are machine-generated within this one
-    // atomic delivery record and carry no independent history -- so a retried sync just
-    // deletes and re-writes them, converging like the payment above.
-    const stockOrgId = stop.organization_id || 1;
-    const facilityId = defaultFacilityId(stockOrgId);
-    db.prepare(
-      "DELETE FROM stock_movements WHERE ref_type = 'delivery_stop' AND ref_id = ? AND kind = 'DELIVERY_OUT'"
-    ).run(stopId);
-    db.prepare("DELETE FROM delivery_line_batches WHERE delivery_stop_id = ?").run(stopId);
-
-    const insDlb = db.prepare(
-      `INSERT INTO delivery_line_batches
-         (organization_id, delivery_stop_id, order_line_id, batch_id, base_qty, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    );
-    if (!nothingTaken) {
-      for (const line of input.lines) {
-        if (!(line.packs_delivered > 0)) continue;
-        const ol = byId.get(line.line_id)!;
-        const baseQty = line.packs_delivered * ol.qty_per_pack;
-        for (const a of allocateFEFO(stockOrgId, ol.product_id, baseQty, facilityId)) {
-          recordMovementsTxn(db, stockOrgId, [
-            {
-              facility_id: facilityId,
-              product_id: ol.product_id,
-              batch_id: a.batch_id,
-              base_qty: -a.base_qty,
-              kind: "DELIVERY_OUT",
-              ref_type: "delivery_stop",
-              ref_id: stopId,
-              occurred_at: now,
-              created_by: input.by,
-            },
-          ]);
-          insDlb.run(stockOrgId, stopId, line.line_id, a.batch_id, a.base_qty, now);
-        }
-      }
-    }
-
-    /* Revenue and cost, recognised when the goods MOVE -- not on the order, and not on the
-       payment (which posts its own Dr cash / Cr AR journal). The two are separate journals
-       because the cash arriving and the goods moving are separate events, and recognising
-       revenue on payment is wrong even when the numbers happen to agree.
-
-       Inside this transaction, using the caller's db. postJournal opens NOTHING of its own,
-       and a nested BEGIN throws in SQLite -- this is the crash Task 2 spent a mutation
-       proving, and this is the call site it would have hit first.
-
-       Revenue uses lineTotalToman / lineCostToman, which both read effectivePacks, so a
-       PARTIAL delivery recognises only the partial amount.
-
-       Cost is the FROZEN ol.unit_cost_toman, not a live lookup. lib/orders.ts:140-166 is
-       explicit that the cost lookup "happens once, at sale, and the ANSWER is frozen onto
-       the line so a deliberate correction later cannot rewrite what the books already hold"
-       -- and the plan for this task proposed re-resolving cost live via effectiveCost /
-       avgCostFor, which would let a purchase arriving today restate yesterday's cost of
-       goods. That is precisely the drift the codebase went out of its way to prevent.
-
-       unit_cost_toman DEFAULTs to 0, which is how "never purchased, so nothing is known" is
-       recorded. So one line at zero means the WHOLE cost is unknown, and revenue posts
-       alone -- a partial cost that silently excluded one line's real cost would be worse
-       than no cost at all. */
-    if (!nothingTaken) {
-      const orderLines = stopLines(db, stop.order_id);
-      let revenueToman = 0;
-      let costToman = 0;
-      let costKnown = true;
-      for (const line of orderLines) {
-        revenueToman += line.total_toman;
-        if (line.unit_cost_toman > 0) costToman += lineCostToman(line);
-        else costKnown = false;
-      }
-      postDeliveryRecognition(db, {
-        organizationId: stockOrgId,
-        deliveryStopId: stopId,
-        customerId: stop.customer_id,
-        deliveredAt: now,
-        deliveredBy: input.by,
-        revenueToman: sumToman([revenueToman]),
-        costToman: costKnown && costToman > 0 ? sumToman([costToman]) : null,
-      });
-    }
-
-    // Phase 3 (M6): keep the deliveries entity in step. Server owns actual_arrival /
-    // completed_at -- input.device_time is stored beside them, never trusted as the time.
-    let delivery = deliveryForStop(stockOrgId, stopId, db);
-    if (!delivery) {
-      planDelivery(stockOrgId, stop.order_id, { route_stop_id: stopId, db });
-      delivery = deliveryForStop(stockOrgId, stopId, db);
-    }
-    if (delivery) {
-      const dStatus = nothingTaken ? "FAILED" : someShort ? "PARTIAL" : "DELIVERED";
-      db.prepare(
-        `UPDATE deliveries
-            SET status = ?, actual_arrival = COALESCE(actual_arrival, ?), completed_at = ?,
-                collected_toman = ?, fail_reason_id = ?, receiver_name = COALESCE(?, receiver_name),
-                gps_lat = COALESCE(?, gps_lat), gps_lng = COALESCE(?, gps_lng),
-                device_time = COALESCE(?, device_time), notes = COALESCE(?, notes)
-          WHERE id = ?`
-      ).run(
-        dStatus,
-        now,
-        now,
-        input.collected_toman,
-        nothingTaken ? input.fail_reason_id ?? null : null,
-        input.receiver_name ?? null,
-        input.gps_lat ?? null,
-        input.gps_lng ?? null,
-        input.device_time ?? null,
-        input.notes ?? null,
-        delivery.id
-      );
-      const dlSet = db.prepare(
-        "UPDATE delivery_lines SET qty_delivered = ? WHERE delivery_id = ? AND order_line_id = ?"
-      );
-      for (const line of input.lines) {
-        const ol = byId.get(line.line_id)!;
-        dlSet.run(line.packs_delivered * ol.qty_per_pack, delivery.id, line.line_id);
-      }
-    }
+    syncDeliveryEntity(ctx);
 
     // A fully-settled delivered order closes itself.
     const afterStatus = statusNow();
