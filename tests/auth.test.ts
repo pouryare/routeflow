@@ -89,3 +89,14 @@ describe("hashPassword / verifyPassword", () => {
     expect(verifyPassword("anything", "")).toBe(false);
   });
 });
+
+describe("weakSecretReason", () => {
+  it("accepts a long secret and names the problem with a missing or short one", async () => {
+    const { weakSecretReason, MIN_SECRET_LENGTH } = await import("@/lib/auth");
+    expect(MIN_SECRET_LENGTH).toBe(32);
+    expect(weakSecretReason("x".repeat(32))).toBeNull();
+    expect(weakSecretReason(undefined)).toMatch(/not set/);
+    expect(weakSecretReason("")).toMatch(/not set/);
+    expect(weakSecretReason("x".repeat(31))).toMatch(/31 characters.*at least 32/);
+  });
+});

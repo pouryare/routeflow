@@ -10,6 +10,17 @@ const COOKIE_NAME = "coverage_session_v2";
 const MAX_AGE_SECONDS = 60 * 60 * 24 * 30; // 30 days
 const MAX_NAME_LEN = 60;
 
+/** The shortest SESSION_SECRET worth signing sessions with (32 characters is 128+ bits of
+ *  entropy when generated, e.g. `openssl rand -hex 32` gives 64). */
+export const MIN_SECRET_LENGTH = 32;
+
+/** Why the configured secret is too weak to run production on, or null when it is fine. */
+export function weakSecretReason(value: string | undefined): string | null {
+  if (!value) return "SESSION_SECRET is not set";
+  if (value.length < MIN_SECRET_LENGTH) return `SESSION_SECRET is ${value.length} characters; use at least ${MIN_SECRET_LENGTH} (openssl rand -hex 32)`;
+  return null;
+}
+
 function secret(): string {
   const s = process.env.SESSION_SECRET;
   if (!s) throw new Error("SESSION_SECRET env var is not set");

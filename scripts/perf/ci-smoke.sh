@@ -6,7 +6,7 @@ cd "$(dirname "$0")/../.."
 
 WORK="$(mktemp -d)"
 export ROUTEFLOW_DB_PATH="$WORK/ci.db"
-export SESSION_SECRET="${SESSION_SECRET:-ci-secret-not-for-production}"
+export SESSION_SECRET="${SESSION_SECRET:-ci-secret-not-for-production-0123456789}"
 export NEXT_TELEMETRY_DISABLED=1
 PORT="${PORT:-3100}"
 BUDGET="${PERF_BUDGET_MS:-1500}"

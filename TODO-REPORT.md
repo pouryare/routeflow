@@ -242,13 +242,18 @@ Full write-up: `docs/architecture-audit-2026-10-22.md` (Phase 1 inventory, then 
 - [x] Trail of Bits scan: Semgrep (10 scans, 3 findings, none in app code), variant-analysis, insecure-defaults, sharp-edges, supply-chain-risk-auditor (no advisory on any direct dependency); login timing leak fixed
 - [x] Full unit suite green (519 files, 4,250 tests at the last full run; new files verified separately)
 
+### Also done after your "go with your recommendations"
+- [x] SSRF fixed: every redirect hop must be on the map-service allow-list; the headless browser runs behind a request guard that re-vets every hop; tested including a real Chromium against real servers
+- [x] Slow-import notice now goes to the person who pasted the links (new `lead_import_jobs.created_by`)
+- [x] `SESSION_SECRET`: production logs a loud error under 32 characters (warning, not a hard stop, so a live deployment is not locked out); CI actions pinned to commit SHAs
+
 ### Not done / gaps
-- [ ] **SSRF in the maps-link importer** (Chromium follows redirects with no request interception; later hops not allow-listed): open, fix proposed
 - [ ] CodeQL did not run (GitHub release download blocked here); Semgrep ran without Pro, so no cross-file taint
-- [ ] `lead_import.slow` notice reaches nobody (no recipient rule): needs your decision on who gets it
-- [ ] `SESSION_SECRET` has no minimum length; CI actions use mutable tags; transitive `vite` and `braces` advisories (build-time only)
-- [ ] The tenancy net only sees text columns of org B it marked, and only the owner role of A; it does not render server components (those are covered by direct reader tests and the ratchet)
+- [ ] Make a short `SESSION_SECRET` a hard stop: needs you to confirm the live secret is 32+ characters first
+- [ ] Transitive `vite` and `braces` advisories (build-time only)
+- [ ] The tenancy net only sees text columns of org B it marked, and only the owner role of A; it does not render server components (covered by direct reader tests and the ratchet)
 - [ ] Two companies cannot both claim the same district (shared geography, one group per district): a modelling limit for step 4
+- [ ] The headless-browser guard converts redirects to a one-line navigation page; verified against local servers only, not against live Google Maps (no internet here), so watch the first real imports
 - [ ] Earlier gaps still open: see the sections above
 
 ### Next steps
