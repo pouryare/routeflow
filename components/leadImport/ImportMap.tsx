@@ -1,10 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useRef } from "react";
-import { MapContainer, TileLayer, CircleMarker, useMap } from "react-leaflet";
-import { QUIET_TILES } from "@/lib/mapLayers";
+import { MapContainer, CircleMarker, useMap } from "react-leaflet";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import type { LiveItem } from "./LiveItemList";
+import QuietTileLayer from "@/components/map/QuietTileLayer";
 
 /** Tehran, used until a pin lands to give the frame something to centre on. */
 const TEHRAN: [number, number] = [35.6892, 51.389];
@@ -46,12 +46,7 @@ export default function ImportMap({ items }: { items: LiveItem[] }) {
             "Cannot read properties of undefined (reading 'length')" on the first tile
             request, which unmounts the whole page. LeadsMap names these same four fields
             for the same reason. */}
-        <TileLayer
-          url={QUIET_TILES.url}
-          attribution={QUIET_TILES.attribution}
-          className="tiles-quiet"
-          maxZoom={QUIET_TILES.maxZoom}
-        />
+        <QuietTileLayer />
         <FitToPins pins={pins} />
         {pins.map((pin) => (
           <DroppingPin key={pin.id} pin={pin} />

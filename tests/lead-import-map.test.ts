@@ -88,10 +88,13 @@ describe("the tile layer is configured the way Leaflet can survive", () => {
     expect(map).not.toMatch(/<TileLayer\s+\{\.\.\.QUIET_TILES\}/);
   });
 
-  it("passes the url, attribution and maxZoom explicitly", () => {
-    expect(map).toMatch(/url=\{QUIET_TILES\.url\}/);
-    expect(map).toMatch(/attribution=\{QUIET_TILES\.attribution\}/);
-    expect(map).toMatch(/maxZoom=\{QUIET_TILES\.maxZoom\}/);
+  it("uses the shared quiet layer, which passes url, attribution and maxZoom explicitly", () => {
+    expect(map).toMatch(/<QuietTileLayer \/>/);
+    const layer = readFileSync(path.resolve(process.cwd(), "components/map/QuietTileLayer.tsx"), "utf8");
+    expect(layer).toMatch(/url=\{QUIET_TILES\.url\}/);
+    expect(layer).toMatch(/attribution=\{QUIET_TILES\.attribution\}/);
+    expect(layer).toMatch(/maxZoom=\{QUIET_TILES\.maxZoom\}/);
+    expect(layer).not.toMatch(/subdomains=/);
   });
 
   it("does not pass subdomains at all", () => {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import { useLatest } from "@/lib/useLatest";
 import { useHydrated } from "@/lib/useHydrated";
-import { MapContainer, TileLayer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
+import { MapContainer, Marker, Polyline, Popup, Circle, useMap, useMapEvents } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
@@ -16,9 +16,9 @@ import { useMyPosition } from "./MyPositionProvider";
 import { faFixed, faNum } from "@/lib/format";
 import { formatDistanceKm } from "@/lib/geo";
 import { NEAREST_COUNTS, RADII_KM, nearestN, withinRadius } from "@/lib/mapSelect";
-import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 import { guardedOsrmRouter } from "@/lib/guardedRouter";
+import QuietTileLayer from "@/components/map/QuietTileLayer";
 
 export interface LeadPoint {
   id: number;
@@ -239,12 +239,7 @@ export default function LeadsMap({
           zoom={12}
           className="h-full w-full"
         >
-          <TileLayer
-            url={QUIET_TILES.url}
-            attribution={QUIET_TILES.attribution}
-            className="tiles-quiet"
-            maxZoom={QUIET_TILES.maxZoom}
-          />
+          <QuietTileLayer />
 
           <FitOnce points={allPoints} />
           <CentrePicker

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useLatest } from "@/lib/useLatest";
-import { MapContainer, TileLayer, Marker, Tooltip, useMap } from "react-leaflet";
+import { MapContainer, Marker, Tooltip, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet-routing-machine";
 import "leaflet/dist/leaflet.css";
@@ -14,9 +14,9 @@ import { facilityIcon } from "./facilityIcon";
 import type { FacilityRow } from "@/lib/facilityTypes";
 import { isPlaced } from "@/lib/facilityTypes";
 import { faFixed, faNum } from "@/lib/format";
-import { QUIET_TILES } from "@/lib/mapLayers";
 import type { RoutesFoundEvent, WithRouting } from "@/types/leafletRouting";
 import { guardedOsrmRouter } from "@/lib/guardedRouter";
+import QuietTileLayer from "@/components/map/QuietTileLayer";
 
 export interface RouteStop {
   lat: number;
@@ -111,12 +111,7 @@ export default function PlannerRouteMap({
     <div className="overflow-hidden rounded-[var(--radius-lg)] border border-border">
       <div className="h-64 w-full">
         <MapContainer bounds={bounds} className="h-full w-full" boundsOptions={{ padding: [30, 30] }}>
-          <TileLayer
-            url={QUIET_TILES.url}
-            attribution={QUIET_TILES.attribution}
-            className="tiles-quiet"
-            maxZoom={QUIET_TILES.maxZoom}
-          />
+          <QuietTileLayer />
           <RoutingLayer stops={stops} onSummary={setSummary} />
           {/* Below the route markers (zIndexOffset 900): a stop the user is reading off
               the list is more urgent than a landmark. Without these the origin is
