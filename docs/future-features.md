@@ -2862,6 +2862,46 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 ---
 
+## F144. Failure, cancellation, return and delay reason reports
+
+**What:** counts and trends of failed deliveries, cancelled orders, returns, delays and lost leads, grouped by reason, customer, route, driver, group and period, with a plain "what is the biggest cause this month" line.
+
+**Already in the app:** the capture half exists. Reasons are kept in a table by area (failed delivery, delayed delivery, order cancel, order return) with shipped defaults and per-organisation overrides (`reason_codes`). The order action sheet requires a reason for cancel, return and failed delivery (`lib/flows/orderAction.ts`: `REASON_DOMAIN`, `needsReason`), and the reason is stored on the order's history entry (`order_events.reason_code_id`) and on the stop (failure and delay reasons); the order page's timeline shows it. Lost leads store one of fourteen lost reasons (`lost_reason_code`). I found no query that counts or groups by reason anywhere. The "why did sales change" analysis (`lib/repo/why.ts`) splits a change in sales by territory, salesperson and funnel stage, not by reason.
+
+**Why parked:** counts of reasons are only as honest as the choices people make in the sheet ("other" becomes the favourite), so the report should show how often each reason is used and how often "other" is chosen; driver-level views can be unfair when a cause is upstream; group managers must see only their own group.
+
+**Open questions**
+1. One report with tabs per area (failures, cancellations, returns, delays, lost leads), each grouped by reason first?
+2. Breakdowns: by customer, route, driver, product and week, with a minimum count before a bucket is shown?
+3. Cost: the value of orders lost or returned per reason, not just counts.
+4. Targets: an alert when a reason doubles against the previous period (links to F51).
+
+**Suggested first slice:** an owner report for the last 90 days with the four order areas grouped by reason (count, value, share of "other"), group-scoped for managers, from existing data. Lead reasons and breakdowns later.
+
+**Prerequisites:** none; F42 (complaint analytics) and F12 (returns) share the presentation.
+
+---
+
+## F145. Counter sales and customer pickup
+
+**What:** orders where the customer collects from the warehouse, and walk-in cash sales at the counter, handled without a delivery run: pick, pay and hand over at one place, with stock moved out and the payment recorded at the moment.
+
+**Already in the app:** every order reaches delivered through the delivery machinery: the state machine moves an order from confirmed to planned, ready, out for delivery and then delivered, and only a driver or the system can mark it delivered (`lib/orderStateMachine.ts`). Stock reservation is consumed when the order is delivered, and payment at the door is recorded on the stop. There is no pickup path and no walk-in sale; an order for a customer who collects goods still has to be planned onto a run.
+
+**Why parked:** the state machine is the spine of stock, commission, credit and reporting, so a second path must be added as new edges with the same effects, not as a bypass; commission and the "delivered" statistics must treat a counter sale correctly (no driver, no distance); a walk-in sale may have no customer record, which several parts assume exists.
+
+**Open questions**
+1. Model as an order flag (`pickup`) that gives it a short path (confirmed to handed over), or as its own order type?
+2. Who can hand over: warehouse staff with a new action, with the payment recorded in the same step?
+3. Walk-in cash sale to an unnamed customer: one shared "walk-in" customer per organisation, or require a name or phone?
+4. Commission: credited to the salesperson who took the order, with no driver commission.
+
+**Suggested first slice:** a "customer pickup" flag on order entry that skips planning and lets a warehouse user mark the order handed over, recording the payment received, consuming the reservation and closing it. No walk-in anonymous sale yet.
+
+**Prerequisites:** the order state machine and stock reservation (exist); F63 (prepayments) relates for payment on pickup.
+
+---
+
 ## How to promote an item
 
 1. Write `docs/superpowers/specs/YYYY-MM-DD-<item>-design.md` (answer the open questions, pick the first slice).
