@@ -188,3 +188,13 @@ Remaining: report, schedule, stock, map, the two driver pages, and the 59 API ro
 - Step 5 done so far: `admin/users/[id]` PATCH validation extracted to `lib/userPatchPlan.ts`. NOT done: `syncMutations`, `crm/write`+`fields`, `delivery.ts`, `sales/orders` POST, and the components (`CoverageMap`, planner, `PaymentsPanel`, `SearchBox`).
 - Step 6 NOT done (commission ledger base, shared map base, role-set constants + lint rule).
 - Step 7 partly: `getDb` import sites are a hard zero; the ratchet and raw-SQL boundary already block regressions. Max-function-length and unused-export checks are not added.
+
+## Steps 5-7 finished (2026-10-22, third pass)
+Behaviour-preserving, one module per commit, existing tests as the net (source-text guards repointed where the code moved):
+- `lib/delivery.ts` `recordDelivery`: six named steps (van debit, order machine, door payment, stock draw, revenue, delivery entity) over a shared `DoorContext`.
+- `lib/repo/syncMutations.ts` `applyOne`: one handler per offline operation, dispatched from a table; customer capture now refuses a foreign group.
+- `lib/repo/crm/fields.ts`: business-field validation split per field group (`parseBusinessFields`); `lib/repo/crm/write.ts` `applyFlowCore`: contact resolution and customer updates are named steps.
+- `lib/orderRequest.ts`, `lib/userPatchPlan.ts`: request validation apart from HTTP handling.
+- Components: `CoverageMap` view store, map ink and map parts moved to `components/coverage/`; `SearchBox` storage/geocoder helpers to `components/searchbox/`; `PaymentsPanel` arithmetic to `lib/paymentsView.ts`; planner page helpers to `lib/plannerView.ts` and `components/planner/RestockHint.tsx`. The big component functions themselves (CoverageMap 2,158 lines, PlannerPage 1,019, PaymentsPanel 580, SearchBox 532) are still single functions: splitting their hook bodies needs browser checks that were not possible here.
+- Step 6: the three commission payment inserts and the driver/manager dated-rate inserts share `lib/repo/commissionPayments.ts`; `QuietTileLayer` is shared by the leads, planner and import maps; `isOwner` replaces the owner-or-platform_owner comparisons.
+- Step 7: the ratchet now also blocks growth in raw role comparisons (57), functions over 150 lines (73) and unused exports (223, via knip, now a devDependency).

@@ -18,11 +18,14 @@
 //                         cross-tenant reads fixed on 2026-10-22
 //   rawRoleChecks         `role === "x"` / `role !== "x"` comparisons in app/ and lib/repo: a role set belongs in
 //                         lib/roles (isOwner, isVanRole, MANAGE_ROLES), where adding a role updates it once
+//   longFunctions         functions (declarations, arrows, methods) over 150 lines in app/, lib/ and components/
+//   unusedExports         exports and exported types nothing imports (knip): dead surface that tempts the next agent
 //   agentLitterFiles      tracked files of another tool's workspace (.zoocode*, superpowers-cline)
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
+import ts from "typescript";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const BASELINE = path.join(ROOT, "docs", "architecture-baseline.json");
@@ -147,6 +150,46 @@ export function unscopedTenantSelects(files, tenants) {
   return out;
 }
 
+const LONG_FUNCTION_LINES = 150;
+
+/** Functions longer than LONG_FUNCTION_LINES, found with the TypeScript parser (a regex cannot tell where a
+ *  function ends). Each: { file, line, name, lines }. */
+export function longFunctions(files) {
+  const out = [];
+  for (const f of files) {
+    const text = fs.readFileSync(path.join(ROOT, f), "utf8");
+    const sf = ts.createSourceFile(f, text, ts.ScriptTarget.Latest, true, f.endsWith("x") ? ts.ScriptKind.TSX : ts.ScriptKind.TS);
+    const visit = (node) => {
+      if (ts.isFunctionDeclaration(node) || ts.isFunctionExpression(node) || ts.isArrowFunction(node) || ts.isMethodDeclaration(node)) {
+        const a = sf.getLineAndCharacterOfPosition(node.getStart(sf)).line;
+        const b = sf.getLineAndCharacterOfPosition(node.getEnd()).line;
+        if (b - a + 1 > LONG_FUNCTION_LINES) {
+          const name = node.name?.getText(sf) ?? (ts.isVariableDeclaration(node.parent) ? node.parent.name.getText(sf) : "(anonymous)");
+          out.push({ file: f, line: a + 1, name, lines: b - a + 1 });
+        }
+      }
+      ts.forEachChild(node, visit);
+    };
+    visit(sf);
+  }
+  return out;
+}
+
+/** Unused exports + exported types according to knip (7 s). A missing knip counts as 0 rather than failing. */
+export function unusedExports() {
+  let out = "";
+  try {
+    out = execFileSync("npx", ["--no-install", "knip", "--reporter", "json"], { cwd: ROOT, encoding: "utf8", maxBuffer: 64 * 1024 * 1024, stdio: ["ignore", "pipe", "ignore"] });
+  } catch (e) {
+    out = e.stdout?.toString() ?? ""; // knip exits non-zero when it finds anything
+  }
+  try {
+    return JSON.parse(out).issues.reduce((n, i) => n + (i.exports?.length ?? 0) + (i.types?.length ?? 0), 0);
+  } catch {
+    return 0;
+  }
+}
+
 export function measure() {
   const files = sourceFiles();
   const groups = cycles(importGraph(files));
@@ -158,6 +201,7 @@ export function measure() {
   const rawRoles = files
     .filter((f) => f.startsWith("app/") || f.startsWith("lib/repo/"))
     .reduce((n, f) => n + (fs.readFileSync(path.join(ROOT, f), "utf8").match(/\brole\s*(?:===|!==)\s*["']/g) ?? []).length, 0);
+  const longFns = longFunctions(files);
   let litter = [];
   try {
     litter = execFileSync("git", ["ls-files", ".zoocode", ".zoocodeules", "superpowers-cline"], { cwd: ROOT, encoding: "utf8" })
@@ -171,9 +215,11 @@ export function measure() {
       dbModuleLines: dbLines,
       unscopedTenantSelects: unscoped.length,
       rawRoleChecks: rawRoles,
+      longFunctions: longFns.length,
+      unusedExports: unusedExports(),
       agentLitterFiles: litter.length,
     },
-    detail: { cycles: groups, dbImports, unscoped },
+    detail: { cycles: groups, dbImports, unscoped, longFns },
   };
 }
 
@@ -195,6 +241,7 @@ function main() {
     if (rose.length) {
       console.error(`\nFAILED: ${rose.map(([k, v]) => `${k} ${base[k]} -> ${v}`).join(", ")}. See docs/architecture-audit-2026-10-22.md.`);
       if (rose.some(([k]) => k === "importCycles")) for (const g of detail.cycles) console.error("  cycle:", g.join(" <-> "));
+      if (rose.some(([k]) => k === "longFunctions")) for (const u of detail.longFns) console.error(`  ${u.file}:${u.line}  ${u.name} (${u.lines} lines)`);
       if (rose.some(([k]) => k === "unscopedTenantSelects")) for (const u of detail.unscoped) console.error(`  ${u.file}:${u.line}  ${u.sql}`);
       process.exit(1);
     }
