@@ -278,3 +278,23 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 **Done**: steps 1-3 and step 4 part 1 merged (route/page files opening the DB: 88 -> 62); founder full access; cross-company write fixes in groups and facilities.
 **Not done / gaps**: about 57 API routes and the report, schedule, stock, map, driver, suppliers and `sales/reps/[id]` pages still open the DB; `playwrightExtract` "shares one browser instance" fails on base (uninvestigated); founder 2/3-step login (F106); steps 5-7.
 **Next steps**: 1. users / districts / lead-lists routes into `lib/repo`. 2. remaining pages. 3. founder login hardening. 4. steps 5-7.
+
+## Step 4 finished, founder second step, step 5 started (2026-10-22, PR #46)
+**Done**
+- [x] No route, page or component opens the database or holds raw SQL; a test enforces the import rule.
+- [x] ~20 more cross-company holes closed (list in the audit doc), each with a test; the write probe now tries every id field with full bodies.
+- [x] Founder second login step (authenticator code + recovery codes), enrol from /switch, shell escape hatch.
+- [x] Admin user PATCH validation extracted to `lib/userPatchPlan.ts`.
+
+**Not done / gaps**
+- [ ] The founder's second step is optional until turned on; turn it on from /switch.
+- [ ] Step 5 remainder (syncMutations, crm/write+fields, delivery.ts, orders POST, CoverageMap, planner, PaymentsPanel, SearchBox).
+- [ ] Step 6 (commission ledger base, shared map base, role-set constants + lint rule).
+- [ ] Step 7 extras (max function length, unused exports as blocking checks).
+- [ ] `playwrightExtract` test needs a Chromium build this container lacks.
+- [ ] Two companies still cannot claim the same district; records made while "All companies" is selected go to the home company; legacy `sales` rows belong to the earliest company.
+
+**Next steps**
+1. Merge PR #46 when CI is green.
+2. Step 5 remainder, one module per commit with tests first.
+3. Step 6, then step 7 extras.

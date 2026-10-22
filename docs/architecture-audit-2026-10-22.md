@@ -179,3 +179,12 @@ Creating records while «همهٔ سازمان‌ها» is selected puts them in
 Done: dashboard (`lib/repo/dashboardView.ts`), sales home, products page (`productsView.ts`), orders pages (`ordersView.ts`), commission page and API (`commissionView.ts`), customers/catalogue reads (`sessionReads.ts`), nine no-op `getDb()` calls. Each function takes the session; pages and components never see a connection.
 Leaks found and fixed on the way: the products page's price history listed every company's price changes; the commission page's seller, driver and manager pickers listed every company's staff; the "last owner" guard counted other companies' owners. The ratchet now also watches unscoped `FROM users`.
 Remaining: report, schedule, stock, map, the two driver pages, and the 59 API routes. The API routes hold most of the inline SQL and should be done by domain, each with a repo module and tests.
+
+## Step 4 (finished) and the founder's second login step (2026-10-22)
+
+- No file under `app/` or `components/` imports `getDb` (a test now fails if one does) and none contains raw SQL; routes and pages call named operations in `lib/repo/` (`routeAdapters.ts` holds the thin wrappers for readers that take an explicit handle).
+- The write probe was strengthened until it found real holes, all fixed with tests: admin groups, facilities, districts (DELETE had no guard), lead lists, saved pins, visit plans, prices/packagings/thresholds, commission rates/payments/overrides, run stops, order customer/products/seller, group assignment on users, lead visit read, the month plan's visits, legacy `sales` history, avatars, offline order mutations.
+- Founder second step: authenticator-app code (RFC 6238, no dependency) after the password; secret encrypted at rest; each time step usable once; recovery codes; `/switch` enrols; `scripts/disable-second-factor.mjs` is the shell way back. It is optional until the founder turns it on (forcing it risks lock-out).
+- Step 5 done so far: `admin/users/[id]` PATCH validation extracted to `lib/userPatchPlan.ts`. NOT done: `syncMutations`, `crm/write`+`fields`, `delivery.ts`, `sales/orders` POST, and the components (`CoverageMap`, planner, `PaymentsPanel`, `SearchBox`).
+- Step 6 NOT done (commission ledger base, shared map base, role-set constants + lint rule).
+- Step 7 partly: `getDb` import sites are a hard zero; the ratchet and raw-SQL boundary already block regressions. Max-function-length and unused-export checks are not added.
