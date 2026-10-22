@@ -96,3 +96,60 @@ describe("dashboardFor", () => {
     expect(typeof d.order_count).toBe("number");
   });
 });
+
+describe("teamTodayFor", () => {
+  const today = "2026-06-15";
+  const orderOn = (orgId: number, groupId: number, customerId: number, salesperson: number, orderNo: string) =>
+    Number(
+      getDb()
+        .prepare(
+          `INSERT INTO orders (order_no, customer_id, group_id, salesperson_user_id, order_date, created_by, created_at, updated_at, organization_id)
+           VALUES (?, ?, ?, ?, ?, ?, '2026-06-15T08:00:00.000Z', '2026-06-15T08:00:00.000Z', ?)`
+        )
+        .run(orderNo, customerId, groupId, salesperson, today, salesperson, orgId).lastInsertRowid
+    );
+  const line = (orderId: number, productId: number, packs: number) => {
+    const pk = Number(
+      getDb()
+        .prepare("INSERT INTO packagings (product_id, name, qty_per_pack, created_at) VALUES (?, ?, 2, '2026-01-01')")
+        .run(productId, `tt-${orderId}-${packs}`).lastInsertRowid
+    );
+    getDb()
+      .prepare(
+        `INSERT INTO order_lines (order_id, product_id, packaging_id, packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman, qty_per_pack, kg_per_base_unit, created_at)
+         VALUES (?, ?, ?, ?, ?, 1000, 600, 2, 0.5, '2026-01-01')`
+      )
+      .run(orderId, productId, pk, packs, packs);
+  };
+
+  it("sums orders, kilograms and revenue per person, scoped to the caller's organisation", async () => {
+    const { teamTodayFor } = await import("@/lib/repo/dashboardView");
+    const o1 = orderOn(1, a.groupId, a.customerId, a.managerId, "T-1");
+    const o2 = orderOn(1, a.groupId, a.customerId, a.managerId, "T-2");
+    const o3 = orderOn(2, b.groupId, b.customerId, b.managerId, "T-3");
+    line(o1, a.productId, 3); // 3 packs x 2 per pack x 0.5 kg = 3 kg, revenue 3 x 2 x 1000 = 6000
+    line(o2, a.productId, 1);
+    line(o3, b.productId, 9);
+
+    const mine = teamTodayFor(session("owner", a.ownerId, null, 1), today);
+    const base = (await import("@/lib/orderMath")).orderTotalToman;
+    expect(mine.orderCount).toBe(2);
+    expect(mine.peopleCount).toBe(1);
+    expect(mine.team).toHaveLength(1);
+    expect(mine.team[0]).toMatchObject({ n: 2 });
+    expect(mine.team[0].kg).toBeCloseTo(4, 6); // (3 + 1) packs x 2 x 0.5
+    expect(mine.team[0].revenue).toBe(
+      base([{ packs_ordered: 3, packs_delivered: 3, unit_price_toman: 1000, unit_cost_toman: 600, qty_per_pack: 2, kg_per_base_unit: 0.5 }]) +
+        base([{ packs_ordered: 1, packs_delivered: 1, unit_price_toman: 1000, unit_cost_toman: 600, qty_per_pack: 2, kg_per_base_unit: 0.5 }])
+    );
+
+    const theirs = teamTodayFor(session("owner", b.ownerId, null, 2), today);
+    expect(theirs.orderCount).toBe(1);
+    expect(theirs.team.map((t) => t.n)).toEqual([1]);
+  });
+
+  it("is empty when nothing was ordered that day", async () => {
+    const { teamTodayFor } = await import("@/lib/repo/dashboardView");
+    expect(teamTodayFor(session("owner", a.ownerId, null, 1), "2026-01-02")).toEqual({ team: [], orderCount: 0, peopleCount: 0 });
+  });
+});

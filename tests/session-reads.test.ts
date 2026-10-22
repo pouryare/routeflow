@@ -61,10 +61,10 @@ describe("customersFor", () => {
 
   it("attaches each customer's computed debt only when asked", () => {
     const owner = session("owner", a.ownerId, null, 1);
-    const plain = customersFor(owner).find((c) => c.id === a.customerId)!;
-    const withDebt = customersFor(owner, { withDebt: true }).find((c) => c.id === a.customerId)!;
-    expect(plain.debt).toBeUndefined();
-    expect(withDebt.debt).toBeDefined();
+    // Customer's declared type predates the attached balance, so read the field structurally.
+    const debtOf = (rows: { id: number }[]) => (rows.find((c) => c.id === a.customerId) as unknown as { debt?: unknown }).debt;
+    expect(debtOf(customersFor(owner))).toBeUndefined();
+    expect(debtOf(customersFor(owner, { withDebt: true }))).toBeDefined();
   });
 });
 

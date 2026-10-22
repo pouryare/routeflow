@@ -7,6 +7,9 @@ import { allStatements, statementFor, type Statement } from "@/lib/commissionLed
 import { allDriverStatements, type DriverStatement } from "@/lib/driverCommissionLedger";
 import { allManagerStatements, managerStatementFor, type ManagerStatement } from "@/lib/managerCommissionLedger";
 import { toJalali, jalaliToIsoDate } from "@/lib/jalali";
+import { orderFilter } from "@/lib/session";
+import { orderKg, orderTotalToman } from "@/lib/orderMath";
+import { linesByOrder } from "@/lib/repo/orderLines";
 import { isOwner } from "@/lib/roles";
 
 /* What the dashboard page and its streamed sections read, as functions of the SESSION. The page
@@ -62,4 +65,49 @@ export interface StockFigures {
 export function stockFor(session: Session): StockFigures {
   const db = getDb();
   return { stock: stockPosition(db, orgScopeId(session)), drivers: fillRateByDriver(db, session) };
+}
+
+export interface TeamToday {
+  /** Who took today's orders: orders, kilograms and revenue per salesperson, busiest first, top five. */
+  team: { name: string; n: number; kg: number; revenue: number }[];
+  /** How many orders were placed today in the caller's scope. */
+  orderCount: number;
+  /** How many different people took them (before the top-five cut). */
+  peopleCount: number;
+}
+
+/** Today's orders by the person who took them, for the sales home page. A count says three people
+ *  were busy, not which one is carrying the day, so each entry also carries what the orders add up
+ *  to. Scoped by orderFilter (organisation and group). Lines are read in one batched query, in
+ *  line-id order within an order, so the kilogram sums are the same to the last digit as the
+ *  one-query-per-order loop this replaced. */
+export function teamTodayFor(session: Session, todayIso: string): TeamToday {
+  const db = getDb();
+  const scope = orderFilter(session);
+  const orders = (
+    db
+      .prepare(
+        `SELECT o.id, COALESCE(u.display_name, 'بدون فروشنده') AS name
+           FROM orders o
+           LEFT JOIN users u ON u.id = o.salesperson_user_id
+          WHERE o.order_date = ?${scope.sql}`
+      )
+      .all(todayIso, ...scope.params) as unknown as { id: number; name: string }[]
+  ).map((o) => ({ id: o.id, name: o.name }));
+
+  const lines = linesByOrder(db, orders.map((o) => o.id));
+  const byPerson = new Map<string, { name: string; n: number; kg: number; revenue: number }>();
+  for (const o of orders) {
+    const ls = lines.get(o.id) ?? [];
+    const entry = byPerson.get(o.name) ?? { name: o.name, n: 0, kg: 0, revenue: 0 };
+    entry.n += 1;
+    entry.kg += orderKg(ls);
+    entry.revenue += orderTotalToman(ls);
+    byPerson.set(o.name, entry);
+  }
+  return {
+    team: [...byPerson.values()].sort((a, b) => b.n - a.n).slice(0, 5),
+    orderCount: orders.length,
+    peopleCount: byPerson.size,
+  };
 }

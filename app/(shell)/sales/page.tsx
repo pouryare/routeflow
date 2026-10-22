@@ -1,10 +1,8 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, orderFilter } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
-import { salesDashboard } from "@/lib/dashboard";
-import { orderKg, orderTotalToman, type LineSnapshot } from "@/lib/orderMath";
+import { getSessionFromCookies } from "@/lib/session";
+import { dashboardFor, teamTodayFor } from "@/lib/repo/dashboardView";
 import { faToman, faNum } from "@/lib/format";
 import CountUp from "@/components/meridian/CountUp";
 import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
@@ -31,8 +29,7 @@ export default async function SalesHomePage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
-  const d = salesDashboard(db, session);
+  const d = dashboardFor(session);
 
   /* Both dates from ONE clock read. Two separate reads can straddle midnight and make
      "yesterday" the same day as "today". */
@@ -67,34 +64,7 @@ export default async function SalesHomePage() {
   /* Who took today's orders, and how many each -- plus what those orders actually add up
      to. The cradle used to show only a count; a count says three people were busy, not
      which one is carrying the day. */
-  const scope = orderFilter(session);
-  const todaysOrders = plain(
-    db
-      .prepare(
-        `SELECT o.id, COALESCE(u.display_name, 'بدون فروشنده') AS name
-           FROM orders o
-           LEFT JOIN users u ON u.id = o.salesperson_user_id
-          WHERE o.order_date = ?${scope.sql}`
-      )
-      .all(todayIso, ...scope.params)
-  ) as unknown as { id: number; name: string }[];
-
-  const linesOf = db.prepare(
-    `SELECT packs_ordered, packs_delivered, unit_price_toman, unit_cost_toman,
-            qty_per_pack, kg_per_base_unit
-       FROM order_lines WHERE order_id = ?`
-  );
-  const byPerson = new Map<string, { name: string; n: number; kg: number; revenue: number }>();
-  for (const o of todaysOrders) {
-    const lines = linesOf.all(o.id) as unknown as LineSnapshot[];
-    const entry = byPerson.get(o.name) ?? { name: o.name, n: 0, kg: 0, revenue: 0 };
-    entry.n += 1;
-    entry.kg += orderKg(lines);
-    entry.revenue += orderTotalToman(lines);
-    byPerson.set(o.name, entry);
-  }
-  const team = [...byPerson.values()].sort((a, b) => b.n - a.n).slice(0, 5);
-  const todayOrders = todaysOrders.length;
+  const { team, orderCount: todayOrders, peopleCount } = teamTodayFor(session, todayIso);
 
 
   return (
@@ -182,7 +152,7 @@ export default async function SalesHomePage() {
           <p>
             {todayOrders === 0
               ? "امروز هنوز سفارشی ثبت نشده است."
-              : `${faNum(todayOrders)} سفارش بین ${faNum(byPerson.size)} نفر پخش شده — عدد روی هر نفر، تعداد سفارش‌های اوست.`}
+              : `${faNum(todayOrders)} سفارش بین ${faNum(peopleCount)} نفر پخش شده — عدد روی هر نفر، تعداد سفارش‌های اوست.`}
           </p>
 
           {team.length > 0 && (
