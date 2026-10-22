@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, LOCATION_STATUSES, LocationStatus } from "@/lib/db";
+import { LOCATION_STATUSES, LocationStatus } from "@/lib/db";
+import { deleteLocation, findOwnLocation, updateLocation } from "@/lib/repo/locationsAdmin";
 import { isValidCoord } from "@/lib/geoLinks";
 import { LEAD_CRITERIA, LeadCriterion, columnFor, isValidStars } from "@/lib/leadScore";
-import { canReachGroup, requireRole } from "@/lib/session";
+import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
 import { PIN_POOL_ROLES } from "@/lib/roles";
 
 interface PatchInput extends Partial<Record<LeadCriterion, number | null>> {
@@ -23,13 +24,11 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
-  // Ownership is decided before the payload is validated: whether this row is yours is
-  // not a question the request body gets a say in, and a 400 on someone else's row would
-  // still be a different answer from a 404.
-  const owning = db.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(idNum) as
-    | { group_id: number | null }
-    | undefined;
+  // Ownership is decided before the payload is validated: whether this row is yours is not a
+  // question the request body gets a say in. The company is part of it: a pin with no group is
+  // reachable by any owner through the group rule alone.
+  const organizationId = orgScopeId(guard.session);
+  const owning = findOwnLocation(idNum, organizationId);
   if (!owning || !canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
@@ -104,11 +103,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/locations/
     return NextResponse.json({ ok: false, error: "چیزی برای به‌روزرسانی ارسال نشده است" }, { status: 400 });
   }
 
-  sets.push("updated_at = ?");
-  values.push(new Date().toISOString());
-
-  const result = db.prepare(`UPDATE saved_locations SET ${sets.join(", ")} WHERE id = ?`).run(...values, idNum);
-  if (result.changes === 0) {
+  if (!updateLocation(idNum, organizationId, sets, values)) {
     return NextResponse.json({ ok: false, error: "مورد پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });
@@ -124,15 +119,13 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/locations
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
-  const owning = db.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(idNum) as
-    | { group_id: number | null }
-    | undefined;
+  const organizationId = orgScopeId(guard.session);
+  const owning = findOwnLocation(idNum, organizationId);
   if (!owning || !canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }
-  const result = db.prepare("DELETE FROM saved_locations WHERE id = ?").run(idNum);
-  if (result.changes === 0) {
+  const deleted = deleteLocation(idNum, organizationId);
+  if (!deleted) {
     return NextResponse.json({ ok: false, error: "مورد پیدا نشد" }, { status: 404 });
   }
   return NextResponse.json({ ok: true });

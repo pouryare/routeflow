@@ -213,6 +213,7 @@ beforeAll(async () => {
   db.prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES ('wh-b2', 'warehouse', 'second b', 35, 51, '2026-01-01', 2, '2026-01-01')").run();
   /* An ungrouped list: an owner reaches ungrouped rows by group alone, so only the company check keeps it out. */
   db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES ('b list', NULL, '2026-01-01', '2026-01-01', 2)").run();
+  db.prepare("INSERT INTO saved_locations (name, maps_url, resolution, created_at, group_id, organization_id) VALUES ('b pin', 'https://maps.example/b-ungrouped', 'manual', '2026-01-01', NULL, 2)").run();
   markB(db);
   aOwnerCookie = `${COOKIE_NAME}=${createSessionToken({ uid: a.ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "A" })}`;
 

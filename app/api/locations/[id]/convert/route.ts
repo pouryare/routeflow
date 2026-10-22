@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { canReachGroup, requireRole } from "@/lib/session";
+import { findOwnLocation } from "@/lib/repo/locationsAdmin";
+import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
 import { LeadPromotionError, promoteLeadToCustomer } from "@/lib/repo/crm/conversion";
 import { PIN_POOL_ROLES } from "@/lib/roles";
 
@@ -27,10 +27,7 @@ export async function POST(req: NextRequest, ctx: RouteContext<"/api/locations/[
     return NextResponse.json({ ok: false, error: "شناسه نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
-  const owning = db.prepare("SELECT group_id FROM saved_locations WHERE id = ?").get(idNum) as
-    | { group_id: number | null }
-    | undefined;
+  const owning = findOwnLocation(idNum, orgScopeId(guard.session));
   if (!owning || !canReachGroup(guard.session, owning.group_id)) {
     return NextResponse.json({ ok: false, error: "مکان پیدا نشد" }, { status: 404 });
   }

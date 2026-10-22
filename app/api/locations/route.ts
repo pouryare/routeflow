@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, LocationResolution, SavedLocationRow } from "@/lib/db";
+import type { LocationResolution } from "@/lib/db";
+import { addLocations, locationsSignature, searchLocations, type NewPin } from "@/lib/repo/locationsAdmin";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
-import { groupFilter, requireRole, scopeGroupIds } from "@/lib/session";
+import { groupFilter, orgScopeId, requireRole, scopeGroupIds } from "@/lib/session";
 import { PIN_POOL_ROLES } from "@/lib/roles";
 
 // saved_locations is option 1 (spec §2.3 / Task 8): a pin belongs outright to the group
@@ -12,27 +13,16 @@ export async function GET(req: NextRequest) {
   const filter = groupFilter(guard.session);
   const scope = scopeGroupIds(guard.session);
 
-  const db = getDb();
+  const organizationId = orgScopeId(guard.session);
   const q = req.nextUrl.searchParams.get("q")?.trim();
 
-  const sig = db.prepare("SELECT COUNT(*) c, MAX(updated_at) m FROM saved_locations").get() as {
-    c: number;
-    m: string | null;
-  };
+  const sig = locationsSignature(organizationId);
   // Scope belongs in the cache key -- see the note in /api/customers.
   const tag = etagFor(`saved_locations-${q ?? ""}-${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  const rows = q
-    ? (db
-        .prepare(
-          `SELECT * FROM saved_locations WHERE (name LIKE ? OR address LIKE ?)${filter.sql} ORDER BY created_at DESC`
-        )
-        .all(`%${q}%`, `%${q}%`, ...filter.params) as unknown as SavedLocationRow[])
-    : (db
-        .prepare(`SELECT * FROM saved_locations WHERE 1 = 1${filter.sql} ORDER BY created_at DESC`)
-        .all(...filter.params) as unknown as SavedLocationRow[]);
+  const rows = searchLocations(q, filter, organizationId);
 
   return etagJson(req, tag, { locations: rows });
 }
@@ -56,41 +46,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "موردی برای افزودن ارسال نشده است" }, { status: 400 });
   }
 
-  const db = getDb();
-  const now = new Date().toISOString();
-  const insert = db.prepare(`
-    INSERT INTO saved_locations (name, maps_url, address, lat, lng, resolution, group_id, created_at, updated_at, organization_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(organization_id, maps_url) DO NOTHING
-  `);
-
   const VALID_RESOLUTIONS = new Set<LocationResolution>(["direct", "pluscode", "browser", "nominatim", "manual", "unresolved"]);
 
-  let added = 0;
-  db.exec("BEGIN");
+  const pins: NewPin[] = [];
+  for (const it of items) {
+    if (!it.name || !it.mapsUrl) continue;
+    pins.push({
+      name: it.name.trim(),
+      mapsUrl: it.mapsUrl,
+      address: it.address ?? null,
+      lat: typeof it.lat === "number" ? it.lat : null,
+      lng: typeof it.lng === "number" ? it.lng : null,
+      resolution: it.resolution && VALID_RESOLUTIONS.has(it.resolution) ? it.resolution : "unresolved",
+    });
+  }
+
+  let added: number;
   try {
-    for (const it of items) {
-      if (!it.name || !it.mapsUrl) continue;
-      const resolution: LocationResolution =
-        it.resolution && VALID_RESOLUTIONS.has(it.resolution) ? it.resolution : "unresolved";
-      const result = insert.run(
-        it.name.trim(),
-        it.mapsUrl,
-        it.address ?? null,
-        typeof it.lat === "number" ? it.lat : null,
-        typeof it.lng === "number" ? it.lng : null,
-        resolution,
-        // An owner's pin is unowned until territory says otherwise; a manager's is theirs.
-        guard.session.groupId,
-        now,
-        now,
-        guard.session.organizationId
-      );
-      if (result.changes > 0) added++;
-    }
-    db.exec("COMMIT");
+    // An owner's pin is unowned until territory says otherwise; a manager's is theirs.
+    added = addLocations(pins, guard.session.groupId, guard.session.organizationId);
   } catch (e) {
-    db.exec("ROLLBACK");
     const msg = e instanceof Error ? e.message : "خطا";
     return NextResponse.json({ ok: false, error: msg }, { status: 500 });
   }
