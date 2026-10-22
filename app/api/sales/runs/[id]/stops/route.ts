@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole, canReachGroup } from "@/lib/session";
+import { requireRole, canReachGroup, orgScopeId } from "@/lib/session";
+import { inOrg } from "@/lib/repo/orgRefs";
 import { addStop, DeliveryError } from "@/lib/delivery";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const run = db.prepare("SELECT id, group_id FROM delivery_runs WHERE id = ?").get(runId) as
     | { group_id: number | null }
     | undefined;
-  if (!run || !canReachGroup(guard.session, run.group_id)) return notFound();
+  // The run and the order must both be this company's: a run or order with no group is reachable by group alone.
+  const organizationId = orgScopeId(guard.session);
+  if (!run || !inOrg("delivery_runs", runId, organizationId) || !canReachGroup(guard.session, run.group_id)) return notFound();
 
   const body = (await req.json().catch(() => null)) as { order_id?: unknown } | null;
   const order = db
@@ -42,7 +45,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
    *  never mentions group, so a van carries whatever the manager hands it. The boundary that
    *  genuinely matters is reachability, and the check above is it: a group_manager still
    *  cannot assign another team's orders. */
-  if (!order || !canReachGroup(guard.session, order.group_id)) return notFound();
+  if (!order || !inOrg("orders", order.id, organizationId) || !canReachGroup(guard.session, order.group_id)) return notFound();
 
   try {
     const id = addStop(db, runId, order.id, Number(body && (body as { sort_order?: number }).sort_order) || 0);

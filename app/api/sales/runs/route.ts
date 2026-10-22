@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole, groupFilter, canReachGroup } from "@/lib/session";
+import { requireRole, groupFilter, canReachGroup, orgScopeId } from "@/lib/session";
+import { inOrg } from "@/lib/repo/orgRefs";
 import { stopCountsByRun, remainingByRun } from "@/lib/repo/runStops";
 import { createRun, DeliveryError } from "@/lib/delivery";
 
@@ -68,7 +69,7 @@ export async function POST(req: NextRequest) {
   const canDrive = db
     .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'")
     .get(Number(body?.driver_user_id));
-  if (!driver || !canDrive || !canReachGroup(guard.session, driver.group_id)) {
+  if (!driver || !canDrive || !inOrg("users", driver.id, orgScopeId(guard.session)) || !canReachGroup(guard.session, driver.group_id)) {
     return NextResponse.json({ ok: false, error: "راننده پیدا نشد" }, { status: 404 });
   }
 

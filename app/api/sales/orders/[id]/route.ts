@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole, orderFilter } from "@/lib/session";
+import { requireRole, orderFilter, orgScopeId } from "@/lib/session";
+import { packagingOfProduct, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { readOrder, confirmOrder, addLine, OrderError } from "@/lib/orders";
 
 /* Was ["owner","group_manager","phone_sales"] — NARROWER than its twin in orders/route.ts,
@@ -62,6 +63,10 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
 
     if (body?.line && typeof body.line === "object") {
       const line = body.line as { product_id: number; packaging_id: number; packs: number };
+      // The product (and its packaging) must be this company's: an id alone reaches every tenant's catalogue.
+      if (!productInOrg(Number(line.product_id), orgScopeId(guard.session)) || !packagingOfProduct(Number(line.packaging_id), Number(line.product_id))) {
+        return NextResponse.json({ ok: false, error: "کالا یا بسته‌بندی پیدا نشد" }, { status: 400 });
+      }
       addLine(getDb(), id, {
         product_id: Number(line.product_id),
         packaging_id: Number(line.packaging_id),

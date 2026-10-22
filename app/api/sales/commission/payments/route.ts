@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
 import { recordPayment } from "@/lib/commissionLedger";
 import { recordDriverPayment } from "@/lib/driverCommissionLedger";
 import { recordManagerPayment } from "@/lib/managerCommissionLedger";
@@ -56,13 +57,8 @@ export async function POST(req: NextRequest) {
   const personId = Number(rawId);
   // The SET, not the primary column: paying a driver whose primary is something else must
   // still work, or a legitimate payment is refused over a detail the ledger itself ignores.
-  const person = db
-    .prepare(
-      `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
-        WHERE u.id = ? AND r.role = ?`
-    )
-    .get(personId, ROLE_FOR_KIND[kind]);
-  if (!person) {
+  // And this company's: an id alone reaches every tenant's staff.
+  if (!userWithRoleInOrg(personId, [ROLE_FOR_KIND[kind]], orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: `این حساب ${NOT_THIS_KIND[kind]} نیست` }, { status: 400 });
   }
 

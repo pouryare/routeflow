@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { setStockThresholds } from "@/lib/catalogue";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -17,8 +18,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   const db = getDb();
-  const exists = db.prepare("SELECT id FROM products WHERE id = ?").get(productId);
-  if (!exists) {
+  if (!productInOrg(productId, orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
