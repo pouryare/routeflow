@@ -6,7 +6,7 @@ import { isVanRole, MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 // a service worker script must return the same bytes regardless of session state, or
 // the browser's SW update check can be fed the login page's HTML instead of the actual
 // script. None of these carry any customer/business data, so exempting them is safe.
-const PUBLIC_PATHS = ["/login", "/api/login", "/sw.js", "/manifest.webmanifest", "/offline", "/icon.svg"];
+const PUBLIC_PATHS = ["/login", "/api/login", "/api/login/second-factor", "/sw.js", "/manifest.webmanifest", "/offline", "/icon.svg"];
 
 // A coarse gate on the token's own claims -- NOT an authorisation decision. Middleware
 // cannot safely reach SQLite, so it cannot know that a user has since been demoted or

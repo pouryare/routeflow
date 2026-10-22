@@ -90,6 +90,7 @@ sync_mutations: 0
 targets: 0
 task_recurrences: 0
 tasks: 0
+user_recovery_codes: 0
 user_roles: 0
 users: 0
 vehicles: 0

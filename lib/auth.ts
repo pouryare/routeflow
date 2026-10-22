@@ -97,6 +97,38 @@ export function parseSessionToken(token: string | undefined | null): SessionClai
   return claims;
 }
 
+/** The short-lived proof that the PASSWORD step passed, handed to the second-factor step. It is not a
+ *  session: it carries a different purpose, so no route that reads a session cookie accepts it, and it
+ *  expires in five minutes. */
+const CHALLENGE_SECONDS = 5 * 60;
+
+export function createChallengeToken(uid: number): string {
+  const payload = Buffer.from(JSON.stringify({ purpose: "second-factor", uid, exp: Math.floor(Date.now() / 1000) + CHALLENGE_SECONDS })).toString("base64url");
+  return `${payload}.${sign(payload)}`;
+}
+
+export function parseChallengeToken(token: unknown): number | null {
+  if (typeof token !== "string") return null;
+  const dot = token.lastIndexOf(".");
+  if (dot === -1) return null;
+  const payload = token.slice(0, dot);
+  const mac = Buffer.from(token.slice(dot + 1), "hex");
+  const expected = Buffer.from(sign(payload), "hex");
+  if (mac.length !== expected.length || !crypto.timingSafeEqual(mac, expected)) return null;
+  try {
+    const claims = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as { purpose?: string; uid?: number; exp?: number };
+    if (claims.purpose !== "second-factor" || typeof claims.uid !== "number" || typeof claims.exp !== "number") return null;
+    return claims.exp > Math.floor(Date.now() / 1000) ? claims.uid : null;
+  } catch {
+    return null;
+  }
+}
+
+/** A 32-byte key for encrypting a secret at rest, derived from SESSION_SECRET and a purpose label. */
+export function deriveKey(purpose: string): Buffer {
+  return Buffer.from(crypto.hkdfSync("sha256", secret(), "routeflow", purpose, 32));
+}
+
 export function verifySessionToken(token: string | undefined | null): boolean {
   return parseSessionToken(token) !== null;
 }

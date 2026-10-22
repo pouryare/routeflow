@@ -189,6 +189,7 @@ describe("organization_id backfill", () => {
       "platform_access_log", // vendor audit trail; its organization_id names the tenant
                              // that was looked at, not one that owns the row
       "sales",              // the legacy imported ledger, read-only and being retired
+      "user_recovery_codes", // a person's one-time sign-in recovery codes; reaches a tenant through user_id
       "user_roles",         // a person's roles; reaches a tenant through user_id, exactly
                              // like notification_prefs. NOT tenant-scoped: adding an
                              // organization_id here would be a second answer to "whose roles

@@ -38,6 +38,7 @@ const UNPROBEABLE: Record<string, string> = {};
  *  answering 2xx to an anonymous caller fails the anonymous test. */
 const PUBLIC_BY_DESIGN: Record<string, string> = {
   "POST login/route.ts": "the sign-in form posts here before any session exists",
+  "POST login/second-factor/route.ts": "second sign-in step: public like /api/login, it answers only with a valid password-step challenge",
   "POST logout/route.ts": "clearing a cookie needs no session; idempotent",
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createSessionToken, verifyPassword, COOKIE_NAME, MAX_AGE_SECONDS } from "@/lib/auth";
+import { createChallengeToken, createSessionToken, verifyPassword, COOKIE_NAME, MAX_AGE_SECONDS } from "@/lib/auth";
+import { secondFactorRequired } from "@/lib/repo/secondFactor";
 import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
 import { findUserByUsername } from "@/lib/users";
 
@@ -48,6 +49,13 @@ export async function POST(req: NextRequest) {
   }
 
   rateLimitReset(key);
+
+  /* The founder's account sees every company, so the password alone is not enough for it once a second
+     step has been switched on. No session yet: only a short-lived proof the password passed, which the
+     second-factor route turns into a session when the code checks out. */
+  if (user.role === "platform_owner" && secondFactorRequired(user.id)) {
+    return NextResponse.json({ ok: true, secondFactor: true, challenge: createChallengeToken(user.id) });
+  }
 
   const res = NextResponse.json({ ok: true });
   res.cookies.set(
