@@ -158,3 +158,24 @@ Import cycles: 4 → 1. Broken: `lib/db.ts` ↔ `lib/repo/ledger.ts` (a connecti
 
 ## Open
 - **A copy of the production database is in git history** (`.zoocode/mcp/routeflow-mcp.db`, 2 MB, committed 2026-10-21; its refresh script says it is copied from the live database). Removing it from the tree does not remove it from history. I did not open it (reading customer data was out of scope). Decision for you: if this repository is private and only you can read it, that may be acceptable; if not, the file needs purging from history (a history rewrite, which is yours to authorise) and the exposed credentials, if any, rotating.
+
+
+---
+
+# Step 4 (in progress) and the founder's full-access decision (2026-10-22)
+
+## Decisions recorded
+- **Production-database copy in git history:** the repository is private, so the history is left as it is.
+- **Full access for the founder:** the account that holds `platform_owner` can read and write everything of every company. It is one account; two- or three-step login for it is planned (parked idea F106). Because it can read every customer's data, that login hardening is the main protection to add next.
+
+## How full access works now
+`platform_owner` already existed (a superset of `owner`, cross-company reads through the scope helpers, Login-As into anyone, an audit table `platform_access_log`). Two gaps were closed:
+1. **Acting company.** On the switch page (`/switch`) the founder can pick «همهٔ سازمان‌ها» (default: everything at once) or one company. Acting in a company makes the session behave as that company's **owner**, for reads and writes: `session.organizationId` is the company's and every scope helper (`scopeGroupIds`, `orderFilter`, `canReach*`, ...) goes through `scopeView(session)`. Everything that reads `session.organizationId` directly (catalogue, stock, new records) therefore works for the chosen company with no per-screen change.
+2. **Safety rails.** The choice is a signed claim (`ao`) in the session token, re-validated on every request (the company must exist and be active; the account's active role must be `platform_owner`; Login-As sessions ignore it). Only a real `platform_owner` session can switch (`POST /api/admin/acting-org`); each switch into another company is written to `platform_access_log`. A banner on every page names the company while it is chosen, and cannot be dismissed.
+
+Creating records while «همهٔ سازمان‌ها» is selected puts them in the account's home company; choose a company first to create elsewhere.
+
+## Step 4: one data-access layer (88 → 65 route/page files that open the database)
+Done: dashboard (`lib/repo/dashboardView.ts`), sales home, products page (`productsView.ts`), orders pages (`ordersView.ts`), commission page and API (`commissionView.ts`), customers/catalogue reads (`sessionReads.ts`), nine no-op `getDb()` calls. Each function takes the session; pages and components never see a connection.
+Leaks found and fixed on the way: the products page's price history listed every company's price changes; the commission page's seller, driver and manager pickers listed every company's staff; the "last owner" guard counted other companies' owners. The ratchet now also watches unscoped `FROM users`.
+Remaining: report, schedule, stock, map, the two driver pages, and the 59 API routes. The API routes hold most of the inline SQL and should be done by domain, each with a repo module and tests.

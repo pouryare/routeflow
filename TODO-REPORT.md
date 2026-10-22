@@ -229,29 +229,30 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - Not done / gaps: ranking rests on search snippets and aggregator pages, not on reading each repo; star counts unverified; no skill was run against this repo
 - Next steps: 1. run `/security-review` on the open branch; 2. decide whether to read and try Trail of Bits `static-analysis` (Semgrep failed here earlier on a Python conflict)
 
-## Architecture audit: steps 1 to 3 (2026-10-22)
-Full write-up: `docs/architecture-audit-2026-10-22.md`. Step 1 merged as PR #43; steps 2 and 3 are PR #44.
+## Architecture audit: steps 1 to 4 and the founder's full access (2026-10-22)
+Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged (PR #43, #44); step 4 and full access are PR #45.
 
 ### Done
-- [x] Step 1 (merged): guardrails (cross-tenant test over all 158 routes, schema and seed snapshot, tests for 9 untested repo modules, `npm run check:architecture` in CI); Trail of Bits scan; 8 cross-tenant bugs, a login timing leak and a 500 in the slow-import poll fixed
-- [x] Your decisions applied: SSRF in the maps-link importer fixed (every redirect hop vetted, headless browser behind a request guard, tested against a real Chromium); slow-import notice goes to whoever pasted the links; short `SESSION_SECRET` logs a loud error (not a hard stop); CI actions pinned to SHAs
-- [x] Step 2 housekeeping: removed another tool's committed workspace (166 files), 5 dead source files, 2 unused dev dependencies; archived finished planning notes
-- [x] Step 3: `lib/db.ts` 5,848 → 148 lines, split into `lib/database/` (base schema, 7 ordered migration eras, rebuilds, backfills, seeds, types); proven identical on a fresh database AND on a database built by the old code
-- [x] Import cycles 4 → 1 (the remaining one is intrinsic: events ↔ rules ↔ tasks, documented)
-- [x] The three indexes a fresh database used to lack are fixed at the root (rebuilds now recreate a table's indexes)
+- [x] Steps 1 to 3 merged: guardrails, Trail of Bits scan, SSRF/login/secret fixes, housekeeping, `lib/db.ts` 5,848 → 148 lines, cycles 4 → 1
+- [x] Your decisions: repository is private, so history is left as is; the founder gets full access (reads and writes, all companies); one account, 2/3-step login later
+- [x] Full access: `platform_owner` can now act as the owner of any one company (switch page, banner on every page, signed and re-validated claim, switches logged), or see all companies at once
+- [x] Step 4 (partly): dashboard, sales home, products, orders pages, commission page and API now read through session-scoped functions; route/page files opening the database 88 → 65
+- [x] More cross-company leaks found by the conversion and fixed: product price history, commission pickers (staff of every company), last-owner guard
 
 ### Not done / gaps
-- [ ] **A copy of the production database is in git history** (`.zoocode/mcp/routeflow-mcp.db`). Removed from the tree; purging history needs your decision (see the audit doc)
+- [ ] Step 4 remainder: report, schedule, stock, map, driver pages and 59 API routes still open the database; they hold most of the inline SQL
+- [ ] Two- or three-step login for the founder account (the main protection for an account that can read every company); parked idea F106
+- [ ] While «همهٔ سازمان‌ها» is selected, new records go to the founder's home company; choose a company first to create elsewhere
+- [ ] The ratchet cannot see a leak through a child table without its own organization_id (product_prices was one); each conversion has to be read by eye
 - [ ] CodeQL did not run (download blocked); Semgrep ran without Pro
-- [ ] A short `SESSION_SECRET` is a warning, not a hard stop: confirm the live secret is 32+ characters, then it can be made one
-- [ ] The headless-browser redirect guard is tested against local servers only, not live Google Maps (no internet here): watch the first real imports
+- [ ] A short `SESSION_SECRET` is a warning, not a hard stop: confirm the live secret is 32+ characters
+- [ ] The headless-browser redirect guard is tested against local servers only, not live Google Maps
 - [ ] Transitive `vite` and `braces` advisories (build-time only)
-- [ ] Two companies cannot both claim the same district (shared geography, one group per district): a modelling limit for step 4
-- [ ] Not moved on purpose: the "unreferenced" scripts and `HANDOFF-*` docs (other files link to them)
+- [ ] Two companies cannot both claim the same district (a modelling limit)
 
 ### Next steps
-1. Your go on step 4: one data-access layer (88 routes and pages still call `getDb()` directly; every query would take a scope). It is the largest remaining step, so I suggest doing it module by module, dashboard first
-2. Step 5: decompose the oversized functions and components, one module per commit
-3. Step 6: merge the parallel commission and map families; role sets into one place
-4. Step 7: turn the ratchets into stricter blocking checks
-5. Decision for you: whether the production-database copy in git history must be purged
+1. Continue step 4 by domain (API routes with the most SQL first: admin groups/users, lead lists, facilities, visit plans), each with a repo module and tests
+2. Founder login hardening (two- or three-step) when you want it
+3. Step 5: decompose oversized functions and components
+4. Step 6: merge the parallel commission and map families; role sets into one place
+5. Step 7: stricter blocking checks
