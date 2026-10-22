@@ -8,7 +8,7 @@ import { readFileSync } from "node:fs";
  * "someone removed a guarantee while the page still looked finished". A rendered snapshot
  * would not notice a totals card quietly starting to count voided money.
  */
-const panel = readFileSync("components/sales/PaymentsPanel.tsx", "utf8");
+const panel = readFileSync("components/sales/PaymentsPanel.tsx", "utf8") + "\n" + readFileSync("lib/paymentsView.ts", "utf8"); // the screen and its extracted arithmetic
 const route = readFileSync("app/api/payments/[id]/route.ts", "utf8");
 
 describe("the payments screen", () => {
@@ -24,7 +24,7 @@ describe("the payments screen", () => {
 
   it("hides voided rows BY DEFAULT rather than showing them as live money", () => {
     expect(panel).toMatch(/useState<"hide" \| "only" \| "all">\("hide"\)/);
-    expect(panel).toMatch(/if \(fVoided === "hide" && p\.voided_at\) return false/);
+    expect(panel).toMatch(/if \(f\.voided === "hide" && p\.voided_at\) return false/);
   });
 
   it("keeps a voided row VISIBLE and struck through when you ask to see it", () => {
@@ -45,11 +45,11 @@ describe("the payments screen", () => {
     expect(panel).toContain('type: "text/csv;charset=utf-8;"');
     // A bare UTF-8 CSV on Windows Excel reads as Latin-1 and turns every Persian word into
     // mojibake -- a spreadsheet whose row labels are all wrong.
-    expect(panel).toMatch(/new Blob\(\["\\uFEFF"|new Blob\(\["﻿"/);
+    expect(panel).toMatch(/return "\uFEFF"|return "﻿"/); // the CSV text now starts with the BOM (lib/paymentsView.ts)
   });
 
   it("exports the FILTERED set, not everything, so the file matches the screen", () => {
-    expect(panel).toMatch(/const rows = filtered\.map/);
+    expect(panel).toMatch(/paymentsCsv\(filtered, customerName\)/);
   });
 
   it("paginates rather than rendering every receipt at once", () => {

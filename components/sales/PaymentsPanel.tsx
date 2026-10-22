@@ -13,45 +13,7 @@ import { faToman } from "@/lib/format";
 import PaymentFlow from "@/components/flows/PaymentFlow";
 import { autoOpenFlow, currentSearch } from "@/lib/flows/autoOpen";
 import { isToman, toToman } from "@/lib/money";
-
-const METHOD_LABEL: Record<string, string> = {
-  CASH: "نقد",
-  POS: "کارت‌خوان",
-  CARD_TO_CARD: "کارت به کارت",
-  CHEQUE: "چک",
-  CREDIT_NOTE: "بستانکاری",
-  OTHER: "سایر",
-};
-
-interface Customer {
-  id: number;
-  business_name: string;
-  customer_code: string;
-}
-
-interface Payment {
-  id: number;
-  customer_id: number;
-  amount_toman: number;
-  method: string;
-  received_at: string;
-  reference: string | null;
-  note: string | null;
-  voided_at: string | null;
-  void_reason?: string | null;
-}
-
-interface OpenOrder {
-  id: number;
-  total_toman: number;
-  paid_toman: number;
-  order_date: string;
-}
-
-interface AllocationDraft {
-  order_id: number | null;
-  amount_toman: number;
-}
+import { METHOD_LABEL, filterPayments, groupByMonth, paymentTotals, paymentsCsv, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
 
 const PAGE_SIZE = 25;
 
@@ -104,18 +66,10 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
      could print. */
   const live = useMemo(() => (payments ?? []).filter((p) => !p.voided_at), [payments]);
 
-  const filtered = useMemo(() => {
-    const day = (iso: string) => iso.slice(0, 10);
-    const rows = (payments ?? []).filter((p) => {
-      if (fVoided === "hide" && p.voided_at) return false;
-      if (fVoided === "only" && !p.voided_at) return false;
-      if (fMethod && p.method !== fMethod) return false;
-      if (fFrom && day(p.received_at) < fFrom) return false;
-      if (fTo && day(p.received_at) > fTo) return false;
-      return true;
-    });
-    return rows.sort((a, b) => (a.received_at < b.received_at ? 1 : -1));
-  }, [payments, fMethod, fFrom, fTo, fVoided]);
+  const filtered = useMemo(
+    () => filterPayments(payments ?? [], { method: fMethod, from: fFrom, to: fTo, voided: fVoided }),
+    [payments, fMethod, fFrom, fTo, fVoided]
+  );
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const safePage = Math.min(page, pageCount - 1);
@@ -125,60 +79,15 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
      figure on a card and a row in the table can never disagree. */
   const totals = useMemo(() => {
     const now = new Date();
-    const todayISO = tehranTodayIso(now);
-    const weekAgo = tehranTodayIso(new Date(now.getTime() - 7 * 864e5));
-    const monthStart = todayISO.slice(0, 8) + "01";
-    const window = (from: string) => live.filter((p) => p.received_at.slice(0, 10) >= from);
-    const today = live.filter((p) => p.received_at.slice(0, 10) === todayISO);
-    const build = (rows: Payment[]) => {
-      const m = new Map<string, number>();
-      for (const p of rows) m.set(p.method, (m.get(p.method) ?? 0) + p.amount_toman);
-      return {
-        total: rows.reduce((s, p) => s + p.amount_toman, 0),
-        byMethod: [...m.entries()].sort((a, b) => b[1] - a[1]),
-      };
-    };
-    return {
-      today: build(today),
-      week: build(window(weekAgo)),
-      month: build(window(monthStart)),
-    };
+    return paymentTotals(live, tehranTodayIso(now), tehranTodayIso(new Date(now.getTime() - 7 * 864e5)));
   }, [live]);
 
   /* Jalali month sections. A flat list of 400 receipts is unreadable; grouped by month it is
      a story. The grouping is derived at render, never stored. */
-  const months = useMemo(() => {
-    const m = new Map<string, Payment[]>();
-    for (const p of pageRows) {
-      const key = p.received_at.slice(0, 7);
-      const arr = m.get(key);
-      if (arr) arr.push(p);
-      else m.set(key, [p]);
-    }
-    return [...m.entries()];
-  }, [pageRows]);
+  const months = useMemo(() => groupByMonth(pageRows), [pageRows]);
 
   const exportCsv = useCallback(() => {
-    const esc = (v: string) => `"${String(v).replace(/"/g, '""')}"`;
-    const head = ["تاریخ", "مشتری", "مبلغ", "روش", "پیگیری", "یادداشت", "وضعیت"];
-    const rows = filtered.map((p) =>
-      [
-        p.received_at.slice(0, 10),
-        customerName(p.customer_id),
-        String(p.amount_toman),
-        METHOD_LABEL[p.method] ?? p.method,
-        p.reference ?? "",
-        p.note ?? "",
-        p.voided_at ? "ابطال‌شده" : "فعال",
-      ]
-        .map(esc)
-        .join(",")
-    );
-    /* A BOM, because Excel on Windows reads a bare UTF-8 CSV as Latin-1 and turns every
-       Persian word into mojibake — a spreadsheet whose row labels are all wrong. */
-    const blob = new Blob(["﻿" + [head.map(esc).join(","), ...rows].join("\n")], {
-      type: "text/csv;charset=utf-8;",
-    });
+    const blob = new Blob([paymentsCsv(filtered, customerName)], { type: "text/csv;charset=utf-8;" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = "payments.csv";
