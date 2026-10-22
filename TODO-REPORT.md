@@ -229,36 +229,29 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - Not done / gaps: ranking rests on search snippets and aggregator pages, not on reading each repo; star counts unverified; no skill was run against this repo
 - Next steps: 1. run `/security-review` on the open branch; 2. decide whether to read and try Trail of Bits `static-analysis` (Semgrep failed here earlier on a Python conflict)
 
-## Architecture audit: step 1 guardrails + Trail of Bits scan (2026-10-22)
-Full write-up: `docs/architecture-audit-2026-10-22.md` (Phase 1 inventory, then "Step 1.B").
+## Architecture audit: steps 1 to 3 (2026-10-22)
+Full write-up: `docs/architecture-audit-2026-10-22.md`. Step 1 merged as PR #43; steps 2 and 3 are PR #44.
 
 ### Done
-- [x] Phase 1 inventory (read-only), then your go on step 1
-- [x] Guardrail: `tests/tenancy-routes.test.ts` calls all 158 routes as org A against org B's ids, and anonymously
-- [x] It found 4 cross-tenant reads; variant analysis found 4 more (8 total, incl. a cross-tenant WRITE in territory regrouping and commission figures); all fixed with tests that fail on the old code; organisation is now a required parameter (`lib/orgScope.ts`)
-- [x] Guardrail: schema + seed snapshot and second-boot idempotence test (found 3 indexes missing on first boot; pinned)
-- [x] Guardrail: tests for the 9 untested `lib/repo` modules (found and fixed a 500 in the slow-import poll)
-- [x] Guardrail: `npm run check:architecture` ratchet, wired into CI (4 value-import cycles, 88 route/page db imports, `db.ts` 5,841 lines, 13 unscoped-looking SELECTs, 166 agent-tool files)
-- [x] Trail of Bits scan: Semgrep (10 scans, 3 findings, none in app code), variant-analysis, insecure-defaults, sharp-edges, supply-chain-risk-auditor (no advisory on any direct dependency); login timing leak fixed
-- [x] Full unit suite green (519 files, 4,250 tests at the last full run; new files verified separately)
-
-### Also done after your "go with your recommendations"
-- [x] SSRF fixed: every redirect hop must be on the map-service allow-list; the headless browser runs behind a request guard that re-vets every hop; tested including a real Chromium against real servers
-- [x] Slow-import notice now goes to the person who pasted the links (new `lead_import_jobs.created_by`)
-- [x] `SESSION_SECRET`: production logs a loud error under 32 characters (warning, not a hard stop, so a live deployment is not locked out); CI actions pinned to commit SHAs
+- [x] Step 1 (merged): guardrails (cross-tenant test over all 158 routes, schema and seed snapshot, tests for 9 untested repo modules, `npm run check:architecture` in CI); Trail of Bits scan; 8 cross-tenant bugs, a login timing leak and a 500 in the slow-import poll fixed
+- [x] Your decisions applied: SSRF in the maps-link importer fixed (every redirect hop vetted, headless browser behind a request guard, tested against a real Chromium); slow-import notice goes to whoever pasted the links; short `SESSION_SECRET` logs a loud error (not a hard stop); CI actions pinned to SHAs
+- [x] Step 2 housekeeping: removed another tool's committed workspace (166 files), 5 dead source files, 2 unused dev dependencies; archived finished planning notes
+- [x] Step 3: `lib/db.ts` 5,848 → 148 lines, split into `lib/database/` (base schema, 7 ordered migration eras, rebuilds, backfills, seeds, types); proven identical on a fresh database AND on a database built by the old code
+- [x] Import cycles 4 → 1 (the remaining one is intrinsic: events ↔ rules ↔ tasks, documented)
+- [x] The three indexes a fresh database used to lack are fixed at the root (rebuilds now recreate a table's indexes)
 
 ### Not done / gaps
-- [ ] CodeQL did not run (GitHub release download blocked here); Semgrep ran without Pro, so no cross-file taint
-- [ ] Make a short `SESSION_SECRET` a hard stop: needs you to confirm the live secret is 32+ characters first
+- [ ] **A copy of the production database is in git history** (`.zoocode/mcp/routeflow-mcp.db`). Removed from the tree; purging history needs your decision (see the audit doc)
+- [ ] CodeQL did not run (download blocked); Semgrep ran without Pro
+- [ ] A short `SESSION_SECRET` is a warning, not a hard stop: confirm the live secret is 32+ characters, then it can be made one
+- [ ] The headless-browser redirect guard is tested against local servers only, not live Google Maps (no internet here): watch the first real imports
 - [ ] Transitive `vite` and `braces` advisories (build-time only)
-- [ ] The tenancy net only sees text columns of org B it marked, and only the owner role of A; it does not render server components (covered by direct reader tests and the ratchet)
 - [ ] Two companies cannot both claim the same district (shared geography, one group per district): a modelling limit for step 4
-- [ ] The headless-browser guard converts redirects to a one-line navigation page; verified against local servers only, not against live Google Maps (no internet here), so watch the first real imports
-- [ ] Earlier gaps still open: see the sections above
+- [ ] Not moved on purpose: the "unreferenced" scripts and `HANDOFF-*` docs (other files link to them)
 
 ### Next steps
-1. Your call on the SSRF fix (I recommend doing it next, it is small) and on who gets the slow-import notice
-2. Step 2 housekeeping: remove `.zoocode*`, `superpowers-cline` (166 files) and the 5 dead files; archive one-off scripts and stale docs
-3. Step 3: move row types out of `lib/db.ts` and break the real cycles; then split `lib/db.ts` against the schema snapshot
-4. Step 4: one data-access layer (every query takes a scope)
-5. Steps 5 to 8 as in the audit doc
+1. Your go on step 4: one data-access layer (88 routes and pages still call `getDb()` directly; every query would take a scope). It is the largest remaining step, so I suggest doing it module by module, dashboard first
+2. Step 5: decompose the oversized functions and components, one module per commit
+3. Step 6: merge the parallel commission and map families; role sets into one place
+4. Step 7: turn the ratchets into stricter blocking checks
+5. Decision for you: whether the production-database copy in git history must be purged

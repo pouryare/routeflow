@@ -1,7 +1,7 @@
 "use client";
 
 import LocationCard from "@/components/leads/LocationCard";
-import { PoolViewItem } from "./PoolViewWrapper";
+import type { PoolViewItem } from "./PoolViewWrapper";
 import { type NavAppId } from "@/lib/navApps";
 
 interface PoolViewCompactProps {

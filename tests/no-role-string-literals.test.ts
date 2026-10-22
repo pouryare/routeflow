@@ -27,6 +27,9 @@ import { ROLES } from "@/lib/roles";
  *  rejects the known ARIA values rather than matching all of them. */
 const ROOT = join(__dirname, "..");
 const EXEMPT = new Set(["lib/roles.ts", "lib/db.ts"]);
+/** lib/database/ is lib/db.ts's boot code (migrations that rename the retired roles must name
+ *  them), so it is exempt for the same reason lib/db.ts is. */
+const isExempt = (file: string) => EXEMPT.has(file) || file.startsWith("lib/database/");
 
 /** The HTML/ARIA role attribute values this repo uses. */
 const ARIA_ROLES = new Set([
@@ -87,7 +90,7 @@ function spelled(src: string): { value: string; at: string }[] {
 
 describe("no query names a role that no longer exists", () => {
   const targets = [...filesUnder("app"), ...filesUnder("components"), ...filesUnder("lib")]
-    .filter((f) => !EXEMPT.has(f));
+    .filter((f) => !isExempt(f));
 
   it("finds files to scan (guards the walker itself)", () => {
     expect(targets.length).toBeGreaterThan(50);

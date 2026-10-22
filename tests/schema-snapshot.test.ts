@@ -49,12 +49,11 @@ function dumpCounts(db: DatabaseSync): string {
     .join("\n");
 }
 
-/** Objects that a SECOND boot creates but a FIRST boot of an empty file does not. Each is
- *  created with its table, then dropped when a later migration in the same boot rebuilds the
- *  table (DROP TABLE takes its indexes with it) and not recreated until the next start. So a
- *  fresh install has fewer indexes than the same install after a restart. Found by this test
- *  on 2026-10-22. It is a ratchet: fix one and delete its line, or this fails. */
-const FIRST_BOOT_MISSING = ["index idx_facilities_kind", "index idx_purchases_date", "index idx_saved_locations_name"];
+/** Objects that a SECOND boot creates but a FIRST boot of an empty file does not. Empty since the
+ *  rebuild helpers started putting a table's indexes back after DROP TABLE took them (three
+ *  indexes, idx_facilities_kind, idx_purchases_date and idx_saved_locations_name, used to be
+ *  missing until the next start). Keep it a ratchet: a new entry here is a regression. */
+const FIRST_BOOT_MISSING: string[] = [];
 
 /** "type name" -> collapsed DDL. */
 function objects(db: DatabaseSync): Map<string, string> {

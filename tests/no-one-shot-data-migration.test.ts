@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { dbLayerSource } from "./helpers/dbLayerSource";
 
 /** A data-dependent migration may not be guarded by a one-shot marker.
  *
@@ -14,7 +14,7 @@ import { readFileSync } from "node:fs";
  *  it applies the rule it CAN check: a migration called during boot may not read a marker
  *  to decide whether to run. Every marker read must be one the exempt list names.
  */
-const SRC = readFileSync("lib/db.ts", "utf8");
+const SRC = dbLayerSource(); // lib/db.ts plus lib/database/*.ts
 
 /** Boot-time markers that are legitimate, and why. Each of these changes the SCHEMA, so
  *  "have I done it yet" really is a question about time.

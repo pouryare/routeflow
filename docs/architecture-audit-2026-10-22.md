@@ -119,7 +119,7 @@ Remaining candidates, reviewed and left: the four `COUNT(*)/MAX(updated_at)` cac
 | low-medium | **Login timing reveals which usernames exist**: an unknown or deactivated account skipped the password hash, so it answered in microseconds while a real account took tens of ms, defeating the identical error message. | **fixed** in `app/api/login/route.ts` (every refusal pays one scrypt), tested. |
 | low | `SESSION_SECRET` is accepted at any length (the code only rejects an unset value). | **fixed as a warning**: production logs a loud `[security]` error at startup when the secret is shorter than 32 characters (`weakSecretReason`); it does not refuse to start, because that would lock everyone out of a deployment whose secret predates the rule. Set a 32+ character secret (`openssl rand -hex 32`), then it can be made a hard stop. |
 | low | `slow-import` notice: `maybeNotifySlowJob` inserted an events row without the NOT NULL `created_at`, so the first poll after 60 s of an import returned HTTP 500 and the notice was lost; **fixed**. Separately, `recipientsFor` had no branch for `lead_import.slow`, so it reached nobody. | **fixed**: the crash, and the notice now goes to the person who pasted the links (`lead_import_jobs.created_by`, new column; jobs created before it existed have nobody to tell). |
-| low | A fresh database lacks three indexes that the second boot creates (`idx_facilities_kind`, `idx_purchases_date`, `idx_saved_locations_name`): a later rebuild migration drops them. | pinned by `tests/schema-snapshot.test.ts` (`FIRST_BOOT_MISSING`); fix with the step 3 db split. |
+| low | A fresh database lacks three indexes that the second boot creates (`idx_facilities_kind`, `idx_purchases_date`, `idx_saved_locations_name`): a later rebuild migration drops them. | **fixed** (step 3): the table-rebuild helpers now recreate a table's indexes after `DROP TABLE` took them (`indexStatementsOf` in `lib/database/rebuilds.ts`); `FIRST_BOOT_MISSING` in `tests/schema-snapshot.test.ts` is empty and stays a ratchet. |
 
 Checked and fine (not assumed): `SESSION_SECRET` fails closed when unset; session tokens are HMAC-SHA256, verified with `timingSafeEqual` before the JSON is parsed, with a server-side `token_version` for revocation; passwords use scrypt with a per-user salt; no `eval`, `child_process`, or `new RegExp(userInput)`; every `dangerouslySetInnerHTML` renders a fixed lookup table keyed by an allow-listed `icon_key`; the cookie is `httpOnly`, `sameSite=lax`, `secure` in production; photo and avatar file names are generated server-side. The only default secrets are in demo/preview/CI scripts and are labelled "not for production".
 
@@ -129,3 +129,32 @@ Checked and fine (not assumed): `SESSION_SECRET` fails closed when unset; sessio
 - `tests/schema-snapshot.test.ts` + `tests/__snapshots__/`: the schema and seeded row counts a fresh `getDb()` builds, and a second-boot idempotence check. This is the proof obligation for splitting `lib/db.ts`.
 - `tests/repo-small-modules.test.ts`: the nine `lib/repo` modules that had no test.
 - `scripts/check-architecture.mjs` (`npm run check:architecture`, in CI): import cycles (value imports), direct `getDb` imports in routes and pages, `lib/db.ts` size, unscoped-looking tenant SELECTs, tracked agent-tool files. Baseline in `docs/architecture-baseline.json`; each number may only fall.
+
+
+---
+
+# Steps 2 and 3: housekeeping and the split of `lib/db.ts` (2026-10-22, PR #44)
+
+## Step 2: housekeeping (done)
+- Removed another AI tool's committed workspace (`.zoocode`, `.zoocodeules`, `superpowers-cline`: 166 files, including a copy of the production database); gitignored. History still holds it, see the open item below.
+- Deleted 5 unreferenced source files and 2 unused dev dependencies; archived two finished planning notes under `docs/archive/` (with an index).
+- **Not done on purpose:** moving the "unreferenced" scripts and the `HANDOFF-*` docs. knip only knew they are not in `package.json`; tests, the README and other documents reference them, so moving them would break links for no gain.
+
+## Step 3: `lib/db.ts` 5,848 → 148 lines (done)
+`lib/db.ts` still exports everything it did (no import site changed). The code lives in `lib/database/`:
+
+| File | What |
+|---|---|
+| `schema.ts` | the 1,850-line `CREATE ... IF NOT EXISTS` block, verbatim |
+| `migrate.ts` + `migrations/01..07` | the ordered migration eras (early columns; tenancy bootstrap; CRM and tenant columns; tenant-unique rebuilds; territory, orders, customers; notifications, roles, seeds; ledgers and late columns) |
+| `rebuilds.ts`, `backfills.ts`, `seeds.ts` | the helper functions and seed data that used to sit around `getDb()` |
+| `tenantTables.ts`, `types.ts` | the tenant table list and the row/domain types |
+
+How it was proven to change nothing: the fresh-database schema and seeded-row-count snapshots are unchanged by the move; the second-boot check holds; and a database built by the OLD code and opened by the NEW code ended with a schema and row counts identical to the old code's own second boot. Four guard tests that read the schema code as text were taught the new layout (`tests/helpers/dbLayerSource.ts`).
+
+The directory is `lib/database/`, not `lib/db/`: a `lib/db.ts` beside a `lib/db/` made Node's own ESM resolver (used by the seed and ts-hook scripts) fail with a directory import. The test suite caught it.
+
+Import cycles: 4 → 1. Broken: `lib/db.ts` ↔ `lib/repo/ledger.ts` (a connection-free `ledgerCore.ts`), `FilterChips` ↔ `FilterSheet` (a shared `ChipGroup.tsx`), `PoolViewCompact` ↔ `PoolViewWrapper` (a type imported as a value). **Left on purpose:** `events` ↔ `rules` ↔ `tasks`: emitting an event runs the rules, rules emit events and create tasks, tasks emit events. Breaking it with a late-bound hook could silently stop rules firing in a process that never loaded the rules module, and the ratchet holds it at 1.
+
+## Open
+- **A copy of the production database is in git history** (`.zoocode/mcp/routeflow-mcp.db`, 2 MB, committed 2026-10-21; its refresh script says it is copied from the live database). Removing it from the tree does not remove it from history. I did not open it (reading customer data was out of scope). Decision for you: if this repository is private and only you can read it, that may be acceptable; if not, the file needs purging from history (a history rewrite, which is yours to authorise) and the exposed credentials, if any, rotating.

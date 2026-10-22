@@ -2,13 +2,13 @@
 
 **Date:** 2026-09-25 · **Status:** Approved (brainstorming)
 **Scope:** Manager-facing lead health — one derived function feeding a decay clock and a funnel view.
-**Companion plan:** `implementation_plan.md` (repo root) — the adaptive `/leads` driver work.
+**Companion plan:** `docs/archive/2026-adaptive-leads-implementation-plan.md` — the adaptive `/leads` driver work.
 
 **These two documents are one feature split across a boundary, and the order matters.** The
 dependency is hard, not stylistic:
 
 ```
-implementation_plan.md                  2026-09-25-lead-decay-and-funnel-design.md
+docs/archive/2026-adaptive-leads-implementation-plan.md                  2026-09-25-lead-decay-and-funnel-design.md
 ──────────────────────                  ────────────────────────────────────────────
 Phase 2  fix leadVisitFlow          ──▶  reads visit_outcome
          (remove the dead convert step)     to compute stage + band

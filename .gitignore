@@ -91,3 +91,11 @@ tmp/visual/
 # Generated HTML, a SHA256 cache and graph.json — never source.
 graphify-out/
 .graphifyignore
+
+# Other AI tools' workspaces (their rules, journals, DB snapshots) were once committed here and
+# are not part of the app. Keep them local.
+/.zoocode/
+/.zoocodeules/
+/.cline/
+/.clinerules/
+/superpowers-cline/

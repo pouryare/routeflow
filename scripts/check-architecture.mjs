@@ -110,7 +110,7 @@ function importGraph(files) {
 }
 
 function tenantTables() {
-  const db = fs.readFileSync(path.join(ROOT, "lib", "db.ts"), "utf8");
+  const db = fs.readFileSync(path.join(ROOT, "lib", "database", "tenantTables.ts"), "utf8");
   return [...db.match(/TENANT_TABLES\s*=\s*\[([\s\S]*?)\]/)[1].matchAll(/"(\w+)"/g)].map((x) => x[1]);
 }
 
@@ -118,7 +118,7 @@ function tenantTables() {
 export function unscopedTenantSelects(files, tenants) {
   const out = [];
   for (const f of files) {
-    if (f === "lib/db.ts") continue;
+    if (f === "lib/db.ts" || f.startsWith("lib/database/")) continue;
     const src = fs.readFileSync(path.join(ROOT, f), "utf8");
     const re = /prepare\(\s*(`[^`]*`|"[^"\n]*")/g;
     let m;
