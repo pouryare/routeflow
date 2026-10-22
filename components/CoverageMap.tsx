@@ -47,6 +47,7 @@ import RecentCustomersSection from "@/components/coverage/RecentCustomersSection
 import FacilityMarkers from "@/components/coverage/FacilityMarkers";
 import LeadMarkers from "@/components/coverage/LeadMarkers";
 import FoundLocationMarker from "@/components/coverage/FoundLocationMarker";
+import { useMapShortcuts } from "@/components/coverage/useMapShortcuts";
 import CustomerColourSection from "@/components/coverage/CustomerColourSection";
 import CorridorBandLayer from "@/components/coverage/CorridorBandLayer";
 import MapSitesSection, { CORRIDOR_WIDTHS } from "@/components/coverage/MapSitesSection";
@@ -237,58 +238,10 @@ export default function CoverageMap({
   const closeSidebar = useCallback(() => setSidebarOpen(false), []);
   useSwipeDismiss(asideRef, "right", closeSidebar, sidebarOpen);
 
-  /** Keyboard shortcuts, for the half of this app's life that happens at a desk.
-   *
-   *  Every one is a single unmodified key, which is only safe because of the guard
-   *  below: without it, typing a customer's name into the search box would toggle the
-   *  sidebar on every "s". */
-  useEffect(() => {
-    function onKey(e: KeyboardEvent) {
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      const el = e.target as HTMLElement | null;
-      const tag = el?.tagName;
-      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT" || el?.isContentEditable) return;
-
-      switch (e.key) {
-        case "/":
-          e.preventDefault();
-          searchInputRef.current?.focus();
-          break;
-        case "s":
-        case "S":
-          setSidebarOpen((v) => !v);
-          break;
-        case "f":
-        case "F":
-          e.preventDefault();
-          // Opening the sidebar and focusing its filter are one action: the box does not
-          // exist to be focused while the panel is shut.
-          setSidebarOpen(true);
-          window.setTimeout(() => sectionFilterRef.current?.focus(), 50);
-          break;
-        case "g":
-        case "G":
-          if (myPosition) mapRef.current?.flyTo([myPosition.lat, myPosition.lng], 16, { duration: 1 });
-          else {
-            toast("هنوز موقعیتی دریافت نشده", "info");
-            retryPosition();
-          }
-          break;
-        case "?":
-        case "؟":
-          setShowShortcuts(true);
-          break;
-        case "Escape":
-          // Innermost first: Escape should peel one layer, not clear the screen.
-          if (showShortcuts) setShowShortcuts(false);
-          else if (selectedCustomer) setSelectedCustomer(null);
-          else if (sidebarOpen) setSidebarOpen(false);
-          break;
-      }
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [showShortcuts, selectedCustomer, sidebarOpen, toast, myPosition, retryPosition]);
+  useMapShortcuts({
+    searchInputRef, sectionFilterRef, mapRef, myPosition, retryPosition, toast,
+    showShortcuts, setShowShortcuts, selectedCustomer, setSelectedCustomer, sidebarOpen, setSidebarOpen,
+  });
 
   const [districtsVersion, setDistrictsVersion] = useState(0);
   const loadDistricts = useCallback(async () => {
