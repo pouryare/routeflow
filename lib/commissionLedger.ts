@@ -25,6 +25,7 @@ import { orgOfUser } from "./repo/userOrg";
 import { commissionFor, effectiveRate, type PlanMode } from "./commission/tiers";
 import { measureFor, type MeasurableOrder } from "./commission/measure";
 import { planFor } from "./repo/commissionTiers";
+import { orgClause } from "./orgScope";
 
 export interface Period {
   from: string;
@@ -321,9 +322,10 @@ export function statementFor(
 export function allStatements(
   db: DatabaseSync,
   period: Period,
-  opts: { groupId?: number | null } = {}
+  opts: { groupId?: number | null; organizationId: number | null }
 ): Statement[] {
   const groupId = opts.groupId;
+  const org = orgClause("u.organization_id", opts.organizationId);
   // A manager with no group can reach nobody. Returning [] rather than falling through
   // to the unscoped query is the same rule groupFilter follows: the empty case must read
   // as "nothing", never as "everything".
@@ -344,15 +346,15 @@ export function allStatements(
       ? db
           .prepare(
             `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id AND r.role = 'phone_sales'
-              WHERE u.active = 1 ORDER BY u.display_name`
+              WHERE u.active = 1${org.sql} ORDER BY u.display_name`
           )
-          .all()
+          .all(...org.params)
       : db
           .prepare(
             `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id AND r.role = 'phone_sales'
-              WHERE u.active = 1 AND u.group_id = ? ORDER BY u.display_name`
+              WHERE u.active = 1 AND u.group_id = ?${org.sql} ORDER BY u.display_name`
           )
-          .all(groupId)
+          .all(groupId, ...org.params)
   ) as unknown as { id: number }[];
 
   return people.map((person) => statementFor(db, person.id, period));

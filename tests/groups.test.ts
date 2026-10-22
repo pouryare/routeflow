@@ -44,7 +44,7 @@ beforeAll(() => {
   d.run("منطقه بزرگ", "mantaghe", PARENT, null, now);
 
   const c = db.prepare(
-    "INSERT INTO customers (customer_code, business_name, lat, lng, synced_at) VALUES (?, ?, ?, ?, ?)"
+    "INSERT INTO customers (customer_code, business_name, lat, lng, synced_at, organization_id) VALUES (?, ?, ?, ?, ?, 1)"
   );
   c.run("C1", "در چپ", 0.5, 0.5, now);
   c.run("C2", "در راست", 0.5, 2.5, now);
@@ -77,21 +77,21 @@ describe("districtIdForPoint", () => {
 
 describe("groupForPoint", () => {
   it("maps a point to the group owning its district", () => {
-    expect(groupForPoint(getDb(), 0.5, 0.5)).toBe(west);
-    expect(groupForPoint(getDb(), 0.5, 2.5)).toBe(east);
+    expect(groupForPoint(getDb(), 0.5, 0.5, 1)).toBe(west);
+    expect(groupForPoint(getDb(), 0.5, 2.5, 1)).toBe(east);
   });
   it("returns null when the containing district belongs to no group", () => {
     // (lat 1.5, lng 3.5) is inside PARENT and inside neither LEFT nor RIGHT. PARENT has
     // group_id NULL, so this exercises "found a district, nobody owns it" -- which is a
     // different path from "no district contains this point" above.
-    expect(groupForPoint(getDb(), 1.5, 3.5)).toBeNull();
+    expect(groupForPoint(getDb(), 1.5, 3.5, 1)).toBeNull();
   });
 });
 
 describe("recomputeCustomerGroups", () => {
   it("assigns each located customer to its territory's group", () => {
     const db = getDb();
-    recomputeCustomerGroups(db);
+    recomputeCustomerGroups(db, 1);
     const rows = db.prepare("SELECT customer_code, group_id FROM customers ORDER BY customer_code").all() as unknown as {
       customer_code: string; group_id: number | null;
     }[];
@@ -105,7 +105,7 @@ describe("recomputeCustomerGroups", () => {
   it("follows territory when a district changes hands", () => {
     const db = getDb();
     db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(east, leftId);
-    recomputeCustomerGroups(db);
+    recomputeCustomerGroups(db, 1);
     const row = db.prepare("SELECT group_id FROM customers WHERE customer_code = 'C1'").get() as { group_id: number };
     expect(row.group_id).toBe(east);
   });

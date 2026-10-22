@@ -73,7 +73,7 @@ beforeAll(() => {
   ctx.west = Number(group.run("غرب", "west", "#f0f", now).lastInsertRowid);
 
   const user = db.prepare(
-    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at) VALUES (?, 'x', ?, ?, ?, 1, ?)"
+    "INSERT INTO users (username, password_hash, display_name, role, group_id, active, created_at, organization_id) VALUES (?, 'x', ?, ?, ?, 1, ?, 1)"
   );
   ctx.owner = Number(user.run("o", "مالک", "owner", null, now).lastInsertRowid);
   ctx.seller = Number(user.run("s", "فروشنده", "phone_sales", ctx.east, now).lastInsertRowid);
@@ -179,21 +179,21 @@ describe("driverStatementFor", () => {
 
 describe("allDriverStatements", () => {
   it("scopes to one group when a groupId is given", () => {
-    const rows = allDriverStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, { groupId: ctx.east });
+    const rows = allDriverStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, { groupId: ctx.east, organizationId: 1 });
     const names = rows.map((r) => r.display_name);
     expect(names).toContain("راننده شرق");
     expect(names).not.toContain("راننده غرب");
   });
 
   it("returns nobody for a null group, never everybody", () => {
-    const rows = allDriverStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, { groupId: null });
+    const rows = allDriverStatements(getDb(), { from: "2026-01-01", to: "2026-12-29" }, { groupId: null, organizationId: 1 });
     expect(rows).toEqual([]);
   });
 
   it("agrees with the individual statement", () => {
     const db = getDb();
     const period = { from: "2026-01-01", to: "2026-12-29" };
-    const row = allDriverStatements(db, period).find((r) => r.driver_user_id === ctx.eastDriver)!;
+    const row = allDriverStatements(db, period, { organizationId: 1 }).find((r) => r.driver_user_id === ctx.eastDriver)!;
     const one = driverStatementFor(db, ctx.eastDriver, period);
     expect(row.accrued_toman).toBe(one.accrued_toman);
   });

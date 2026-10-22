@@ -94,7 +94,7 @@ describe("recordPurchase creates batches", () => {
       avg_cost_toman: number;
     }).avg_cost_toman;
     expect(cost).toBe(1100); // (900*1000 + 100*2000) / 1000
-    const pos = stockPosition(db).find((r) => r.product_id === pA)!;
+    const pos = stockPosition(db, 1).find((r) => r.product_id === pA)!;
     expect(pos.on_hand).toBe(1000);
   });
 });

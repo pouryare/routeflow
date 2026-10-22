@@ -248,6 +248,15 @@ export function recipientsFor(
         if (sp) out.add(sp);
       }
     }
+  } else if (typeCode === "lead_import.slow") {
+    // The person who pasted the links is the one waiting on them.
+    const jobId = ctx.meta["job_id"];
+    if (typeof jobId === "number") {
+      const row = getDb()
+        .prepare("SELECT created_by FROM lead_import_jobs WHERE id = ? AND organization_id = ?")
+        .get(jobId, organizationId) as { created_by: number | null } | undefined;
+      if (row?.created_by != null) out.add(row.created_by);
+    }
   } else if (typeCode === "reminder.due") {
     if (ctx.entity_type === "customer" && ctx.entity_id != null) {
       const sp = customerSalesperson(organizationId, ctx.entity_id);

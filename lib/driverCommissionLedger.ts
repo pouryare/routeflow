@@ -15,6 +15,7 @@ import { accrualToman } from "./commission";
 import { isToman } from "./money";
 import { orgOfUser } from "./repo/userOrg";
 import type { Period } from "./commissionLedger";
+import { orgClause } from "./orgScope";
 
 export interface DriverStop {
   order_id: number;
@@ -222,9 +223,10 @@ export function driverStatementFor(
 export function allDriverStatements(
   db: DatabaseSync,
   period: Period,
-  opts: { groupId?: number | null } = {}
+  opts: { groupId?: number | null; organizationId: number | null }
 ): DriverStatement[] {
   const groupId = opts.groupId;
+  const org = orgClause("u.organization_id", opts.organizationId);
   if (groupId === null) return [];
 
   /* People who HOLD a van role, whoever their primary — the driver ledger's counterpart to
@@ -240,16 +242,16 @@ export function allDriverStatements(
           .prepare(
             `SELECT DISTINCT u.id FROM users u
                JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
-              WHERE u.active = 1 ORDER BY u.display_name`
+              WHERE u.active = 1${org.sql} ORDER BY u.display_name`
           )
-          .all()
+          .all(...org.params)
       : db
           .prepare(
             `SELECT DISTINCT u.id FROM users u
                JOIN user_roles r ON r.user_id = u.id AND r.role IN ('delivery_driver', 'field_rep')
-              WHERE u.active = 1 AND u.group_id = ? ORDER BY u.display_name`
+              WHERE u.active = 1 AND u.group_id = ?${org.sql} ORDER BY u.display_name`
           )
-          .all(groupId)
+          .all(groupId, ...org.params)
   ) as unknown as { id: number }[];
 
   return people.map((person) => driverStatementFor(db, person.id, period));

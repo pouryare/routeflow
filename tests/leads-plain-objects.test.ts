@@ -19,7 +19,7 @@ beforeAll(() => {
     /* maps_url is NOT NULL — the column list here is read off the live schema rather than
        guessed, which is a lesson this session repeated several times over. */
     `INSERT INTO saved_locations (name, lat, lng, organization_id, maps_url, created_at)
-     VALUES ('pin', 35.7, 51.4, NULL, 'https://maps.example/pin', '2026-01-01')`
+     VALUES ('pin', 35.7, 51.4, 1, 'https://maps.example/pin', '2026-01-01')`
   );
 });
 
@@ -37,7 +37,7 @@ beforeAll(() => {
  * pass on a null-prototype object, which is precisely why the type system stayed silent. */
 describe("readLeadPins", () => {
   it("returns plain objects, not node:sqlite's null-prototype rows", () => {
-    const pins = readLeadPins(getDb());
+    const pins = readLeadPins(getDb(), 1);
     expect(pins.length).toBeGreaterThan(0);
     for (const pin of pins) {
       expect(Object.getPrototypeOf(pin), `pin ${pin.id} has a null prototype`).toBe(Object.prototype);
@@ -45,12 +45,12 @@ describe("readLeadPins", () => {
   });
 
   it("still returns the four fields it always did", () => {
-    const [pin] = readLeadPins(getDb());
+    const [pin] = readLeadPins(getDb(), 1);
     expect(pin).toEqual({ id: pin.id, name: "pin", lat: 35.7, lng: 51.4 });
   });
 
   it("survives a structuredClone, which is what the RSC boundary does to it", () => {
-    for (const pin of readLeadPins(getDb())) {
+    for (const pin of readLeadPins(getDb(), 1)) {
       expect(() => structuredClone(pin)).not.toThrow();
     }
   });

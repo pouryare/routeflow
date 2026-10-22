@@ -10,6 +10,14 @@ export async function register() {
   // node:sqlite nor node:zlib.
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
+  // A short signing secret makes session cookies guessable offline. Loud, not fatal: a hard stop
+  // here would lock everyone out of a live deployment whose secret predates the rule.
+  if (process.env.NODE_ENV === "production") {
+    const { weakSecretReason } = await import("./lib/auth");
+    const weak = weakSecretReason(process.env.SESSION_SECRET);
+    if (weak) console.error(`[security] ${weak}. Sessions are signed with it; change it (this signs everyone out once).`);
+  }
+
   try {
     const { geometryVersion, getGeometryPayload } = await import("./lib/districtGeometry");
     const version = geometryVersion();

@@ -150,7 +150,7 @@ describe("recordPurchase", () => {
 
 describe("stockPosition", () => {
   it("counts everything received", () => {
-    const rows = stockPosition(getDb());
+    const rows = stockPosition(getDb(), 1);
     const butter = rows.find((r) => r.product_id === ctx.product)!;
     expect(butter.purchased_qty).toBe(2000);
   });
@@ -180,14 +180,14 @@ describe("stockPosition", () => {
       by: ctx.driver,
     });
 
-    const butter = stockPosition(db).find((r) => r.product_id === ctx.product)!;
+    const butter = stockPosition(db, 1).find((r) => r.product_id === ctx.product)!;
     expect(butter.delivered_qty).toBe(300); // 3 packs x 100 عدد
     expect(butter.on_hand).toBe(1700);
   });
 
   it("ignores an order that has not been delivered", () => {
     const db = getDb();
-    const before = stockPosition(db).find((r) => r.product_id === ctx.product)!.on_hand;
+    const before = stockPosition(db, 1).find((r) => r.product_id === ctx.product)!.on_hand;
     const order = createOrder(db, {
       customer_id: ctx.customer,
       order_date: "2026-06-05",
@@ -196,17 +196,17 @@ describe("stockPosition", () => {
       lines: [{ product_id: ctx.product, packaging_id: ctx.packaging, packs: 4 }],
     });
     confirmOrder(db, order.id);
-    expect(stockPosition(db).find((r) => r.product_id === ctx.product)!.on_hand).toBe(before);
+    expect(stockPosition(db, 1).find((r) => r.product_id === ctx.product)!.on_hand).toBe(before);
   });
 
   it("shows a product that has never been bought as zero, not missing", () => {
-    const dough = stockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    const dough = stockPosition(getDb(), 1).find((r) => r.product_id === ctx.other)!;
     expect(dough.purchased_qty).toBe(0);
     expect(dough.on_hand).toBe(0);
   });
 
   it("reports stock value at the current average cost", () => {
-    const butter = stockPosition(getDb()).find((r) => r.product_id === ctx.product)!;
+    const butter = stockPosition(getDb(), 1).find((r) => r.product_id === ctx.product)!;
     expect(butter.value_toman).toBe(butter.on_hand * butter.avg_cost_toman);
   });
 
@@ -238,7 +238,7 @@ describe("stockPosition", () => {
       by: ctx.driver,
     });
 
-    const row = stockPosition(db).find((r) => r.product_id === bare)!;
+    const row = stockPosition(db, 1).find((r) => r.product_id === bare)!;
     expect(row.on_hand).toBe(-20);
     expect(row.negative).toBe(true);
   });
@@ -286,8 +286,8 @@ describe("stockStatus", () => {
 
 describe("advancedStockPosition", () => {
   it("carries stockPosition's own figures untouched", () => {
-    const advanced = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.product)!;
-    const plain = stockPosition(getDb()).find((r) => r.product_id === ctx.product)!;
+    const advanced = advancedStockPosition(getDb(), 1).find((r) => r.product_id === ctx.product)!;
+    const plain = stockPosition(getDb(), 1).find((r) => r.product_id === ctx.product)!;
     expect(advanced.on_hand).toBe(plain.on_hand);
     expect(advanced.value_toman).toBe(plain.value_toman);
   });
@@ -297,7 +297,7 @@ describe("advancedStockPosition", () => {
     const p = createProduct(db, { name: "کالای آستانه‌دار", kg_per_base_unit: 1, organization_id: 1 });
     setStockThresholds(db, p, { reorder_point: 100, target_stock: 500 });
     // Never purchased, so on_hand is 0 -- below its own reorder point.
-    expect(advancedStockPosition(db).find((r) => r.product_id === p)!.status).toBe("crit");
+    expect(advancedStockPosition(db, 1).find((r) => r.product_id === p)!.status).toBe("crit");
 
     recordPurchase(db, {
       purchase_date: "2026-08-01",
@@ -305,11 +305,11 @@ describe("advancedStockPosition", () => {
       organization_id: 1,
       lines: [{ product_id: p, base_qty: 300, unit_cost_toman: 1000 }],
     });
-    expect(advancedStockPosition(db).find((r) => r.product_id === p)!.status).toBe("ok");
+    expect(advancedStockPosition(db, 1).find((r) => r.product_id === p)!.status).toBe("ok");
   });
 
   it("is null-thresholded and سالم for a product nobody has configured", () => {
-    const row = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    const row = advancedStockPosition(getDb(), 1).find((r) => r.product_id === ctx.other)!;
     expect(row.reorder_point).toBeNull();
     expect(row.target_stock).toBeNull();
     expect(row.status).toBe("ok");
@@ -346,7 +346,7 @@ describe("advancedStockPosition", () => {
       by: ctx.driver,
     });
 
-    const row = advancedStockPosition(db).find((r) => r.product_id === p)!;
+    const row = advancedStockPosition(db, 1).find((r) => r.product_id === p)!;
     expect(row.spark).toHaveLength(14);
     expect(row.spark[13]).toBe(100); // today, the last entry -- 2 packs x 50
     expect(row.daily_rate).toBeCloseTo(100 / 14, 5);
@@ -355,7 +355,7 @@ describe("advancedStockPosition", () => {
   });
 
   it("is null, not Infinity, when nothing has moved recently", () => {
-    const row = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    const row = advancedStockPosition(getDb(), 1).find((r) => r.product_id === ctx.other)!;
     expect(row.daily_rate).toBe(0);
     expect(row.days_left).toBeNull();
   });
@@ -375,12 +375,12 @@ describe("advancedStockPosition", () => {
       organization_id: 1,
       lines: [{ product_id: p, base_qty: 10, unit_cost_toman: 1200 }],
     });
-    const row = advancedStockPosition(db).find((r) => r.product_id === p)!;
+    const row = advancedStockPosition(db, 1).find((r) => r.product_id === p)!;
     expect(row.last_purchase_date).toBe("2026-07-15");
   });
 
   it("is null for a product that has never been bought", () => {
-    const row = advancedStockPosition(getDb()).find((r) => r.product_id === ctx.other)!;
+    const row = advancedStockPosition(getDb(), 1).find((r) => r.product_id === ctx.other)!;
     expect(row.last_purchase_date).toBeNull();
   });
 });

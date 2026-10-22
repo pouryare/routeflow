@@ -9,8 +9,8 @@
 // lifecycle, and from resolveMapsLink.ts (fetch-based) since it is the last resort
 // in the resolution chain, not a step every link takes.
 
-import { chromium, type Browser, type Page } from "playwright";
-import { isValidCoord } from "@/lib/geoLinks";
+import { chromium, type Browser, type BrowserContext, type Page, type Route } from "playwright";
+import { browserRequestAllowed, isValidCoord } from "@/lib/geoLinks";
 
 // Tehran province bounds -- generous enough to accept any venue in the region
 // while rejecting the camera-center defaults (e.g. 0,0) that show up on blank
@@ -86,6 +86,57 @@ function extractFromUrl(url: string): { lat: number; lng: number } | null {
   return isValidCoord(lat, lng) ? { lat, lng } : null;
 }
 
+/** Title of the one-line page that stands in for an HTTP redirect (see installRequestGuard). */
+export const REDIRECT_STUB_TITLE = "__rf_redirect__";
+
+/** Every request this browser makes passes through here, so a link on an allowed site that
+ *  redirects to an internal address (or to a site off the allow-list) is refused before any
+ *  request leaves the machine. Without it Chromium follows redirects freely and runs whatever
+ *  page it lands on, from inside the server's network.
+ *
+ *  Chromium follows an HTTP redirect inside its network stack and does NOT call a route handler
+ *  again for the target, so `route.continue()` alone vets only the first hop. For a top-level
+ *  navigation the guard therefore fetches the page itself WITHOUT following redirects. A 3xx is
+ *  not passed on: its target is checked, and if allowed the browser is handed a stub page that
+ *  navigates there, which is a fresh navigation and comes back through this handler. Every hop is
+ *  vetted, however long the chain. Sub-resources (scripts, tiles) keep `continue()`: their
+ *  redirects are not readable by the page and the pages in question are the map services'. */
+export async function installRequestGuard(
+  context: Pick<BrowserContext, "route">,
+  /** The request policy. Only a test passes one (to point the guard at local servers). */
+  allowed: (url: string, isNavigation: boolean) => boolean = browserRequestAllowed
+): Promise<void> {
+  await context.route("**/*", async (route: Route) => {
+    const req = route.request();
+    const navigation = req.isNavigationRequest();
+    if (!allowed(req.url(), navigation)) return route.abort("blockedbyclient");
+    if (!navigation || !/^https?:/i.test(req.url())) return route.continue();
+
+    let res;
+    try {
+      res = await route.fetch({ maxRedirects: 0 });
+    } catch {
+      return route.abort("failed");
+    }
+    const status = res.status();
+    if (status < 300 || status >= 400) return route.fulfill({ response: res });
+
+    const location = res.headers()["location"];
+    let next: string;
+    try {
+      next = new URL(location ?? "", req.url()).href;
+    } catch {
+      return route.abort("blockedbyclient");
+    }
+    if (!allowed(next, true)) return route.abort("blockedbyclient");
+    return route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: `<!doctype html><title>${REDIRECT_STUB_TITLE}</title><script>location.replace(${JSON.stringify(next).replace(/</g, "\\u003c")})</script>`,
+    });
+  });
+}
+
 export interface BrowserExtractResult {
   lat: number;
   lng: number;
@@ -98,9 +149,14 @@ export interface BrowserExtractResult {
 // resolution strategy. Never throws.
 export async function extractViaBrowser(url: string): Promise<BrowserExtractResult | null> {
   let page: Page | null = null;
+  let context: BrowserContext | null = null;
   try {
     const b = await getBrowser();
-    page = await b.newPage();
+    // A fresh context per link, so the request guard is installed before the first request and
+    // no cookie or storage from one pasted link can reach the next.
+    context = await b.newContext();
+    await installRequestGuard(context);
+    page = await context.newPage();
     // A long-lived navigation timeout; we'd rather fall through to Nominatim
     // than hang the whole batch on one slow host.
     await page.goto(url, {
@@ -110,6 +166,15 @@ export async function extractViaBrowser(url: string): Promise<BrowserExtractResu
     // Let the map's own JS initialise -- APP_INITIALIZATION_STATE is populated
     // after the scripts run, not at domcontentloaded.
     await page.waitForTimeout(2000);
+
+    /* A redirect is served as a stub page that navigates on (see installRequestGuard); wait for
+       the chain to settle on a real page, bounded. */
+    for (let hop = 0; hop < 8; hop++) {
+      const onStub = await page.title().then((t) => t === REDIRECT_STUB_TITLE, () => true);
+      if (!onStub) break;
+      await page.waitForEvent("framenavigated", { timeout: 4000 }).catch(() => {});
+      await page.waitForTimeout(500);
+    }
 
     const finalUrl = page.url();
 
@@ -137,6 +202,13 @@ export async function extractViaBrowser(url: string): Promise<BrowserExtractResu
         await page.close();
       } catch {
         /* page already gone */
+      }
+    }
+    if (context) {
+      try {
+        await context.close();
+      } catch {
+        /* context already gone */
       }
     }
   }

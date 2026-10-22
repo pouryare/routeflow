@@ -222,3 +222,43 @@ _Updated 2026-10-21. Plans: `docs/superpowers/plans/2026-10-20-mobile-first-tapf
 - [x] CI #67, #49, #25, #20, #1: old runs on superseded branches (mobile-first / inspiring-einstein), already merged via later green runs; nothing to fix
 - Not done / gaps: the same-ms tie could in principle affect a real device pull (tombstone in the same ms as the watermark); not changed, as it needs a decision on `>=` vs `>`
 - Next steps: 1. decide on watermark inclusivity
+
+## Code-review and security skills survey (2026-10-22)
+- [x] Listed built-in skills: `security-review`, `code-review`, `engineering:code-review`
+- [x] Searched the web and ranked 7 options (reply above); nothing installed
+- Not done / gaps: ranking rests on search snippets and aggregator pages, not on reading each repo; star counts unverified; no skill was run against this repo
+- Next steps: 1. run `/security-review` on the open branch; 2. decide whether to read and try Trail of Bits `static-analysis` (Semgrep failed here earlier on a Python conflict)
+
+## Architecture audit: step 1 guardrails + Trail of Bits scan (2026-10-22)
+Full write-up: `docs/architecture-audit-2026-10-22.md` (Phase 1 inventory, then "Step 1.B").
+
+### Done
+- [x] Phase 1 inventory (read-only), then your go on step 1
+- [x] Guardrail: `tests/tenancy-routes.test.ts` calls all 158 routes as org A against org B's ids, and anonymously
+- [x] It found 4 cross-tenant reads; variant analysis found 4 more (8 total, incl. a cross-tenant WRITE in territory regrouping and commission figures); all fixed with tests that fail on the old code; organisation is now a required parameter (`lib/orgScope.ts`)
+- [x] Guardrail: schema + seed snapshot and second-boot idempotence test (found 3 indexes missing on first boot; pinned)
+- [x] Guardrail: tests for the 9 untested `lib/repo` modules (found and fixed a 500 in the slow-import poll)
+- [x] Guardrail: `npm run check:architecture` ratchet, wired into CI (4 value-import cycles, 88 route/page db imports, `db.ts` 5,841 lines, 13 unscoped-looking SELECTs, 166 agent-tool files)
+- [x] Trail of Bits scan: Semgrep (10 scans, 3 findings, none in app code), variant-analysis, insecure-defaults, sharp-edges, supply-chain-risk-auditor (no advisory on any direct dependency); login timing leak fixed
+- [x] Full unit suite green (519 files, 4,250 tests at the last full run; new files verified separately)
+
+### Also done after your "go with your recommendations"
+- [x] SSRF fixed: every redirect hop must be on the map-service allow-list; the headless browser runs behind a request guard that re-vets every hop; tested including a real Chromium against real servers
+- [x] Slow-import notice now goes to the person who pasted the links (new `lead_import_jobs.created_by`)
+- [x] `SESSION_SECRET`: production logs a loud error under 32 characters (warning, not a hard stop, so a live deployment is not locked out); CI actions pinned to commit SHAs
+
+### Not done / gaps
+- [ ] CodeQL did not run (GitHub release download blocked here); Semgrep ran without Pro, so no cross-file taint
+- [ ] Make a short `SESSION_SECRET` a hard stop: needs you to confirm the live secret is 32+ characters first
+- [ ] Transitive `vite` and `braces` advisories (build-time only)
+- [ ] The tenancy net only sees text columns of org B it marked, and only the owner role of A; it does not render server components (covered by direct reader tests and the ratchet)
+- [ ] Two companies cannot both claim the same district (shared geography, one group per district): a modelling limit for step 4
+- [ ] The headless-browser guard converts redirects to a one-line navigation page; verified against local servers only, not against live Google Maps (no internet here), so watch the first real imports
+- [ ] Earlier gaps still open: see the sections above
+
+### Next steps
+1. Your call on the SSRF fix (I recommend doing it next, it is small) and on who gets the slow-import notice
+2. Step 2 housekeeping: remove `.zoocode*`, `superpowers-cline` (166 files) and the 5 dead files; archive one-off scripts and stale docs
+3. Step 3: move row types out of `lib/db.ts` and break the real cycles; then split `lib/db.ts` against the schema snapshot
+4. Step 4: one data-access layer (every query takes a scope)
+5. Steps 5 to 8 as in the audit doc

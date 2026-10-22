@@ -3305,6 +3305,13 @@ export function getDb(): DatabaseSync {
     db.exec("ALTER TABLE visit_plans ADD COLUMN purpose TEXT");
   }
 
+  /* Who pasted the links. The "this import is slow" notice goes to that person, and a job
+     created before this column existed has nobody to tell, so it stays NULL (no guess). */
+  const importJobCols = db.prepare("PRAGMA table_info(lead_import_jobs)").all() as { name: string }[];
+  if (!importJobCols.some((c) => c.name === "created_by")) {
+    db.exec("ALTER TABLE lead_import_jobs ADD COLUMN created_by INTEGER REFERENCES users(id)");
+  }
+
   const customerCreditCols = db.prepare("PRAGMA table_info(customers)").all() as { name: string }[];
   if (!customerCreditCols.some((c) => c.name === "credit_limit_toman")) {
     db.exec("ALTER TABLE customers ADD COLUMN credit_limit_toman INTEGER");

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { extractLatLng, extractPlusCodeCoords, isAllowedLinkHost, isPrivateOrLocalHost } from "@/lib/geoLinks";
+import { extractLatLng, extractPlusCodeCoords, isAllowedHop, isAllowedLinkHost } from "@/lib/geoLinks";
 import { requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 import { fetchNoRedirect } from "@/lib/fetchNoRedirect";
@@ -44,7 +44,7 @@ export async function GET(req: NextRequest) {
   // Short links (maps.app.goo.gl, nshn.ir, etc.) carry no coordinates in the short
   // URL itself -- only the redirect chain reveals the real one. Followed by hand,
   // one hop at a time, so every intermediate hostname can be checked against
-  // isPrivateOrLocalHost before the next request goes out (an auto-following
+  // isAllowedHop before the next request goes out (an auto-following
   // `redirect: "follow"` would happily chase a malicious redirect straight to
   // internal infrastructure with no chance to intervene).
   try {
@@ -58,9 +58,9 @@ export async function GET(req: NextRequest) {
 
         const next = new URL(location, current);
         if (next.protocol !== "http:" && next.protocol !== "https:") break;
-        if (isPrivateOrLocalHost(next.hostname)) {
+        if (!isAllowedHop(next)) {
           return NextResponse.json(
-            { ok: false, error: "این لینک به یک آدرس داخلی هدایت می‌شود" },
+            { ok: false, error: "این لینک به آدرسی خارج از سرویس‌های پشتیبانی‌شده هدایت می‌شود" },
             { status: 400 }
           );
         }

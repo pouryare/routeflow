@@ -9,6 +9,11 @@ const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 // One message for "no such user", "wrong password" and "deactivated account". Telling
 // them apart would turn this endpoint into a way to enumerate who works here.
 const BAD_CREDENTIALS = "نام کاربری یا رمز عبور اشتباه است";
+/* A well-formed salt:hash that no password matches. Verified against when the account is
+   missing or deactivated, so those requests pay the same scrypt cost as a wrong password. Without
+   it the identical message is undone by the clock: an unknown username answers in microseconds
+   and a real one in tens of milliseconds, which lists who works here. */
+const NO_ACCOUNT_HASH = `${"00".repeat(16)}:${"00".repeat(64)}`;
 
 export async function POST(req: NextRequest) {
   const ip = clientKey(req);
@@ -37,7 +42,8 @@ export async function POST(req: NextRequest) {
   // password several people know is not one anybody can be held to. The bootstrap path
   // for an owner locked out of their own account is scripts/create-user.mjs on the server.
   const user = username ? findUserByUsername(username) : null;
-  if (!user || !user.active || typeof password !== "string" || !verifyPassword(password, user.password_hash)) {
+  const matches = verifyPassword(typeof password === "string" ? password : "", user?.password_hash ?? NO_ACCOUNT_HASH);
+  if (!user || !user.active || typeof password !== "string" || !matches) {
     return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
   }
 

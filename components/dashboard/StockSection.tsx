@@ -1,4 +1,4 @@
-import type { Session } from "@/lib/session";
+import { orgScopeId, type Session } from "@/lib/session";
 import { yieldToEventLoop } from "@/lib/yieldToEventLoop";
 import { getDb } from "@/lib/db";
 import { fillRateByDriver } from "@/lib/dashboard";
@@ -17,7 +17,7 @@ export default async function StockSection({ session }: { session: Session }) {
   await yieldToEventLoop();
   if (session.role === "phone_sales") return null;
   const db = getDb();
-  const stock = stockPosition(db);
+  const stock = stockPosition(db, orgScopeId(session));
   const stockValue = stock.reduce((sum, r) => sum + r.value_toman, 0);
   const negatives = stock.filter((r) => r.negative);
 

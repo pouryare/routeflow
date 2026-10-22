@@ -8,7 +8,7 @@ import { geometryUrl } from "@/lib/precision";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, groupFilterWithShared, scopeGroupIds } from "@/lib/session";
+import { getSessionFromCookies, groupFilterWithShared, orgScopeId, scopeGroupIds } from "@/lib/session";
 import { readGroups } from "@/lib/groups";
 import { readLeadPins } from "@/lib/repo/leads";
 import PageHeader from "@/components/meridian/PageHeader";
@@ -36,7 +36,7 @@ export default async function Home() {
   const districts = readDistrictProperties(db, scope);
   const customers = readCustomers(db, scope, { organizationId: session.organizationId });
   const facilities = readFacilities(db, groupFilterWithShared(session));
-  const initialLeads = readLeadPins(db);
+  const initialLeads = readLeadPins(db, orgScopeId(session));
   // Only the groups this caller can actually see: an owner gets all of them, a manager
   // gets their own, which is the only one any district they can see belongs to.
   const visibleGroups = readGroups(db, session.organizationId)

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb, District, logActivity } from "@/lib/db";
-import { canReachGroup, requireRole } from "@/lib/session";
+import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
 import { recomputeCustomerGroups } from "@/lib/groups";
 import { STATUS_LABEL } from "@/lib/types";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
@@ -102,7 +102,7 @@ export async function PATCH(req: NextRequest) {
   // moving territory has to drag the customers with it or they keep answering to the
   // previous owner. Runs after COMMIT because it opens its own transaction.
   let regrouped = 0;
-  if (group_id !== undefined) regrouped = recomputeCustomerGroups(db);
+  if (group_id !== undefined) regrouped = recomputeCustomerGroups(db, orgScopeId(guard.session));
 
   return NextResponse.json({ ok: true, updated, regrouped });
 }

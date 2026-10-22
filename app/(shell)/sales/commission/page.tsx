@@ -3,7 +3,7 @@ import { listPlans } from "@/lib/repo/commissionTiers";
 import { latestPlans } from "@/lib/commission/copyPlan";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies } from "@/lib/session";
+import { getSessionFromCookies, orgScopeId } from "@/lib/session";
 import { getDb, plain } from "@/lib/db";
 import { statementFor, allStatements, readRates } from "@/lib/commissionLedger";
 import { allDriverStatements, readDriverRates } from "@/lib/driverCommissionLedger";
@@ -49,14 +49,14 @@ export default async function CommissionPage() {
   const statements =
     session.role === "phone_sales"
       ? [statementFor(db, session.user.id, period)]
-      : allStatements(db, period, { groupId });
+      : allStatements(db, period, { groupId, organizationId: orgScopeId(session) });
 
   // A فروشنده sees only their own figures -- someone else's earnings, driver or
   // manager, are none of their business, the same boundary their own statement draws.
-  const driverStatements = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId });
+  const driverStatements = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId, organizationId: orgScopeId(session) });
   const managerStatements =
     isOwner(session.role)
-      ? allManagerStatements(db, period)
+      ? allManagerStatements(db, period, orgScopeId(session))
       : session.role === "group_manager"
         ? [managerStatementFor(db, session.user.id, period)]
         : [];

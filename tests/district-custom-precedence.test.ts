@@ -61,9 +61,9 @@ describe("a hand-drawn district beats the coarse one containing it", () => {
     db.prepare("INSERT INTO groups (name, slug, created_at, organization_id) VALUES ('territory','territory',?,1)").run(now);
     const gid = Number((db.prepare("SELECT id FROM groups WHERE slug = 'territory'").get() as { id: number }).id);
     db.prepare("UPDATE districts SET group_id = ? WHERE id = ?").run(gid, custom);
-    recomputeCustomerGroups(db);
+    recomputeCustomerGroups(db, 1);
     const row = db.prepare("SELECT group_id FROM customers WHERE customer_code = 'C1'").get() as { group_id: number | null };
-    expect(row.group_id).toBe(groupForPoint(db, 35.73, 51.93));
+    expect(row.group_id).toBe(groupForPoint(db, 35.73, 51.93, 1));
   });
 
   it("keeps the two functions' ORDER BY identical", () => {
@@ -74,11 +74,12 @@ describe("a hand-drawn district beats the coarse one containing it", () => {
     // which has nothing to do with district precedence.
     // Matched across the newline in the template literal, and only for queries that read
     // districts -- readGroups sorts the groups table by name and is not one of these.
-    const districtQueries = [...src.matchAll(/FROM districts[\s\S]{0,40}?ORDER BY ([^`]+)/g)]
+    const districtQueries = [...src.matchAll(/FROM districts[\s\S]{0,160}?ORDER BY ([^`]+)/g)]
       .map((m) => m[1].replace(/\s+/g, " ").trim());
     expect(districtQueries.length, "expected two district ORDER BY clauses").toBe(2);
     for (const o of districtQueries) {
-      expect(o, "both district queries must prefer is_custom").toMatch(/^is_custom DESC/);
+      expect(o, "both district queries must share the one precedence constant").toBe("${DISTRICT_PRECEDENCE_SQL}");
     }
+    expect(src, "the shared precedence must prefer is_custom").toMatch(/DISTRICT_PRECEDENCE_SQL = "d\.is_custom DESC/);
   });
 });

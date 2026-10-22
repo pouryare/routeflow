@@ -169,28 +169,74 @@ export function isAllowedLinkHost(hostname: string): boolean {
   return ALLOWED_LINK_HOSTS.some((allowed) => h === allowed || h.endsWith(`.${allowed}`));
 }
 
-// Guards each hop of a followed redirect: even a host that started in the allowlist
-// could (via a compromised or malicious redirect) point at internal infrastructure --
-// loopback, RFC1918 private ranges, and link-local (which is also where cloud
-// metadata endpoints like 169.254.169.254 live).
+// Guards a redirect hop (and every request the headless browser makes) against internal
+// infrastructure: loopback, RFC1918 private ranges, link-local (which is also where cloud
+// metadata endpoints like 169.254.169.254 live), carrier-grade NAT, and the IPv6 forms of
+// all of those, including IPv4-mapped ones such as ::ffff:7f00:1 that a plain dotted-quad
+// test never sees. `new URL()` has already folded decimal/hex/octal IPv4 spellings
+// (2130706433, 0x7f.1) into dotted form by the time a hostname reaches here.
+//
+// A string test cannot see DNS: a public-looking name can resolve to a private address. That is
+// why this is the SECOND layer. The first is `isAllowedHop`: a hop must also be on the map
+// services allow-list, whose names the attacker does not control.
 export function isPrivateOrLocalHost(hostname: string): boolean {
-  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "");
-  if (h === "localhost" || h.endsWith(".localhost")) return true;
-  if (h === "::1" || h === "0.0.0.0") return true;
+  const h = hostname.toLowerCase().replace(/^\[|\]$/g, "").replace(/\.$/, "");
+  if (h === "" || h === "localhost" || h.endsWith(".localhost")) return true;
+  // No dot and not an IP literal: an intranet single-label name ("intranet", "db").
+  if (!h.includes(".") && !h.includes(":")) return true;
+  if (h.endsWith(".local") || h.endsWith(".internal") || h.endsWith(".lan") || h.endsWith(".home.arpa")) return true;
 
+  const v4 = (a: number, b: number): boolean =>
+    a === 0 || // "this network"
+    a === 10 || // private
+    a === 127 || // loopback
+    (a === 100 && b >= 64 && b <= 127) || // carrier-grade NAT
+    (a === 169 && b === 254) || // link-local / cloud metadata
+    (a === 172 && b >= 16 && b <= 31) || // private
+    (a === 192 && b === 168) || // private
+    (a === 198 && (b === 18 || b === 19)); // benchmarking
   const ipv4 = h.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
-  if (ipv4) {
-    const a = Number(ipv4[1]);
-    const b = Number(ipv4[2]);
-    if (a === 127) return true; // loopback
-    if (a === 10) return true; // private
-    if (a === 172 && b >= 16 && b <= 31) return true; // private
-    if (a === 192 && b === 168) return true; // private
-    if (a === 169 && b === 254) return true; // link-local / cloud metadata
-    if (a === 0) return true;
+  if (ipv4) return v4(Number(ipv4[1]), Number(ipv4[2]));
+
+  if (h.includes(":")) {
+    if (h === "::" || h === "::1") return true;
+    // IPv4-mapped / -compatible, dotted (::ffff:127.0.0.1) or as two hex groups (::ffff:7f00:1).
+    const mappedDotted = h.match(/^(?:0{0,4}:){0,5}(?:ffff:)?(\d{1,3})\.(\d{1,3})\.\d{1,3}\.\d{1,3}$/);
+    if (mappedDotted) return v4(Number(mappedDotted[1]), Number(mappedDotted[2]));
+    const mappedHex = h.match(/^(?:0{0,4}:){0,5}ffff:([0-9a-f]{1,4}):([0-9a-f]{1,4})$/);
+    if (mappedHex) {
+      const hi = parseInt(mappedHex[1], 16);
+      return v4(hi >> 8, hi & 0xff);
+    }
+    // Unique-local (fc00::/7) and link-local (fe80::/10).
+    if (/^f[cd][0-9a-f]{2}:/.test(h) || /^fe[89ab][0-9a-f]:/.test(h)) return true;
   }
-  // IPv6 unique-local (fc00::/7) and link-local (fe80::/10)
-  if (/^f[cd][0-9a-f]{2}:/i.test(h) || /^fe[89ab][0-9a-f]:/i.test(h)) return true;
 
   return false;
+}
+
+/** May the server follow a redirect to (or navigate a browser to) this URL? Both layers must
+ *  agree: an http(s) URL on one of the map services, and not an internal address. Applied to
+ *  EVERY hop, not only the first: a redirect on an allowed site is the usual way in. */
+export function isAllowedHop(url: URL): boolean {
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  return isAllowedLinkHost(url.hostname) && !isPrivateOrLocalHost(url.hostname);
+}
+
+/** The headless browser's request policy. A top-level NAVIGATION (including every redirect hop
+ *  of one) must stay on the allow-list. Sub-resources (scripts, tiles, fonts) legitimately come
+ *  from other public hosts such as gstatic.com, so they are blocked only when they target an
+ *  internal address or a non-web scheme. */
+export function browserRequestAllowed(rawUrl: string, isNavigation: boolean): boolean {
+  let url: URL;
+  try {
+    url = new URL(rawUrl);
+  } catch {
+    return false;
+  }
+  if (url.protocol === "about:") return true;
+  if (url.protocol === "data:" || url.protocol === "blob:") return !isNavigation;
+  if (url.protocol !== "http:" && url.protocol !== "https:") return false;
+  if (isPrivateOrLocalHost(url.hostname)) return false;
+  return isNavigation ? isAllowedLinkHost(url.hostname) : true;
 }

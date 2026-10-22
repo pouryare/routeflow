@@ -19,5 +19,5 @@ fi
 
 echo "→ preview on :$PORT against $DB"
 ROUTEFLOW_DB_PATH="$DB" \
-SESSION_SECRET="${SESSION_SECRET:-preview-secret-not-for-production}" \
+SESSION_SECRET="${SESSION_SECRET:-preview-secret-not-for-production-0123456789}" \
   exec npx next start -p "$PORT" -H 127.0.0.1

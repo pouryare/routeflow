@@ -1,4 +1,4 @@
-import type { Session } from "@/lib/session";
+import { orgScopeId, type Session } from "@/lib/session";
 import { yieldToEventLoop } from "@/lib/yieldToEventLoop";
 import { getDb } from "@/lib/db";
 import { allStatements, statementFor } from "@/lib/commissionLedger";
@@ -34,13 +34,13 @@ export default async function MoneySection({ session, debt }: { session: Session
   const commission =
     session.role === "phone_sales"
       ? [statementFor(db, session.user.id, period)]
-      : allStatements(db, period, { groupId });
+      : allStatements(db, period, { groupId, organizationId: orgScopeId(session) });
   // A فروشنده sees none of this -- someone else's earnings, driver or manager, are
   // none of their business, the same boundary /sales/commission itself draws.
-  const driverCommission = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId });
+  const driverCommission = session.role === "phone_sales" ? [] : allDriverStatements(db, period, { groupId, organizationId: orgScopeId(session) });
   const managerCommission =
     isOwner(session.role)
-      ? allManagerStatements(db, period)
+      ? allManagerStatements(db, period, orgScopeId(session))
       : session.role === "group_manager"
         ? [managerStatementFor(db, session.user.id, period)]
         : [];

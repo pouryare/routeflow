@@ -66,7 +66,7 @@ if (fs.existsSync(target) && !force) {
    MODULE LOAD (lib/db.ts:21) and memoises the handle (_db, lib/db.ts:23), so the env var is
    set here and every app import is dynamic, below this line. */
 process.env.ROUTEFLOW_DB_PATH = target;
-process.env.SESSION_SECRET ||= "demo-seed-not-a-real-secret";
+process.env.SESSION_SECRET ||= "demo-seed-not-a-real-secret-0123456789";
 
 const { runSeed } = await import("./seed/run");
 await runSeed({ scaleName, asOf: asOfArg ?? null, target });

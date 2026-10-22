@@ -7,7 +7,7 @@ import {
   extractPlaceAddress,
   extractPlusCodeCoords,
   isAllowedLinkHost,
-  isPrivateOrLocalHost,
+  isAllowedHop,
 } from "@/lib/geoLinks";
 import { extractViaBrowser, browserLifecycle } from "@/lib/playwrightExtract";
 import type { LocationResolution } from "@/lib/db";
@@ -119,7 +119,7 @@ async function resolveViaNominatim(address: string | null, fallbackName: string)
 }
 
 // Resolves one maps-sharing URL to coordinates, following redirects by hand (checking
-// each hop against isPrivateOrLocalHost before the next request) exactly as
+// each hop against isAllowedHop before the next request) exactly as
 // /api/geo/decode-link does for a single pasted link. Never throws -- a link that
 // can't be resolved comes back with resolution: "unresolved" rather than an error, so
 // a bulk import of dozens of links can't be derailed by one bad one.
@@ -182,7 +182,7 @@ export async function resolveMapsLink(rawUrl: string, fallbackName = ""): Promis
 
         const next = new URL(location, current);
         if (next.protocol !== "http:" && next.protocol !== "https:") break;
-        if (isPrivateOrLocalHost(next.hostname)) {
+        if (!isAllowedHop(next)) {
           return { lat: null, lng: null, address: null, resolvedUrl: current.href, resolution: "unresolved" };
         }
 

@@ -422,7 +422,7 @@ export function createLead(session: Session, input: { answers: FlowAnswer[]; cli
       owner = acc.owner;
     }
   }
-  const groupId = session.role === "phone_sales" ? session.groupId : groupForPoint(db, pin.lat, pin.lng) ?? session.groupId;
+  const groupId = session.role === "phone_sales" ? session.groupId : groupForPoint(db, pin.lat, pin.lng, session.organizationId) ?? session.groupId;
   const districtId = districtIdForPoint(db, pin.lat, pin.lng);
   const area = districtId ? (db.prepare("SELECT name FROM districts WHERE id = ?").get(districtId) as { name: string } | undefined)?.name ?? null : null;
   const link = linkOf(st.values);

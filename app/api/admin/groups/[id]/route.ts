@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { recomputeCustomerGroups } from "@/lib/groups";
-import { requireRole } from "@/lib/session";
+import { orgScopeId, requireRole } from "@/lib/session";
 import { GROUP_PALETTE } from "../route";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -105,7 +105,7 @@ export async function DELETE(req: NextRequest, ctx: RouteContext<"/api/admin/gro
   }
 
   // Its customers are now in nobody's territory; the cache has to say so.
-  const regrouped = recomputeCustomerGroups(db);
+  const regrouped = recomputeCustomerGroups(db, orgScopeId(guard.session));
 
   return NextResponse.json({ ok: true, regrouped });
 }
