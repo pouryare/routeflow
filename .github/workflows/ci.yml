@@ -35,6 +35,12 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # Structural ratchet (docs/architecture-audit-2026-10-22.md): import cycles, direct database
+      # imports in routes/pages, lib/db.ts size, tenant SELECTs with no organisation scope. Each
+      # number may only fall; after improving one, run `node scripts/check-architecture.mjs --write`.
+      - name: Architecture ratchet
+        run: npm run check:architecture
+
       # tests/playwrightExtract needs a real browser and tests/smoke drives one; both have their own
       # config and are not part of this job. Excludes are explicit because passing --exclude replaces
       # vitest's defaults.
