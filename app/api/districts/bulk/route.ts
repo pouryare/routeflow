@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, District, logActivity } from "@/lib/db";
+import { groupExists } from "@/lib/repo/groupsAdmin";
+import { anyUnreachable, bulkUpdateDistricts } from "@/lib/repo/districtsAdmin";
 import { canReachGroup, orgScopeId, requireRole } from "@/lib/session";
-import { recomputeCustomerGroups } from "@/lib/groups";
-import { STATUS_LABEL } from "@/lib/types";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 
 
@@ -38,71 +37,25 @@ export async function PATCH(req: NextRequest) {
   if (group_id !== undefined && group_id !== null && !Number.isInteger(group_id)) {
     return NextResponse.json({ ok: false, error: "شناسه گروه نامعتبر است" }, { status: 400 });
   }
-
-  const db = getDb();
+  // Territory can only be handed to one of the caller's own company's groups.
+  if (typeof group_id === "number" && !groupExists(group_id, orgScopeId(session))) {
+    return NextResponse.json({ ok: false, error: "گروه پیدا نشد" }, { status: 400 });
+  }
 
   // Check every id before writing any of them. Silently skipping the out-of-scope ones
   // would return ok:true for a request that did not do what it said, and the caller would
   // have no way to tell a partial write from a whole one. 404, not 403, for the same
   // reason as the single-row route: a 403 confirms the districts exist.
-  const scopeCheck = db.prepare("SELECT group_id FROM districts WHERE id = ?");
-  for (const id of ids as number[]) {
-    const row = scopeCheck.get(id) as { group_id: number | null } | undefined;
-    if (!row) continue;
-    if (!canReachGroup(session, row.group_id)) {
-      return NextResponse.json({ ok: false, error: "منطقه پیدا نشد" }, { status: 404 });
-    }
+  if (anyUnreachable(ids as number[], (g) => canReachGroup(session, g))) {
+    return NextResponse.json({ ok: false, error: "منطقه پیدا نشد" }, { status: 404 });
   }
 
-  const actor = guard.session.user.display_name;
-  const actorId = guard.session.user.id;
-  const now = new Date().toISOString();
-  let updated = 0;
-
-  db.exec("BEGIN");
-  try {
-    const getStmt = db.prepare("SELECT * FROM districts WHERE id = ?");
-    const sets: string[] = [];
-    if (coverage_status !== undefined) sets.push("coverage_status = ?");
-    if (group_id !== undefined) sets.push("group_id = ?");
-    sets.push("updated_at = ?");
-    const updateStmt = db.prepare(`UPDATE districts SET ${sets.join(", ")} WHERE id = ?`);
-
-    for (const id of ids as number[]) {
-      const existing = getStmt.get(id) as District | undefined;
-      if (!existing) continue;
-
-      const values: unknown[] = [];
-      if (coverage_status !== undefined) values.push(coverage_status);
-      if (group_id !== undefined) values.push(group_id ?? null);
-      values.push(now, id);
-      updateStmt.run(...(values as never[]));
-      updated++;
-
-      if (coverage_status !== undefined && coverage_status !== existing.coverage_status) {
-        logActivity(db, {
-          entity_type: "district",
-          entity_id: id,
-          event_type: "status_change",
-          old_value: STATUS_LABEL[existing.coverage_status as keyof typeof STATUS_LABEL] ?? existing.coverage_status,
-          new_value: STATUS_LABEL[coverage_status as keyof typeof STATUS_LABEL] ?? coverage_status,
-          note: null,
-          changed_by: actor,
-          changed_by_user_id: actorId,
-        });
-      }
-    }
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
-
-  // customers.group_id is a cache derived from which district contains each customer, so
-  // moving territory has to drag the customers with it or they keep answering to the
-  // previous owner. Runs after COMMIT because it opens its own transaction.
-  let regrouped = 0;
-  if (group_id !== undefined) regrouped = recomputeCustomerGroups(db, orgScopeId(guard.session));
+  const { updated, regrouped } = bulkUpdateDistricts(
+    ids as number[],
+    { coverage_status, group_id },
+    { name: session.user.display_name, id: session.user.id },
+    orgScopeId(session)
+  );
 
   return NextResponse.json({ ok: true, updated, regrouped });
 }

@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole, orderFilter, canReachGroup } from "@/lib/session";
-import { createOrder, readOrders, productMixFor, OrderError, type LineInput } from "@/lib/orders";
+import { requireRole, orderFilter, canReachGroup, orgScopeId } from "@/lib/session";
+import { activeUserWithRoleInOrg, findCustomerInOrg } from "@/lib/repo/orgRefs";
+import { productInOrg } from "@/lib/repo/catalogueAdmin";
+import { OrderError, type LineInput } from "@/lib/orders";
+import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { isRequestedKind, type RequestedKind } from "@/lib/requestedDay";
 import {
   LeadPromotionError,
@@ -33,7 +35,7 @@ export async function GET(req: NextRequest) {
   const status = url.searchParams.get("status");
 
   const scope = orderFilter(guard.session);
-  const orders = readOrders(getDb(), scope, {
+  const orders = ordersIn(scope, {
     customerId: customerId ? Number(customerId) : undefined,
     status: status ?? undefined,
     limit: Number(url.searchParams.get("limit") ?? 200),
@@ -42,7 +44,7 @@ export async function GET(req: NextRequest) {
   // Additive, and only when a customer is named: what that shop habitually buys is the
   // question the map's customer panel asks, and it is meaningless across all customers.
   const products = customerId
-    ? productMixFor(getDb(), scope, Number(customerId))
+    ? orderMixIn(scope, Number(customerId))
     : [];
 
   return NextResponse.json({ ok: true, orders, products });
@@ -102,7 +104,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "سفارش بدون قلم ثبت نمی‌شود" }, { status: 400 });
   }
 
-  const db = getDb();
 
   // Rule 1: a lead becomes a customer when it buys. Until this existed, a pin could not
   // receive an order at all -- the route required a customers.id and a lead lives in
@@ -130,9 +131,8 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  const customer = db
-    .prepare("SELECT id, group_id FROM customers WHERE id = ?")
-    .get(promotion ? promotion.customerId : Number(body?.customer_id)) as { id: number; group_id: number | null } | undefined;
+  // The customer must be this company's: a customer with no group is reachable by group alone.
+  const customer = findCustomerInOrg(promotion ? promotion.customerId : Number(body?.customer_id), orgScopeId(session));
 
   // 404 rather than 403 for a customer in another group -- a 403 would confirm the row
   // exists, which is the thing being withheld. Same rule as everywhere else here.
@@ -154,23 +154,21 @@ export async function POST(req: NextRequest) {
   // organisation who can actually sell. Before, any user id was accepted -- including one from
   // another tenant -- which attached the order's commission to a stranger.
   if (salespersonId !== null) {
-    const seller = Number.isInteger(salespersonId)
-      ? db
-          .prepare(
-            `SELECT 1 FROM users u JOIN user_roles r ON r.user_id = u.id
-              WHERE u.id = ? AND u.organization_id = ? AND u.active = 1
-                AND r.role IN (${CAN_SELL.map(() => "?").join(", ")})`
-          )
-          .get(salespersonId, session.organizationId, ...CAN_SELL)
-      : undefined;
+    const seller = activeUserWithRoleInOrg(salespersonId, CAN_SELL, session.organizationId);
     if (!seller) {
       if (promotion) unpromoteLead(session.organizationId, promotion);
       return NextResponse.json({ ok: false, error: "فروشندهٔ انتخاب‌شده معتبر نیست" }, { status: 400 });
     }
   }
 
+  // And every product on it, for the same reason.
+  if (!lines.every((line) => productInOrg(Number(line.product_id), orgScopeId(session)))) {
+    if (promotion) unpromoteLead(session.organizationId, promotion);
+    return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 400 });
+  }
+
   try {
-    const order = createOrder(db, {
+    const order = placeOrder({
       customer_id: customer.id,
       order_date: orderDate,
       requested_day: requestedDay,

@@ -86,7 +86,7 @@ describe("the payments screen", () => {
 
   it("sends the open orders with the payment, so the picker has something to offer", () => {
     expect(route).toMatch(/openOrders:/);
-    expect(route).toMatch(/deliveredOrdersForCustomer/);
+    expect(route).toMatch(/openOrdersOf/); // the adapter around deliveredOrdersForCustomer
   });
 
   it("the allocation write is a PATCH, not a second POST that could void by accident", () => {

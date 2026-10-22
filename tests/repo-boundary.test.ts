@@ -61,3 +61,14 @@ describe("raw SQL lives in lib/repo/, lib/database/ or on the grandfather allowl
     expect(missing, `stale allowlist entries — delete these lines:\n${missing.join("\n")}`).toEqual([]);
   });
 });
+
+describe("the database handle stays below app/ and components/", () => {
+  it("no route, page or component imports getDb (they call named operations in lib/repo)", async () => {
+    const { execSync } = await import("node:child_process");
+    const hits = execSync(
+      `grep -rlE "import \\{[^}]*\\bgetDb\\b[^}]*\\} from \\"@/lib/db\\"" app components || true`,
+      { cwd: process.cwd(), encoding: "utf8" },
+    ).split("\n").filter(Boolean);
+    expect(hits).toEqual([]);
+  });
+});

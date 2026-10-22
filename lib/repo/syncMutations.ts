@@ -1,3 +1,4 @@
+import { inOrg } from "@/lib/repo/orgRefs";
 import type { DatabaseSync } from "node:sqlite";
 import { boundedText, isDayWithin, isTimestampWithin } from "@/lib/inputChecks";
 import { isToman } from "@/lib/money";
@@ -285,6 +286,15 @@ function applyOne(
 
   switch (mut.op) {
     case "order.draftCreate": {
+      // A queued order is only as trustworthy as the ids on it: the customer and every product
+      // must be this company's, exactly as POST /api/sales/orders insists.
+      const lines = (p.lines as { product_id?: unknown }[] | undefined) ?? [];
+      if (
+        !inOrg("customers", Number(p.customer_id), organizationId) ||
+        !lines.every((l) => inOrg("products", Number(l.product_id), organizationId))
+      ) {
+        return { status: "failed", error: "مشتری یا کالا پیدا نشد" };
+      }
       const res = createOrder(db, {
         customer_id: Number(p.customer_id),
         order_date: String(p.order_date ?? deviceTime()),

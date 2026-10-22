@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, ActivityEntry, LoggableEntityType, PLAN_ENTITY_TYPES, logActivity } from "@/lib/db";
+import { LoggableEntityType, PLAN_ENTITY_TYPES } from "@/lib/db";
+import { activityForEntity, activityOnDate, addActivityNote } from "@/lib/repo/activityLogView";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -17,8 +18,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "پارامترها نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
-
   // Day mode: every event of this kind on one date, regardless of which entity. Feature
   // 12 reads the day's depot arrivals back this way to work out when the day started
   // and ended -- it does not know which site in advance.
@@ -26,13 +25,7 @@ export async function GET(req: NextRequest) {
     if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
       return NextResponse.json({ ok: false, error: "تاریخ نامعتبر است" }, { status: 400 });
     }
-    const rows = db
-      .prepare(
-        `SELECT a.* FROM activity_log a${f.joins}
-         WHERE a.entity_type = ? AND a.created_at >= ? AND a.created_at < ?${f.sql}
-         ORDER BY a.created_at`
-      )
-      .all(entityType, `${date}T00:00:00.000Z`, `${date}T23:59:59.999Z`, ...f.params) as unknown as ActivityEntry[];
+    const rows = activityOnDate(f, entityType, date);
     return NextResponse.json({ ok: true, activity: rows });
   }
 
@@ -41,13 +34,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "پارامترها نامعتبر است" }, { status: 400 });
   }
 
-  const rows = db
-    .prepare(
-      `SELECT a.* FROM activity_log a${f.joins}
-       WHERE a.entity_type = ? AND a.entity_id = ?${f.sql}
-       ORDER BY a.created_at DESC LIMIT 50`
-    )
-    .all(entityType, entityId, ...f.params) as unknown as ActivityEntry[];
+  const rows = activityForEntity(f, entityType, entityId);
 
   return NextResponse.json({ ok: true, activity: rows });
 }
@@ -84,22 +71,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "متن رویداد الزامی است" }, { status: 400 });
   }
 
-  const db = getDb();
-  if (!canReachEntity(guard.session, db, body.entity_type, body.entity_id)) {
+  if (!canReachEntity(guard.session, body.entity_type, body.entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  logActivity(db, {
-    entity_type: body.entity_type,
-    entity_id: body.entity_id,
-    event_type: "note",
-    old_value: null,
-    new_value: null,
-    note,
-    // Both: the name is what the history UI renders, the id is what survives a rename.
-    changed_by: guard.session.user.display_name,
-    changed_by_user_id: guard.session.user.id,
-  });
+  addActivityNote(body.entity_type, body.entity_id, note, { name: guard.session.user.display_name, id: guard.session.user.id });
 
   return NextResponse.json({ ok: true });
 }

@@ -2,8 +2,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies, orgScopeId } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
-import { advancedStockPosition, monthPurchaseTotals, readPurchases } from "@/lib/purchases";
+import { activeProducts, facilityName } from "@/lib/repo/stockPageView";
+import { monthPurchasesIn, purchasesIn, stockPositionIn } from "@/lib/repo/routeAdapters";
 import { faToman, faNum } from "@/lib/format";
 import { faJalaliDate, toJalali, jalaliToIsoDate } from "@/lib/jalali";
 import PurchaseEntry from "@/components/sales/PurchaseEntry";
@@ -29,19 +29,9 @@ export default async function StockPage() {
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
 
-  const db = getDb();
-  const stock = advancedStockPosition(db, orgScopeId(session));
-  const purchases = isOwner(session.role) ? readPurchases(db, session.organizationId, 15) : [];
-  const products =
-    isOwner(session.role)
-      ? (plain(
-          db
-            .prepare(
-              "SELECT id, name, base_unit FROM products WHERE active = 1 AND organization_id = ? ORDER BY name"
-            )
-            .all(session.organizationId)
-        ) as unknown as { id: number; name: string; base_unit: string }[])
-      : [];
+  const stock = stockPositionIn(orgScopeId(session));
+  const purchases = isOwner(session.role) ? purchasesIn(session.organizationId, 15) : [];
+  const products = isOwner(session.role) ? activeProducts(session.organizationId) : [];
 
   const totalValue = stock.reduce((sum, row) => sum + row.value_toman, 0);
   const critCount = stock.filter((r) => r.status === "crit").length;
@@ -64,7 +54,7 @@ export default async function StockPage() {
 
   const today = toJalali(new Date().toISOString())!;
   const monthFrom = jalaliToIsoDate(today.jy, today.jm, 1);
-  const monthPurchases = monthPurchaseTotals(db, orgScopeId(session), monthFrom);
+  const monthPurchases = monthPurchasesIn(orgScopeId(session), monthFrom);
 
   /* A shelf count compares with that shelf's own balance, not the company-wide figure (which
      also holds what is in the vans). The default facility is the warehouse. */
@@ -72,7 +62,7 @@ export default async function StockPage() {
   const warehouseId = canCount ? defaultFacilityId(session.organizationId) : 0;
   const warehouseOnHand = canCount ? onHandByProduct(session.organizationId, warehouseId) : new Map<number, number>();
   const warehouseName = canCount
-    ? ((db.prepare("SELECT name FROM facilities WHERE id = ?").get(warehouseId) as { name: string } | undefined)?.name ?? "انبار")
+    ? (facilityName(warehouseId, orgScopeId(session)) ?? "انبار")
     : "";
   const countRows = stock.map((r) => ({
     product_id: r.product_id,

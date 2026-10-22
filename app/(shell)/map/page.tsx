@@ -1,16 +1,11 @@
 import MapLoader from "@/components/MapLoader";
-import { getDb } from "@/lib/db";
 import { geometryVersion } from "@/lib/districtGeometry";
-import { readCustomers } from "@/lib/customers";
-import { readDistrictProperties } from "@/lib/districts";
-import { readFacilities } from "@/lib/facilities";
 import { geometryUrl } from "@/lib/precision";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
-import { getSessionFromCookies, groupFilterWithShared, orgScopeId, scopeGroupIds } from "@/lib/session";
-import { readGroups } from "@/lib/groups";
-import { readLeadPins } from "@/lib/repo/leads";
+import { mapPageData } from "@/lib/repo/mapPageView";
+import { getSessionFromCookies } from "@/lib/session";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole } from "@/lib/roles";
 
@@ -30,18 +25,7 @@ export default async function Home() {
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
-  const scope = scopeGroupIds(session);
-
-  const db = getDb();
-  const districts = readDistrictProperties(db, scope);
-  const customers = readCustomers(db, scope, { organizationId: session.organizationId });
-  const facilities = readFacilities(db, groupFilterWithShared(session));
-  const initialLeads = readLeadPins(db, orgScopeId(session));
-  // Only the groups this caller can actually see: an owner gets all of them, a manager
-  // gets their own, which is the only one any district they can see belongs to.
-  const visibleGroups = readGroups(db, session.organizationId)
-    .filter((g) => scope === "all" || scope.includes(g.id))
-    .map((g) => ({ id: g.id, name: g.name, color: g.color }));
+  const { districts, customers, facilities, initialLeads, visibleGroups } = mapPageData(session);
   const version = geometryVersion();
 
   return (

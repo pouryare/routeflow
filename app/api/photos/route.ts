@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { encodeImage, PHOTO_MAX_EDGE } from "@/lib/imagePipeline";
 import crypto from "node:crypto";
 import fs from "node:fs/promises";
-import { getDb, Photo, EntityType, logActivity } from "@/lib/db";
-import { withEntityLabels } from "@/lib/repo/entityLabels";
+import type { EntityType } from "@/lib/db";
+import { addPhoto, listPhotos } from "@/lib/repo/photosAdmin";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { ensurePhotosDir, photoFilePath } from "@/lib/photos";
 import { MANAGE_ROLES } from "@/lib/roles";
@@ -16,26 +16,8 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "p");
 
-  const db = getDb();
   const { searchParams } = new URL(req.url);
-  const entityType = searchParams.get("entity_type");
-  const entityId = searchParams.get("entity_id");
-
-  let rows: Photo[];
-  if (entityType && entityId) {
-    rows = db
-      .prepare(
-        `SELECT p.* FROM photos p${f.joins} WHERE p.entity_type = ? AND p.entity_id = ?${f.sql} ORDER BY p.taken_at DESC`
-      )
-      .all(entityType, Number(entityId), ...f.params) as unknown as Photo[];
-  } else {
-    rows = db
-      .prepare(`SELECT p.* FROM photos p${f.joins} WHERE 1 = 1${f.sql} ORDER BY p.taken_at DESC LIMIT 500`)
-      .all(...f.params) as unknown as Photo[];
-  }
-
-  // enrich with a display label for the standalone /gallery browse view
-  const photos = withEntityLabels(db, rows);
+  const photos = listPhotos(f, searchParams.get("entity_type"), searchParams.get("entity_id"));
 
   return NextResponse.json({ ok: true, photos });
 }
@@ -68,6 +50,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "حجم فایل نباید بیش از ۲۰ مگابایت باشد" }, { status: 413 });
   }
 
+  // Checked before anything is encoded or written: a refused upload must not leave files behind.
+  if (!canReachEntity(guard.session, entityType, entityId)) {
+    return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
+  }
+
   const inputBuffer = Buffer.from(await file.arrayBuffer());
   const stem = crypto.randomUUID();
 
@@ -85,29 +72,7 @@ export async function POST(req: NextRequest) {
   await fs.writeFile(photoFilePath(stem, "avif"), avifBuffer);
   await fs.writeFile(photoFilePath(stem, "webp"), webpBuffer);
 
-  const now = new Date().toISOString();
-  const db = getDb();
-  if (!canReachEntity(guard.session, db, entityType, entityId)) {
-    return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
-  }
+  const id = addPhoto(entityType, entityId, stem, caption, { name: guard.session.user.display_name, id: guard.session.user.id });
 
-  const result = db
-    .prepare(
-      `INSERT INTO photos (entity_type, entity_id, file_stem, caption, taken_at, created_at)
-       VALUES (?, ?, ?, ?, ?, ?)`
-    )
-    .run(entityType, entityId, stem, caption, now, now);
-
-  logActivity(db, {
-    entity_type: entityType,
-    entity_id: entityId,
-    event_type: "note",
-    old_value: null,
-    new_value: null,
-    note: "عکس جدید اضافه شد",
-    changed_by: guard.session.user.display_name,
-    changed_by_user_id: guard.session.user.id,
-  });
-
-  return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid), file_stem: stem });
+  return NextResponse.json({ ok: true, id, file_stem: stem });
 }

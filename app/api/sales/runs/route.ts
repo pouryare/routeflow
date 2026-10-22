@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole, groupFilter, canReachGroup } from "@/lib/session";
-import { stopCountsByRun, remainingByRun } from "@/lib/repo/runStops";
-import { createRun, DeliveryError } from "@/lib/delivery";
+import { requireRole, groupFilter, canReachGroup, orgScopeId } from "@/lib/session";
+import { DeliveryError } from "@/lib/delivery";
+import { findDriverInOrg, listRuns, newRun } from "@/lib/repo/deliveryRunsAdmin";
 
 const PLANNERS = ["platform_owner", "owner", "group_manager"] as const;
 
@@ -11,34 +10,7 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const scope = groupFilter(guard.session, "dr.group_id");
-  const db = getDb();
-  const rows = db
-    .prepare(
-      `SELECT dr.id, dr.run_date, dr.status, u.display_name AS driver_name,
-              COALESCE(SUM(ds.collected_toman), 0) AS collected_toman
-         FROM delivery_runs dr
-         JOIN users u ON u.id = dr.driver_user_id
-         LEFT JOIN delivery_stops ds ON ds.run_id = dr.id
-        WHERE 1 = 1${scope.sql}
-        GROUP BY dr.id
-        ORDER BY dr.run_date DESC, dr.id DESC
-        LIMIT 60`
-    )
-    .all(...scope.params) as unknown as { id: number; collected_toman: number }[];
-
-  /* stop_count and remaining come from runStops rather than the join above, so the load and
-   * the unload are counted. They are stops: a driver told "4 stops" who then loads a van and
-   * unloads it has been misinformed, and this list is what somebody plans the day from. */
-  const ids = rows.map((r) => r.id);
-  const counts = stopCountsByRun(db, ids);
-  const remaining = remainingByRun(db, ids);
-  const runs = rows.map((r) => ({
-    ...r,
-    stop_count: counts.get(r.id) ?? 0,
-    remaining: remaining.get(r.id) ?? 0,
-  }));
-
-  return NextResponse.json({ ok: true, runs });
+  return NextResponse.json({ ok: true, runs: listRuns(scope, orgScopeId(guard.session)) });
 }
 
 export async function POST(req: NextRequest) {
@@ -55,25 +27,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ مسیر معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
-  const driver = db
-    .prepare("SELECT id, role, group_id FROM users WHERE id = ? AND active = 1")
-    .get(Number(body?.driver_user_id)) as
-    | { id: number; role: string; group_id: number | null }
-    | undefined;
-
-  // A driver outside the caller's group answers 404, like every other row they cannot
-  // reach -- a 403 would confirm the account exists. The role test reads the SET, so a
-  // driver whose primary is something else is still a driver.
-  const canDrive = db
-    .prepare("SELECT 1 FROM user_roles WHERE user_id = ? AND role = 'delivery_driver'")
-    .get(Number(body?.driver_user_id));
-  if (!driver || !canDrive || !canReachGroup(guard.session, driver.group_id)) {
+  // A driver outside the caller's company or group answers 404, like every other row they cannot
+  // reach -- a 403 would confirm the account exists. The role test reads the SET, so a driver whose
+  // primary is something else is still a driver.
+  const driver = findDriverInOrg(Number(body?.driver_user_id), orgScopeId(guard.session));
+  if (!driver || !canReachGroup(guard.session, driver.group_id)) {
     return NextResponse.json({ ok: false, error: "راننده پیدا نشد" }, { status: 404 });
   }
 
   try {
-    const id = createRun(db, {
+    const id = newRun({
       driver_user_id: driver.id,
       run_date: runDate,
       created_by: guard.session.user.id,

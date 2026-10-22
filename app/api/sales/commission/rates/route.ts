@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
-import { setRate } from "@/lib/commissionLedger";
-import { setDriverRate } from "@/lib/driverCommissionLedger";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
+import { addDriverRate, addSalesRate } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -46,7 +45,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ شروع نرخ معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
+  // Whoever the rate is for must be this company's: an id alone reaches every tenant's staff.
+  const organizationId = orgScopeId(guard.session);
 
   if (kind === "driver") {
     const rawId = body?.driver_user_id;
@@ -56,17 +56,11 @@ export async function POST(req: NextRequest) {
       // anyone whose role driverStatementFor never queries would sit in the table
       // unread forever. The test reads the SET -- a seller who also drives is a driver,
       // and refusing their rate would make the refusal arbitrary.
-      const person = db
-        .prepare(
-          `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
-            WHERE u.id = ? AND r.role IN ('delivery_driver', 'field_rep')`
-        )
-        .get(driverId);
-      if (!person) {
+      if (!userWithRoleInOrg(driverId, ["delivery_driver", "field_rep"], organizationId)) {
         return NextResponse.json({ ok: false, error: "این حساب راننده نیست" }, { status: 400 });
       }
     }
-    const id = setDriverRate(db, {
+    const id = addDriverRate({
       driver_user_id: driverId,
       rate_per_kg_toman: rate,
       valid_from: validFrom,
@@ -93,18 +87,12 @@ export async function POST(req: NextRequest) {
     // A rate attached to anyone statementFor never queries would sit in the table
     // unread forever -- refused at the door rather than silently ignored. SET, not
     // the primary column: a driver who also sells still earns a sales rate.
-    const person = db
-      .prepare(
-        `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
-          WHERE u.id = ? AND r.role = 'phone_sales'`
-      )
-      .get(personId);
-    if (!person) {
+    if (!userWithRoleInOrg(personId, ["phone_sales"], organizationId)) {
       return NextResponse.json({ ok: false, error: "این حساب فروشنده نیست" }, { status: 400 });
     }
   }
 
-  const id = setRate(db, {
+  const id = addSalesRate({
     salesperson_user_id: personId,
     rate_per_kg_toman: rate,
     urgent_rate_per_kg_toman: urgent,

@@ -3,16 +3,12 @@ import { requireRole } from "@/lib/session";
 import {
   getPayment,
   allocationsOfPayment,
-  deliveredOrdersForCustomer,
   replaceAllocations,
   voidPayment,
   PaymentError,
 } from "@/lib/repo/payments";
 import { MANAGE_ROLES } from "@/lib/roles";
-import { getDb } from "@/lib/db";
-
-/** deliveredOrdersForCustomer takes an explicit handle rather than importing one. */
-const paymentsDb = getDb;
+import { openOrdersOf } from "@/lib/repo/routeAdapters";
 
 export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id]">) {
   const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
@@ -29,8 +25,7 @@ export async function GET(req: NextRequest, ctx: RouteContext<"/api/payments/[id
     /* The customer's open orders, so the allocation picker has something to offer. Sent
        with the payment rather than as its own endpoint: the editor always needs both, and
        two round trips that could disagree about the payment's customer are worse than one. */
-    openOrders: deliveredOrdersForCustomer(
-      paymentsDb(),
+    openOrders: openOrdersOf(
       guard.session.organizationId,
       payment.customer_id
     ),

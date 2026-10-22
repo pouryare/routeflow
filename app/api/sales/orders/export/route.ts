@@ -1,9 +1,8 @@
 import { ORDER_STATUS_LABEL, PAYMENT_STATUS_LABEL } from "@/lib/orderStateMachine";
 import { NextRequest } from "next/server";
 import ExcelJS from "exceljs";
-import { getDb } from "@/lib/db";
 import { requireRole, orderFilter } from "@/lib/session";
-import { readOrders } from "@/lib/orders";
+import { ordersForExport } from "@/lib/repo/salesWrites";
 import { faJalaliDate } from "@/lib/jalali";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -30,7 +29,7 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
-  const orders = readOrders(getDb(), orderFilter(guard.session), { limit: 5000 });
+  const orders = ordersForExport(orderFilter(guard.session));
 
   const book = new ExcelJS.Workbook();
   book.creator = "routeflow";

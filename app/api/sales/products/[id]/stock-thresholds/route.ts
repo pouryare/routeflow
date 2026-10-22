@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
-import { setStockThresholds } from "@/lib/catalogue";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { productInOrg } from "@/lib/repo/catalogueAdmin";
+import { setThresholds } from "@/lib/repo/routeAdapters";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only, same split as every other write in the catalogue: everyone who sells
@@ -16,9 +16,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
     return NextResponse.json({ ok: false, error: "شناسهٔ کالا معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
-  const exists = db.prepare("SELECT id FROM products WHERE id = ?").get(productId);
-  if (!exists) {
+  if (!productInOrg(productId, orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: "کالا پیدا نشد" }, { status: 404 });
   }
 
@@ -36,7 +34,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   }
 
   try {
-    setStockThresholds(db, productId, input);
+    setThresholds(productId, input);
     return NextResponse.json({ ok: true });
   } catch (e) {
     const message = e instanceof TypeError ? e.message : "ثبت آستانه ممکن نشد";

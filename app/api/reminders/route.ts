@@ -1,7 +1,7 @@
 import { tehranTodayIso } from "@/lib/jalali";
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, Reminder, EntityType } from "@/lib/db";
-import { withEntityLabels } from "@/lib/repo/entityLabels";
+import type { EntityType } from "@/lib/db";
+import { addReminder, listReminders } from "@/lib/repo/remindersAdmin";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -13,33 +13,19 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
   const f = entityGroupFilter(guard.session, "r");
 
-  const db = getDb();
   const { searchParams } = new URL(req.url);
   const due = searchParams.get("due"); // "today" | "week" | "all"
 
-  let rows: Reminder[];
+  let dueBy: string | null = null;
   if (due === "today") {
-    rows = db
-      .prepare(
-        `SELECT r.* FROM reminders r${f.joins} WHERE r.resolved = 0 AND r.due_date <= ?${f.sql} ORDER BY r.due_date`
-      )
-      .all(tehranTodayIso(), ...f.params) as unknown as Reminder[];
+    dueBy = tehranTodayIso();
   } else if (due === "week") {
     const weekLater = new Date();
     weekLater.setDate(weekLater.getDate() + 7);
-    const weekStr = `${weekLater.getFullYear()}-${String(weekLater.getMonth() + 1).padStart(2, "0")}-${String(weekLater.getDate()).padStart(2, "0")}`;
-    rows = db
-      .prepare(
-        `SELECT r.* FROM reminders r${f.joins} WHERE r.resolved = 0 AND r.due_date <= ?${f.sql} ORDER BY r.due_date`
-      )
-      .all(weekStr, ...f.params) as unknown as Reminder[];
-  } else {
-    rows = db
-      .prepare(`SELECT r.* FROM reminders r${f.joins} WHERE 1 = 1${f.sql} ORDER BY r.resolved, r.due_date`)
-      .all(...f.params) as unknown as Reminder[];
+    dueBy = `${weekLater.getFullYear()}-${String(weekLater.getMonth() + 1).padStart(2, "0")}-${String(weekLater.getDate()).padStart(2, "0")}`;
   }
 
-  return NextResponse.json({ ok: true, reminders: withEntityLabels(db, rows) });
+  return NextResponse.json({ ok: true, reminders: listReminders(f, dueBy) });
 }
 
 export async function POST(req: NextRequest) {
@@ -67,19 +53,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "متن یادآوری لازم است" }, { status: 400 });
   }
 
-  const db = getDb();
   // 404, not 403: a reminder posted against another group's customer must not confirm
   // that the customer exists.
-  if (!canReachEntity(guard.session, db, entity_type, entity_id)) {
+  if (!canReachEntity(guard.session, entity_type, entity_id)) {
     return NextResponse.json({ ok: false, error: "یافت نشد" }, { status: 404 });
   }
 
-  const result = db
-    .prepare(
-      `INSERT INTO reminders (entity_type, entity_id, due_date, message, resolved, created_at)
-       VALUES (?, ?, ?, ?, 0, ?)`
-    )
-    .run(entity_type, entity_id, due_date, message.trim(), new Date().toISOString());
+  const id = addReminder(entity_type, entity_id, due_date, message.trim());
 
-  return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
+  return NextResponse.json({ ok: true, id });
 }

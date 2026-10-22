@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole, canReachGroup } from "@/lib/session";
-import { addStop, DeliveryError } from "@/lib/delivery";
+import { requireRole, canReachGroup, orgScopeId } from "@/lib/session";
+import { DeliveryError } from "@/lib/delivery";
+import { addOrderToRun, orderForRun, runGroup } from "@/lib/repo/deliveryRunsAdmin";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 /* A function, not a module-level response: a Response body can be read once, so the second request
@@ -13,19 +13,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!guard.ok) return guard.response;
 
   const runId = Number((await ctx.params).id);
-  const db = getDb();
-
-  const run = db.prepare("SELECT id, group_id FROM delivery_runs WHERE id = ?").get(runId) as
-    | { group_id: number | null }
-    | undefined;
+  // The run and the order must both be this company's: one with no group is reachable by group alone.
+  const organizationId = orgScopeId(guard.session);
+  const run = runGroup(runId, organizationId);
   if (!run || !canReachGroup(guard.session, run.group_id)) return notFound();
 
   const body = (await req.json().catch(() => null)) as { order_id?: unknown } | null;
-  const order = db
-    .prepare("SELECT id, group_id, status FROM orders WHERE id = ?")
-    .get(Number(body?.order_id)) as
-    | { id: number; group_id: number | null; status: string }
-    | undefined;
+  const order = orderForRun(Number(body?.order_id), organizationId);
 
   /* ONE check, and it is the one that means something: can the CALLER reach this order?
    *
@@ -45,7 +39,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!order || !canReachGroup(guard.session, order.group_id)) return notFound();
 
   try {
-    const id = addStop(db, runId, order.id, Number(body && (body as { sort_order?: number }).sort_order) || 0);
+    const id = addOrderToRun(runId, order.id, Number(body && (body as { sort_order?: number }).sort_order) || 0);
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     if (e instanceof DeliveryError) {

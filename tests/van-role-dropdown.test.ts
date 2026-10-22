@@ -61,7 +61,7 @@ describe("the van-role dropdown queries", () => {
        the next time a van role is added — which is the failure this whole task is about. */
     for (const file of [
       "lib/repo/commissionView.ts", // the commission page's pickers moved here
-      "app/(shell)/sales/schedule/page.tsx",
+      "lib/repo/scheduleView.ts", // the planner's driver list moved here
     ]) {
       const src = readFileSync(file, "utf8");
       /* Comments are stripped, and deliberately. The fix's own comment has to name the
@@ -89,7 +89,7 @@ describe("the van-role dropdown queries", () => {
      second time it caught a real regression rather than a stale expectation. A guard
      that names a path has to be updated when the code moves -- that is the guard doing
      its job, not a cost of it. */
-    const src = readFileSync("app/(shell)/sales/schedule/page.tsx", "utf8");
+    const src = readFileSync("lib/repo/scheduleView.ts", "utf8");
     const code = src
       .replace(/\/\*[\s\S]*?\*\//g, "")
       .split("\n")

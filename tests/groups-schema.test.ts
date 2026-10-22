@@ -53,7 +53,7 @@ describe("users rebuild", () => {
       // the bound chat and the one-shot deep-link nonce that binds it.
       // avatar_url is nullable and optional: most accounts have no photo, and the avatar
       // component falls back to initials rather than inventing a face for them.
-      ["active", "avatar_stem", "avatar_url", "created_at", "display_name", "group_id", "id", "location_consent_at", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "username"].sort()
+      ["active", "avatar_stem", "avatar_url", "created_at", "display_name", "group_id", "id", "location_consent_at", "organization_id", "password_hash", "phone", "prefs_json", "role", "staff_code", "telegram_chat_id", "telegram_link_nonce", "token_version", "totp_enabled_at", "totp_last_step", "totp_secret", "username"].sort()
     );
   });
 

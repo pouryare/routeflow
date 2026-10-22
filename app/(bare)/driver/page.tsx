@@ -3,10 +3,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { getDb, plain } from "@/lib/db";
-import { readRun, readDriverRuns } from "@/lib/delivery";
-import { readTodaysLeadRun } from "@/lib/repo/leadRuns";
-import { driverStatementFor } from "@/lib/driverCommissionLedger";
+import { plain } from "@/lib/db";
+import { driverHomeData } from "@/lib/repo/driverHome";
 import { driverDaySections } from "@/lib/driverDay";
 import { faToman, faNum } from "@/lib/format";
 import DriverRun from "@/components/driver/DriverRun";
@@ -69,21 +67,7 @@ export default async function DriverPage() {
   }
 
   const sections = driverDaySections(session.role);
-  const db = getDb();
   const today = tehranTodayIso();
-
-  /* Deliveries. Falls back to the most recent run rather than showing an empty screen --
-     a driver opening this at 00:30 after a late round is finishing yesterday's work, not
-     starting a day with no stops. */
-  const runs = readDriverRuns(db, session.user.id);
-  const chosen = runs.find((r) => r.run_date === today) ?? runs[0];
-  const run = chosen ? readRun(db, chosen.id) : null;
-
-  /* Prospect visits. readTodaysLeadRun is the same authority /api/lead-runs calls, and it
-     applies the same "today, else the most recent not finished" rule. Called on the server
-     so the section is painted alongside the deliveries rather than filling in under a
-     skeleton. The client still re-fetches on mount -- this is a first paint, not a cache. */
-  const leadRun = readTodaysLeadRun(db, session.user.id, session.organizationId, today);
 
   // A read-only glance at their own commission -- a driver never reaches /sales/commission
   // (proxy.ts sends every /sales/* request from a driver back here), so this one card is
@@ -91,7 +75,7 @@ export default async function DriverPage() {
   // and payments stay owner-only policy, the same as the فروشنده and مدیر گروه ledgers.
   const j = toJalali(new Date().toISOString())!;
   const period = { from: jalaliToIsoDate(j.jy, j.jm, 1), to: jalaliToIsoDate(j.jy, j.jm, j.jd) };
-  const commission = driverStatementFor(db, session.user.id, period);
+  const { run, leadRun, commission } = driverHomeData(session, today, period);
 
   return (
     <main className="mx-auto min-h-screen w-full max-w-2xl px-[var(--space-4)] py-[var(--space-5)]">

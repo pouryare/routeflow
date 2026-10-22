@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { readCatalogue, createProduct } from "@/lib/catalogue";
+import { addProduct, catalogueFor } from "@/lib/repo/salesWrites";
 import { MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
 
 /** The catalogue is company-wide, so there is no group filter here -- but the role
@@ -18,7 +17,7 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
 
   const url = new URL(req.url);
-  const products = readCatalogue(getDb(), guard.session.organizationId, {
+  const products = catalogueFor(guard.session.organizationId, {
     includeInactive: url.searchParams.get("all") === "1",
     onDate: url.searchParams.get("on") ?? undefined,
   });
@@ -54,7 +53,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = createProduct(getDb(), {
+    const id = addProduct({
       name,
       kg_per_base_unit: kg,
       organization_id: guard.session.organizationId,

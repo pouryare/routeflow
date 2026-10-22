@@ -1,4 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
+import { getDb } from "@/lib/db";
 import { canReachGroup, type Session } from "@/lib/session";
 import { nextActionFor, visitOutcomeLabel } from "@/lib/crm/leadDesire";
 
@@ -266,8 +267,8 @@ export function assertAssignableDriver(conn: DatabaseSync, session: Session, dri
  *
  *  The SQL lives here rather than in the route because that is the house rule: routes decide
  *  who and what, lib/repo/ decides how. */
-export function isOnDriversRun(conn: DatabaseSync, driverUserId: number, orgId: number, locationId: number): boolean {
-  const row = conn
+export function isOnDriversRun(driverUserId: number, orgId: number, locationId: number): boolean {
+  const row = getDb()
     .prepare(`SELECT 1 FROM lead_run_stops s JOIN delivery_runs r ON r.id = s.run_id
                WHERE s.location_id = ? AND r.driver_user_id = ? AND r.organization_id = ? LIMIT 1`)
     .get(locationId, driverUserId, orgId);

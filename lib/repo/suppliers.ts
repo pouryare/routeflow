@@ -94,3 +94,8 @@ export function supplierBalanceToman(organizationId: number, supplierId: number)
     .get(organizationId, supplierId) as { n: number };
   return row.n;
 }
+
+/** One supplier of this company, or undefined (the statement page). */
+export function supplierOf(organizationId: number, id: number): SupplierRow | undefined {
+  return getSupplier(getDb(), organizationId, id);
+}

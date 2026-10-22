@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
-import { setManagerOverride } from "@/lib/managerCommissionLedger";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { groupManagerInOrg } from "@/lib/repo/orgRefs";
+import { addManagerOverride } from "@/lib/repo/routeAdapters";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only. A مدیر گروه's incentive is set by the owner, the same "payroll is not
@@ -30,18 +30,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ شروع نرخ معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
   const rawId = body?.manager_user_id;
   const managerId = rawId === undefined || rawId === null ? null : Number(rawId);
 
   if (managerId !== null) {
-    const person = db.prepare("SELECT id FROM users WHERE id = ? AND role = 'group_manager'").get(managerId);
-    if (!person) {
+    const isManager = groupManagerInOrg(managerId, orgScopeId(guard.session));
+    if (!isManager) {
       return NextResponse.json({ ok: false, error: "این حساب مدیر گروه نیست" }, { status: 400 });
     }
   }
 
-  const id = setManagerOverride(db, {
+  const id = addManagerOverride({
     manager_user_id: managerId,
     override_pct: pct,
     valid_from: validFrom,

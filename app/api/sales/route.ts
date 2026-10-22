@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { groupFilter, requireRole } from "@/lib/session";
+import { groupFilter, orgScopeId, requireRole } from "@/lib/session";
+import { customerNameVisible, customerPurchaseHistory } from "@/lib/repo/customerSales";
 import { MANAGE_ROLES } from "@/lib/roles";
 
 // A manager may read the purchase history of their own customers -- it is what the
@@ -20,31 +20,13 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "نام مشتری وارد نشده است" }, { status: 400 });
   }
 
-  const db = getDb();
-  const filter = groupFilter(guard.session);
-  const reachable = db
-    .prepare(`SELECT 1 FROM customers WHERE business_name = ?${filter.sql} LIMIT 1`)
-    .get(customer, ...filter.params);
   // 404, not 403: the same rule as everywhere else -- a 403 would confirm that a customer
   // by this name exists in someone else's group.
-  if (!reachable) {
+  if (!customerNameVisible(customer, groupFilter(guard.session))) {
     return NextResponse.json({ ok: false, error: "مشتری پیدا نشد" }, { status: 404 });
   }
 
-  const orders = db
-    .prepare(
-      `SELECT order_no, sale_date, product_name, qty, amount, payment_status, shipping_status
-       FROM sales WHERE customer_name = ? ORDER BY sale_date DESC, id DESC LIMIT 50`
-    )
-    .all(customer);
-
-  const topProducts = db
-    .prepare(
-      `SELECT product_name, SUM(amount) as total_amount, COUNT(*) as line_count
-       FROM sales WHERE customer_name = ? AND product_name IS NOT NULL
-       GROUP BY product_name ORDER BY total_amount DESC LIMIT 5`
-    )
-    .all(customer);
+  const { orders, topProducts } = customerPurchaseHistory(customer, orgScopeId(guard.session));
 
   return NextResponse.json({ ok: true, orders, topProducts });
 }

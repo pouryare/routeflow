@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb, readLeadLists, setLeadListItems } from "@/lib/db";
-import { requireRole, scopeGroupIds } from "@/lib/session";
+import { leadListsIn } from "@/lib/repo/routeAdapters";
+import { createLeadList } from "@/lib/repo/leadListsAdmin";
+import { groupFilter, requireRole, scopeGroupIds } from "@/lib/session";
 import { PIN_POOL_ROLES } from "@/lib/roles";
 
 const MAX_NAME = 60;
@@ -10,7 +11,7 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, PIN_POOL_ROLES);
   if (!guard.ok) return guard.response;
 
-  return NextResponse.json({ ok: true, lists: readLeadLists(getDb(), scopeGroupIds(guard.session)) });
+  return NextResponse.json({ ok: true, lists: leadListsIn(scopeGroupIds(guard.session)) });
 }
 
 interface NewListInput {
@@ -42,16 +43,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "فهرست مکان‌ها نامعتبر است" }, { status: 400 });
   }
 
-  const db = getDb();
-  const now = new Date().toISOString();
-  const result = db
-    .prepare(
-      "INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES (?, ?, ?, ?, ?)"
-    )
-    .run(name, guard.session.groupId, now, now, guard.session.organizationId);
-  const id = Number(result.lastInsertRowid);
-
-  if (ids.length) setLeadListItems(db, id, ids);
+  const id = createLeadList(name, guard.session.groupId, guard.session.organizationId, ids, groupFilter(guard.session));
 
   return NextResponse.json({ ok: true, id });
 }

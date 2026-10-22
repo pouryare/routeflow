@@ -9,6 +9,7 @@ import { applyTenantUniqueRebuilds } from "./migrations/04-tenant-unique-rebuild
 import { applyTerritoryOrdersCustomers } from "./migrations/05-territory-orders-customers";
 import { applyNotificationsRolesSeeds } from "./migrations/06-notifications-roles-seeds";
 import { applyLedgersAndLateColumns } from "./migrations/07-ledgers-and-late-columns";
+import { applyFounderSecondFactor } from "./migrations/08-founder-second-factor";
 
 export function runMigrations(db: DatabaseSync): void {
   applyEarlyColumns(db);
@@ -18,4 +19,5 @@ export function runMigrations(db: DatabaseSync): void {
   applyTerritoryOrdersCustomers(db);
   applyNotificationsRolesSeeds(db);
   applyLedgersAndLateColumns(db);
+  applyFounderSecondFactor(db);
 }

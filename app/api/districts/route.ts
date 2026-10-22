@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
+import { districtsSignature, insertCustomDistrict } from "@/lib/repo/districtsAdmin";
 import { etagFor, etagJson, notModified } from "@/lib/httpCache";
 import { geometryVersion } from "@/lib/districtGeometry";
-import { readDistrictProperties } from "@/lib/districts";
+import { districtPropertiesIn } from "@/lib/repo/routeAdapters";
 import { requireRole, scopeGroupIds } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -14,17 +14,13 @@ export async function GET(req: NextRequest) {
   if (!guard.ok) return guard.response;
   const scope = scopeGroupIds(guard.session);
 
-  const db = getDb();
-  const sig = db.prepare("SELECT COUNT(*) c, MAX(updated_at) m FROM districts").get() as {
-    c: number;
-    m: string | null;
-  };
+  const sig = districtsSignature();
   // Scope is part of the tag -- see the note in /api/customers.
   const tag = etagFor(`districts:${scope === "all" ? "all" : scope.join(",")}`, sig.c, sig.m);
   const cached = notModified(req, tag);
   if (cached) return cached;
 
-  return etagJson(req, tag, { version: geometryVersion(), districts: readDistrictProperties(db, scope) });
+  return etagJson(req, tag, { version: geometryVersion(), districts: districtPropertiesIn(scope) });
 }
 
 const VALID_STATUSES = ["visited", "needs_coverage", "not_allowed", "unknown"];
@@ -44,29 +40,11 @@ export async function POST(req: NextRequest) {
   }
   const status = VALID_STATUSES.includes(coverage_status) ? coverage_status : "unknown";
 
-  const db = getDb();
-  const now = new Date().toISOString();
   try {
-    const result = db
-      .prepare(
-        `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, notes, is_custom, group_id, updated_at)
-         VALUES (?, 'mahalle', '', ?, ?, ?, 1, ?, ?)`
-      )
-      // A custom district belongs to nobody in the tenant sense: districts is shared
-      // reference data, so a boundary an owner draws is visible to the whole install and
-      // carries no organization_id. The group_id is what scopes it for territory -- an
-      // owner's own group until territory is reassigned. parent_name is '' and not NULL
-      // because UNIQUE(name, level, parent_name) treats every NULL as distinct from every
-      // other NULL, so a NULL here would let a second identical draw through.
-      .run(
-        name.trim(),
-        JSON.stringify(geometry),
-        status,
-        notes ?? null,
-        guard.session.groupId,
-        now
-      );
-    return NextResponse.json({ ok: true, id: Number(result.lastInsertRowid) });
+    // A custom district carries no organization_id (districts are shared geography); the group_id
+    // is what scopes it for territory. See insertCustomDistrict for why parent_name is ''.
+    const id = insertCustomDistrict(name.trim(), geometry, status, notes ?? null, guard.session.groupId);
+    return NextResponse.json({ ok: true, id });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "خطا";
     if (msg.includes("UNIQUE")) {

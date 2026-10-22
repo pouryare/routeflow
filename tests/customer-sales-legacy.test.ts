@@ -1,0 +1,29 @@
+import { describe, it, expect, afterAll } from "vitest";
+import fs from "node:fs";
+import path from "node:path";
+import os from "node:os";
+
+const testDbPath = path.join(os.tmpdir(), `coverage-test-legacy-sales-${Date.now()}-${Math.random().toString(36).slice(2)}.db`);
+process.env.ROUTEFLOW_DB_PATH = testDbPath;
+process.env.SESSION_SECRET = "test-secret";
+
+const { getDb } = await import("@/lib/db");
+const { customerPurchaseHistory } = await import("@/lib/repo/customerSales");
+
+afterAll(() => {
+  for (const suffix of ["", "-wal", "-shm"]) fs.rmSync(`${testDbPath}${suffix}`, { force: true });
+});
+
+describe("legacy sales rows", () => {
+  it("are served to the earliest company only, never to another company with a same-named customer", () => {
+    const db = getDb();
+    const now = new Date().toISOString();
+    db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
+    db.prepare("INSERT INTO sales (sale_date, customer_name, product_name, qty, amount, imported_at) VALUES ('2026-01-01', 'Same Name', 'x', 1, 100, ?)").run(now);
+
+    expect(customerPurchaseHistory("Same Name", 1).orders).toHaveLength(1);
+    expect(customerPurchaseHistory("Same Name", 2).orders).toEqual([]);
+    expect(customerPurchaseHistory("Same Name", 2).topProducts).toEqual([]);
+    expect(customerPurchaseHistory("Same Name", null).orders).toHaveLength(1);
+  });
+});

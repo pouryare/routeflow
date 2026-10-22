@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { orgScopeId, requireRole } from "@/lib/session";
-import { stockPosition, readPurchases } from "@/lib/purchases";
-import { expiringBatches } from "@/lib/repo/batches";
-import { stockLevels } from "@/lib/repo/stock";
+import { stockView } from "@/lib/repo/salesWrites";
 import { MANAGE_ROLES, isOwner } from "@/lib/roles";
 
 
@@ -17,24 +14,14 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...MANAGE_ROLES, "phone_sales"]);
   if (!guard.ok) return guard.response;
 
-  const db = getDb();
   const org = guard.session.organizationId;
   // Phase 2: soonest expiry per product + a company-wide expiring count.
   // Phase 3: reserved (claimed by confirmed orders) and available-to-promise.
-  const levelByProduct = new Map(stockLevels(org).map((l) => [l.product_id, l]));
-  const stock = stockPosition(db, orgScopeId(guard.session)).map((row) => {
-    const lvl = levelByProduct.get(row.product_id);
-    return {
-      ...row,
-      earliest_expiry: lvl?.earliest_expiry ?? null,
-      reserved: lvl?.reserved ?? 0,
-      available: lvl ? lvl.available : row.on_hand,
-    };
-  });
+  const { stock, expiringCount, purchases } = stockView(org, orgScopeId(guard.session), isOwner(guard.session.role));
   return NextResponse.json({
     ok: true,
     stock,
-    expiring_count: expiringBatches(org).length,
-    purchases: isOwner(guard.session.role) ? readPurchases(db, org, 25) : [],
+    expiring_count: expiringCount,
+    purchases,
   });
 }

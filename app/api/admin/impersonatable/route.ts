@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { readImpersonatable } from "@/lib/repo/impersonation";
 import { orgScopeId, requireRole } from "@/lib/session";
-import { logPlatformAccess } from "@/lib/platformAccess";
+import { impersonatableIn, logAccess } from "@/lib/repo/routeAdapters";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** GET /api/admin/impersonatable — the account switcher's list, across EVERY tenant.
@@ -18,13 +16,12 @@ export async function GET(req: NextRequest) {
   const guard = requireRole(req, OWNER_ROLES);
   if (!guard.ok) return guard.response;
 
-  const db = getDb();
-  const users = readImpersonatable(db, orgScopeId(guard.session));
+  const users = impersonatableIn(orgScopeId(guard.session));
 
   // A platform_owner only; logPlatformAccess returns immediately for anyone else, so
   // this is not a per-row cost for an ordinary owner.
   for (const u of users) {
-    logPlatformAccess(db, guard.session, "/api/admin/impersonatable", u.organization_id);
+    logAccess(guard.session, "/api/admin/impersonatable", u.organization_id);
   }
 
   const self = guard.session.user.id;

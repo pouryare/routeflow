@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { readAvatarStem } from "@/lib/repo/avatars";
-import { getSession } from "@/lib/session";
+import { getSession, orgScopeId } from "@/lib/session";
 import { AVATAR_PRESETS, readAvatarBytes, safePresetKey } from "@/lib/avatarStore";
 
 /** The encoded bytes for one person's avatar.
@@ -10,13 +9,14 @@ import { AVATAR_PRESETS, readAvatarBytes, safePresetKey } from "@/lib/avatarStor
  *  route screen, so a MANAGE_ROLES gate here would blank every avatar in the vehicle app —
  *  the one surface where recognising the person in front of you matters most. There is no
  *  private photograph here: it is the same face the app's own people lists already show,
- *  and a login is required to ask at all.
+ *  and a login is required to ask at all. People of the caller's own company only.
  *
  *  `?key=<preset>` serves one of the canned portraits; without it the user's own
  *  `avatar_stem` is used. `?format=avif` returns AVIF and anything else WebP, which is what
  *  a `<picture>` fallback chain expects. */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
-  if (!getSession(req)) {
+  const session = getSession(req);
+  if (!session) {
     return NextResponse.json({ ok: false, error: "احراز هویت نشده" }, { status: 401 });
   }
 
@@ -31,7 +31,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   // `undefined` is "no such user" and `null` is "a real user with no photo". Both are a 404
   // to a caller, but they are not the same fact, so the repo keeps them apart.
-  const ownStem = readAvatarStem(getDb(), userId);
+  const ownStem = readAvatarStem(userId, orgScopeId(session));
   if (ownStem === undefined) {
     return NextResponse.json({ ok: false, error: "عکس پیدا نشد" }, { status: 404 });
   }

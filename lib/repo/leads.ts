@@ -1,5 +1,5 @@
 import type { DatabaseSync } from "node:sqlite";
-import type { SavedLocationRow } from "@/lib/db";
+import { getDb, type SavedLocationRow } from "@/lib/db";
 import { orgClause } from "@/lib/orgScope";
 
 /** Reads over the lead pool -- the pins in saved_locations.
@@ -10,8 +10,11 @@ import { orgClause } from "@/lib/orgScope";
  */
 
 /** The pin a visit is being recorded against, or null. */
-export function readLeadLocation(conn: DatabaseSync, locationId: number): SavedLocationRow | null {
-  return (conn.prepare("SELECT * FROM saved_locations WHERE id = ?").get(locationId) as SavedLocationRow | undefined) ?? null;
+/** One pin of this company (`organizationId` null = every company, platform owner only). A pin with no
+ *  group is reachable by any owner through the group rule alone, so the company is part of the lookup. */
+export function readLeadLocation(locationId: number, organizationId: number | null): SavedLocationRow | null {
+  const org = orgClause("organization_id", organizationId);
+  return (getDb().prepare(`SELECT * FROM saved_locations WHERE id = ?${org.sql}`).get(locationId, ...org.params) as SavedLocationRow | undefined) ?? null;
 }
 
 /** Which group owns a pin, for the reachability check that happens before the row is read. */

@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
-import { requireRole } from "@/lib/session";
-import { recordPayment } from "@/lib/commissionLedger";
-import { recordDriverPayment } from "@/lib/driverCommissionLedger";
-import { recordManagerPayment } from "@/lib/managerCommissionLedger";
+import { orgScopeId, requireRole } from "@/lib/session";
+import { userWithRoleInOrg } from "@/lib/repo/orgRefs";
+import { payDriver, payManager, paySales } from "@/lib/repo/routeAdapters";
 import { isToman } from "@/lib/money";
 import { OWNER_ROLES } from "@/lib/roles";
 
@@ -50,19 +48,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: false, error: "تاریخ پرداخت معتبر نیست" }, { status: 400 });
   }
 
-  const db = getDb();
   const rawId =
     kind === "driver" ? body?.driver_user_id : kind === "manager" ? body?.manager_user_id : body?.salesperson_user_id;
   const personId = Number(rawId);
   // The SET, not the primary column: paying a driver whose primary is something else must
   // still work, or a legitimate payment is refused over a detail the ledger itself ignores.
-  const person = db
-    .prepare(
-      `SELECT u.id FROM users u JOIN user_roles r ON r.user_id = u.id
-        WHERE u.id = ? AND r.role = ?`
-    )
-    .get(personId, ROLE_FOR_KIND[kind]);
-  if (!person) {
+  // And this company's: an id alone reaches every tenant's staff.
+  if (!userWithRoleInOrg(personId, [ROLE_FOR_KIND[kind]], orgScopeId(guard.session))) {
     return NextResponse.json({ ok: false, error: `این حساب ${NOT_THIS_KIND[kind]} نیست` }, { status: 400 });
   }
 
@@ -77,10 +69,10 @@ export async function POST(req: NextRequest) {
 
   const id =
     kind === "driver"
-      ? recordDriverPayment(db, { driver_user_id: personId, ...shared })
+      ? payDriver({ driver_user_id: personId, ...shared })
       : kind === "manager"
-        ? recordManagerPayment(db, { manager_user_id: personId, ...shared })
-        : recordPayment(db, { salesperson_user_id: personId, ...shared });
+        ? payManager({ manager_user_id: personId, ...shared })
+        : paySales({ salesperson_user_id: personId, ...shared });
 
   return NextResponse.json({ ok: true, id }, { status: 201 });
 }

@@ -38,6 +38,7 @@ const UNPROBEABLE: Record<string, string> = {};
  *  answering 2xx to an anonymous caller fails the anonymous test. */
 const PUBLIC_BY_DESIGN: Record<string, string> = {
   "POST login/route.ts": "the sign-in form posts here before any session exists",
+  "POST login/second-factor/route.ts": "second sign-in step: public like /api/login, it answers only with a valid password-step challenge",
   "POST logout/route.ts": "clearing a cookie needs no session; idempotent",
   "DELETE admin/impersonate/route.ts": "ends a Login-As; with no saved owner session it only clears both cookies",
 };
@@ -109,6 +110,21 @@ function fingerprintOrgB(): string {
     const rows = db.prepare(`SELECT * FROM "${t}" WHERE organization_id = 2 ORDER BY rowid`).all();
     h.update(t).update(JSON.stringify(rows));
   }
+  /* Child tables (product_prices, packagings, order_lines, ...) carry no organization_id of their
+     own: they belong to a company through a parent row. Fingerprint the rows hanging off company B's. */
+  const orgTableSet = new Set(tables);
+  const children = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name").all() as { name: string }[])
+    .map((t) => t.name)
+    .filter((name) => !orgTableSet.has(name));
+  for (const t of children) {
+    const fks = (db.prepare(`PRAGMA foreign_key_list("${t}")`).all() as { from: string; table: string; to: string | null }[]).filter(
+      (fk) => orgTableSet.has(fk.table) && (fk.to === "id" || fk.to === null)
+    );
+    for (const fk of fks) {
+      const rows = db.prepare(`SELECT * FROM "${t}" WHERE "${fk.from}" IN (SELECT id FROM "${fk.table}" WHERE organization_id = 2) ORDER BY rowid`).all();
+      h.update(`${t}.${fk.from}`).update(JSON.stringify(rows));
+    }
+  }
   return h.digest("hex");
 }
 
@@ -121,6 +137,8 @@ function markB(db: ReturnType<typeof getDb>) {
     ["users", "display_name"],
     ["groups", "name"],
     ["facilities", "name"],
+    ["saved_locations", "name"],
+    ["lead_lists", "name"],
     ["tasks", "title"],
     ["alerts", "title"],
     ["rules", "name"],
@@ -147,14 +165,48 @@ function around(text: string): string {
  *  anything up, which is how a missing organisation check on a PATCH went unseen: the net sent
  *  `{}`, got a 400, and never reached the UPDATE. The second body names the fields most handlers
  *  accept, so a handler that does not check the row's organisation actually writes. */
-const BODIES: Record<string, unknown>[] = [
-  {},
-  {
+/** Foreign keys a body can name. Each is set to the candidate id under test, so a handler that
+ *  attaches something to a row it was handed (a price to a product, an order to a customer)
+ *  is tried with another company's row. */
+const REFERENCE_FIELDS = [
+  "product_id", "packaging_id", "customer_id", "order_id", "user_id", "group_id", "location_id", "facility_id",
+  "supplier_id", "run_id", "stop_id", "batch_id", "vehicle_id", "driver_id", "seller_id", "entity_id", "payment_id",
+  "cheque_id", "salesperson_user_id", "district_id", "list_id", "lead_id", "task_id", "plan_id",
+];
+
+const bodiesFor = (candidate: string, usedFields: string[]): Record<string, unknown>[] => {
+  const id = Number(candidate);
+  const filler = {
+    entity_type: "customer", valid_from: "2026-01-01", planned_date: "2026-01-01", due_date: "2026-01-01",
+    location_ids: [id], ids: [id], items: [{ product_id: id, qty: 1 }],
+    mutations: [{ client_uuid: `leak-${id}`, op: "order.draftCreate", occurred_at: "2026-01-01T00:00:00.000Z", clock_skew_ms: 0, payload: { customer_id: id, order_date: "2026-01-01", lines: [{ product_id: id, packaging_id: id, packs: 1 }] } }],
+    lines: [{ product_id: id, packaging_id: id, packs: 1, base_qty: 1, unit_cost_toman: 1 }], purchase_date: "2026-01-01", order_date: "2026-01-01",
     name: "LEAK", display_name: "LEAK", title: "LEAK", label: "LEAK", note: "LEAK", notes: "LEAK", address: "LEAK",
     phone: "09120000000", active: false, status: "cancelled", color: "#2DE0E6", amount_toman: 1, price_toman: 1,
-    quantity: 1, qty: 1, lat: 35.7, lng: 51.4, role: "phone_sales", group_id: null, password: "leakleakleak1",
-  },
-];
+    quantity: 1, qty: 1, rate_per_kg_toman: 1, override_pct: 1, paid_on: "2026-01-01", run_date: "2026-01-01", packs: 1,
+    kind: "sales", line: { product_id: id, packaging_id: id, packs: 1 }, lat: 35.7, lng: 51.4, role: "phone_sales", password: "leakleakleak1",
+  };
+  return [
+    {},
+    // Every reference at once, then each one the handler actually reads on its own: a handler that
+    // checks a second reference (a packaging of the product) would otherwise hide a missing check
+    // on the first.
+    { ...Object.fromEntries(REFERENCE_FIELDS.map((f) => [f, id])), ...filler },
+    ...usedFields.map((f) => ({ [f]: id, ...filler })),
+  ];
+};
+
+const usedCache = new Map<string, string[]>();
+/** Reference fields a route's source mentions, so each can be tried on its own. */
+function usedFieldsOf(r: RouteInfo): string[] {
+  let used = usedCache.get(r.file);
+  if (!used) {
+    const src = fs.readFileSync(r.file, "utf8");
+    used = REFERENCE_FIELDS.filter((f) => src.includes(f));
+    usedCache.set(r.file, used);
+  }
+  return used;
+}
 
 function req(method: Method, url: string, cookie?: string, body: Record<string, unknown> = {}) {
   const headers: Record<string, string> = {};
@@ -211,13 +263,24 @@ beforeAll(async () => {
      refuses deletion for a different reason) and a second facility (the last one is protected). */
   db.prepare("INSERT INTO groups (name, slug, color, active, created_at, organization_id) VALUES ('empty b', 'empty-b', '#2DE0E6', 1, '2026-01-01', 2)").run();
   db.prepare("INSERT INTO facilities (slug, kind, name, lat, lng, updated_at, organization_id, created_at) VALUES ('wh-b2', 'warehouse', 'second b', 35, 51, '2026-01-01', 2, '2026-01-01')").run();
+  /* An ungrouped list: an owner reaches ungrouped rows by group alone, so only the company check keeps it out. */
+  db.prepare("INSERT INTO lead_lists (name, group_id, created_at, updated_at, organization_id) VALUES ('b list', NULL, '2026-01-01', '2026-01-01', 2)").run();
+  db.prepare("INSERT INTO saved_locations (name, maps_url, resolution, created_at, group_id, organization_id) VALUES ('b pin', 'https://maps.example/b-ungrouped', 'manual', '2026-01-01', NULL, 2)").run();
   markB(db);
   aOwnerCookie = `${COOKIE_NAME}=${createSessionToken({ uid: a.ownerId, role: "owner", gid: null, oid: 1, tv: 0, name: "A" })}`;
 
   const bIds = Object.entries(b)
     .filter(([k, v]) => k !== "orgId" && typeof v === "number" && v > 0)
     .map(([, v]) => String(v));
-  candidateIds = [...new Set([...bIds, "999999"])];
+  /* Plus the id of every company-B row in every tenant table, so a handler keyed on any of them is tried. */
+  const orgTables = (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'").all() as { name: string }[])
+    .map((t) => t.name)
+    .filter((name) => {
+      const cols = (db.prepare(`PRAGMA table_info("${name}")`).all() as { name: string }[]).map((c) => c.name);
+      return cols.includes("organization_id") && cols.includes("id");
+    });
+  const rowIds = orgTables.flatMap((t) => (db.prepare(`SELECT id FROM "${t}" WHERE organization_id = 2 LIMIT 20`).all() as { id: number }[]).map((r) => String(r.id)));
+  candidateIds = [...new Set([...bIds, ...rowIds, "999999"])];
 
   for (const r of routes) {
     if (UNPROBEABLE[r.rel]) continue;
@@ -269,9 +332,12 @@ describe("tenancy net over every api route", () => {
     const touched: string[] = [];
     for (const r of routes) {
       for (const m of ["POST", "PUT", "PATCH", "DELETE"] as const) {
-        const values = r.params.length ? candidateIds : ["0"];
+        /* A route with no path id still takes ids in its body, so it is tried with every candidate too
+           (its URL ignores the value); the empty body only needs one pass. */
+        const values = r.params.length ? candidateIds : ["0", ...candidateIds];
         for (const v of values) {
-          for (const body of BODIES) {
+          for (const body of bodiesFor(v, usedFieldsOf(r))) {
+            if (!r.params.length && v !== "0" && Object.keys(body).length === 0) continue;
             const out = await call(r, m, v, aOwnerCookie, body);
             if (!out) continue;
             const at = `${m} ${r.template.replace(/\{\w+\}/g, v)} (${out.status})`;

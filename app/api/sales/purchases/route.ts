@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
-import { recordPurchase, PurchaseError, type PurchaseLineInput } from "@/lib/purchases";
+import { PurchaseError, type PurchaseLineInput } from "@/lib/purchases";
+import { recordPurchaseFor } from "@/lib/repo/salesWrites";
 import { OWNER_ROLES } from "@/lib/roles";
 
 /** Owner only. Recording a purchase is recording that company money was spent, and it
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const id = recordPurchase(getDb(), {
+    const id = recordPurchaseFor({
       supplier: typeof body?.supplier === "string" ? body.supplier : null,
       purchase_date: purchaseDate,
       invoice_no: typeof body?.invoice_no === "string" ? body.invoice_no : null,

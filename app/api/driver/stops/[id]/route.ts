@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getDb } from "@/lib/db";
 import { requireRole } from "@/lib/session";
 import { isToman } from "@/lib/money";
 import { customerDebtsForOrg } from "@/lib/repo/payments";
-import { recordDelivery, deferStop, DeliveryError } from "@/lib/delivery";
+import { DeliveryError } from "@/lib/delivery";
+import { deferOwnedStop, findOwnedStop, invoiceTotal, recordStopDelivery, storedDeliveries } from "@/lib/repo/driverStops";
 
 /** Records what happened at one door.
  *
@@ -16,22 +16,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!guard.ok) return guard.response;
 
   const stopId = Number((await ctx.params).id);
-  const db = getDb();
 
-  // The stop must be on a run belonging to this driver. Checked here rather than
+  // The stop must be on a run belonging to this driver (and company). Checked here rather than
   // trusting the id in the URL, and answered as 404 so another driver's stop is
   // indistinguishable from one that does not exist.
-  const owned = db
-    .prepare(
-      `SELECT ds.id, ds.status, ds.collected_toman, ds.order_id, dr.status AS run_status, o.customer_id
-         FROM delivery_stops ds
-         JOIN delivery_runs dr ON dr.id = ds.run_id
-         JOIN orders o ON o.id = ds.order_id
-        WHERE ds.id = ? AND dr.driver_user_id = ?`
-    )
-    .get(stopId, guard.session.user.id) as
-    | { id: number; status: string; collected_toman: number | null; order_id: number; run_status: string; customer_id: number }
-    | undefined;
+  const owned = findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
   if (!owned) {
     return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });
   }
@@ -59,9 +48,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
      DIFFERENT one used to re-debit the van and rewrite the cash collected (and on a closed run it
      reopened settled work), so it is refused. */
   if (owned.status === "delivered" || owned.status === "refused" || owned.run_status === "done") {
-    const stored = db
-      .prepare("SELECT id, COALESCE(packs_delivered, -1) AS d FROM order_lines WHERE order_id = ?")
-      .all(owned.order_id) as { id: number; d: number }[];
+    const stored = storedDeliveries(owned.order_id);
     const same =
       (owned.collected_toman ?? 0) === collected &&
       lines.every((l) => stored.some((r) => r.id === l.line_id && r.d === l.packs_delivered));
@@ -76,18 +63,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
   // Cash taken at the door can be this invoice plus what the shop already owed, and no more.
   // Anything above that is a typo or a lie, and it goes straight into the receipts.
-  const invoice = (
-    db
-      .prepare("SELECT COALESCE(SUM(packs_ordered * unit_price_toman), 0) AS t FROM order_lines WHERE order_id = ?")
-      .get(owned.order_id) as { t: number }
-  ).t;
+  const invoice = invoiceTotal(owned.order_id);
   const owedBefore = customerDebtsForOrg(guard.session.organizationId).get(owned.customer_id)?.total ?? 0;
   if (collected > invoice + owedBefore) {
     return NextResponse.json({ ok: false, error: "مبلغ دریافتی از بدهی مشتری و مبلغ این سفارش بیشتر است" }, { status: 400 });
   }
 
   try {
-    recordDelivery(db, stopId, {
+    recordStopDelivery(stopId, {
       lines,
       collected_toman: collected,
       by: guard.session.user.id,
@@ -108,19 +91,13 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const guard = requireRole(req, ["field_rep", "delivery_driver"]);
   if (!guard.ok) return guard.response;
   const stopId = Number((await ctx.params).id);
-  const db = getDb();
   // Same ownership rule as recording: another driver's stop answers 404.
-  const owned = db
-    .prepare(
-      `SELECT ds.id FROM delivery_stops ds JOIN delivery_runs dr ON dr.id = ds.run_id
-        WHERE ds.id = ? AND dr.driver_user_id = ? AND dr.organization_id = ?`
-    )
-    .get(stopId, guard.session.user.id, guard.session.organizationId);
+  const owned = findOwnedStop(stopId, guard.session.user.id, guard.session.organizationId);
   if (!owned) return NextResponse.json({ ok: false, error: "توقف پیدا نشد" }, { status: 404 });
   const body = (await req.json().catch(() => null)) as { action?: string } | null;
   if (body?.action !== "defer") return NextResponse.json({ ok: false, error: "درخواست نامعتبر است" }, { status: 400 });
   try {
-    return NextResponse.json({ ok: true, ...deferStop(db, stopId) });
+    return NextResponse.json({ ok: true, ...deferOwnedStop(stopId) });
   } catch (e) {
     if (e instanceof DeliveryError) return NextResponse.json({ ok: false, error: e.message }, { status: 409 });
     throw e;

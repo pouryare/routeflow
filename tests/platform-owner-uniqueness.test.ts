@@ -57,7 +57,7 @@ describe("exactly one platform_owner", () => {
   });
 
   it("the user API refuses to CHANGE a role to platform_owner", () => {
-    const src = readFileSync("app/api/admin/users/[id]/route.ts", "utf8");
+    const src = readFileSync("lib/userPatchPlan.ts", "utf8");
     expect(src).toMatch(/platform_owner/);
   });
 

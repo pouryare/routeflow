@@ -14,6 +14,9 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [bounced, setBounced] = useState(false);
+  // Set when the password passed but the founder's account also needs a code from the authenticator app.
+  const [challenge, setChallenge] = useState<string | null>(null);
+  const [code, setCode] = useState("");
   const nextPathRef = useRef<string | null>(null);
   const clearedRef = useRef(false);
 
@@ -40,14 +43,25 @@ function LoginForm() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch("/api/login", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username: username.trim(), password }),
-      });
+      const res = challenge
+        ? await fetch("/api/login/second-factor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ challenge, code: code.trim() }),
+          })
+        : await fetch("/api/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: username.trim(), password }),
+          });
       const data = await res.json();
       if (!res.ok || !data.ok) {
         setError(friendlyError(data.error, "ورود انجام نشد؛ دوباره تلاش کنید"));
+        setLoading(false);
+        return;
+      }
+      if (data.secondFactor) {
+        setChallenge(data.challenge);
         setLoading(false);
         return;
       }
@@ -86,6 +100,19 @@ function LoginForm() {
           )}
 
           <form onSubmit={onSubmit}>
+            {challenge ? (
+              <label className="flex flex-col gap-1 text-xs text-text-muted">کد برنامهٔ احراز هویت (یا کد بازیابی)<input
+                type="text"
+                autoFocus
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                value={code}
+                onChange={(e) => setCode(e.target.value)}
+                dir="ltr"
+                className="mb-[var(--space-4)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-center font-mono text-[length:var(--text-lg)] tracking-[0.3em] text-[var(--text)] outline-none focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
+              /></label>
+            ) : (
+            <>
             <label className="flex flex-col gap-1 text-xs text-text-muted">نام کاربری<input
               type="text"
               autoFocus
@@ -105,14 +132,16 @@ function LoginForm() {
               dir="rtl"
               className="mb-[var(--space-4)] w-full rounded-[var(--radius-md)] border border-[var(--border)] bg-[var(--surface)] px-[var(--space-4)] py-[var(--space-2)] text-right font-mono text-[length:var(--text-base)] text-[var(--text)] outline-none transition-[border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease-out)] placeholder:text-[var(--text-faint)] focus:border-[var(--accent)] focus:shadow-[0_0_0_2px_var(--accent)]"
             /></label>
+            </>
+            )}
             {error && <p className="mb-[var(--space-4)] text-[length:var(--text-sm)] text-[var(--crit)]">{error}</p>}
             <button
               type="submit"
-              disabled={loading || !username.trim() || !password}
+              disabled={loading || (challenge ? !code.trim() : !username.trim() || !password)}
               className="inline-flex items-center justify-center gap-[var(--space-2)] w-full cursor-pointer rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] py-[var(--space-2)] font-medium text-[var(--accent-ink)] transition-[filter,transform,opacity] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:enabled:scale-[1.03] hover:enabled:brightness-110 active:enabled:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Icon name="logout" size="md" />
-              {loading ? "در حال ورود…" : "ورود به برنامه"}
+              {loading ? "در حال ورود…" : challenge ? "تأیید و ورود" : "ورود به برنامه"}
             </button>
           </form>
         </div>
