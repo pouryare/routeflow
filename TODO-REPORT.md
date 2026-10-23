@@ -49,7 +49,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] No manager reassignment of customers; owner history covers pool claims and territory moves
 - [ ] The urgent commission rate is stored but never read; marking an order urgent does not change commission
 - [ ] Amount in words not yet on cheque entries or the payments list; no rial wording
-- [ ] 38 stale GitHub branches; owner runs `delete-stale-branches.sh`
+- [ ] 39 stale GitHub branches (the 38 listed in PR #55 plus `claude/project-thread-trrg87`, merged as PR #54): cloud sessions can only push their own branch, so they cannot delete branches or push tags. Run `delete-stale-branches.sh` from a clone with push rights, or delete them on GitHub's Branches page
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
 - [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
 - [ ] Open decisions: Android distribution route and iPhone support; off-site backup location; row-level security timing; charts library vs custom
@@ -73,7 +73,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 3. Owner checks the backup folder and picks an off-site destination (F138 part 2)
 4. Record delay reasons on deliveries so the reason report's delay section fills
 5. F104 customer snapshot sheet (small, nothing blocks it)
-6. Owner runs `delete-stale-branches.sh`
+6. Owner deletes the 39 stale branches (`delete-stale-branches.sh`, or GitHub's Branches page)
 7. Check the outside services from the Iranian server
 8. Decide the Android distribution route before F6 starts
 9. Data-layer decision record, then the PostgreSQL spike
