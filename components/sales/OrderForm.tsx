@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { friendlyError } from "@/lib/userMessage";
 import { useRouter } from "next/navigation";
 import JalaliDatePicker from "@/components/JalaliDatePicker";
@@ -18,6 +18,7 @@ import {
   type RequestedKind,
 } from "@/lib/requestedDay";
 import { tehranTodayIso } from "@/lib/jalali";
+import { customerProductIds } from "@/lib/customerProducts";
 
 interface Customer {
   id: number;
@@ -103,6 +104,24 @@ export default function OrderForm({
   const [packs, setPacks] = useState("1");
 
   const customer = customers.find((c) => c.id === customerId) ?? null;
+
+  /* F62: this customer's usual products first in the product picker, read from their history
+     (the usual basket, then everything else they have bought). Nothing is hidden. */
+  const [theirs, setTheirs] = useState<{ for: number; ids: string[] } | null>(null);
+  useEffect(() => {
+    if (customerId === null) return;
+    let alive = true;
+    fetch(`/api/sales/orders?customer=${customerId}&limit=1`)
+      .then((r) => r.json())
+      .then((j: { usual?: { product_id: number }[]; products?: { product_id: number }[] }) => {
+        if (alive) setTheirs({ for: customerId, ids: customerProductIds(j.usual ?? [], j.products ?? []) });
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, [customerId]);
+  const pinnedProducts = theirs && theirs.for === customerId && theirs.ids.length > 0 ? { label: "خریدهای این مشتری", ids: theirs.ids } : undefined;
 
   const product = products.find((p) => String(p.id) === pickProduct) ?? null;
   const packaging = product?.packagings.find((k) => String(k.id) === pickPackaging) ?? null;
@@ -371,6 +390,7 @@ export default function OrderForm({
             scope="order-products"
             label="کالا"
             items={products.map((p) => ({ id: String(p.id), label: p.name }))}
+            pinned={pinnedProducts}
             value={pickProduct}
             onChange={(id) => {
               setPickProduct(id);

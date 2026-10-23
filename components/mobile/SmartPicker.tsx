@@ -24,6 +24,7 @@ export default function SmartPicker({
   onChange,
   placeholder,
   clearLabel,
+  pinned,
 }: {
   scope: string;
   /** What is being chosen, as a word -- the sheet's title and the field's accessible name. */
@@ -35,6 +36,9 @@ export default function SmartPicker({
   placeholder?: string;
   /** If given, an extra row that clears the choice («بدون انتخاب»). */
   clearLabel?: string;
+  /** Ids the screen knows belong first (F62: this customer's usual products), shown above
+   *  this person's own «پرکاربردها» under their own heading. Nothing is hidden by it. */
+  pinned?: { label: string; ids: string[] };
 }) {
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -43,7 +47,14 @@ export default function SmartPicker({
   const chosen = items.find((i) => i.id === value);
   const ranked = useMemo(() => rank(items, history, q, 0, 8), [items, history, q]);
   const more = useMemo(() => items.filter((i) => rank([i], history, q, 0, 1).length > 0).length - ranked.length, [items, history, q, ranked]);
-  const frequent = useMemo(() => (q ? [] : usual(items, history, 5)), [items, history, q]);
+  const first = useMemo(
+    () => (q || !pinned ? [] : pinned.ids.map((id) => items.find((i) => i.id === id)).filter((i): i is (typeof items)[number] => !!i)),
+    [items, pinned, q],
+  );
+  const frequent = useMemo(
+    () => (q ? [] : usual(items, history, 5).filter((i) => !first.some((f) => f.id === i.id))),
+    [items, history, q, first],
+  );
 
   const show = () => {
     setHistory(loadHistory(getRecentsUser(), scope));
@@ -66,6 +77,19 @@ export default function SmartPicker({
       </button>
       <BottomSheet open={open} title={label} onClose={() => setOpen(false)}>
         <div className="smartpicker">
+          {first.length > 0 && pinned && (
+            <>
+              <div className="tf-group">{pinned.label}</div>
+              <div className="tf-grid">
+                {first.map((i) => (
+                  <button key={i.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" aria-pressed={i.id === value} onClick={() => pick(i.id)}>
+                    <Icon name="repeat" size="md" />
+                    {i.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
           {frequent.length > 0 && (
             <>
               <div className="tf-group">پرکاربردها</div>
@@ -85,7 +109,7 @@ export default function SmartPicker({
             onChange={(e) => setQ(e.target.value)}
             placeholder="جستجو…"
             aria-label={`جستجوی ${label}`}
-            autoFocus={frequent.length === 0}
+            autoFocus={frequent.length === 0 && first.length === 0}
             autoComplete="off"
           />
           <div className="tf-grid one">
