@@ -328,3 +328,18 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 **Done**: (1) legacy `sales` rows now carry their company (`organization_id`, stamped to the original company on boot), so a same-named customer in another company sees nothing of theirs; the coverage analytics reads follow suit and owners can now see their own company's unmatched-sales count. (2) With "All companies" selected, the founder can read everything but cannot create or change records: the API answers 409 with "choose a company first" instead of silently filing the record under the home company. Choosing a company, the founder's own sign-in security, device/notification settings and Login-As are exempt.
 **Not done / gaps**: companies are independent by design, so the "two companies claim the same district" case is not a defect to fix (each company's group holds its own territory). Refactor leftovers and ratchet numbers remain hygiene; `playwrightExtract` needs the 1234 Chromium build.
 **Next steps**: none required; lower the ratchet numbers when touching files.
+
+## SQLite to PostgreSQL migration estimate (2026-10-23, investigation only, no code changed)
+
+### Done
+- [x] Measured how deeply SQLite is wired in (see counts in the reply); estimate is roughly 6 to 10 engineer-weeks for a full, safe migration
+
+### Not done / gaps
+- [ ] Nothing migrated. No decision yet on async-everything vs. a sync shim, hosting, or downtime window
+- [ ] Not measured: production data volume, write concurrency, whether a second app instance is wanted
+
+### Next steps
+1. Decide the driver/query layer (`pg` + thin wrapper recommended) and whether Postgres is wanted for scale, multi-instance, or managed backups
+2. Spike: run the schema and one vertical (orders) on Postgres, async
+3. Port the repo layer file by file, then migrations, then tests
+4. Write the one-time data copy and rehearse it on a production backup
