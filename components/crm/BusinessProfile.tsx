@@ -10,6 +10,7 @@ import { faJalaliDateTime } from "@/lib/jalali";
 import { BUSINESS_TYPES, BUSINESS_TYPE_LABEL, CONTACT_ROLES, CONTACT_ROLE_LABEL, isOneOf } from "@/lib/crm/vocab";
 import { SIZE_BAND_LABEL, SUPPLY_CHANNEL_LABEL, VISIT_WINDOW_LABEL } from "@/lib/crm/intel";
 import TapFlow from "@/components/tapflow/TapFlow";
+import BottomSheet from "@/components/mobile/BottomSheet";
 import { EMPTY_CONTEXT, type FlowContext, type FlowState } from "@/lib/crm/flows/types";
 import { intelFlow } from "@/lib/crm/flows/intel";
 import { startFlow } from "@/lib/crm/flows/machine";
@@ -193,8 +194,7 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
   const currentPhone = edit.kind === "contact" ? phone : value;
   const bad = isPhone && !!currentPhone.trim() && !normPhone(currentPhone);
   const title = edit.kind === "verify" ? "نام و راه تماس این کسب‌وکار را بررسی کردید؟" : edit.kind === "tags" ? "برچسب‌ها (با ویرگول جدا کنید)" : edit.kind === "contact" ? "اطلاعات مخاطب" : FIELDS.find(f => f.key === edit.field)?.label;
-  return <><div className="meridian-scrim on" onClick={() => !busy && onClose()} aria-hidden="true" /><div className="sheet on" role="dialog" aria-modal="true" aria-labelledby="profile-edit-title" style={{ padding: 24, overflowY: "auto", maxHeight: "85dvh" }}>
-    <h2 id="profile-edit-title">{title}</h2>
+  return <BottomSheet open title={title} onClose={() => { if (!busy) onClose(); }} closeLabel="بستن ویرایش" bodyClassName="profile-edit-sheet">
     <form onSubmit={e => { e.preventDefault(); if (bad || busy) return;
       if (edit.kind === "verify") void onSave("/verify", "POST", { confirmed: true });
       else if (edit.kind === "tags") void onSave("/tags", "PUT", { tags: tags.split(/[,،]/).map(t => t.trim()).filter(Boolean) });
@@ -214,6 +214,6 @@ function ProfileEditor({ edit, busy, onClose, onSave, profile }: { edit: Edit; b
       {c && <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => archive ? void onSave(`/contacts/${c.id}`, "DELETE") : setArchive(true)}>
       <Icon name="edit" size="md" />
       {archive ? "بله، مخاطب بایگانی شود" : "بایگانی مخاطب"}</button>}
-    </form></div></>;
+    </form></BottomSheet>;
 }
 

@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { Button, Calendar, I18nProvider } from "@heroui/react";
 import { HEROUI_LOCALE } from "@/components/HeroUIProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
-const { HERO_OVERLAYS, heroOverlayImporters } = await import("../scripts/check-mobile-rules.mjs");
+const { HERO_OVERLAYS, HERO_OVERLAY_REASONS, heroOverlayImporters } = await import("../scripts/check-mobile-rules.mjs");
 
 const css = readFileSync("app/globals.css", "utf8");
 
@@ -49,8 +49,9 @@ describe("HeroUI setup", () => {
     expect(html).toContain("button--lg");
   });
 
-  it("no file imports a centred HeroUI overlay or dropdown yet", () => {
+  it("only the files with a written reason import a HeroUI overlay or dropdown", () => {
     expect(HERO_OVERLAYS).toContain("Modal");
-    expect(heroOverlayImporters()).toEqual([]);
+    expect(heroOverlayImporters()).toEqual(Object.keys(HERO_OVERLAY_REASONS).sort());
+    for (const why of Object.values(HERO_OVERLAY_REASONS)) expect(String(why).length).toBeGreaterThan(20);
   });
 });

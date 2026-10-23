@@ -1,67 +1,41 @@
 "use client";
 
-import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
-import { useCallback, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
+import { Button, Popover } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
-import { popover, withReducedMotion } from "@/lib/motion";
-import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 import { getHelp, isTodo } from "@/lib/help";
 
-/** The `(i)` button that belongs in a card header. Click (a deliberate act, not hover)
- *  opens a small panel: what the figure shows, and how to read it. An id with no copy
- *  yet renders a calm placeholder rather than nothing.
+/** The `(i)` button that belongs in a card header. A tap (a deliberate act, not hover) opens
+ *  a small HeroUI Popover: what the figure shows, and how to read it. An id with no copy yet
+ *  renders a calm placeholder rather than nothing.
  *
- *  Dismissal matches ProfileMenu / AccentPicker — click-outside and Esc. The enter/exit
- *  is framer-motion (the first consumer of lib/motion.ts), collapsing to an instant
- *  paint under reduced motion. */
+ *  A Popover, not a Tooltip: a tooltip never opens on touch, and this is text people must be
+ *  able to read on a phone. React Aria brings the outside-tap and Escape dismissal, the focus
+ *  move and return, and the flip when the card sits at the bottom of the screen. */
 export function CardHelp({ id, className }: { id: string; className?: string }) {
-  const [open, setOpen] = useState(false);
-  const root = useRef<HTMLSpanElement>(null);
-  const reduced = usePrefersReducedMotion();
   const entry = getHelp(id);
 
-  const dismiss = useCallback(() => setOpen(false), []);
-  useDismissOnOutside(open, dismiss, root);
-
   return (
-    <span ref={root} className={`mhelp${className ? ` ${className}` : ""}`}>
-      <button
-        type="button"
-        className="mhelp__trigger"
-        aria-haspopup="dialog"
-        aria-expanded={open}
-        aria-label="راهنمای این بخش"
-        onClick={() => setOpen((v) => !v)}
-      >
-        <Icon name="info" size="sm" />
-      </button>
-
-      <AnimatePresence>
-        {open && (
-          <motion.span
-            role="dialog"
-            aria-label="راهنما"
-            className="mhelp__panel"
-            dir="rtl"
-            initial={popover.initial}
-            animate={withReducedMotion(popover.animate, reduced)}
-            exit={withReducedMotion(popover.exit, reduced)}
-          >
+    <span className={`mhelp${className ? ` ${className}` : ""}`}>
+      <Popover>
+        <Button isIconOnly variant="ghost" size="sm" className="mhelp__trigger" aria-label="راهنمای این بخش">
+          <Icon name="info" size="sm" />
+        </Button>
+        <Popover.Content placement="bottom end" offset={6} className="mhelp__panel">
+          <Popover.Dialog aria-label="راهنما" className="mhelp__dialog">
             {isTodo(entry) ? (
               <p className="mhelp__todo">راهنمای این بخش به‌زودی</p>
             ) : (
               <>
-                <p className="mhelp__title">{entry.title}</p>
+                <Popover.Heading className="mhelp__title">{entry.title}</Popover.Heading>
                 <p className="mhelp__what">{entry.what}</p>
                 <p className="mhelp__how">
                   <span className="mhelp__how-label">چطور بخوانیم:</span> {entry.how}
                 </p>
               </>
             )}
-          </motion.span>
-        )}
-      </AnimatePresence>
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
     </span>
   );
 }

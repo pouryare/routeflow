@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { Alert, Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 
 /** Shown on every shell page while the platform owner is acting in ONE company.
@@ -10,7 +11,7 @@ import { Icon } from "@/components/meridian/Icon";
  *  so forgetting which company you are in is the mistake to prevent: a customer added, a price
  *  changed or a staff member deactivated in the wrong place. It cannot be dismissed; «همهٔ سازمان‌ها»
  *  goes back through POST /api/admin/acting-org and refreshes, so every server component re-reads
- *  the session. Reuses the Login-As banner's look (`actas`). */
+ *  the session. A HeroUI warning Alert, like the Login-As banner. */
 export default function ActingCompanyBanner({ name }: { name: string }) {
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -27,15 +28,19 @@ export default function ActingCompanyBanner({ name }: { name: string }) {
   }
 
   return (
-    <div className="actas" role="status">
-      <Icon name="building" size="sm" />
-      <span className="actas__text">
-        در حال کار در سازمان <b>{name}</b> به‌عنوان مالک آن. هر تغییری که اینجا انجام دهید در همین سازمان ثبت می‌شود.
-      </span>
-      <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => void all()} disabled={busy}>
+    <Alert status="warning" className="actas" role="status">
+      <Alert.Indicator>
+        <Icon name="building" size="sm" />
+      </Alert.Indicator>
+      <Alert.Content className="actas__text">
+        <Alert.Description>
+          در حال کار در سازمان <b>{name}</b> به‌عنوان مالک آن. هر تغییری که اینجا انجام دهید در همین سازمان ثبت می‌شود.
+        </Alert.Description>
+      </Alert.Content>
+      <Button size="sm" variant="primary" onPress={() => void all()} isDisabled={busy}>
         <Icon name="building" size="md" />
         {busy ? "در حال بازگشت…" : "همهٔ سازمان‌ها"}
-      </button>
-    </div>
+      </Button>
+    </Alert>
   );
 }

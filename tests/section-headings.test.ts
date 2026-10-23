@@ -16,9 +16,7 @@ function walk(dir: string): string[] {
  *  title bar of a dialog or a floating panel, where the heading shares a row with a close
  *  button and is sized to the panel. Each entry is a file, with the reason. */
 const NOT_SECTIONS: Record<string, string> = {
-  "components/ShortcutHelp.tsx": "keyboard-shortcut dialog title",
   "components/LayersPanel.tsx": "map layers floating panel",
-  "components/DistrictEditor.tsx": "map district editor panel",
   "components/CustomerDetailPanel.tsx": "map customer inspector title",
   "components/driver/DriverRun.tsx": "receipt dialog title",
   "components/charts/ChartFrame.tsx": "a chart's own caption, sized to the chart",

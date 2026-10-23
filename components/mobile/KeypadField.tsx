@@ -48,7 +48,7 @@ export default function KeypadField({
         </span>
         <Icon name="edit" size="md" />
       </button>
-      <BottomSheet open={open} title={label} onClose={() => setOpen(false)}>
+      <BottomSheet open={open} title={label} onClose={() => setOpen(false)} closeLabel="بستن صفحه‌کلید">
         <div className="keypadfield__sheet">
           <Keypad
             value={draft}

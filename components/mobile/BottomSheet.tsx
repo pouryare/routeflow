@@ -1,44 +1,60 @@
 "use client";
 
-import { createPortal } from "react-dom";
-import { useRef, type ReactNode } from "react";
+import type { ReactNode } from "react";
+import { Button, Drawer } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
-import { useSheetHost } from "@/components/meridian/useSheetHost";
-import { useSwipeDismiss } from "@/components/useSwipeDismiss";
-import { useEscapeKey } from "@/lib/useEscapeKey";
 
-/** A plain bottom sheet for the phone chrome (the «بیشتر» list, the quick actions): the same
- *  scrim, grab handle, close button, swipe-down and Escape as a TapFlow sheet, drawn in the
- *  `.meridian` root so a transformed ancestor cannot misplace it (useSheetHost). The body sits in
- *  `.tapflow` so its rows can use the 52 px answer-button styles. */
-export default function BottomSheet({ open, title, onClose, children }: {
+/** Every bottom sheet in the app, on a HeroUI bottom Drawer (docs/roadmap.md §10): the «بیشتر»
+ *  list, the quick actions, the filters, a card's breakdown, the customer sheet and the tap
+ *  flows. The Drawer brings the backdrop, Escape, drag-down to dismiss, a focus trap and the
+ *  focus return; HeroUIProvider draws it in the `.meridian` root so a transformed ancestor
+ *  cannot misplace it. The body sits in `.tapflow` by default so its rows can use the 52 px
+ *  answer-button styles. */
+export default function BottomSheet({
+  open,
+  title,
+  subtitle,
+  onClose,
+  closeLabel,
+  bodyClassName = "tapflow",
+  live = false,
+  wide = false,
+  children,
+}: {
   open: boolean;
-  title: string;
+  title: ReactNode;
+  /** One line under the title: a customer's place, a flow's subject. */
+  subtitle?: ReactNode;
   onClose: () => void;
+  /** Says what closes: «بستن فیلترها», never a bare «بستن» (docs/copy-audit). */
+  closeLabel: string;
+  bodyClassName?: string;
+  /** For a body whose content replaces itself (a tap flow's next question). */
+  live?: boolean;
+  /** Room for a map: the sheet widens past the 640 px column on a large screen. */
+  wide?: boolean;
   children: ReactNode;
 }) {
-  const sheet = useRef<HTMLDivElement>(null);
-  useSwipeDismiss(sheet, "down", onClose, open);
-  useEscapeKey(onClose, open);
-  const host = useSheetHost();
-  if (!host) return null;
-  return createPortal(
-    <>
-      <div className={`meridian-scrim${open ? " on" : ""}`} onClick={onClose} aria-hidden />
-      <div ref={sheet} className={`sheet${open ? " on" : ""}`} role="dialog" aria-modal="true" aria-label={title} aria-hidden={!open} inert={!open}>
-        <div className="grab" />
-        <div className="sheethead">
-          <div>
-            <h2>{title}</h2>
-          </div>
-          <button className="inline-flex items-center justify-center gap-[var(--space-2)] x x--labelled" type="button" aria-label="بستن" onClick={onClose}>
-            <Icon name="x" size="sm" />
-            <span>بستن</span>
-          </button>
-        </div>
-        <div className="tapflow">{children}</div>
-      </div>
-    </>,
-    host,
+  return (
+    <Drawer isOpen={open} onOpenChange={(isOpen) => { if (!isOpen) onClose(); }}>
+      <Drawer.Backdrop variant="blur">
+        <Drawer.Content placement="bottom" className="flow-drawer">
+          <Drawer.Dialog className={`flow-drawer__dialog${wide ? " flow-drawer__dialog--wide" : ""}`}>
+            <Drawer.Handle />
+            <Drawer.Header className="flow-drawer__header">
+              <Drawer.Heading>{title}</Drawer.Heading>
+              {subtitle ? <p className="flow-drawer__sub">{subtitle}</p> : null}
+              <Button slot="close" variant="tertiary" size="sm" className="flow-drawer__close" aria-label={closeLabel}>
+                <Icon name="x" size="sm" />
+                <span>{closeLabel}</span>
+              </Button>
+            </Drawer.Header>
+            <Drawer.Body className={bodyClassName} aria-live={live ? "polite" : undefined}>
+              {children}
+            </Drawer.Body>
+          </Drawer.Dialog>
+        </Drawer.Content>
+      </Drawer.Backdrop>
+    </Drawer>
   );
 }

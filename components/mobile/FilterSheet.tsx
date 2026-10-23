@@ -9,7 +9,7 @@ import { ChipGroup, type FilterGroup, isActive, neutralOf } from "@/components/m
 export default function FilterSheet({ open, onClose, groups }: { open: boolean; onClose: () => void; groups: FilterGroup[] }) {
   const any = groups.some(isActive);
   return (
-    <BottomSheet open={open} title="فیلترها" onClose={onClose}>
+    <BottomSheet open={open} title="فیلترها" onClose={onClose} closeLabel="بستن فیلترها">
       <div className="filtersheet">
         {groups.map((g) => (
           <section key={g.id} className="filtersheet__group">

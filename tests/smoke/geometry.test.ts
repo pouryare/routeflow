@@ -554,7 +554,7 @@ describe("panels and controls stay where they belong", () => {
     const opener = page.locator(".pockets > *").first();
     await opener.waitFor({ state: "visible", timeout: 10_000 });
     await opener.click();
-    const x = page.locator('.sheet.on button[aria-label^="بستن"]');
+    const x = page.locator('.flow-drawer button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
     await page.waitForTimeout(600); // the sheet slides in
     const off = await x.evaluate((b) => {
@@ -669,36 +669,28 @@ describe("the customer sheet opens and closes for real", () => {
      page wrapper the containing block for the fixed sheet. Closed, it sat at the bottom of
      the page instead of below the viewport -- visibly open, with a close button that did
      nothing. Only the geometry shows it. */
-  const offscreen = (page: import("playwright").Page) =>
+  const dialogTop = (page: import("playwright").Page) =>
     page.evaluate(() => {
-      // The sheet that opened, not the first in the page: the phone nav's «بیشتر» and
-      // quick-action sheets sit closed in the DOM too.
-      const sheet = document.querySelector<HTMLElement>(".sheet[data-smoke-watch]");
-      if (!sheet) return null;
-      return { on: sheet.classList.contains("on"), top: Math.round(sheet.getBoundingClientRect().top), vh: innerHeight };
+      // A BottomSheet is a HeroUI Drawer: it is only in the page while open.
+      const sheet = document.querySelector<HTMLElement>(".flow-drawer__dialog");
+      return sheet ? Math.round(sheet.getBoundingClientRect().top) : null;
     });
 
   it("the close button on /sales/orders really closes the sheet", async () => {
     const { page, close } = await open("/sales/orders", { width: 1280, height: 800 });
     await page.locator(".pockets > *").first().click();
-    const x = page.locator('.sheet.on button[aria-label^="بستن"]');
+    const x = page.locator('.flow-drawer button[aria-label^="بستن"]');
     await x.waitFor({ state: "visible", timeout: 10_000 });
-    await page.evaluate(() => document.querySelector(".sheet.on")?.setAttribute("data-smoke-watch", ""));
     // Poll for the slide-in instead of sleeping a fixed time: on a long page under load the
     // transition starts late. A sheet that never reaches the screen (the bug this test exists
     // for: a fixed sheet captured by a transformed card) still fails, after the timeout.
     await expect
-      .poll(async () => (await offscreen(page))?.top ?? Infinity, { timeout: 8_000, message: "the open sheet is not on screen" })
+      .poll(async () => (await dialogTop(page)) ?? Infinity, { timeout: 8_000, message: "the open sheet is not on screen" })
       .toBeLessThan(800);
-    const opened = await offscreen(page);
     await x.click();
     await expect
-      .poll(async () => (await offscreen(page))?.top ?? 0, { timeout: 8_000, message: "after ✕ the sheet is still on the page" })
-      .toBeGreaterThanOrEqual(800);
-    const closed = await offscreen(page);
+      .poll(async () => await dialogTop(page), { timeout: 8_000, message: "after ✕ the sheet is still on the page" })
+      .toBeNull();
     await close();
-    expect(opened!.top, "the open sheet is not on screen").toBeLessThan(opened!.vh);
-    expect(closed!.on).toBe(false);
-    expect(closed!.top, "after ✕ the sheet is still on the page").toBeGreaterThanOrEqual(closed!.vh);
   }, 90_000);
 });

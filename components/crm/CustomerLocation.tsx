@@ -1,8 +1,8 @@
 "use client";
-import { useEscapeKey } from "@/lib/useEscapeKey";
 import { useState, Suspense, useCallback } from "react";
 import dynamic from "next/dynamic";
 import { Icon } from "@/components/meridian/Icon";
+import BottomSheet from "@/components/mobile/BottomSheet";
 const Map = dynamic(() => import("./CustomerLocationMap"), { ssr: false });
 const LocationEditor = dynamic(() => import("./LocationEditor"), { ssr: false });
 
@@ -18,7 +18,6 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
   const [open, setOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const close = useCallback(() => setOpen(false), []);
-  useEscapeKey(close, open);
   const hasPin = lat !== null && lng !== null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180;
   const editButton = canWrite && onConfirm ? <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" style={TOUCH} disabled={busy} onClick={() => setEditing(true)}>
   <Icon name="map-pin" size="md" />
@@ -36,23 +35,14 @@ export default function CustomerLocation({ lat, lng, name, mapsUrl, canWrite, bu
         </button>
       </div>
       <figcaption className="map-caption">موقعیت ثبت‌شدهٔ کسب‌وکار {editButton}</figcaption>
-      {open && (
-        <div className="meridian-scrim on" onClick={() => setOpen(false)} aria-hidden />
-      )}
-      {open && (
-        <div className="sheet on map-sheet" role="dialog" aria-modal="true" aria-label={`نقشهٔ موقعیت ${name}`}>
-          <div className="sheethead">
-            <h2>موقعیت {name}</h2>
-            <button className="inline-flex items-center justify-center gap-[var(--space-2)] x x--labelled" type="button" aria-label="بستن نقشهٔ بزرگ" onClick={() => setOpen(false)}><Icon name="x" size="sm" /><span>بستن نقشه</span></button>
-          </div>
-          <div className="map-frame tall">
-            <Suspense fallback={<div className="map-loading">…</div>}>
-              <Map key={`${lat},${lng}`} lat={lat!} lng={lng!} name={name} interactive />
-            </Suspense>
-          </div>
-          {mapsUrl && /^https?:\/\//i.test(mapsUrl) && <a className="btn ghost" style={TOUCH} href={mapsUrl} target="_blank" rel="noreferrer">پیوند نقشه</a>}
+      <BottomSheet open={open} title={`موقعیت ${name}`} onClose={close} closeLabel="بستن نقشه" bodyClassName="map-sheet" wide>
+        <div className="map-frame tall">
+          <Suspense fallback={<div className="map-loading">…</div>}>
+            <Map key={`${lat},${lng}`} lat={lat!} lng={lng!} name={name} interactive />
+          </Suspense>
         </div>
-      )}
+        {mapsUrl && /^https?:\/\//i.test(mapsUrl) && <a className="btn ghost" style={TOUCH} href={mapsUrl} target="_blank" rel="noreferrer">پیوند نقشه</a>}
+      </BottomSheet>
     </figure>
   );
 }

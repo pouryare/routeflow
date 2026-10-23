@@ -75,7 +75,7 @@ export default function SmartPicker({
         <span className={chosen ? "" : "picker-trigger__empty"}>{chosen ? chosen.label : (placeholder ?? `انتخاب ${label}`)}</span>
         <Icon name="chevron-down" size="md" />
       </button>
-      <BottomSheet open={open} title={label} onClose={() => setOpen(false)}>
+      <BottomSheet open={open} title={label} onClose={() => setOpen(false)} closeLabel="بستن فهرست">
         <div className="smartpicker">
           {first.length > 0 && pinned && (
             <>

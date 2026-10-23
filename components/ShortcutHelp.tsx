@@ -1,8 +1,7 @@
 "use client";
 
-import { useEscapeKey } from "@/lib/useEscapeKey";
 import { usePathname } from "next/navigation";
-import { Icon } from "@/components/meridian/Icon";
+import BottomSheet from "@/components/mobile/BottomSheet";
 import { helpRows, type Binding } from "@/lib/hotkeys";
 
 /** The map's own shortcuts, now in the REGISTRY's shape.
@@ -41,50 +40,25 @@ export default function ShortcutHelp({
   bindings?: Binding[];
 }) {
   const pathname = usePathname() ?? "/";
-  useEscapeKey(onClose);
 
   return (
-    <div
-      dir="rtl"
-      role="dialog"
-      aria-modal="true"
-      aria-label="میان‌برهای صفحه‌کلید"
-      className="modal-enter fixed inset-0 z-[var(--z-help)] flex items-center justify-center bg-black/70 p-4"
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-[min(28rem,100%)] rounded-[var(--radius-lg)] border border-border bg-surface-raised p-4 elevate-accent"
-      >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-[length:var(--text-md)] font-bold text-text">میان‌برهای صفحه‌کلید</h2>
-          <button
-            onClick={onClose}
-            aria-label="بستن راهنما"
-            className="inline-flex shrink-0 items-center gap-1 whitespace-nowrap rounded-[var(--radius-sm)] px-2 py-1 text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:bg-white/5 hover:text-text"
-          >
-            <Icon name="x" size="sm" />
-            <span className="text-[length:var(--text-xs)]">بستن راهنما</span>
-          </button>
-        </div>
+    <BottomSheet open title="میان‌برهای صفحه‌کلید" onClose={onClose} closeLabel="بستن راهنما" bodyClassName="shortcut-sheet">
+      <dl className="flex flex-col gap-2">
+        {helpRows(bindings, pathname).map((s) => (
+          <div key={s.keys} className="flex items-center justify-between gap-3">
+            <dt className="shrink-0">
+              <kbd className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-[length:var(--text-xs)] text-accent">
+                {s.keys}
+              </kbd>
+            </dt>
+            <dd className="text-[length:var(--text-sm)] text-text-muted">{s.description}</dd>
+          </div>
+        ))}
+      </dl>
 
-        <dl className="flex flex-col gap-2">
-          {helpRows(bindings, pathname).map((s) => (
-            <div key={s.keys} className="flex items-center justify-between gap-3">
-              <dt className="shrink-0">
-                <kbd className="rounded-[var(--radius-sm)] border border-border bg-surface px-2 py-1 font-mono text-[length:var(--text-xs)] text-accent">
-                  {s.keys}
-                </kbd>
-              </dt>
-              <dd className="text-[length:var(--text-sm)] text-text-muted">{s.description}</dd>
-            </div>
-          ))}
-        </dl>
-
-        <p className="mt-3 border-t border-border pt-3 text-[length:var(--text-xs)] leading-5 text-text-faint">
-          میان‌برها وقتی در حال تایپ در یک کادر هستید کار نمی‌کنند.
-        </p>
-      </div>
-    </div>
+      <p className="mt-3 border-t border-border pt-3 text-[length:var(--text-xs)] leading-5 text-text-faint">
+        میان‌برها وقتی در حال تایپ در یک کادر هستید کار نمی‌کنند.
+      </p>
+    </BottomSheet>
   );
 }
