@@ -172,7 +172,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Why parked:** continuous GPS drains batteries and needs background location, which a PWA gets only while open; message channels need provider accounts and customer consent; sending customer phone numbers to a messaging provider is a privacy decision.
 
 **Open questions**
-1. Position source: the driver app while a run is active (foreground only) or a dedicated tracker?
+1. Position source: the driver app while a run is active (foreground only) or a dedicated tracker? **Decided (2026-10-23): the phone's GPS for now**, with background location from the Capacitor shell.
 2. ETA model: planned arrival from the run plus live offset, or a routing-engine recalculation from the current position?
 3. Which channel do customers actually read? Ask before choosing.
 4. Retention: keep the breadcrumb trail (useful for disputes and `actual_distance_km`) or only the last position?

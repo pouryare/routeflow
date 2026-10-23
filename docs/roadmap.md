@@ -398,6 +398,7 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | The number of drivers is unknown and cannot be predicted. | No design may assume a fleet size. Size by formula and watch the thresholds below. |
 | RouteFlow gets an Android app: the web app wrapped in a Capacitor shell. | Decided. Needed because a PWA gets background location only while open (F6, F38, F103); also gives native barcode scanning and Bluetooth printing. Distribution route (domestic Android store or a direct file) is still open. |
 | SMS provider: Farazsms. | Decided. The official npm client `farazsms` (1.1.0, 2026-06-21) exists and has not been inspected; decide between it and a thin wrapper when the SMS slice starts. Consent, opt-out and any other customer channel stay open. |
+| Staff positions come from the phone's GPS for now. | Decided. No dedicated trackers, so a tracker server such as Traccar is not needed yet. Revisit if vehicles get hardware trackers. |
 
 ### Proposed platform choices
 
