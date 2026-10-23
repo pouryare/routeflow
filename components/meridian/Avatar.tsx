@@ -11,7 +11,7 @@
  */
 "use client";
 
-import { useState } from "react";
+import { Avatar as HeroAvatar } from "@heroui/react";
 import { faNum } from "@/lib/format";
 
 const TONES = ["plum", "sage", "sky", "amber"] as const;
@@ -61,42 +61,24 @@ export default function Avatar({
   className?: string;
 }) {
   const tone = toneFor(userId ?? name);
-  // A photo that 404s must not leave a broken-image glyph sitting in the middle of a picker.
-  const [photoBroken, setPhotoBroken] = useState(false);
   const box = { width: size, height: size, borderRadius: "35%", flex: "none" } as const;
-  const chip = src && !photoBroken ? (
-    /* A plain <img> on purpose: these are 34px thumbnails of files already in /public, so
-     * the optimiser would cost a round trip to save nothing measurable. The rule is turned
-     * off for this file in eslint.config.mjs -- an in-source disable is banned by
-     * tests/no-lint-suppressions.test.ts. */
-    <img
-      src={src}
-      alt=""
-      aria-hidden="true"
-      title={title ?? name}
-      className={`av ${className}`.trim()}
-      style={{ ...box, objectFit: "cover", display: "block" }}
-      onError={() => setPhotoBroken(true)}
-    />
-  ) : (
-    <span
-      aria-hidden="true"
-      title={title ?? name}
-      className={`av ${className}`.trim()}
-      style={{
-        ...box,
-        fontSize: Math.round(size * 0.4),
-        display: "inline-flex",
-        alignItems: "center",
-        justifyContent: "center",
-        fontWeight: 600,
-        lineHeight: 1,
-        background: `var(--${tone}-soft)`,
-        color: `var(--${tone})`,
-      }}
-    >
-      {initials(name)}
-    </span>
+  /* HeroUI's Avatar: the initials show until the photo has loaded, and stay if it fails,
+     so a photo that 404s never leaves a broken-image glyph in the middle of a picker. */
+  const chip = (
+    <HeroAvatar aria-hidden="true" title={title ?? name} className={`av ${className}`.trim()} style={box}>
+      {src ? <HeroAvatar.Image src={src} alt="" style={{ objectFit: "cover" }} /> : null}
+      <HeroAvatar.Fallback
+        style={{
+          fontSize: Math.round(size * 0.4),
+          fontWeight: 600,
+          lineHeight: 1,
+          background: `var(--${tone}-soft)`,
+          color: `var(--${tone})`,
+        }}
+      >
+        {initials(name)}
+      </HeroAvatar.Fallback>
+    </HeroAvatar>
   );
   if (!count) return chip;
   return (

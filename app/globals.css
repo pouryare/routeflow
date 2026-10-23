@@ -2,9 +2,10 @@
 
 /* ---- HeroUI v3 (docs/roadmap.md §10, "full HeroUI look") ------------------------------
    Imported part by part, not as one `@import "@heroui/styles"`. The full sheet styles
-   `.card`, `.chip`, `.badge`, `.modal` and `.skeleton` -- class names this file already
-   uses for its own components -- so importing all of it would restyle screens nobody has
-   migrated yet. Add a component's sheet here in the same change that moves a screen to it.
+   `.card`, `.badge` and `.modal` -- class names this file already uses for its own
+   components -- so importing all of it would restyle screens nobody has migrated yet.
+   (`.chip` was ours too and is now `.choicechip`; `.skeleton` is HeroUI's Skeleton, toned
+   by the `.meridian .skeleton` rules below.) Add a component's sheet here in the same change that moves a screen to it.
 
    Layers: HeroUI's own rules sit in `theme` / `base` / `components`, so anything unlayered
    below (this file's tokens and the tap-size rules at the end of this block) wins without a
@@ -28,6 +29,14 @@
 @import "@heroui/styles/components/input-group.css" layer(components);
 @import "@heroui/styles/components/textfield.css" layer(components);
 @import "@heroui/styles/components/field-error.css" layer(components);
+@import "@heroui/styles/components/tabs.css" layer(components);
+@import "@heroui/styles/components/chip.css" layer(components);
+@import "@heroui/styles/components/avatar.css" layer(components);
+@import "@heroui/styles/components/skeleton.css" layer(components);
+@import "@heroui/styles/components/empty-state.css" layer(components);
+@import "@heroui/styles/components/disclosure.css" layer(components);
+@import "@heroui/styles/components/table.css" layer(components);
+@import "@heroui/styles/components/pagination.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -1927,7 +1936,7 @@ body {
 /* Micro-interactions: a small press on anything tappable. Spring, reduced-motion off. */
 @media (prefers-reduced-motion: no-preference) {
   .meridian .btn:active,
-  .meridian .chip:active,
+  .meridian .choicechip:active,
   .meridian .seg > a:active { transform: scale(0.97); }
 }
 
@@ -1992,7 +2001,7 @@ body {
    narrow viewports, where the label and the hint are noise. */
 .meridian .searchslot {
   display: inline-flex; align-items: center; gap: 7px;
-  height: 34px; padding: 0 10px; cursor: pointer;
+  height: 44px; padding: 0 12px; cursor: pointer;
   background: var(--sunk); border: 1px solid transparent;
   border-radius: 999px; color: var(--muted);
   font: inherit; font-size: 12.5px;
@@ -2007,7 +2016,7 @@ body {
 }
 @media (max-width: 860px) {
   .meridian .searchslot__label, .meridian .searchslot__kbd { display: none; }
-  .meridian .searchslot { padding: 0; width: 34px; justify-content: center; }
+  .meridian .searchslot { padding: 0; width: 44px; justify-content: center; }
 }
 
 /* ---- search overlay (SearchOverlay.tsx) --------------------------------------
@@ -2095,13 +2104,13 @@ body {
   gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
 }
 .meridian .topright { display: flex; align-items: center; gap: 9px; }
-.meridian .chip {
+.meridian .choicechip {
   background: var(--card); border: 1px solid var(--line); border-radius: 999px;
   padding: 9px 15px; font-size: 13.5px; color: var(--ink-2); text-decoration: none;
   box-shadow: var(--sh-1); cursor: pointer; white-space: nowrap;
   transition: box-shadow 180ms var(--ease), transform 180ms var(--ease);
 }
-.meridian .chip:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
+.meridian .choicechip:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
 .meridian .me {
   width: 42px; height: 42px; border-radius: 999px;
   background: var(--sage-soft); color: var(--sage);
@@ -2590,14 +2599,6 @@ body {
   height: 56px; display: flex; align-items: center; gap: 4px;
   max-width: calc(100% - 140px); overflow-x: auto; scrollbar-width: none;
 }
-.meridian .phc__tabs > a {
-  padding: 7px 12px; border-radius: 999px; white-space: nowrap;
-  font-size: 13px; font-weight: 600; color: var(--muted); text-decoration: none;
-  transition: background var(--dur-base, 160ms) var(--ease), color var(--dur-base, 160ms) var(--ease);
-}
-.meridian .phc__tabs > a:hover { background: var(--sunk); color: var(--ink); }
-.meridian .phc__tabs > a[aria-current="page"] { background: var(--sunk); color: var(--ink); }
-.meridian .phc__tabs > a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 /* Too narrow to carve: the tabs sit above the card instead of in it. */
 .meridian .phc--flat + .phc__tabs, .meridian .phcwrap:has(.phc--flat) .phc__tabs {
@@ -2916,7 +2917,7 @@ body {
    remembered it (an inline `marginBottom: 14`), so /sales/orders and /sales/schedule — which
    both render ViewTabs — pressed their first section straight up against the tabs. A shared
    piece of chrome that one caller has to remember is chrome that half the pages are missing. */
-.meridian .jmode { display: inline-flex; gap: 6px; margin-bottom: 14px; }
+.meridian .jmode { display: inline-flex; margin-bottom: 14px; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
 .meridian .spine { list-style: none; margin: 0; padding: 4px 0 8px; max-width: 46rem; }
 .meridian .spine__step {
   position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr);
@@ -3181,6 +3182,23 @@ body {
    area around a bare switch, is the tap target; the 20 px box and track stay HeroUI's. */
 .checkfield__hit { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .toggle__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+/* RouteTabs: HeroUI tabs whose tabs are pages. The list carries the pill HeroUI gives its
+   list container (left out for its English scroll arrows); each tab is 44 px to tap. */
+.routetabs .tabs__list { background: var(--default); border-radius: calc(var(--radius) * 2.5); }
+/* The rows scroll sideways; round the scroller too, or a scrolled pill shows square ends. */
+.meridian .phc__tabs, .meridian .jmode { border-radius: calc(var(--radius) * 2.5); }
+.routetabs .tabs__tab { height: auto; min-height: 44px; white-space: nowrap; text-decoration: none; font-weight: 600; }
+.routetabs .tabs__tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+/* AcctTable and Pager wear HeroUI's table and pagination classes on our own markup. The
+   pager stays one row (HeroUI stacks it below `sm`) and its links are 44 px. */
+.acct-table .table__column { white-space: nowrap; }
+/* The rows draw their lines on <tr>, which only the collapsed model paints. */
+.acct-table .table__content { border-collapse: collapse; }
+.pager { flex-direction: row; }
+.pager .pagination__summary { align-self: center; }
+.pager__link { width: auto; height: auto; min-height: 44px; padding-inline: 14px; text-decoration: none; }
+/* The phone FAB («ثبت») sits over the bottom-left corner, where «صفحهٔ بعد» lands at the end of a list. */
+@media (max-width: 767.98px) { .pager { margin-bottom: 64px; } }
 /* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
 .textinput { margin-bottom: var(--space-3); gap: 4px; }
 .textinput .label { font-size: var(--text-xs); color: var(--text-muted); }
@@ -3532,9 +3550,10 @@ body {
   overflow: hidden;
 }
 .meridian .sect__head { display: flex; align-items: center; gap: 6px; }
+.meridian .sect__heading { flex: 1; min-width: 0; margin: 0; font: inherit; display: flex; }
 .meridian .sect__btn {
   flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
-  padding: 11px 13px; border: 0; background: transparent; cursor: pointer;
+  min-height: 44px; padding: 11px 13px; border: 0; background: transparent; cursor: pointer;
   font-family: var(--fa); font-size: 13.5px; color: var(--ink); text-align: start;
   transition: background 160ms var(--ease);
 }
@@ -4896,8 +4915,8 @@ body {
 .meridian .inline-edit { border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--sunk); padding: 12px; display: grid; gap: 10px; }
 .meridian .inline-edit label { display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
 .meridian .chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.meridian .chip { min-height: 46px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer; }
-.meridian .chip.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .choicechip { min-height: 46px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer; }
+.meridian .choicechip.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 .meridian .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .meridian .pending-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--warn-soft); color: var(--amber); padding: 8px 12px; font-size: 13px; margin-top: 10px; }
 /* Mini map + enlarged dialog (CustomerLocation) */

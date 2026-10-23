@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useContext, useState, useSyncExternalStore } from "react";
+import { Disclosure } from "@heroui/react";
 import { faNum } from "@/lib/format";
 import { matchesQuery } from "@/lib/persian";
 import { Icon, type IconName } from "@/components/meridian/Icon";
@@ -117,28 +118,30 @@ export default function CollapsibleSection({
     panelListeners.forEach((notify) => notify());
   }
 
+  /* HeroUI's Disclosure: React Aria ties the trigger to its panel (aria-expanded,
+     aria-controls) and puts the title in a heading, so a screen reader can jump between
+     sections. The body still mounts only while open, as before: a closed section holds
+     lists and fetches that have no business running unseen. */
   return (
-    <section className="sect">
+    <Disclosure isExpanded={expanded} onExpandedChange={toggle} className="sect">
       <div className="sect__head">
-        <button
-          onClick={toggle}
-          aria-expanded={expanded}
-          className={`sect__btn${expanded ? " on" : ""}`}
-        >
-          {icon && (
-            <span aria-hidden="true" className="sect__icon">
-              <Icon name={icon} size="sm" />
+        <Disclosure.Heading className="sect__heading">
+          <Disclosure.Trigger className={`sect__btn${expanded ? " on" : ""}`}>
+            {icon && (
+              <span aria-hidden="true" className="sect__icon">
+                <Icon name={icon} size="sm" />
+              </span>
+            )}
+            <span className="sect__title">{title}</span>
+            {count !== undefined && <span className="sect__count mono">{faNum(count)}</span>}
+            <span aria-hidden="true" className="sect__chev">
+              <Icon name="chevron-down" size="sm" />
             </span>
-          )}
-          <span className="sect__title">{title}</span>
-          {count !== undefined && <span className="sect__count mono">{faNum(count)}</span>}
-          <span aria-hidden="true" className="sect__chev">
-            <Icon name="chevron-down" size="sm" />
-          </span>
-        </button>
+          </Disclosure.Trigger>
+        </Disclosure.Heading>
         {right}
       </div>
-      {expanded && <div className="sect__body">{children}</div>}
-    </section>
+      <Disclosure.Content>{expanded && <div className="sect__body">{children}</div>}</Disclosure.Content>
+    </Disclosure>
   );
 }

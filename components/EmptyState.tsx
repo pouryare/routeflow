@@ -1,3 +1,4 @@
+import { EmptyState as HeroEmptyState } from "@heroui/react";
 import { Icon, type IconName } from "@/components/meridian/Icon";
 
 /** What a list says when it has nothing in it.
@@ -9,7 +10,7 @@ import { Icon, type IconName } from "@/components/meridian/Icon";
  *
  *  So each of these says the reason, and where there is an action that would fill it,
  *  names that too. Deliberately small and quiet -- an empty list is not an error, and
- *  dressing it up as one is its own kind of lie.
+ *  dressing it up as one is its own kind of lie. HeroUI's EmptyState is the frame.
  */
 export default function EmptyState({
   icon,
@@ -28,13 +29,13 @@ export default function EmptyState({
   className?: string;
 }) {
   return (
-    <div className={`empty ${className}`.trim()}>
+    <HeroEmptyState className={`empty ${className}`.trim()}>
       <span className="empty__icon" aria-hidden="true">
         <Icon name={icon} size="md" />
       </span>
       <p className="empty__title">{title}</p>
       {hint && <p className="empty__hint">{hint}</p>}
       {action}
-    </div>
+    </HeroEmptyState>
   );
 }
