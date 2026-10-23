@@ -32,12 +32,12 @@ const maxSeq = async (org: number) =>
 beforeAll(async () => {
   const db = getDb();
   await db.prepare(
-    `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-     VALUES (?, 'engine-tester', 'x', 'Engine Tester', 'owner', ?, '2026-01-01')`
+    `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+     VALUES (?, 'engine-tester', 'x', 'Engine Tester', 'owner', ?, '2026-01-01') ON CONFLICT DO NOTHING`
   ).run(USER, ORG);
   // organizations gets one seeded row (id 1) by the migration; customers get none.
   await db.prepare(
-    "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (1, 'Default', 'default', '2026-01-01')"
+    "INSERT INTO organizations (id, name, slug, created_at) VALUES (1, 'Default', 'default', '2026-01-01') ON CONFLICT DO NOTHING"
   ).run();
   CUSTOMER = Number(
     (await db
@@ -249,7 +249,7 @@ describe("postJournal", () => {
   it("numbers seq per organization, not globally", async () => {
     await getDb()
       .prepare(
-        "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01')"
+        "INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01') ON CONFLICT DO NOTHING"
       )
       .run();
     const before = await maxSeq(2);

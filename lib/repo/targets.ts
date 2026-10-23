@@ -45,7 +45,7 @@ export async function setTarget(
   const existing = await db
     .prepare(
       `SELECT id FROM targets
-        WHERE organization_id = ? AND user_id IS ? AND group_id IS ? AND period = ? AND metric = ?`
+        WHERE organization_id = ? AND user_id IS NOT DISTINCT FROM ? AND group_id IS NOT DISTINCT FROM ? AND period = ? AND metric = ?`
     )
     .get(
       organizationId,
@@ -102,7 +102,7 @@ export async function targetProgress(
   const t = await db
     .prepare(
       `SELECT target_value FROM targets
-        WHERE organization_id = ? AND user_id IS ? AND group_id IS ? AND period = ? AND metric = ?`
+        WHERE organization_id = ? AND user_id IS NOT DISTINCT FROM ? AND group_id IS NOT DISTINCT FROM ? AND period = ? AND metric = ?`
     )
     .get(
       organizationId,

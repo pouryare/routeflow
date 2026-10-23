@@ -21,9 +21,9 @@ afterAll(() => {
  * `groups` has no organization_id column. */
 async function mkUser(username: string, primary: string, roles: string[], org = 8): Promise<number> {
   const db = getDb();
-  await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01') ON CONFLICT DO NOTHING`);
   await db.exec(
-    `INSERT OR IGNORE INTO groups (id,name,slug,color,active,created_at) VALUES (${100 + org},'G','g${org}','#000000',1,'2026-01-01')`
+    `INSERT INTO groups (id,name,slug,color,active,created_at) VALUES (${100 + org},'G','g${org}','#000000',1,'2026-01-01') ON CONFLICT DO NOTHING`
   );
   await db.prepare(
     `INSERT INTO users (username, password_hash, display_name, role, group_id, organization_id, active, token_version, created_at)

@@ -241,7 +241,7 @@ export async function todayFor(session: Session): Promise<Briefing> {
            JOIN customers c ON c.id = o.customer_id
            LEFT JOIN order_lines ol ON ol.order_id = o.id
           WHERE o.organization_id = ? AND o.order_date = ?${inClause ? ` AND o.group_id IN (${inClause})` : ""}
-          GROUP BY o.id
+          GROUP BY o.id, c.id
           ORDER BY o.id DESC`
       )
       .all(org, today) as {

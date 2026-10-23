@@ -56,3 +56,60 @@ jobs:
       # is how a missing index or a new N+1 shows up.
       - name: Production build and page-time budget
         run: npm run perf:smoke
+
+  # PostgreSQL (Wave P): the server image builds, the generated baseline and types match the
+  # SQLite schema, migrations pass Squawk, and the unit suite runs against PostgreSQL with no
+  # failure beyond tests/pg-known-failures.txt (which may only shrink).
+  postgres:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+      NEXT_TELEMETRY_DISABLED: "1"
+      SESSION_SECRET: ci-secret-not-for-production-0123456789
+      DATABASE_URL: postgres://postgres:ci@localhost:5432/postgres
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          check-latest: true
+          cache: npm
+
+      - run: npm ci
+
+      - name: Build the PostgreSQL image (db/Dockerfile)
+        run: docker build -t routeflow-postgres db
+
+      # fsync off and more connections: a throwaway CI database with one copy per test file.
+      - name: Start PostgreSQL
+        run: |
+          docker run -d --name pg -e POSTGRES_PASSWORD=ci -p 5432:5432 --shm-size=1g routeflow-postgres \
+            postgres -c shared_preload_libraries=pg_stat_statements,pg_duckdb -c wal_level=logical \
+                     -c max_connections=400 -c fsync=off -c synchronous_commit=off -c full_page_writes=off
+          # The image runs its init scripts on a temporary server, then restarts for real.
+          for i in $(seq 1 120); do docker logs pg 2>&1 | grep -q "PostgreSQL init process complete" && break; sleep 1; done
+          for i in $(seq 1 60); do docker exec pg pg_isready -h localhost -U postgres -q && break; sleep 1; done
+          docker logs pg 2>&1 | tail -5
+
+      - name: Every extension is installed
+        run: |
+          got=$(docker exec pg psql -U postgres -tAc "SELECT string_agg(extname, ',' ORDER BY extname) FROM pg_extension")
+          echo "$got"
+          for e in btree_gist pg_duckdb pg_stat_statements pg_trgm postgis; do echo ",$got," | grep -q ",$e," || { echo "missing $e"; exit 1; }; done
+          docker exec pg psql -U postgres -tAc "SHOW wal_level" | grep -qx logical
+
+      - name: Baseline migration matches the SQLite schema
+        run: |
+          npm run db:pg:generate
+          git diff --exit-code -- db/migrations
+
+      - name: Migrations pass Squawk
+        run: npm run db:pg:lint
+
+      - name: Unit tests on PostgreSQL, against the known-failures list
+        run: npm run test:pg
+
+      - name: Kysely types match the database
+        run: DATABASE_URL=postgres://postgres:ci@localhost:5432/rf_template npx kysely-codegen --verify

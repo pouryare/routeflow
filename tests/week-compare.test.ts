@@ -44,7 +44,7 @@ describe("weekVsLast", () => {
     const db = getDb();
     const now = new Date().toISOString();
     const owner = Number((await db.prepare("INSERT INTO users (username,password_hash,display_name,role,active,created_at,organization_id) VALUES ('o','x','مالک','owner',1,?,1)").run(now)).lastInsertRowid);
-    await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'دیگر', 'other', ?)").run(now);
+    await db.prepare("INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'دیگر', 'other', ?) ON CONFLICT DO NOTHING").run(now);
     const cust = async (org: number) =>
       Number((await db.prepare("INSERT INTO customers (customer_code, business_name, synced_at, organization_id) VALUES (?, 'م', ?, ?)").run(`C${org}`, now, org)).lastInsertRowid);
     const c1 = await cust(1);

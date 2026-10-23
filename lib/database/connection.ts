@@ -1,5 +1,6 @@
-/* The SQLite file behind getDb(): opening it, its pragmas, and the boot schema and migrations
- * every statement waits for. This is the part the PostgreSQL pool replaces (Wave P). */
+/* The database behind getDb(). SQLite by default: opening the file, its pragmas, and the boot
+ * schema and migrations every statement waits for. With DB_DIALECT=postgres it is the pool in
+ * ./pg.ts instead, against a database whose schema node-pg-migrate has already applied. */
 import { DatabaseSync } from "node:sqlite";
 import path from "node:path";
 import fs from "node:fs";
@@ -7,6 +8,8 @@ import { instrumentSlowSql, slowSqlThresholdMs } from "../slowSql";
 import { createBaseSchema } from "./schema";
 import { runMigrations } from "./migrate";
 import { sqliteDb, type Db } from "./client";
+import { dialect } from "./dialect";
+import { pgDb, testDatabaseUrl } from "./pg";
 
 export const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 
@@ -14,14 +17,30 @@ let _db: DatabaseSync | null = null;
 let _ready: Promise<void> | null = null;
 let _asyncDb: Db | null = null;
 
+let _pgReady: (() => Promise<void>) | null = null;
+
 /** The database the app uses. Every call is asynchronous (see lib/database/client.ts). */
 export function getDb(): Db {
-  return (_asyncDb ??= sqliteDb(openSqlite, dbReady, closeSqlite));
+  if (_asyncDb) return _asyncDb;
+  if (dialect() === "postgres") {
+    const base = process.env.DATABASE_URL;
+    if (!base) throw new Error("DB_DIALECT=postgres needs DATABASE_URL");
+    const template = process.env.ROUTEFLOW_PG_TEMPLATE;
+    const test = template ? testDatabaseUrl(base, template, DB_PATH) : null;
+    _pgReady = test?.ready ?? (async () => {});
+    return (_asyncDb = pgDb(test?.url ?? base, _pgReady));
+  }
+  return (_asyncDb = sqliteDb(openSqlite, dbReady, closeSqlite));
 }
 
-/** Resolves once the schema and the boot migrations have run. getDb() and tx() wait for it on
- *  their own; only code that takes the raw handle needs it. */
+/** Resolves once the database can take statements: on SQLite, once the schema and the boot
+ *  migrations have run. getDb() and tx() wait for it on their own; only code that takes the
+ *  raw handle needs it. */
 export function dbReady(): Promise<void> {
+  if (dialect() === "postgres") {
+    getDb();
+    return _pgReady!();
+  }
   openSqlite();
   return _ready!;
 }
@@ -30,6 +49,7 @@ export function dbReady(): Promise<void> {
  *  boot code in lib/database/ and the tests that check it: everything else goes through
  *  getDb(), which is what moves to PostgreSQL. */
 export async function rawSqlite(): Promise<DatabaseSync> {
+  if (dialect() === "postgres") throw new Error("rawSqlite() is SQLite only");
   await dbReady();
   return openSqlite();
 }

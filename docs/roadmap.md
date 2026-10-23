@@ -440,7 +440,7 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 
 ### 10.2 Proposed platform choices
 
-The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an asynchronous `Db` interface and portable SQL while still on SQLite (done 2026-10-23: every call is awaited, transactions go through `db.tx()`, lint catches a forgotten `await`, and `tests/sql-dialect-guard.test.ts` refuses SQLite-only SQL outside `lib/database/`); P2 the Postgres baseline schema, the `pg` adapter and a CI run against Postgres; P3 green on Postgres, the `xid8` sync watermark and row-level security; P4 the server, backups and cut-over by re-seeding; P5 removing the SQLite code.
+The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an asynchronous `Db` interface and portable SQL while still on SQLite (done 2026-10-23: every call is awaited, transactions go through `db.tx()`, lint catches a forgotten `await`, and `tests/sql-dialect-guard.test.ts` refuses SQLite-only SQL outside `lib/database/`); P2 the Postgres baseline schema, the `pg` adapter and a CI run against Postgres (done 2026-10-23: `db/` has the image and the generated baseline, `DB_DIALECT=postgres` switches the app to `lib/database/pg.ts`, and CI runs the unit suite on Postgres against `tests/pg-known-failures.txt`, 77 files at the start); P3 green on Postgres, the `xid8` sync watermark and row-level security; P4 the server, backups and cut-over by re-seeding; P5 removing the SQLite code.
 
 | Choice | Serves | When |
 |---|---|---|

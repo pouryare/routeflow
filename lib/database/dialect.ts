@@ -7,10 +7,10 @@
  *  "Today" is never asked of the database: SQLite's date('now') is the UTC day, which is
  *  yesterday in Tehran until 03:30. Pass tehranTodayIso() as a parameter instead. */
 
-type Dialect = "sqlite" | "postgres";
+export type Dialect = "sqlite" | "postgres";
 
 /** The database the app talks to. SQLite until the cut-over sets DB_DIALECT=postgres. */
-function dialect(): Dialect {
+export function dialect(): Dialect {
   return process.env.DB_DIALECT === "postgres" ? "postgres" : "sqlite";
 }
 
@@ -25,4 +25,14 @@ export function daysBetween(later: string, earlier: string): string {
   return dialect() === "postgres"
     ? `(CAST(${later} AS date) - CAST(${earlier} AS date))`
     : `(julianday(${later}) - julianday(${earlier}))`;
+}
+
+/** The larger of two values (SQLite's two-argument MAX). */
+export function greatest(a: string, b: string): string {
+  return dialect() === "postgres" ? `GREATEST(${a}, ${b})` : `MAX(${a}, ${b})`;
+}
+
+/** The ISO date `days` after the date in `expr`, as YYYY-MM-DD text like the stored dates. */
+export function addDays(expr: string, days: number): string {
+  return dialect() === "postgres" ? `CAST(CAST(${expr} AS date) + ${days} AS text)` : `date(${expr}, '+${days} days')`;
 }

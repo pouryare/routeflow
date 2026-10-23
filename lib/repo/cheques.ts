@@ -10,6 +10,7 @@ import {
   voidPaymentTxn,
   type AllocationInput,
 } from "./payments";
+import { isUniqueViolation } from "@/lib/database/errors";
 
 /** A refusal the caller shows the user, not a bug. */
 export class ChequeError extends Error {}
@@ -85,7 +86,7 @@ async function recordChequePaymentTxn(
         )).lastInsertRowid
     );
   } catch (e) {
-    if (e instanceof Error && /UNIQUE/i.test(e.message)) {
+    if (isUniqueViolation(e)) {
       throw new ChequeError("این شمارهٔ چک برای این مشتری قبلاً ثبت شده است");
     }
     throw e;

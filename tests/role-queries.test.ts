@@ -22,9 +22,9 @@ afterAll(() => {
  * per org, and `groups` has NO organization_id column (name/slug/color/active/created_at). */
 async function mkDualHat(username: string, primary: string, roles: string[], groupId: number | null, org = 8): Promise<number> {
   const db = getDb();
-  await db.exec(`INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01')`);
+  await db.exec(`INSERT INTO organizations (id,name,slug,created_at) VALUES (${org},'O-${org}','o-${org}','2026-01-01') ON CONFLICT DO NOTHING`);
   await db.exec(
-    `INSERT OR IGNORE INTO groups (id,name,slug,color,active,created_at) VALUES (7,'گروه','g7','#000000',1,'2026-01-01')`
+    `INSERT INTO groups (id,name,slug,color,active,created_at) VALUES (7,'گروه','g7','#000000',1,'2026-01-01') ON CONFLICT DO NOTHING`
   );
   await db.prepare(
     `INSERT INTO users (username, password_hash, display_name, role, group_id, organization_id, active, token_version, created_at)

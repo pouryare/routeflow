@@ -30,7 +30,7 @@ describe("exactly one platform_owner", () => {
   it("a role assignment cannot create a SECOND platform_owner", async () => {
     const db = getDb();
     await db.exec(
-      `INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (77,'O77','o77','2026-01-01')`
+      `INSERT INTO organizations (id,name,slug,created_at) VALUES (77,'O77','o77','2026-01-01') ON CONFLICT DO NOTHING`
     );
     const ins = db.prepare(
       "INSERT INTO users (username,password_hash,display_name,role,organization_id,active,created_at) VALUES (?, 'x', ?, ?, 77, 1, '2026-01-01')"

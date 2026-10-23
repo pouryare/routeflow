@@ -65,8 +65,8 @@ describe("districts are shared reference data, not tenant data", () => {
       coordinates: [[[51.4, 35.7], [51.5, 35.7], [51.5, 35.8], [51.4, 35.8], [51.4, 35.7]]],
     });
     const ins = db.prepare(
-      `INSERT OR IGNORE INTO districts (name, level, parent_name, boundary_geojson, coverage_status, is_custom, updated_at)
-       VALUES (?, ?, ?, ?, 'unknown', 0, ?)`
+      `INSERT INTO districts (name, level, parent_name, boundary_geojson, coverage_status, is_custom, updated_at)
+       VALUES (?, ?, ?, ?, 'unknown', 0, ?) ON CONFLICT DO NOTHING`
     );
     const now = new Date().toISOString();
     for (let i = 0; i < 3; i++) await ins.run("منطقه 14", "mantaghe", "", geo, now);

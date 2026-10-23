@@ -18,7 +18,7 @@ describe("legacy sales rows", () => {
   it("belong to the company they are stamped with: a same-named customer elsewhere sees nothing", async () => {
     const db = getDb();
     const now = new Date().toISOString();
-    await db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(now);
+    await db.prepare("INSERT INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?) ON CONFLICT DO NOTHING").run(now);
     await db.prepare("INSERT INTO sales (sale_date, customer_name, product_name, qty, amount, imported_at, organization_id) VALUES ('2026-01-01', 'Same Name', 'x', 1, 100, ?, 1)").run(now);
     await db.prepare("INSERT INTO sales (sale_date, customer_name, product_name, qty, amount, imported_at, organization_id) VALUES ('2026-01-02', 'Same Name', 'y', 1, 7, ?, 2)").run(now);
 

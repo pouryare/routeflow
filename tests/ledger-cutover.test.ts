@@ -19,8 +19,8 @@ let customerId = 0;
 beforeAll(async () => {
   const db = getDb();
   await db.prepare(
-    `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-     VALUES (?, 'cutover-tester', 'x', 'Cutover Tester', 'owner', ?, '2026-01-01')`
+    `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+     VALUES (?, 'cutover-tester', 'x', 'Cutover Tester', 'owner', ?, '2026-01-01') ON CONFLICT DO NOTHING`
   ).run(1, ORG);
   /* customers has NO created_at column -- see the note in ledger-reconciliation.test.ts.
      The plan's version of this insert names it and would throw. */

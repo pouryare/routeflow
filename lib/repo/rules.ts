@@ -14,6 +14,7 @@ import { createTask } from "./tasks";
 import { fanOutNotifications, flushNotifications } from "./notifications";
 import { emitEvent, tryEmitEvent, type EventRow } from "./events";
 import { daysBetween } from "@/lib/database/dialect";
+import { addDaysIso } from "@/lib/flows/dates";
 
 export interface RuleRow {
   id: number;
@@ -68,7 +69,7 @@ async function liveRun(
     .prepare(
       `SELECT id FROM rule_runs
         WHERE organization_id = ? AND rule_id = ?
-          AND entity_type IS ? AND entity_id IS ?
+          AND entity_type IS NOT DISTINCT FROM ? AND entity_id IS NOT DISTINCT FROM ?
           AND resolved_at IS NULL AND cooldown_until > ?
         ORDER BY id DESC LIMIT 1`
     )
@@ -372,9 +373,9 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
     .prepare(
       `SELECT id, cheque_no, due_date FROM cheques
         WHERE organization_id = ? AND status IN ('in_hand','deposited')
-          AND date(due_date) <= date(?, '+7 days')`
+          AND substr(due_date, 1, 10) <= ?`
     )
-    .all(organizationId, asOfIso.slice(0, 10)) as {
+    .all(organizationId, addDaysIso(asOfIso.slice(0, 10), 7)) as {
     id: number;
     cheque_no: string;
     due_date: string;
@@ -391,7 +392,7 @@ export async function runSweepRules(organizationId: number, asOfIso: string = ne
   for (const r of await db
     .prepare(
       `SELECT id, entity_type, entity_id, message FROM reminders
-        WHERE resolved = 0 AND date(due_date) <= date(?)`
+        WHERE resolved = 0 AND substr(due_date, 1, 10) <= ?`
     )
     .all(asOfIso.slice(0, 10)) as {
     id: number;

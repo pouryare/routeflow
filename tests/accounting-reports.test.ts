@@ -26,8 +26,8 @@ beforeAll(async () => {
     [2, "Manager", "group_manager"],
   ] as const) {
     await db.prepare(
-      `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-       VALUES (?, ?, 'x', ?, ?, ?, '2026-01-01')`
+      `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+       VALUES (?, ?, 'x', ?, ?, ?, '2026-01-01') ON CONFLICT DO NOTHING`
     ).run(id, `u${id}`, name, role, ORG);
   }
   customerId = Number(
@@ -121,8 +121,8 @@ describe("accounting reports", () => {
   it("honesty 3: a CLOSED period stays readable, and names who closed it", async () => {
     await getDb()
       .prepare(
-        `INSERT OR IGNORE INTO fiscal_periods (organization_id, period_key, status, closed_at, closed_by, created_at)
-         VALUES (?, '1399-01', 'closed', '2026-01-01', 1, '2026-01-01')`
+        `INSERT INTO fiscal_periods (organization_id, period_key, status, closed_at, closed_by, created_at)
+         VALUES (?, '1399-01', 'closed', '2026-01-01', 1, '2026-01-01') ON CONFLICT DO NOTHING`
       )
       .run(ORG);
     const closed = (await R.listPeriods(ORG)).find((p) => p.periodKey === "1399-01")!;
@@ -154,11 +154,11 @@ describe("accounting reports", () => {
        assertion later in this file. Tenant isolation is what makes the test safe. */
     const db = getDb();
     await db.prepare(
-      "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01')"
+      "INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01') ON CONFLICT DO NOTHING"
     ).run();
     await db.prepare(
-      `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-       VALUES (3, 'u3', 'x', 'Third', 'owner', 2, 'x')`
+      `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+       VALUES (3, 'u3', 'x', 'Third', 'owner', 2, 'x') ON CONFLICT DO NOTHING`
     ).run();
     const j = Number(
       (await db
@@ -259,7 +259,7 @@ describe("accounting reports", () => {
     const db = getDb();
     await db
       .prepare(
-        "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01')"
+        "INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01') ON CONFLICT DO NOTHING"
       )
       .run();
     /* ORG 2 holds only the DELIBERATE breakage from the previous test -- no revenue, no

@@ -21,7 +21,7 @@ afterAll(() => {
 beforeEach(async () => {
   const db = getDb();
   await db.exec("DELETE FROM weather_snapshots; DELETE FROM capacity_factors WHERE organization_id IS NOT NULL;");
-  await db.prepare("INSERT OR IGNORE INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?)").run(
+  await db.prepare("INSERT INTO organizations (id,name,slug,created_at) VALUES (2,'B','b',?) ON CONFLICT DO NOTHING").run(
     new Date().toISOString()
   );
 });

@@ -23,20 +23,20 @@ let supplierId = 0;
 beforeAll(async () => {
   const db = getDb();
   await db.prepare(
-    `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-     VALUES (?, 'ap-tester', 'x', 'AP Tester', 'owner', ?, '2026-01-01')`
+    `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+     VALUES (?, 'ap-tester', 'x', 'AP Tester', 'owner', ?, '2026-01-01') ON CONFLICT DO NOTHING`
   ).run(1, ORG);
   /* facilities: the plan's INSERT names (id, organization_id, kind, name, created_at) but
      slug, lat, lng and updated_at are NOT NULL with no default -- verified against the
      CREATE TABLE. That insert would throw NOT NULL constraint failed. recordPurchase needs
      a facility anyway (defaultFacilityId), so a real one is created here. */
   await db.prepare(
-    `INSERT OR IGNORE INTO facilities (id, slug, kind, name, lat, lng, created_at, updated_at)
-     VALUES (1, 'wh-1', 'warehouse', 'انبار', 35.7, 51.4, '2026-01-01', '2026-01-01')`
+    `INSERT INTO facilities (id, slug, kind, name, lat, lng, created_at, updated_at)
+     VALUES (1, 'wh-1', 'warehouse', 'انبار', 35.7, 51.4, '2026-01-01', '2026-01-01') ON CONFLICT DO NOTHING`
   ).run();
   await db.prepare(
-    `INSERT OR IGNORE INTO facilities (id, slug, kind, name, lat, lng, created_at, updated_at)
-     VALUES (2, 'wh-2', 'warehouse', 'انبار ۲', 35.8, 51.5, '2026-01-01', '2026-01-01')`
+    `INSERT INTO facilities (id, slug, kind, name, lat, lng, created_at, updated_at)
+     VALUES (2, 'wh-2', 'warehouse', 'انبار ۲', 35.8, 51.5, '2026-01-01', '2026-01-01') ON CONFLICT DO NOTHING`
   ).run();
   productId = Number(
     (await db
@@ -163,7 +163,7 @@ describe("accounts payable", () => {
   it("scopes suppliers per organization", async () => {
     await getDb()
       .prepare(
-        "INSERT OR IGNORE INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01')"
+        "INSERT INTO organizations (id, name, slug, created_at) VALUES (2, 'Second', 'second', '2026-01-01') ON CONFLICT DO NOTHING"
       )
       .run();
     expect((await listSuppliers(ORG)).map((s) => s.name)).toContain("تأمین‌کننده آزمایشی");

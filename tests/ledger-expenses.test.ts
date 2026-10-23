@@ -20,8 +20,8 @@ const ORG = 1;
 beforeAll(async () => {
   await getDb()
     .prepare(
-      `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-       VALUES (?, 'exp-tester', 'x', 'Exp Tester', 'owner', ?, '2026-01-01')`
+      `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+       VALUES (?, 'exp-tester', 'x', 'Exp Tester', 'owner', ?, '2026-01-01') ON CONFLICT DO NOTHING`
     )
     .run(1, ORG);
 });
@@ -82,8 +82,8 @@ describe("expenses", () => {
        group_manager is exactly who this matters for. */
     await getDb()
       .prepare(
-        `INSERT OR IGNORE INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
-         VALUES (2, 'exp-tester-2', 'x', 'Second Tester', 'group_manager', ?, '2026-01-01')`
+        `INSERT INTO users (id, username, password_hash, display_name, role, organization_id, created_at)
+         VALUES (2, 'exp-tester-2', 'x', 'Second Tester', 'group_manager', ?, '2026-01-01') ON CONFLICT DO NOTHING`
       )
       .run(ORG);
     const rent = (await expenseCategories()).find((c) => c.code === "5102")!;

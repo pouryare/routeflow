@@ -1,4 +1,5 @@
 import { makeRepo } from "./base";
+import { isCheckViolation } from "@/lib/database/errors";
 
 export class ReasonCodeError extends Error {}
 
@@ -69,7 +70,7 @@ export async function createReasonCode(
       created_at: new Date().toISOString(),
     } as Omit<ReasonCodeRow, "id">);
   } catch (e) {
-    if (e instanceof Error && /CHECK constraint/.test(e.message)) {
+    if (isCheckViolation(e)) {
       throw new ReasonCodeError("دستهٔ نامعتبر");
     }
     throw e;
