@@ -24,6 +24,10 @@
 @import "@heroui/styles/components/alert.css" layer(components);
 @import "@heroui/styles/components/checkbox.css" layer(components);
 @import "@heroui/styles/components/switch.css" layer(components);
+@import "@heroui/styles/components/input.css" layer(components);
+@import "@heroui/styles/components/input-group.css" layer(components);
+@import "@heroui/styles/components/textfield.css" layer(components);
+@import "@heroui/styles/components/field-error.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -2064,6 +2068,8 @@ body {
 /* The bell's panel (NotificationBell.tsx): a HeroUI Popover around NotificationCenter, which
    sets its own width and scroll. */
 .meridian .notif-pop { overflow: hidden; direction: rtl; }
+/* The colour and font pickers' panels (AccentPicker.tsx, FontPicker.tsx). */
+.picker-pop { direction: rtl; }
 .meridian .notif-pop__dialog { padding: 0; }
 .meridian .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
 .meridian .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
@@ -2105,7 +2111,7 @@ body {
 
 /* ---- the sun/moon toggle: one disc, morphed ------------------------------ */
 .meridian .themeToggle {
-  position: relative; width: 42px; height: 42px; border-radius: 999px;
+  position: relative; width: 44px; height: 44px; border-radius: 999px;
   border: 1px solid var(--line); background: var(--card); box-shadow: var(--sh-1);
   cursor: pointer; overflow: hidden; flex: none; padding: 0;
 }
@@ -3175,6 +3181,11 @@ body {
    area around a bare switch, is the tap target; the 20 px box and track stay HeroUI's. */
 .checkfield__hit { display: flex; align-items: center; gap: 8px; min-height: 44px; cursor: pointer; }
 .toggle__hit { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; cursor: pointer; }
+/* TextInput / PasswordInput: a 44 px field with its label above, room under it before the next. */
+.textinput { margin-bottom: var(--space-3); gap: 4px; }
+.textinput .label { font-size: var(--text-xs); color: var(--text-muted); }
+.textinput .input, .textinput .input-group { min-height: 44px; font-size: var(--text-base); }
+.textinput .input-group__input { min-height: 44px; }
 .meridian .jdate__foot { display: flex; justify-content: space-between; gap: 8px; max-width: 360px; width: 100%; margin-inline: auto; }
 
 /* ---- empty states (EmptyState.tsx) ---------------------------------------------------

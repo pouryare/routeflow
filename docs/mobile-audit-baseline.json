@@ -2,7 +2,7 @@
   "total": {
     "select": 0,
     "nativeDate": 0,
-    "textField": 97,
+    "textField": 86,
     "tinyTarget": 0,
     "confirmDialog": 0
   },
@@ -15,7 +15,6 @@
     "components/sales/ChequesBoard.tsx",
     "components/sales/PaymentsPanel.tsx",
     "components/sales/RoutingPlanner.tsx",
-    "components/tapflow/DateStep.tsx",
     "components/tapflow/TapFlow.tsx"
   ]
 }

@@ -12,8 +12,8 @@
  *  both that list and the stylesheet are written by the same generator run.
  */
 
-import { useDismissOnOutside } from "@/lib/useDismissOnOutside";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Button, Popover } from "@heroui/react";
+import { useEffect, useState } from "react";
 import {
   ACCENT_CHANGE_EVENT,
   applyAccent,
@@ -58,10 +58,6 @@ export default function AccentPicker({
   const [accent, setAccent] = useAccent();
   const [theme] = useTheme();
   const [open, setOpen] = useState(false);
-  const root = useRef<HTMLDivElement>(null);
-
-  const dismiss = useCallback(() => setOpen(false), []);
-  useDismissOnOutside(open, dismiss, root);
 
   const current = ACCENT_THEMES.find((t) => t.id === accent) ?? ACCENT_THEMES[0];
 
@@ -71,14 +67,12 @@ export default function AccentPicker({
       : "flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface transition-[transform,border-color] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:border-accent active:scale-[0.98]";
 
   return (
-    <div ref={root} className={`relative ${className}`}>
-      <button
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-haspopup="true"
-        aria-expanded={open}
+    <div className={className}>
+      <Popover isOpen={open} onOpenChange={setOpen}>
+      <Button
+        isIconOnly
+        variant="ghost"
         aria-label={`رنگ ظاهر برنامه — اکنون ${current.label}`}
-        title={`رنگ ظاهر: ${current.label}`}
         className={trigger}
       >
         {/* No palette glyph. The comment below used to sit UNDERNEATH a <Icon name="palette"> and
@@ -92,28 +86,13 @@ export default function AccentPicker({
           className="block h-4 w-4 rounded-full border border-black/15 shadow-[inset_0_0_0_1px_rgba(255,255,255,.28)]"
           style={{ background: "var(--accent)" }}
         />
-      </button>
+      </Button>
 
-      {open && (
-        <div
+        <Popover.Content placement="bottom end" offset={6} className="picker-pop">
+        <Popover.Dialog
           dir="rtl"
-          role="dialog"
           aria-label="انتخاب رنگ ظاهر"
-          /* The map trigger is pinned to the PHYSICAL right edge (right-4 on the
-             viewport), so its popover has to hang leftward from that edge or it opens
-             straight off the screen -- which is what `left-0` did. Physical `right-0`
-             and not logical `end-0`, because the anchor is physical: in this RTL
-             document `end` resolves to left, which is the bug.
-
-             The header trigger is the opposite case. `.top` is space-between in RTL, so
-             `.topright` sits at the visual LEFT and its popover correctly opens rightward
-             into the page -- hence `end-0` there.
-
-             max-w is the backstop: 264px + the 16px inset still fits a 320px screen, but
-             a narrower one clamps instead of overflowing. */
-          className={`absolute z-[var(--z-panel)] w-[16.5rem] max-w-[calc(100vw-2rem)] rounded-[var(--radius-lg)] border border-border bg-surface-raised p-2.5 shadow-[var(--elev-2)] ${
-            variant === "map" ? "right-0 top-12" : "end-0 top-11"
-          }`}
+          className="w-[16.5rem] max-w-[calc(100vw-2rem)] p-2.5"
         >
           <p className="mb-2 px-1 font-mono text-[length:var(--text-xs)] uppercase tracking-[0.12em] text-text-faint">
             رنگ ظاهر
@@ -156,8 +135,9 @@ export default function AccentPicker({
           <p className="mt-2 px-1 text-[length:var(--text-xs)] leading-5 text-text-faint">
             رنگ‌های وضعیت (سبز، کهربایی، قرمز) تغییر نمی‌کنند — معنایشان همه‌جا یکی است.
           </p>
-        </div>
-      )}
+        </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
     </div>
   );
 }
