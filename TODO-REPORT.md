@@ -329,6 +329,145 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 **Not done / gaps**: companies are independent by design, so the "two companies claim the same district" case is not a defect to fix (each company's group holds its own territory). Refactor leftovers and ratchet numbers remain hygiene; `playwrightExtract` needs the 1234 Chromium build.
 **Next steps**: none required; lower the ratchet numbers when touching files.
 
+## PostgreSQL move: estimate and platform choices (2026-10-23, docs only, no code changed)
+
+### Done
+- [x] Measured how deeply SQLite is wired in: about 1,665 `prepare`/`exec` calls in 173 files, 93 tables, 15 triggers, 8 migration files, 288 database test files
+- [x] Read the roadmap, future-features and CRM/ERP plan and matched the parked features (F1 to F148) to the technology each needs
+- [x] Recommended: PostgreSQL with PostGIS, `pg_trgm` and row-level security; `pg` + Kysely (not Prisma); plain SQL migrations; a pg-boss worker; object storage; Valkey with the first live feature
+- [x] Explained why Elasticsearch/Meilisearch, Kafka/RabbitMQ, Kubernetes and microservices are left out for now, and the signal that would change each
+- [x] Recorded your answers (data is dummy; server in Iran; one company today, others later; driver count unknown) in `docs/roadmap.md` section 10, `docs/future-features.md` (header, F6, F126, F127) and `docs/crm-erp-plan.md` (decision 12 superseded, new row 15, note in Part 2)
+- [x] Estimate revised to about 4 to 7 engineer-weeks: the data is dummy, so there is no data copy and no old migration history to port
+
+### Not done / gaps
+- [ ] Nothing built or installed; no decision record for the data layer yet
+- [ ] Nothing tested from Iran: weather, Telegram, push services, map tiles, the public OSRM server, npm and container registries (list in `docs/roadmap.md` section 10)
+- [ ] `lib/routing/osrmFetch.ts` still uses the public OSRM demo server and `VROOM_URL` is unset outside production
+- [ ] Open: SMS gateway or messenger for customers and staff, where the off-site backup lives, whether row-level security goes on at once or with the second company
+- [ ] The README still says SQLite; it changes when the code does
+- [ ] Driver count is unknown: sizing uses a formula and rough thresholds, not measurements
+
+### Next steps
+1. Check the outside services from the Iranian server and from a phone on an Iranian network
+2. Write a short decision record for the data layer: Postgres, per-transaction tenant context, Kysely, SQL migrations
+3. Spike: one baseline schema plus the orders vertical, async, with row-level security on
+4. Add the pg-boss worker, then port the repo layer module by module; re-seed from the seed scripts
+5. Add object storage, Valkey and the rest only when the wave that needs them starts
+
+## Libraries to add and hand-rolled code a library does better (2026-10-23, docs only, no code changed)
+
+### Done
+- [x] Always-on rule added to `CLAUDE.md`: search for existing code, libraries and plugins before building, analyze them, and ask you to choose between using one and building from scratch
+- [x] Second pass of libraries (passkeys, barcode scan, labels, own map tiles, CSV and encoding, zip export, OpenTelemetry, throttling, test tools) added to `docs/roadmap.md` section 10 and as notes on F1, F10, F34, F106 and F108
+- [x] Recorded the library review in `docs/roadmap.md` (section 10, "Libraries: replace, add, keep") and as library notes on F4, F10, F116, F124 and F143 in `docs/future-features.md`
+- [x] Reviewed what the codebase builds by hand (it has almost no third-party libraries beyond Leaflet and its plugins, framer-motion, sharp, exceljs, web-push, Playwright); checked package freshness on the npm registry
+- [x] Findings where a library clearly does better: no schema validation on 161 route files (79 hand-written type checks), CSV export does not neutralise cells starting with `=`, `+`, `-` or `@`, scrypt runs on Node's default cost (N=16384) with a stored format that cannot carry parameters, two map stacks (22 Leaflet files with 8 Leaflet packages, 1 MapLibre file; `leaflet-routing-machine` and `leaflet.heat` last published 2022)
+- [x] Libraries worth adding for roadmap features: `@persian-tools/persian-tools` (F116, F5, F10), `libphonenumber-js` (F4, F79), grammY (F124, F143), pino plus a GlitchTip-compatible SDK, a virtual-list library, React Aria for overlays and the Jalali date picker
+- [x] Hand-rolled code to keep: Jalali conversion (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS, the offline outbox, the VROOM fallback
+
+### Not done / gaps
+- [ ] Nothing changed or installed; findings are from reading the code, not from running it
+- [ ] Not checked: whether `npm install` of native packages (for example Argon2) works from the Iranian server
+- [ ] Charts: not decided between keeping the 4 custom charts and a library for the report builder (F123, F146)
+
+### Next steps
+1. Decide which findings to fix now: CSV formula guard (small), password hash parameters and format (cheap while the data is dummy), schema validation
+2. Choose the map stack (MapLibre recommended) before building live tracking
+3. Add `@persian-tools/persian-tools` and `libphonenumber-js` when F116 and the first telephony or SMS slice start
+
+## More technology suggestions (2026-10-23, discussion only, nothing recorded in the docs yet)
+
+### Done
+- [x] Suggested technology not yet covered: Capacitor Android shell for background GPS, Traccar for dedicated trackers, Centrifugo for live updates, domestic push and delivery fallbacks, SOPS secrets, a local package and image mirror, a query-builder UI for rules and reports, an editable grid for desk order entry, real-user performance data, Moodian e-invoicing and Sayad cheque IDs
+
+### Not done / gaps
+- [ ] Not added to `docs/roadmap.md` or `docs/future-features.md`; waiting for your decision on which to keep
+- [ ] Iran-specific points (push delivery, stores, Moodian, Sayad) are from general knowledge and need checking with your accountant and a test on real phones
+
+### Next steps
+1. Say which suggestions to record in the docs
+2. Decide Capacitor shell versus staying a PWA before F6 starts
+3. Check the outside services from the Iranian server
+
+## Decisions from the owner and rules/reports/screens libraries (2026-10-23, docs only, no code changed)
+
+### Done
+- [x] Rules, reports and screens libraries added (roadmap section 10; notes on F123, F130, F131)
+- [x] Phone GPS recorded as the position source for now (roadmap section 10, F6 question 1); no tracker server
+- [x] SMS provider Farazsms recorded as decided (roadmap section 10, notes on F79, F106, F109); found the official `farazsms` npm client for the later build-or-use choice
+- [x] Capacitor Android shell recorded as decided (roadmap section 10 and notes on F6, F38, F103)
+
+### Not done / gaps
+- [ ] Android distribution route (domestic store or direct file) and iPhone support are open
+
+### Next steps
+1. Check the outside services from the Iranian server
+2. Decide the Android distribution route (domestic store or direct file) before F6 starts
+3. When the SMS slice starts, decide between the official `farazsms` client and a thin fetch wrapper
+
+## Centrifugo explained (2026-10-23, discussion only)
+
+### Done
+- [x] Explained Centrifugo in plain terms with examples (F6, F125, F4); advice: start with server-sent events, add Centrifugo only with more than one app server
+
+### Not done / gaps
+- [ ] Not recorded in the docs, not installed or tested
+
+### Next steps
+1. Check the outside services from the Iranian server
+2. Decide the Android distribution route before F6 starts
+
+## Where live updates would be used (2026-10-23, docs only)
+
+### Done
+- [x] Recorded the live-updates mapping, what it opens up, the limits and the recommendation in `docs/roadmap.md` (section 10, "Live updates: where they would be used")
+- [x] Mapped where Centrifugo or live updates would be used: polling today in `CoverageMap` (45 s), `NotificationBell` (60 s), `LeadImportPanel`; roadmap F6, F125, F4; inferred candidates F38, F68, F7, F55, F16, F102, F143, F107, F13, F105, F30, F94, F61, F121 and job progress
+
+### Not done / gaps
+- [ ] The inferred candidates are my reading, not stated in the roadmap
+- [ ] Centrifugo's Postgres outbox feature is unverified
+
+### Next steps
+1. Say if a live-updates table should go into `docs/roadmap.md`
+2. Check the outside services from the Iranian server
+
+## Interesting technologies recorded (2026-10-23, docs only)
+
+### Done
+- [x] Cleaned up `docs/roadmap.md`: section 10 numbered 10.1 to 10.8 with sub-links in the contents and a how-to-read note; the three library tables merged into one; section 5 now has a status column; a platform wave added to section 4; platform claims added to section 8; duplicated intros removed; one overstated line about Iran softened
+- [x] Forms generated from data (JSON Forms or `@rjsf/core`) added to the roadmap table, with notes on F40, F122, F141
+- [x] Persian map labels (right-to-left text plugin) added to the roadmap table with notes on F68 and F92; found no `setRTLTextPlugin` call in the code
+- [x] Suggested seven more (import wizard, forms from data, per-company subdomain and branding, backup fire drill, call detection on the phone, straighten photos before OCR, contact picker)
+- [x] Short links for SMS, bad-network tests, real-phone tests (Maestro) and load testing (k6) added to the roadmap table, with notes on F6, F13, F79, F105, F106, F113, F120, F127
+- [x] Suggested seven more (cold-chain temperature loggers, validated environment settings, daily audit seal, component showroom, pre-commit checks, heartbeat for nightly jobs, Persian map labels)
+- [x] Live updates for the Android shell (Capgo) and a no-login tracking page with Altcha added to the roadmap table, with notes on F6, F13, F79, F120
+- [x] Suggested seven more technologies (encrypted offline database with fingerprint unlock, short links for SMS, bad-network tests, real-phone tests, e-signature, ordering inside a messenger, load testing)
+- [x] Offline vector maps, H3 hexagons, Valhalla, database tests (pgTAP, squawk), mutation testing (Stryker) and per-company switches with usage numbers added to the roadmap table and as notes on F2, F11, F13, F20, F57, F81, F92, F103, F127
+- [x] Suggested seven more technologies (live updates for the Android shell, no-login tracking link, safe uploads, safe data copies, own geocoding, accounting-software bridge, vendor analytics)
+- [x] Local-first sync, durable workflows (DBOS), DuckDB and deck.gl added to `docs/roadmap.md` section 10 ("Interesting technologies (not decided)") with notes on F18, F32, F43, F44, F50, F68, F75, F92, F105, F123, F129, F134
+- [x] Suggested seven more technologies (offline maps, H3 hexagons, Valhalla, OpenAPI with fuzz tests, database tests, mutation testing, per-company switches and usage numbers)
+
+### Not done / gaps
+- [ ] The latest seven are not in the docs yet; nothing installed or tested, including from Iran
+
+### Next steps
+1. Say which of the latest seven to record
+2. Check the outside services from the Iranian server
+3. Decide the Android distribution route before F6 starts
+
+## Roadmap clean-up merged (2026-10-23, docs only)
+
+### Done
+- [x] Roadmap clean-up branch (section 10 numbered 10.1 to 10.8, forms-from-data entry) checked against `main`: already up to date, no conflicts; opened as one PR and merged after CI
+
+### Not done / gaps
+- [ ] The latest seven suggested technologies are still not in the docs; nothing installed or tested from Iran
+
+### Next steps
+1. Say which of the latest seven to record
+2. Check the outside services from the Iranian server
+3. Decide the Android distribution route before F6 starts
+
 ## Sync same-millisecond tie (2026-10-23)
 
 ### Done

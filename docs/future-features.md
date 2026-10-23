@@ -8,11 +8,15 @@ Every item must end in a **confirmation tap flow** (`docs/tap-flow-principles.md
 
 Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambitious live in `docs/superpowers/plans/2026-10-20-mobile-first-interaction-patterns.md`.
 
+**Ground facts (2026-10-23), stated by the owner.** The database is moving from SQLite to PostgreSQL. The data in it today is dummy. The production server is in Iran. One company uses the app today and others may later. The number of drivers is unknown and cannot be predicted. The consequences, the proposed platform choices and the list of outside services to check from Iran are in `docs/roadmap.md`, section 10. The entries most affected: F1, F2, F3, F5 and F14 (a hosted foreign model API is unlikely to be available, so processing is on the device or a self-hosted model); F4, F6, F79, F106 and F109 (carrier, SMS gateway and messenger must work from Iran); F10 (domestic banks); F34 and F138 (where the off-site backup lives); F6 and F38 (position volume cannot assume a fleet size); F126 and F127 (one company today).
+
 ---
 
 ## F1. Camera capture (read a document instead of typing it)
 
 **What:** point the phone at a paper and get a pre-filled confirmation sheet.
+
+**Library (2026-10-23):** `zxing-wasm` for barcode and QR scanning where `BarcodeDetector` is missing.
 
 | Source | Fills | Used by |
 |---|---|---|
@@ -38,6 +42,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 ## F2. Voice input (speak instead of typing a note)
 
 **What:** a press-and-hold microphone button next to every optional note field (`tf-input` on the `note` steps, complaint description, visit notes, reminder text). Persian speech to text, shown as editable text before saving.
+
+**Technology to consider (2026-10-23):** per-company switches and usage numbers (Umami); see `docs/roadmap.md`, section 10.
 
 **Why parked:** Persian recognition quality varies by accent, noise and phone; browser `SpeechRecognition` support is uneven (works in Chrome Android, unreliable elsewhere, often cloud-backed); vans are noisy.
 
@@ -80,6 +86,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 ## F4. Wazo VoIP inside the CRM/ERP (call from, and log to, the customer record)
 
 **What:** use [Wazo](https://wazo.io) (open-source, API-driven telephony platform) as the phone system behind RouteFlow, so calls are placed, received and recorded inside the app instead of in a separate dialer.
+
+**Library (2026-10-23):** `libphonenumber-js` (min build) for caller matching and E.164 numbers instead of extending `lib/crm/phone.ts`.
 
 | Moment | What the app does | Used by |
 |---|---|---|
@@ -161,13 +169,22 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** drivers' positions on the map in real time, and an automatic "your delivery arrives in about 15 minutes" message (SMS, Telegram or WhatsApp) to the customer.
 
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** live updates for the Android shell (Capgo) so fixes reach phones without a store review; see `docs/roadmap.md`, section 10.
+
+**Decision (2026-10-23):** the Android app is the web app wrapped in a Capacitor shell, which lifts the foreground-only limit on location below. Distribution (domestic store or direct file) is still open.
+
 **Why parked:** continuous GPS drains batteries and needs background location, which a PWA gets only while open; message channels need provider accounts and customer consent; sending customer phone numbers to a messaging provider is a privacy decision.
 
 **Open questions**
-1. Position source: the driver app while a run is active (foreground only) or a dedicated tracker?
+1. Position source: the driver app while a run is active (foreground only) or a dedicated tracker? **Decided (2026-10-23): the phone's GPS for now**, with background location from the Capacitor shell.
 2. ETA model: planned arrival from the run plus live offset, or a routing-engine recalculation from the current position?
 3. Which channel do customers actually read? Ask before choosing.
 4. Retention: keep the breadcrumb trail (useful for disputes and `actual_distance_km`) or only the last position?
+5. Volume: the number of drivers is unknown (2026-10-23), so nothing may assume a fleet size. Size by drivers × hours on the road × 3600 ÷ ping interval, keep the pings in a table partitioned by month, and keep raw pings for a limited time (the roadmap proposes 90 days, then a simplified line). Thresholds are in `docs/roadmap.md`, section 10.
 
 **Suggested first slice:** position pings every 30–60 s while a run is `IN_TRANSIT`, a live dot on the existing map, and a manager-only view. Customer messages second.
 
@@ -232,6 +249,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** import bank statements (or connect a payment gateway), and auto-match deposits to customers, invoices and cheques. Unmatched lines go to a short review list with a proposed match to confirm.
 
+**Library (2026-10-23):** `@persian-tools/persian-tools` validates Sheba numbers and maps a card number to its bank; `csv-parse` and `iconv-lite` read statement files, including older Windows-1256 ones.
+
 **Why parked:** Iranian bank export formats vary and no common open API exists; payer names in statements are inconsistent Persian text (see F5); matching one deposit to several invoices needs a split step.
 
 **Open questions**
@@ -248,6 +267,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F11. Demand forecasting and auto-purchasing
 
 **What:** forecast stock need per product from sales history, and draft purchase orders to suppliers for a manager to confirm.
+
+**Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** demand forecasting exists. `lib/predict` smooths demand on a deseasonalised series and `lib/predict/inventory.ts` computes the reorder point (average daily sales × lead time + safety stock); `/sales/forecast` shows the demand table. Missing: supplier lead times and minimum orders, and drafting purchase orders from the result.
 
@@ -284,6 +305,12 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F13. Offline-first everywhere
 
 **What:** extend the driver app's offline sync so sales, warehouse and payment flows also work without signal and reconcile cleanly when it returns.
+
+**Technology to consider (2026-10-23):** bad-network tests (Playwright throttling, Toxiproxy); see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** live updates for the Android shell (Capgo) so fixes reach phones without a store review; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** offline vector maps (PMTiles with MapLibre, stored by the Capacitor shell); see `docs/roadmap.md`, section 10.
 
 **Correction (found later):** the offline layer reaches beyond drivers. `lib/offline` (IndexedDB store, outbox, sync engine, device-generated ids) already queues draft orders (create, edit, submit), delivery start and complete, payments, cheques, complaints and new-customer capture, and the pull sends orders and customers to sales roles too (`lib/repo/syncPull.ts`, `lib/repo/syncMutations.ts`). Order approval, planning, freezing and credit decisions are refused offline on purpose. Tasks, notes and call outcomes are not covered (see F105).
 
@@ -379,6 +406,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** auto-generated account statements (open invoices, cheques due, balance) and polite payment reminders by message, escalating by days overdue.
 
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
+
 **Why parked:** wording matters for Persian business relationships; wrong or duplicated reminders damage trust; message channels need provider accounts and consent (see F6); statements must reconcile with the ledger.
 
 **Open questions**
@@ -415,6 +444,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F20. Daily visit route for salespeople
 
 **What:** a suggested daily visit route built from customers due for a call or visit (see F8), pending leads and overdue balances, ordered to minimise travel, with a one-tap start.
+
+**Technology to consider (2026-10-23):** offline vector maps (PMTiles with MapLibre, stored by the Capacitor shell); see `docs/roadmap.md`, section 10.
 
 **Already in the app:** `visit_plans` and the schedule page already hold planned visits on the calendar (`/sales/schedule`), and the routing engine orders delivery stops. What is missing is *building* the day's visit list automatically and ordering it for travel.
 
@@ -630,6 +661,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** true profit per customer, product and route, including delivery cost, discounts, returns and bad debt, not just revenue.
 
+**Technology to consider (2026-10-23):** DuckDB if reports stay slow after a read replica and materialised views; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** orders store `total_toman` and `cost_toman`; runs store planned and actual distance and duration. Delivery cost per run, discounts and bad-debt allocation are not yet attributed.
 
 **Also existing:** `components/CostToServePanel.tsx` already shows revenue against straight-line distance from the dispatch site per customer, and reports how many sales rows failed to match a customer. It is a distance proxy, not a cost model.
@@ -671,6 +704,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F34. Data export and backup self-service
 
 **What:** owners download their data (orders, customers, ledger) as files, see when the last backup ran, and restore a point in time without a developer.
+
+**Library (2026-10-23):** `archiver` streams a zip of many CSV files without holding them in memory.
 
 **Already in the app:** `scripts/backup.mjs` makes backups from the command line.
 
@@ -749,6 +784,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** detect when a driver arrives at and leaves a customer's location and record the times, giving stop duration and on-time data without a tap.
 
+**Decision (2026-10-23):** background location comes from the Capacitor Android shell; see F6.
+
 **Already in the app:** `lib/arrival.ts` (`stopAtDoor`) prompts the driver when they are within 150 m of a pending stop (`ARRIVAL_RADIUS_KM`), used in `components/driver/DriverRun.tsx`. `deliveries.actual_arrival` is a server timestamp set when the stop action is received, not when the driver physically arrived, and there is no departure time or dwell time.
 
 **Why parked:** continuous background location is unreliable in a PWA (works only while the app is open and the screen is on); battery use; GPS error indoors and in dense streets; location tracking of staff needs consent and clear rules (see F6).
@@ -790,6 +827,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F40. Customer onboarding checklist
 
 **What:** a new customer's first-order steps tracked until complete: credit limit set, location confirmed, price group chosen, contact person recorded, first delivery slot agreed. Incomplete items show on the owner's task list and the customer page.
+
+**Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** lead stages (`lib/crm/stage.ts`) and tasks. They track a lead's progress, not the readiness of a new customer to be served.
 
@@ -850,6 +889,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** @-mention a colleague on a customer, order or task, creating a notification and a task for them.
 
+**Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** activity notes on the customer timeline (`lib/crm/timeline.ts`), tasks with assignees, and the notification feed with unread counts (`lib/repo/notifications.ts`). There is no mention syntax or conversation on an order or task.
 
 **Why parked:** mentions need access checks (someone mentioned must be allowed to see the record, or the mention leaks it); threads on every object grow into a chat product; notification noise.
@@ -869,6 +910,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F44. Standing orders and contracts
 
 **What:** a customer who orders the same thing every week gets a recurring order that generates a draft each time for confirmation, with a contract (start, end, quantities, agreed prices).
+
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** `task_recurrences` and `lib/tasks/recurrence.ts` (`rruleMatches`: `daily`, `weekly:<day>`, `monthly:<1-28>`) generate recurring tasks from the sweep rules. Nothing generates orders.
 
@@ -988,6 +1031,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F50. Payment promise tracker
 
 **What:** record "the customer promised to pay on the 15th", follow up automatically if it isn't received, and track each customer's promise-kept rate.
+
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** reminders and tasks with due dates (`AddReminder`, `lib/repo/tasks.ts`), and the credit-approval and payment flows. A promise is only a free-text task today: it has no amount, no link to the debt and no outcome.
 
@@ -1125,6 +1170,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F57. Delivery time windows
 
 **What:** each customer's preferred receiving hours, honoured by the route planner and shown to the driver, so a shop is not visited when it is closed or busy.
+
+**Technology to consider (2026-10-23):** Valhalla for delivery-zone areas and for matching GPS pings to roads; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** customers have opening hours (`working_hours_json`, with `parseHours` and `nextOpenAt`), used to pick a good time for calls and visits (`lib/repo/crm/write.ts`) and shown on the driver's visit list (`lib/repo/crm/driverVisits.ts`). The route solver adapter (`lib/routing/vroom.ts`) accepts a per-stop `time_window`. I found no code that fills that window from the customer's hours when planning delivery runs, so opening hours currently inform visits, not routes.
 
@@ -1346,6 +1393,10 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** where each rep went today and this week, what they visited and how long they stayed, from visit, call and order locations, for managers to coach and to check coverage.
 
+**Technology to consider (2026-10-23):** check Persian labels on any MapLibre basemap (right-to-left text plugin); see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** deck.gl on MapLibre for many points and areas; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the map shows customers, leads and districts with coverage status, and the phone tracks its own position live (`MyPositionProvider`) for navigation and arrival prompts (see F38). Delivery stops record the device's GPS at the moment of the action (`gps_lat`, `gps_lng`, `device_time`). I found no stored position history for salespeople, so there is nothing yet to draw as a rep's day.
 
 **Why parked:** recording staff locations is a privacy and labour-law matter that needs a written policy and clear consent; continuous tracking drains batteries and is unreliable in a PWA (see F6 and F38); a map of movement can be read as surveillance and misused.
@@ -1487,6 +1538,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the product list with packagings and prices cached on the phone so reps can browse and quote in basements and rural areas, with a freshness indicator ("prices as of 09:10").
 
+**Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the sync pull (`/api/sync/pull`, `lib/repo/syncPull.ts`) sends the full catalogue (products, packagings and prices) to every signed-in role except the vendor account, and recent orders and customers to sales roles; the service worker caches the app shell, map tiles and map data (`public/sw.js`). I did not verify that the sales screens read the catalogue from the local copy when offline, and whether quoting works without a connection.
 
 **Why parked:** an offline quote must show that prices may be stale and must not be confirmed offline at an out-of-date price; the cache needs a refresh policy and a version stamp; storage use on low-end phones.
@@ -1567,6 +1620,12 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** when a run is delayed past a threshold, a templated message goes to the affected customers (reviewed by the dispatcher before sending, at least at first), with a new expected time.
 
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
+
+**Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** stops carry a planned arrival and a delay reason code, and staff get push and Telegram notifications (`lib/repo/notifications.ts`). Customers are not notification recipients, and I found no customer-facing messaging channel.
 
 **Why parked:** it needs a way to reach customers (SMS gateway or messaging app accounts, see F6), consent and opt-out, and a trustworthy new ETA (see F6 and F38); a wrong message is worse than none.
@@ -1606,6 +1665,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F81. Peak-day capacity warning
 
 **What:** when tomorrow's (or next week's) confirmed orders exceed van capacity or driver availability, warn the planner a day ahead, with options (move some orders, add a van, split the day).
+
+**Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** vehicles carry limits for stops, weight and volume (`max_stops`, `max_weight_kg`, `max_volume_m3`), and `lib/dayCapacity.ts` splits orders across days against those limits when the planner builds runs (`lib/repo/dayPlan.ts`, `readPlannableOrders`). The briefing shows unplanned orders. It does not warn ahead that a coming day is over capacity.
 
@@ -1828,6 +1889,12 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a map of revenue by district compared with the district's potential (customers and prospects), to show where growth is available and which districts are over- or under-served.
 
+**Technology to consider (2026-10-23):** check Persian labels on any MapLibre basemap (right-to-left text plugin); see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** an H3 hexagon grid for counting per area; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** deck.gl on MapLibre for many points and areas; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the map has a customer density heat map (`components/HeatmapLayer.tsx`), districts with a coverage status (visited, needs coverage, not allowed, unknown), and a coverage and cost-to-serve analytics module (`lib/repo/coverageAnalytics.ts`). The heat map shows where customers are, not how much they buy, and there is no per-district revenue or potential figure.
 
 **Why parked:** "potential" needs a definition (number of businesses of the right type in the district, from lead imports; population; competitor presence) and those figures may be thin or stale; district boundaries must stay consistent for trends to mean anything; group-scoped views must not reveal another group's revenue.
@@ -2048,6 +2115,10 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** distance driven by each salesperson on visits, estimated from the locations of the customers visited that day (or entered at month end), for reimbursement and for comparing effort across territories.
 
+**Technology to consider (2026-10-23):** Valhalla for delivery-zone areas and for matching GPS pings to roads; see `docs/roadmap.md`, section 10.
+
+**Decision (2026-10-23):** background location comes from the Capacitor Android shell; see F6.
+
 **Already in the app:** visits and calls are logged against customers, customers and leads have coordinates, a straight-line distance helper exists (`lib/geo.ts`), and routing has road-distance support for delivery runs. Delivery runs record planned and actual distance (`delivery_runs.actual_distance_km`). Salespeople's own movement is not stored anywhere, so there is no log to total.
 
 **Why parked:** a distance derived from visit points is only an estimate (the order of visits and the road network matter); continuous tracking would be more accurate but raises the privacy issues in F68; reimbursement money rides on the number, so disputes need a clear method.
@@ -2088,6 +2159,10 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** reps can read their tasks and customer notes, add notes and log call outcomes with no signal, synced when the connection returns.
 
+**Technology to consider (2026-10-23):** bad-network tests (Playwright throttling, Toxiproxy); see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** an offline layer exists (`lib/offline`: an IndexedDB store, an outbox, a sync engine, queue-if-offline, clock-skew handling and ids generated on the device). Offline it can queue draft orders (create, edit, submit), delivery start and complete, payment records, cheque records, complaint records and new-customer capture (`lib/repo/syncMutations.ts`). The pull sends the catalogue, and orders and customers for the user's scope. Tasks, notes (activities) and call outcomes are not in the pull or in the queued actions, and approvals (order approve, plan, freeze, credit decision) are explicitly refused offline. Note: this means F13 should record that the layer reaches beyond drivers.
 
 **Why parked:** tasks change on the server while the rep is offline (reassigned, completed by a manager), so conflict rules are needed; a call outcome creates follow-up tasks on the server, which the offline copy must not duplicate; the pulled data grows with each added table.
@@ -2107,6 +2182,12 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F106. Two-step login for owners and managers
 
 **What:** a one-time code (sent by SMS or Telegram, or from an authenticator app) required at sign-in for roles that can approve money and see everything, with trusted-device memory so it is asked rarely.
+
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
+
+**Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
+
+**Library (2026-10-23):** `@simplewebauthn/server` for passkeys as a second step beside the existing TOTP.
 
 **Already in the app:** sign-in produces a signed session cookie that lasts 30 days, carrying the user, role, group, organisation and a token version (`lib/auth.ts`); login is rate-limited per username and per address; Login-As for owners is time-limited and re-validated on every request (`lib/impersonation.ts`). I found no one-time-code or second-factor code anywhere.
 
@@ -2148,6 +2229,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** one page showing the app's own health: last sync activity, last backup and how old it is, failed notifications, errors and slow queries from the last day, how fresh the imported data is, and whether outside services (routing, weather, messaging) respond.
 
+**Library (2026-10-23):** OpenTelemetry through `instrumentation.ts`, sent to a self-hosted collector.
+
 **Already in the app:** pieces exist but are scattered: a data-freshness indicator for the spreadsheet-based imports (fresh, ageing, stale, unknown; `lib/freshness.ts`), a slow-query log written to the server console when a statement exceeds a threshold set by an environment variable (`lib/slowSql.ts`), a nightly backup script with rotation that writes to the local disk only (`scripts/backup.mjs`), notification delivery records (`notification_deliveries`), and a script for the scheduled sweeps (`scripts/run-sweeps.mjs`). There is no health endpoint and no page that brings these together; the slow-query and error output goes to logs that an owner never sees.
 
 **Why parked:** a status page shows internals, so it must be owner-only and must not leak other tenants' data in a multi-organisation setup; some checks (backup age, error rate) need the server to record them somewhere the page can read; alerting on bad status needs a channel.
@@ -2167,6 +2250,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F109. Self-service password reset
 
 **What:** a user who forgot their password resets it themselves with a code sent to their linked Telegram, instead of asking the owner or a manager.
+
+**Provider (2026-10-23):** SMS goes through Farazsms. Consent and opt-out are still needed; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** passwords are hashed and set by an administrator: the admin user routes accept a new password with a minimum length, store the hash and bump the user's token version so old sessions end (`app/api/admin/users/[id]/route.ts`), and a helper generates a readable username and password when a user is added, leaving out look-alike characters (`lib/credentials.ts`). The notification system already links a user's Telegram account with a one-time nonce (`lib/repo/notifications.ts`, `telegram-link`), which is the channel a reset code could use. There is no way for a user to start a reset on their own.
 
@@ -2248,6 +2333,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** press and hold the «+ ثبت» button (or the app icon on the home screen) and the role's most-used actions fan out as a pie or radial menu within thumb reach: new order, log a payment, new lead or note, complaint, today's run. One quick drag selects and opens the matching tap flow.
 
+**Technology to consider (2026-10-23):** real-phone tests (Maestro with a physical Android phone); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the phone has a «+ ثبت» button above the bottom bar (`components/mobile/QuickActions.tsx`). A tap opens a bottom sheet titled "what shall we record" listing the role's actions: reminder, note, new order, payment, complaint, filtered per role so nothing leads to a refusal (`quickActionsFor` in `lib/mobileNav.ts`). A reminder or note opens its flow in place; the others go to the page whose own flow opens on arrival (`?new=1` / `?quick=1`). The web app manifest sets the start page and standalone display but declares no shortcuts (`app/manifest.ts`), so long-pressing the installed app icon shows nothing.
 
 **Why parked:** the project's mobile rules say a gesture is never the only way: every gesture needs a visible button, targets are at least 44 px, and motion respects reduced-motion (`docs/mobile-first-principles.md`). So the radial menu must be an addition, with the existing sheet kept as the accessible path and a plain tap still opening it. Layout in a right-to-left screen, the thumb arc on large phones, and accidental activation while scrolling need testing on real devices. Home-screen shortcuts are static and can only open pages, not specific flows chosen per role.
@@ -2307,6 +2394,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F116. Amount in words
 
 **What:** show the written Persian amount (for example "دو میلیون و پانصد هزار تومان") beside the figure on receipts, payment records and cheque entries, as is usual on Iranian financial documents, to prevent misreading and tampering.
+
+**Library (2026-10-23):** `@persian-tools/persian-tools` has a number-to-words function; test it on real toman amounts before writing one by hand.
 
 **Already in the app:** receipts are drawn on a 384-dot-wide canvas that both the Bluetooth thermal printer (ESC/POS) and the PDF share, with right-aligned text, Persian-aware line breaking and measurement (`lib/receiptLayout.ts`, `lib/deliveryReceipt.ts`). Amounts are whole toman with Persian digits (`lib/money.ts`, `lib/format.ts`). I found no number-to-words function anywhere.
 
@@ -2388,6 +2477,10 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the customer receives a short code by message when their delivery is on the way and tells it to the driver at the door; entering it confirms delivery without needing a signature or a photo.
 
+**Technology to consider (2026-10-23):** short links so an SMS stays within one message part; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** a signed, expiring no-login tracking page with Altcha against abuse; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** a delivery records the receiver's name, GPS position, a photo path and a signature path (see F17), and the driver confirms the stop. Customers have no notification channel in the app and no code is generated or checked.
 
 **Why parked:** it needs a message channel to customers (SMS or messaging app, see F6 and F79); customers without a phone or a signal need a fallback; a code can be shared in advance, so it proves less than a signature in some disputes; privacy of the customer's number.
@@ -2428,6 +2521,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the owner adds their own fields to customers (for example "shop type", "number of employees", "delivery gate side") with a type (text, number, choice, date), shown on the customer page, usable in filters and exports, without a developer.
 
+**Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** customers carry a fixed set of columns, and the CRM edit route accepts only a named list of fields with validation (name, phone numbers, address, area, business type, price tier, working hours, website, Instagram and a few more, `lib/repo/crm/fields.ts`). Customer tags exist as a table (`customer_tags`), which covers labels but not typed values such as numbers or dates.
 
 **Why parked:** custom fields touch the edit route, the add-lead flow, the filters, exports and the sync to phones, and each needs the same validation as built-in fields; a free-for-all of fields makes data messy; some fields (credit, price tier) must stay built-in because the app's logic depends on them.
@@ -2448,6 +2543,10 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** pick a data set (orders, customers, payments, deliveries, stock), choose columns, filters and grouping, save the result as a named report, run it again later and export it. More open than the fixed question menu of natural-language reports (F14).
 
+**Technology to consider (2026-10-23):** DuckDB if reports stay slow after a read replica and materialised views; see `docs/roadmap.md`, section 10.
+
+**Library (2026-10-23):** `react-querybuilder` for the filters, turned into parameterised SQL through the existing scoped reads.
+
 **Already in the app:** reports are fixed pages: the coverage report with print and CSV export (`/report`, `components/CsvExportButton.tsx`, `lib/csv.ts`), the sales dashboard and analysis pages, and the accounting reports (trial balance, income statement, balance sheet, journal, ledger). Customer lists the sidebar keeps are per-browser pinned and recent shortcuts in local storage (`lib/customerLists.ts`), not saved queries. There is no way for a user to define, save or share their own report.
 
 **Why parked:** every data set must keep the same role and group scoping as its page (a report builder is a side door to data otherwise); arbitrary filters and joins can be slow, so each data set needs a fixed, indexed shape; saved definitions must survive schema changes; exports contain personal data and money.
@@ -2467,6 +2566,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F124. Telegram bot for staff queries
 
 **What:** staff ask the company's linked Telegram bot for a customer's balance, an order's status, a product's stock or today's run, and get an answer limited to what their role and group may see, so a quick question never needs the app.
+
+**Library (2026-10-23):** grammY (commands, buttons, retries, custom API root) rather than hand-written Bot API calls; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** each user can link their Telegram chat with a one-time code, and notifications go out through it (`lib/telegram.ts`, `lib/repo/telegramLink.ts`, `app/api/notifications/telegram-link`). A small long-polling worker handles the linking, with no inbound port or public address (`scripts/telegram-poll.ts`); it understands only the `/start <code>` link command and nothing else. The chat-to-user binding is exactly the identity a query bot needs.
 
@@ -2512,6 +2613,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Why parked:** tenant creation is the most sensitive operation in the system, because it must create every dependent record consistently (groups, roles, default accounts such as the chart of accounts, facilities, holidays) and never touch another tenant; it is rarely done, so the cost of a wizard is justified only when the vendor onboards customers regularly; failure halfway must roll back completely.
 
+**Status (2026-10-23):** one company uses RouteFlow today, so this stays parked until a second company is signed.
+
 **Open questions**
 1. All in one transaction, with sample data off by default?
 2. What defaults each new organisation starts with (chart of accounts, reason codes, notification types, roles)?
@@ -2528,9 +2631,15 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** for the platform owner, per-organisation counts (users, active customers, orders per month, photo storage, messages) against limits for each plan, with warnings before a limit is reached.
 
+**Technology to consider (2026-10-23):** load testing with k6; see `docs/roadmap.md`, section 10.
+
+**Technology to consider (2026-10-23):** per-company switches and usage numbers (Umami); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** every organisation has a `plan` field (default "standard"), but nothing in the code reads it besides creating the row, so it has no effect today. Vendor reads of tenant data are logged. Usage numbers (users, orders, photos) can be counted from existing tables, and photo storage sits on disk under `data/photos`.
 
 **Why parked:** limits must be a commercial decision first; enforcement needs care (a hard stop on orders would hurt a customer more than the missed fee), so warn first; counting must stay cheap and not run on every request.
+
+**Status (2026-10-23):** one company uses RouteFlow today, so there is nothing to limit yet; this stays parked until a second company is signed.
 
 **Open questions**
 1. Which limits: users, customers, orders per month, storage?
@@ -2568,6 +2677,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** configure who approves what in sequence or in parallel (rep, then manager, then owner) for the approval types in F48, F76 and F82, with limits by amount and a clear status for the requester.
 
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** approvals exist as separate single-step decisions: an order waits for a manager to pass review, a credit-limit breach goes to a manager or owner for one decision with a reason (`credit_approvals`), and cheques and complaints have quick decision decks. Who may act is written into the order state machine per transition (`lib/orderStateMachine.ts`). There is no configurable chain, no second approver, and no amount-based routing.
 
 **Why parked:** a chain is a workflow engine in small, and workflow engines grow without limit; the existing single-step flows work and are tested, so a generic layer must wrap them rather than replace them; delegation (F82) and the inbox (F102) must understand chains; every added step slows the business.
@@ -2588,6 +2699,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the owner creates and edits automation rules in a form: pick an event or schedule, add conditions (for example "balance above X", "no order for 30 days"), choose the result (create a task, raise an alert, send a notification), set a cooldown and an escalation, and see recent firings.
 
+**Library (2026-10-23):** `react-querybuilder` for the condition editor, producing a validated structure rather than free text; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** a rule engine runs event rules and daily sweeps: a rule has a trigger, a flat list of conditions, an action (task, alert or notify), a cooldown and an optional escalation after N minutes to a role (`lib/rules/engine.ts`, `lib/repo/rules.ts`, `rules` and `rule_runs` tables). The default rules ship in the database and an organisation can override one: the existing rules API lets an owner turn a rule on or off and change its cooldown, nothing more (`setTenantRuleOverride`), and a button on the day page runs the sweep on demand. Creating a rule, changing its conditions, action or escalation has no screen or API.
 
 **Why parked:** a free rule designer can create rules that spam or loop (a task rule that triggers another rule); the engine intentionally supports only a flat AND list of conditions, so the form must stay inside that; rules reach into other people's task lists and notifications, so who may edit them matters.
@@ -2607,6 +2720,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F131. Keyboard-first desk order entry
 
 **What:** for the person entering phone orders at a desk, order entry works with the keyboard alone: type a product code or the first letters, press Enter, type the quantity, press Enter for the next line, and a single key to save or submit.
+
+**Library (2026-10-23):** AG Grid Community for spreadsheet-style entry; test right-to-left and Persian digits first.
 
 **Already in the app:** a desktop order form exists (`components/sales/OrderForm.tsx`, on `/sales/orders/new`) next to the phone tap flow (`OrderQuickEntry`). The shell has one global shortcut listener with a registry and a rule that it never fires while someone is typing in a field and never takes Enter, Escape or Tab, which belong to whatever has focus (`components/HotkeyProvider.tsx`, `lib/hotkeys.ts`). I found no Enter-to-add-line or code-first entry in the order form, so the keyboard flow depends on the mouse today.
 
@@ -2667,6 +2782,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F134. Profit and loss by group
 
 **What:** each group's revenue, cost of goods, delivery cost and allocated overheads for a period, to compare groups on real profit and see which are worth growing.
+
+**Technology to consider (2026-10-23):** DuckDB if reports stay slow after a read replica and materialised views; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** the income statement is whole-organisation, for a period, with revenue less cost of goods less expenses (`incomeStatement` in `lib/repo/reports.ts`, `/accounting/income-statement`, owner-only). The ledger is double-entry: a journal has a period key, memo and source, and its lines carry an account, a side, an amount and optional customer and supplier (`lib/repo/ledger.ts`). Orders, runs, customers and tasks all carry a group, but journal lines have no group dimension; expenses are reported by who entered them, which is accountability and not allocation (`expensesByEnterer`). Group-level cost can be derived for revenue and cost of goods through the source order, but not for expenses.
 
@@ -2808,6 +2925,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the owner builds short surveys for customers or staff (a few questions with choices, ratings or short text), sends them to a segment, and sees the answers summarised, with the option of turning a low score into a follow-up task.
 
+**Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** customers can file complaints with a category and severity (`ComplaintFlow`), reps record call outcomes and visit intel (size, current supplier, best visit time), and a star-rating control exists for scoring places on a few criteria (`components/StarRating.tsx`, used for lead locations). There is no survey definition, no way to send questions to people, and no store for answers.
 
 **Why parked:** it needs a way to reach customers (F79, F18 and F120 channel work); response rates are low and biased; survey answers about people (staff, reps) are sensitive; it overlaps with the one-tap delivery rating idea (F45), so the two must share the response store.
@@ -2847,6 +2966,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F143. Approve from Telegram
 
 **What:** approval requests arrive in the manager's linked Telegram chat with approve and reject buttons; a tap applies the same permission checks as the app, records who decided, and edits the message to show the outcome.
+
+**Library (2026-10-23):** grammY for the buttons and callbacks; see F124.
 
 **Already in the app:** push notifications can carry a one-tap action button for a notification about exactly one thing (a cheque due soon moves to its next state; a due reminder is marked done), run by the service worker with the signed-in cookie and limited to relative API paths (`lib/pushActions.ts`). Telegram currently only sends and edits plain text messages (`sendTelegram`, `editTelegram` in `lib/telegram.ts`), with no buttons, and the polling worker understands only the `/start <code>` link command (`scripts/telegram-poll.ts`). Credit approvals and order reviews have decision screens in the app but no one-tap action from outside it.
 
