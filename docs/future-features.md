@@ -828,6 +828,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a new customer's first-order steps tracked until complete: credit limit set, location confirmed, price group chosen, contact person recorded, first delivery slot agreed. Incomplete items show on the owner's task list and the customer page.
 
+**Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** lead stages (`lib/crm/stage.ts`) and tasks. They track a lead's progress, not the readiness of a new customer to be served.
 
 **Why parked:** the checklist must match how the business really onboards; too many mandatory steps slow sales; some items (credit) need a manager.
@@ -2519,6 +2521,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** the owner adds their own fields to customers (for example "shop type", "number of employees", "delivery gate side") with a type (text, number, choice, date), shown on the customer page, usable in filters and exports, without a developer.
 
+**Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** customers carry a fixed set of columns, and the CRM edit route accepts only a named list of fields with validation (name, phone numbers, address, area, business type, price tier, working hours, website, Instagram and a few more, `lib/repo/crm/fields.ts`). Customer tags exist as a table (`customer_tags`), which covers labels but not typed values such as numbers or dates.
 
 **Why parked:** custom fields touch the edit route, the add-lead flow, the filters, exports and the sync to phones, and each needs the same validation as built-in fields; a free-for-all of fields makes data messy; some fields (credit, price tier) must stay built-in because the app's logic depends on them.
@@ -2920,6 +2924,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F141. Survey builder
 
 **What:** the owner builds short surveys for customers or staff (a few questions with choices, ratings or short text), sends them to a segment, and sees the answers summarised, with the option of turning a low score into a follow-up task.
+
+**Technology to consider (2026-10-23):** forms generated from data (JSON Forms or `@rjsf/core`), with the definition stored in the database; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** customers can file complaints with a category and severity (`ComplaintFlow`), reps record call outcomes and visit intel (size, current supplier, best visit time), and a star-rating control exists for scoring places on a few criteria (`components/StarRating.tsx`, used for lead locations). There is no survey definition, no way to send questions to people, and no store for answers.
 
