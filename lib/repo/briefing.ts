@@ -1,3 +1,4 @@
+import { canSnooze } from "@/lib/taskSnooze";
 import { getDb } from "@/lib/db";
 import type { Session } from "@/lib/session";
 import { scopeGroupIds } from "@/lib/session";
@@ -19,7 +20,7 @@ export interface BriefingItem {
   sub?: string;
   href?: string;
   tone?: "good" | "warn" | "crit" | "info";
-  action?: { kind: "task_outcome"; task_id: number; customer_id?: number } | { kind: "link"; href: string };
+  action?: { kind: "task_outcome"; task_id: number; customer_id?: number; snoozable?: boolean } | { kind: "link"; href: string };
 }
 export interface BriefingPanel {
   key: string;
@@ -98,8 +99,8 @@ export function todayFor(session: Session): Briefing {
              this panel put it straight under a Persian heading. */
           sub: taskPriorityLabel(t.priority),
           action: t.entity_type === "customer" && t.entity_id
-            ? { kind: "task_outcome", task_id: t.id, customer_id: t.entity_id }
-            : { kind: "task_outcome", task_id: t.id },
+            ? { kind: "task_outcome", task_id: t.id, customer_id: t.entity_id, snoozable: canSnooze(t) }
+            : { kind: "task_outcome", task_id: t.id, snoozable: canSnooze(t) },
         }))
       )
     );

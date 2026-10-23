@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
-import { canActOnTask, completeTask, dismissTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
+import { canActOnTask, completeTask, dismissTask, snoozeTask, tasksRepo, taskCustomerType, TaskError } from "@/lib/repo/tasks";
+import { isSnoozeChoice } from "@/lib/taskSnooze";
 import { objectionCardFor } from "@/lib/repo/academy";
 import { MANAGE_ROLES } from "@/lib/roles";
 
@@ -18,11 +19,22 @@ export async function PATCH(req: NextRequest, ctx: RouteContext<"/api/tasks/[id]
     status?: string;
     outcome_code?: string | null;
     outcome_note?: string | null;
+    snooze?: unknown;
   } | null;
   if ((b?.outcome_note ?? "").length > 2000 || (b?.outcome_code ?? "").length > 60) {
     return NextResponse.json({ ok: false, error: "یادداشت یا کد نتیجه بیش از حد بلند است" }, { status: 400 });
   }
   try {
+    // F142: «later» moves the due time; refused (400) for urgent work or after three snoozes.
+    if (b?.snooze !== undefined) {
+      if (!isSnoozeChoice(b.snooze)) return NextResponse.json({ ok: false, error: "زمان عقب‌انداختن نامعتبر است" }, { status: 400 });
+      try {
+        return NextResponse.json({ ok: true, due_at: snoozeTask(org, Number(id), b.snooze) });
+      } catch (e) {
+        if (e instanceof TaskError) return NextResponse.json({ ok: false, error: e.message }, { status: 400 });
+        throw e;
+      }
+    }
     if (b?.status === "dismissed") {
       dismissTask(org, Number(id));
       return NextResponse.json({ ok: true });
