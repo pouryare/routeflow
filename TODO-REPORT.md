@@ -454,3 +454,16 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Say which of the latest seven to record
 2. Check the outside services from the Iranian server
 3. Decide the Android distribution route before F6 starts
+
+## Roadmap clean-up merged (2026-10-23, docs only)
+
+### Done
+- [x] Roadmap clean-up branch (section 10 numbered 10.1 to 10.8, forms-from-data entry) checked against `main`: already up to date, no conflicts; opened as one PR and merged after CI
+
+### Not done / gaps
+- [ ] The latest seven suggested technologies are still not in the docs; nothing installed or tested from Iran
+
+### Next steps
+1. Say which of the latest seven to record
+2. Check the outside services from the Iranian server
+3. Decide the Android distribution route before F6 starts
