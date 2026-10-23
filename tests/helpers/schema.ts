@@ -44,7 +44,9 @@ export async function tableInfo(table: string): Promise<ColumnInfo[]> {
         ORDER BY c.ordinal_position`
     )
     .all(table)) as unknown as ColumnInfo[];
-  return rows.map((r) => ({
+  // sync_xid is PostgreSQL's own bookkeeping for the offline pull (db/migrations/*_sync-xid.sql),
+  // not part of the schema the tests describe.
+  return rows.filter((r) => r.name !== "sync_xid").map((r) => ({
     ...r,
     type: SQLITE_TYPE[r.type] ?? r.type.toUpperCase(),
     // 'lead'::text -> 'lead', as SQLite reports a default

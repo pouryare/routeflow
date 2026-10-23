@@ -37,11 +37,11 @@ beforeEach(async () => {
      ledger, whose triggers this helper works around by recreating the table rather than
      disabling the guarantee. */
   await clearLedger(db);
-  await dropTrigger(db, "activities_no_update", "activities");
-  await dropTrigger(db, "activities_no_delete", "activities");
+  await dropTrigger(db, "activities_no_update");
+  await dropTrigger(db, "activities_no_delete");
 
   await db.exec(
-    "DELETE FROM activities; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0;"
+    "PRAGMA foreign_keys = OFF; DELETE FROM activities; DELETE FROM order_events; DELETE FROM stock_reservations; DELETE FROM deliveries; DELETE FROM delivery_lines; DELETE FROM delivery_line_batches; DELETE FROM stock_movements; DELETE FROM batches; DELETE FROM payment_allocations; DELETE FROM payments; DELETE FROM delivery_stops; DELETE FROM delivery_runs; DELETE FROM order_lines; DELETE FROM orders; DELETE FROM packagings; DELETE FROM products; DELETE FROM customers; DELETE FROM users WHERE id > 0; PRAGMA foreign_keys = ON;"
   );
 
   const now = new Date().toISOString();

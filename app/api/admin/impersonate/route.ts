@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { withDbScope } from "@/lib/database/scope";
 import { impersonationTarget } from "@/lib/repo/routeAdapters";
 import { COOKIE_NAME, MAX_AGE_SECONDS, createSessionToken, parseSessionToken } from "@/lib/auth";
 import { getSessionFromCookies, requireRole } from "@/lib/session";
@@ -69,7 +70,12 @@ export async function POST(req: NextRequest) {
  *  saved owner session must itself still be valid, and the current session must be an
  *  impersonation by that same owner. Anything else clears both cookies: a stale or forged
  *  pair ends signed out, never signed in as somebody. */
+/** Runs as "system" for row-level security (lib/database/scope.ts): the saved owner session belongs to another company than the cookie in force; it is checked here before anything is written. */
 export async function DELETE(req: NextRequest) {
+  return await withDbScope("system", () => endImpersonation(req));
+}
+
+async function endImpersonation(req: NextRequest) {
   const current = parseSessionToken(req.cookies.get(COOKIE_NAME)?.value);
   const savedToken = req.cookies.get(ACTOR_COOKIE)?.value;
   const owner = await getSessionFromCookies(savedToken);

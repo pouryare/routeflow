@@ -15,6 +15,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import pg from "pg";
 import { dropDatabases, freshDatabase } from "./fresh-database.mjs";
 
 const ROOT = path.resolve(import.meta.dirname, "../..");
@@ -29,7 +30,22 @@ if (!base) {
 }
 
 await dropDatabases(base, TEMPLATE, "rf_t_%");
-await freshDatabase(base, TEMPLATE);
+const templateUrl = await freshDatabase(base, TEMPLATE);
+
+/* The suite connects as the app's own role, as the server does, so row-level security and the
+   grants are what production gets. Fixtures reset tables in replica mode (PRAGMA foreign_keys
+   = OFF in lib/database/pg.ts), which a non-superuser may only set when granted it. The grant
+   is server-wide, so it is for a test server only; production's never gets it. */
+const APP_ROLE = "routeflow_app";
+{
+  const c = new pg.Client({ connectionString: templateUrl });
+  await c.connect();
+  try {
+    await c.query(`GRANT SET ON PARAMETER session_replication_role TO ${APP_ROLE}`);
+  } finally {
+    await c.end();
+  }
+}
 
 const listed = (file) =>
   fs.readFileSync(file, "utf8").split("\n").map((l) => l.replace(/#.*$/, "").trim()).filter(Boolean);
@@ -52,7 +68,7 @@ const args = [
 spawnSync("npx", args, {
   cwd: ROOT,
   stdio: "inherit",
-  env: { ...process.env, DB_DIALECT: "postgres", ROUTEFLOW_PG_TEMPLATE: TEMPLATE, PG_POOL_MAX: process.env.PG_POOL_MAX ?? "3" },
+  env: { ...process.env, DB_DIALECT: "postgres", ROUTEFLOW_PG_TEMPLATE: TEMPLATE, PG_APP_ROLE: APP_ROLE, PG_POOL_MAX: process.env.PG_POOL_MAX ?? "3" },
 });
 
 const results = JSON.parse(fs.readFileSync(OUT, "utf8"));

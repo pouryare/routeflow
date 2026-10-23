@@ -37,8 +37,9 @@ export async function clearLedger(db: Db): Promise<void> {
       `SET session_replication_role = replica;
        DELETE FROM ledger_entries; DELETE FROM journals; DELETE FROM fiscal_periods;
        SET session_replication_role = DEFAULT;
-       ALTER TABLE ledger_entries ALTER COLUMN id RESTART; ALTER TABLE journals ALTER COLUMN id RESTART;
-       ALTER TABLE fiscal_periods ALTER COLUMN id RESTART;`
+       SELECT setval(pg_get_serial_sequence('ledger_entries', 'id'), 1, false);
+       SELECT setval(pg_get_serial_sequence('journals', 'id'), 1, false);
+       SELECT setval(pg_get_serial_sequence('fiscal_periods', 'id'), 1, false);`
     );
     return;
   }
@@ -64,7 +65,9 @@ export async function clearLedger(db: Db): Promise<void> {
 }
 
 /** Drops a guard trigger so a fixture can reset an append-only table such as `activities`.
- *  PostgreSQL names triggers per table, so its DROP TRIGGER needs the table too. */
-export async function dropTrigger(db: Db, name: string, table: string): Promise<void> {
-  await db.exec(dialect() === "postgres" ? `DROP TRIGGER IF EXISTS ${name} ON ${table}` : `DROP TRIGGER IF EXISTS ${name}`);
+ *  Not on PostgreSQL: the suite runs as the app's role, which does not own the tables and may
+ *  not drop their triggers. There the fixture's reset runs between `PRAGMA foreign_keys = OFF`
+ *  and `ON`, which lib/database/pg.ts turns into replica mode, and replica mode skips them. */
+export async function dropTrigger(db: Db, name: string): Promise<void> {
+  if (dialect() !== "postgres") await db.exec(`DROP TRIGGER IF EXISTS ${name}`);
 }

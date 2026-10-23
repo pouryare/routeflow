@@ -28,7 +28,7 @@ import path from "node:path";
 
 const ROOT = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
 
-/** `next/server` as an importable stub. Only what a module might destructure at load time.
+/** `next/server` (and every other `next/` import, `next/headers` included) as an importable stub. Only what a module might destructure at load time.
  *
  *  Written with newlines rather than concatenated onto one line: a data: URL keeps its
  *  source exactly as given, so `export class X {}export const Y` on one line is a
@@ -42,6 +42,10 @@ const NEXT_STUB = [
   "  cookies: { get: () => undefined, set: () => {}, delete: () => {} },",
   "};",
   "export const NextHeaders = undefined;",
+  // next/headers: a script is never inside a request, which is what this throw says to the
+  // row-level-security scope in lib/session.ts (it then runs as a job).
+  "export async function cookies() { throw new Error('cookies() outside a request'); }",
+  "export async function headers() { throw new Error('headers() outside a request'); }",
 ].join("\n");
 
 /** The file to load for a specifier, or null. Exact file before directory, always. */
