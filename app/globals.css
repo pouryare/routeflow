@@ -31,6 +31,9 @@
 .button--lg { height: 52px; font-size: var(--text-md); }
 .button--icon-only, .button--icon-only.button--sm { width: 44px; }
 .button--icon-only.button--lg { width: 52px; }
+/* The calendar's month arrows are 24 px and its days 36-41 px: the same floor applies. */
+.calendar__nav-button { width: 44px; height: 44px; }
+.calendar__cell { min-width: 44px; min-height: 44px; font-size: var(--text-base); }
 
 /* Disable text selection site-wide */
 *, *::before, *::after {
@@ -4751,6 +4754,27 @@ body {
 /* ACCENT-THEMES:END */
 /* ---- 8b · tap flows (docs/tap-flow-principles.md) — lives inside .sheet ---------- */
 .meridian .tapflow { display: grid; gap: 12px; padding: 4px 20px 24px; }
+/* The tap-flow sheet is a HeroUI Drawer now (TapFlow.tsx). HeroUI draws the panel, the
+   backdrop, the handle and the slide; these rules only fit it to a flow: centred and capped
+   on a desk, clear of the phone's home indicator, the title on the sheet's centre line with
+   the close button at the inline end, and body text at reading colour rather than HeroUI's
+   muted default for drawer copy. */
+.meridian .flow-drawer { justify-content: center; }
+.meridian .flow-drawer__dialog {
+  width: 100%; max-width: 640px; padding: 8px 0 env(safe-area-inset-bottom, 0px);
+  direction: rtl;
+}
+.meridian .flow-drawer__header { position: relative; align-items: center; gap: 2px; padding: 6px 20px 8px; text-align: center; }
+/* 116 px each side of the title: the labelled close button is about 104 px wide and sits on
+   the title's row, and the title stays centred on the sheet, so the other side keeps the same
+   room. The subtitle runs on the next row, clear of the button, at full width. */
+.meridian .flow-drawer__header .drawer__heading { min-height: 44px; display: flex; align-items: center; padding-inline: 116px; font-size: var(--text-lg); font-weight: 600; letter-spacing: -.015em; }
+.meridian .flow-drawer__sub { margin: 0; font-size: var(--text-sm); color: var(--muted); }
+.meridian .flow-drawer__close { position: absolute; inset-block-start: 0; inset-inline-end: 12px; gap: 4px; }
+.meridian .flow-drawer .tapflow { color: var(--text); font-size: var(--text-base); line-height: 1.6; padding-inline: 20px; }
+.meridian .tapflow .flow-drawer__back { position: absolute; inset-inline-start: 0; gap: 4px; }
+.meridian .tapflow .flow-drawer__skip { justify-self: center; color: var(--muted); }
+.meridian .tapflow .flow-calendar { width: 100%; max-width: 360px; margin-inline: auto; }
 .meridian .tapflow .tf-nav { display: flex; align-items: center; justify-content: space-between; min-height: 28px; }
 .meridian .tapflow .tf-back {
   position: absolute; inset-block-start: 50%; inset-inline-start: 0; transform: translateY(-50%);

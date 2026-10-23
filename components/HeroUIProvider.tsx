@@ -14,7 +14,7 @@ export const HEROUI_LOCALE = "fa-IR-u-ca-persian";
  *  reason useSheetHost gives -- the tokens and the sheet styles are scoped there, and a
  *  transformed ancestor would misplace a fixed overlay. null on the server, where React Aria
  *  renders no overlay anyway. */
-export const overlayHost = (): HTMLElement | null =>
+const overlayHost = (): HTMLElement | null =>
   typeof document === "undefined" ? null : (document.querySelector<HTMLElement>(".meridian") ?? document.body);
 
 /** What every HeroUI part needs from above it: the locale and calendar, client-side
