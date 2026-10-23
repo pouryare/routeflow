@@ -58,6 +58,14 @@ export function jalaliImporters() {
  *  `<select>`, so the audit's select count never sees it; this list does. */
 export const HERO_OVERLAYS = ["Modal", "AlertDialog", "Popover", "Dropdown", "Tooltip", "Select", "ComboBox"];
 
+/** The files allowed to import one of HERO_OVERLAYS, each with the reason it is right there.
+ *  A new importer fails the check until it is added here with its reason (section 8). */
+export const HERO_OVERLAY_REASONS = {
+  "components/meridian/CardHelp.tsx": "a few lines of help anchored to the (i) that asked for them; a sheet would cover the card it explains, and a Tooltip never opens on touch",
+  "components/meridian/ProfileMenu.tsx": "the account and appearance panel hangs from the avatar in the top bar on every width; the phone's own way to these links is the «بیشتر» sheet",
+  "components/NotificationBell.tsx": "the feed hangs from the bell it belongs to, kept on screen by React Aria; a sheet from the top bar would open at the opposite edge from the tap",
+};
+
 export function heroOverlayImporters() {
   const out = [];
   const named = new RegExp(`\\b(${HERO_OVERLAYS.join("|")})\\b`);
@@ -103,8 +111,7 @@ export function check() {
   for (const f of untestedMobileComponents()) problems.push(`components/mobile/${f} has no test that names it — ${RULE.covered}`);
   const known = new Set(base.jalaliImporters ?? []);
   for (const f of jalaliImporters()) if (!known.has(f)) problems.push(`${f} imports JalaliDateInput — ${RULE.dateInput}`);
-  const overlays = new Set(base.heroOverlayImporters ?? []);
-  for (const f of heroOverlayImporters()) if (!overlays.has(f)) problems.push(`${f} imports a HeroUI overlay or dropdown — ${RULE.heroOverlay}`);
+  for (const f of heroOverlayImporters()) if (!HERO_OVERLAY_REASONS[f]) problems.push(`${f} imports a HeroUI overlay or dropdown — ${RULE.heroOverlay}`);
   for (const p of allowlistProblems()) problems.push(`${p} — ${RULE.allowlist}`);
   return problems;
 }
@@ -112,7 +119,7 @@ export function check() {
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   if (process.argv[2] === "--write") {
     const { total } = auditTree();
-    fs.writeFileSync(BASELINE, JSON.stringify({ total, jalaliImporters: jalaliImporters(), heroOverlayImporters: heroOverlayImporters() }, null, 2) + "\n");
+    fs.writeFileSync(BASELINE, JSON.stringify({ total, jalaliImporters: jalaliImporters() }, null, 2) + "\n");
     console.log("baseline written", total);
   } else {
     const problems = check();

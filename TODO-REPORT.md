@@ -70,6 +70,11 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Persian calendar and digits for every HeroUI part (`components/HeroUIProvider.tsx`); `data-theme` written for dark too
   - [x] `check:mobile` blocks new imports of HeroUI's centred overlays and dropdowns on phone paths
   - [x] Tap-flow sheet is a HeroUI Drawer (every flow, payment flow included); due-date step is HeroUI's Persian Calendar; confirm, back, skip and close are HeroUI Buttons; toasts are HeroUI toasts with the same `useToast()`
+- [x] HeroUI phase 2, overlays and feedback:
+  - [x] Every bottom sheet is one HeroUI Drawer (`BottomSheet`): tap flows, «بیشتر», quick actions, filters, card breakdowns, customer sheet, order processing, customer map, board move, profile editor, district editor, shortcut help; each close button names what it closes; `useSheetHost` and the hand-built `.sheet` / `.modal` CSS removed
+  - [x] Card help (i), the profile menu and the notification bell open HeroUI Popovers; the profile menu opens on tap or click, not hover
+  - [x] Login-as, acting-company and role banners, and the map's arrival prompt, are HeroUI Alerts
+  - [x] `check:mobile` needs a written reason for each file that imports a HeroUI overlay (card help, profile menu, bell)
 - [x] Wave P phase 2 (PostgreSQL next to SQLite):
   - [x] `db/Dockerfile` and `db/compose.yml`: Postgres 18 with PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements`, `pg_duckdb`, `wal_level = logical`
   - [x] Baseline migration generated from the SQLite schema (`npm run db:pg:generate`; CI fails if it drifts), applied with node-pg-migrate; Squawk lints later migrations; Kysely types in `lib/database/pg-schema.d.ts`
@@ -78,8 +83,9 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] CI job: builds the image, checks the extensions, the baseline and the types, and runs the unit suite on Postgres: 520 of 597 files pass, the rest are on `tests/pg-known-failures.txt`
 
 ## Not done / gaps
-- [ ] HeroUI move: `BottomSheet`, `FilterSheet`, `DrillSheet`, `CustomerSheet` and the other sheets are still hand-built; answer buttons (`tf-opt`), chips, tabs, tables, Jalali pickers outside the date step and menus are not moved yet
-- [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` / `.sheet` CSS) is its own step
+- [ ] HeroUI move: answer buttons (`tf-opt`), chips, tabs, tables, forms, the notification feed's rows and the Jalali pickers outside the date step are not moved yet; the search overlay and the map's side panels (layers, customer inspector) are still hand-built
+- [ ] Headless Chromium sometimes leaves parts of a long page's open sheet unpainted until the next repaint; the layout is right (measured) and a repaint draws it, but check on a real phone
+- [ ] HeroUI look is partial: inside `.meridian` HeroUI parts still read Meridian's `--accent`, `--surface`, `--border`, `--muted` and `--radius-*`; the token hand-over (and the dead `.island` / `.toast` CSS) is its own step
 - [ ] The toast no longer shows the draining bar for the undo window; HeroUI's toast has none
 - [ ] HeroUI's Persian year picker looks off by about 21 years (`getGregorianYearOffset("persian")` is -600); not used yet, test before using it
 - [ ] `npm run seed:demo` fails when run with today as the as-of date («تاریخ سفارش خارج از بازهٔ مجاز است»); an earlier `--as-of` works
@@ -116,7 +122,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 
 ## Next steps
 1. Merge the PostgreSQL phase 2 PR once CI is green (merge commit)
-2. HeroUI phase 2: the remaining sheets and the overlays (BottomSheet and its users, CardHelp, profile menu, notifications, banners)
+2. HeroUI phase 3: forms and choices (switches, checkboxes, text fields, pickers, the Jalali date pickers)
 3. HeroUI token hand-over: HeroUI's palette and radii as the source, Meridian names as aliases, then remove dead CSS
 4. PostgreSQL phase 3: empty `tests/pg-known-failures.txt`, `xid8` sync watermark, row-level security
 5. Decide whether the smoke suite joins CI (needs Chromium on the runner; map tiles stubbed)

@@ -11,7 +11,8 @@
  *  unit-tested, per repo convention.
  */
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState } from "react";
+import { Button, Popover } from "@heroui/react";
 import { faNum } from "@/lib/format";
 import NotificationCenter from "./NotificationCenter";
 import { Icon } from "@/components/meridian/Icon";
@@ -25,8 +26,6 @@ export default function NotificationBell({
 } = {}) {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
-  const [shift, setShift] = useState(0);
-  const wrapRef = useRef<HTMLDivElement>(null);
   const [authed, setAuthed] = useState(true);
 
   // Poll the unread count on an interval so the badge stays live without a socket.
@@ -61,25 +60,13 @@ export default function NotificationBell({
 
   /* Two placements, one component. "floating" is the original bottom-corner island and
      is what the bare routes (/driver) still use. "header" is the shell's: inline in the
-     top bar beside the profile, with the panel hanging below it instead of above. */
+     top bar beside the profile, with the panel hanging below it instead of above. The panel
+     is a HeroUI Popover, which keeps it on screen by itself -- it used to be measured in
+     the click that opened it, because a 22rem panel anchored to the bell ran off the phone. */
   const inHeader = placement === "header";
-
-  /* The header panel hangs from the bell's outer edge, then slides back just far enough
-     to stay on screen: on a phone the bell sits ~60px from the edge, and a 22rem panel
-     anchored there ran off the other side. Measured in the click that opens it. */
-  function toggle() {
-    if (!open && inHeader && wrapRef.current) {
-      const r = wrapRef.current.getBoundingClientRect();
-      const w = Math.min(window.innerWidth * 0.92, 352) + 2; // NotificationCenter's width + border
-      const left = Math.max(8, Math.min(r.left, window.innerWidth - 8 - w));
-      setShift(left - r.left);
-    }
-    setOpen((v) => !v);
-  }
 
   return (
     <div
-      ref={wrapRef}
       className={
         inHeader
           ? "relative"
@@ -87,37 +74,30 @@ export default function NotificationBell({
       }
       dir="rtl"
     >
-      {open && (
-        <div
-          data-pane="notifications"
-          style={inHeader ? { left: shift, right: "auto" } : undefined}
+      <Popover isOpen={open} onOpenChange={setOpen}>
+        <Button
+          variant="ghost"
+          isIconOnly
+          aria-label="اعلان‌ها"
           className={
             inHeader
-              ? "absolute top-[calc(100%+8px)] end-0 z-50 overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-3)]"
-              : "mb-[var(--space-2)] overflow-hidden rounded-[var(--radius-lg)] border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-3)]"
+              ? "relative rounded-full text-[var(--muted)] hover:text-[var(--ink)]"
+              : "relative rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-2)]"
           }
         >
-          <NotificationCenter onUnread={setUnread} />
-        </div>
-      )}
-      <button
-        type="button"
-        onClick={toggle}
-        aria-label="اعلان‌ها"
-        aria-expanded={open}
-        className={
-          inHeader
-            ? "relative grid h-[34px] w-[34px] place-items-center rounded-full text-[var(--muted)] transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-[var(--ink)]"
-            : "relative grid h-11 w-11 place-items-center rounded-full border border-[var(--border)] bg-[var(--surface)] shadow-[var(--elev-2)] transition-transform duration-[var(--dur-base)] ease-[var(--ease-out)] hover:-translate-y-0.5 motion-reduce:transition-none motion-reduce:hover:translate-y-0"
-        }
-      >
-        <Icon name="bell" size={inHeader ? "md" : "lg"} />
-        {unread > 0 && (
-          <span className="absolute -top-1 -right-1 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
-            {unread > 9 ? "۹+" : faNum(unread)}
-          </span>
-        )}
-      </button>
+          <Icon name="bell" size={inHeader ? "md" : "lg"} />
+          {unread > 0 && (
+            <span className="absolute top-0 right-0 grid min-w-[1.15rem] place-items-center rounded-full bg-[var(--accent)] px-1 text-[length:var(--text-xs)] font-bold text-[var(--accent-ink)]">
+              {unread > 9 ? "۹+" : faNum(unread)}
+            </span>
+          )}
+        </Button>
+        <Popover.Content placement={inHeader ? "bottom end" : "top end"} offset={8} className="notif-pop">
+          <Popover.Dialog aria-label="اعلان‌ها" data-pane="notifications" className="notif-pop__dialog">
+            <NotificationCenter onUnread={setUnread} />
+          </Popover.Dialog>
+        </Popover.Content>
+      </Popover>
     </div>
   );
 }

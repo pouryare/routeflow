@@ -3,6 +3,7 @@
 import { useLatest } from "@/lib/useLatest";
 import { tehranTodayIso } from "@/lib/jalali";
 import { useEffect, useRef, useState } from "react";
+import { Alert, Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { CustomerRow } from "@/lib/types";
 import type { FacilityRow } from "@/lib/facilityTypes";
@@ -207,49 +208,43 @@ export default function GeofenceWatcher({
 
   if (!prompt) return null;
 
+  const record =
+    prompt.kind === "customer" ? confirmVisit : prompt.kind === "lead" ? confirmLeadVisit : confirmFacilityStop;
+
   return (
-    <div
+    <Alert
+      status="accent"
       dir="rtl"
-      className="pinned-bottom absolute left-1/2 z-[var(--z-prompt)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2 rounded-[var(--radius-lg)] border border-accent bg-surface-raised p-3 elevate-accent"
+      role="status"
+      className="geofence-prompt pinned-bottom absolute left-1/2 z-[var(--z-prompt)] w-[calc(100%-2rem)] max-w-sm -translate-x-1/2"
     >
-      <p className="text-[length:var(--text-sm)] text-text">
-        شما نزدیک{" "}
-        <span className="font-medium text-accent">
+      <Alert.Indicator>
+        <Icon name="map-pin" size="sm" />
+      </Alert.Indicator>
+      <Alert.Content>
+        <Alert.Title>
+          شما نزدیک{" "}
           {prompt.kind === "customer"
             ? prompt.customer.business_name
             : prompt.kind === "facility_arrive"
             ? prompt.facility.name
-            : prompt.lead.name}
-        </span>{" "}
-        هستید — {prompt.kind === "customer" ? "بازدید ثبت شود؟" : prompt.kind === "lead" ? "بازدید ثبت شود؟" : "حضور ثبت شود؟"}
-      </p>
-      <div className="mt-2 flex gap-2">
-        <button
-          onClick={
-            prompt.kind === "customer"
-              ? confirmVisit
-              : prompt.kind === "lead"
-              ? confirmLeadVisit
-              : confirmFacilityStop
-          }
-          disabled={saving}
-          className="inline-flex items-center justify-center gap-[var(--space-2)] flex-1 rounded-[var(--radius-sm)] border border-accent bg-accent py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
-        >
-          <Icon name="check" size="sm" />
-          {saving ? (prompt.kind === "facility_arrive" ? "در حال ثبت حضور…" : "در حال ثبت بازدید…") : prompt.kind === "facility_arrive" ? "ثبت حضور" : "ثبت بازدید"}
-        </button>
-        <button
-          onClick={dismiss}
-          disabled={saving}
-          className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-border px-3 py-1.5 text-[length:var(--text-sm)] text-text-muted transition-colors duration-[var(--dur-base)] ease-[var(--ease-out)] hover:text-text disabled:opacity-50"
-        >
-          <Icon name="arrow-left" size="sm" />
-          فعلاً نه
-        </button>
-      </div>
-      <p className="mt-1.5 text-[length:var(--text-xs)] text-text-muted">
-        {prompt.kind === "facility_arrive" ? "۶ ساعت دیگر دوباره می‌پرسیم." : "۳۰ دقیقهٔ دیگر دوباره می‌پرسیم."}
-      </p>
-    </div>
+            : prompt.lead.name}{" "}
+          هستید — {prompt.kind === "facility_arrive" ? "حضور ثبت شود؟" : "بازدید ثبت شود؟"}
+        </Alert.Title>
+        <div className="geofence-prompt__actions">
+          <Button size="sm" variant="primary" className="flex-1" onPress={() => void record()} isDisabled={saving}>
+            <Icon name="check" size="sm" />
+            {saving ? (prompt.kind === "facility_arrive" ? "در حال ثبت حضور…" : "در حال ثبت بازدید…") : prompt.kind === "facility_arrive" ? "ثبت حضور" : "ثبت بازدید"}
+          </Button>
+          <Button size="sm" variant="tertiary" onPress={dismiss} isDisabled={saving}>
+            <Icon name="arrow-left" size="sm" />
+            فعلاً نه
+          </Button>
+        </div>
+        <Alert.Description>
+          {prompt.kind === "facility_arrive" ? "۶ ساعت دیگر دوباره می‌پرسیم." : "۳۰ دقیقهٔ دیگر دوباره می‌پرسیم."}
+        </Alert.Description>
+      </Alert.Content>
+    </Alert>
   );
 }

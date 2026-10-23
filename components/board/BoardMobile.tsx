@@ -1,6 +1,6 @@
 "use client";
 
-import { useEscapeKey } from "@/lib/useEscapeKey";
+import BottomSheet from "@/components/mobile/BottomSheet";
 import { Icon } from "@/components/meridian/Icon";
 import { taskKindLabel } from "@/lib/tasks/labels";
 import { useState } from "react";
@@ -231,70 +231,18 @@ function MoveSheet({
   onPick: (toLane: string) => void;
   onClose: () => void;
 }) {
-  useEscapeKey(onClose);
-
   return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 120,
-        background: "rgba(6,4,3,.55)",
-        display: "flex",
-        alignItems: "flex-end",
-      }}
-    >
-      <div
-        role="dialog"
-        aria-label="انتقال کار"
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          background: "var(--card)",
-          borderRadius: "20px 20px 0 0",
-          borderTop: "1px solid var(--line-2)",
-          padding: "10px 16px 18px",
-        }}
-      >
-        <div
-          style={{
-            width: 34,
-            height: 4,
-            borderRadius: 2,
-            background: "var(--line-2)",
-            margin: "6px auto 12px",
-          }}
-        />
-        <div style={{ fontSize: 12, color: "var(--muted)", marginBottom: 10 }}>
-          انتقال «{card.title.slice(0, 22)}» به:
-        </div>
+    <BottomSheet open title="انتقال کار" subtitle={`انتقال «${card.title.slice(0, 22)}» به:`} onClose={onClose} closeLabel="بستن انتقال">
+      <div className="tf-grid one">
         {lanesFor(view, card.kind)
           .filter((l) => l.id !== fromLane)
           .map((l) => (
-            <button
-              key={l.id}
-              type="button"
-              onClick={() => onPick(l.id)}
-              style={{
-                display: "block",
-                width: "100%",
-                textAlign: "start",
-                border: "1px solid var(--line)",
-                background: "var(--card-2)",
-                color: "var(--ink)",
-                borderRadius: 10,
-                padding: "11px 13px",
-                fontSize: 13,
-                marginBottom: 6,
-                cursor: "pointer",
-              }}
-            >
+            <button key={l.id} type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] tf-opt" onClick={() => onPick(l.id)}>
               <Icon name="grip-vertical" size="md" />
               {l.label}
             </button>
           ))}
       </div>
-    </div>
+    </BottomSheet>
   );
 }

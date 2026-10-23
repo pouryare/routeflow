@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Alert, Button } from "@heroui/react";
 import { Icon } from "@/components/meridian/Icon";
 import { useRouter } from "next/navigation";
 import { roleLabel, type Role } from "@/lib/roles";
@@ -33,22 +34,21 @@ export default function RoleBanner({ role, roles }: { role: Role; roles: Role[] 
   }
 
   return (
-    <div className="actas" role="status">
-      <span className="actas__text">
-        نقش فعال شما: <b>{roleLabel(role)}</b>
-      </span>
+    <Alert status="accent" className="actas" role="status">
+      <Alert.Indicator>
+        <Icon name="users" size="sm" />
+      </Alert.Indicator>
+      <Alert.Content className="actas__text">
+        <Alert.Description>
+          نقش فعال شما: <b>{roleLabel(role)}</b>
+        </Alert.Description>
+      </Alert.Content>
       {others.map((r) => (
-        <button
-          key={r}
-          type="button"
-          className="inline-flex items-center justify-center gap-[var(--space-2)] btn"
-          disabled={busy}
-          onClick={() => void switchTo(r)}
-        >
+        <Button key={r} size="sm" variant="secondary" isDisabled={busy} onPress={() => void switchTo(r)}>
           <Icon name="users" size="md" />
           {roleLabel(r)}
-        </button>
+        </Button>
       ))}
-    </div>
+    </Alert>
   );
 }

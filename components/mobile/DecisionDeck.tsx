@@ -39,7 +39,7 @@ export default function DecisionDeck<T>({
   const next = () => setAt((i) => i + 1);
 
   return (
-    <BottomSheet open={open} title={title} onClose={onClose}>
+    <BottomSheet open={open} title={title} onClose={onClose} closeLabel="بستن تصمیم‌ها">
       <div className="deck">
         {item === undefined ? (
           <div className="deck__done">
