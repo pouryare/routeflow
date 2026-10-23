@@ -2,9 +2,10 @@
 
 /* ---- HeroUI v3 (docs/roadmap.md §10, "full HeroUI look") ------------------------------
    Imported part by part, not as one `@import "@heroui/styles"`. The full sheet styles
-   `.card`, `.chip`, `.badge`, `.modal` and `.skeleton` -- class names this file already
-   uses for its own components -- so importing all of it would restyle screens nobody has
-   migrated yet. Add a component's sheet here in the same change that moves a screen to it.
+   `.card`, `.badge` and `.modal` -- class names this file already uses for its own
+   components -- so importing all of it would restyle screens nobody has migrated yet.
+   (`.chip` was ours too and is now `.choicechip`; `.skeleton` is HeroUI's Skeleton, toned
+   by the `.meridian .skeleton` rules below.) Add a component's sheet here in the same change that moves a screen to it.
 
    Layers: HeroUI's own rules sit in `theme` / `base` / `components`, so anything unlayered
    below (this file's tokens and the tap-size rules at the end of this block) wins without a
@@ -29,6 +30,10 @@
 @import "@heroui/styles/components/textfield.css" layer(components);
 @import "@heroui/styles/components/field-error.css" layer(components);
 @import "@heroui/styles/components/tabs.css" layer(components);
+@import "@heroui/styles/components/chip.css" layer(components);
+@import "@heroui/styles/components/avatar.css" layer(components);
+@import "@heroui/styles/components/skeleton.css" layer(components);
+@import "@heroui/styles/components/empty-state.css" layer(components);
 @import "@heroui/styles/utilities";
 @import "@heroui/styles/variants";
 
@@ -1928,7 +1933,7 @@ body {
 /* Micro-interactions: a small press on anything tappable. Spring, reduced-motion off. */
 @media (prefers-reduced-motion: no-preference) {
   .meridian .btn:active,
-  .meridian .chip:active,
+  .meridian .choicechip:active,
   .meridian .seg > a:active { transform: scale(0.97); }
 }
 
@@ -2096,13 +2101,13 @@ body {
   gap: 10px; padding: 6px 10px; font-size: 13px; color: var(--ink-2);
 }
 .meridian .topright { display: flex; align-items: center; gap: 9px; }
-.meridian .chip {
+.meridian .choicechip {
   background: var(--card); border: 1px solid var(--line); border-radius: 999px;
   padding: 9px 15px; font-size: 13.5px; color: var(--ink-2); text-decoration: none;
   box-shadow: var(--sh-1); cursor: pointer; white-space: nowrap;
   transition: box-shadow 180ms var(--ease), transform 180ms var(--ease);
 }
-.meridian .chip:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
+.meridian .choicechip:hover { box-shadow: var(--sh-2); transform: translateY(-1px); }
 .meridian .me {
   width: 42px; height: 42px; border-radius: 999px;
   background: var(--sage-soft); color: var(--sage);
@@ -4896,8 +4901,8 @@ body {
 .meridian .inline-edit { border: 1px solid var(--accent); border-radius: var(--r-sm); background: var(--sunk); padding: 12px; display: grid; gap: 10px; }
 .meridian .inline-edit label { display: grid; gap: 6px; font-size: 12.5px; color: var(--ink-2); }
 .meridian .chip-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
-.meridian .chip { min-height: 46px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer; }
-.meridian .chip.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.meridian .choicechip { min-height: 46px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--card); color: var(--ink); font: inherit; font-size: 13.5px; cursor: pointer; }
+.meridian .choicechip.on { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
 .meridian .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .meridian .pending-note { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 1px solid var(--line-2); border-radius: var(--r-sm); background: var(--warn-soft); color: var(--amber); padding: 8px 12px; font-size: 13px; margin-top: 10px; }
 /* Mini map + enlarged dialog (CustomerLocation) */

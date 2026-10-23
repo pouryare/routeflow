@@ -210,7 +210,7 @@ export default function Pocket({
         >
           <button
             type="button"
-            className={`chip${scopeId === null ? " on" : ""}`}
+            className={`choicechip${scopeId === null ? " on" : ""}`}
             onClick={() => pickScope(null)}
             style={scopeId === null ? { borderColor: "var(--accent)" } : undefined}
           >
@@ -221,7 +221,7 @@ export default function Pocket({
             <button
               key={m.id}
               type="button"
-              className="inline-flex items-center justify-center gap-[var(--space-2)] chip"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] choicechip"
               onClick={() => pickScope(m.id)}
               style={{
                 whiteSpace: "nowrap",

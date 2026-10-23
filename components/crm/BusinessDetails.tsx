@@ -112,7 +112,7 @@ export default function BusinessDetails({ business, canWrite, disabled, onPatch,
           <span className="chip-grid" role="radiogroup" aria-label={row.label}>
             {(row.options ?? []).map(o => {
               const on = o === value;
-              return <button key={o} type="button" role="radio" aria-checked={on} className={`chip${on ? " on" : ""}`} disabled={disabled || !!pending || sending}
+              return <button key={o} type="button" role="radio" aria-checked={on} className={`choicechip${on ? " on" : ""}`} disabled={disabled || !!pending || sending}
                 onClick={() => { setError(null); setEdit({ row, value: o }); }}>
                 <Icon name="user" size="md" />
                 {SELECT_LABEL[row.key]?.(o)}</button>;
