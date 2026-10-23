@@ -390,6 +390,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** auto-generated account statements (open invoices, cheques due, balance) and polite payment reminders by message, escalating by days overdue.
 
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
+
 **Why parked:** wording matters for Persian business relationships; wrong or duplicated reminders damage trust; message channels need provider accounts and consent (see F6); statements must reconcile with the ledger.
 
 **Open questions**
@@ -641,6 +643,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** true profit per customer, product and route, including delivery cost, discounts, returns and bad debt, not just revenue.
 
+**Technology to consider (2026-10-23):** DuckDB if reports stay slow after a read replica and materialised views; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** orders store `total_toman` and `cost_toman`; runs store planned and actual distance and duration. Delivery cost per run, discounts and bad-debt allocation are not yet attributed.
 
 **Also existing:** `components/CostToServePanel.tsx` already shows revenue against straight-line distance from the dispatch site per customer, and reports how many sales rows failed to match a customer. It is a distance proxy, not a cost model.
@@ -865,6 +869,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** @-mention a colleague on a customer, order or task, creating a notification and a task for them.
 
+**Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
+
 **Already in the app:** activity notes on the customer timeline (`lib/crm/timeline.ts`), tasks with assignees, and the notification feed with unread counts (`lib/repo/notifications.ts`). There is no mention syntax or conversation on an order or task.
 
 **Why parked:** mentions need access checks (someone mentioned must be allowed to see the record, or the mention leaks it); threads on every object grow into a chat product; notification noise.
@@ -884,6 +890,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F44. Standing orders and contracts
 
 **What:** a customer who orders the same thing every week gets a recurring order that generates a draft each time for confirmation, with a contract (start, end, quantities, agreed prices).
+
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** `task_recurrences` and `lib/tasks/recurrence.ts` (`rruleMatches`: `daily`, `weekly:<day>`, `monthly:<1-28>`) generate recurring tasks from the sweep rules. Nothing generates orders.
 
@@ -1003,6 +1011,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F50. Payment promise tracker
 
 **What:** record "the customer promised to pay on the 15th", follow up automatically if it isn't received, and track each customer's promise-kept rate.
+
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** reminders and tasks with due dates (`AddReminder`, `lib/repo/tasks.ts`), and the credit-approval and payment flows. A promise is only a free-text task today: it has no amount, no link to the debt and no outcome.
 
@@ -1361,6 +1371,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** where each rep went today and this week, what they visited and how long they stayed, from visit, call and order locations, for managers to coach and to check coverage.
 
+**Technology to consider (2026-10-23):** deck.gl on MapLibre for many points and areas; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the map shows customers, leads and districts with coverage status, and the phone tracks its own position live (`MyPositionProvider`) for navigation and arrival prompts (see F38). Delivery stops record the device's GPS at the moment of the action (`gps_lat`, `gps_lng`, `device_time`). I found no stored position history for salespeople, so there is nothing yet to draw as a rep's day.
 
 **Why parked:** recording staff locations is a privacy and labour-law matter that needs a written policy and clear consent; continuous tracking drains batteries and is unreliable in a PWA (see F6 and F38); a map of movement can be read as surveillance and misused.
@@ -1501,6 +1513,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F75. Offline product catalogue for reps
 
 **What:** the product list with packagings and prices cached on the phone so reps can browse and quote in basements and rural areas, with a freshness indicator ("prices as of 09:10").
+
+**Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
 
 **Already in the app:** the sync pull (`/api/sync/pull`, `lib/repo/syncPull.ts`) sends the full catalogue (products, packagings and prices) to every signed-in role except the vendor account, and recent orders and customers to sales roles; the service worker caches the app shell, map tiles and map data (`public/sw.js`). I did not verify that the sales screens read the catalogue from the local copy when offline, and whether quoting works without a connection.
 
@@ -1845,6 +1859,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** a map of revenue by district compared with the district's potential (customers and prospects), to show where growth is available and which districts are over- or under-served.
 
+**Technology to consider (2026-10-23):** deck.gl on MapLibre for many points and areas; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** the map has a customer density heat map (`components/HeatmapLayer.tsx`), districts with a coverage status (visited, needs coverage, not allowed, unknown), and a coverage and cost-to-serve analytics module (`lib/repo/coverageAnalytics.ts`). The heat map shows where customers are, not how much they buy, and there is no per-district revenue or potential figure.
 
 **Why parked:** "potential" needs a definition (number of businesses of the right type in the district, from lead imports; population; competitor presence) and those figures may be thin or stale; district boundaries must stay consistent for trends to mean anything; group-scoped views must not reveal another group's revenue.
@@ -2106,6 +2122,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F105. Offline tasks and notes
 
 **What:** reps can read their tasks and customer notes, add notes and log call outcomes with no signal, synced when the connection returns.
+
+**Technology to consider (2026-10-23):** local-first sync (Yjs or Automerge; PowerSync or Electric); see `docs/roadmap.md`, section 10.
 
 **Already in the app:** an offline layer exists (`lib/offline`: an IndexedDB store, an outbox, a sync engine, queue-if-offline, clock-skew handling and ids generated on the device). Offline it can queue draft orders (create, edit, submit), delivery start and complete, payment records, cheque records, complaint records and new-customer capture (`lib/repo/syncMutations.ts`). The pull sends the catalogue, and orders and customers for the user's scope. Tasks, notes (activities) and call outcomes are not in the pull or in the queued actions, and approvals (order approve, plan, freeze, credit decision) are explicitly refused offline. Note: this means F13 should record that the layer reaches beyond drivers.
 
@@ -2477,6 +2495,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** pick a data set (orders, customers, payments, deliveries, stock), choose columns, filters and grouping, save the result as a named report, run it again later and export it. More open than the fixed question menu of natural-language reports (F14).
 
+**Technology to consider (2026-10-23):** DuckDB if reports stay slow after a read replica and materialised views; see `docs/roadmap.md`, section 10.
+
 **Library (2026-10-23):** `react-querybuilder` for the filters, turned into parameterised SQL through the existing scoped reads.
 
 **Already in the app:** reports are fixed pages: the coverage report with print and CSV export (`/report`, `components/CsvExportButton.tsx`, `lib/csv.ts`), the sales dashboard and analysis pages, and the accounting reports (trial balance, income statement, balance sheet, journal, ledger). Customer lists the sidebar keeps are per-browser pinned and recent shortcuts in local storage (`lib/customerLists.ts`), not saved queries. There is no way for a user to define, save or share their own report.
@@ -2605,6 +2625,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** configure who approves what in sequence or in parallel (rep, then manager, then owner) for the approval types in F48, F76 and F82, with limits by amount and a clear status for the requester.
 
+**Technology to consider (2026-10-23):** durable workflows (DBOS) for the multi-step waiting; see `docs/roadmap.md`, section 10.
+
 **Already in the app:** approvals exist as separate single-step decisions: an order waits for a manager to pass review, a credit-limit breach goes to a manager or owner for one decision with a reason (`credit_approvals`), and cheques and complaints have quick decision decks. Who may act is written into the order state machine per transition (`lib/orderStateMachine.ts`). There is no configurable chain, no second approver, and no amount-based routing.
 
 **Why parked:** a chain is a workflow engine in small, and workflow engines grow without limit; the existing single-step flows work and are tested, so a generic layer must wrap them rather than replace them; delegation (F82) and the inbox (F102) must understand chains; every added step slows the business.
@@ -2708,6 +2730,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F134. Profit and loss by group
 
 **What:** each group's revenue, cost of goods, delivery cost and allocated overheads for a period, to compare groups on real profit and see which are worth growing.
+
+**Technology to consider (2026-10-23):** DuckDB if reports stay slow after a read replica and materialised views; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** the income statement is whole-organisation, for a period, with revenue less cost of goods less expenses (`incomeStatement` in `lib/repo/reports.ts`, `/accounting/income-statement`, owner-only). The ledger is double-entry: a journal has a period key, memo and source, and its lines carry an account, a side, an amount and optional customer and supplier (`lib/repo/ledger.ts`). Orders, runs, customers and tasks all carry a group, but journal lines have no group dimension; expenses are reported by who entered them, which is accountability and not allocation (`expensesByEnterer`). Group-level cost can be derived for revenue and cost of goods through the source order, but not for expenses.
 

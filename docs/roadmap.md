@@ -553,3 +553,14 @@ Added 2026-10-23 from a review of the code and these docs. The candidates in the
 - Untested from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, compare it with plain SSE plus Valkey pub/sub and other options before adopting it.
 
 **Recommendation**: start with server-sent events on one server; bring in Centrifugo when more than one app server runs or presence is wanted.
+
+### Interesting technologies (not decided)
+
+Added 2026-10-23. Versions and dates were read from the npm registry that day. Nothing was installed or tested, including from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, each one is compared with the alternatives and put to the owner before anything is adopted.
+
+| Technology | What it is, in plain words | Where it could help | Note |
+|---|---|---|---|
+| Local-first sync: Yjs (13.6.33) or Automerge (3.5.0) for merging edits; PowerSync (`@powersync/web` 2.5.0) or Electric (`@electric-sql/client` 1.5.28) for copying Postgres data to the device | Everyone edits their own copy, offline, and the copies merge when phones reconnect | Shared notes (F43), offline tasks and notes (F105), the offline catalogue (F75), two dispatchers editing one day plan | Keep the current outbox for money and stock; this is for notes, planning and read-only data. `wal_level = logical` is already proposed, which these need |
+| Durable workflows: DBOS (`@dbos-inc/dbos-sdk` 5.3.0) | A to-do list that survives a power cut: it remembers which step it was on and carries on | Approval chains (F129), payment reminders that wait days (F18, F50), standing orders (F44) | Runs on Postgres. pg-boss covers single jobs; this is for multi-step processes |
+| DuckDB (browser build `@duckdb/duckdb-wasm`, whose npm latest tag is a dev build; Node client `@duckdb/node-api`; or the `pg_duckdb` Postgres extension, unverified) | A fast calculator next to the database that counts large piles quickly | Margin by customer, product and route (F32), profit and loss by group (F134), saved reports (F123) | Try a read replica and materialised views first; add DuckDB if reports are still slow |
+| deck.gl (9.4.0) on top of MapLibre | Paints very large numbers of points and areas on a map smoothly | Rep activity map (F68), territory revenue map (F92), GPS ping heat maps (F6) | Needs the MapLibre map stack decision first |

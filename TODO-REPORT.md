@@ -430,3 +430,17 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 ### Next steps
 1. Say if a live-updates table should go into `docs/roadmap.md`
 2. Check the outside services from the Iranian server
+
+## Interesting technologies recorded (2026-10-23, docs only)
+
+### Done
+- [x] Local-first sync, durable workflows (DBOS), DuckDB and deck.gl added to `docs/roadmap.md` section 10 ("Interesting technologies (not decided)") with notes on F18, F32, F43, F44, F50, F68, F75, F92, F105, F123, F129, F134
+- [x] Suggested seven more technologies (offline maps, H3 hexagons, Valhalla, OpenAPI with fuzz tests, database tests, mutation testing, per-company switches and usage numbers)
+
+### Not done / gaps
+- [ ] The new seven are not in the docs yet; nothing installed or tested, including from Iran
+
+### Next steps
+1. Say which of the new seven to record
+2. Check the outside services from the Iranian server
+3. Decide the Android distribution route before F6 starts
