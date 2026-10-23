@@ -19,6 +19,9 @@ import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, roleLabel, MANAGE_ROLES } from "@/lib/roles";
 import { earningsSoFar } from "@/lib/repo/earningsSoFar";
 import EarningsCard from "@/components/today/EarningsCard";
+import { weekVsLast } from "@/lib/repo/weekCompare";
+import WeekCompareCard from "@/components/today/WeekCompareCard";
+import { tehranTodayIso } from "@/lib/jalali";
 
 
 export const dynamic = "force-dynamic";
@@ -34,6 +37,7 @@ export default async function SalesTodayPage() {
 
   const data = todayFor(session);
   const earnings = earningsSoFar(session);
+  const week = weekVsLast(session, tehranTodayIso());
 
   return (
     <>
@@ -81,6 +85,7 @@ export default async function SalesTodayPage() {
       <ActionCards cards={suggestionsFor(session)} />
 
       {earnings && <EarningsCard e={earnings} />}
+      {week && <WeekCompareCard {...week} />}
 
       <Briefing data={data} variant="meridian" />
     </div>    </>
