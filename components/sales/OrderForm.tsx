@@ -19,6 +19,7 @@ import {
 } from "@/lib/requestedDay";
 import { tehranTodayIso } from "@/lib/jalali";
 import { customerProductIds } from "@/lib/customerProducts";
+import { duplicateOf, type OpenOrderBrief } from "@/lib/duplicateOrder";
 
 interface Customer {
   id: number;
@@ -107,20 +108,23 @@ export default function OrderForm({
 
   /* F62: this customer's usual products first in the product picker, read from their history
      (the usual basket, then everything else they have bought). Nothing is hidden. */
-  const [theirs, setTheirs] = useState<{ for: number; ids: string[] } | null>(null);
+  const [theirs, setTheirs] = useState<{ for: number; ids: string[]; recent: OpenOrderBrief[] } | null>(null);
   useEffect(() => {
     if (customerId === null) return;
     let alive = true;
     fetch(`/api/sales/orders?customer=${customerId}&limit=1`)
       .then((r) => r.json())
-      .then((j: { usual?: { product_id: number }[]; products?: { product_id: number }[] }) => {
-        if (alive) setTheirs({ for: customerId, ids: customerProductIds(j.usual ?? [], j.products ?? []) });
+      .then((j: { usual?: { product_id: number }[]; products?: { product_id: number }[]; recent_open?: OpenOrderBrief[] }) => {
+        if (alive) setTheirs({ for: customerId, ids: customerProductIds(j.usual ?? [], j.products ?? []), recent: j.recent_open ?? [] });
       })
       .catch(() => {});
     return () => {
       alive = false;
     };
   }, [customerId]);
+  /* F72: an open order from the last day with the same products is usually a double entry.
+     Asked once per submit; «this is a new order» sends it anyway. */
+  const [dupe, setDupe] = useState<OpenOrderBrief | null>(null);
   const pinnedProducts = theirs && theirs.for === customerId && theirs.ids.length > 0 ? { label: "خریدهای این مشتری", ids: theirs.ids } : undefined;
 
   const product = products.find((p) => String(p.id) === pickProduct) ?? null;
@@ -188,8 +192,12 @@ export default function OrderForm({
     }
   }, [requestedMode, requestedDate, requestedWeeks]);
 
-  async function submit() {
+  async function submit(allowDuplicate = false) {
     if (!customer || lines.length === 0) return;
+    const recent = theirs && theirs.for === customer.id ? theirs.recent : [];
+    const twin = allowDuplicate ? null : duplicateOf(recent, lines.map((l) => l.product_id));
+    setDupe(twin);
+    if (twin) return;
     setBusy(true);
     setError(null);
     try {
@@ -422,6 +430,24 @@ export default function OrderForm({
         </div>
       </section>
 
+      {dupe && (
+        <div role="alert" className="flex flex-col gap-[var(--space-3)] rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)]">
+          <p className="m-0 text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
+            این مشتری سفارش باز {dupe.order_no} را با همین کالاها در ۲۴ ساعت گذشته دارد. شاید دوباره ثبت شده باشد.
+          </p>
+          <div className="flex flex-wrap gap-[var(--space-2)]">
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" onClick={() => router.push(`/sales/orders/${dupe.id}`)}>
+              <Icon name="receipt" size="sm" />
+              باز کردن همان سفارش
+            </button>
+            <button type="button" className="inline-flex items-center justify-center gap-[var(--space-2)] btn ghost" onClick={() => submit(true)}>
+              <Icon name="plus" size="sm" />
+              سفارش تازه است، ثبت شود
+            </button>
+          </div>
+        </div>
+      )}
+
       {overLimit && customer?.credit_limit_toman != null && (
         <p className="m-0 rounded-[var(--radius-md)] border border-[var(--warn)] p-[var(--space-3)] text-[length:var(--text-sm)] leading-6 text-[var(--warn)]">
           با این سفارش، بدهی {customer.business_name} به {faToman(projectedDebt)} می‌رسد و از
@@ -441,7 +467,7 @@ export default function OrderForm({
         </div>
         <button
           type="button"
-          onClick={submit}
+          onClick={() => submit()}
           disabled={busy || !customer || lines.length === 0}
           className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-md)] border border-[var(--accent)] bg-[var(--accent)] px-[var(--space-5)] py-[var(--space-3)] text-[length:var(--text-base)] font-medium text-accent-ink transition-[filter,transform] duration-[var(--dur-base)] hover:brightness-110 active:scale-[0.98] disabled:opacity-40"
         >

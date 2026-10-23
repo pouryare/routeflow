@@ -7,6 +7,7 @@ import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
 import { customerUsualBasket } from "@/lib/repo/usualBasket";
+import { recentOpenOrders } from "@/lib/repo/recentOpenOrders";
 import {
   LeadPromotionError,
   promoteLeadToCustomer,
@@ -55,7 +56,10 @@ export async function GET(req: NextRequest) {
   // F58: the lines this shop orders most of the time, for the repeat-order flow.
   const usual = customerId ? customerUsualBasket(scope, Number(customerId)) : [];
 
-  return NextResponse.json({ ok: true, orders, products, prices, usual });
+  // F72: open orders from the last 24 hours, so order entry can ask before a double entry.
+  const recent_open = customerId ? recentOpenOrders(scope, Number(customerId)) : [];
+
+  return NextResponse.json({ ok: true, orders, products, prices, usual, recent_open });
 }
 
 export async function POST(req: NextRequest) {

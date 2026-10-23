@@ -4,6 +4,7 @@ import { faJalaliDate } from "@/lib/jalali";
 import { roundToman } from "@/lib/money";
 import { resolveRequestedDay } from "@/lib/requestedDay";
 import { addDaysIso } from "@/lib/flows/dates";
+import { duplicateOf, type OpenOrderBrief } from "@/lib/duplicateOrder";
 
 /** A repeat order: «same as last time?», adjust if not, pick the delivery day, confirm.
  *
@@ -24,7 +25,9 @@ import { addDaysIso } from "@/lib/flows/dates";
  *    exit         "full": leave for the full form, send nothing
  *  vars: today, customer_id, customer, last ("ready"|"none"|"loading"), last_summary,
  *        debt, credit_limit (toman, optional),
- *        usual / usual_summary (F58, optional): the usual basket as `adjust` JSON and its recap */
+ *        usual / usual_summary (F58, optional): the usual basket as `adjust` JSON and its recap,
+ *        recent_open (F72, optional): JSON OpenOrderBrief[], the customer's open orders of the last day
+ *    exit         also "dup": open the existing order instead (`dup_id`), send nothing */
 type Vals = { values: Record<string, string> };
 
 const num = (v: string | undefined): number => (v ? Number(v) : 0);
@@ -161,6 +164,8 @@ export const orderQuickFlow: FlowConfig = {
       kind: "choice",
       q: "سفارش ثبت شود؟",
       sub: (ctx, s) => {
+        const twin = orderTwin(ctx, s);
+        if (twin) return `این مشتری سفارش باز ${twin.order_no} را با همین کالاها در ۲۴ ساعت گذشته دارد. شاید دوباره ثبت شده باشد.`;
         const lines = orderLines(ctx, s);
         const parts = [`${faNum(lines.length)} قلم · جمع ${faToman(orderTotal(ctx, s))}`];
         if (overCreditLimit(ctx, s)) {
@@ -169,10 +174,24 @@ export const orderQuickFlow: FlowConfig = {
         parts.push("سفارش به‌صورت پیش‌نویس ثبت می‌شود و در صفحهٔ سفارش تأیید می‌شود.");
         return parts.join(" · ");
       },
-      options: [{ id: "ok", label: "ثبت سفارش", tone: "rec", save: true }],
+      options: (ctx, s): FlowOption[] => {
+        const twin = orderTwin(ctx, s);
+        if (!twin) return [{ id: "ok", label: "ثبت سفارش", tone: "rec", save: true }];
+        return [
+          { id: "open_dup", label: "باز کردن همان سفارش", sub: twin.order_no, save: true, put: { exit: "dup", dup_id: String(twin.id) } },
+          { id: "ok", label: "سفارش تازه است، ثبت شود", save: true },
+        ];
+      },
     },
   },
 };
+
+/** F72: the open order of the last day these lines repeat, if any. */
+function orderTwin(ctx: FlowContext, st: Vals): OpenOrderBrief | null {
+  if (!ctx.vars.recent_open) return null;
+  const recent = JSON.parse(ctx.vars.recent_open) as OpenOrderBrief[];
+  return duplicateOf(recent, orderLines(ctx, st).map((l) => l.product_id));
+}
 
 /** The exact body POST /api/sales/orders expects. The order is created as a DRAFT. */
 export function orderRequest(ctx: FlowContext, st: Vals) {

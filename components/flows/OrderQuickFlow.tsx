@@ -12,6 +12,7 @@ import {
   itemsFromLastOrder, orderChips, orderLastSummary, orderQuickFlow, orderRequest, pickLastOrder, usualCounts,
   type BasketLine, type CatalogueProduct,
 } from "@/lib/flows/orderQuick";
+import type { OpenOrderBrief } from "@/lib/duplicateOrder";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate, tehranTodayIso } from "@/lib/jalali";
 
@@ -31,6 +32,8 @@ type Last = {
   /** F58: the usual basket as `adjust` JSON, when it differs from the last order. */
   usual?: string;
   usualSummary?: string;
+  /** F72: JSON of the customer's open orders of the last day. */
+  recentOpen?: string;
 };
 
 const FAILURE = "سفارش ثبت نشد. اینترنت را بررسی کنید و دوباره تلاش کنید.";
@@ -79,6 +82,7 @@ export default function OrderQuickFlow({
         const list = (await (await fetch(`/api/sales/orders?customer=${who}&limit=10`)).json()) as {
           orders?: { id: number; status: string; order_date: string }[];
           usual?: BasketLine[];
+          recent_open?: OpenOrderBrief[];
         };
         const o = pickLastOrder(list.orders ?? []);
         if (!o) {
@@ -107,6 +111,7 @@ export default function OrderQuickFlow({
           status: "ready",
           items: all,
           summary: dropped > 0 ? `${recap} · ${faNum(dropped)} قلم دیگر قابل سفارش نیست` : recap,
+          ...(list.recent_open?.length ? { recentOpen: JSON.stringify(list.recent_open) } : {}),
           ...(counts
             ? {
                 usual: JSON.stringify(counts),
@@ -136,6 +141,7 @@ export default function OrderQuickFlow({
         last: who === null ? "loading" : mine ? mine.status : "loading",
         last_summary: mine?.summary ?? "",
         ...(mine?.usual ? { usual: mine.usual, usual_summary: mine.usualSummary ?? "" } : {}),
+        ...(mine?.recentOpen ? { recent_open: mine.recentOpen } : {}),
         ...(c ? { customer_id: String(c.id), customer: c.business_name, debt: String(c.debt) } : {}),
         ...(c?.credit_limit_toman != null ? { credit_limit: String(c.credit_limit_toman) } : {}),
       },
@@ -163,8 +169,13 @@ export default function OrderQuickFlow({
   const whoFromFlow = state.values.who ? Number(state.values.who) : null;
   if (customerId == null && whoFromFlow !== picked) setPicked(whoFromFlow); // adjusted during render, not in an effect
 
-  const exitFull = state.saved && state.values.exit === "full";
+  const exitFull = state.saved && !!state.values.exit;
   const save = (st: FlowState) => {
+    if (st.values.exit === "dup") {
+      onClose();
+      router.push(`/sales/orders/${st.values.dup_id}`);
+      return; // F72: the existing order is opened instead; nothing is sent
+    }
     if (st.values.exit === "full") {
       onClose();
       const id = customerId ?? (st.values.who ? Number(st.values.who) : null);
