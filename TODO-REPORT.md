@@ -354,9 +354,10 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 4. Add the pg-boss worker, then port the repo layer module by module; re-seed from the seed scripts
 5. Add object storage, Valkey and the rest only when the wave that needs them starts
 
-## Libraries to add and hand-rolled code a library does better (2026-10-23, discussion only, no code changed)
+## Libraries to add and hand-rolled code a library does better (2026-10-23, docs only, no code changed)
 
 ### Done
+- [x] Recorded the library review in `docs/roadmap.md` (section 10, "Libraries: replace, add, keep") and as library notes on F4, F10, F116, F124 and F143 in `docs/future-features.md`
 - [x] Reviewed what the codebase builds by hand (it has almost no third-party libraries beyond Leaflet and its plugins, framer-motion, sharp, exceljs, web-push, Playwright); checked package freshness on the npm registry
 - [x] Findings where a library clearly does better: no schema validation on 161 route files (79 hand-written type checks), CSV export does not neutralise cells starting with `=`, `+`, `-` or `@`, scrypt runs on Node's default cost (N=16384) with a stored format that cannot carry parameters, two map stacks (22 Leaflet files with 8 Leaflet packages, 1 MapLibre file; `leaflet-routing-machine` and `leaflet.heat` last published 2022)
 - [x] Libraries worth adding for roadmap features: `@persian-tools/persian-tools` (F116, F5, F10), `libphonenumber-js` (F4, F79), grammY (F124, F143), pino plus a GlitchTip-compatible SDK, a virtual-list library, React Aria for overlays and the Jalali date picker

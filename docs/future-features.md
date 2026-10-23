@@ -83,6 +83,8 @@ Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambiti
 
 **What:** use [Wazo](https://wazo.io) (open-source, API-driven telephony platform) as the phone system behind RouteFlow, so calls are placed, received and recorded inside the app instead of in a separate dialer.
 
+**Library (2026-10-23):** `libphonenumber-js` (min build) for caller matching and E.164 numbers instead of extending `lib/crm/phone.ts`.
+
 | Moment | What the app does | Used by |
 |---|---|---|
 | Salesperson taps a phone number | click-to-call through Wazo (the user's softphone/desk phone rings, then the customer) | call list, customer page, lead page |
@@ -234,6 +236,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F10. Bank and payment reconciliation
 
 **What:** import bank statements (or connect a payment gateway), and auto-match deposits to customers, invoices and cheques. Unmatched lines go to a short review list with a proposed match to confirm.
+
+**Library (2026-10-23):** `@persian-tools/persian-tools` validates Sheba numbers and maps a card number to its bank.
 
 **Why parked:** Iranian bank export formats vary and no common open API exists; payer names in statements are inconsistent Persian text (see F5); matching one deposit to several invoices needs a split step.
 
@@ -2311,6 +2315,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** show the written Persian amount (for example "دو میلیون و پانصد هزار تومان") beside the figure on receipts, payment records and cheque entries, as is usual on Iranian financial documents, to prevent misreading and tampering.
 
+**Library (2026-10-23):** `@persian-tools/persian-tools` has a number-to-words function; test it on real toman amounts before writing one by hand.
+
 **Already in the app:** receipts are drawn on a 384-dot-wide canvas that both the Bluetooth thermal printer (ESC/POS) and the PDF share, with right-aligned text, Persian-aware line breaking and measurement (`lib/receiptLayout.ts`, `lib/deliveryReceipt.ts`). Amounts are whole toman with Persian digits (`lib/money.ts`, `lib/format.ts`). I found no number-to-words function anywhere.
 
 **Why parked:** Persian number words have grammar details (the connecting "و", the unit words for thousands, millions and billions, the toman versus rial wording); a wrong word is worse than none on a money document; the width of a long amount in words needs wrapping on the narrow receipt; wording must switch with the F-series toman and rial display setting if that is built.
@@ -2470,6 +2476,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F124. Telegram bot for staff queries
 
 **What:** staff ask the company's linked Telegram bot for a customer's balance, an order's status, a product's stock or today's run, and get an answer limited to what their role and group may see, so a quick question never needs the app.
+
+**Library (2026-10-23):** grammY (commands, buttons, retries, custom API root) rather than hand-written Bot API calls; see `docs/roadmap.md`, section 10.
 
 **Already in the app:** each user can link their Telegram chat with a one-time code, and notifications go out through it (`lib/telegram.ts`, `lib/repo/telegramLink.ts`, `app/api/notifications/telegram-link`). A small long-polling worker handles the linking, with no inbound port or public address (`scripts/telegram-poll.ts`); it understands only the `/start <code>` link command and nothing else. The chat-to-user binding is exactly the identity a query bot needs.
 
@@ -2854,6 +2862,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F143. Approve from Telegram
 
 **What:** approval requests arrive in the manager's linked Telegram chat with approve and reject buttons; a tap applies the same permission checks as the app, records who decided, and edits the message to show the outcome.
+
+**Library (2026-10-23):** grammY for the buttons and callbacks; see F124.
 
 **Already in the app:** push notifications can carry a one-tap action button for a notification about exactly one thing (a cheque due soon moves to its next state; a due reminder is marked done), run by the service worker with the signed-in cookie and limited to relative API paths (`lib/pushActions.ts`). Telegram currently only sends and edits plain text messages (`sendTelegram`, `editTelegram` in `lib/telegram.ts`), with no buttons, and the polling worker understands only the `/start <code>` link command (`scripts/telegram-poll.ts`). Credit approvals and order reviews have decision screens in the app but no one-tap action from outside it.
 

@@ -456,3 +456,34 @@ Nothing here has been tested from Iran. Check each from the server and, where a 
 | Build and deploy | npm registry, container registries, GitHub releases | installing and updating; often restricted from Iranian servers, so check before choosing a tool that ships only as a container image |
 
 If one fails: self-hosted OSRM and VROOM and own map tiles move earlier in the order; an Iranian SMS gateway or a domestic messenger (for example Bale or Eitaa, to be evaluated) takes over staff messages from Telegram. Most hosted foreign model APIs are not available from Iran, so F1, F2, F3, F5 and F14 plan for on-device or self-hosted models.
+
+### Libraries: replace, add, keep
+
+From the 2026-10-23 review of what the code builds by hand. The codebase has almost no third-party libraries besides Leaflet and its plugins, framer-motion, sharp, exceljs, web-push and Playwright. Package dates were read from the npm registry on that day; nothing was installed or tested, including from Iran.
+
+**Where a library does better than the current code**
+
+| Area | Today | Change |
+|---|---|---|
+| Input validation | 161 route files, about 79 hand-written type checks, `lib/inputChecks.ts`; the audit fixed unvalidated dates, amounts and lengths route by route | A schema per route: Zod, or Valibot for code shared with the client |
+| CSV export | `lib/csv.ts` (15 lines) does not neutralise cells starting with `=`, `+`, `-` or `@`; phones lose their leading zero in Excel | A formula guard, from a CSV library or a few lines |
+| Password hashing | `scryptSync` at Node's default cost (N=16384), stored as `salt:hash`; below OWASP's current minimum (N=2^17) and the format cannot carry parameters | Argon2id (a native package: check it installs from Iran) or scrypt with proper parameters and a self-describing format. Cheap now because the data is dummy |
+| Maps | Two stacks: 22 files on Leaflet with 8 Leaflet packages, 1 file on MapLibre; `leaflet-routing-machine` and `leaflet.heat` last published 2022 | Standardise on MapLibre before F6, F68 and F92 (clustering, heatmap, fullscreen and geolocation are built in; handles many moving points; fits PostGIS vector tiles) |
+| Geometry | `lib/geo.ts` and `lib/simplify.ts` (about 450 lines); the corridor band only approximates a buffer | PostGIS (`ST_Distance`, `ST_Buffer`, `ST_Simplify`) on the server; no new library |
+| Overlays and date picker | Hand-built toasts, hotkeys, Jalali date picker and sheets with hand-set ARIA | React Aria (its date picker supports the Persian calendar) or Radix, adopted gradually; start with the date picker and keep `lib/jalali.ts` for storage and conversion |
+
+Lower priority: the hand-written service worker (`public/sw.js`, manual cache versions) could move to Serwist if stale-cache bugs appear.
+
+**Add for roadmap features**
+
+| Library | Serves | Note |
+|---|---|---|
+| `@persian-tools/persian-tools` (4.0.4, Dec 2025) | F116 amount in words, F5 half-space fixes, F10 Sheba and card-to-bank checks, national ID validation | Test the number-to-words output on real toman amounts |
+| `libphonenumber-js` | F4 caller matching, F79 and F106 SMS, duplicate detection (`lib/crm/phone.ts` is 44 lines) | Use the `min` build |
+| grammY | F124 and F143 (`scripts/telegram-poll.ts` understands only `/start`) | Supports a custom API root, useful from Iran; whether Bale or Eitaa accept the same calls is unverified |
+| pino and a GlitchTip-compatible SDK | F108, structured logs | Replaces `console.*` and the `slowSql` wrapper |
+| `@tanstack/react-virtual` | long lists on phones; no list is virtualised today | `content-visibility: auto` is a free first step |
+| One SVG chart library | F123, F146, F32 | Keep the 4 custom charts (749 lines); decide before writing more chart types; test Persian digits and right-to-left first |
+| `rate-limiter-flexible` with a Valkey or Postgres store | shared rate limits once there is more than one app instance | `lib/rateLimit.ts` is in-memory and right for one process |
+
+**Keep as is**: `lib/jalali.ts` (tested against Intl over twenty years), TOTP, UUIDv7, the thermal-receipt PDF and ESC/POS code (Chromium print-to-PDF only for A4 documents), the offline outbox, the VROOM fallback.
