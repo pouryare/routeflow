@@ -430,8 +430,16 @@ How to read it: **10.1 is fact and decision** (the owner's words). **10.2 to 10.
 | SMS provider: Farazsms. | Decided. The official npm client `farazsms` (1.1.0, 2026-06-21) exists and has not been inspected; decide between it and a thin wrapper when the SMS slice starts. Consent, opt-out and any other customer channel stay open. |
 | Staff positions come from the phone's GPS for now. | Decided. No dedicated trackers, so a tracker server such as Traccar is not needed yet. Revisit if vehicles get hardware trackers. |
 | Amount in words (F116) uses our own small function, not `@persian-tools/persian-tools`. | Decided 2026-10-23. `lib/amountWords.ts`; one dependency fewer, wording under our control. |
+| PostgreSQL is self-hosted on the owner's own server; ArvanCloud is dropped. | Decided 2026-10-23. Arvan's managed database is MySQL only anyway. A repo Dockerfile (Postgres 18 plus the extensions below) serves CI and local development. |
+| Install every extension this roadmap names: PostGIS, `pg_trgm`, `btree_gist`, `pg_stat_statements` and `pg_duckdb`, with `wal_level = logical`. | Decided 2026-10-23. `pg_duckdb` comes from the Pigsty apt repository, not PGDG, and needs `shared_preload_libraries`. |
+| Driver and queries: `pg` behind the existing `Db` interface (a thin wrapper turns `?` into `$n`), with Kysely for new typed queries. Not Prisma. | Decided 2026-10-23 (owner: "Defaults"). |
+| Schema tooling: node-pg-migrate (plain SQL files), kysely-codegen (types, checked for drift in CI), Squawk (lints each migration in CI), and a committed `db/schema.sql` from `pg_dump --schema-only`. | Decided 2026-10-23. Atlas was rejected: it is a Go binary downloaded from abroad, which is hard from Iran. |
+| Row-level security is enforced before the cut-over, not after. | Decided 2026-10-23. |
+| Off-site backup goes to a second machine the owner controls, over SSH; self-hosted S3 can come later. | Decided 2026-10-23. |
 
 ### 10.2 Proposed platform choices
+
+The PostgreSQL rows here are now decided (10.1). The plan is phased: P1 an asynchronous `Db` interface and portable SQL while still on SQLite (done 2026-10-23: every call is awaited, transactions go through `db.tx()`, lint catches a forgotten `await`, and `tests/sql-dialect-guard.test.ts` refuses SQLite-only SQL outside `lib/database/`); P2 the Postgres baseline schema, the `pg` adapter and a CI run against Postgres; P3 green on Postgres, the `xid8` sync watermark and row-level security; P4 the server, backups and cut-over by re-seeding; P5 removing the SQLite code.
 
 | Choice | Serves | When |
 |---|---|---|
