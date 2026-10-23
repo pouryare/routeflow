@@ -57,7 +57,7 @@ function Item({ item, variant }: { item: BriefingItem; variant: Variant }) {
       }
     >
       {item.href ? (
-        <Link href={item.href} className="block no-underline hover:opacity-80">
+        <Link href={item.href} className="block min-h-11 no-underline hover:opacity-80">
           {inner}
         </Link>
       ) : (

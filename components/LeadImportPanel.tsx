@@ -175,7 +175,7 @@ export default function LeadImportPanel({ onAdded }: { onAdded: () => void }) {
             <button
               onClick={parse}
               disabled={busy || !text.trim()}
-              className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-3 py-1.5 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
+              className="inline-flex items-center justify-center gap-[var(--space-2)] rounded-[var(--radius-sm)] border border-accent bg-accent px-3 min-h-11 text-[length:var(--text-sm)] font-medium text-accent-ink transition-[filter] duration-[var(--dur-base)] ease-[var(--ease-out)] hover:brightness-110 disabled:opacity-50"
             >
               <Icon name="file" size="sm" />
               {busy ? "در حال تجزیه…" : "تجزیه"}

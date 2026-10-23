@@ -54,7 +54,7 @@ export default async function JournalPage({
           <div className="flex flex-wrap gap-2 text-[length:var(--text-sm)]">
             <Link
               href={link(period ?? "", "/accounting/journal", "period")}
-              className="rounded-[var(--radius-sm)] border border-border px-2 py-1"
+              className="inline-flex min-h-11 items-center rounded-[var(--radius-sm)] border border-border px-3"
             >
               همهٔ دوره‌ها
             </Link>
@@ -62,7 +62,7 @@ export default async function JournalPage({
               <Link
                 key={p.periodKey}
                 href={link(p.periodKey, "/accounting/journal", "period")}
-                className={`rounded-[var(--radius-sm)] border px-2 py-1 ${
+                className={`inline-flex min-h-11 items-center rounded-[var(--radius-sm)] border px-3 ${
                   period === p.periodKey
                     ? "border-accent text-[var(--accent-text)]"
                     : "border-border"
