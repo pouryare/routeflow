@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-/** Shown to a `platform_owner` who opens /driver or /today.
+/** Shown to a `platform_owner` who opens /driver or /start.
  *
  *  A redirect is a dead end: it answers "you may not" without saying what to do instead,
  *  and for the founder the answer is always one action away — become the driver. The

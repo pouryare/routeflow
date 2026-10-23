@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /** Three pages were one query, listed adjacently in the same nav group.
  *
@@ -57,32 +57,16 @@ describe("the orders host serves three views", () => {
   });
 });
 
-describe("the three old order hrefs redirect to the right host AND view", () => {
-  const CASES: [string, string][] = [
-    ["app/(shell)/sales/board/page.tsx", "/sales/orders?view=board"],
-    ["app/(shell)/sales/journey/page.tsx", "/sales/orders?view=journey"],
-    ["app/(shell)/sales/deliveries/page.tsx", "/sales/orders"],
-  ];
-
-  for (const [file, target] of CASES) {
-    it(`${file} → ${target}`, () => {
-      const src = read(file);
-      expect(src, "a redirect page must not also render").not.toContain("PageHeader");
-      expect(src).toMatch(/redirect\(\s*["']/);
-      // The exact target string, so /sales/board cannot land on a bare /sales/orders
-      // and lose the view.
-      expect(src.replace(/\s+/g, " ")).toContain(`redirect("${target}")`);
+describe("the old order addresses are gone, not redirected", () => {
+  // The app has no users yet, so nothing holds an old link: /sales/board, /sales/journey and
+  // /sales/deliveries are deleted rather than kept as redirect stubs (each one a page file,
+  // a PAGE_META entry and, once, a proxy special case).
+  for (const r of ["board", "journey", "deliveries"]) {
+    it(`/sales/${r} has no page and no meta`, () => {
+      expect(existsSync(`app/(shell)/sales/${r}`)).toBe(false);
+      expect(read("lib/pageMeta.ts")).not.toContain(`"/sales/${r}":`);
     });
   }
-
-  it("each redirect page still has a PAGE_META entry", () => {
-    // tests/pageMeta.test.ts walks app/(shell) and fails on a route with no entry AND on
-    // an entry whose route has gone. The routes resolve, so the entries must stay.
-    const meta = read("lib/pageMeta.ts");
-    for (const r of ["/sales/board", "/sales/journey", "/sales/deliveries"]) {
-      expect(meta, `${r} must keep its meta`).toContain(`"${r}":`);
-    }
-  });
 });
 
 describe("the menu no longer offers the merged routes", () => {
@@ -98,14 +82,14 @@ describe("the menu no longer offers the merged routes", () => {
     // lib/repo/briefing.ts is a server DATA file, not a page, so a page-by-page review
     // never sees it -- and it is the status row a manager taps all day.
     //
-    // The invariant is that NO href lands on a route that now only redirects. This used to
+    // The invariant is that NO href lands on a route that no longer exists. This used to
     // assert one exact string, `/sales/orders?view=board`, and went stale the moment the
     // panel started linking each order to itself (7a3d161) -- a deliberate improvement that
     // a hardcoded expectation could not survive. Checking the rule instead of the example is
     // what lets the panel improve without a fight.
     const briefing = read("lib/repo/briefing.ts");
     for (const href of ["/sales/board", "/sales/journey", "/sales/runs", "/sales/deliveries"]) {
-      expect(briefing, `${href} is a redirect; the briefing must not link at it`)
+      expect(briefing, `${href} is gone; the briefing must not link at it`)
         .not.toMatch(new RegExp(`href:\\s*"${href.replace("/", "\\/")}"`));
     }
     // And the panel still links somewhere: an empty href list is the failure this guards too.

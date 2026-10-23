@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 /** The month ahead and the day's assignment were two verbs pretending to be two pages.
  *
@@ -76,16 +76,12 @@ describe("the day host serves two views", () => {
   });
 });
 
-describe("/sales/runs redirects to the day host with its view", () => {
-  it("lands on /sales/schedule?view=runs, not on a bare /sales/schedule", () => {
-    const src = read("app/(shell)/sales/runs/page.tsx");
-    expect(src, "a redirect page must not also render").not.toContain("PageHeader");
-    expect(src.replace(/\s+/g, " ")).toContain('redirect("/sales/schedule?view=runs")');
+describe("/sales/runs is gone; the runs view keeps its copy", () => {
+  it("has no page of its own (no old links to keep: the app has no users yet)", () => {
+    expect(existsSync("app/(shell)/sales/runs")).toBe(false);
   });
 
-  it("keeps a PAGE_META entry for the route it still resolves", () => {
-    // tests/pageMeta.test.ts fails on an entry whose route has gone. /sales/runs still
-    // resolves — it redirects — so the entry stays.
-    expect(read("lib/pageMeta.ts")).toContain('"/sales/runs":');
+  it("the runs view carries the «سفرهای تحویل» copy itself", () => {
+    expect(read("lib/pageMeta.ts")).toContain('"/sales/schedule?view=runs": {');
   });
 });

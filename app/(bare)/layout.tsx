@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { MyPositionProvider } from "@/components/MyPositionProvider";
 
 
-/** The bare group: /driver, /login, /offline, /today.
+/** The bare group: /driver, /login, /offline, /start.
  *
  *  These wear the design system's PALETTE — the same cold tokens, type, radii and
  *  shadows as everywhere else, so they read as the same product — and nothing else. No

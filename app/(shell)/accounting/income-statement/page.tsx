@@ -26,9 +26,19 @@ export default async function IncomeStatementPage({
   const is = incomeStatement(organizationId, { periodKey: period });
   const periods = listPeriods(organizationId);
 
-  const line = (label: string, value: number, opts?: { strong?: boolean }) => (
+  /* `ledgerOf` makes the label open that account's ledger, so an expense line is one tap
+     from the entries behind it. */
+  const line = (label: string, value: number, opts?: { strong?: boolean; ledgerOf?: number }) => (
     <tr key={label} className={`border-t border-border ${opts?.strong ? "font-medium" : ""}`}>
-      <td className={CELL}>{label}</td>
+      <td className={CELL}>
+        {opts?.ledgerOf ? (
+          <Link href={`/accounting/ledger/${opts.ledgerOf}`} className="text-[var(--accent-text)] hover:underline">
+            {label}
+          </Link>
+        ) : (
+          label
+        )}
+      </td>
       <td className={NUM}>{faNum(value)}</td>
     </tr>
   );
@@ -81,7 +91,7 @@ export default async function IncomeStatementPage({
         {line("درآمد", is.revenueToman, { strong: true })}
         {line("بهای تمام‌شدهٔ کالا", -is.cogsToman)}
         {line("سود ناخالص", is.grossProfitToman, { strong: true })}
-        {is.expenses.map((e) => line(`هزینه — ${e.nameFa}`, -e.amountToman))}
+        {is.expenses.map((e) => line(`هزینه — ${e.nameFa}`, -e.amountToman, { ledgerOf: e.accountId }))}
         {is.totalExpensesToman ? line("جمع هزینه‌ها", -is.totalExpensesToman) : null}
       </AcctTable>
       </div>

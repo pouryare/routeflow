@@ -7,6 +7,7 @@ import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
 import { roleLabel } from "@/lib/roles";
 import ProfileMenu from "@/components/meridian/ProfileMenu";
+import { accountLinks } from "@/lib/accountLinks";
 import NotificationBell from "@/components/NotificationBell";
 import SearchSlot from "@/components/meridian/SearchSlot";
 import HoverPill from "@/components/meridian/HoverPill";
@@ -75,6 +76,7 @@ export default async function AppHeader() {
             userId={session.user.id}
             name={session.user.display_name}
             roleLabel={roleLabel(session.role)}
+            links={accountLinks(session)}
           />
         </div>
       </div>

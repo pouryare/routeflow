@@ -89,10 +89,6 @@ export function detectArabicChars(str) {
   }
   return null;
 }
-function detectStaleSurface(route) {
-  if (["/analytics", "/sales/analysis", "/sales/admin/representatives"].includes(route)) return { status: "STALE-SURFACE", note: "retired page — confirm deletion" };
-  return null;
-}
 function detectUnlabelledEnum(str) {
   if (/\b[A-Z]{2,}\b/.test(str) && !str.includes("##") && !str.includes("|")) return { status: "UNLABELLED-ENUM", note: "English identifier in Persian context" };
   return null;
@@ -161,7 +157,6 @@ function main() {
         () => detectRawEnum(item.string),
         () => detectArabicChars(item.string),
         () => detectZWNJInconsistent(item.string, zwMismatches),
-        () => detectStaleSurface(item.location ?? route),
         () => detectUnlabelledEnum(item.string),
       ];
       let det = { status: "OK", note: "—" };

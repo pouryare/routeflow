@@ -469,7 +469,7 @@ describe("GET /api/sales", () => {
 });
 
 describe("sales aggregates reach their group through the customer", () => {
-  // /analytics reads `sales` directly rather than through a route, and `sales` carries no
+  // The dashboard's coverage panels read `sales` directly rather than through a route, and `sales` carries no
   // group of its own. These assert the join those queries depend on, so the page cannot
   // quietly go back to showing province-wide revenue to a group manager.
   it("attributes a sale to a group only via the customer's business_name", () => {

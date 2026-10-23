@@ -6,7 +6,10 @@ import { orderEntryFor } from "@/lib/repo/ordersView";
 import OrderForm from "@/components/sales/OrderForm";
 import OrderQuickEntry from "@/components/flows/OrderQuickEntry";
 import PageHeader from "@/components/meridian/PageHeader";
-import { isVanRole } from "@/lib/roles";
+import { canSell, isVanRole } from "@/lib/roles";
+import Link from "next/link";
+import StatePage from "@/components/meridian/StatePage";
+import { Icon } from "@/components/meridian/Icon";
 
 export const dynamic = "force-dynamic";
 
@@ -30,6 +33,24 @@ export default async function NewOrderPage({
   const session = getSessionFromCookies(jar.get(COOKIE_NAME)?.value);
   if (!session) redirect("/login");
   if (isVanRole(session.role)) redirect("/driver");
+  /* A rep manager reaches the orders list but cannot sell (the order API refuses them). Say
+     so here, with the way back, instead of a form whose save fails at the last tap. */
+  if (!canSell(session.role)) {
+    return (
+      <StatePage
+        icon="ban"
+        eyebrow="ثبت سفارش"
+        title="این نقش سفارش ثبت نمی‌کند"
+        hint="سفارش را فروشنده یا مدیر گروه ثبت می‌کند. از فهرست سفارش‌ها می‌توانید سفارش‌های گروه را ببینید."
+        actions={
+          <Link className="inline-flex items-center justify-center gap-[var(--space-2)] btn solid" href="/sales/orders">
+            <Icon name="arrow-right" size="md" />
+            فهرست سفارش‌ها
+          </Link>
+        }
+      />
+    );
+  }
 
   const { customers, products, sellers } = orderEntryFor(session);
 

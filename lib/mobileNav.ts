@@ -1,6 +1,7 @@
 import { APP_GROUPS, appTabs, type AppGroupId, type AppTab } from "@/lib/appNav";
 import type { IconName } from "@/components/meridian/icon-map";
-import { isVanRole, type Role } from "@/lib/roles";
+import { ROLES, canSell, isVanRole, type Role } from "@/lib/roles";
+import { accountLinks, type AccountLink } from "@/lib/accountLinks";
 
 /** The phone's navigation: a bar of the few places each role goes dozens of times a day, and a
  *  «بیشتر» sheet holding everything else. The 30-destination pill in the header does not fit a
@@ -36,6 +37,10 @@ export const TAB_ICON: Record<string, IconName> = {
 export interface BottomTabs {
   primary: AppTab[];
   more: { id: AppGroupId; label: string; tabs: AppTab[] }[];
+  /** «حساب من», last in the «بیشتر» sheet: settings and (owners) «ورود به‌عنوان…». On a desk
+   *  these sit behind the avatar; on a phone the avatar is at the top, out of the thumb's
+   *  reach, so the sheet carries them too. A link that is already a tab is left out. */
+  account: AccountLink[];
 }
 
 export function bottomTabs(session: { role: Role }): BottomTabs {
@@ -48,7 +53,9 @@ export function bottomTabs(session: { role: Role }): BottomTabs {
     label: g.label,
     tabs: all.filter((t) => t.group === g.id && !taken.has(t.href)),
   })).filter((g) => g.tabs.length > 0);
-  return { primary, more };
+  const tabHrefs = new Set(all.map((t) => t.href));
+  const account = accountLinks(session).filter((l) => !tabHrefs.has(l.href));
+  return { primary, more, account };
 }
 
 export type QuickActionId = "reminder" | "note" | "order" | "payment" | "complaint";
@@ -72,7 +79,7 @@ export interface QuickAction {
 export const QUICK_ACTIONS: QuickAction[] = [
   { id: "reminder", label: "ثبت یادآوری", icon: "clock" },
   { id: "note", label: "ثبت یادداشت", icon: "edit" },
-  { id: "order", label: "سفارش تازه", icon: "receipt", href: "/sales/orders/new?quick=1", requires: "/sales/orders", except: ["rep_manager"] },
+  { id: "order", label: "سفارش تازه", icon: "receipt", href: "/sales/orders/new?quick=1", requires: "/sales/orders", except: ROLES.filter((r) => !canSell(r)) },
   { id: "payment", label: "ثبت دریافت", icon: "wallet", href: "/sales/payments?new=1", requires: "/sales/payments" },
   { id: "complaint", label: "ثبت شکایت", icon: "warn", href: "/sales/complaints?new=1", requires: "/sales/complaints" },
 ];

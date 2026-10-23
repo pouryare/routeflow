@@ -85,6 +85,12 @@ export const OWNER_ROLES: Role[] = ["platform_owner", "owner"];
  *  right, tests green, and looks deliberate. */
 export const isOwner = (r: Role) => OWNER_ROLES.includes(r);
 
+/** Who may record a sale: every role except the rep manager, who manages the people who sell.
+ *  The order API admits exactly this set, and every «ثبت سفارش تازه» button asks it first, so
+ *  no one is offered a form whose save will be refused. */
+export const SELL_ROLES: Role[] = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"];
+export const canSell = (r: Role | string | null | undefined): boolean => SELL_ROLES.includes(r as Role);
+
 export const ROLE_LABEL: Record<Role, string> = {
   platform_owner: "مدیر سامانه",
   owner: "مالک",

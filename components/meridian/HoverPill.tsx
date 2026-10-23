@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type React from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { activeGroup, type AppGroupId, type AppTab } from "@/lib/appNav";
+import { activeGroup, currentTab, type AppGroupId, type AppTab } from "@/lib/appNav";
 import { popover, withReducedMotion } from "@/lib/motion";
 import { usePrefersReducedMotion } from "@/lib/usePrefersReducedMotion";
 
@@ -38,9 +38,7 @@ export function pillModel(
   }
 
   const current = activeGroup(pathname, tabs);
-  const hit = tabs
-    .filter((t) => t.ready && (pathname === t.href || pathname.startsWith(`${t.href}/`)))
-    .sort((a, b) => b.href.length - a.href.length)[0];
+  const hit = currentTab(pathname, tabs);
 
   const shown = groups
     .filter((g) => tabsByGroup[g.id])

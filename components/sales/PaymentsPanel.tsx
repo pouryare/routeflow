@@ -16,6 +16,7 @@ import { isToman, toToman } from "@/lib/money";
 import PaymentTotalsCards from "@/components/sales/PaymentTotalsCards";
 import AllocationEditor from "@/components/sales/AllocationEditor";
 import { METHOD_LABEL, filterPayments, groupByMonth, paymentTotals, paymentsCsv, type AllocationDraft, type Customer, type OpenOrder, type Payment } from "@/lib/paymentsView";
+import CustomerName from "@/components/CustomerName";
 
 const PAGE_SIZE = 25;
 
@@ -361,7 +362,7 @@ export default function PaymentsPanel({ customers }: { customers: Customer[] }) 
                     {rows.map((p) => (
                       <Fragment key={p.id}>
                       <tr className="border-b border-border last:border-0">
-                        <td className="p-2">{customerName(p.customer_id)}</td>
+                        <td className="p-2"><CustomerName id={p.customer_id} name={customerName(p.customer_id)} /></td>
                         <td
                           className={`p-2 text-left font-mono ${p.voided_at ? "line-through opacity-50" : ""}`}
                         >

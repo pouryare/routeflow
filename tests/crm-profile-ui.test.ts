@@ -44,7 +44,7 @@ const timeline = { items: [], nextBefore: null };
 it("shows history in Jalali and Tehran time while preserving the ISO instant", async () => {
   const at = "2026-03-20T21:00:00.000Z";
   const history = { items: [{ kind: "activity", id: 1, at, title: "اصلاح موقعیت", sub: "", who: "علی" }], nextBefore: null } as Parameters<typeof BusinessProfile>[0]["initialTimeline"];
-  await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: history })));
+  await act(async () => root.render(createElement(BusinessProfile, { canOrder: true, initial: profile, initialTimeline: history })));
   expect(host.querySelector("time")?.textContent).toBe("۱۴۰۵/۰۱/۰۱ ۰۰:۳۰");
   expect(host.querySelector("time")?.getAttribute("datetime")).toBe(at);
 });
@@ -75,7 +75,7 @@ it("holds a selected chip for five seconds, supports cancel and retains failed d
 });
 
 it("puts nested information first and the order action beside Back", async () => {
-  await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
+  await act(async () => root.render(createElement(BusinessProfile, { canOrder: true, initial: profile, initialTimeline: timeline })));
   const headings = Array.from(host.querySelectorAll("h2")).map(h => h.textContent);
   expect(headings.slice(0, 2)).toEqual(["اطلاعات کسب‌وکار", "شناخت پیش از بازدید"]);
   for (const label of ["مشخصات پایه", "راه‌های ارتباطی", "موقعیت و ساعت کاری", "ساعت کاری", "ردهٔ قیمت", "تلفن دوم", "واتس‌اپ", "لینک نقشه"]) expect(host.textContent).toContain(label);
@@ -90,7 +90,7 @@ it("puts nested information first and the order action beside Back", async () =>
 });
 
 it("renders intel facts, tags and the Instagram page", async () => {
-  await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
+  await act(async () => root.render(createElement(BusinessProfile, { canOrder: true, initial: profile, initialTimeline: timeline })));
   expect(host.textContent).toContain("شناخت پیش از بازدید");
   expect(host.textContent).toContain("متوسط");
   expect(host.textContent).toContain("بعدازظهر · ۱۵ تا ۱۸");
@@ -101,7 +101,7 @@ it("renders intel facts, tags and the Instagram page", async () => {
 });
 
 it("offers the intel flow and tag editing for writers", async () => {
-  await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
+  await act(async () => root.render(createElement(BusinessProfile, { canOrder: true, initial: profile, initialTimeline: timeline })));
   expect(Array.from(host.querySelectorAll("button")).some(b => b.textContent === "ثبت شناخت")).toBe(true);
   expect(Array.from(host.querySelectorAll("button")).some(b => b.textContent?.includes("برچسب‌ها"))).toBe(true);
 });
@@ -109,7 +109,7 @@ it("offers the intel flow and tag editing for writers", async () => {
 it("passes the product catalog into the intel flow", async () => {
   vi.useFakeTimers();
   try {
-    await act(async () => root.render(createElement(BusinessProfile, { initial: profile, initialTimeline: timeline })));
+    await act(async () => root.render(createElement(BusinessProfile, { canOrder: true, initial: profile, initialTimeline: timeline })));
     const click = async (label: string) => {
       // The flow's sheet is drawn in the document root (useSheetHost), outside `host`.
       const button = Array.from(document.querySelectorAll("button")).find(b => b.textContent?.trim() === label);
@@ -126,7 +126,7 @@ it("passes the product catalog into the intel flow", async () => {
 });
 
 it("hides write actions from read-only viewers", async () => {
-  await act(async () => root.render(createElement(BusinessProfile, {
+  await act(async () => root.render(createElement(BusinessProfile, { canOrder: true,
     initial: { ...profile, canWrite: false } as unknown as typeof profile, initialTimeline: timeline,
   })));
   expect(Array.from(host.querySelectorAll("button")).some(b => b.textContent === "ثبت شناخت")).toBe(false);

@@ -6,6 +6,7 @@ import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
 import { customerPriceHistory } from "@/lib/repo/customerPrices";
+import { SELL_ROLES } from "@/lib/roles";
 import { customerUsualBasket } from "@/lib/repo/usualBasket";
 import { recentOpenOrders } from "@/lib/repo/recentOpenOrders";
 import { onboardingFor } from "@/lib/repo/onboarding";
@@ -28,7 +29,7 @@ import {
  *  driver places from a lead will not appear in this list until it is on a delivery run.
  *  A van order needs either its own scope rule or a "my orders" read that follows
  *  salesperson_user_id -- deliberately not changed here. */
-const CAN_SELL = ["platform_owner", "owner", "group_manager", "phone_sales", "field_rep", "delivery_driver"] as const;
+const CAN_SELL = SELL_ROLES;
 
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, [...CAN_SELL]);

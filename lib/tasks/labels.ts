@@ -80,7 +80,7 @@ export function taskPriorityLabel(priority: string): string {
   return (TASK_PRIORITY_LABEL as Record<string, string>)[priority] ?? TASK_PRIORITY_LABEL.NORMAL;
 }
 
-/** A call's outcome, as the /today chips, the Board's drop flow and the academy's
+/** A call's outcome, as the /start chips, the Board's drop flow and the academy's
  *  objection cards all name it. The chips offer four; the academy seeds cards for eight,
  *  and it printed the other four as raw codes («PRICE_OBJECTION») before this map. */
 export const OUTCOME_LABEL: Record<string, string> = {

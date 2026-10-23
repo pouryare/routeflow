@@ -1,3 +1,4 @@
+import Link from "next/link";
 import PageHeader from "@/components/meridian/PageHeader";
 import SectionHead from "@/components/meridian/SectionHead";
 import AcctTable, { CELL, NUM } from "@/components/accounting/AcctTable";
@@ -45,7 +46,11 @@ export default async function PayablesPage() {
       >
         {rows.map((r) => (
           <tr key={r.supplierId} className="border-t border-border">
-            <td className={CELL}>{r.supplierName}</td>
+            <td className={CELL}>
+              <Link href={`/accounting/suppliers/${r.supplierId}`} className="text-[var(--accent-text)] hover:underline">
+                {r.supplierName}
+              </Link>
+            </td>
             <td className={NUM}>{faNum(r.balanceToman)}</td>
           </tr>
         ))}

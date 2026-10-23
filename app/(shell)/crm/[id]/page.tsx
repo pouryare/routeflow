@@ -6,6 +6,7 @@ import { profileFor, timelineFor } from "@/lib/repo/crm/profile";
 import { idParam } from "@/lib/repo/crm/http";
 import BusinessProfile from "@/components/crm/BusinessProfile";
 import PageHeader from "@/components/meridian/PageHeader";
+import { canSell } from "@/lib/roles";
 export const dynamic = "force-dynamic";
 export default async function ProfilePage({ params }: { params: Promise<{ id: string }> }) {
   const session = getSessionFromCookies((await cookies()).get(COOKIE_NAME)?.value);
@@ -15,6 +16,6 @@ export default async function ProfilePage({ params }: { params: Promise<{ id: st
   if (!profile || id === null) notFound();
   return <>
     <PageHeader route="/crm" />
-    <BusinessProfile initial={profile} initialTimeline={timelineFor(session, id)!} />
+    <BusinessProfile initial={profile} initialTimeline={timelineFor(session, id)!} canOrder={canSell(session.role)} />
   </>;
 }

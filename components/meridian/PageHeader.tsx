@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { COOKIE_NAME } from "@/lib/auth";
 import { getSessionFromCookies } from "@/lib/session";
-import { activeGroup, appTabs } from "@/lib/appNav";
+import { activeGroup, appTabs, currentTab } from "@/lib/appNav";
 import { pageMetaFor } from "@/lib/pageMeta";
 import { faJalaliLong } from "@/lib/jalali";
 import PageHeaderCard from "@/components/meridian/PageHeaderCard";
@@ -45,9 +45,7 @@ export default async function PageHeader({ route, view }: { route: string; view?
   const all = appTabs(session);
   const group = activeGroup(route, all);
   const siblings = all.filter((t) => t.group === group && t.ready);
-  const current = all
-    .filter((t) => t.ready && (route === t.href || route.startsWith(`${t.href}/`)))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const current = currentTab(route, all)?.href;
 
   /* One sibling is not a section — a lone tab in the bay reads as a stray chip. And a
      route that is none of the tabs (/settings/notifications) shows none: activeGroup

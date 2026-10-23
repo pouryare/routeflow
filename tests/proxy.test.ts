@@ -283,7 +283,7 @@ describe("the menu and the gate agree, in BOTH directions", () => {
 
   it("keeps a field rep out of the surfaces a driver must not reach", () => {
     // Stated as intent, so nobody "fixes" a failure by loosening it.
-    for (const href of ["/report", "/analytics", "/crm", "/sales/orders"]) {
+    for (const href of ["/report", "/crm", "/sales/orders"]) {
       expect(proxy(req(href, "field_rep")).status, href).not.toBe(200);
     }
   });
@@ -339,23 +339,17 @@ describe("a salesperson", () => {
     expect(proxy(req("/driver", "phone_sales")).status).toBe(307);
   });
 
-  it("is kept out of the group-wide analytics page", () => {
-    // /analytics aggregates the whole group's revenue and debt. A salesperson sees only
-    // their own orders, so the aggregate is a leak -- they get /sales/me instead.
-    const res = proxy(req("/analytics", "phone_sales"));
+  it("is kept out of the group-wide report page", () => {
+    // Whole-group coverage tables, and a CSV export button that hands the reader every row
+    // behind them. A salesperson sees only their own orders, so the aggregate is a leak.
+    const res = proxy(req("/report", "phone_sales"));
     expect(res.status).toBe(307);
     expect(res.headers.get("location")).toContain("/sales");
   });
 
-  it("is kept out of the group-wide report page", () => {
-    // Same shape as /analytics: whole-group coverage tables, and a CSV export button
-    // that hands the reader every row behind them.
-    expect(proxy(req("/report", "phone_sales")).status).toBe(307);
-  });
-
   it("does not lock out the roles that page is for", () => {
-    expect(proxy(req("/analytics", "owner")).status).toBe(200);
-    expect(proxy(req("/analytics", "group_manager")).status).toBe(200);
+    expect(proxy(req("/report", "owner")).status).toBe(200);
+    expect(proxy(req("/report", "group_manager")).status).toBe(200);
   });
 });
 

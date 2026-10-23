@@ -163,16 +163,37 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/logins", label: "گزارش ورودها", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/status", label: "وضعیت سامانه", group: "org", ready: isOwner(r) },
+    // The lunar holidays nothing offline can compute (Eid, Tasua, Ashura). The page existed
+    // with no link to it; isOwner mirrors the gate in sales/admin/layout.tsx.
+    { href: "/sales/admin/holidays", label: "تعطیلات", group: "org", ready: isOwner(r) },
     { href: "/facilities", label: "مکان‌های ما", group: "org", ready: isOwner(r) },
   ];
 }
 
-/** The group whose tab is currently active, by longest-prefix match on the pathname.
+/** Detail pages that live under a tab without sharing its path. /accounting/ledger/7 is
+ *  reached from «تراز آزمایشی» (each account code opens its ledger) but no tab's href is a
+ *  prefix of it, so without this the header lit nothing and showed no sibling tabs there. */
+export const NAV_PARENT: Record<string, string> = {
+  "/accounting/ledger": "/accounting/trial-balance",
+};
+
+/** The ready tab a pathname belongs to: longest-prefix match, then a NAV_PARENT entry. One
+ *  rule for the header pill, the page header and the phone's bar. */
+export function currentTab<T extends { href: string; ready: boolean }>(pathname: string, tabs: T[]): T | undefined {
+  const match = (path: string) =>
+    tabs
+      .filter((t) => t.ready && (path === t.href || path.startsWith(`${t.href}/`)))
+      .sort((a, b) => b.href.length - a.href.length)[0];
+  const hit = match(pathname);
+  if (hit) return hit;
+  const parent = Object.entries(NAV_PARENT).find(([p]) => pathname === p || pathname.startsWith(`${p}/`))?.[1];
+  return parent ? tabs.find((t) => t.ready && t.href === parent) : undefined;
+}
+
+/** The group whose tab is currently active (see currentTab).
  *  Falls back to the first group that has a ready tab. */
 export function activeGroup(pathname: string, tabs: AppTab[]): AppGroupId {
-  const hit = tabs
-    .filter((t) => t.ready && (pathname === t.href || pathname.startsWith(`${t.href}/`)))
-    .sort((a, b) => b.href.length - a.href.length)[0];
+  const hit = currentTab(pathname, tabs);
   if (hit) return hit.group;
   return tabs.find((t) => t.ready)?.group ?? APP_GROUPS[0].id;
 }
