@@ -1,4 +1,6 @@
-import Link from "next/link";
+"use client";
+
+import RouteTabs from "@/components/RouteTabs";
 
 /** The in-page view strip, under the header's own tab row.
  *
@@ -7,8 +9,7 @@ import Link from "next/link";
  *  page's own views — a way to read THIS data differently. Merging them would leave a
  *  reader with no way out of the area and no way to change lens inside it.
  *
- *  aria-current="page" rather than a class alone: the visual difference between the
- *  selected pill and the others is not something a screen reader can announce, and this is
+ *  HeroUI Tabs (RouteTabs): the selected view is announced as the selected tab, which is
  *  the only thing on the row that says which view is showing. */
 export interface ViewTab {
   /** The `?view=` value. "" is the default view and is written as the bare path. */
@@ -20,18 +21,13 @@ export interface ViewTab {
 
 export default function ViewTabs({ tabs, current }: { tabs: ViewTab[]; current: string }) {
   const href = (t: ViewTab) => (t.value === "" ? t.route : `${t.route}?view=${t.value}`);
+  const on = tabs.find((t) => t.value === current);
   return (
-    <nav className="jmode" aria-label="نمای این صفحه">
-      {tabs.map((t) => (
-        <Link
-          key={t.value || "default"}
-          className={`btn ${current === t.value ? "solid" : "ghost"}`}
-          aria-current={current === t.value ? "page" : undefined}
-          href={href(t)}
-        >
-          {t.label}
-        </Link>
-      ))}
-    </nav>
+    <RouteTabs
+      className="jmode"
+      label="نمای این صفحه"
+      tabs={tabs.map((t) => ({ href: href(t), label: t.label }))}
+      current={on ? href(on) : undefined}
+    />
   );
 }
