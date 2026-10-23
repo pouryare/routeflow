@@ -24,7 +24,7 @@ let founderId = 0;
 let ownerId = 0;
 
 const json = (body: unknown, cookie?: string) =>
-  new NextRequest("http://localhost/x", {
+  new NextRequest("http://localhost/api/admin/second-factor", {
     method: "POST",
     body: JSON.stringify(body),
     headers: { "Content-Type": "application/json", ...(cookie ? { cookie } : {}), "x-forwarded-for": `10.0.0.${Math.floor(Math.random() * 250)}` },

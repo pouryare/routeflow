@@ -116,33 +116,34 @@ describe("coverageAnalytics scoping", () => {
     expect(rows.map((r) => r.business_name)).toEqual(["الف"]);
   });
 
-  it("says match quality is unmeasurable rather than reporting a confident zero", () => {
+  it("counts unmatched sales for an owner, scoped to their company, and says a manager cannot", () => {
     const db = getDb();
     customer("شناخته", mine, 5);
     db.prepare(
-      "INSERT INTO sales (customer_name,amount,sale_date,imported_at) VALUES ('شناخته',100,?,?)",
+      "INSERT INTO sales (customer_name,amount,sale_date,imported_at,organization_id) VALUES ('شناخته',100,?,?,1)",
     ).run(iso(3).slice(0, 10), iso(0));
     db.prepare(
-      "INSERT INTO sales (customer_name,amount,sale_date,imported_at) VALUES ('ناشناخته',900,?,?)",
+      "INSERT INTO sales (customer_name,amount,sale_date,imported_at,organization_id) VALUES ('ناشناخته',900,?,?,1)",
+    ).run(iso(3).slice(0, 10), iso(0));
+    // Another company's unmatched row must not be counted for this one.
+    db.prepare("INSERT OR IGNORE INTO organizations (id, name, slug, active, created_at) VALUES (2, 'other', 'other', 1, ?)").run(iso(0));
+    db.prepare(
+      "INSERT INTO sales (customer_name,amount,sale_date,imported_at,organization_id) VALUES ('بیگانه',555,?,?,2)",
     ).run(iso(3).slice(0, 10), iso(0));
 
-    /* Counting rows that match NO customer needs the unscoped `sales` table, and `sales`
-       predates tenancy — it has no organization_id, so the join to `customers` is the
-       only tenancy it has. An owner therefore cannot be given that read without handing
-       them another organisation's sales. Both org-scoped roles get the join, and both
-       must SAY so rather than report a confident zero. */
-    for (const s of [session("owner", owner, null), session("group_manager", manager, mine)]) {
-      const r = coverageAnalytics(s);
-      expect(r.match.measurable).toBe(false);
-      expect(r.match.unmatchedRows).toBe(0);
-      expect(r.costToServe.find((c) => c.business_name === "شناخته")?.revenue).toBe(100);
-    }
+    /* `sales` now carries organization_id, so an owner can be given the unmatched count for their own
+       company. A group manager still gets the join (scoped to their groups) and must SAY it cannot count
+       rows that match no customer, rather than report a confident zero. */
+    const asOwner = coverageAnalytics(session("owner", owner, null));
+    expect(asOwner.match.measurable).toBe(true);
+    expect(asOwner.match.unmatchedRows).toBe(1);
+    expect(asOwner.match.unmatchedRevenue).toBe(900);
+    expect(asOwner.costToServe.find((c) => c.business_name === "شناخته")?.revenue).toBe(100);
 
-    /* A platform_owner legitimately spans organisations, so for them the count is real. */
-    const asPlatform = coverageAnalytics(session("platform_owner", owner, null));
-    expect(asPlatform.match.measurable).toBe(true);
-    expect(asPlatform.match.unmatchedRows).toBe(1);
-    expect(asPlatform.match.unmatchedRevenue).toBe(900);
+    const asManager = coverageAnalytics(session("group_manager", manager, mine));
+    expect(asManager.match.measurable).toBe(false);
+    expect(asManager.match.unmatchedRows).toBe(0);
+    expect(asManager.costToServe.find((c) => c.business_name === "شناخته")?.revenue).toBe(100);
   });
 
   it("always returns eight weekly buckets, oldest first, even with no activity", () => {

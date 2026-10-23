@@ -128,7 +128,37 @@ export function requireRole(req: NextRequest, roles: Role[]): Guard {
       response: NextResponse.json({ ok: false, error: "دسترسی لازم را ندارید" }, { status: 403 }),
     };
   }
+  const refusal = writeNeedsCompany(req, session);
+  if (refusal) return { ok: false, response: refusal };
   return { ok: true, session };
+}
+
+/** Routes the founder may write to without having picked a company: choosing the company itself, their own
+ *  sign-in security, their own device and preferences. Everything else is company data. */
+const COMPANY_FREE_WRITES = [
+  "/api/admin/acting-org",
+  "/api/admin/second-factor",
+  "/api/admin/impersonate",
+  "/api/notifications",
+  "/api/push",
+  "/api/prefs",
+  "/api/me",
+  "/api/logout",
+];
+
+/** With «همهٔ سازمان‌ها» selected, a platform_owner sees everything but owns nothing: a record created or
+ *  changed then would be filed under the founder's home company without anyone choosing that. Refused with
+ *  the way out, instead. Reads are unaffected, and so is a Login-As session (it is exactly the person
+ *  it impersonates). */
+function writeNeedsCompany(req: NextRequest, session: Session): NextResponse | null {
+  if (session.role !== "platform_owner" || (session.actingOrg ?? null) !== null || session.actorId !== undefined) return null;
+  if (req.method === "GET" || req.method === "HEAD" || req.method === "OPTIONS") return null;
+  const path = new URL(req.url).pathname;
+  if (COMPANY_FREE_WRITES.some((p) => path === p || path.startsWith(`${p}/`))) return null;
+  return NextResponse.json(
+    { ok: false, error: "برای ثبت یا تغییر، اول یک سازمان را انتخاب کنید (صفحهٔ تغییر کاربر ← سازمان فعال)" },
+    { status: 409 },
+  );
 }
 
 /** A platform_owner acting in one company is that company's OWNER for every scope decision below
