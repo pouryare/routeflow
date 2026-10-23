@@ -27,6 +27,9 @@ const BANNED: { re: RegExp; use: string }[] = [
   { re: /\bsqlite_master\b/i, use: "nothing outside lib/database/" },
   { re: /\bIFNULL\(/i, use: "COALESCE()" },
   { re: /\bIS\s+\?/i, use: "IS NOT DISTINCT FROM ? (null-safe equality in both engines)" },
+  { re: /\bROUND\(/, use: "round() from lib/database/dialect (PostgreSQL rounds a double's halves to even)" },
+  { re: /\bUPDATE\s+OR\s+\w+/i, use: "a WHERE that skips the rows that would clash" },
+  { re: /(includes\(|\/)(UNIQUE|CHECK|FOREIGN KEY)\b/, use: "isUniqueViolation() / isCheckViolation() from lib/database/errors" },
 ];
 
 /* The one-shot CRM column migration, which is SQLite's own upgrade path and has no PostgreSQL

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { getDb, DB_PATH } from "@/lib/db";
+import { dialect } from "@/lib/database/dialect";
 import { newestForecastAt } from "./forecast";
 import type { BackupStatus, StatusFacts } from "../systemStatus";
 
@@ -56,6 +57,9 @@ export async function statusFacts(organizationId: number, now: Date = new Date()
       ) ?? 0,
   };
   // Measured after the reads: the database file is opened by the first statement, not before.
-  const dbBytes = fileBytes(DB_PATH) + fileBytes(`${DB_PATH}-wal`);
+  const dbBytes =
+    dialect() === "postgres"
+      ? ((await one<number>("SELECT pg_database_size(current_database()) AS t")) ?? 0)
+      : fileBytes(DB_PATH) + fileBytes(`${DB_PATH}-wal`);
   return { ...facts, dbBytes: dbBytes > 0 ? dbBytes : null };
 }

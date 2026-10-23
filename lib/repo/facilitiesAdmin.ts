@@ -48,12 +48,16 @@ export interface NewFacility {
 /** A new site never takes the default origin; moving it is an explicit choice in the editor. */
 export async function insertFacility(f: NewFacility): Promise<number> {
   const now = new Date().toISOString();
+  // A restore keeps the site's old id; otherwise the column is left out so the database picks
+  // one (PostgreSQL refuses an explicit NULL id where SQLite treats it as "next").
+  const idCol = f.restoreId == null ? "" : "id, ";
+  const idArg = f.restoreId == null ? [] : [f.restoreId];
   const result = await getDb()
     .prepare(
-      `INSERT INTO facilities (id, slug, kind, name, icon_key, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at, organization_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`
+      `INSERT INTO facilities (${idCol}slug, kind, name, icon_key, address, lat, lng, maps_url, notes, is_default_origin, owner_username, group_id, created_at, updated_at, organization_id)
+       VALUES (${idCol ? "?, " : ""}?, ?, ?, ?, ?, ?, ?, ?, ?, 0, NULL, ?, ?, ?, ?)`
     )
-    .run(f.restoreId, f.slug, f.kind, f.name, f.iconKey, f.address, f.lat, f.lng, f.mapsUrl, f.notes, f.groupId, now, now, f.organizationId);
+    .run(...idArg, f.slug, f.kind, f.name, f.iconKey, f.address, f.lat, f.lng, f.mapsUrl, f.notes, f.groupId, now, now, f.organizationId);
   return Number(result.lastInsertRowid);
 }
 

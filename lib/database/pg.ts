@@ -7,7 +7,8 @@
  *   - a camelCase alias (`AS nameFa`, and every later use of it) is quoted, since PostgreSQL
  *     folds unquoted names to lower case and the row would come back as `namefa`;
  *   - an INSERT gets `RETURNING *`, so `lastInsertRowid` means what node:sqlite meant by it;
- *   - bigint and numeric come back as numbers, as node:sqlite returns them, not as strings.
+ *   - bigint and numeric come back as numbers, as node:sqlite returns them, not as strings,
+ *     and a boolean comes back as 1 or 0, since SQLite has no booleans and the code reads those.
  *
  * tx() takes one pooled client for the whole transaction and carries it through
  * AsyncLocalStorage, so a function deep in the call chain that just calls getDb() joins it.
@@ -20,6 +21,7 @@ import type { Db, Row, Statement } from "./client";
 
 pg.types.setTypeParser(20, (v) => Number(v)); // int8: COUNT, SUM of integers, ids
 pg.types.setTypeParser(1700, (v) => Number(v)); // numeric: SUM and AVG of bigint
+pg.types.setTypeParser(16, (v) => (v === "t" ? 1 : 0)); // boolean: `x IS NOT NULL AS flag` reads 1 / 0 as in SQLite
 
 /** `?` outside string literals and quoted names becomes `$n`; camelCase words are quoted. */
 export function toPg(sql: string): string {

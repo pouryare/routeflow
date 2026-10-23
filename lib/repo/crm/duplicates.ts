@@ -147,7 +147,12 @@ export async function mergeBusinesses(session: Session, keepId: number, dropId: 
     await db.prepare("UPDATE cheques SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
     await db.prepare("UPDATE representative_profiles SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
     // Tags are a set: keep one of each, drop the rest of the other record's.
-    await db.prepare("UPDATE OR IGNORE customer_tags SET customer_id = ? WHERE customer_id = ?").run(keepId, dropId);
+    await db
+      .prepare(
+        `UPDATE customer_tags SET customer_id = ?
+          WHERE customer_id = ? AND tag NOT IN (SELECT tag FROM customer_tags WHERE customer_id = ?)`
+      )
+      .run(keepId, dropId, keepId);
     await db.prepare("DELETE FROM customer_tags WHERE customer_id = ?").run(dropId);
     // A churn score is recomputed from the merged history.
     await db.prepare("DELETE FROM churn_scores WHERE customer_id = ?").run(dropId);

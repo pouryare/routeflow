@@ -199,13 +199,14 @@ export async function incomeStatement(
      counting it again here would subtract it twice. */
   const expenseRows = await db
     .prepare(
-      `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa, COALESCE(SUM(e.amount_toman), 0) AS amountToman
+      `SELECT * FROM (SELECT a.id AS accountId, a.code, a.name_fa AS nameFa, COALESCE(SUM(e.amount_toman), 0) AS amountToman
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
         WHERE ${where} AND a.type = 'EXPENSE' AND a.code <> '5101'
-        GROUP BY a.id HAVING amountToman <> 0
-        ORDER BY a.code`
+        GROUP BY a.id) t
+        WHERE amountToman <> 0
+        ORDER BY code`
     )
     .all(...(args as never[])) as unknown as IncomeStatement["expenses"];
 
@@ -269,7 +270,7 @@ export async function balanceSheet(
     }
     return await db
       .prepare(
-        `SELECT a.id AS accountId, a.code, a.name_fa AS nameFa,
+        `SELECT * FROM (SELECT a.id AS accountId, a.code, a.name_fa AS nameFa,
                 COALESCE(SUM(CASE
                   WHEN e.side = CASE a.normal_balance WHEN 'DEBIT' THEN 'D' ELSE 'C' END
                     THEN e.amount_toman
@@ -279,8 +280,9 @@ export async function balanceSheet(
            JOIN journals j ON j.id = e.journal_id
            JOIN accounts a ON a.id = e.account_id
           WHERE e.organization_id = ? AND a.type = ?${dateClause}
-          GROUP BY a.id HAVING amountToman <> 0
-          ORDER BY a.code`
+          GROUP BY a.id) t
+        WHERE amountToman <> 0
+        ORDER BY code`
       )
       .all(...(args as never[])) as unknown as BalanceSheet["assets"];
   };
@@ -373,7 +375,7 @@ export interface AgedPayableRow {
 export async function agedPayables(organizationId: number): Promise<AgedPayableRow[]> {
   return await getDb()
     .prepare(
-      `SELECT s.id AS supplierId, s.name AS supplierName,
+      `SELECT * FROM (SELECT s.id AS supplierId, s.name AS supplierName,
               COALESCE(SUM(CASE WHEN e.side = 'C' THEN e.amount_toman
                                 WHEN e.side = 'D' THEN -e.amount_toman ELSE 0 END), 0)
                 AS balanceToman
@@ -382,7 +384,8 @@ export async function agedPayables(organizationId: number): Promise<AgedPayableR
          JOIN suppliers s ON s.id = e.supplier_id
         WHERE e.organization_id = ? AND a.code = '2101'
         GROUP BY s.id
-       HAVING balanceToman <> 0
+       ) t
+        WHERE balanceToman <> 0
         ORDER BY balanceToman DESC`
     )
     .all(organizationId) as unknown as AgedPayableRow[];
@@ -431,13 +434,14 @@ export async function expensesByCategory(organizationId: number, filter?: { peri
   }
   return await getDb()
     .prepare(
-      `SELECT a.code, a.name_fa AS nameFa,
+      `SELECT * FROM (SELECT a.code, a.name_fa AS nameFa,
               COALESCE(SUM(e.amount_toman), 0) AS amountToman
          FROM ledger_entries e
          JOIN journals j ON j.id = e.journal_id
          JOIN accounts a ON a.id = e.account_id
         WHERE e.organization_id = ? AND a.type = 'EXPENSE' AND a.code <> '5101'${extra}
-        GROUP BY a.id HAVING amountToman <> 0
+        GROUP BY a.id) t
+        WHERE amountToman <> 0
         ORDER BY amountToman DESC`
     )
     .all(...(args as never[]));
@@ -497,9 +501,9 @@ export async function accountLedger(
                JOIN journals j ON j.id = e.journal_id
                JOIN accounts a ON a.id = e.account_id
               WHERE e.organization_id = ? AND e.account_id = ?
-                AND (? IS NULL OR j.period_key < ?)`
+                AND j.period_key < ?`
           )
-          .get(organizationId, accountId, filter.periodKey, filter.periodKey) as { n: number }
+          .get(organizationId, accountId, filter.periodKey) as { n: number }
       ).n)
     : 0;
 
