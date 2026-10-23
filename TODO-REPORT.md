@@ -6,6 +6,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [x] Full-app audit, 41 findings (`docs/archive/AUDIT-2026-10-20.md`), all fixed or decided across PR #24 and the steps that followed
 - [x] Performance pass (PR #17), mobile-first TapFlow rollout (PRs #26, #27), architecture audit steps 1–7 (PRs #43–#46 and later)
 - [x] Sync pull same-millisecond tie fixed (PR #54); parked features F4–F148 written up; roadmap themes and waves; platform decisions in `docs/roadmap.md` section 10
+- [x] Roadmap small fixes, and six more technologies recorded in roadmap 10.8 (import wizard, per-company subdomain, backup fire drill, call detection, photo straightening before OCR, contact picker)
 - [x] Redundant-files clean-up; rules in `CLAUDE.md` (batch-then-merge, look for existing solutions, this report)
 - [x] Quick wins batch (PR #57):
   - [x] Phones apply deletes during sync (tombstones), and the server now writes tombstones for run, stop, facility, location, lead-import and unpromote deletes
@@ -32,6 +33,8 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
 - [ ] Amount in words not yet on cheque entries or the payments list; no rial wording
 - [ ] 38 stale GitHub branches; owner runs `delete-stale-branches.sh`
 - [ ] Founder's second login step off until turned on at `/switch`; confirm the live `SESSION_SECRET` is 32+ characters
+- [ ] Unverified claims in parked features: F51, F56, F57, F67, F69, F71, F73, F75, F97, F102, F113, F147 (`docs/roadmap.md` section 8)
+- [ ] Open decisions: Android distribution route and iPhone support; off-site backup location; row-level security timing; charts library vs custom
 - [ ] Nothing tested from Iran (weather, Telegram, push, map tiles, OSRM, registries)
 - [ ] `tests/playwrightExtract.test.ts` and the smoke suite need Chromium the cloud container lacks
 - [ ] Ratchets (long functions 74, unused exports 221, raw role checks 57) only fall as files are touched
