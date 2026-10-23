@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { Role } from "@/lib/roles";
-import { APP_GROUPS, appTabs, activeGroup, type AppGroupId } from "@/lib/appNav";
+import { APP_GROUPS, appTabs, activeGroup, currentTab, NAV_PARENT, type AppGroupId } from "@/lib/appNav";
 import { pillModel } from "@/components/meridian/HoverPill";
 
 const ROLES: Role[] = [
@@ -246,6 +246,19 @@ describe("the surfaces that join the shell", () => {
     expect(activeGroup("/map", tabs)).toBe("customers");
     expect(activeGroup("/report", tabs)).toBe("reports");
     expect(activeGroup("/sales/orders/12", tabs)).toBe("sales");
+  });
+
+  it("a ledger page sits under «تراز آزمایشی», the tab that opens it", () => {
+    expect(currentTab("/accounting/ledger/7", tabs)?.href).toBe("/accounting/trial-balance");
+    expect(activeGroup("/accounting/ledger/7", tabs)).toBe("accounts");
+  });
+
+  it("every NAV_PARENT names a real tab, and no page that has its own tab", () => {
+    const hrefs = new Set(tabs.map((t) => t.href));
+    for (const [child, parent] of Object.entries(NAV_PARENT)) {
+      expect(hrefs.has(parent), parent).toBe(true);
+      expect(hrefs.has(child), child).toBe(false);
+    }
   });
 
   it("ready mirrors proxy.ts: a salesperson gets neither /report nor /planner", () => {

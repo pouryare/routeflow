@@ -6,6 +6,7 @@ import { useState } from "react";
 import { Icon } from "@/components/meridian/Icon";
 import BottomSheet from "@/components/mobile/BottomSheet";
 import { TAB_ICON, type BottomTabs } from "@/lib/mobileNav";
+import { currentTab } from "@/lib/appNav";
 
 /** The phone's navigation bar: the four places a role goes dozens of times a day, and «بیشتر»
  *  for everything else (grouped the way the desk menu groups it). Phone only -- the desk pill
@@ -18,13 +19,11 @@ export default function BottomNav({ primary, more, account }: BottomTabs) {
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
 
-  const current = primary
-    .filter((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))
-    .sort((a, b) => b.href.length - a.href.length)[0]?.href;
+  const current = currentTab(pathname, primary)?.href;
   /* If the page is one of the «more» destinations, «بیشتر» is the lit item. */
   const inMore =
     !current &&
-    (more.some((g) => g.tabs.some((t) => pathname === t.href || pathname.startsWith(`${t.href}/`))) ||
+    (currentTab(pathname, more.flatMap((g) => g.tabs)) !== undefined ||
       account.some((l) => pathname === l.href || pathname.startsWith(`${l.href}/`)));
 
   return (
