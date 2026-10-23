@@ -519,3 +519,37 @@ Versions and dates were read from the npm registry on that day. Nothing was inst
 | `json-logic-js` (2.0.5, last release July 2024) | F130 stored rule conditions | Option for storing conditions as JSON; check whether the query-builder format is enough before adding it |
 | AG Grid Community (36.2.0) | F131 keyboard-first desk order entry | Spreadsheet-style editing; check right-to-left and Persian digit behaviour first |
 | `web-vitals` (6.2.3), sent to the own server | real-user timings from phones on Iranian networks | Lab tests cannot show these |
+
+### Live updates: where they would be used
+
+Added 2026-10-23 from a review of the code and these docs. The candidates in the last group are inferred, not stated in the entries. Nothing was installed or tested, including from Iran.
+
+**What polls today (current code)**
+
+| Place | Today |
+|---|---|
+| `components/CoverageMap.tsx` | Re-asks for customers every 45 seconds and when the tab becomes visible |
+| `components/NotificationBell.tsx` | Re-asks for the unread count every 60 seconds |
+| `components/LeadImportPanel.tsx` | Polls the job status while a lead import runs |
+| Orders pipeline, runs view, order status panel | Refresh only after the user's own action, so a coworker's change shows only after they act or reload |
+
+**Named in the entries**: F6 (live driver positions and ETA), F125 (wallboard; the entry notes nothing refreshes by itself today), F4 (incoming-call screen pop).
+
+**Inferred candidates**: F38 and F68 (arrival events, rep activity map); F7 (a re-route proposal reaching the dispatcher or driver); F55 and F16 (announcements, owner alerts); F102 and F143 (an approval request reaching a manager, the answer going back); F107 (sign out everywhere closing open tabs); F13 and F105 (a "the server has news, pull now" signal for the offline sync); F30 and F94 (van loading progress visible to the office); F61 and F121 (stock arrived, a backorder can ship); progress of long jobs (exports F34, OCR F1, route optimisation, setup wizard F126).
+
+**What a live-updates server such as Centrifugo adds beyond plain server-sent events**
+- Presence: who is online or looking at the same order (helps F73 and conflicts in offline sync).
+- Catch-up after a gap: a phone that lost signal asks for what it missed, which suits offline-first.
+- Per-company and per-group channels with signed access tokens, which fits serving other companies later.
+- Shared planning boards where two dispatchers see each other's moves.
+- Live dashboard widgets (F16, F146) in place of polling loops.
+- Several transports (WebSocket, SSE and fallbacks), which may help on filtered or unreliable networks.
+- Possibly events read from a Postgres outbox table, so an event is saved in the same transaction as the business write. Unverified: check before relying on it.
+
+**Limits**
+- It reaches only screens that are open. A closed app still needs web push, SMS (Farazsms) or Telegram.
+- It is one more service to run; with several nodes it needs Valkey or NATS behind it, which is the same moment Valkey is added anyway.
+- Writes keep going through the app's API, so money and stock rules stay in one place.
+- Untested from Iran. Per the "look for existing solutions" rule in `CLAUDE.md`, compare it with plain SSE plus Valkey pub/sub and other options before adopting it.
+
+**Recommendation**: start with server-sent events on one server; bring in Centrifugo when more than one app server runs or presence is wanted.
