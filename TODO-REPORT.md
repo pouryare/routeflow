@@ -329,36 +329,27 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 **Not done / gaps**: companies are independent by design, so the "two companies claim the same district" case is not a defect to fix (each company's group holds its own territory). Refactor leftovers and ratchet numbers remain hygiene; `playwrightExtract` needs the 1234 Chromium build.
 **Next steps**: none required; lower the ratchet numbers when touching files.
 
-## SQLite to PostgreSQL migration estimate (2026-10-23, investigation only, no code changed)
+## PostgreSQL move: estimate and platform choices (2026-10-23, docs only, no code changed)
 
 ### Done
-- [x] Measured how deeply SQLite is wired in (see counts in the reply); estimate is roughly 6 to 10 engineer-weeks for a full, safe migration
+- [x] Measured how deeply SQLite is wired in: about 1,665 `prepare`/`exec` calls in 173 files, 93 tables, 15 triggers, 8 migration files, 288 database test files
+- [x] Read the roadmap, future-features and CRM/ERP plan and matched the parked features (F1 to F148) to the technology each needs
+- [x] Recommended: PostgreSQL with PostGIS, `pg_trgm` and row-level security; `pg` + Kysely (not Prisma); plain SQL migrations; a pg-boss worker; object storage; Valkey with the first live feature
+- [x] Explained why Elasticsearch/Meilisearch, Kafka/RabbitMQ, Kubernetes and microservices are left out for now, and the signal that would change each
+- [x] Recorded your answers (data is dummy; server in Iran; one company today, others later; driver count unknown) in `docs/roadmap.md` section 10, `docs/future-features.md` (header, F6, F126, F127) and `docs/crm-erp-plan.md` (decision 12 superseded, new row 15, note in Part 2)
+- [x] Estimate revised to about 4 to 7 engineer-weeks: the data is dummy, so there is no data copy and no old migration history to port
 
 ### Not done / gaps
-- [ ] Nothing migrated. No decision yet on async-everything vs. a sync shim, hosting, or downtime window
-- [ ] Not measured: production data volume, write concurrency, whether a second app instance is wanted
+- [ ] Nothing built or installed; no decision record for the data layer yet
+- [ ] Nothing tested from Iran: weather, Telegram, push services, map tiles, the public OSRM server, npm and container registries (list in `docs/roadmap.md` section 10)
+- [ ] `lib/routing/osrmFetch.ts` still uses the public OSRM demo server and `VROOM_URL` is unset outside production
+- [ ] Open: SMS gateway or messenger for customers and staff, where the off-site backup lives, whether row-level security goes on at once or with the second company
+- [ ] The README still says SQLite; it changes when the code does
+- [ ] Driver count is unknown: sizing uses a formula and rough thresholds, not measurements
 
 ### Next steps
-1. Decide the driver/query layer (`pg` + thin wrapper recommended) and whether Postgres is wanted for scale, multi-instance, or managed backups
-2. Spike: run the schema and one vertical (orders) on Postgres, async
-3. Port the repo layer file by file, then migrations, then tests
-4. Write the one-time data copy and rehearse it on a production backup
-
-## Technology stack for the Postgres move (2026-10-23, investigation only, no code changed)
-
-### Done
-- [x] Read `docs/roadmap.md`, `docs/future-features.md`, `docs/crm-erp-plan.md` and the current routing, jobs and photo code; matched the parked features (F1 to F148) to the technology each needs
-- [x] Recommendation: PostgreSQL with PostGIS, pg_trgm and row-level security; `pg` + Kysely (not Prisma); plain SQL migrations; a pg-boss worker process; S3-compatible object storage; Valkey together with the first real-time feature
-- [x] Revised the earlier estimate: with no live data to keep, the data copy and the old migration history drop out, so the move is smaller than first said
-
-### Not done / gaps
-- [ ] Nothing built or installed; no decision record written
-- [ ] Open inputs: where the server is hosted (decides self-hosted vs managed), SMS and messaging provider, fleet size for GPS pings, whether any current data must be kept
-- [ ] `lib/routing/osrmFetch.ts` still uses the public OSRM demo server and `VROOM_URL` is unset outside production; flagged, not changed
-
-### Next steps
-1. Confirm the assumptions above (hosting, one-database multi-company model, data to keep)
-2. Write a short decision record for the data layer: Postgres, per-transaction context for row-level security, Kysely, SQL migrations
+1. Check the outside services from the Iranian server and from a phone on an Iranian network
+2. Write a short decision record for the data layer: Postgres, per-transaction tenant context, Kysely, SQL migrations
 3. Spike: one baseline schema plus the orders vertical, async, with row-level security on
-4. Add the pg-boss worker, then port the repo layer module by module
+4. Add the pg-boss worker, then port the repo layer module by module; re-seed from the seed scripts
 5. Add object storage, Valkey and the rest only when the wave that needs them starts

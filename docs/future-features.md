@@ -8,6 +8,8 @@ Every item must end in a **confirmation tap flow** (`docs/tap-flow-principles.md
 
 Origin: the 2026-10-20 mobile-first brainstorm. The pieces that are *not* ambitious live in `docs/superpowers/plans/2026-10-20-mobile-first-interaction-patterns.md`.
 
+**Ground facts (2026-10-23), stated by the owner.** The database is moving from SQLite to PostgreSQL. The data in it today is dummy. The production server is in Iran. One company uses the app today and others may later. The number of drivers is unknown and cannot be predicted. The consequences, the proposed platform choices and the list of outside services to check from Iran are in `docs/roadmap.md`, section 10. The entries most affected: F1, F2, F3, F5 and F14 (a hosted foreign model API is unlikely to be available, so processing is on the device or a self-hosted model); F4, F6, F79, F106 and F109 (carrier, SMS gateway and messenger must work from Iran); F10 (domestic banks); F34 and F138 (where the off-site backup lives); F6 and F38 (position volume cannot assume a fleet size); F126 and F127 (one company today).
+
 ---
 
 ## F1. Camera capture (read a document instead of typing it)
@@ -168,6 +170,7 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 2. ETA model: planned arrival from the run plus live offset, or a routing-engine recalculation from the current position?
 3. Which channel do customers actually read? Ask before choosing.
 4. Retention: keep the breadcrumb trail (useful for disputes and `actual_distance_km`) or only the last position?
+5. Volume: the number of drivers is unknown (2026-10-23), so nothing may assume a fleet size. Size by drivers × hours on the road × 3600 ÷ ping interval, keep the pings in a table partitioned by month, and keep raw pings for a limited time (the roadmap proposes 90 days, then a simplified line). Thresholds are in `docs/roadmap.md`, section 10.
 
 **Suggested first slice:** position pings every 30–60 s while a run is `IN_TRANSIT`, a live dot on the existing map, and a manager-only view. Customer messages second.
 
@@ -2512,6 +2515,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Why parked:** tenant creation is the most sensitive operation in the system, because it must create every dependent record consistently (groups, roles, default accounts such as the chart of accounts, facilities, holidays) and never touch another tenant; it is rarely done, so the cost of a wizard is justified only when the vendor onboards customers regularly; failure halfway must roll back completely.
 
+**Status (2026-10-23):** one company uses RouteFlow today, so this stays parked until a second company is signed.
+
 **Open questions**
 1. All in one transaction, with sample data off by default?
 2. What defaults each new organisation starts with (chart of accounts, reason codes, notification types, roles)?
@@ -2531,6 +2536,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 **Already in the app:** every organisation has a `plan` field (default "standard"), but nothing in the code reads it besides creating the row, so it has no effect today. Vendor reads of tenant data are logged. Usage numbers (users, orders, photos) can be counted from existing tables, and photo storage sits on disk under `data/photos`.
 
 **Why parked:** limits must be a commercial decision first; enforcement needs care (a hard stop on orders would hurt a customer more than the missed fee), so warn first; counting must stay cheap and not run on every request.
+
+**Status (2026-10-23):** one company uses RouteFlow today, so there is nothing to limit yet; this stays parked until a second company is signed.
 
 **Open questions**
 1. Which limits: users, customers, orders per month, storage?

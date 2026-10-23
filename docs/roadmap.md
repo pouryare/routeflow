@@ -8,6 +8,8 @@ A prioritised view of every entry in `docs/future-features.md` (F1–F148). Noth
 
 Totals: 46 small, 73 medium, 27 large first slices; 123 entries carry an "Already in the app" note; 2 entries are records of built work, not features.
 
+**Ground facts (2026-10-23).** The database is moving to PostgreSQL, the current data is dummy, the server is in Iran, one company uses the app today (others may later), and the number of drivers is unknown. They are recorded in [section 10](#10-platform-facts-and-decisions-not-features) and affect how several entries are built.
+
 ## Contents
 
 1. [Build these first: small first slices on existing code](#1-build-these-first)
@@ -19,6 +21,7 @@ Totals: 46 small, 73 medium, 27 large first slices; 123 entries carry an "Alread
 7. [Looked like features but already exist](#7-looked-like-features-but-already-exist)
 8. [Claims not yet verified](#8-claims-not-yet-verified)
 9. [Every entry by theme](#9-every-entry-by-theme)
+10. [Platform facts and decisions (not features)](#10-platform-facts-and-decisions-not-features)
 
 ## 1. Build these first
 
@@ -379,3 +382,77 @@ Statements in the entries that I could not confirm from the code. Check them bef
 | F36 | Duplicate customers as a decision deck — built | — |  | — |
 | F37 | Decisions from the mobile-first rollout | — |  | — |
 
+
+## 10. Platform facts and decisions (not features)
+
+Not an F-entry. This records what the owner stated on 2026-10-23 and what follows from it for the entries above. The first table is fact; everything after it is a proposal, meant to be argued with.
+
+### Stated by the owner
+
+| Fact | What it means |
+|---|---|
+| The database moves from SQLite to PostgreSQL. | Decided. It replaces "stay on SQLite" in `docs/crm-erp-plan.md` (Part 0 row 12, Part 2). The condition set there, every query behind `lib/repo`, is met. |
+| The data in the current database is dummy. | Nothing has to be carried over. Postgres starts from one clean baseline schema and is filled from the seed scripts. The eight step-by-step migrations, the table-rebuild code, the boot-time backfills and the real-data migration tests exist to upgrade old SQLite files and are not needed (check each backfill before dropping it); the reference-data seeds (roles, reason codes, notification types, chart of accounts) are. |
+| The production server is in Iran. | Self-host everything and use no paid foreign API or key, the rule already followed for OpenStreetMap, Open-Meteo, OSRM and VROOM. Every outside service must be checked from the server and from a phone on an Iranian network (list below). |
+| One company uses RouteFlow today; other companies may later. | Keep one database with `organization_id` (`docs/crm-erp-plan.md`, decision 1). F126 and F127 stay parked until a second company is signed. |
+| The number of drivers is unknown and cannot be predicted. | No design may assume a fleet size. Size by formula and watch the thresholds below. |
+
+### Proposed platform choices
+
+| Choice | Serves | When |
+|---|---|---|
+| PostgreSQL, self-hosted, with `wal_level = logical`, PostGIS, `pg_trgm`, `btree_gist` and `pg_stat_statements` | everything; geofencing (F38), rep map (F68), mileage (F103), search (F98, F148, F10, F3) | with the move |
+| Row-level security keyed on a per-transaction organisation setting; the same setting feeds one audit trigger | tenant safety now and when a second company arrives; F27, F73, F99, F100, F111 | with the move (`organization_id` already exists on the tenant tables) |
+| `pg` with Kysely (types generated from the database) and plain SQL migration files; not Prisma | everything | with the move |
+| A pg-boss worker process: retries, schedules, jobs enqueued in the same transaction as the write | sweeps, F16, F18, F67, F79, F127, F138 | with the move |
+| Real Postgres in tests, one template database per test file | the database tests | with the move |
+| Backups with point-in-time restore (pgBackRest or WAL-G) and an encrypted off-site copy; self-hosted error tracking and uptime check | F34, F108, F138 | with the move, early |
+| S3-compatible object storage, self-hosted | F1, F17, F26, F34, F147 | first wave that stores files |
+| Chromium print-to-PDF in the worker (Playwright is already a dependency) | F18, F101, F147 | when F147 starts |
+| A message-channel adapter with a consent table and an outbox | F6, F18, F79, F120, F106, F109 | after the channel decision |
+| Valkey and server-sent events | F6, F125, the F4 screen pop; shared rate limits and one-time codes | with the first live feature |
+| Self-hosted OSRM and VROOM and own map tiles | F6, F7, F57, F103 | before live tracking |
+| Wazo | F4 | wave 4 |
+| OCR, speech and language models on the device or a self-hosted server, behind an interface | F1, F2, F3, F5, F14 | wave 4 |
+| A read replica and materialised views for reports | F14, F123, F32, F134 | when reports get heavy |
+
+### Not adding yet, and what would change that
+
+| Not now | Why | Revisit when |
+|---|---|---|
+| Elasticsearch, Meilisearch | Search here is short names, phones, notes and product names, and the Persian letter and digit folding already lives in `lib/persian.ts`. `pg_trgm` on a normalised column does fuzzy matching in SQL. A second search copy has to be kept in sync and does not obey row-level security, so every query would repeat the tenant filter, the kind of leak the 2026-10-22 audit found about twenty times. | Search over the real row counts stays slower than about 150 ms after indexing, or instant typo-tolerant search across many entity types with facets is wanted. Try Meilisearch first and test its Persian handling. |
+| Kafka, RabbitMQ | A broker is a second system whose messages can disagree with the database (an order saved with no message, or the reverse). pg-boss queues the job in the same transaction as the write. Volumes are far below what a Postgres queue handles: orders are hundreds per day, and GPS pings are a few dozen inserts per second even with a thousand drivers. Kafka also needs a cluster to run, and container images are hard to pull from Iran. | Several independent services must consume the same event stream, or a Postgres queue shows contention at sustained thousands of jobs per second. NATS JetStream or Valkey Streams are the lighter step before Kafka. |
+| Kubernetes | One Next.js process behind Caddy, one Postgres, one worker and a few helpers fit on one or two machines under systemd or docker compose. Kubernetes adds a control plane, networking, storage and upgrades to run yourself, and the big clouds' managed offerings are not an option from Iran. More companies do not need it: they share one deployment through `organization_id`. | More than three or four app nodes, autoscaling, a dedicated operations person, or a customer who needs its own isolated deployment. |
+| Microservices | Orders, ledger postings, stock reservations and commission must commit together; splitting them turns one transaction into distributed sagas. `lib/repo` and the architecture checks already give module boundaries inside one deployable. The worker, OSRM, VROOM, the Telegram poller and the Wazo listener are extra processes of the same codebase or stateless helpers, not services with their own databases. | Separate teams, or a part that needs a different runtime or independent scaling (for example a Python OCR helper with a narrow API). |
+
+### Driver count unknown: how to size
+
+Position pings per day = drivers × hours on the road × 3600 ÷ ping interval in seconds. At a 30 second interval and 8 hours that is 960 pings per driver per day, about 350,000 per driver per year.
+
+| Drivers | Pings per day | Inserts per second while all are on the road |
+|---|---|---|
+| 100 | 96,000 | about 3 |
+| 1,000 | 960,000 | about 33 |
+| 10,000 | 9,600,000 | about 333 |
+
+A rough ladder, from judgement and not from measurement:
+
+- **Up to a few hundred drivers:** one table partitioned by month, batch inserts, one "last position" row per driver. Keep raw pings 90 days, then keep a simplified line (PostGIS `ST_Simplify`) and drop the rest.
+- **Around a thousand:** move "last position" to Valkey, write pings in batches, read from a replica.
+- **Several thousand:** revisit with real numbers. This is where a dedicated time-series or streaming store becomes a topic.
+
+### Outside services to check from Iran
+
+Nothing here has been tested from Iran. Check each from the server and, where a phone calls it, from a phone on an Iranian mobile network.
+
+| Called by | Service | Used for |
+|---|---|---|
+| Server | `api.open-meteo.com`, `air-quality-api.open-meteo.com` | weather and air quality (`lib/weather`) |
+| Server | `api.telegram.org` | staff notifications and the link worker (`lib/telegram.ts`, `scripts/telegram-poll.ts`); Telegram has been filtered in Iran |
+| Server | `nominatim.openstreetmap.org` | resolving pasted map links (`lib/resolveMapsLink.ts`) |
+| Server | push services of Google, Mozilla, Apple and Microsoft (`lib/pushEndpoint.ts`) | web push |
+| Server and phones | `router.project-osrm.org` | route matrix and corridors; the public demo server, not meant for production load |
+| Phones | OpenStreetMap, Carto, Stadia, MapTiler and Esri tile hosts (`next.config.ts`) | map backgrounds |
+| Build and deploy | npm registry, container registries, GitHub releases | installing and updating; often restricted from Iranian servers, so check before choosing a tool that ships only as a container image |
+
+If one fails: self-hosted OSRM and VROOM and own map tiles move earlier in the order; an Iranian SMS gateway or a domestic messenger (for example Bale or Eitaa, to be evaluated) takes over staff messages from Telegram. Most hosted foreign model APIs are not available from Iran, so F1, F2, F3, F5 and F14 plan for on-device or self-hosted models.
