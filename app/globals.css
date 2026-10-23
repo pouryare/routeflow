@@ -2052,22 +2052,16 @@ body {
 }
 
 .meridian .pm { position: relative; }
-.meridian .pm__trigger {
-  border: 0; background: transparent; padding: 2px; cursor: pointer;
-  /* inline-flex, not grid: a grid places EACH child in its own row, which is how the person
-     glyph ended up ABOVE the photograph instead of being replaced by it. */
-  border-radius: 999px; display: inline-flex; align-items: center; justify-content: center;
-  transition: transform var(--dur-base, 160ms) var(--ease);
-}
-.meridian .pm__trigger:hover { transform: scale(1.05); }
-.meridian .pm__trigger:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.meridian .pm__panel {
-  position: absolute; inset-inline-end: 0; top: calc(100% + 8px); z-index: 50;
-  width: 15rem; max-width: calc(100vw - 2rem);
-  background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r-lg); box-shadow: var(--sh-3);
-  padding: 12px; display: flex; flex-direction: column; gap: 4px;
-}
+/* The avatar is the trigger: a 44 px HeroUI button holding a 34 px picture. The panel is a
+   HeroUI Popover drawn in `.meridian`, so it is placed by React Aria, not by these rules. */
+.meridian .pm__trigger.button { width: 44px; min-width: 44px; height: 44px; padding: 0; border-radius: 999px; }
+.meridian .pm__panel { width: 15rem; max-width: calc(100vw - 2rem); direction: rtl; }
+.meridian .pm__dialog { padding: 12px; display: flex; flex-direction: column; gap: 4px; }
+.meridian .pm__link { min-height: 44px; }
+/* The bell's panel (NotificationBell.tsx): a HeroUI Popover around NotificationCenter, which
+   sets its own width and scroll. */
+.meridian .notif-pop { overflow: hidden; direction: rtl; }
+.meridian .notif-pop__dialog { padding: 0; }
 .meridian .pm__who { display: flex; align-items: center; gap: 10px; padding: 4px 4px 8px; }
 .meridian .pm__name { font-size: 13.5px; font-weight: 600; color: var(--ink); }
 .meridian .pm__role { font-size: 11.5px; color: var(--muted); margin-top: -1px; }

@@ -62,6 +62,8 @@ export const HERO_OVERLAYS = ["Modal", "AlertDialog", "Popover", "Dropdown", "To
  *  A new importer fails the check until it is added here with its reason (section 8). */
 export const HERO_OVERLAY_REASONS = {
   "components/meridian/CardHelp.tsx": "a few lines of help anchored to the (i) that asked for them; a sheet would cover the card it explains, and a Tooltip never opens on touch",
+  "components/meridian/ProfileMenu.tsx": "the account and appearance panel hangs from the avatar in the top bar on every width; the phone's own way to these links is the «بیشتر» sheet",
+  "components/NotificationBell.tsx": "the feed hangs from the bell it belongs to, kept on screen by React Aria; a sheet from the top bar would open at the opposite edge from the tap",
 };
 
 export function heroOverlayImporters() {
