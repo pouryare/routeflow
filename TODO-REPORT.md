@@ -388,3 +388,16 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Say which suggestions to record in the docs
 2. Decide Capacitor shell versus staying a PWA before F6 starts
 3. Check the outside services from the Iranian server
+
+## Decisions from the owner and rules/reports/screens libraries (2026-10-23, docs only, no code changed)
+
+### Done
+- [x] Capacitor Android shell recorded as decided (roadmap section 10 and notes on F6, F38, F103)
+
+### Not done / gaps
+- [ ] Android distribution route (domestic store or direct file) and iPhone support are open
+
+### Next steps
+1. Check the outside services from the Iranian server
+2. Decide the Android distribution route (domestic store or direct file) before F6 starts
+3. When the SMS slice starts, decide between the official `farazsms` client and a thin fetch wrapper

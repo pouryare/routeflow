@@ -396,6 +396,7 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | The production server is in Iran. | Self-host everything and use no paid foreign API or key, the rule already followed for OpenStreetMap, Open-Meteo, OSRM and VROOM. Every outside service must be checked from the server and from a phone on an Iranian network (list below). |
 | One company uses RouteFlow today; other companies may later. | Keep one database with `organization_id` (`docs/crm-erp-plan.md`, decision 1). F126 and F127 stay parked until a second company is signed. |
 | The number of drivers is unknown and cannot be predicted. | No design may assume a fleet size. Size by formula and watch the thresholds below. |
+| RouteFlow gets an Android app: the web app wrapped in a Capacitor shell. | Decided. Needed because a PWA gets background location only while open (F6, F38, F103); also gives native barcode scanning and Bluetooth printing. Distribution route (domestic Android store or a direct file) is still open. |
 
 ### Proposed platform choices
 
@@ -412,6 +413,7 @@ Not an F-entry. This records what the owner stated on 2026-10-23 and what follow
 | A message-channel adapter with a consent table and an outbox | F6, F18, F79, F120, F106, F109 | after the channel decision |
 | Valkey and server-sent events | F6, F125, the F4 screen pop; shared rate limits and one-time codes | with the first live feature |
 | Self-hosted OSRM and VROOM and own map tiles | F6, F7, F57, F103 | before live tracking |
+| A Capacitor Android shell with a background-geolocation plugin (`@capacitor-community/background-geolocation`, 1.3.1, updated Oct 2026; untested) | F6, F38, F103, F1, F30 | before F6 starts |
 | Wazo | F4 | wave 4 |
 | OCR, speech and language models on the device or a self-hosted server, behind an interface | F1, F2, F3, F5, F14 | wave 4 |
 | A read replica and materialised views for reports | F14, F123, F32, F134 | when reports get heavy |

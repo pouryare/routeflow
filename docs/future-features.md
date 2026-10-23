@@ -167,6 +167,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **What:** drivers' positions on the map in real time, and an automatic "your delivery arrives in about 15 minutes" message (SMS, Telegram or WhatsApp) to the customer.
 
+**Decision (2026-10-23):** the Android app is the web app wrapped in a Capacitor shell, which lifts the foreground-only limit on location below. Distribution (domestic store or direct file) is still open.
+
 **Why parked:** continuous GPS drains batteries and needs background location, which a PWA gets only while open; message channels need provider accounts and customer consent; sending customer phone numbers to a messaging provider is a privacy decision.
 
 **Open questions**
@@ -759,6 +761,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F38. Automatic arrival and departure (geofencing)
 
 **What:** detect when a driver arrives at and leaves a customer's location and record the times, giving stop duration and on-time data without a tap.
+
+**Decision (2026-10-23):** background location comes from the Capacitor Android shell; see F6.
 
 **Already in the app:** `lib/arrival.ts` (`stopAtDoor`) prompts the driver when they are within 150 m of a pending stop (`ARRIVAL_RADIUS_KM`), used in `components/driver/DriverRun.tsx`. `deliveries.actual_arrival` is a server timestamp set when the stop action is received, not when the driver physically arrived, and there is no departure time or dwell time.
 
@@ -2058,6 +2062,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 ## F103. Rep mileage log
 
 **What:** distance driven by each salesperson on visits, estimated from the locations of the customers visited that day (or entered at month end), for reimbursement and for comparing effort across territories.
+
+**Decision (2026-10-23):** background location comes from the Capacitor Android shell; see F6.
 
 **Already in the app:** visits and calls are logged against customers, customers and leads have coordinates, a straight-line distance helper exists (`lib/geo.ts`), and routing has road-distance support for delivery runs. Delivery runs record planned and actual distance (`delivery_runs.actual_distance_km`). Salespeople's own movement is not stored anywhere, so there is no log to total.
 
