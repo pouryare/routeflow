@@ -149,7 +149,7 @@ describe("where each destination lives", () => {
   });
 
   it("every read-only overview is a report, the forecast included", () => {
-    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast"].sort());
+    expect(hrefsIn("reports")).toEqual(["/report", "/sales", "/sales/dashboard", "/sales/forecast", "/sales/reasons"].sort());
   });
 
   it("academy is team material, not administration", () => {
@@ -157,7 +157,7 @@ describe("where each destination lives", () => {
   });
 
   it("organisation settings hold users, groups and our own sites", () => {
-    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/groups", "/sales/admin/users"].sort());
+    expect(hrefsIn("org")).toEqual(["/facilities", "/sales/admin/groups", "/sales/admin/logins", "/sales/admin/status", "/sales/admin/users"].sort());
   });
 
   it("names say what is on the page: my tasks, the sales summary, production batches", () => {

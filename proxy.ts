@@ -21,6 +21,17 @@ function loginUrlFor(req: NextRequest, pathname: string): URL {
   return url;
 }
 
+/** Paths a session that must change its password may still reach (F35). A file with an
+ *  extension is a static asset (icons, fonts), which carries nothing behind the gate. */
+function isPasswordChangePath(pathname: string): boolean {
+  return (
+    pathname === "/password" ||
+    pathname === "/api/me/password" ||
+    pathname === "/api/logout" ||
+    /\.[a-z0-9]+$/i.test(pathname)
+  );
+}
+
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -58,6 +69,14 @@ export function proxy(req: NextRequest) {
     // refused, and the holder has no way to tell a dead session from a broken app.
     res.cookies.set(COOKIE_NAME, "", { path: "/", maxAge: 0 });
     return res;
+  }
+
+  /* F35: a password an owner chose is a one-time key. Until it is replaced, the only places open
+     are the form that replaces it, its route, and signing out; everything else is sent there. */
+  if (claims.pw === 1 && !isPasswordChangePath(pathname)) {
+    return isApi
+      ? NextResponse.json({ ok: false, error: "ابتدا رمز عبور تازه‌ای انتخاب کنید" }, { status: 403 })
+      : NextResponse.redirect(new URL("/password", req.url));
   }
 
   const deny = (to: string) =>
@@ -124,6 +143,11 @@ export function proxy(req: NextRequest) {
   // but somebody else's -- they get their own figures at /sales/me instead.
   const isGroupWide = pathname.startsWith("/analytics") || pathname.startsWith("/report");
   if (isGroupWide && claims.role === "phone_sales") return deny("/sales");
+
+  // The reason report counts a whole group's failures and cancellations; a manager/owner view.
+  if (pathname.startsWith("/sales/reasons") && !OWNER_ROLES.includes(claims.role) && claims.role !== "group_manager") {
+    return deny("/sales");
+  }
 
   // The cheque board and its API are a manager/owner tool -- a salesperson records a
   // cheque as a payment via /sales/payments, but does not run the deposit/bounce

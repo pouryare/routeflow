@@ -10,6 +10,7 @@ import { applyTerritoryOrdersCustomers } from "./migrations/05-territory-orders-
 import { applyNotificationsRolesSeeds } from "./migrations/06-notifications-roles-seeds";
 import { applyLedgersAndLateColumns } from "./migrations/07-ledgers-and-late-columns";
 import { applyFounderSecondFactor } from "./migrations/08-founder-second-factor";
+import { applyQuickWins } from "./migrations/09-quick-wins";
 
 export function runMigrations(db: DatabaseSync): void {
   applyEarlyColumns(db);
@@ -20,4 +21,5 @@ export function runMigrations(db: DatabaseSync): void {
   applyNotificationsRolesSeeds(db);
   applyLedgersAndLateColumns(db);
   applyFounderSecondFactor(db);
+  applyQuickWins(db);
 }

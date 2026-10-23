@@ -2417,6 +2417,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 
 **Library (2026-10-23):** `@persian-tools/persian-tools` has a number-to-words function; test it on real toman amounts before writing one by hand.
 
+**Built (2026-10-23), first slice:** the owner chose our own function over the library. `lib/amountWords.ts` (`numberToWords`, `tomanInWords`, tested in `tests/amount-words.test.ts`) writes whole amounts in the cheque style («یک هزار», groups joined with «و»). The delivery receipt prints the total in words under the figure (wrapped to the 384-dot width), and the payment confirmation shows the amount in words. Not yet: cheque entries, the payments list, and the rial wording.
+
 **Already in the app:** receipts are drawn on a 384-dot-wide canvas that both the Bluetooth thermal printer (ESC/POS) and the PDF share, with right-aligned text, Persian-aware line breaking and measurement (`lib/receiptLayout.ts`, `lib/deliveryReceipt.ts`). Amounts are whole toman with Persian digits (`lib/money.ts`, `lib/format.ts`). I found no number-to-words function anywhere.
 
 **Why parked:** Persian number words have grammar details (the connecting "و", the unit words for thousands, millions and billions, the toman versus rial wording); a wrong word is worse than none on a money document; the width of a long amount in words needs wrapping on the narrow receipt; wording must switch with the F-series toman and rial display setting if that is built.
@@ -2902,6 +2904,8 @@ A manager's deck on `/sales/today`: each pair sharing a phone or Instagram page 
 4. Alert: a Telegram message to the owner if a backup or copy failed or is older than 36 hours (see F108).
 
 **Suggested first slice:** after the local backup, run an integrity check on the new snapshot and write a status file with the time and result that the status page (F108) can read; add an optional step that copies the encrypted files to a configured destination. Restore rehearsal documented.
+
+**Built (2026-10-23, first half of the slice):** `scripts/backup.mjs` now checks each snapshot (`PRAGMA integrity_check` on the copy, `tar -t` on the photos) and writes `backup-status.json` in the backup folder, which `/sales/admin/status` reads; a failure still writes the file and exits non-zero. While doing this the script was found to be broken: it called `db.serialize()`, which `node:sqlite` does not have, so every run threw before writing anything. It now uses `VACUUM INTO`. Check the server's backup folder: if it holds no recent `routeflow-*.db`, there were no database backups. Still open: the off-site copy, its encryption and its destination (owner decision).
 
 **Prerequisites:** F108 for the status display; F34 for restore tooling.
 

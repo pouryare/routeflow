@@ -52,6 +52,12 @@ CREATE INDEX idx_lead_list_items_list ON lead_list_items(list_id, sort_order);
 -- index idx_lead_run_stops_run on lead_run_stops
 CREATE INDEX idx_lead_run_stops_run ON lead_run_stops(run_id, sort_order);
 
+-- index idx_login_events_org on login_events
+CREATE INDEX idx_login_events_org ON login_events(organization_id, created_at);
+
+-- index idx_login_events_user on login_events
+CREATE INDEX idx_login_events_user ON login_events(user_id, created_at);
+
 -- index idx_manager_commission_payments_person on manager_commission_payments
 CREATE INDEX idx_manager_commission_payments_person ON manager_commission_payments(manager_user_id, paid_on);
 
@@ -311,7 +317,7 @@ CREATE TABLE accounts ( id INTEGER PRIMARY KEY AUTOINCREMENT, code TEXT NOT NULL
 CREATE TABLE activities ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), customer_id INTEGER NOT NULL REFERENCES customers(id), user_id INTEGER REFERENCES users(id), contact_id INTEGER REFERENCES contacts(id), type TEXT NOT NULL, outcome_code TEXT, attempt_no INTEGER, phone_used TEXT, note TEXT, answers_json TEXT, contact_status_to TEXT, stage_to TEXT, verification_to TEXT, signal TEXT, attempt INTEGER NOT NULL DEFAULT 0, miss INTEGER NOT NULL DEFAULT 0, talked INTEGER NOT NULL DEFAULT 0, completed_task_id INTEGER, next_task_id INTEGER, corrects_activity_id INTEGER REFERENCES activities(id), client_uuid TEXT, occurred_at TEXT NOT NULL, created_at TEXT NOT NULL );
 
 -- table activity_log
-CREATE TABLE activity_log ( id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location')), entity_id INTEGER NOT NULL, event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned')), old_value TEXT, new_value TEXT, note TEXT, changed_by TEXT, created_at TEXT NOT NULL , changed_by_user_id INTEGER REFERENCES users(id), impersonated_by INTEGER REFERENCES users(id));
+CREATE TABLE "activity_log" ( id INTEGER PRIMARY KEY AUTOINCREMENT, entity_type TEXT NOT NULL CHECK (entity_type IN ('district', 'customer', 'facility', 'lead_location', 'product')), entity_id INTEGER NOT NULL, event_type TEXT NOT NULL CHECK (event_type IN ('status_change', 'note', 'assigned', 'created', 'updated')), old_value TEXT, new_value TEXT, note TEXT, changed_by TEXT, created_at TEXT NOT NULL , changed_by_user_id INTEGER REFERENCES users(id), impersonated_by INTEGER REFERENCES users(id));
 
 -- table alerts
 CREATE TABLE alerts ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), severity TEXT NOT NULL CHECK (severity IN ('critical', 'warning', 'opportunity')), category TEXT NOT NULL, title TEXT NOT NULL, entity_type TEXT, entity_id INTEGER, group_id INTEGER REFERENCES groups(id), created_at TEXT NOT NULL, resolved_at TEXT, resolved_by INTEGER REFERENCES users(id) );
@@ -441,6 +447,9 @@ CREATE TABLE ledger_entries ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization
 
 -- table lesson_progress
 CREATE TABLE lesson_progress ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER NOT NULL REFERENCES users(id), lesson_slug TEXT NOT NULL, completed_at TEXT NOT NULL, UNIQUE (organization_id, user_id, lesson_slug) );
+
+-- table login_events
+CREATE TABLE login_events ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, result TEXT NOT NULL CHECK (result IN ('success', 'bad_password', 'inactive', 'bad_code')), ip TEXT, user_agent TEXT, created_at TEXT NOT NULL );
 
 -- table manager_commission_overrides
 CREATE TABLE manager_commission_overrides ( id INTEGER PRIMARY KEY AUTOINCREMENT, manager_user_id INTEGER REFERENCES users(id), override_pct REAL NOT NULL, valid_from TEXT NOT NULL, created_by INTEGER REFERENCES users(id), created_at TEXT NOT NULL , organization_id INTEGER REFERENCES organizations(id));
@@ -587,7 +596,7 @@ CREATE TABLE user_recovery_codes ( id INTEGER PRIMARY KEY AUTOINCREMENT, user_id
 CREATE TABLE user_roles ( user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE, role TEXT NOT NULL, PRIMARY KEY (user_id, role) );
 
 -- table users
-CREATE TABLE users ( id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, display_name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'group_manager' CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'phone_sales', 'field_rep', 'delivery_driver', 'salesperson', 'driver')), group_id INTEGER REFERENCES groups(id), organization_id INTEGER REFERENCES organizations(id), staff_code TEXT, phone TEXT, active INTEGER NOT NULL DEFAULT 1, token_version INTEGER NOT NULL DEFAULT 0, location_consent_at TEXT, created_at TEXT NOT NULL , telegram_chat_id TEXT, telegram_link_nonce TEXT, avatar_url TEXT, avatar_stem TEXT, prefs_json TEXT, totp_secret TEXT, totp_enabled_at TEXT, totp_last_step INTEGER);
+CREATE TABLE users ( id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE NOT NULL, password_hash TEXT NOT NULL, display_name TEXT NOT NULL, role TEXT NOT NULL DEFAULT 'group_manager' CHECK (role IN ('platform_owner', 'owner', 'group_manager', 'rep_manager', 'phone_sales', 'field_rep', 'delivery_driver', 'salesperson', 'driver')), group_id INTEGER REFERENCES groups(id), organization_id INTEGER REFERENCES organizations(id), staff_code TEXT, phone TEXT, active INTEGER NOT NULL DEFAULT 1, token_version INTEGER NOT NULL DEFAULT 0, location_consent_at TEXT, created_at TEXT NOT NULL , telegram_chat_id TEXT, telegram_link_nonce TEXT, avatar_url TEXT, avatar_stem TEXT, prefs_json TEXT, totp_secret TEXT, totp_enabled_at TEXT, totp_last_step INTEGER, must_change_password INTEGER NOT NULL DEFAULT 0);
 
 -- table vehicles
 CREATE TABLE vehicles ( id INTEGER PRIMARY KEY AUTOINCREMENT, organization_id INTEGER NOT NULL REFERENCES organizations(id), plate TEXT, name TEXT NOT NULL, driver_default_id INTEGER REFERENCES users(id), max_weight_kg REAL, max_volume_m3 REAL, max_stops INTEGER, has_refrigeration INTEGER NOT NULL DEFAULT 0, cost_per_km_toman INTEGER NOT NULL DEFAULT 0, active INTEGER NOT NULL DEFAULT 1, created_at TEXT NOT NULL, updated_at TEXT NOT NULL, facility_id INTEGER REFERENCES facilities(id), UNIQUE (organization_id, plate) );

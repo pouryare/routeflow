@@ -4,6 +4,7 @@
 
 import { getDb, type LocationResolution, type SavedLocationRow } from "@/lib/db";
 import { orgClause } from "@/lib/orgScope";
+import { tombstone } from "./tombstones";
 
 type Sql = { sql: string; params: (string | number)[] };
 
@@ -79,5 +80,11 @@ export function updateLocation(id: number, organizationId: number | null, sets: 
 
 export function deleteLocation(id: number, organizationId: number | null): boolean {
   const org = orgClause("organization_id", organizationId);
-  return getDb().prepare(`DELETE FROM saved_locations WHERE id = ?${org.sql}`).run(id, ...org.params).changes > 0;
+  const db = getDb();
+  const row = db.prepare(`SELECT organization_id FROM saved_locations WHERE id = ?${org.sql}`).get(id, ...org.params) as
+    | { organization_id: number | null }
+    | undefined;
+  const gone = db.prepare(`DELETE FROM saved_locations WHERE id = ?${org.sql}`).run(id, ...org.params).changes > 0;
+  if (gone && row?.organization_id != null) tombstone(row.organization_id, "saved_locations", id, db);
+  return gone;
 }

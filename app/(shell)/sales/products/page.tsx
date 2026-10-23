@@ -1,4 +1,4 @@
-import { tehranTodayIso, faJalaliDate } from "@/lib/jalali";
+import { tehranTodayIso, faJalaliDate, faJalaliDateTime } from "@/lib/jalali";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { COOKIE_NAME } from "@/lib/auth";
@@ -11,6 +11,7 @@ import ProductsView from "@/components/meridian/ProductsView";
 import SplineChart from "@/components/charts/SplineChart";
 import PageHeader from "@/components/meridian/PageHeader";
 import { isVanRole, isOwner } from "@/lib/roles";
+import { recentProductChanges } from "@/lib/repo/productLog";
 
 
 export const dynamic = "force-dynamic";
@@ -58,6 +59,8 @@ export default async function ProductsPage() {
 
   // The owner's costing inputs are read only for an owner: cost never reaches anyone else.
   const costing = isOwner(session.role) ? ownerCostingFor(session, products, today) : null;
+  // F99: who added a product or packaging, or moved a reorder line. Owner-only, like the editor.
+  const changes = isOwner(session.role) ? recentProductChanges(session) : [];
 
   return (
     <>
@@ -176,6 +179,37 @@ export default async function ProductsPage() {
               که یک بسته‌بندی حداقل دو قیمت داشته باشد.
             </p>
           )}
+        </section>
+      )}
+
+      {changes.length > 0 && (
+        <section className="card p-[var(--space-4)]">
+          <h2 className="sechead__title">تغییرات کاتالوگ</h2>
+          <p className="mt-[var(--space-1)] text-[length:var(--text-xs)] text-[var(--text-muted)]">
+            کالای تازه، بسته‌بندی تازه و تغییر آستانه‌های انبار، با نام کسی که ثبت کرد. تغییر قیمت در تاریخچهٔ قیمت‌ها آمده است.
+          </p>
+          <ul className="mt-[var(--space-3)] flex list-none flex-col gap-[var(--space-2)] p-0 text-[length:var(--text-sm)]">
+            {changes.map((c) => (
+              <li
+                key={c.id}
+                className="flex flex-wrap items-baseline justify-between gap-[var(--space-2)] border-b border-[var(--border)] pb-[var(--space-2)]"
+              >
+                <span className="text-[var(--text)]">
+                  {c.product_name} · {c.note}
+                  {c.new_value && (
+                    <span className="text-[var(--text-muted)]">
+                      {" "}
+                      {c.old_value ? `از «${c.old_value}» به «${c.new_value}»` : `«${c.new_value}»`}
+                    </span>
+                  )}
+                </span>
+                <span className="tabular-nums text-[var(--text-muted)]">
+                  {faJalaliDateTime(c.created_at)}
+                  {c.changed_by && ` · ${c.changed_by}`}
+                </span>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
     </div>    </>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireRole } from "@/lib/session";
 import { addProduct, catalogueFor } from "@/lib/repo/salesWrites";
 import { MANAGE_ROLES, OWNER_ROLES } from "@/lib/roles";
+import { logProductChange } from "@/lib/repo/productLog";
 
 /** The catalogue is company-wide, so there is no group filter here -- but the role
  *  split is real and worth stating: everyone who sells needs to read a price, and only
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
       sku: typeof body?.sku === "string" ? body.sku : null,
       notes: typeof body?.notes === "string" ? body.notes : null,
     });
+    logProductChange(id, "created", { new: name }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     const message =

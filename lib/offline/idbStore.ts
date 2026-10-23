@@ -119,6 +119,20 @@ export class IdbOutboxStore implements OutboxStore {
     }
   }
 
+  /** Drop snapshot rows the server deleted (keys from `snapshotDeletes`). */
+  async deleteSnapshot(keys: readonly (readonly [string, number])[]): Promise<void> {
+    if (keys.length === 0) return;
+    const db = await this.db();
+    if (!db) return;
+    try {
+      for (const [table, id] of keys) {
+        await tx(db, SNAPSHOT, "readwrite", (s) => s.delete([table, id]));
+      }
+    } catch {
+      this.memoryOnly = true;
+    }
+  }
+
   async readSnapshot(table: string): Promise<Record<string, unknown>[]> {
     const db = await this.db();
     if (!db) return [];

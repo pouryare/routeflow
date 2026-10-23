@@ -99,6 +99,8 @@ describe("applyFlow", () => {
     applyFlow(A, { customerId: c, entry: "call", channel: "call", nowIso: NOW, answers: [{ step: "reach", option: "no_answer" }, { step: "noans", option: "t10" }] });
     expect(row(c).owner_user_id).toBe(repA);
     expect(db.prepare("SELECT COUNT(*) n FROM activities WHERE customer_id = ? AND type = 'owner_change'").get(c)).toEqual({ n: 1 });
+    const { note } = db.prepare("SELECT note FROM activities WHERE customer_id = ? AND type = 'owner_change'").get(c) as { note: string };
+    expect(note).toContain("از «بدون مسئول» به «");
   });
 
   it("404s another rep's business and 400s an unfinished flow", () => {

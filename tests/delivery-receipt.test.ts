@@ -17,6 +17,7 @@ describe("buildReceipt", () => {
     expect(r.lines).toHaveLength(1);
     expect(r.lines[0].name).toBe("شیر · کارتن");
     expect(r.totalLabel).toContain("۶۰۰٬۰۰۰");
+    expect(r.totalWords).toBe("ششصد هزار تومان");
     expect(r.dueLabel).toContain("۲۰۰٬۰۰۰");
   });
   it("has no amount due when the customer paid in full", () => {

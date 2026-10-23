@@ -14,6 +14,7 @@ import { useMyPosition } from "@/components/MyPositionProvider";
 import { stopAtDoor } from "@/lib/arrival";
 import ReceiptPrinter from "@/components/sales/ReceiptPrinter";
 import type { ReceiptData } from "@/lib/receiptLayout";
+import PriorityTag from "@/components/sales/PriorityTag";
 
 /** Online status as an external store rather than effect state.
  *
@@ -240,8 +241,9 @@ function StopCard({
       >
         <Icon name="check" size="md" />
         <span className="min-w-0">
-          <span className="block truncate text-[length:var(--text-base)] text-[var(--text)]">
+          <span className="flex items-center gap-[var(--space-2)] truncate text-[length:var(--text-base)] text-[var(--text)]">
             {stop.customer_name}
+            <PriorityTag priority={stop.priority} />
           </span>
           <span className="mt-[var(--space-1)] block text-[length:var(--text-xs)] text-[var(--text-muted)]">
             {stop.address ?? "بدون آدرس"}

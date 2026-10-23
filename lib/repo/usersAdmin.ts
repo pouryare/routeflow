@@ -52,11 +52,22 @@ export interface NewUser {
 export function insertUser(u: NewUser): number {
   const result = getDb()
     .prepare(
-      `INSERT INTO users (username, password_hash, display_name, role, group_id, staff_code, phone, active, token_version, created_at, organization_id)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?)`
+      `INSERT INTO users (username, password_hash, display_name, role, group_id, staff_code, phone, active, token_version, created_at, organization_id, must_change_password)
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1, 0, ?, ?, 1)`
     )
     .run(u.username, u.passwordHash, u.displayName, u.role, u.groupId, u.staffCode, u.phone, new Date().toISOString(), u.organizationId);
   return Number(result.lastInsertRowid);
+}
+
+/** A person replaced their own password (F35): store it, clear the "must change" mark, and end
+ *  every other session. Returns the new token version for the cookie this device keeps. */
+export function setOwnPassword(id: number, passwordHash: string): number {
+  const row = getDb()
+    .prepare(
+      "UPDATE users SET password_hash = ?, must_change_password = 0, token_version = token_version + 1 WHERE id = ? RETURNING token_version"
+    )
+    .get(passwordHash, id) as { token_version: number } | undefined;
+  return row?.token_version ?? 0;
 }
 
 /** `sets` are fixed `column = ?` fragments from the route, never request text. */

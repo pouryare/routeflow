@@ -66,14 +66,14 @@ export type EntityType = "district" | "customer";
  *  quietly loosen every other entity reference in the schema. */
 export type PlanEntityType = EntityType | "facility" | "lead" | "lead_location";
 /** What activity_log accepts. Same widening as PlanEntityType, for the same reason. */
-export type LoggableEntityType = PlanEntityType;
+export type LoggableEntityType = PlanEntityType | "product";
 export const PLAN_ENTITY_TYPES: PlanEntityType[] = ["district", "customer", "facility", "lead", "lead_location"];
 
 export interface ActivityEntry {
   id: number;
   entity_type: LoggableEntityType;
   entity_id: number;
-  event_type: "status_change" | "note" | "assigned";
+  event_type: "status_change" | "note" | "assigned" | "created" | "updated";
   old_value: string | null;
   new_value: string | null;
   note: string | null;
@@ -188,6 +188,9 @@ export interface UserRow {
   /** The file stem behind that route. Separate from avatar_url so a `?key=` preset can be
    *  shown without losing the upload it is standing in for. */
   avatar_stem: string | null;
+  /** 1 while the password is one an owner chose (a new account or a reset): the next sign-in
+   *  must replace it before anything else (F35). */
+  must_change_password: number;
 }
 
 export type LocationResolution = "direct" | "pluscode" | "browser" | "nominatim" | "manual" | "unresolved";

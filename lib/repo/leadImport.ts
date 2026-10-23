@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { getDb, type LocationResolution } from "@/lib/db";
 import type { DuplicatePool } from "@/lib/duplicateDetection";
+import { tombstone } from "./tombstones";
 
 /** Bulk maps-link import: one job per paste, one row per link.
  *
@@ -375,7 +376,9 @@ export function undoJob(organizationId: number, jobId: number): number {
     // removing the location row first leaves the item pointing at nothing and the
     // delete fails on the constraint.
     unlink.run(jobId, organizationId);
-    for (const v of victims) del.run(v.id, organizationId);
+    for (const v of victims) {
+      if (del.run(v.id, organizationId).changes > 0) tombstone(organizationId, "saved_locations", v.id, conn);
+    }
     conn.exec("COMMIT");
   } catch (e) {
     conn.exec("ROLLBACK");

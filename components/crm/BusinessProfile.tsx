@@ -17,6 +17,7 @@ import { isWorkingHours } from "@/lib/crm/hours";
 import { normPhone, sanitizePhoneInput } from "@/lib/crm/phone";
 import { useToast } from "@/components/ToastProvider";
 import CustomerBento from "@/components/meridian/CustomerBento";
+import CustomerPriceHistory from "@/components/PriceHistoryList";
 import BusinessDetails from "./BusinessDetails";
 import HoursPicker from "./HoursPicker";
 import type { FlowConfig } from "@/lib/crm/flows/types";
@@ -133,6 +134,7 @@ export default function BusinessProfile({ initial, initialTimeline }: { initial:
       <Icon name="plus" size="md" />
       افزودن مخاطب</button>}
     </section><CustomerBento data={profile.summary} />
+    <CustomerPriceHistory customerId={profile.business.id} />
     <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Link className="btn ghost" style={TOUCH} href={`/sales/orders?customer=${profile.business.id}`}>همهٔ سفارش‌ها</Link></div>
     <section className="tile"><h2>تاریخچه</h2>{!history.items.length && <p>رویدادی ثبت نشده است.</p>}
       {history.items.map(i => <article key={`${i.kind}-${i.id}`} style={{ padding: "12px 0", borderBottom: "1px solid var(--border)" }}>{i.href ? <Link href={i.href}>{i.title}</Link> : <strong>{i.title}</strong>}<p>{i.sub}</p><small><time dateTime={i.at} dir="ltr">{faJalaliDateTime(i.at)}</time> {i.who}</small></article>)}

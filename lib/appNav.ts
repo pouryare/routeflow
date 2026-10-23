@@ -134,6 +134,7 @@ export function appTabs(session: { role: Role }): AppTab[] {
     { href: "/sales", label: "خلاصهٔ فروش", group: "reports", ready: true },
     { href: "/sales/dashboard", label: "تحلیل فروش", group: "reports", ready: true },
     { href: "/sales/forecast", label: "پیش‌بینی", group: "reports", ready: isManager(r) },
+    { href: "/sales/reasons", label: "دلیل‌های ناکامی", group: "reports", ready: isManager(r) },
     /* Coverage report. `ready` mirrors proxy.ts, which denies a salesperson /report
        because it aggregates a whole group's revenue, debt and coverage. */
     { href: "/report", label: "گزارش پوشش", group: "reports", ready: r !== "phone_sales" },
@@ -158,6 +159,8 @@ export function appTabs(session: { role: Role }): AppTab[] {
     // تنظیمات سازمان
     { href: "/sales/admin/users", label: "کاربران", group: "org", ready: isOwner(r) },
     { href: "/sales/admin/groups", label: "گروه‌ها", group: "org", ready: isOwner(r) },
+    { href: "/sales/admin/logins", label: "گزارش ورودها", group: "org", ready: isOwner(r) },
+    { href: "/sales/admin/status", label: "وضعیت سامانه", group: "org", ready: isOwner(r) },
     { href: "/facilities", label: "مکان‌های ما", group: "org", ready: isOwner(r) },
   ];
 }

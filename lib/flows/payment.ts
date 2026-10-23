@@ -1,6 +1,7 @@
 import type { FlowConfig, FlowContext, FlowState } from "@/lib/crm/flows/types";
 import { faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
+import { tomanInWords } from "@/lib/amountWords";
 
 /** Money received. Cash for a customer already on screen is two taps: «نقد», then the amount,
  *  which arrives prefilled with what the customer owes and is confirmed with one tap.
@@ -152,6 +153,7 @@ export function paymentChips(ctx: FlowContext, st: FlowState): string[] {
   return [
     ...(name ? [name] : []),
     `${method}: ${faToman(Number(st.values.amount))}`,
+    ...(Number(st.values.amount) > 0 ? [`به حروف: ${tomanInWords(Number(st.values.amount))}`] : []),
     ...(m === "CHEQUE" ? [`چک ${st.values.cheque_no} · سررسید ${faJalaliDate(st.values.due)}`] : []),
     ...(st.values.reference ? [`پیگیری ${st.values.reference}`] : []),
     `تاریخ: ${faJalaliDate(ctx.vars.received_at)}`,

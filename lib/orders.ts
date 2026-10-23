@@ -81,6 +81,8 @@ export interface OrderLine extends LineSnapshot {
 export interface OrderDetail {
   id: number;
   order_no: string;
+  /** NORMAL, URGENT, KEY_ACCOUNT or FLEXIBLE (lib/orderPriority.ts). */
+  priority: string;
   customer_id: number;
   customer_name: string;
   group_id: number | null;
@@ -538,6 +540,8 @@ export interface OrderSummary {
   group_id: number | null;
   salesperson_name: string | null;
   status: string;
+  /** F132: the board and the list tag urgent orders. */
+  priority: string;
   order_date: string;
   /** Phase 1: the day asked for, or null = «در اولین فرصت». Carried on the summary rather than
    *  joined per card, because the board sorts on it and a second lookup per row is how that
@@ -574,7 +578,7 @@ export function readOrders(
 
   const orders = db
     .prepare(
-      `SELECT o.id, o.order_no, o.status, o.order_date, o.payment_status, o.paid_toman,
+      `SELECT o.id, o.order_no, o.status, o.priority, o.order_date, o.payment_status, o.paid_toman,
               o.requested_day, o.requested_kind,
               o.group_id, o.customer_id, c.business_name AS customer_name, u.display_name AS salesperson_name
          FROM orders o

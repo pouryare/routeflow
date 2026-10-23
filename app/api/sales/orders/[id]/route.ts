@@ -4,6 +4,9 @@ import { orderVisible } from "@/lib/repo/ordersAccess";
 import { packagingOfProduct, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OrderError } from "@/lib/orders";
 import { addLineTo, confirmOrderById, orderById } from "@/lib/repo/routeAdapters";
+import { setOrderPriority } from "@/lib/repo/orderPriority";
+import { isSettablePriority } from "@/lib/orderPriority";
+import { MANAGE_ROLES } from "@/lib/roles";
 
 /* Was ["owner","group_manager","phone_sales"] — NARROWER than its twin in orders/route.ts,
  * which admits both van roles. So a van role could create an order and then be refused
@@ -50,9 +53,23 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const body = (await req.json().catch(() => null)) as {
     status?: unknown;
     line?: unknown;
+    priority?: unknown;
   } | null;
 
   try {
+    if (body?.priority !== undefined) {
+      // F132: managers and owners only, or every order ends up urgent (lib/orderPriority.ts).
+      if (!MANAGE_ROLES.includes(guard.session.role)) {
+        return NextResponse.json({ ok: false, error: "فقط مدیر می‌تواند اولویت سفارش را تغییر دهد" }, { status: 403 });
+      }
+      if (!isSettablePriority(body.priority)) {
+        return NextResponse.json({ ok: false, error: "اولویت نامعتبر است" }, { status: 400 });
+      }
+      const set = setOrderPriority(guard.session.organizationId, id, body.priority);
+      if (!set) return NextResponse.json({ ok: false, error: "اولویت سفارشِ بسته‌شده تغییر نمی‌کند" }, { status: 409 });
+      return NextResponse.json({ ok: true });
+    }
+
     if (body?.status === "confirmed") {
       confirmOrderById(id);
       return NextResponse.json({ ok: true });

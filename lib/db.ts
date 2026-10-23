@@ -16,7 +16,7 @@ export { TENANT_TABLES } from "./database/tenantTables";
 export type { FacilityKind, FacilityRow } from "./facilityTypes";
 export { FACILITY_KINDS, FACILITY_ICONS, defaultIconFor } from "./facilityTypes";
 
-const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
+export const DB_PATH = process.env.ROUTEFLOW_DB_PATH || path.join(process.cwd(), "data", "routeflow.db");
 
 let _db: DatabaseSync | null = null;
 

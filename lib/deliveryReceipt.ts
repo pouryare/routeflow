@@ -2,6 +2,7 @@ import type { RunStop } from "@/lib/delivery";
 import { faNum, faToman } from "@/lib/format";
 import { faJalaliDate } from "@/lib/jalali";
 import { roundToman } from "@/lib/money";
+import { tomanInWords } from "@/lib/amountWords";
 import type { ReceiptData } from "@/lib/receiptLayout";
 
 /** The paper handed over at the door.
@@ -35,6 +36,7 @@ export function buildReceipt(opts: {
         amount: faToman(roundToman(r.n * r.line.unit_price_toman)),
       })),
     totalLabel: faToman(total),
+    totalWords: tomanInWords(total),
     paidLabel: faToman(collectedToman),
     dueLabel: collectedToman < total ? faToman(total - collectedToman) : null,
     driverName: opts.driverName,

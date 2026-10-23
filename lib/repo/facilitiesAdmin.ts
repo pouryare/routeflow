@@ -4,6 +4,7 @@
 import { getDb } from "@/lib/db";
 import { readFacility, type FacilityRow } from "@/lib/facilities";
 import { orgClause } from "@/lib/orgScope";
+import { tombstone } from "./tombstones";
 
 /** Cheap change signature for the list's ETag: COUNT + MAX(updated_at). updated_at is what makes
  *  a pin move invalidate the tag. Scoped, so one company's edits do not bust another's cache. */
@@ -129,6 +130,7 @@ export function deleteFacility(
   db.exec("BEGIN");
   try {
     db.prepare("DELETE FROM facilities WHERE id = ?").run(id);
+    if (owning.organization_id !== null) tombstone(owning.organization_id, "facilities", id, db);
     if (row.is_default_origin === 1) {
       db.prepare(
         `UPDATE facilities SET is_default_origin = 1, updated_at = ?

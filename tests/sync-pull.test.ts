@@ -252,3 +252,23 @@ describe("pullSince", () => {
     expect(others).not.toContain(locId);
   });
 });
+
+describe("deleting a run tells the phones", () => {
+  it("records tombstones for the run, its stops and its planned deliveries", async () => {
+    const { deleteRun } = await import("@/lib/delivery");
+    const { snapshotDeletes } = await import("@/lib/offline/snapshotDeletes");
+    const run = runFor(driverA, custA);
+    const later = new Date(Date.now() + 5);
+    const first = pullSince(sess(driverA, "delivery_driver", 1, groupA), null, later);
+    const stopIds = first.rows.filter((r) => r.table === "delivery_stops").map((r) => Number(r.row.id));
+    expect(stopIds.length).toBe(1);
+
+    await new Promise((r) => setTimeout(r, 10));
+    deleteRun(getDb(), run);
+    const second = pullSince(sess(driverA, "delivery_driver", 1, groupA), first.watermark);
+    const keys = snapshotDeletes(second.tombstones, second.rows).map(([t, id]) => `${t}:${id}`);
+    expect(keys).toContain(`delivery_runs:${run}`);
+    expect(keys).toContain(`delivery_stops:${stopIds[0]}`);
+    expect(keys.some((k) => k.startsWith("deliveries:"))).toBe(true);
+  });
+});

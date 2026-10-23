@@ -120,6 +120,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     overview:
       "برآورد فروش دوره‌های آینده بر پایهٔ روند گذشته و ظرفیت. برای برنامه‌ریزی خرید و انبار، نه برای تعهد به عدد.",
   },
+  "/sales/reasons": {
+    title: "دلیل‌های ناکامی",
+    titleEn: "Failure reasons",
+    overview:
+      "چرا تحویل‌ها ناموفق شدند، سفارش‌ها لغو شدند، برگشتند یا دیر رسیدند، به تفکیک دلیل. برای پیدا کردن بزرگ‌ترین علت هر ماه، نه برای قضاوت دربارهٔ یک نفر.",
+  },
   "/sales/products": {
     title: "کالاها و قیمت‌ها",
     titleEn: "Products and prices",
@@ -292,6 +298,18 @@ export const PAGE_META: Record<string, PageMeta> = {
     titleEn: "Representatives",
     overview: "تعریف و راه‌اندازی نمایندگان حالا بخشی از صفحهٔ «نمایندگان فروش» است؛ این نشانی به همان‌جا می‌رود.",
   },
+  "/sales/admin/logins": {
+    title: "گزارش ورودها",
+    titleEn: "Login history",
+    overview:
+      "۱۰۰ تلاش اخیر برای ورود به حساب‌های سازمان: موفق یا ناموفق، از چه دستگاهی و چه نشانی. اگر ورودی عجیب دیدید، از آن کاربر بخواهید رمزش را عوض کند و از همهٔ دستگاه‌ها خارج شود.",
+  },
+  "/sales/admin/status": {
+    title: "وضعیت سامانه",
+    titleEn: "System status",
+    overview:
+      "سلامت خود برنامه در یک صفحه: آخرین پشتیبان، کارهای شبانه، همگام‌سازی گوشی‌ها، تازگی داده و ورودهای ناموفق. هر خط قرمز یعنی چیزی بی‌صدا از کار افتاده است.",
+  },
   "/sales/admin/groups": {
     title: "گروه‌ها",
     titleEn: "Groups",
@@ -318,6 +336,12 @@ export const PAGE_META: Record<string, PageMeta> = {
     titleEn: "Notification settings",
     overview:
       "انتخاب اینکه چه رویدادی، از چه راهی، و در چه ساعت‌هایی به شما خبر بدهد. ساعات سکوت و اتصال تلگرام هم اینجاست.",
+  },
+  "/settings/security": {
+    title: "امنیت و ورود",
+    titleEn: "Account security",
+    overview:
+      "ورودهای اخیر حساب شما و خروج از دستگاه‌های دیگر. اگر ورودی را نمی‌شناسید، از همهٔ دستگاه‌ها خارج شوید و رمز را عوض کنید.",
   },
 };
 

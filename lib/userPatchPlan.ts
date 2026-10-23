@@ -8,7 +8,7 @@ import { hashPassword } from "@/lib/auth";
 import { groupExists } from "@/lib/repo/groupsAdmin";
 import { otherActiveOwners, usernameTakenInOrg } from "@/lib/repo/usersAdmin";
 
-const MIN_PASSWORD = 8;
+export const MIN_PASSWORD = 8;
 
 export type UserPatchPlan =
   | { ok: true; sets: string[]; values: (string | number | null)[] }
@@ -23,7 +23,12 @@ function wouldStrandTheApp(target: UserRow, becomingNonOwner: boolean): boolean 
   return otherActiveOwners(target.id, target.organization_id) === 0;
 }
 
-export function planUserPatch(body: Record<string, unknown> | null, target: UserRow, organizationId: number): UserPatchPlan {
+export function planUserPatch(
+  body: Record<string, unknown> | null,
+  target: UserRow,
+  organizationId: number,
+  actorId?: number
+): UserPatchPlan {
   const sets: string[] = [];
   const values: (string | number | null)[] = [];
 
@@ -40,6 +45,9 @@ export function planUserPatch(body: Record<string, unknown> | null, target: User
     }
     sets.push("password_hash = ?");
     values.push(hashPassword(password));
+    // A password an owner set for someone else is a one-time key: they replace it at next
+    // sign-in (F35). An owner changing their own here already chose it.
+    if (target.id !== actorId) sets.push("must_change_password = 1");
     bumpVersion = true;
   }
 

@@ -13,7 +13,10 @@ import Link from "next/link";
  *  /login, which was already redundant twice over — proxy.ts refuses them before this
  *  renders, and settings/notifications/page.tsx re-checks the session itself.
  */
-const NAV = [{ href: "/settings/notifications", label: "اعلان‌ها" }];
+const NAV = [
+  { href: "/settings/notifications", label: "اعلان‌ها" },
+  { href: "/settings/security", label: "امنیت و ورود" },
+];
 
 export default function SettingsLayout({ children }: { children: ReactNode }) {
   /* One section is not a menu: a single link in its own 12rem column printed «اعلان‌ها»

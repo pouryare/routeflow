@@ -1,6 +1,7 @@
 import type { DatabaseSync } from "node:sqlite";
 import { pointInRing } from "./trafficZones";
 import type { GroupRow } from "./db";
+import { recordOwnerChange } from "./repo/crm/ownerChange";
 
 export function readGroups(db: DatabaseSync, organizationId: number): GroupRow[] {
   return db
@@ -153,6 +154,15 @@ export function recomputeCustomerGroups(db: DatabaseSync, organizationId: number
       }
       if (next !== c.group_id) {
         update.run(next, c.id);
+        recordOwnerChange(db, {
+          organizationId,
+          customerId: c.id,
+          actorUserId: null,
+          reason: "territory",
+          what: "group",
+          fromId: c.group_id,
+          toId: next,
+        });
         changed++;
       }
     }

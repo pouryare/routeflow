@@ -3,6 +3,7 @@ import { createChallengeToken, createSessionToken, verifyPassword, COOKIE_NAME, 
 import { secondFactorRequired } from "@/lib/repo/secondFactor";
 import { clientKey, rateLimit, rateLimitReset } from "@/lib/rateLimit";
 import { findUserByUsername } from "@/lib/users";
+import { recordLogin, type LoginResult } from "@/lib/repo/loginEvents";
 
 const LOGIN_MAX_ATTEMPTS = 5;
 const LOGIN_MAX_ATTEMPTS_PER_IP = 30;
@@ -44,7 +45,14 @@ export async function POST(req: NextRequest) {
   // for an owner locked out of their own account is scripts/create-user.mjs on the server.
   const user = username ? findUserByUsername(username) : null;
   const matches = verifyPassword(typeof password === "string" ? password : "", user?.password_hash ?? NO_ACCOUNT_HASH);
+  const log = (result: LoginResult) => {
+    if (user?.organization_id != null) {
+      recordLogin({ organizationId: user.organization_id, userId: user.id, result, ip, userAgent: req.headers.get("user-agent") });
+    }
+  };
   if (!user || !user.active || typeof password !== "string" || !matches) {
+    // Only for a real account: a username that does not exist is not stored (lib/repo/loginEvents.ts).
+    if (user) log(user.active ? "bad_password" : "inactive");
     return NextResponse.json({ ok: false, error: BAD_CREDENTIALS }, { status: 401 });
   }
 
@@ -57,6 +65,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, secondFactor: true, challenge: createChallengeToken(user.id) });
   }
 
+  log("success");
   const res = NextResponse.json({ ok: true });
   res.cookies.set(
     COOKIE_NAME,
@@ -67,6 +76,7 @@ export async function POST(req: NextRequest) {
       oid: user.organization_id,
       tv: user.token_version,
       name: user.display_name,
+      ...(user.must_change_password ? { pw: 1 as const } : {}),
     }),
     {
       httpOnly: true,

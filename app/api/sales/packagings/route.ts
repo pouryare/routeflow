@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { orgScopeId, requireRole } from "@/lib/session";
 import { addPackaging, productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OWNER_ROLES } from "@/lib/roles";
+import { logProductChange } from "@/lib/repo/productLog";
 
 export async function POST(req: NextRequest) {
   const guard = requireRole(req, OWNER_ROLES);
@@ -42,6 +43,7 @@ export async function POST(req: NextRequest) {
       qty_per_pack: qty,
       barcode: typeof body?.barcode === "string" ? body.barcode : null,
     });
+    logProductChange(productId, "packaging", { new: `${name} (${qty})` }, { id: guard.session.user.id, name: guard.session.user.display_name, impersonatedBy: guard.session.actorId ?? null });
     return NextResponse.json({ ok: true, id }, { status: 201 });
   } catch (e) {
     const message =

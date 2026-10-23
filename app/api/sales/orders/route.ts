@@ -5,6 +5,7 @@ import { productInOrg } from "@/lib/repo/catalogueAdmin";
 import { OrderError } from "@/lib/orders";
 import { orderMixIn, ordersIn, placeOrder } from "@/lib/repo/routeAdapters";
 import { parseOrderRequest } from "@/lib/orderRequest";
+import { customerPriceHistory } from "@/lib/repo/customerPrices";
 import {
   LeadPromotionError,
   promoteLeadToCustomer,
@@ -47,7 +48,10 @@ export async function GET(req: NextRequest) {
     ? orderMixIn(scope, Number(customerId))
     : [];
 
-  return NextResponse.json({ ok: true, orders, products });
+  // F89: the last prices this shop paid per product and pack, beside the list price then.
+  const prices = customerId ? customerPriceHistory(scope, Number(customerId)) : [];
+
+  return NextResponse.json({ ok: true, orders, products, prices });
 }
 
 export async function POST(req: NextRequest) {

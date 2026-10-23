@@ -110,6 +110,10 @@ export default function ProfileMenu({
             <Icon name="arrow-up-right" size="sm" /> تنظیمات اعلان‌ها
           </Link>
 
+          <Link className="pm__link" href="/settings/security" onClick={() => setOpen(false)}>
+            <Icon name="arrow-up-right" size="sm" /> امنیت و ورود
+          </Link>
+
           <div className="pm__sep" />
 
           <SyncRow />
