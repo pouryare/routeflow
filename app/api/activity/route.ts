@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
-import { LoggableEntityType, PLAN_ENTITY_TYPES } from "@/lib/db";
+import { PLAN_ENTITY_TYPES, type PlanEntityType } from "@/lib/db";
 import { activityForEntity, activityOnDate, addActivityNote } from "@/lib/repo/activityLogView";
 import { canReachEntity, entityGroupFilter, requireRole } from "@/lib/session";
 import { MANAGE_ROLES } from "@/lib/roles";
 
+// Products are logged by the catalogue routes only (lib/repo/productLog.ts), so this API keeps to the plan types.
 // activity_log is option 2 as well: an entry belongs to whatever it is an entry about.
 export async function GET(req: NextRequest) {
   const guard = requireRole(req, MANAGE_ROLES);
@@ -11,7 +12,7 @@ export async function GET(req: NextRequest) {
   const f = entityGroupFilter(guard.session, "a");
 
   const { searchParams } = new URL(req.url);
-  const entityType = searchParams.get("entity_type") as LoggableEntityType | null;
+  const entityType = searchParams.get("entity_type") as PlanEntityType | null;
   const date = searchParams.get("date");
 
   if (!entityType || !PLAN_ENTITY_TYPES.includes(entityType)) {
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
 }
 
 interface NewActivityInput {
-  entity_type?: LoggableEntityType;
+  entity_type?: PlanEntityType;
   entity_id?: number;
   note?: string;
 }

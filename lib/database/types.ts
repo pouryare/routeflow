@@ -66,14 +66,14 @@ export type EntityType = "district" | "customer";
  *  quietly loosen every other entity reference in the schema. */
 export type PlanEntityType = EntityType | "facility" | "lead" | "lead_location";
 /** What activity_log accepts. Same widening as PlanEntityType, for the same reason. */
-export type LoggableEntityType = PlanEntityType;
+export type LoggableEntityType = PlanEntityType | "product";
 export const PLAN_ENTITY_TYPES: PlanEntityType[] = ["district", "customer", "facility", "lead", "lead_location"];
 
 export interface ActivityEntry {
   id: number;
   entity_type: LoggableEntityType;
   entity_id: number;
-  event_type: "status_change" | "note" | "assigned";
+  event_type: "status_change" | "note" | "assigned" | "created" | "updated";
   old_value: string | null;
   new_value: string | null;
   note: string | null;
