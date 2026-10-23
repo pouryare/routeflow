@@ -7,7 +7,7 @@
 // every write goes through lib/offline/net.postJSON, which enqueues to IndexedDB when
 // navigator.onLine is false. This worker's only write-side job is to wake a client on a
 // Background Sync event so the queue drains without the user re-opening the tab. See
-// docs/HANDOFF-2026-09-02-phase-4-offline-first.md for why the SW does not intercept the
+// docs/archive/handoffs/HANDOFF-2026-09-02-phase-4-offline-first.md for why the SW does not intercept the
 // POST bodies itself.
 //
 // Cache names bumped to v3 for the Phase 4 shell change; activate() below deletes any

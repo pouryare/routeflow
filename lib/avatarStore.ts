@@ -11,28 +11,14 @@
 
 import path from "node:path";
 import fs from "node:fs/promises";
+import { AVATAR_PRESETS } from "@/lib/avatarPresets";
 
 export const AVATAR_DIR =
   process.env.ROUTEFLOW_AVATAR_DIR ?? path.join(process.cwd(), "data", "photos", "avatars");
 
 export type AvatarFormat = "avif" | "webp";
 
-export interface AvatarPreset {
-  /** Bare token, no separators. This is the only part that ever reaches the filesystem. */
-  key: string;
-  label_fa: string;
-}
-
-/** The five files already committed under `public/avatars/`, which nothing referenced. They
- *  were made for exactly this and never wired up. `scripts/seed-avatars.mjs` re-encodes
- *  them through the app's own pipeline, so a preset is the same bytes an upload would be. */
-export const AVATAR_PRESETS: AvatarPreset[] = [
-  { key: "hossein", label_fa: "حسین" },
-  { key: "maryam", label_fa: "مریم" },
-  { key: "reza", label_fa: "رضا" },
-  { key: "saeed", label_fa: "سعید" },
-  { key: "zahra", label_fa: "زهرا" },
-];
+export { AVATAR_PRESETS } from "@/lib/avatarPresets";
 
 /** `null` for anything that is not exactly one bare token. This is a security boundary, not
  *  a tidy-up: the key reaches a filesystem path, and `../../../etc/passwd` looks like a

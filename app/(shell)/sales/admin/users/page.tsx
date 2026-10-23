@@ -12,6 +12,7 @@ import Avatar from "@/components/meridian/Avatar";
 import UserAddFlow from "@/components/flows/UserAddFlow";
 import { ROLE_LABEL, ROLES, type Role } from "@/lib/roles";
 import { faJalaliDate } from "@/lib/jalali";
+import { AVATAR_PRESETS } from "@/lib/avatarPresets";
 
 interface UserRow {
   id: number;
@@ -59,17 +60,6 @@ function TelegramCell({ user, onSave }: { user: UserRow; onSave: (v: string | nu
     />
   );
 }
-
-/** The five portraits `scripts/seed-avatars.mjs` encoded from `public/avatars/`. Kept in
- *  sync by hand with `AVATAR_PRESETS` in lib/avatarStore — a mismatch shows as a 404 on
- *  one thumbnail, not as an error. */
-const PRESETS = [
-  { key: "hossein", label_fa: "حسین" },
-  { key: "maryam", label_fa: "مریم" },
-  { key: "reza", label_fa: "رضا" },
-  { key: "saeed", label_fa: "سعید" },
-  { key: "zahra", label_fa: "زهرا" },
-];
 
 /** Give one person a real face.
  *
@@ -122,7 +112,7 @@ function AvatarCell({
       {open ? (
         <div className="flex flex-col gap-2 rounded-lg border border-border bg-surface p-2">
           <div className="flex flex-wrap gap-2">
-            {PRESETS.map((p) => (
+            {AVATAR_PRESETS.map((p) => (
               <button
                 key={p.key}
                 type="button"

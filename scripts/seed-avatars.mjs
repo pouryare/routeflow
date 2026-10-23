@@ -39,7 +39,7 @@ if (files.length === 0) {
 
 for (const file of files) {
   // `driver.hossein.jpg` seeds the preset keyed `hossein`; the prefix is stripped so the
-  // stem is the same string lib/avatarStore.ts publishes in AVATAR_PRESETS.
+  // stem is the same string lib/avatarPresets.ts publishes in AVATAR_PRESETS.
   const stem = path.basename(file).replace(/\.[^.]+$/, "").replace(/^driver\./, "");
   const input = await fs.readFile(path.join(SRC, file));
 
