@@ -33,6 +33,7 @@ _Condensed 2026-10-23. Each finished piece of work is one line here; the full ea
   - [x] Lead charts moved from the retired `/analytics` to «سرنخ‌ها» on the sales dashboard (status, funnel, average score; `lib/leadStats.ts`); the fake «تبدیل شده» funnel step and the distance-coloured pin map dropped; `/analytics` deleted
   - [x] Six redirect stub pages deleted with no redirects (the app has no users yet): `/sales/board`, `/sales/journey`, `/sales/deliveries`, `/sales/runs`, `/sales/analysis`, `/sales/admin/representatives`; their meta, the proxy special case and the stale-surface audit entries went with them; the runs view keeps its copy in `VIEW_META`
   - [x] `/today` (briefing and multi-role picker) renamed to `/start`, so it no longer shares a name with `/sales/today`; no redirect
+  - [x] Guard test `tests/every-page-reachable.test.ts`: every page is a nav destination for some role, linked from rendering code, or exempt with a written reason (checked: it fails when the holidays tab is removed)
 
 ## Not done / gaps
 - [ ] Cheque cards and the cheque deck still show the customer as plain text: the card itself is the tap target (select / decide), so a link inside it would fight it
