@@ -20,7 +20,7 @@ import { commitDraft, readRunDrafts } from "@/lib/repo/runDrafts";
 import { pendingUnload, runOwnedBy } from "@/lib/repo/unload";
 import { readImpersonatable, readImpersonationTarget } from "@/lib/repo/impersonation";
 import { deliveredOrdersForCustomer } from "@/lib/repo/payments";
-import { searchCustomers, searchDistricts, searchOrders, searchUsers } from "@/lib/repo/search";
+import { searchCustomers, searchDistricts, searchNotes, searchOrders, searchUsers } from "@/lib/repo/search";
 import { logPlatformAccess } from "@/lib/platformAccess";
 import type { Session } from "@/lib/session";
 
@@ -67,4 +67,5 @@ export const searchIn = (session: Session, q: string) => ({
   customers: searchCustomers(getDb(), session, q),
   orders: searchOrders(getDb(), session, q),
   users: searchUsers(getDb(), session, q),
+  notes: searchNotes(getDb(), session, q),
 });
