@@ -374,3 +374,17 @@ Full write-up: `docs/architecture-audit-2026-10-22.md`. Steps 1 to 3 are merged 
 1. Decide which findings to fix now: CSV formula guard (small), password hash parameters and format (cheap while the data is dummy), schema validation
 2. Choose the map stack (MapLibre recommended) before building live tracking
 3. Add `@persian-tools/persian-tools` and `libphonenumber-js` when F116 and the first telephony or SMS slice start
+
+## More technology suggestions (2026-10-23, discussion only, nothing recorded in the docs yet)
+
+### Done
+- [x] Suggested technology not yet covered: Capacitor Android shell for background GPS, Traccar for dedicated trackers, Centrifugo for live updates, domestic push and delivery fallbacks, SOPS secrets, a local package and image mirror, a query-builder UI for rules and reports, an editable grid for desk order entry, real-user performance data, Moodian e-invoicing and Sayad cheque IDs
+
+### Not done / gaps
+- [ ] Not added to `docs/roadmap.md` or `docs/future-features.md`; waiting for your decision on which to keep
+- [ ] Iran-specific points (push delivery, stores, Moodian, Sayad) are from general knowledge and need checking with your accountant and a test on real phones
+
+### Next steps
+1. Say which suggestions to record in the docs
+2. Decide Capacitor shell versus staying a PWA before F6 starts
+3. Check the outside services from the Iranian server
